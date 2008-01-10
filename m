@@ -1,7 +1,7 @@
 From: Raphael Vallazza <raphael@endian.com>
 Subject: Re: [PATCH] Transparent proxy support for LVS with localnode and realservers (WORKING)
-Date: Thu, 10 Jan 2008 15:14:23 +0100
-Message-ID: <31DCF7B1-A5F8-4B3C-9DD9-622954FED5FE@endian.com>
+Date: Thu, 10 Jan 2008 15:50:37 +0100
+Message-ID: <1C7F5BEB-8169-40DA-B7A2-2B4BB85B6FFD@endian.com>
 References: <C704FCFC-455C-4CFC-AB8C-51604D3CF844@endian.com> <Pine.LNX.4.64.0801100432180.28592@wm7d.net>
 Mime-Version: 1.0 (Apple Message framework v915)
 Content-Transfer-Encoding: 7bit
@@ -10,7 +10,7 @@ In-Reply-To: <Pine.LNX.4.64.0801100432180.28592@wm7d.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"; format="flowed"; delsp="yes"
-To: Joseph Mack NA3T <jmack@wm7d.net>
+To: LVS Devel <lvs-devel@vger.kernel.org>
 
 Hello,
 
