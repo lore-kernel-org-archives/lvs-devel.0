@@ -1,74 +1,83 @@
-From: Simon Horman <horms@verge.net.au>
+From: Joseph Mack NA3T <jmack@wm7d.net>
 Subject: Re: [PATCH] Transparent proxy support for LVS with localnode and
-	realservers (WORKING)
-Date: Fri, 11 Jan 2008 13:28:34 +0900
-Message-ID: <20080111042832.GG13135@verge.net.au>
-References: <C704FCFC-455C-4CFC-AB8C-51604D3CF844@endian.com> <Pine.LNX.4.64.0801100432180.28592@wm7d.net> <1C7F5BEB-8169-40DA-B7A2-2B4BB85B6FFD@endian.com> <20080111041426.GF13135@verge.net.au>
+ realservers (WORKING)
+Date: Fri, 11 Jan 2008 05:29:32 -0800 (PST)
+Message-ID: <Pine.LNX.4.64.0801110438550.2416@wm7d.net>
+References: <C704FCFC-455C-4CFC-AB8C-51604D3CF844@endian.com>
+ <Pine.LNX.4.64.0801100432180.28592@wm7d.net> <1C7F5BEB-8169-40DA-B7A2-2B4BB85B6FFD@endian.com>
+ <20080111041426.GF13135@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
 In-Reply-To: <20080111041426.GF13135@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
-To: Raphael Vallazza <raphael@endian.com>
-Cc: LVS Devel <lvs-devel@vger.kernel.org>
+To: LVS Devel <lvs-devel@vger.kernel.org>
 
-Sorry, I was a bit to fast on the trigger-button when I sent the
-previous patch. I checked that it applied against net-2.4.25, but I
-hadn't yet checked that it compiled. I have now done that for both of
-the new options and also checked that it boots, though I have not
-checked that it does anything sensible with packets.
+On Fri, 11 Jan 2008, Simon Horman wrote:
 
-> Index: net-2.6.25/net/ipv4/ipvs/ip_vs_core.c
-> ===================================================================
-> --- net-2.6.25.orig/net/ipv4/ipvs/ip_vs_core.c	2008-01-11 12:57:55.000000000 +0900
-> +++ net-2.6.25/net/ipv4/ipvs/ip_vs_core.c	2008-01-11 13:00:09.000000000 +0900
-> @@ -1026,6 +1026,7 @@ ip_vs_forward_icmp(unsigned int hooknum,
->  
->  
->  static struct nf_hook_ops ip_vs_ops[] __read_mostly = {
-> +#ifdef CONFIG_IP_VS_INPUT_LOCAL_IN
->  	/* After packet filtering, forward packet through VS/DR, VS/TUN,
->  	 * or VS/NAT(change destination), so that filtering rules can be
->  	 * applied to IPVS. */
-> @@ -1036,6 +1037,20 @@ static struct nf_hook_ops ip_vs_ops[] __
->  		.hooknum        = NF_INET_LOCAL_IN,
->  		.priority       = 100,
->  	},
-> +#endif
-> +#ifdef CONFIG_IP_VS_INPUT_PRE_ROUTING
-> +	/* Intercept incoming connections before DNAT and input filtering
-> +	 * has been applied, this enables ransparent proxying on realnodes
-> +	 * and localnode. Hook right after MANGLE and before NAT_DST.
-> +	 */
-> +	static struct nf_hook_ops ip_vs_in_ops = {
+> But you do make some good points there, and I'm begining to think
+> that PREROUTING is correct.
 
-This should be:
-	ip_vs_in_ops = {
+Having LVS in LOCAL_IN was a reasonable idea at the time, 
+but then people came up with new things to do for LVS that 
+didn't work real well with the LOCAL_IN approach, eg 
+VIP-less directors. As well people quite reasonably expected 
+any iptables rule to work and they didn't.
 
-> +		.hook		= ip_vs_in,
-> +		.owner		= THIS_MODULE,
-> +		.pf		= PF_INET,
-> +		.hooknum	= NF_IP_PRE_ROUTING,
+Since the evolution of LVS has been helped by ideas from 
+people who weren't present for the original design, is it 
+possible to enumerate the reasons for/against 
+PREROUTING/FORWARD. At least then after we've made a 
+decision and then later a new idea breaks LVS, we can at 
+least look back to see if we should have seen it coming.
 
-This should be:
-		.hooknum	= NF_INET_PRE_ROUTING,
+o Will either approach allow F5-SNAT? It would be nice to 
+have a scheme where a machine did not have to be 
+reconfigured to run as a realserver.
 
-> +		.priority	= NF_IP_PRI_NAT_DST - 1,
+http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.non-modified_realservers.html#F5_snat
 
-> +	},
-> +#endif
->  	/* After packet filtering, change source only for VS/NAT */
->  	{
->  		.hook		= ip_vs_out,
+o Will it be possible for clients on realservers to be 
+clients of the LVS? (It would be nice to be able to stack 
+LVS calls to arbitary depth, but I can imagine it would be 
+easy to get an infinite loop if not setup properly). 
+Currently not being able to do this requires redesign of the 
+application(s) running on the realserver, which in any 
+setting where you must pay a programmer, or recertify the 
+application, will be too expensive and people will just go 
+buy a loadbalancer.
 
-If you could incoporate those changes, write a comment (the intial mail
-will do) and add a sign-off, then I'll send the patch up to net-dev for
-further review. If you could also test against net-2.4.25, that would
-be awsome.
+o Will iptables rules get the incoming packets before LVS on 
+the way in and after LVS on the way out? ie will you be able 
+to write arbitary iptables rules knowing that the incoming 
+packet has dst_addr:port and outgoing packet has 
+new_dst_addr:new_port? If LVS hooks PREROUTING, presumably 
+it will have to be after iptables. Presumably after LVS 
+hooks the packets they appear in POSTROUTING where you can 
+apply arbitary iptables rules to the packets?
+
+o Will either approach work better with SSL accelerators?
+
+http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.services.single-port.html#SSL_accelerator
+
+People have to use these because they're cheaper than buying 
+a certificate for each realserver.
+
+o Will either approach make it easier to code up an 
+active/active version of LVS?
+
+o Just in case, is it possible to code up the FORWARD 
+version too in case someone thinks of a bright idea that we 
+haven't thought of?
+
+
+Thanks
+Joe
 
 -- 
-Horms
-
+Joseph Mack NA3T EME(B,D), FM05lw North Carolina
+jmack (at) wm7d (dot) net - azimuthal equidistant map
+generator at http://www.wm7d.net/azproj.shtml
+Homepage http://www.austintek.com/ It's GNU/Linux!
