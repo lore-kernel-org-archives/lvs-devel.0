@@ -1,76 +1,55 @@
-From: "Julius Volz" <juliusv@google.com>
+From: Joseph Mack NA3T <jmack@wm7d.net>
 Subject: Re: Making IPVS work with IPv6
-Date: Mon, 31 Mar 2008 13:22:21 +0200
-Message-ID: <f4845fc0803310422l357d3f01x64700a7efb50a64e@mail.gmail.com>
-References: <f4845fc0803280845n6a4d8683gffe95c8d64572971@mail.gmail.com>
-	 <Pine.LNX.4.64.0803280853110.28825@wm7d.net>
-	 <20080331030715.GH31306@verge.net.au>
+Date: Mon, 31 Mar 2008 04:41:31 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0803310435160.9996@wm7d.net>
+References: <f4845fc0803280845n6a4d8683gffe95c8d64572971@mail.gmail.com> 
+ <Pine.LNX.4.64.0803280853110.28825@wm7d.net>
+ <f4845fc0803310348u37b128e4paa5260d243489352@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1206962572; bh=n/s+8ZivGcmM057XBevKolRm864=;
-	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
-	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=puxlJhl6i0q65f8Eidj9LrnPstiN1N6S
-	TyLcmTL8xBeh7SfIkVuRYwuyWO0NBjqGz7qywfOcUJH+Q3v8258r4A==
-In-Reply-To: <20080331030715.GH31306@verge.net.au>
-Content-Disposition: inline
+In-Reply-To: <f4845fc0803310348u37b128e4paa5260d243489352@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: Julius Volz <juliusv@google.com>
 Cc: lvs-devel@vger.kernel.org
 
-Hi Horms,
+On Mon, 31 Mar 2008, Julius Volz wrote:
 
-On Mon, Mar 31, 2008, Simon Horman <horms@verge.net.au> wrote:
->  There was a very old effort that you can find if you search a bit -
->  I can dig up a link if you can't find it. But as far as I am aware
->  there are no efforts at this time.
+> Thanks for the warning, I guess you are talking about this (and the
+> following points):
+>
+> http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.LVS-Tun.html#MTU
+>
+> Does this have any special implications in the IPv6 case?
 
-Yes, you are probably talking about this:
+possibly, possibly not. I was just warning you so that if 
+you came across it, you would recognize it.
 
-http://www.yggr-drasill.com/LVS6/documents.html
+> The problem looks pretty complicated and no one seems to 
+> completely understand it ;) I will keep it in mind for 
+> later though.
 
-The link has been dead for me throughout the last weeks (and seemed to
-be dead in 2003 already, so it's very, very old anyways).
+>>  We don't have enough people using UDP to know how LVS should
+>>  handle UDP.
 
->  [ Joe, I'm not sure that the LOCAL_IN stuff is really related
->   specifically to IPv6. But you do remind me that those patches
->   need to be revisited. ]
+> Again, interesting info. Is there a specific relation to 
+> IPv6 though?
 
-So these patches might already be in the kernel when I'm starting any
-real coding work...
+I assume you'll be testing UDP, and if it behaves strangely, 
+you'll want to know which parts to blame us for :-)
 
->  Yes, I expect so to. It would be good to open up a discussion
->  with Dave Miller and the other netdev people about any refactoring
->  that you think is needed. They should be able to advise on what
->  should go where.
+> Aha, interesting. Could you explain a bit more for a 
+> newbie in what ways IPVS "bypasses" netfilter?
 
-Thanks for the pointer! I will explain the issue to them!
+LVS controlled packets don't always follow the netfilter 
+path. They appear in the output without going through the 
+middle. So iptables rules don't always work.
 
->  IPv6 is something that has been needed for a long time. I'm quite
->  interested in it myself. But to date haven't had any luck finding
->  time to work on it. I'm happy to help out with your effort. Though
->  I imagine that for the most part it will be in the form of reviewing
->  patches.
-
-Thanks, any help is greatly appreciated! At the moment, I'm still
-looking at the different projects, how they work together and how to
-go about this sort of thing in general.
-
->  To be honest, sometimes when I look at the code I get surprises too.
-
-:-)
-
->  But if you have any questions please just send them my way, CC usually
->  gets my attention.
-
-Sure, I will!
-
-Thanks,
-Julius
-
+Joe
 -- 
-Google Switzerland GmbH
+Joseph Mack NA3T EME(B,D), FM05lw North Carolina
+jmack (at) wm7d (dot) net - azimuthal equidistant map
+generator at http://www.wm7d.net/azproj.shtml
+Homepage http://www.austintek.com/ It's GNU/Linux!
