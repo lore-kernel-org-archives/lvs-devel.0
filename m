@@ -1,52 +1,85 @@
-From: Graeme Fowler <graeme@graemef.net>
-Subject: Re: Least Connection Scheduler
-Date: Wed, 02 Apr 2008 09:15:57 +0100
-Message-ID: <1207124157.16121.4.camel@ernie.internal.graemef.net>
-References: <200804011336.08118.j.stubbs@linkthink.co.jp>
-	 <20080401051641.GB21127@verge.net.au>
-	 <200804011455.58676.j.stubbs@linkthink.co.jp>
-	 <200804021138.15828.j.stubbs@linkthink.co.jp>
-	 <20080402080412.GC9691@verge.net.au>
+From: Joseph Mack NA3T <jmack@wm7d.net>
+Subject: Re: Adapting LVS in order to allow Call-Id based persistence
+Date: Wed, 2 Apr 2008 07:57:08 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0804020713370.25100@wm7d.net>
+References: <c2f80c020804020703u6ebd4ed6oc430668daae94b30@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20080402080412.GC9691@verge.net.au>
+In-Reply-To: <c2f80c020804020703u6ebd4ed6oc430668daae94b30@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: Jason Stubbs <j.stubbs@linkthink.co.jp>, lvs-devel@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: pierrick grasland <pierrick.grasland@gmail.com>
+Cc: Horms <horms@vergenet.net>, lvs-devel@vger.kernel.org
 
-On Wed, 2008-04-02 at 17:04 +0900, Simon Horman wrote:
-> LVS does already have a number of /proc values that can be twiddled
-> so I personally don't see a problem with adding one more - then again
-> I'm bound to say that as it was my idea.
+On Wed, 2 Apr 2008, pierrick grasland wrote:
 
-Personally speaking, the more stuff that's controllable with /proc the
-better - it makes it easier to code up additional control environments
-without the execution overhead of calling ipvsadm multiple times.
+> So, in order to simplify my setup, I was hoping to 
+> implement something which will allow ipvsadm to track 
+> call-id, and not <ip:port> connections.
 
-> If you want to code it up as an additional scheduler that is fine.
-> But looking at your numbers, I am kind of leaning towards just
-> using your existing patch.
+I notice that you've sent this e-mail to me personally. I 
+hope you don't mind if I cc this reply to the lvs-devel 
+list, as the people there will have ideas about this.
 
-Pardon me for speaking out of turn, but an idea just crossed my mind -
-wouldn't it be better to "merge" (not in code terms) the lc and wlc
-schedulers so they either base on, or use exactly, the same code? After
-all, in concept the lc scheduler is simply wlc with equal weights of 1.
-Isn't it?
-That shrinks the codebase a bit.
+you're going where few people have gone. The various L7 
+packages you mention associated with LVS are not in common 
+use. I assume this is because they're difficult to set up 
+(they're general) and noone needs them enough to bother.
 
-> I agree that the only real problem would be the extra number of
-> inactive connections on the faster server. But the overhead of such
-> things is really quite small - ~128 bytes of memory and a bit of
-> extra time to go through the hash table (maybe).
+However SIP keeps coming up on this list and lvs can't 
+handle SIP out of the box, so something will have to be done 
+about it.
 
-This would only be a problem in really large throughput situations, and
-if you have one of them you probably already have some $$$ to buy a
-faster processor!
+> I have browse some sources (ktcpvs, ipvsadm, l7vsadm, 
+> l7directord), but I'm actually lost. All these packages 
+> allow some application level routing for HTTP, but are 
+> based at differents levels (kernel for ktcpvs, user for 
+> ipvsadm/l7vsadm, l7directord seems to be an addon for 
+> configuration of l7vsadm and health check for realserver).
 
-Regards
+It's not obvious to me which, if any are suitable starting 
+points, but you should know the code to get ideas.
 
-Graeme
+I expect the best idea would be a sip helper, like the ftp 
+helper module. It will have to know all about SIP and unlike 
+the other L7 packages, would need little if any configuring. 
+Presumably you could start with a module that recognises the 
+UDP packets you've been using for tests. The ftp helper just 
+looks at the tcpip headers. You'll have to look inside the 
+packet. There's a u32 option to iptables that looks inside 
+packets - you should find out how that works.
 
+You're going to have to write a scheduler based on call-id 
+as well. I like the -SH scheduler for for getting 
+persistence based on CIP, rather than the standard LVS 
+persistence code, which hangs if the client disappears.
+I don't know if the call-id can be associated with an IP.
+
+Horms has talked about a SIP helper (I think - at least he's 
+talked about SIP). He may have even have some code.
+
+Horms:
+
+Other people have come and gone asking about SIP, but 
+Pierrick seems to be taking more than a casual interest in 
+getting SIP running under LVS. He has got the UDP connect 
+packet to work under LVS, which is further than anyone else 
+has gone. Got any ideas on how he should proceed?
+
+Joe
+
+>
+> I hope you will be able to indicate which package can be a 
+> good starting point, and some hints which can be useful.
+>
+> Thanks for your help,
+>
+>
+
+-- 
+Joseph Mack NA3T EME(B,D), FM05lw North Carolina
+jmack (at) wm7d (dot) net - azimuthal equidistant map
+generator at http://www.wm7d.net/azproj.shtml
+Homepage http://www.austintek.com/ It's GNU/Linux!
