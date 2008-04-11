@@ -1,61 +1,39 @@
-From: Jason Stubbs <j.stubbs@linkthink.co.jp>
+From: "Julius Volz" <juliusv@google.com>
 Subject: Re: [PATCH] Move IPVS from net/ipv4/ipvs to net/netfilter/ipvs in preparation for IPv6 support
-Date: Fri, 11 Apr 2008 19:24:16 +0900
-Message-ID: <200804111924.16263.j.stubbs@linkthink.co.jp>
-References: <f4845fc0804040340x5e93754crcd680d26fd8982f7@mail.gmail.com> <20080405010707.GB27827@verge.net.au> <f4845fc0804110254s79eb6889sa654fc5d019db030@mail.gmail.com>
+Date: Fri, 11 Apr 2008 13:12:39 +0200
+Message-ID: <f4845fc0804110412h2ee5a6b5i1c1f26f09a9ddd75@mail.gmail.com>
+References: <f4845fc0804040340x5e93754crcd680d26fd8982f7@mail.gmail.com>
+	 <20080405010707.GB27827@verge.net.au>
+	 <f4845fc0804110254s79eb6889sa654fc5d019db030@mail.gmail.com>
+	 <200804111924.16263.j.stubbs@linkthink.co.jp>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <f4845fc0804110254s79eb6889sa654fc5d019db030@mail.gmail.com>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1207912362; bh=SjffCR3tcVpp2qi2qf397DfDKFs=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=IgD0A2NyjMiIopndDI0bYDl90hoXf19h
+	EmPSm567UrAIfT3VTD0vUZ/tAT6H3lA3wSgPYY+T46DBx9vbMXWEKg==
+In-Reply-To: <200804111924.16263.j.stubbs@linkthink.co.jp>
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Julius Volz <juliusv@google.com>
-Cc: lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
+Content-Type: text/plain; charset="us-ascii"
+To: Jason Stubbs <j.stubbs@linkthink.co.jp>
+Cc: lvs-devel@vger.kernel.org
 
-On Friday 11 April 2008 18:54:44 Julius Volz wrote:
-> Hi Horms,
->
-> On Sat, Apr 5, 2008, Simon Horman wrote:
-> > On Fri, Apr 04, 2008 at 12:40:36PM +0200, Julius Volz wrote:
-> >  > Hi,
-> >  >
-> >  > This patch moves IPVS from net/ipv4/ipvs to net/netfilter/ipvs, =
-as
-> >  > discussed earlier with Horms and Patrick McHardy. This is done a=
-s a
-> >  > preparation for later adding IPv6 functionality to IPVS. The pat=
-ch is
-> >  > 600kb, so I uploaded it here:
-> >  >
-> >  > http://www-user.tu-chemnitz.de/~volz/move_ipvs_to_netfilter.patc=
-h
-> >  >
-> >  > [...]
-> >
-> >  Thanks, I've grabbed the patch and will review it ASAP.
-> >  I am going to be mostly offline for about 5 days as I am moving.
-> >  So I apologise in advance for being a bit undresponsive during tha=
-t
-> > time.
->
-> Hope your move went ok!
->
-> Any news on this? Should I redo the patch on top of Jason's
-> POST/PREROUTING patch or should that go in later? Would be cool to ge=
-t
-> this directory move out of the way...
+On Fri, Apr 11, 2008 at 12:24 PM, Jason Stubbs <j.stubbs@linkthink.co.jp> wrote:
+>  I'd suggest not waiting on my patch as there's still a few things that need to
 
-I'd suggest not waiting on my patch as there's still a few things that =
-need to=20
-be sorted out, tested and cleaned up. Not even certain that POST/PRE ar=
-e the=20
-best places yet... But thanks for the thought! :)
+Ok!
 
---=20
-Jason Stubbs <j.stubbs@linkthink.co.jp>
-LINKTHINK INC.
-=E6=9D=B1=E4=BA=AC=E9=83=BD=E6=B8=8B=E8=B0=B7=E5=8C=BA=E6=A1=9C=E3=83=B6=
-=E4=B8=98=E7=94=BA22-14 N.E.S S=E6=A3=9F 3F
-TEL 03-5728-4772  FAX 03-5728-4773
+>  be sorted out, tested and cleaned up. Not even certain that POST/PRE are the
+>  best places yet... But thanks for the thought! :)
+
+Sure, I'm trying to follow along, even if I don't understand everything ;)
+
+Julius
+
+-- 
+Google Switzerland GmbH
