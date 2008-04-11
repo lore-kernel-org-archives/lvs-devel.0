@@ -1,69 +1,62 @@
-From: Jason Stubbs <j.stubbs@linkthink.co.jp>
+From: Joseph Mack NA3T <jmack@wm7d.net>
 Subject: Re: moving ipvs() to POST/PREROUTING
-Date: Fri, 11 Apr 2008 22:13:32 +0900
-Message-ID: <200804112213.32476.j.stubbs@linkthink.co.jp>
-References: <200804111400.12331.j.stubbs@linkthink.co.jp> <Pine.LNX.4.64.0804110530590.22135@wm7d.net>
+Date: Fri, 11 Apr 2008 07:38:30 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0804110729030.3476@wm7d.net>
+References: <200804111400.12331.j.stubbs@linkthink.co.jp>
+ <Pine.LNX.4.64.0804110530590.22135@wm7d.net> <200804112213.32476.j.stubbs@linkthink.co.jp>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.64.0804110530590.22135@wm7d.net>
-Content-Disposition: inline
+In-Reply-To: <200804112213.32476.j.stubbs@linkthink.co.jp>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Joseph Mack NA3T <jmack@wm7d.net>
-Cc: LVS Devel <lvs-devel@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: LVS Devel <lvs-devel@vger.kernel.org>
 
-On Friday 11 April 2008 21:37:03 JST, Joseph Mack NA3T wrote:
-> On Fri, 11 Apr 2008, Jason Stubbs wrote:
-> > With local node, 127.0.0.1 doesn't work but an IP address on a local
-> > interface does.
+On Fri, 11 Apr 2008, Jason Stubbs wrote:
+
+>>> Is there any problem with essentially hiding the real
+>>> servers from netfilter?
+>>
+>> I don't know what this means (I didn't know that netfilter
+>> knew about the realservers).
 >
-> that will do.
+> I mean that it'd be nice for rules to go something like:
+> * Allow from external to VIP
+> * Allow anything established
+> * Drop everything else
 >
-> Local node isn't real important. It was there because it
-> could be done, rather than because it was needed. If you can
-> do it, we'll take it, but otherwise don't worry a whole lot
-> about it.
+> Depending on where LVS translations are placed in the netfilter path, rules
+> allowing traffic from external to RIPs may also be needed.
 
-I did look a little bit further into it. The iptables REDIRECT module maps to 
-127.0.0.1 for locally generated traffic and the first IP on the first 
-interface otherwise. I haven't tried yet, but the same thing could probably 
-done here.
+I would hope people don't do this. RIPs should be private, 
+for security reasons and to preserve the fiction that the 
+LVS setup is one machine. The LVS'ed application running on 
+the realserver might start a client process that needs to 
+contact 0/0, but that can be nat'ed out, possibly through 
+the VIP on the director, or maybe some other public IP 
+available to the realserver. Is this what you want to do?
 
-> > LVS-TUN should work as LVS-DR didn't require any direct
-> > modification, but it's a little bit of a pain to set up
-> > for testing at this stage.
+see
+
+http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.LVS-DR.html#Pearthree
+
+>> Will your setup handle the F5-SNAT situation?
+>>
+>> http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.non-modified_realser
+>> vers.html#F5_snat
 >
-> have the same physical setup as LVS-DR and just change the
-> if on the realservers to tunl0 and change the
-> appropriated ipvsadm lines.
+> Yep, this is just SNAT as far as I can tell. I tested SNAT on both sides of
+> the director and there weren't any problems.
 
-Hmm.. Well seeing I'm trying getting my hands dirty every else, I may as well 
-do so here too. Will give it a try on Monday.
+neato. Some people will be very happy about this.
 
-> > Is there any problem with essentially hiding the real
-> > servers from netfilter?
->
-> I don't know what this means (I didn't know that netfilter
-> knew about the realservers).
+I take it that you're working late at night on this :-)
 
-I mean that it'd be nice for rules to go something like:
-* Allow from external to VIP
-* Allow anything established
-* Drop everything else
+Joe
 
-Depending on where LVS translations are placed in the netfilter path, rules 
-allowing traffic from external to RIPs may also be needed. That can get 
-pretty complicated, but there might be some need for it that I can't see...
-
-> Will your setup handle the F5-SNAT situation?
->
-> http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.non-modified_realser
->vers.html#F5_snat
-
-Yep, this is just SNAT as far as I can tell. I tested SNAT on both sides of 
-the director and there weren't any problems.
-
---
-Jason Stubbs
+-- 
+Joseph Mack NA3T EME(B,D), FM05lw North Carolina
+jmack (at) wm7d (dot) net - azimuthal equidistant map
+generator at http://www.wm7d.net/azproj.shtml
+Homepage http://www.austintek.com/ It's GNU/Linux!
