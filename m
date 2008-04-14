@@ -1,119 +1,67 @@
-From: Jason Stubbs <j.stubbs@linkthink.co.jp>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: moving ipvs() to POST/PREROUTING
-Date: Mon, 14 Apr 2008 20:04:39 +0900
-Message-ID: <200804142004.39881.j.stubbs@linkthink.co.jp>
-References: <200804111400.12331.j.stubbs@linkthink.co.jp> <Pine.LNX.4.58.0804121021110.2942@u.domain.uli>
+Date: Tue, 15 Apr 2008 02:16:58 +0300 (EEST)
+Message-ID: <Pine.LNX.4.58.0804150127400.3092@u.domain.uli>
+References: <200804111400.12331.j.stubbs@linkthink.co.jp>
+ <Pine.LNX.4.58.0804121021110.2942@u.domain.uli> <200804142004.39881.j.stubbs@linkthink.co.jp>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.58.0804121021110.2942@u.domain.uli>
-Content-Disposition: inline
+In-Reply-To: <200804142004.39881.j.stubbs@linkthink.co.jp>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: LVS Devel <lvs-devel@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Jason Stubbs <j.stubbs@linkthink.co.jp>
+Cc: LVS Devel <lvs-devel@vger.kernel.org>
 
-Replying again now that I've got a lot of testing done. I'm heading hom=
-e soon=20
-so just posting an update and will test the last few things tomorrow. I=
-'ll=20
-also try to submit a broken up patch tomorrow so that specific changes =
-and=20
-reasoning can be discussed more easily.
 
-On Saturday 12 April 2008 18:07:59 Julian Anastasov wrote:
-> - all forwarding methods can be tested on LAN, even LVS-TUN
+	Hello,
 
-Haven't been able to test LVS-TUN yet, but I can't see any reason why i=
-t=20
-shouldn't work. Will test tomorrow morning.
+On Mon, 14 Apr 2008, Jason Stubbs wrote:
 
-> - forwarding of related ICMP traffic (ICMP errors) in both directions=
-,
-> for all methods
+> > > * IP_VS_CONN_F_BYPASS - what is this?
+> >
+> > 	IP_VS_CONN_F_BYPASS is used for transparent proxy setups when
+> > real server (cache server) is not present and we should forward the
+> > traffic to original destination. The idea is request still to be served.
+> > In such case IPVS traffic uses the original destination instead of real
+> > server.
+> 
+> Not tested yet. I assume I just need to add a real server with the same 
+> IP/port as the virtual server?
 
-Tested.
+	Not sure, may be IP:PORT of LVS's uplink gateway. In such
+setups clients are usually internal hosts using LVS box as gateway.
 
-> - ICMP generation to both sides (client and real server): when there =
-is no
-> real server, when skb is longer than PMTU.
+> > - Netfilter can re-route sometimes (eg. after mangle), it can cause
+> > properly routed LVS-DR traffic to fail.
+> 
+> I don't understand exactly what you mean by this. It could only happen if the 
+> user sets rules that causes it to happen right?
 
-I tested the no real server case. How can i test the skb-too-large case=
-? I=20
-tried changing the MTU on the director's interface on the real-server s=
-ide,=20
-but traffic continued to pass fine...
+	May be the things have changed, not sure. The problem is when
+functions like ip_route_me_harder() are called for packets that
+are already forwarded by IPVS (skb has attached route for the
+real server). In such case skb still shows VIP as iph->daddr and
+a rerouting can result in local route. But latest kernels may be
+reroute only in LOCAL_OUT, so this is not a problem.
 
-> - scheduling by nfmark
+	As for the double POST_ROUTING log entries ... I'm checking
+this NF_HOOK_THRESH call with NF_IP_PRI_LAST. For me, it looks like
+net/netfilter/core.c:nf_iterate() calls only handlers when
+elem->priority >= hook_thresh. But you put ip_vs_in() at the same
+priority NF_IP_PRI_LAST. May be ip_vs_in() is called twice?
 
-Tested.
+	Also, if ip_vs_in() is called  after SNAT I'm curious, isn't 
+ip_vs_ftp working with DNAT-ed skb (if you have netfilter ftp nat
+module) ? May be things don't break because IPVS is careful not to
+damage packets it can not recognize. But do we work properly with
+the FTP commands in ip_vs_ftp_in(), do we create properly FTP data 
+connections in IPVS? I assume you test both passive and active FTP.
+If the goal is -m state to work correctly, are you sure the IPVS FTP
+data connections work correctly (as RELATED traffic)?
 
-> - firewall: at least basic packet fields matching
+Regards
 
-iptables -t filter -A FORWARD -d 192.168.0.7 -i eth0 -j ACCEPT
-iptables -t filter -A FORWARD -m state --state RELATED,ESTABLISHED -j A=
-CCEPT
-iptables -t filter -P FORWARD REJECT
-
-where 192.168.0.7 is the VIP I'm testing with worked fine. Pretty much =
-any=20
-firewall rules should work fine as I've moved LVS hooks to the points o=
-f=20
-entry/exit of the netfilter flow.
-
-> - ip_vs_ftp testing (LVS-NAT) when netfilter ftp module is in
-> effect: test if double NAT happens resulting in broken packets (TCP
-> sequence numbers or payload) when payload is changed if IP:PORT
-> strings in FTP commands have different length (VIP and RIP).
-
-Tested plain LVS-NAT as well as with SNAT and DNAT. Surprisingly, it wo=
-rks=20
-even with the above conntrack-based filter in place. I think that indic=
-ates=20
-that double NAT is happening (else RELATED wouldn't match) but with the=
- order=20
-that hooks are called things don't get screwed up - I think. I'll inves=
-tigate=20
-this a little further.
-
-> > * IP_VS_CONN_F_BYPASS - what is this?
->
-> 	IP_VS_CONN_F_BYPASS is used for transparent proxy setups when
-> real server (cache server) is not present and we should forward the
-> traffic to original destination. The idea is request still to be serv=
-ed.
-> In such case IPVS traffic uses the original destination instead of re=
-al
-> server.
-
-Not tested yet. I assume I just need to add a real server with the same=
-=20
-IP/port as the virtual server?
-
-> There are some issues that prevent IPVS to benefit from Netfilter
-> connection tracking:
->
-> - Netfilter's NAT and routing are not in single place (hook), difficu=
-lt to
-> handle LVS-DR
-
-LVS-DR with real server as a client using SNAT... Will test this tomorr=
-ow too.
-
-> - Netfilter can re-route sometimes (eg. after mangle), it can cause
-> properly routed LVS-DR traffic to fail.
-
-I don't understand exactly what you mean by this. It could only happen =
-if the=20
-user sets rules that causes it to happen right?
-
-> - Double NAT for ip_vs_ftp
-
-Addressed above.
-
---=20
-Jason Stubbs <j.stubbs@linkthink.co.jp>
-LINKTHINK INC.
-=E6=9D=B1=E4=BA=AC=E9=83=BD=E6=B8=8B=E8=B0=B7=E5=8C=BA=E6=A1=9C=E3=83=B6=
-=E4=B8=98=E7=94=BA22-14 N.E.S S=E6=A3=9F 3F
-TEL 03-5728-4772  FAX 03-5728-4773
+--
+Julian Anastasov <ja@ssi.bg>
