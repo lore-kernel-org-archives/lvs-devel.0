@@ -1,31 +1,27 @@
 From: Jason Stubbs <j.stubbs@linkthink.co.jp>
-Subject: [PATCH 5/6] move ipvs to PRE/POSTROUTING
-Date: Tue, 15 Apr 2008 15:42:50 +0900
-Message-ID: <200804151542.51050.j.stubbs@linkthink.co.jp>
+Subject: [PATCH 6/6] move ipvs to PRE/POSTROUTING
+Date: Tue, 15 Apr 2008 15:43:22 +0900
+Message-ID: <200804151543.22583.j.stubbs@linkthink.co.jp>
 References: <200804151540.04006.j.stubbs@linkthink.co.jp>
 Mime-Version: 1.0
 Content-Type: Multipart/Mixed;
-  boundary="Boundary-00=_r5EBI3KJxS0o1Me"
+  boundary="Boundary-00=_K6EBIN8oy63oHFQ"
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <200804151540.04006.j.stubbs@linkthink.co.jp>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 To: LVS Devel <lvs-devel@vger.kernel.org>
 
---Boundary-00=_r5EBI3KJxS0o1Me
+--Boundary-00=_K6EBIN8oy63oHFQ
 Content-Type: text/plain;
   charset="iso-2022-jp"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
-Currently, VIPs are (usually) bound on local interfaces and LVS is
-handled in the INPUT chain. This means that local node traffic can
-simply be passed on. With VIPs not being on bound and LVS handled in
-POSTROUTING, packets need to be redirected to a local address. This
-patch essentially alises LOCALNODE to MASQ.
-
-After dst_output and the second POSTROUTING, packets are then sent
-through PREROUTING and INPUT and finally handled locally.
+Aliasing LOCALNODE to MASQ means that traffic entering the OUTPUT chain
+may be replies for a LVS-NAT'd connection. This patch adds the same
+hooks that de-LVS packets at the start of PREROUTING to the start of
+OUTPUT too.
 
 -- 
 Jason Stubbs <j.stubbs@linkthink.co.jp>
@@ -33,89 +29,84 @@ LINKTHINK INC.
 東京都渋谷区桜ヶ丘町22-14 N.E.S S棟 3F
 TEL 03-5728-4772  FAX 03-5728-4773
 
---Boundary-00=_r5EBI3KJxS0o1Me
+--Boundary-00=_K6EBIN8oy63oHFQ
 Content-Type: text/x-diff;
   charset="iso-2022-jp";
-  name="5-localmasq.patch"
+  name="6-localhooks.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
-	filename="5-localmasq.patch"
+	filename="6-localhooks.patch"
 
-diff -urp linux.4.recursion/include/net/ip_vs.h linux.5.localmasq/include/net/ip_vs.h
---- linux.4.recursion/include/net/ip_vs.h	2008-04-15 13:00:23.839450725 +0900
-+++ linux.5.localmasq/include/net/ip_vs.h	2008-04-15 13:11:38.598267552 +0900
-@@ -901,8 +901,6 @@ extern void ip_vs_zero_estimator(struct 
- /*
-  *	Various IPVS packet transmitters (from ip_vs_xmit.c)
-  */
--extern int ip_vs_null_xmit
--(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
- extern int ip_vs_bypass_xmit
- (struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
- extern int ip_vs_nat_xmit
-diff -urp linux.4.recursion/net/ipv4/ipvs/ip_vs_conn.c linux.5.localmasq/net/ipv4/ipvs/ip_vs_conn.c
---- linux.4.recursion/net/ipv4/ipvs/ip_vs_conn.c	2008-04-15 13:00:23.816451933 +0900
-+++ linux.5.localmasq/net/ipv4/ipvs/ip_vs_conn.c	2008-04-15 13:12:02.369724437 +0900
-@@ -350,6 +350,7 @@ static inline void ip_vs_bind_xmit(struc
+diff -urp linux.5.localmasq/net/ipv4/ipvs/ip_vs_core.c linux.6.localhooks/net/ipv4/ipvs/ip_vs_core.c
+--- linux.5.localmasq/net/ipv4/ipvs/ip_vs_core.c	2008-04-15 13:07:04.000000000 +0900
++++ linux.6.localhooks/net/ipv4/ipvs/ip_vs_core.c	2008-04-15 13:16:34.159728801 +0900
+@@ -1008,6 +1008,25 @@ static struct nf_hook_ops ip_vs_forward_
+ 	.owner		= THIS_MODULE,
+ 	.pf		= PF_INET,
+ 	.hooknum        = NF_IP_PRE_ROUTING,
++	.priority       = NF_IP_PRI_FIRST + 1,
++};
++
++/* After packet filtering, change source only for VS/NAT */
++static struct nf_hook_ops ip_vs_local_out_ops = {
++	.hook		= ip_vs_out,
++	.owner		= THIS_MODULE,
++	.pf		= PF_INET,
++	.hooknum        = NF_IP_LOCAL_OUT,
++	.priority       = NF_IP_PRI_FIRST,
++};
++
++/* After packet filtering (but before ip_vs_out_icmp), catch icmp
++   destined for 0.0.0.0/0, which is for incoming IPVS connections */
++static struct nf_hook_ops ip_vs_local_icmp_ops = {
++	.hook		= ip_vs_forward_icmp,
++	.owner		= THIS_MODULE,
++	.pf		= PF_INET,
++	.hooknum        = NF_IP_LOCAL_OUT,
+ 	.priority       = NF_IP_PRI_FIRST,
+ };
+ 
+@@ -1050,15 +1069,32 @@ static int __init ip_vs_init(void)
+ 		IP_VS_ERR("can't register out hook.\n");
+ 		goto cleanup_inops;
+ 	}
++
+ 	ret = nf_register_hook(&ip_vs_forward_icmp_ops);
+ 	if (ret < 0) {
+ 		IP_VS_ERR("can't register forward_icmp hook.\n");
+ 		goto cleanup_outops;
+ 	}
+ 
++	ret = nf_register_hook(&ip_vs_local_out_ops);
++	if (ret < 0) {
++		IP_VS_ERR("can't register local out hook.\n");
++		goto cleanup_icmpops;
++	}
++
++	ret = nf_register_hook(&ip_vs_local_icmp_ops);
++	if (ret < 0) {
++		IP_VS_ERR("can't register local icmp hook.\n");
++		goto cleanup_localout;
++	}
++
+ 	IP_VS_INFO("ipvs loaded.\n");
+ 	return ret;
+ 
++  cleanup_localout:
++    nf_unregister_hook(&ip_vs_local_out_ops);
++  cleanup_icmpops:
++    nf_unregister_hook(&ip_vs_forward_icmp_ops);
+   cleanup_outops:
+ 	nf_unregister_hook(&ip_vs_out_ops);
+   cleanup_inops:
+@@ -1076,6 +1112,8 @@ static int __init ip_vs_init(void)
+ 
+ static void __exit ip_vs_cleanup(void)
  {
- 	switch (IP_VS_FWD_METHOD(cp)) {
- 	case IP_VS_CONN_F_MASQ:
-+	case IP_VS_CONN_F_LOCALNODE:
- 		cp->packet_xmit = ip_vs_nat_xmit;
- 		break;
- 
-@@ -361,10 +362,6 @@ static inline void ip_vs_bind_xmit(struc
- 		cp->packet_xmit = ip_vs_dr_xmit;
- 		break;
- 
--	case IP_VS_CONN_F_LOCALNODE:
--		cp->packet_xmit = ip_vs_null_xmit;
--		break;
--
- 	case IP_VS_CONN_F_BYPASS:
- 		cp->packet_xmit = ip_vs_bypass_xmit;
- 		break;
-diff -urp linux.4.recursion/net/ipv4/ipvs/ip_vs_proto_tcp.c linux.5.localmasq/net/ipv4/ipvs/ip_vs_proto_tcp.c
---- linux.4.recursion/net/ipv4/ipvs/ip_vs_proto_tcp.c	2008-04-15 13:00:23.831450461 +0900
-+++ linux.5.localmasq/net/ipv4/ipvs/ip_vs_proto_tcp.c	2008-04-15 13:13:52.208208897 +0900
-@@ -535,7 +535,8 @@ tcp_app_conn_bind(struct ip_vs_conn *cp)
- 	int result = 0;
- 
- 	/* Default binding: bind app only for NAT */
--	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-+	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ &&
-+	    IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_LOCALNODE)
- 		return 0;
- 
- 	/* Lookup application incarnations and bind the right one */
-diff -urp linux.4.recursion/net/ipv4/ipvs/ip_vs_proto_udp.c linux.5.localmasq/net/ipv4/ipvs/ip_vs_proto_udp.c
---- linux.4.recursion/net/ipv4/ipvs/ip_vs_proto_udp.c	2008-04-15 13:00:23.839450725 +0900
-+++ linux.5.localmasq/net/ipv4/ipvs/ip_vs_proto_udp.c	2008-04-15 13:14:14.917502969 +0900
-@@ -329,7 +329,8 @@ static int udp_app_conn_bind(struct ip_v
- 	int result = 0;
- 
- 	/* Default binding: bind app only for NAT */
--	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-+	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ &&
-+	    IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_LOCALNODE)
- 		return 0;
- 
- 	/* Lookup application incarnations and bind the right one */
-diff -urp linux.4.recursion/net/ipv4/ipvs/ip_vs_xmit.c linux.5.localmasq/net/ipv4/ipvs/ip_vs_xmit.c
---- linux.4.recursion/net/ipv4/ipvs/ip_vs_xmit.c	2008-04-15 13:00:23.839450725 +0900
-+++ linux.5.localmasq/net/ipv4/ipvs/ip_vs_xmit.c	2008-04-15 13:15:13.495094478 +0900
-@@ -134,18 +134,6 @@ do {							\
- 
- 
- /*
-- *      NULL transmitter (do nothing except return NF_ACCEPT)
-- */
--int
--ip_vs_null_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
--		struct ip_vs_protocol *pp)
--{
--	/* we do not touch skb and do not need pskb ptr */
--	return NF_ACCEPT;
--}
--
---Boundary-00=_r5EBI3KJxS0o1Me--
++	nf_unregister_hook(&ip_vs_local_icmp_ops);
++	nf_unregister_hook(&ip_vs_local_out_ops);
+ 	nf_unregister_hook(&ip_vs_forward_icmp_ops);
+ 	nf_unregister_hook(&ip_vs_out_ops);
+ 	nf_unregister_hook(&ip_vs_in_ops);
+
+--Boundary-00=_K6EBIN8oy63oHFQ--
