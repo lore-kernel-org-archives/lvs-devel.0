@@ -1,85 +1,182 @@
 From: Jason Stubbs <j.stubbs@linkthink.co.jp>
-Subject: Re: [PATCH 0/6] move ipvs to PRE/POSTROUTING
-Date: Tue, 15 Apr 2008 21:16:55 +0900
-Message-ID: <200804152116.55089.j.stubbs@linkthink.co.jp>
-References: <200804151540.04006.j.stubbs@linkthink.co.jp> <Pine.LNX.4.64.0804150438270.4433@wm7d.net>
+Subject: Re: [PATCH] use nf_register_hooks
+Date: Wed, 16 Apr 2008 12:02:59 +0900
+Message-ID: <200804161202.59417.j.stubbs@linkthink.co.jp>
+References: <200804161137.13167.j.stubbs@linkthink.co.jp>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: Multipart/Mixed;
+  boundary="Boundary-00=_jxWBIrmiHz/dOGe"
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.64.0804150438270.4433@wm7d.net>
-Content-Disposition: inline
+In-Reply-To: <200804161137.13167.j.stubbs@linkthink.co.jp>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
 To: LVS Devel <lvs-devel@vger.kernel.org>
 
-On Tuesday 15 April 2008 20:49:42 JST, Joseph Mack NA3T wrote:
-> On Tue, 15 Apr 2008, Jason Stubbs wrote:
-> > I'm a newbie at all of this so forgive me if I'm doing anything wrong. ;)
->
-> you're doing great.
+--Boundary-00=_jxWBIrmiHz/dOGe
+Content-Type: text/plain;
+  charset="iso-2022-jp"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Cheers :)
+On Wednesday 16 April 2008 11:37:13 Jason Stubbs wrote:
+> Netfilter contains two nice little functions, nf_register_hooks and
+> nf_unregister_hooks, that (un)register a series of hooks and automatically
+> handle failure. This patch converts LVS to use these functions so that that
+> any future addition/removal of hooks requires less changes and is thus less
+> error prone.
 
-> > incoming => de-lvs packets => netfilter => lvs packets => outgoing
-> >
-> > The goal is for netfilter to only have to deal with CIP/VIP packets and
-> > for any translations netfilter might do of CIP to be transparent to LVS.
->
-> can you give me an example of a translation of the CIP (I
-> can't think of anything, presumably the F5-SNAT will be done
-> in outgoing).
->
-> > There are three main downfalls with this patch at present:
-> > 1) Having a VIP on a local interface
->
-> I thought with the hooks in the new place that there'd be no
-> VIP on the director anymore. The director would be acting as
-> a router for dst_addr=VIP. Presumbly routing would handle
-> sending packets for the VIP to the director (eg the director
-> would proxy arp for the VIP).
->
-> Are you talking about a case where the director is
-> misconfigured?
->
-> >   causes the traffic to be delivered
-> >   locally as VIP checks have been moved to the end of POST_ROUTING.
-> > 2) Localnode with address of 127.0.0.1 does not work as packets with a
-> >   destination of 127.0.0.1 and a non-local source address are
-> >   unconditionally dropped.
-> > 3) Firewall rules on existing installations will most likely break.
->
-> no problem. This is a new setup and will have new rules.
+Same again but using the ARRAY_SIZE macro instead.
 
-The above three points are issues that would need to be overcome before the 
-changes could be merged. I can of course maintain it out of tree myself, but 
-I'd rather try and overcome any obstacles against getting it merged.
+-- 
+Jason Stubbs <j.stubbs@linkthink.co.jp>
+LINKTHINK INC.
+東京都渋谷区桜ヶ丘町22-14 N.E.S S棟 3F
+TEL 03-5728-4772  FAX 03-5728-4773
 
-You have highlighted another issue though. I've been assuming that the 
-director is already in the routing path in which case arp replies for the VIP 
-aren't necessary. I have no idea how arp advertisements should be handled.
+--Boundary-00=_jxWBIrmiHz/dOGe
+Content-Type: text/x-diff;
+  charset="iso-2022-jp";
+  name="ipvs-nf_register_hooks.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+	filename="ipvs-nf_register_hooks.patch"
 
-> > The first issue can probably be dealt with by The
-> > localnode issue could probably be dealt with by using a
-> > hook at the end of PREROUTING and the second issue could
-> > be handled like ipt_REDIRECT.
->
-> I thought with netfilter, that REDIRECT delivers a packet
-> that now has the wrong address for LVS.
+--- net/ipv4/ipvs/ip_vs_core.c.orig	2008-04-16 10:48:45.000000000 +0900
++++ net/ipv4/ipvs/ip_vs_core.c	2008-04-16 12:03:44.000000000 +0900
+@@ -1025,43 +1025,45 @@ ip_vs_forward_icmp(unsigned int hooknum,
+ }
+ 
+ 
+-/* After packet filtering, forward packet through VS/DR, VS/TUN,
+-   or VS/NAT(change destination), so that filtering rules can be
+-   applied to IPVS. */
+-static struct nf_hook_ops ip_vs_in_ops = {
+-	.hook		= ip_vs_in,
+-	.owner		= THIS_MODULE,
+-	.pf		= PF_INET,
+-	.hooknum        = NF_IP_LOCAL_IN,
+-	.priority       = 100,
+-};
+-
+-/* After packet filtering, change source only for VS/NAT */
+-static struct nf_hook_ops ip_vs_out_ops = {
+-	.hook		= ip_vs_out,
+-	.owner		= THIS_MODULE,
+-	.pf		= PF_INET,
+-	.hooknum        = NF_IP_FORWARD,
+-	.priority       = 100,
+-};
+-
+-/* After packet filtering (but before ip_vs_out_icmp), catch icmp
+-   destined for 0.0.0.0/0, which is for incoming IPVS connections */
+-static struct nf_hook_ops ip_vs_forward_icmp_ops = {
+-	.hook		= ip_vs_forward_icmp,
+-	.owner		= THIS_MODULE,
+-	.pf		= PF_INET,
+-	.hooknum        = NF_IP_FORWARD,
+-	.priority       = 99,
+-};
+-
+-/* Before the netfilter connection tracking, exit from POST_ROUTING */
+-static struct nf_hook_ops ip_vs_post_routing_ops = {
+-	.hook		= ip_vs_post_routing,
+-	.owner		= THIS_MODULE,
+-	.pf		= PF_INET,
+-	.hooknum        = NF_IP_POST_ROUTING,
+-	.priority       = NF_IP_PRI_NAT_SRC-1,
++static struct nf_hook_ops ip_vs_ops[] = {
++	/* After packet filtering, forward packet through VS/DR, VS/TUN,
++	   or VS/NAT(change destination), so that filtering rules can be
++	   applied to IPVS. */
++	{
++		.hook		= ip_vs_in,
++		.owner		= THIS_MODULE,
++		.pf		= PF_INET,
++		.hooknum        = NF_IP_LOCAL_IN,
++		.priority       = 100,
++	},
++
++	/* After packet filtering, change source only for VS/NAT */
++	{
++		.hook		= ip_vs_out,
++		.owner		= THIS_MODULE,
++		.pf		= PF_INET,
++		.hooknum        = NF_IP_FORWARD,
++		.priority       = 100,
++	},
++
++	/* After packet filtering (but before ip_vs_out_icmp), catch icmp
++	   destined for 0.0.0.0/0, which is for incoming IPVS connections */
++	{
++		.hook		= ip_vs_forward_icmp,
++		.owner		= THIS_MODULE,
++		.pf		= PF_INET,
++		.hooknum        = NF_IP_FORWARD,
++		.priority       = 99,
++	},
++
++	/* Before the netfilter connection tracking, exit from POST_ROUTING */
++	{
++		.hook		= ip_vs_post_routing,
++		.owner		= THIS_MODULE,
++		.pf		= PF_INET,
++		.hooknum        = NF_IP_POST_ROUTING,
++		.priority       = NF_IP_PRI_NAT_SRC-1,
++	}
+ };
+ 
+ 
+@@ -1092,37 +1094,15 @@ static int __init ip_vs_init(void)
+ 		goto cleanup_app;
+ 	}
+ 
+-	ret = nf_register_hook(&ip_vs_in_ops);
++	ret = nf_register_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ 	if (ret < 0) {
+-		IP_VS_ERR("can't register in hook.\n");
++		IP_VS_ERR("can't register hooks.\n");
+ 		goto cleanup_conn;
+ 	}
+ 
+-	ret = nf_register_hook(&ip_vs_out_ops);
+-	if (ret < 0) {
+-		IP_VS_ERR("can't register out hook.\n");
+-		goto cleanup_inops;
+-	}
+-	ret = nf_register_hook(&ip_vs_post_routing_ops);
+-	if (ret < 0) {
+-		IP_VS_ERR("can't register post_routing hook.\n");
+-		goto cleanup_outops;
+-	}
+-	ret = nf_register_hook(&ip_vs_forward_icmp_ops);
+-	if (ret < 0) {
+-		IP_VS_ERR("can't register forward_icmp hook.\n");
+-		goto cleanup_postroutingops;
+-	}
+-
+ 	IP_VS_INFO("ipvs loaded.\n");
+ 	return ret;
+ 
+-  cleanup_postroutingops:
+-	nf_unregister_hook(&ip_vs_post_routing_ops);
+-  cleanup_outops:
+-	nf_unregister_hook(&ip_vs_out_ops);
+-  cleanup_inops:
+-	nf_unregister_hook(&ip_vs_in_ops);
+   cleanup_conn:
+ 	ip_vs_conn_cleanup();
+   cleanup_app:
+@@ -1136,10 +1116,7 @@ static int __init ip_vs_init(void)
+ 
+ static void __exit ip_vs_cleanup(void)
+ {
+-	nf_unregister_hook(&ip_vs_forward_icmp_ops);
+-	nf_unregister_hook(&ip_vs_post_routing_ops);
+-	nf_unregister_hook(&ip_vs_out_ops);
+-	nf_unregister_hook(&ip_vs_in_ops);
++	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ 	ip_vs_conn_cleanup();
+ 	ip_vs_app_cleanup();
+ 	ip_vs_protocol_cleanup();
 
-REDIRECT is a special case of DNAT where the destination is changed to 
-127.0.0.1 for local generated traffic and the first IP on the first interface 
-for any other traffic.
-
-> > I can't see a way to handle firewall rules though
->
-> you haven't figured it out yet, or you've looked and there
-> is no way of having firewall rules?
-
-All the firewall rules I've tested work fine. I'm referring to existing 
-installations where, for example, FORWARD rules don't take into account LVS 
-traffic. Moving LVS hooks around will invariably break these rules in 
-different ways.
-
---
-Jason Stubbs
+--Boundary-00=_jxWBIrmiHz/dOGe--
