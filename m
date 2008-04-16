@@ -1,31 +1,25 @@
-From: Jason Stubbs <j.stubbs@linkthink.co.jp>
-Subject: Re: [PATCH 2/6] move ipvs to PRE/POSTROUTING
-Date: Wed, 16 Apr 2008 10:35:12 +0900
-Message-ID: <200804161035.12575.j.stubbs@linkthink.co.jp>
-References: <200804151540.04006.j.stubbs@linkthink.co.jp> <200804151541.17117.j.stubbs@linkthink.co.jp>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH] use nf_register_hooks
+Date: Wed, 16 Apr 2008 13:12:23 +1000
+Message-ID: <20080416031221.GB4148@verge.net.au>
+References: <200804161137.13167.j.stubbs@linkthink.co.jp>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <200804151541.17117.j.stubbs@linkthink.co.jp>
 Content-Disposition: inline
+In-Reply-To: <200804161137.13167.j.stubbs@linkthink.co.jp>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="iso-2022-jp"
-To: LVS Devel <lvs-devel@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+To: Jason Stubbs <j.stubbs@linkthink.co.jp>
+Cc: LVS Devel <lvs-devel@vger.kernel.org>
 
-Having to reply to myself sucks.. :(
+Hi Jason,
 
-On Tuesday 15 April 2008 15:41:17 Jason Stubbs wrote:
-> I am also not certain of how traffic control will handle this. This
-> patch may be causing traffic to be accounted for twice depending on when
-> tcp_output is actually run.
-
-I got confused between TCP congestion control and qdiscs here. Congestion 
-control is before netfilter and thus unaffected. Qdiscs run directly on 
-interfaces after netfilter has completed and so is also unaffected.
+thanks for this an your other recent patches. I am currently in the
+process of moving and thus I am a bit behind in my mail. As of today I
+should have a bit more time, and I will try and review your patches
+as soon as possible.
 
 -- 
-Jason Stubbs <j.stubbs@linkthink.co.jp>
-LINKTHINK INC.
-東京都渋谷区桜ヶ丘町22-14 N.E.S S棟 3F
-TEL 03-5728-4772  FAX 03-5728-4773
+宝曼 西門 (ホウマン・サイモン) | Simon Horman (Horms)
