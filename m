@@ -1,13 +1,13 @@
 From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH 2/6] move ipvs to PRE/POSTROUTING
-Date: Fri, 18 Apr 2008 10:14:29 +0300 (EEST)
-Message-ID: <Pine.LNX.4.58.0804180937220.2843@u.domain.uli>
+Date: Fri, 18 Apr 2008 10:46:32 +0300 (EEST)
+Message-ID: <Pine.LNX.4.58.0804181019110.2843@u.domain.uli>
 References: <200804151540.04006.j.stubbs@linkthink.co.jp>
- <Pine.LNX.4.58.0804161051400.2944@u.domain.uli> <200804171225.54424.j.stubbs@linkthink.co.jp>
- <200804171559.47753.j.stubbs@linkthink.co.jp>
+ <200804161035.12575.j.stubbs@linkthink.co.jp> <Pine.LNX.4.58.0804161051400.2944@u.domain.uli>
+ <200804171225.54424.j.stubbs@linkthink.co.jp>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <200804171559.47753.j.stubbs@linkthink.co.jp>
+In-Reply-To: <200804171225.54424.j.stubbs@linkthink.co.jp>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
@@ -19,66 +19,32 @@ To: LVS Devel <lvs-devel@vger.kernel.org>
 
 On Thu, 17 Apr 2008, Jason Stubbs wrote:
 
-> On further investigation, the behaviour is the same regardless of whether it 
-> is a VIP or a real host. When a SYN_SENT state exists traffic doesn't flow. 
-> However, if there is no state and an ACK (no SYN) packet arrives, an 
-> ESTABLISHED entry is created such as:
-
-	This conntrack does not look good, dst=192.168.1.3 in
-original direction is RIP instead of VIP.
-
-	Your fw rules are not strict enough, you are using:
-
-iptables -t filter -A FORWARD -d 192.168.0.7 -i eth0 -j ACCEPT
-iptables -t filter -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
-iptables -t filter -P FORWARD REJECT
-
-	Can you replace first rule to allow traffic to VIP:VPORT
-only for NEW. Most users don't allow traffic to any port, they
-specify NEW for explicit ports, others are disabled. By this
-way we can see if conntrack has valid directions. I suspect
-conntracks are not properly confirmed which happens at
-POST_ROUTING:NF_IP_PRI_CONNTRACK_CONFIRM. For the original
-request we exit with NF_STOLEN and the forwarded request goes
-to POST_ROUTING via dst_output call. Somewhere original destination
-in conntrack is replaced (or wrongly set).
-
-	You can also see the NFCT patch, it plays with conntrack
-in the hard way but you can see how IPVS tries to keep conntracks
-in good shape.
-
-http://www.ssi.bg/~ja/nfct/
-http://www.ssi.bg/~ja/nfct/ipvs-nfct-2.6.24-1.diff
-
-> ipv4     2 tcp      6 431996 ESTABLISHED src=192.168.0.104 dst=192.168.1.3 
-> sport=20001 dport=80 packets=1 bytes=54 [UNREPLIED] src=192.168.1.3 
-> dst=192.168.0.104 sport=80 dport=20001 packets=0 bytes=0 mark=0 use=1
+> > - do not play with packets accounted for sockets (skb->sk != NULL).
+> > There was check you removed. Please, reconsider.
 > 
-> After this the connection can complete normally. I wonder if this is not a bug 
-> in conntrack handling? It doesn't seem right to me.
+> With this check restored, the director can't access the virtual server. I 
+> haven't found any solid documentation, but skb->sk seems to be the local 
+> socket that the packet is tied to? Is there some badness that can happen by 
+> allowing these packets to be LVS'd?
 
-	loose flag has different prurpose:
+	Hm, I didn't know that with your patch director can be client.
+The problem was that IPVS didn't touched packets owned by sockets
+before, I remember that there are rules when such skbs should be
+modified, related to sharing and cloning, may be skbs should be
+copied if modified. But I assume now skb_make_writable() handles
+it properly.
 
-/* If it is set to zero, we disable picking up already established
-   connections. */
-static int nf_ct_tcp_loose __read_mostly = 1;
+> > - ability to throttle IPVS traffic with netfilter modules. How
+> > we can benefit from such modules, can they protect us, can we avoid
+> > IPVS scheduling on overload (such modules should work before IPVS conn
+> > scheduling, which should be true if you schedule in POST_ROUTING).
+> > Was true for LOCAL_IN scheduling.
+> 
+> Are you referring to ipt_RECENT here? That module tested ok.
 
-	I hope conntracks are not created per-packet? You have to
-check how the conntrack looks in the different cases when playing
-with nf_ct_tcp_loose. Addresses before [UNREPLIED] is the original
-direction and data for the reply direction is the second part of
-addresses. Also, tcp_conntracks[][][] looks valid for SS state
-in the original direction, it will not switch to sES for invalid
-senders (may be until tcp_loose is set?).
-
-	I remember that for NFCT patch tests some packets
-were dropped due to TCP SEQ number problems after ip_vs_ftp mangled
-the IP addresses in FTP commands. Then I used
-
-echo 1 > /proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_be_liberal
-
-to solve it because ip_vs_ftp and tcp conntrack do not work
-perfectly together.
+	Yes, for example, -m limit for SYN packets _BEFORE_
+IPVS scheduling to protect IPVS from SYN floods. But this should
+be checked only for changes that move IPVS scheduling at PRE_ROUTING.
 
 Regards
 
