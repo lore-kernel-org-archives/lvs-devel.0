@@ -1,46 +1,53 @@
-From: "pierrick grasland" <pierrick.grasland@nexcom.fr>
-Subject: Ipvsadm -e freeze
-Date: Fri, 9 May 2008 10:22:55 +0200
-Message-ID: <c2f80c020805090122i1deb833dpbe32cd4b0f21baf@mail.gmail.com>
+From: Joseph Mack NA3T <jmack@wm7d.net>
+Subject: Re: [PATCH] Move IPVS from net/ipv4/ipvs to net/netfilter/ipvs in
+ preparation for IPv6 support
+Date: Fri, 9 May 2008 05:49:52 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0805090536120.22107@wm7d.net>
+References: <f4845fc0805070732v516fc8c6y2cdddfd4f99c8f96@mail.gmail.com> 
+ <Pine.LNX.4.64.0805070734580.6164@wm7d.net> <f4845fc0805070851y7f1f00d0xd2dfcc7feb79c173@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=gamma;
-        h=domainkey-signature:received:received:message-id:date:from:sender:to:subject:mime-version:content-type:content-transfer-encoding:content-disposition:x-google-sender-auth;
-        bh=HGlpvFO7465tHXfO/TysSzeBTI8h3PvFLGNj//NKriY=;
-        b=H1GdysUMTXR9yC75O+M5csI3d7+8bkQxMAgcEkYmkNhzgpowu1nZa3qs9KPF0iWi85fkf4qZ+fTllpY8zME6qnCTN0VnEnspyrNj9kFtvHZjfnH6lxuQAJ75ZxufYs3AohJ4dahjg8Pu679zVEsLa0hpRAd75pb0ArPUMvxHDXQ=
-Content-Disposition: inline
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <f4845fc0805070851y7f1f00d0xd2dfcc7feb79c173@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: lvs-devel@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: Julius Volz <juliusv@google.com>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Horms <horms@vergenet.net>
 
-Hello,
+On Wed, 7 May 2008, Julius Volz wrote:
 
-I'm actually trying to modify IPVS, but I encounter a weird problem.
+> Hm, ok. This patch doesn't touch any functionality though. It only
+> moves files from one directory to another, so it's merely cosmetics,
+> no IPv6 knowledge required.
 
-When I activate debug_level (12) in /proc/sys/net/ipv4/vs/ and use
-ipvsadm -e or ipvsadm -d after some test on my network, my director
-freeze.
+are you at a stage where it's all split up, after which 
+you'll only be working on the ipv6 part and leaving the ipv4 
+untouched? Have you tested the ipv4 part to make sure it's 
+still OK. ie the code is reorthogonalised but with no change 
+in functionality?
 
-Actually, I test with the following :
+If so then this might be a good point to submit to the 
+kernel. Also Jason might be interested in the new version of 
+the code (hopefully working in different parts of the code, 
+you two won't be having many collisions).
 
-ipvsadm -A -u 192.168.1.210:5060 -s rr [a new option] => no problem, works fine
-ipvsadm -a -u 192.168.1.210:5060 -r 192.168.2.2:5060 -m => works fine.
+One of the things I worry about (from personal experience) 
+is people working on projects and getting stuck for time and 
+later having to drop the work. If you can submit the 
+reorthogonalised code, and have to stop sometime later, at 
+least we've got that far down the road.
 
-IPVS start without problem, and LVS NAT is correctly working.
+Horms,
+ 	Do you want ipvs() reorthogonalised into ipv4/ipv6 
+blocks, presumably with the ipv4 functionality untouched, 
+and with ipv6 stubs, for submission to the kernel, or do you 
+want to wait for the finished product?
 
-So, I'm starting my test, with only basic UDP packets. Until now, IPVS
-has a normal behavior.
+Joe
 
-But, if I try (after my test, without packets sends to the director on
-5060) to modify my configuration with ipvsadm -e or ipvsadm -d, my
-director freeze completly. Not a single error message, nothing in the
-log.
-
-Did someone has a clue ?
-
-Thanks,
---
-Pierrick Grasland
+-- 
+Joseph Mack NA3T EME(B,D), FM05lw North Carolina
+jmack (at) wm7d (dot) net - azimuthal equidistant map
+generator at http://www.wm7d.net/azproj.shtml
+Homepage http://www.austintek.com/ It's GNU/Linux!
