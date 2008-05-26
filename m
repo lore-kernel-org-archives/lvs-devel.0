@@ -1,41 +1,43 @@
-From: Joseph Mack NA3T <jmack@wm7d.net>
+From: "Julius Volz" <juliusv@google.com>
 Subject: Re: First IPv6 support for IPVS and ipvsadm
-Date: Mon, 26 May 2008 11:04:35 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0805261102190.17875@wm7d.net>
-References: <f4845fc0805230659o5464eb15i131790df8443349d@mail.gmail.com> 
- <Pine.LNX.4.64.0805230835510.27885@wm7d.net>
- <f4845fc0805260839v3bbe7fder2507cff8ef006c4@mail.gmail.com>
+Date: Mon, 26 May 2008 20:49:33 +0200
+Message-ID: <f4845fc0805261149o625b1ba7g7dbf8e307bd83c7d@mail.gmail.com>
+References: <f4845fc0805230659o5464eb15i131790df8443349d@mail.gmail.com>
+	 <Pine.LNX.4.64.0805230835510.27885@wm7d.net>
+	 <f4845fc0805260839v3bbe7fder2507cff8ef006c4@mail.gmail.com>
+	 <Pine.LNX.4.64.0805261102190.17875@wm7d.net>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <f4845fc0805260839v3bbe7fder2507cff8ef006c4@mail.gmail.com>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1211827775; bh=KlUmKWmtPlCl77z8UKOL5AjZr84=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=PAYwrk+po+ieOWL9hvrmnGdxo1y7lwao
+	d1U0oC5qZKJYpTbtnpv17VLXDD+y6P5D6Xqrc7XbxGWkg+tGpBezzA==
+In-Reply-To: <Pine.LNX.4.64.0805261102190.17875@wm7d.net>
+Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
-Content-Transfer-Encoding: 7bit
-To: Julius Volz <juliusv@google.com>
-Cc: lvs-devel@vger.kernel.org, Vince Busam <vbusam@google.com>, Simon Horman <horms@verge.net.au>
+Content-Type: text/plain; charset="us-ascii"
+To: Joseph Mack NA3T <jmack@wm7d.net>
+Cc: lvs-devel@vger.kernel.org
 
-On Mon, 26 May 2008, Julius Volz wrote:
-
->> great step forward.
+On Mon, May 26, 2008 at 8:04 PM, Joseph Mack NA3T <jmack@wm7d.net> wrote:
+>> Thanks! I hope breaking the userspace<->kernel interface is ok for
+>> this?
 >
-> Thanks! I hope breaking the userspace<->kernel interface is ok for
-> this?
+> sure. first step is to get it to work at all. Getting it to work well is
+> another step.
 
-sure. first step is to get it to work at all. Getting it to 
-work well is another step.
+Yes. But this particular bit is not about dirty first and clean later,
+the interface breakage would be permanent.
 
-> It would also be cool to hear
-> from Horms if the direction in which this code is going is acceptable
-> at all or if we have to do things really differently...
+> you should cc Horms individually. He doesn't respond a whole lot lately
 
-you should cc Horms individually. He doesn't respond a whole 
-lot lately
+I did with this last mail. And noticed that, too...
 
-Joe
+Julius
 
 -- 
-Joseph Mack NA3T EME(B,D), FM05lw North Carolina
-jmack (at) wm7d (dot) net - azimuthal equidistant map
-generator at http://www.wm7d.net/azproj.shtml
-Homepage http://www.austintek.com/ It's GNU/Linux!
+Google Switzerland GmbH
