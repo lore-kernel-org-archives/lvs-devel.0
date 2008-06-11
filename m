@@ -1,14 +1,14 @@
 From: "Julius R. Volz" <juliusv@google.com>
-Subject: [PATCH 06/26] IPVS: Add IPv6-specific function pointers to struct ip_vs_protocol.
-Date: Wed, 11 Jun 2008 19:11:49 +0200
-Message-ID: <1213204329-10973-7-git-send-email-juliusv@google.com>
+Subject: [PATCH 14/26] IPVS: Extend xmit routing cache to support IPv6.
+Date: Wed, 11 Jun 2008 19:11:57 +0200
+Message-ID: <1213204329-10973-15-git-send-email-juliusv@google.com>
 References: <1213204329-10973-1-git-send-email-juliusv@google.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1213204337; bh=dRvhSRAtCELEA92qaiwMnA2jCkQ=;
+	t=1213204343; bh=2igCEcQwV3TMrtvpmZ6Cp2Wg/YQ=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=pze2wwNu+YPdz8iEvuQv0mUm3M1ek9Wrd00cujVu
-	RBvm0H8BSHbQLd2iN+pbLT10GQDgEDeXTlFPfwAGfAEXvg==
+	 In-Reply-To:References; b=rH9ZR7JCEp6rfkuQJmUDAC9qHmCUL11Xv+9F4pHe
+	O43QNiuPFuq3dOGVBO5bsa2HwH7H8kyeyIdgfzryQ4IN+Q==
 In-Reply-To: <1213204329-10973-1-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -18,73 +18,112 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 Cc: horms@verge.net.au, davem@davemloft.net, vbusam@google.com, "Julius R. Volz" <juliusv@google.com>
 
-Add some IPv6-specific handler function pointers to struct ip_vs_protocol.
-These are needed for handlers that (may) have a different implementation
-between protocol versions. Depending on the code path (processing either
-v4 or v6 packets), the corresponding version of a handler will be called.
+Extend xmit destination routing cache to support lookup of IPv6
+destinations.
 
 Signed-off-by: Julius R. Volz <juliusv@google.com>
 
- 1 files changed, 33 insertions(+), 0 deletions(-)
+ 1 files changed, 74 insertions(+), 0 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 5c2d48d..9ae04d0 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -477,6 +477,12 @@ struct ip_vs_protocol {
- 			     struct ip_vs_protocol *pp,
- 			     int *verdict, struct ip_vs_conn **cpp);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 6b6ce6b..94b8fcb 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -22,6 +22,9 @@
+ #include <net/udp.h>
+ #include <net/icmp.h>                   /* for icmp_send */
+ #include <net/route.h>                  /* for ip_route_output */
++#include <net/ipv6.h>
++#include <net/ip6_route.h>
++#include <linux/icmpv6.h>
+ #include <linux/netfilter.h>
+ #include <linux/netfilter_ipv4.h>
+ 
+@@ -59,6 +62,25 @@ __ip_vs_dst_check(struct ip_vs_dest *dest, u32 rtos, u32 cookie)
+ 	return dst;
+ }
  
 +#ifdef CONFIG_IP_VS_IPV6
-+	int (*conn_schedule_v6)(struct sk_buff *skb,
-+			        struct ip_vs_protocol *pp,
-+			        int *verdict, struct ip_vs_conn **cpp);
++static inline struct dst_entry *
++__ip_vs_dst_check_v6(struct ip_vs_dest *dest, u32 cookie)
++{
++	struct dst_entry *dst = dest->dst_cache;
++
++	if (!dst)
++		return NULL;
++	if ((dst->obsolete) &&
++	    dst->ops->check(dst, cookie) == NULL) {
++		dest->dst_cache = NULL;
++		dst_release(dst);
++		return NULL;
++	}
++	dst_hold(dst);
++	return dst;
++}
 +#endif
 +
- 	struct ip_vs_conn *
- 	(*conn_in_get)(const struct sk_buff *skb,
- 		       struct ip_vs_protocol *pp,
-@@ -491,13 +497,40 @@ struct ip_vs_protocol {
- 			unsigned int proto_off,
- 			int inverse);
+ static struct rtable *
+ __ip_vs_get_out_rt(struct ip_vs_conn *cp, u32 rtos)
+ {
+@@ -111,6 +133,58 @@ __ip_vs_get_out_rt(struct ip_vs_conn *cp, u32 rtos)
+ 	return rt;
+ }
  
 +#ifdef CONFIG_IP_VS_IPV6
-+	struct ip_vs_conn *
-+	(*conn_in_get_v6)(const struct sk_buff *skb,
-+		       struct ip_vs_protocol *pp,
-+		       const struct ipv6hdr *iph,
-+		       unsigned int proto_off,
-+		       int inverse);
++static struct rt6_info *
++__ip_vs_get_out_rt_v6(struct ip_vs_conn *cp)
++{
++	struct rt6_info *rt;			/* Route to the other host */
++	struct ip_vs_dest *dest = cp->dest;
 +
-+	struct ip_vs_conn *
-+	(*conn_out_get_v6)(const struct sk_buff *skb,
-+			struct ip_vs_protocol *pp,
-+			const struct ipv6hdr *iph,
-+			unsigned int proto_off,
-+			int inverse);
++	if (dest) {
++		spin_lock(&dest->dst_lock);
++		if (!(rt = (struct rt6_info *)
++		      __ip_vs_dst_check_v6(dest, 0))) {
++			struct flowi fl = {
++				.oif = 0,
++				.nl_u = {
++					.ip6_u = {
++						.daddr = dest->addr.v6,
++						.saddr = { .s6_addr32 = {0, 0, 0, 0} }, } },
++			};
++
++			if (!(rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl))) {
++				spin_unlock(&dest->dst_lock);
++				IP_VS_DBG_RL("ip6_route_output error, "
++					     "dest: " NIP6_FMT "\n",
++					     NIP6(dest->addr.v6));
++				return NULL;
++			}
++			__ip_vs_dst_set(dest, 0, dst_clone(&rt->u.dst));
++			IP_VS_DBG(10, "new dst " NIP6_FMT ", refcnt=%d\n",
++				  NIP6(dest->addr.v6),
++				  atomic_read(&rt->u.dst.__refcnt));
++		}
++		spin_unlock(&dest->dst_lock);
++	} else {
++		struct flowi fl = {
++			.oif = 0,
++			.nl_u = {
++				.ip6_u = {
++					.daddr = cp->daddr.v6,
++					.saddr = { .s6_addr32 = {0, 0, 0, 0}}, } },
++		};
++
++		if (!(rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl))) {
++			IP_VS_DBG_RL("ip6_route_output error, dest: "
++				     NIP6_FMT "\n", NIP6(cp->daddr.v6));
++			return NULL;
++		}
++	}
++
++	return rt;
++}
 +#endif
 +
- 	int (*snat_handler)(struct sk_buff *skb,
- 			    struct ip_vs_protocol *pp, struct ip_vs_conn *cp);
  
- 	int (*dnat_handler)(struct sk_buff *skb,
- 			    struct ip_vs_protocol *pp, struct ip_vs_conn *cp);
- 
-+#ifdef CONFIG_IP_VS_IPV6
-+	int (*snat_handler_v6)(struct sk_buff *skb,
-+			       struct ip_vs_protocol *pp, struct ip_vs_conn *cp);
-+
-+	int (*dnat_handler_v6)(struct sk_buff *skb,
-+			       struct ip_vs_protocol *pp, struct ip_vs_conn *cp);
-+#endif
-+
- 	int (*csum_check)(struct sk_buff *skb, struct ip_vs_protocol *pp);
-+#ifdef CONFIG_IP_VS_IPV6
-+	int (*csum_check_v6)(struct sk_buff *skb, struct ip_vs_protocol *pp);
-+#endif
- 
- 	const char *(*state_name)(int state);
- 
+ /*
+  *	Release dest->dst_cache before a dest is removed
 -- 
 1.5.3.6
 
