@@ -1,44 +1,46 @@
-From: Patrick McHardy <kaber@trash.net>
+From: "Julius Volz" <juliusv@google.com>
 Subject: Re: [PATCH 00/26] IPVS: Add first IPv6 support to IPVS.
-Date: Wed, 11 Jun 2008 20:42:09 +0200
-Message-ID: <48501C81.6010800@trash.net>
-References: <1213204329-10973-1-git-send-email-juliusv@google.com>	 <48500A0D.5020304@trash.net> <f4845fc0806111123r108348d3s6906bf2b7145bdea@mail.gmail.com>
+Date: Wed, 11 Jun 2008 21:05:57 +0200
+Message-ID: <f4845fc0806111205j36c912d3vf1b632a3d0777a1c@mail.gmail.com>
+References: <1213204329-10973-1-git-send-email-juliusv@google.com>
+	 <48500A0D.5020304@trash.net>
+	 <f4845fc0806111123r108348d3s6906bf2b7145bdea@mail.gmail.com>
+	 <48501C81.6010800@trash.net>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <f4845fc0806111123r108348d3s6906bf2b7145bdea@mail.gmail.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1213211159; bh=KZc30T8YsS/6kI3C1S+Kyai3pSI=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=eNy/lo0ZaOg83+8YWbKnC4e6RUN03QpY
+	EZo/qFe8YOFxHZw5F+oJ09kiOyb+wk/gCRew9FBWxH8KFmlRiIHg5Q==
+In-Reply-To: <48501C81.6010800@trash.net>
+Content-Disposition: inline
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Julius Volz <juliusv@google.com>
+Content-Type: text/plain; charset="us-ascii"
+To: Patrick McHardy <kaber@trash.net>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-Julius Volz wrote:
-> On Wed, Jun 11, 2008 at 7:23 PM, Patrick McHardy <kaber@trash.net> wrote:
->> I briefly looked over the patches I didn't comment on.
->> I think there's too much duplication everywhere, a lot of
->> them look like they could avoid almost all duplication by
->> handling differences at a higher layer or simply sharing
->> the code (like hashing).
-> 
-> Yes, the duplication is high unfortunately. I must admit that I didn't
-> feel secure enough to restructure all the existing code without
-> breaking it, so I copied lots of functions and modified them for IPv6.
-> My main goal was to keep all the old v4 stuff working first and then
-> remove the duplication later (or hope for smarter people).
-> 
-> So I obviously don't expect this to be ready for inclusion, but I will
-> have a lot of time to work on it (I'm doing it as an intern project)
-> and learn as long as I get good feedback like yours on what to
-> improve.
+On Wed, Jun 11, 2008 at 8:42 PM, Patrick McHardy <kaber@trash.net> wrote:
+> Julius Volz wrote:
+>> Another question I was unsure about: is the breaking of the
+>> userspace-to-kernel interface even acceptable at all? I think the code
+>> would get ugly (and have even more duplication) if you wanted to keep
+>> the backwards compatibility. And you have to compile ipvsadm for your
+>> kernel version anyways.
+>
+> Usually its not acceptable. Why do you have compile ipvsadm
+> for specific kernel versions?
 
-Great.
+ipvsadm uses get/set-sockopts on a raw socket to pass commands and
+structs (as defined in include/net/ip_vs.h) to the kernel. So the
+passed structs have to match exactly between userspace and kernel. The
+kernel ip_vs.h also includes a version number that is used to verify
+that ipvsadm matches your kernel version.
 
-> Another question I was unsure about: is the breaking of the
-> userspace-to-kernel interface even acceptable at all? I think the code
-> would get ugly (and have even more duplication) if you wanted to keep
-> the backwards compatibility. And you have to compile ipvsadm for your
-> kernel version anyways.
+Julius
 
-Usually its not acceptable. Why do you have compile ipvsadm
-for specific kernel versions?
+-- 
+Google Switzerland GmbH
