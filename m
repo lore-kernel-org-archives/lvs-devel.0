@@ -1,33 +1,71 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH 00/26] IPVS: Add first IPv6 support to IPVS.
-Date: Wed, 11 Jun 2008 19:23:25 +0200
-Message-ID: <48500A0D.5020304@trash.net>
+From: "Julius Volz" <juliusv@google.com>
+Subject: Re: [PATCH 02/26] IPVS: Change IPVS data structures to support IPv6 addresses.
+Date: Wed, 11 Jun 2008 20:08:38 +0200
+Message-ID: <f4845fc0806111108q27a3d4f5o84ac638e58fb6ff0@mail.gmail.com>
 References: <1213204329-10973-1-git-send-email-juliusv@google.com>
+	 <1213204329-10973-3-git-send-email-juliusv@google.com>
+	 <4850076B.302@trash.net>
+	 <f4845fc0806111041u2a9a197fseefe300ffbbda3c3@mail.gmail.com>
+	 <485010E9.6000506@trash.net>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1213204329-10973-1-git-send-email-juliusv@google.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1213207720; bh=3YH7hA7fFQGh9kVD0COUpk9cjpg=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=A3L3KKjay+Y9qdyO8EYimKv5pm4elqX9
+	Ua94WKivLA/gvL659suTLkAPz3x9cula8qThxERc7ex1JSb2N6h+Cg==
+In-Reply-To: <485010E9.6000506@trash.net>
+Content-Disposition: inline
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: "Julius R. Volz" <juliusv@google.com>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, horms@verge.net.au, davem@davemloft.net, vbusam@google.com
+Content-Type: text/plain; charset="us-ascii"
+To: Patrick McHardy <kaber@trash.net>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-Julius R. Volz wrote:
-> Hi,
+On Wed, Jun 11, 2008 at 7:52 PM, Patrick McHardy <kaber@trash.net> wrote:
+> Julius Volz wrote:
+>>
+>> On Wed, Jun 11, 2008 at 7:12 PM, Patrick McHardy <kaber@trash.net> wrote:
+>>
+>>>
+>>> include/net is always kernel only. At least it should be that way.
+>>>
+>>
+>> ipvsadm has:
+>>
+>> INCLUDE         = -I/usr/src/linux/include -I.. -I.
+>>
+>> in its Makefile and then includes net/ip_vs.h. Even in the current version
+>> :(
+>>
 >
-> This patch series adds first experimental IPv6 support to IPVS. I have
-> already posted it to the LVS mailing list as one huge patch a while ago,
-> so here's the split-up version, although it is still very big. I don't see
-> an easy way of breaking up the series into truly independent chunks though,
-> since most of it seems very interdependent. I'm still a kernel newbie, so
-> any advice is welcome :)
->   
+> OK, thanks for the explanation.
+>
+>>>>  #define IP_VS_IFNAME_MAXLEN    16
+>>>>  +union ip_vs_addr_user {
+>>>> +       __be32                  v4;
+>>>> +       struct in6_addr         v6;
+>>>> +};
+>>>>
+>>>>
+>>>
+>>> Can't you use nf_inet_addr for this?
+>>>
+>>
+>> Ah, yes. I either didn't know about this or wasn't sure if it was
+>> appropriate to reuse that struct from netfilter. I will look into
+>> putting this in!
+>>
+>>
+>
+> Thanks. But please remember to keep netdev CCed on responses
+> to review.
 
-I briefly looked over the patches I didn't comment on.
-I think there's too much duplication everywhere, a lot of
-them look like they could avoid almost all duplication by
-handling differences at a higher layer or simply sharing
-the code (like hashing).
+Yes, sorry! Re-added the lists for this response.
 
+Julius
 
+-- 
+Google Switzerland GmbH
