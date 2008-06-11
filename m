@@ -1,14 +1,14 @@
 From: "Julius R. Volz" <juliusv@google.com>
-Subject: [PATCH 17/26] IPVS: Add connection hashing function for IPv6 entries.
-Date: Wed, 11 Jun 2008 19:12:00 +0200
-Message-ID: <1213204329-10973-18-git-send-email-juliusv@google.com>
+Subject: [PATCH 15/26] IPVS: Modify IP_VS_XMIT() to support IPv6.
+Date: Wed, 11 Jun 2008 19:11:58 +0200
+Message-ID: <1213204329-10973-16-git-send-email-juliusv@google.com>
 References: <1213204329-10973-1-git-send-email-juliusv@google.com>
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1213204338; bh=ISYu+biW7ZcCBQICwryLRGwqEkI=;
+	t=1213204337; bh=ag4z2iE4QEPU6Tl2tEo6BZBHJC8=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=OaD8qr9ONy1oCre9zFiQ99yJ09400l6hHA9Qc0eJ
-	TaG5VPbdriqZm2p8FeD57jiN6ZWnKgsWtlKDPuHoJNRW9w==
+	 In-Reply-To:References; b=UqnBJOznbmdy0n6zwYelub/oTrkNFOpFfM8AL5iA
+	gQQbQoYdQDcEXNv2+VK937ap4S/Sdy12GJyALgryJlQOtg==
 In-Reply-To: <1213204329-10973-1-git-send-email-juliusv@google.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -18,69 +18,70 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 Cc: horms@verge.net.au, davem@davemloft.net, vbusam@google.com, "Julius R. Volz" <juliusv@google.com>
 
-Add ip_vs_conn_hashkey_v6() and call it instead of ip_vs_conn_hashkey()
-when hashing IPv6 connection entries.
+Modify IP_VS_XMIT() to call PF_INET6 local output hook instead of PF_INET
+one when sending IPv6 packets. This is indicated by specifying an
+additional first pf argument.
+
+Existing uses are converted to call IP_VS_XMIT(PF_INET, ...).
 
 Signed-off-by: Julius R. Volz <juliusv@google.com>
 
- 1 files changed, 22 insertions(+), 2 deletions(-)
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 1a4040d..4ee5dac 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -37,6 +37,9 @@
- 
- #include <net/net_namespace.h>
- #include <net/ip_vs.h>
-+#ifdef CONFIG_IP_VS_IPV6
-+#include <net/ipv6.h>
-+#endif
- 
- 
- /*
-@@ -122,6 +125,13 @@ static unsigned int ip_vs_conn_hashkey(unsigned proto, __be32 addr, __be16 port)
- 		& IP_VS_CONN_TAB_MASK;
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 94b8fcb..029d9ec 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -199,11 +199,11 @@ ip_vs_dst_reset(struct ip_vs_dest *dest)
+ 	dst_release(old_dst);
  }
  
-+#ifdef CONFIG_IP_VS_IPV6
-+static unsigned int ip_vs_conn_hashkey_v6(unsigned proto, const struct in6_addr *addr, __be16 port)
-+{
-+	return jhash_3words(jhash(addr, 16, ip_vs_conn_rnd), (__force u32)port, proto, ip_vs_conn_rnd)
-+		& IP_VS_CONN_TAB_MASK;
-+}
-+#endif
+-#define IP_VS_XMIT(skb, rt)				\
++#define IP_VS_XMIT(pf, skb, rt)				\
+ do {							\
+ 	(skb)->ipvs_property = 1;			\
+ 	skb_forward_csum(skb);				\
+-	NF_HOOK(PF_INET, NF_INET_LOCAL_OUT, (skb), NULL,	\
++	NF_HOOK(pf, NF_INET_LOCAL_OUT, (skb), NULL,	\
+ 		(rt)->u.dst.dev, dst_output);		\
+ } while (0)
  
- /*
-  *	Hashes ip_vs_conn in ip_vs_conn_tab by proto,addr,port.
-@@ -133,7 +143,12 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
- 	int ret;
+@@ -276,7 +276,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
  
- 	/* Hash by protocol, client address and port */
--	hash = ip_vs_conn_hashkey(cp->protocol, cp->caddr, cp->cport);
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (cp->af == AF_INET6)
-+		hash = ip_vs_conn_hashkey_v6(cp->protocol, &cp->caddr.v6, cp->cport);
-+	else
-+#endif
-+		hash = ip_vs_conn_hashkey(cp->protocol, cp->caddr.v4, cp->cport);
+-	IP_VS_XMIT(skb, rt);
++	IP_VS_XMIT(PF_INET, skb, rt);
  
- 	ct_write_lock(hash);
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -352,7 +352,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
  
-@@ -164,7 +179,12 @@ static inline int ip_vs_conn_unhash(struct ip_vs_conn *cp)
- 	int ret;
+-	IP_VS_XMIT(skb, rt);
++	IP_VS_XMIT(PF_INET, skb, rt);
  
- 	/* unhash it and decrease its reference counter */
--	hash = ip_vs_conn_hashkey(cp->protocol, cp->caddr, cp->cport);
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (cp->af == AF_INET6)
-+		hash = ip_vs_conn_hashkey_v6(cp->protocol, &cp->caddr.v6, cp->cport);
-+	else
-+#endif
-+		hash = ip_vs_conn_hashkey(cp->protocol, cp->caddr.v4, cp->cport);
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -543,7 +543,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
  
- 	ct_write_lock(hash);
+-	IP_VS_XMIT(skb, rt);
++	IP_VS_XMIT(PF_INET, skb, rt);
  
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -616,7 +616,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(skb, rt);
++	IP_VS_XMIT(PF_INET, skb, rt);
+ 
+ 	rc = NF_STOLEN;
+ 	goto out;
 -- 
 1.5.3.6
 
