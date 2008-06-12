@@ -1,32 +1,53 @@
 From: "Julius Volz" <juliusv@google.com>
-Subject: Re: [PATCH 02/26] IPVS: Change IPVS data structures to support IPv6 addresses.
-Date: Thu, 12 Jun 2008 11:47:40 +0200
-Message-ID: <f4845fc0806120247j32ebe3c7s55e247a35d0d93e7@mail.gmail.com>
-References: <1213204329-10973-1-git-send-email-juliusv@google.com>
-	 <1213204329-10973-3-git-send-email-juliusv@google.com>
-	 <485081E8.80102@hp.com>
+Subject: Re: [PATCH 00/26] IPVS: Add first IPv6 support to IPVS.
+Date: Thu, 12 Jun 2008 15:31:56 +0200
+Message-ID: <f4845fc0806120631g511c7dbag365a8483134943fd@mail.gmail.com>
+References: <48501C81.6010800@trash.net> <4850233E.7090501@trash.net>
+	 <f4845fc0806111229l6666161fu9d3bc5e432668485@mail.gmail.com>
+	 <48502826.9060502@trash.net>
+	 <f4845fc0806111253l4f1fea4fyef05cdc41ca45911@mail.gmail.com>
+	 <f4845fc0806111314r41e7736ay54d22cf28efa2d27@mail.gmail.com>
+	 <48503BBD.6000307@google.com> <485043E6.5030105@candelatech.com>
+	 <485050FE.6030209@google.com> <20080612014548.GE22358@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1213264062; bh=J00zxR0sJ+aiRs7Llh81jlSF4/w=;
+	t=1213277519; bh=KP2wqA5cTyvN8B7I5qmvMaCSqug=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=fn4B3ogc7i04H//XNCdDSDRkCf608ZlT
-	hh9Gl2XaVN4nAlReTpkXOwNCq1sNtXLHUuKoeu8gP96uyG0iaoP+Zw==
-In-Reply-To: <485081E8.80102@hp.com>
+	 Content-Disposition:References; b=w85oGqESWWcTEOGpAkdzpkBZuzE/JF1+
+	8lyScGL7jLz+Sc7hu9odLU+xfP1ZkmlNrKdo1ZUgeJLfTKNSyjTepA==
+In-Reply-To: <20080612014548.GE22358@verge.net.au>
 Content-Disposition: inline
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Brian Haley <brian.haley@hp.com>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+To: Simon Horman <horms@verge.net.au>
+Cc: Vince Busam <vbusam@google.com>, Ben Greear <greearb@candelatech.com>, Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-On Thu, Jun 12, 2008 at 3:54 AM, Brian Haley <brian.haley@hp.com> wrote:
-> You need to use ipv6_addr_copy() with IPv6 addresses.  Some of your other
-> patches have this same problem, I found some of them...
+On Thu, Jun 12, 2008, Simon Horman <horms@verge.net.au> wrote:
+> Eventially the changes settled down, and for the past few years they
+> have been very infrequent.  But the problem that the interface isn't
+> really extendable and that when changes are made kernel and ipvsadm
+> versions need to be incremented together remains. For instance, the
+> Debian package of ipvsadm actually shipps three different ipvsadm
+> binaries, and a wrapper works out which one to use based on the kernel
+> version.
 
-Thanks for spotting this, I will convert it in the next version!
+Ugh.
+
+> I wonder if now would be a good time to bite the bullet and design
+> a new interface that is extendable.
+
+If we really have to break it once for IPv6 anyways, it seems like a
+good opportunity. Depends on how invasive the changes would need to
+be, of course...
+
+You probably already have some ideas on what a better interface would
+look like? Especially, how to design it for future backwards
+compatibility? And would it still use sockopts or rather one of the
+other communication mechanisms?
 
 Julius
 
