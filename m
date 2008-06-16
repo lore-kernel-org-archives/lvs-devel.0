@@ -1,7 +1,7 @@
 From: "Julius Volz" <juliusv@google.com>
 Subject: Re: [PATCH 00/26] IPVS: Add first IPv6 support to IPVS.
-Date: Mon, 16 Jun 2008 14:13:05 +0200
-Message-ID: <f4845fc0806160513q4196eac3q78dd044082bea138@mail.gmail.com>
+Date: Tue, 17 Jun 2008 01:19:14 +0200
+Message-ID: <f4845fc0806161619i4dc81dcao933d95aa6e09b45e@mail.gmail.com>
 References: <f4845fc0806111314r41e7736ay54d22cf28efa2d27@mail.gmail.com>
 	 <485126BD.7030109@trash.net>
 	 <f4845fc0806120834xd904f45x19e100c832d3417@mail.gmail.com>
@@ -14,16 +14,16 @@ References: <f4845fc0806111314r41e7736ay54d22cf28efa2d27@mail.gmail.com>
 	 <485652EA.2020004@trash.net>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1213618387; bh=sIVhSaVz+WQWGob1UiB2d73Wx8A=;
+	t=1213658356; bh=UEUUYr0lTdHG5N6/d3IaEHIccaE=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=b8aC8zQI4eYpJSTV39WdcGHK4SWOL0Q/
-	ExWkGwXjBkFVMdUt0mWAGB4sYeUkXjqU1zMrYBqGQEuif77dWexyoQ==
+	 Content-Disposition:References; b=ZaUK153hRk5P7gEKMaSfMDAiD/3AEFef
+	lwdBN0hAWRjwSzNCxo5eSBHsoZ++pyk7cIKroqC6q/WAnl3UU52CeQ==
 In-Reply-To: <485652EA.2020004@trash.net>
 Content-Disposition: inline
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Patrick McHardy <kaber@trash.net>
@@ -36,26 +36,28 @@ On Mon, Jun 16, 2008 at 1:47 PM, Patrick McHardy <kaber@trash.net> wrote:
 >
 > b) or c) both look fine.
 
-Good, thanks.
+A couple of other Netlink questions came up while reading some code:
 
-> You could save a few operations (ADD/EDIT
-> can be combined) by making use of nlmsg_flags though:
->
-> The semantics of the flags is:
->
-> - NLM_F_CREATE|NLM_F_EXCL: create if non-existant
-> - NLM_F_REPLACE: change existing
-> - NLM_F_CREATE|NLM_F_REPLACE: create if non-existing, replace otherwise
-> - NLM_F_EXCL: test existance
+1) There are many examples of the following two cases in the kernel:
 
-Thanks for explaining this! Sounds good!
+nla_nest_start(skb, SOME_ATTR_TYPE | NLA_F_NESTED);
+nla_nest_start(skb, SOME_ATTR_TYPE);
 
-> NLM_F_APPEND can be used as modifier for NLM_F_CREATE to
-> specify that the new entry should be added to the end instead
-> of the beginning.
+Why don't all cases have NLA_F_NESTED? Then again, this bit is never
+ever read out again (at least not in the kernel), so I guess people
+are just using their implicit knowledge that a specific attribute type
+is always nested and never check the bit?
 
-Interesting. This should not be needed in IPVS though, as entry order
-doesn't matter much there.
+Btw., couldn't we change nla_nest_start() to always add NLA_F_NESTED
+to the type?
+
+2) To send an array of attributes of the same type, you just add them
+serially? I was just confused at first that nla_parse() will save only
+one attribute of each type (the last one) in the destination array, so
+when dealing with arrays, it doesn't help. So I just iterate over the
+array with nla_for_each_attr() and parse each element manually, right?
+
+Thanks for your time!
 
 Julius
 
