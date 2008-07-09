@@ -1,209 +1,276 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCH 1/2] IPVS: Add genetlink interface definitions to ip_vs.h
-Date: Wed,  9 Jul 2008 17:11:56 +0200
-Message-ID: <1215616317-11386-2-git-send-email-juliusv@google.com>
-References: <1215616317-11386-1-git-send-email-juliusv@google.com>
+Subject: [PATCH 0/2] IPVS: Add Generic Netlink configuration interface
+Date: Wed,  9 Jul 2008 17:11:55 +0200
+Message-ID: <1215616317-11386-1-git-send-email-juliusv@google.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1215616325; bh=2sADe2RX7xHK79TcaQ5Dau0ydbk=;
-	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=rGVjEi6XP6FgR46AxS8VKRK5WatKsfvpZl9EEn8X
-	jW1F+y/EMkGEkeJFtdRWOdLYvcqw+IIB427z7In2gUIc1g==
-In-Reply-To: <1215616317-11386-1-git-send-email-juliusv@google.com>
+	t=1215616323; bh=7MbFORRNFlH+wYxLmgFTV+mC6rI=;
+	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer;
+	b=W605Kbrj1SojnLjGUEcRJT0oYTsM8AjZr5Ejo9UJ+nC1EeQN799wT/qXL2Btkj3Uv
+	TVcb+TJ2J6k9fzAtEz0hA==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: vbusam@google.com, horms@verge.net.au, kaber@trash.net, davem@davemloft.net, Julius Volz <juliusv@google.com>
+Cc: vbusam@google.com, horms@verge.net.au, kaber@trash.net, davem@davemloft.net
 
-Add IPVS Generic Netlink interface definitions to include/linux/ip_vs.h.
+These two patches add a Generic Netlink interface to IPVS while keeping
+the old get/setsockopt interface for userspace backwards compatibility.
+The motivation for this is to have a more extensible interface for
+future changes, such as the planned IPv6 support. ipvsadm is currently
+being extended to support the new interface and features.
 
-This depends on this patch I sent yesterday:
+The ip_vs.h header change depends on this patch I sent yesterday:
 "IPVS: Move userspace definitions to include/linux/ip_vs.h"
 
-Signed-off-by: Julius Volz <juliusv@google.com>
+Below is an overview over the attribute types and message formats used
+in this interface. The Netlink interface follows the old interface
+closely, so the commands and the received / returned data are almost the
+same:
 
- 1 files changed, 168 insertions(+), 0 deletions(-)
+======================================
+|    IPVS NETLINK ATTRIBUTE TYPES    |
+|   (enums grouped by empty lines)   |
+======================================
 
-diff --git a/include/linux/ip_vs.h b/include/linux/ip_vs.h
-index 2d4eb68..83ed646 100644
---- a/include/linux/ip_vs.h
-+++ b/include/linux/ip_vs.h
-@@ -245,4 +245,172 @@ struct ip_vs_daemon_user {
- 	int			syncid;
- };
- 
-+/*
-+ *
-+ * IPVS Generic Netlink interface definitions
-+ *
-+ */
-+
-+/* Generic Netlink family info */
-+
-+#define IPVS_GENL_NAME		"IPVS"
-+#define IPVS_GENL_VERSION	0x1
-+
-+struct ip_vs_flags {
-+	__be32 flags;
-+	__be32 mask;
-+};
-+
-+/* Generic Netlink command attributes */
-+enum {
-+	IPVS_CMD_UNSPEC = 0,
-+
-+	/* SET commands */
-+	IPVS_CMD_ADD_SERVICE,		/* add or modify service */
-+	IPVS_CMD_EDIT_SERVICE,		/* add or modify service */
-+	IPVS_CMD_DEL_SERVICE,		/* delete service */
-+	IPVS_CMD_ADD_DEST,		/* add or modify destination */
-+	IPVS_CMD_EDIT_DEST,		/* add or modify destination */
-+	IPVS_CMD_DEL_DEST,		/* delete destination */
-+	IPVS_CMD_FLUSH,			/* flush all services and dests */
-+	IPVS_CMD_SET_TIMEOUT,		/* set TCP and UDP timeouts */
-+	IPVS_CMD_START_DAEMON,		/* start sync daemon */
-+	IPVS_CMD_STOP_DAEMON,		/* stop sync daemon */
-+	IPVS_CMD_ZERO,			/* zero all counters and stats */
-+
-+	/* GET commands */
-+	IPVS_CMD_GET_INFO,		/* get general IPVS info */
-+	IPVS_CMD_GET_SERVICES,		/* get list of all services */
-+	IPVS_CMD_GET_SERVICE,		/* get info about specific service */
-+	IPVS_CMD_GET_DESTS,		/* get list of all service dests */
-+	IPVS_CMD_GET_TIMEOUT,		/* get TCP and UDP timeouts */
-+	IPVS_CMD_GET_DAEMONS,		/* get sync daemon status */
-+	__IPVS_CMD_MAX,
-+};
-+
-+#define IPVS_CMD_MAX (__IPVS_CMD_MAX - 1)
-+
-+/*
-+ * Attributes used in the first level of commands that maintain multiple entries
-+ * of the same element type (services, destinations, sync daemons)
-+ */
-+enum {
-+	IPVS_ENTRY_ATTR_UNSPEC = 0,
-+	IPVS_ENTRY_ATTR_SERVICE,	/* nested service attribute */
-+	IPVS_ENTRY_ATTR_DEST,		/* nested destination attribute */
-+	IPVS_ENTRY_ATTR_DAEMON,		/* nested sync daemon attribute */
-+	__IPVS_ENTRY_ATTR_MAX,
-+};
-+
-+#define IPVS_ENTRY_ATTR_MAX (__IPVS_SVC_ATTR_MAX - 1)
-+
-+/*
-+ * Attributes used to describe a service
-+ *
-+ * Used inside nested attribute IPVS_ENTRY_ATTR_SERVICE
-+ */
-+enum {
-+	IPVS_SVC_ATTR_UNSPEC = 0,
-+	IPVS_SVC_ATTR_AF,		/* address family */
-+	IPVS_SVC_ATTR_PROTOCOL,		/* virtual service protocol */
-+	IPVS_SVC_ATTR_ADDR,		/* virtual service address */
-+	IPVS_SVC_ATTR_PORT,		/* virtual service port */
-+	IPVS_SVC_ATTR_FWMARK,		/* firewall mark of service */
-+
-+	IPVS_SVC_ATTR_SCHED_NAME,	/* name of scheduler */
-+	IPVS_SVC_ATTR_FLAGS,		/* virtual service flags */
-+	IPVS_SVC_ATTR_TIMEOUT,		/* persistent timeout */
-+	IPVS_SVC_ATTR_NETMASK,		/* persistent netmask */
-+
-+	IPVS_SVC_ATTR_STATS,		/* nested attribute for service stats */
-+	__IPVS_SVC_ATTR_MAX,
-+};
-+
-+#define IPVS_SVC_ATTR_MAX (__IPVS_SVC_ATTR_MAX - 1)
-+
-+/*
-+ * Attributes used to describe a destination (real server)
-+ *
-+ * Used inside nested attribute IPVS_ENTRY_ATTR_DEST
-+ */
-+enum {
-+	IPVS_DEST_ATTR_UNSPEC = 0,
-+	IPVS_DEST_ATTR_ADDR,		/* real server address */
-+	IPVS_DEST_ATTR_PORT,		/* real server port */
-+
-+	IPVS_DEST_ATTR_FWD_METHOD,	/* forwarding method */
-+	IPVS_DEST_ATTR_WEIGHT,		/* destination weight */
-+
-+	IPVS_DEST_ATTR_U_THRESH,	/* upper threshold */
-+	IPVS_DEST_ATTR_L_THRESH,	/* lower threshold */
-+
-+	IPVS_DEST_ATTR_ACTIVE_CONNS,	/* active connections */
-+	IPVS_DEST_ATTR_INACT_CONNS,	/* inactive connections */
-+	IPVS_DEST_ATTR_PERSIST_CONNS,	/* persistent connections */
-+
-+	IPVS_DEST_ATTR_STATS,		/* nested attribute for dest stats */
-+	__IPVS_DEST_ATTR_MAX,
-+};
-+
-+#define IPVS_DEST_ATTR_MAX (__IPVS_DEST_ATTR_MAX - 1)
-+
-+/*
-+ * Attributes describing a sync daemon
-+ *
-+ * Used inside nested attribute IPVS_ENTRY_ATTR_DAEMON
-+ */
-+enum {
-+	IPVS_DAEMON_ATTR_UNSPEC = 0,
-+	IPVS_DAEMON_ATTR_STATE,		/* sync daemon state (master/backup) */
-+	IPVS_DAEMON_ATTR_MCAST_IFN,	/* multicast interface name */
-+	IPVS_DAEMON_ATTR_SYNC_ID,	/* SyncID we belong to */
-+	__IPVS_DAEMON_ATTR_MAX,
-+};
-+
-+#define IPVS_DAEMON_ATTR_MAX (__IPVS_DAEMON_ATTR_MAX - 1)
-+
-+/*
-+ * Attributes used to describe service or destination entry statistics
-+ *
-+ * Used inside nested attributes IPVS_SVC_ATTR_STATS and IPVS_DEST_ATTR_STATS
-+ */
-+enum {
-+	IPVS_STATS_ATTR_UNSPEC = 0,
-+	IPVS_STATS_ATTR_CONNS,		/* connections scheduled */
-+	IPVS_STATS_ATTR_INPKTS,		/* incoming packets */
-+	IPVS_STATS_ATTR_OUTPKTS,	/* outgoing packets */
-+	IPVS_STATS_ATTR_INBYTES,	/* incoming bytes */
-+	IPVS_STATS_ATTR_OUTBYTES,	/* outgoing bytes */
-+
-+	IPVS_STATS_ATTR_CPS,		/* current connection rate */
-+	IPVS_STATS_ATTR_INPPS,		/* current in packet rate */
-+	IPVS_STATS_ATTR_OUTPPS,		/* current out packet rate */
-+	IPVS_STATS_ATTR_INBPS,		/* current in byte rate */
-+	IPVS_STATS_ATTR_OUTBPS,		/* current out byte rate */
-+	__IPVS_STATS_ATTR_MAX,
-+};
-+
-+#define IPVS_STATS_ATTR_MAX (__IPVS_STATS_ATTR_MAX - 1)
-+
-+/* Attributes used in IPVS_CMD_SET_TIMEOUT and IPVS_CMD_GET_TIMEOUT commands */
-+enum {
-+	IPVS_TIMEOUT_ATTR_UNSPEC = 0,
-+	IPVS_TIMEOUT_ATTR_TCP,		/* TCP connection timeout */
-+	IPVS_TIMEOUT_ATTR_TCP_FIN,	/* TCP FIN wait timeout */
-+	IPVS_TIMEOUT_ATTR_UDP,		/* UDP timeout */
-+	__IPVS_TIMEOUT_ATTR_MAX,
-+};
-+
-+#define IPVS_TIMEOUT_ATTR_MAX (__IPVS_TIMEOUT_ATTR_MAX - 1)
-+
-+/* Attributes used in response to IPVS_CMD_GET_INFO command */
-+enum {
-+	IPVS_INFO_ATTR_UNSPEC = 0,
-+	IPVS_INFO_ATTR_VERSION,		/* IPVS version number */
-+	IPVS_INFO_ATTR_CONN_TAB_SIZE,	/* size of connection hash table */
-+	__IPVS_INFO_ATTR_MAX,
-+};
-+
-+#define IPVS_INFO_ATTR_MAX (__IPVS_INFO_ATTR_MAX - 1)
-+
- #endif	/* _IP_VS_H */
--- 
-1.5.4.5
+IPVS_ENTRY_ATTR_SERVICE		- NLA_NESTED
+IPVS_ENTRY_ATTR_DEST		- NLA_NESTED
+IPVS_ENTRY_ATTR_DAEMON		- NLA_NESTED
 
+IPVS_SVC_ATTR_AF		- NLA_U16
+IPVS_SVC_ATTR_PROTOCOL		- NLA_U16
+IPVS_SVC_ATTR_ADDR		- NLA_BINARY
+IPVS_SVC_ATTR_PORT		- NLA_U16
+IPVS_SVC_ATTR_FWMARK		- NLA_U32
+IPVS_SVC_ATTR_SCHED_NAME	- NLA_NUL_STRING
+IPVS_SVC_ATTR_FLAGS		- NLA_BINARY
+IPVS_SVC_ATTR_TIMEOUT		- NLA_U32
+IPVS_SVC_ATTR_NETMASK		- NLA_U32
+IPVS_SVC_ATTR_STATS		- NLA_NESTED
+
+IPVS_DEST_ATTR_ADDR		- NLA_BINARY
+IPVS_DEST_ATTR_PORT		- NLA_U16
+IPVS_DEST_ATTR_FWD_METHOD	- NLA_U32
+IPVS_DEST_ATTR_WEIGHT		- NLA_U32
+IPVS_DEST_ATTR_U_THRESH		- NLA_U32
+IPVS_DEST_ATTR_L_THRESH		- NLA_U32
+IPVS_DEST_ATTR_ACTIVE_CONNS	- NLA_U32
+IPVS_DEST_ATTR_INACT_CONNS	- NLA_U32
+IPVS_DEST_ATTR_PERSIST_CONNS	- NLA_U32
+IPVS_DEST_ATTR_STATS		- NLA_NESTED
+
+IPVS_STATS_ATTR_CONNS		- NLA_U32
+IPVS_STATS_ATTR_INPKTS		- NLA_U32
+IPVS_STATS_ATTR_OUTPKTS		- NLA_U32
+IPVS_STATS_ATTR_INBYTES		- NLA_U64
+IPVS_STATS_ATTR_OUTBYTES	- NLA_U64
+IPVS_STATS_ATTR_CPS		- NLA_U32
+IPVS_STATS_ATTR_INPPS		- NLA_U32
+IPVS_STATS_ATTR_OUTPPS		- NLA_U32
+IPVS_STATS_ATTR_INBPS		- NLA_U32
+IPVS_STATS_ATTR_OUTBPS		- NLA_U32
+
+IPVS_TIMEOUT_ATTR_TCP		- NLA_U32
+IPVS_TIMEOUT_ATTR_TCP_FIN	- NLA_U32
+IPVS_TIMEOUT_ATTR_UDP		- NLA_U32
+
+IPVS_DAEMON_ATTR_STATE		- NLA_U32
+IPVS_DAEMON_ATTR_MCAST_IFN	- NLA_NUL_STRING
+IPVS_DAEMON_ATTR_SYNC_ID	- NLA_U32
+
+IPVS_INFO_ATTR_VERSION		- NLA_U32
+IPVS_INFO_ATTR_CONN_TAB_SIZE	- NLA_U32
+
+
+==========================
+|    COMMAND MESSAGES    |
+==========================
+
+IPVS_CMD_ADD_SERVICE
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+		IPVS_SVC_ATTR_SCHED_NAME
+		IPVS_SVC_ATTR_FLAGS
+		IPVS_SVC_ATTR_TIMEOUT
+		IPVS_SVC_ATTR_NETMASK
+
+IPVS_CMD_EDIT_SERVICE
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+		IPVS_SVC_ATTR_SCHED_NAME
+		IPVS_SVC_ATTR_FLAGS
+		IPVS_SVC_ATTR_TIMEOUT
+		IPVS_SVC_ATTR_NETMASK
+
+IPVS_CMD_DEL_SERVICE
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+
+IPVS_CMD_ADD_DEST
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+	IPVS_ENTRY_ATTR_DEST
+		IPVS_DEST_ATTR_ADDR
+		IPVS_DEST_ATTR_PORT
+		IPVS_DEST_ATTR_FWD_METHOD
+		IPVS_DEST_ATTR_WEIGHT
+		IPVS_DEST_ATTR_U_THRESH
+		IPVS_DEST_ATTR_L_THRESH
+
+IPVS_CMD_EDIT_DEST
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+	IPVS_ENTRY_ATTR_DEST
+		IPVS_DEST_ATTR_ADDR
+		IPVS_DEST_ATTR_PORT
+		IPVS_DEST_ATTR_FWD_METHOD
+		IPVS_DEST_ATTR_WEIGHT
+		IPVS_DEST_ATTR_U_THRESH
+		IPVS_DEST_ATTR_L_THRESH
+
+IPVS_CMD_DEL_DEST
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+	IPVS_ENTRY_ATTR_DEST
+		IPVS_DEST_ATTR_ADDR
+		IPVS_DEST_ATTR_PORT
+
+IPVS_CMD_FLUSH (no arguments)
+
+IPVS_CMD_SET_TIMEOUT
+	IPVS_TIMEOUT_ATTR_TCP
+	IPVS_TIMEOUT_ATTR_TCP_FIN
+	IPVS_TIMEOUT_ATTR_UDP
+
+IPVS_CMD_START_DAEMON
+	IPVS_ENTRY_ATTR_DAEMON
+		IPVS_DAEMON_ATTR_STATE
+		IPVS_DAEMON_ATTR_MCAST_IFN
+		IPVS_DAEMON_ATTR_SYNC_ID
+
+IPVS_CMD_STOP_DAEMON
+	IPVS_ENTRY_ATTR_DAEMON
+		IPVS_DAEMON_ATTR_STATE
+
+IPVS_CMD_ZERO
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+
+IPVS_CMD_GET_INFO (no arguments)
+
+IPVS_CMD_GET_SERVICES (no arguments)
+
+IPVS_CMD_GET_SERVICE
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+
+IPVS_CMD_GET_DESTS
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+
+IPVS_CMD_GET_TIMEOUT (no arguments)
+
+IPVS_CMD_GET_DAEMON (no arguments)
+
+=========================
+|    COMMAND REPLIES    |
+=========================
+
+IPVS_CMD_ADD_SERVICE (only return code)
+
+IPVS_CMD_DEL_SERVICE (only return code)
+
+IPVS_CMD_ADD_DEST (only return code)
+
+IPVS_CMD_DEL_DEST (only return code)
+
+IPVS_CMD_FLUSH (only return code)
+
+IPVS_CMD_SET_TIMEOUT (only return code)
+
+IPVS_CMD_START_DAEMON (only return code)
+
+IPVS_CMD_STOP_DAEMON (only return code)
+
+IPVS_CMD_ZERO (only return code)
+
+IPVS_CMD_GET_INFO
+	IPVS_INFO_ATTR_VERSION
+	IPVS_INFO_ATTR_CONNTAB_SIZE
+
+IPVS_CMD_GET_SERVICES
+	IPVS_ENTRY_ATTR_SERVICE (one entry per multipart message)
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+		IPVS_SVC_ATTR_SCHED_NAME
+		IPVS_SVC_ATTR_FLAGS
+		IPVS_SVC_ATTR_TIMEOUT
+		IPVS_SVC_ATTR_NETMASK
+		IPVS_SVC_ATTR_STATS
+
+IPVS_CMD_GET_SERVICE
+	IPVS_ENTRY_ATTR_SERVICE
+		IPVS_SVC_ATTR_AF
+		(IPVS_SVC_ATTR_PROTOCOL
+		IPVS_SVC_ATTR_ADDR
+		IPVS_SVC_ATTR_PORT) or IPVS_SVC_ATTR_FWMARK
+		IPVS_SVC_ATTR_SCHED_NAME
+		IPVS_SVC_ATTR_FLAGS
+		IPVS_SVC_ATTR_TIMEOUT
+		IPVS_SVC_ATTR_NETMASK
+		IPVS_SVC_ATTR_STATS
+
+IPVS_CMD_GET_DESTS
+	IPVS_ENTRY_ATTR_DEST (one entry per multipart message)
+		IPVS_DEST_ATTR_ADDR
+		IPVS_DEST_ATTR_PORT
+		IPVS_DEST_ATTR_FWD_METHOD
+		IPVS_DEST_ATTR_WEIGHT
+		IPVS_DEST_ATTR_U_THRESH
+		IPVS_DEST_ATTR_L_THRESH
+		IPVS_DEST_ATTR_ACTIVE_CONNS
+		IPVS_DEST_ATTR_INACT_CONNS
+		IPVS_DEST_ATTR_PERSIST_CONNS
+		IPVS_DEST_ATTR_STATS
+
+IPVS_CMD_GET_TIMEOUT
+	IPVS_TIMEOUT_ATTR_TCP
+	IPVS_TIMEOUT_ATTR_TCP_FIN
+	IPVS_TIMEOUT_ATTR_UDP
+
+IPVS_CMD_GET_DAEMON
+	IPVS_ENTRY_ATTR_DAEMON (one entry per multipart message)
+		IPVS_DAEMON_ATTR_STATE
+		IPVS_DAEMON_ATTR_MCAST_IFN
+		IPVS_DAEMON_ATTR_SYNC_ID
