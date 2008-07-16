@@ -1,45 +1,39 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH] IPVS: More reliable subchronization on connection close.
-Date: Wed, 16 Jul 2008 16:35:20 +1000
-Message-ID: <20080716063519.GA5144@verge.net.au>
+From: Thomas Graf <tgraf@suug.ch>
+Subject: Re: [PATCH 2/2] IPVS: Add genetlink interface implementation
+Date: Wed, 16 Jul 2008 14:15:24 +0200
+Message-ID: <20080716121524.GZ20815@postel.suug.ch>
+References: <1215616317-11386-1-git-send-email-juliusv@google.com> <1215616317-11386-3-git-send-email-juliusv@google.com> <4874EABC.4000301@trash.net> <20080710112017.GA26952@google.com> <20080710113649.GS20815@postel.suug.ch> <f4845fc0807100533h6867ed00x8975d156b15a866f@mail.gmail.com> <20080710144131.GU20815@postel.suug.ch> <f4845fc0807100813o65dee75bgfc53a395dccf74f6@mail.gmail.com> <20080710211630.GW20815@postel.suug.ch> <f4845fc0807101616r1f383e7dx5d85cb3c2dfbed57@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
+In-Reply-To: <f4845fc0807101616r1f383e7dx5d85cb3c2dfbed57@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: LVS Devel <lvs-devel@vger.kernel.org>, Linux Netdev List <netdev@vger.kernel.org>
-Cc: David Miller <davem@davemloft.net>, Rumen Bogdanovski <rumen@voicecho.com>, Joseph Mack NA3T <jmack@wm7d.net>
+Content-Transfer-Encoding: 7bit
+To: Julius Volz <juliusv@google.com>
+Cc: Patrick McHardy <kaber@trash.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, vbusam@google.com, horms@verge.net.au, davem@davemloft.net
 
-From: Rumen Bogdanovski <rumen@voicecho.com>
+* Julius Volz <juliusv@google.com> 2008-07-11 01:16
+> If a single operation just means create _or_ update (NLM_F_EXCL, etc.
+> flags don't work with genetlink), then ipvsadm would have to query for
+> an entry first, which is racy and ugly. So I'd like to keep ADD/EDIT
+> in separate commands. But then I need a different response id (or just
+> use the ADD id?) for a GET.
 
-This patch enhances the synchronization of the closing connections
-between the master and the backup director. It prevents the closed
-connections to expire with the 15 min timeout of the ESTABLISHED
-state on the backup and makes them expire as they would do on the
-master with much shorter timeouts.
+That's fine, both methods a) adding your own NLM_F_ flags to genetlink
+and b) using separate commands would be straight forward and easy to
+understand. 
 
-Cc: Joseph Mack NA3T <jmack@wm7d.net>
-Signed-off-by: Rumen G. Bogdanovski <rumen@voicecho.com>
-Acked-by: Simon Horman <horms@verge.net.au>
+The key point is that a GET or DUMP request should be answered with
+one or more NEW requests. An ADD, SET, or DEL request should be simply
+ACKed or aborted with an error message. Optionally it can trigger a
+notification message which should be either a NEW or DEL request.
 
---- 
+Using SET to explicitely update an object is fine as well. The reason we
+are not using it in the context of notifications is that listeners can
+appear at any time so the listener may not have been around at the time
+the object was created.
 
-Hi Dave,
-
-please consider applying this.
-
-diff -Naur net-2.6_orig/net/ipv4/ipvs/ip_vs_core.c net-2.6/net/ipv4/ipvs/ip_vs_core.c
---- net-2.6_orig/net/ipv4/ipvs/ip_vs_core.c	2008-07-15 11:23:44.000000000 +0300
-+++ net-2.6/net/ipv4/ipvs/ip_vs_core.c	2008-07-15 11:27:31.000000000 +0300
-@@ -993,7 +993,8 @@
- 	       == sysctl_ip_vs_sync_threshold[0])) ||
- 	     ((cp->protocol == IPPROTO_TCP) && (cp->old_state != cp->state) &&
- 	      ((cp->state == IP_VS_TCP_S_FIN_WAIT) ||
--	       (cp->state == IP_VS_TCP_S_CLOSE)))))
-+	       (cp->state == IP_VS_TCP_S_CLOSE_WAIT) ||
-+	       (cp->state == IP_VS_TCP_S_TIME_WAIT)))))
- 		ip_vs_sync_conn(cp);
- 	cp->old_state = cp->state;
- 
+Anyways, it's not a requirement, just common patterns we have been
+using so far.
