@@ -1,116 +1,44 @@
 From: "Julius Volz" <juliusv@google.com>
-Subject: Re: [PATCHv2 0/2] IPVS: Add Generic Netlink configuration interface
-Date: Sat, 26 Jul 2008 00:36:56 +0200
-Message-ID: <f4845fc0807251536l16cd6166gc62be740a14df93a@mail.gmail.com>
+Subject: Re: [PATCHv2 2/2] IPVS: Add genetlink interface implementation
+Date: Sat, 26 Jul 2008 00:39:10 +0200
+Message-ID: <f4845fc0807251539w6fe4347dref663f07794cf45c@mail.gmail.com>
 References: <1216645375-20410-1-git-send-email-juliusv@google.com>
-	 <20080722003403.GC9041@verge.net.au> <4886665E.5060209@google.com>
-	 <4887A4FE.8080706@google.com> <20080725055806.GA5118@verge.net.au>
+	 <1216645375-20410-3-git-send-email-juliusv@google.com>
+	 <20080724235833.GD20815@postel.suug.ch>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1217025418; bh=/4xGMD7jQlgK01WLTLijtQGMNi4=;
+	t=1217025553; bh=keuf0S+YgCU+S0A2kJXmt0qNXR0=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=bvAin1QxDBg+mPtTygMCvPYvpwJIHiQc
-	NGC4mGwjLDxP4LvO1YM49qAM9WDm3JpGqayyxWrXaVSFEpbNeOFEfg==
-In-Reply-To: <20080725055806.GA5118@verge.net.au>
+	 Content-Disposition:References; b=q7y92UMzoDc4JbkGqM/LpJgZKMg+skrd
+	2YgUMGWaGAED4UxV3ZHVeTHhcFoQyC+tTUO84r2xyXW5neW1uP4DpQ==
+In-Reply-To: <20080724235833.GD20815@postel.suug.ch>
 Content-Disposition: inline
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: Vince Busam <vbusam@google.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, davem@davemloft.net, tgraf@suug.ch
+To: Thomas Graf <tgraf@suug.ch>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, horms@verge.net.au, kaber@trash.net, davem@davemloft.net, vbusam@google.com
 
-On Fri, Jul 25, 2008 at 7:58 AM, Simon Horman <horms@verge.net.au> wrote:
-> On Wed, Jul 23, 2008 at 02:39:10PM -0700, Vince Busam wrote:
->> Vince Busam wrote:
->>> Simon Horman wrote:
->>>> I'm not an expert on netlink, but these patches are looking good to me.
->>>> Is the user-space portion available somewhere?
->>
->> Newer versions are available at
->> http://sixpak.org/vince/google/ipvsadm/
+On Fri, Jul 25, 2008 at 1:58 AM, Thomas Graf <tgraf@suug.ch> wrote:
+> * Julius Volz <juliusv@google.com> 2008-07-21 15:02
+>> +static int ip_vs_genl_parse_dest(struct ip_vs_dest_user *udest,
+>> +                              struct nlattr *nla, int full_entry)
+>> +{
+>> +     struct nlattr *attrs[IPVS_SVC_ATTR_MAX + 1];
+>> +     struct nlattr *nla_addr, *nla_port;
+>> +
+>> +     /* Parse mandatory identifying destination fields first */
+>> +     if (nla == NULL ||
+>> +         nla_parse_nested(attrs, IPVS_DEST_ATTR_MAX, nla, ip_vs_dest_policy))
 >
-> Great, thanks :-)
->
-> I have been playing with this a little today. I am able to configure
-> a virtual service and it does work. However clearing seems to be a bit
-> of a problem, as per the trace below.
->
-> I am using the following code:
->
-> linux-next-2.6 14b395e35d1afdd8019d11b92e28041fad591b71
-> + [PATCH] IPVS: Move userspace definitions to include/linux/ip_vs.h
-> + [PATCHv2 1/2] IPVS: Add genetlink interface definitions to ip_vs.h
-> + [PATCHv2 2/2] IPVS: Add genetlink interface implementation
->
-> I am running the code on i386 qemu running on an i386 machine.
->
-> My ipvsadm is ipvsadm-1.25-nl-2 (statically linked).
-> My libnl is Debian's libnl1 1.1-2 (rebuilt to provide a static version).
->
-> # ipvsadm -A -t 10.4.0.132:80
-> # ipvsadm -C
-> # ipvsadm -A -t 10.4.0.132:80
-> BUG: unable to handle kernel paging request at 44e30116
-> IP: [<c01e8b34>] ctrl_dumpfamily+0xa4/0xbc
-> *pde = 00000000
-> Oops: 0000 [#1]
->
-> Pid: 33, comm: ipvsadm Not tainted (2.6.26-kexec-05253-g14b395e-dirty #23)
-> EIP: 0060:[<c01e8b34>] EFLAGS: 00000212 CPU: 0
-> EIP is at ctrl_dumpfamily+0xa4/0xbc
-> EAX: c6f8b560 EBX: c02ee14c ECX: c02ee178 EDX: 44e300c6
-> ESI: c02ee108 EDI: 00000000 EBP: 00000010 ESP: c746dc48
->  DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 0068
-> Process ipvsadm (pid: 33, ti=c746c000 task=c6f20a50 task.ti=c746c000)
-> Stack: 00000000 00000000 c6f8b560 c744e300 c744e260 c744e300 000000d0 c6faf000
->       c01e7073 00000020 0000000f ffffff97 c6f8b560 c744be00 c744e260 c6faf000
->       c6f8b560 00000000 c01e72c2 c6faf800 c0290ca0 c0290c60 c744e260 c01e83d2
-> Call Trace:
->  [<c01e7073>] netlink_dump+0x53/0x1bc
->  [<c01e72c2>] netlink_dump_start+0xe6/0x118
->  [<c01e83d2>] genl_rcv_msg+0x112/0x174
->  [<c01e8a90>] ctrl_dumpfamily+0x0/0xbc
->  [<c018cd2e>] copy_to_user+0x2a/0x38
->  [<c01e82c0>] genl_rcv_msg+0x0/0x174
->  [<c01e7450>] netlink_rcv_skb+0x38/0x7c
->  [<c01e844d>] genl_rcv+0x19/0x24
->  [<c01e6290>] netlink_unicast+0x168/0x1a4
->  [<c01e6ad8>] netlink_sendmsg+0x1f8/0x260
->  [<c01cf7a6>] sock_sendmsg+0xb2/0xd8
->  [<c0121bf8>] autoremove_wake_function+0x0/0x30
->  [<c016126e>] simple_lookup+0x2a/0x30
->  [<c015064e>] real_lookup+0xa2/0xd4
->  [<c018cd65>] copy_from_user+0x29/0x4c
->  [<c018cd65>] copy_from_user+0x29/0x4c
->  [<c01d6586>] verify_iovec+0x32/0x7c
->  [<c01d0bcd>] sys_sendmsg+0x111/0x200
->  [<c0133429>] buffered_rmqueue+0x115/0x1e0
->  [<c0133643>] get_page_from_freelist+0x9f/0xf8
->  [<c0133733>] __alloc_pages_internal+0x97/0x3dc
->  [<c013c37f>] do_anonymous_page+0xa7/0xd0
->  [<c013c95c>] handle_mm_fault+0x154/0x1a0
->  [<c01d107e>] sys_socketcall+0x1a2/0x1ac
->  [<c0103db2>] syscall_call+0x7/0xb
->  =======================
-> Code: 48 08 8b 02 8b 50 2c 6a 01 ff 74 24 10 6a 02 89 d8 e8 39 f9 ff ff 83 c4 0c 85 c0 79 c2 8b 44 24 08 89 68 14 89 78 18 8b 54 24 0b <8b> 42 50 83 c4 10 5b 5e 5f 5d c3 90 c7 04 24 00 00 00 00 e9 68
-> EIP: [<c01e8b34>] ctrl_dumpfamily+0xa4/0xbc SS:ESP 0068:c746dc48
-> ---[ end trace fe319f25bee8d956 ]---
-> Segmentation fault
-> #
-> #
+> Small typo here, attrs[] is defined with a length of IPVS_SVC_ATTR_MAX+1
+> while IPVS_DEST_ATTR_MAX is passed to to nla_parse_nested.
 
-Thanks for reporting. I'm not in expert in interpreting these dumps,
-but it seems like there is no IPVS code in the trace, only the Generic
-Netlink functions? Thomas, is this correct?
-
-I'm on vacation for two weeks now, but I am sure I tested exactly this
-situation many times without an oops. Do you get this every time or
-did this just happen once?
-
-I use UML and not qemu, though.
+Right, thanks for catching this! Will include this in the next
+iteration after vacation...
 
 Julius
 
