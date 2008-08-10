@@ -1,8 +1,10 @@
 From: sven.wegener@stealer.net
-Subject: [PATCH] ipvs: A couple of fixes and cleanups
-Date: Sun, 10 Aug 2008 11:07:30 +0000
-Message-ID: <1218366459-23971-1-git-send-email-sven.wegener@stealer.net>
+Subject: [PATCH 1/9] ipvs: Fix possible deadlock in sync code
+Date: Sun, 10 Aug 2008 11:07:31 +0000
+Message-ID: <1218366459-23971-2-git-send-email-sven.wegener@stealer.net>
+References: <1218366459-23971-1-git-send-email-sven.wegener@stealer.net>
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1218366459-23971-1-git-send-email-sven.wegener@stealer.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -11,47 +13,34 @@ Content-Transfer-Encoding: 7bit
 To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg
 Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 
-Hi guys,
+From: Sven Wegener <sven.wegener@stealer.net>
 
-here come a couple of fixes and cleanups for IPVS. Worth mentioning are the two
-possible deadlock fixes. One introduced by my last sync daemon work, which
-hasn't hit any stable kernel yet. The other one is in the estimator code and
-goes back to at leat since we started working with git for the kernel. The
-latter I think qualifies for -stable.
+Commit 998e7a76804b7a273a0460c2cdd5a51fa9856717 ("ipvs: Use kthread_run()
+instead of doing a double-fork via kernel_thread()") introduced a possible
+deadlock in the sync code. We need to use the _bh versions for the lock, as the
+lock is also accessed from a bottom half.
 
-I've pushed the changes (8123b42..2e45552) based on davem's net tree here
+Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+---
+ net/ipv4/ipvs/ip_vs_sync.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-	git://git.stealer.net/linux-2.6.git stealer/ipvs/for-davem
-
-Sven Wegener (9):
-      ipvs: Fix possible deadlock in sync code
-      ipvs: Fix possible deadlock in estimator code
-      ipvs: Use ARRAY_SIZE()
-      ipvs: Use list_empty() instead of open-coding the same functionality
-      ipvs: Initialize schedulers' struct list_head at compile time
-      ipvs: Annotate init functions with __init
-      ipvs: Mark net_vs_ctl_path const
-      ipvs: Embed estimator object into stats object
-      ipvs: No need to zero out ip_vs_stats during initialization
-
- include/net/ip_vs.h         |   26 ++++++++--
- net/ipv4/ipvs/ip_vs_app.c   |    2 +-
- net/ipv4/ipvs/ip_vs_conn.c  |    2 +-
- net/ipv4/ipvs/ip_vs_ctl.c   |   12 ++--
- net/ipv4/ipvs/ip_vs_dh.c    |    2 +-
- net/ipv4/ipvs/ip_vs_est.c   |  116 ++++++++++++++----------------------------
- net/ipv4/ipvs/ip_vs_lblc.c  |    2 +-
- net/ipv4/ipvs/ip_vs_lblcr.c |    2 +-
- net/ipv4/ipvs/ip_vs_lc.c    |    2 +-
- net/ipv4/ipvs/ip_vs_nq.c    |    2 +-
- net/ipv4/ipvs/ip_vs_proto.c |    2 +-
- net/ipv4/ipvs/ip_vs_rr.c    |    2 +-
- net/ipv4/ipvs/ip_vs_sched.c |    4 +-
- net/ipv4/ipvs/ip_vs_sed.c   |    2 +-
- net/ipv4/ipvs/ip_vs_sh.c    |    2 +-
- net/ipv4/ipvs/ip_vs_sync.c  |    4 +-
- net/ipv4/ipvs/ip_vs_wlc.c   |    2 +-
- net/ipv4/ipvs/ip_vs_wrr.c   |    2 +-
- 18 files changed, 84 insertions(+), 104 deletions(-)
-
+diff --git a/net/ipv4/ipvs/ip_vs_sync.c b/net/ipv4/ipvs/ip_vs_sync.c
+index 45e9bd9..a652da2 100644
+--- a/net/ipv4/ipvs/ip_vs_sync.c
++++ b/net/ipv4/ipvs/ip_vs_sync.c
+@@ -904,9 +904,9 @@ int stop_sync_thread(int state)
+ 		 * progress of stopping the master sync daemon.
+ 		 */
+ 
+-		spin_lock(&ip_vs_sync_lock);
++		spin_lock_bh(&ip_vs_sync_lock);
+ 		ip_vs_sync_state &= ~IP_VS_STATE_MASTER;
+-		spin_unlock(&ip_vs_sync_lock);
++		spin_unlock_bh(&ip_vs_sync_lock);
+ 		kthread_stop(sync_master_thread);
+ 		sync_master_thread = NULL;
+ 	} else if (state == IP_VS_STATE_BACKUP) {
+-- 
+1.5.6.4
 
