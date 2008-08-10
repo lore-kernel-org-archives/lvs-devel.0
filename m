@@ -1,11 +1,11 @@
 From: Sven Wegener <sven.wegener@stealer.net>
-Subject: Re: [PATCH 2/9] ipvs: Fix possible deadlock in estimator code
-Date: Sun, 10 Aug 2008 15:58:15 +0200 (CEST)
-Message-ID: <alpine.LNX.1.10.0808101402490.12259@titan.stealer.net>
-References: <1218366459-23971-1-git-send-email-sven.wegener@stealer.net> <1218366459-23971-3-git-send-email-sven.wegener@stealer.net>
+Subject: [PATCH 6/9] ipvs: Annotate init functions with __init
+Date: Sun, 10 Aug 2008 20:32:11 +0200 (CEST)
+Message-ID: <alpine.LNX.1.10.0808102029200.12259@titan.stealer.net>
+References: <1218366459-23971-1-git-send-email-sven.wegener@stealer.net> <1218366459-23971-7-git-send-email-sven.wegener@stealer.net>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1218366459-23971-3-git-send-email-sven.wegener@stealer.net>
+In-Reply-To: <1218366459-23971-7-git-send-email-sven.wegener@stealer.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
@@ -13,54 +13,79 @@ Content-Transfer-Encoding: 7bit
 To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg
 Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Sun, 10 Aug 2008, sven.wegener@stealer.net wrote:
+Being able to discard these functions saves a couple of bytes at runtime. The
+cleanup functions can't be annotated with __exit as they are also called from
+init functions.
 
-> From: Sven Wegener <sven.wegener@stealer.net>
-> 
-> There is a slight chance for a deadlock in the estimator code. We can't call
-> del_timer_sync() while holding our lock, as the timer might be active and
-> spinning for the lock on another cpu. Work around this issue by using
-> try_to_del_timer_sync() and releasing the lock. We could actually delete the
-> timer outside of our lock, as the add and kill functions are only every called
-> from userspace via [gs]etsockopt() and are serialized by a mutex, but better
-> make this explicit.
-> 
-> Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
-> Cc: stable <stable@kernel.org>
-> ---
->  net/ipv4/ipvs/ip_vs_est.c |    7 +++++--
->  1 files changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/ipv4/ipvs/ip_vs_est.c b/net/ipv4/ipvs/ip_vs_est.c
-> index bc04eed..1d6e58e 100644
-> --- a/net/ipv4/ipvs/ip_vs_est.c
-> +++ b/net/ipv4/ipvs/ip_vs_est.c
-> @@ -170,8 +170,11 @@ void ip_vs_kill_estimator(struct ip_vs_stats *stats)
->  		kfree(est);
->  		killed++;
->  	}
-> -	if (killed && est_list == NULL)
-> -		del_timer_sync(&est_timer);
-> +	while (killed && !est_list && try_to_del_timer_sync(&est_timer) < 0) {
-> +		write_unlock_bh(&est_lock);
-> +		cpu_relax();
-> +		write_lock_bh(&est_lock);
-> +	}
->  	write_unlock_bh(&est_lock);
->  }
->  
+Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+---
+ net/ipv4/ipvs/ip_vs_app.c   |    2 +-
+ net/ipv4/ipvs/ip_vs_conn.c  |    2 +-
+ net/ipv4/ipvs/ip_vs_ctl.c   |    2 +-
+ net/ipv4/ipvs/ip_vs_proto.c |    4 ++--
+ 4 files changed, 5 insertions(+), 5 deletions(-)
 
-As a side note, just noticed that this opens another race condition, if we 
-leave the mutex serializing the [gs]etsockopt calls out:
+There's one more, register_ip_vs_protocol() is also only used during 
+initialization.
 
-If the timer reschedules itself, after we just removed the last estimator, 
-but we failed to deactivate the timer due to it being active, we have the 
-chance of add_timer() on already pending timer during creating a new 
-estimator. This will then trigger the BUG_ON() in add_timer(). Thanks to 
-the mutex this can't happen currently.
-
-The "ipvs: Embed estimator object into stats object" patch will move to 
-code from add_timer() to mod_timer() so at the the end of this series 
-we're safe.
-
-Sven
+diff --git a/net/ipv4/ipvs/ip_vs_app.c b/net/ipv4/ipvs/ip_vs_app.c
+index 1f1897a..201b8ea 100644
+--- a/net/ipv4/ipvs/ip_vs_app.c
++++ b/net/ipv4/ipvs/ip_vs_app.c
+@@ -608,7 +608,7 @@ int ip_vs_skb_replace(struct sk_buff *skb, gfp_t pri,
+ }
+ 
+ 
+-int ip_vs_app_init(void)
++int __init ip_vs_app_init(void)
+ {
+ 	/* we will replace it with proc_net_ipvs_create() soon */
+ 	proc_net_fops_create(&init_net, "ip_vs_app", 0, &ip_vs_app_fops);
+diff --git a/net/ipv4/ipvs/ip_vs_conn.c b/net/ipv4/ipvs/ip_vs_conn.c
+index f8bdae4..44a6872 100644
+--- a/net/ipv4/ipvs/ip_vs_conn.c
++++ b/net/ipv4/ipvs/ip_vs_conn.c
+@@ -965,7 +965,7 @@ static void ip_vs_conn_flush(void)
+ }
+ 
+ 
+-int ip_vs_conn_init(void)
++int __init ip_vs_conn_init(void)
+ {
+ 	int idx;
+ 
+diff --git a/net/ipv4/ipvs/ip_vs_ctl.c b/net/ipv4/ipvs/ip_vs_ctl.c
+index 9a5ace0..df13333 100644
+--- a/net/ipv4/ipvs/ip_vs_ctl.c
++++ b/net/ipv4/ipvs/ip_vs_ctl.c
+@@ -2306,7 +2306,7 @@ static struct nf_sockopt_ops ip_vs_sockopts = {
+ };
+ 
+ 
+-int ip_vs_control_init(void)
++int __init ip_vs_control_init(void)
+ {
+ 	int ret;
+ 	int idx;
+diff --git a/net/ipv4/ipvs/ip_vs_proto.c b/net/ipv4/ipvs/ip_vs_proto.c
+index 876714f..6099a88 100644
+--- a/net/ipv4/ipvs/ip_vs_proto.c
++++ b/net/ipv4/ipvs/ip_vs_proto.c
+@@ -43,7 +43,7 @@ static struct ip_vs_protocol *ip_vs_proto_table[IP_VS_PROTO_TAB_SIZE];
+ /*
+  *	register an ipvs protocol
+  */
+-static int __used register_ip_vs_protocol(struct ip_vs_protocol *pp)
++static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
+ {
+ 	unsigned hash = IP_VS_PROTO_HASH(pp->protocol);
+ 
+@@ -190,7 +190,7 @@ ip_vs_tcpudp_debug_packet(struct ip_vs_protocol *pp,
+ }
+ 
+ 
+-int ip_vs_protocol_init(void)
++int __init ip_vs_protocol_init(void)
+ {
+ 	char protocols[64];
+ #define REGISTER_PROTOCOL(p)			\
