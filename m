@@ -1,40 +1,57 @@
-From: "Julius Volz" <juliusv@google.com>
-Subject: Re: [PATCHv3 0/2] IPVS: Add Generic Netlink configuration interface
-Date: Sat, 9 Aug 2008 21:57:57 +0200
-Message-ID: <f4845fc0808091257m63bb8b70i3eb9782e73d0e9b2@mail.gmail.com>
-References: <1218120219-1117-1-git-send-email-juliusv@google.com>
-	 <20080808022607.GB6094@verge.net.au>
-	 <20080808120642.GB32458@google.com>
-	 <20080809142331.GA3497@verge.net.au>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1218311880; bh=an6Es4ru9Khc3OeaGo5FPhSiZaQ=;
-	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
-	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=ZTFAgt3feaAwRKdRXnPKoBQw06PSbK0u
-	JuHt+MmpCwfFODhwSL3sl1JFdKhNvs20VXx0GbfVCBmCDMGYVj91tw==
-In-Reply-To: <20080809142331.GA3497@verge.net.au>
-Content-Disposition: inline
-Sender: netdev-owner@vger.kernel.org
+From: sven.wegener@stealer.net
+Subject: [PATCH] ipvs: A couple of fixes and cleanups
+Date: Sun, 10 Aug 2008 11:07:30 +0000
+Message-ID: <1218366459-23971-1-git-send-email-sven.wegener@stealer.net>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: julius.volz@gmail.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, davem@davemloft.net, tgraf@suug.ch, vbusam@google.com
+Content-Transfer-Encoding: 7bit
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Sat, Aug 9, 2008 at 4:23 PM, Simon Horman <horms@verge.net.au> wrote:
-> your latest patch does resolve the problem that I was seeing
-> with ipvsadm-1.25-nl-2. ipvsadm-1.25-nl-3 also works :-)
+Hi guys,
 
-Nice!
+here come a couple of fixes and cleanups for IPVS. Worth mentioning are the two
+possible deadlock fixes. One introduced by my last sync daemon work, which
+hasn't hit any stable kernel yet. The other one is in the estimator code and
+goes back to at leat since we started working with git for the kernel. The
+latter I think qualifies for -stable.
 
-> I'd like to try and stress it out a bit more.
-> I will try and get to that tomorrow or on Monday.
+I've pushed the changes (8123b42..2e45552) based on davem's net tree here
 
-Great, thank you!
+	git://git.stealer.net/linux-2.6.git stealer/ipvs/for-davem
 
-Julius
+Sven Wegener (9):
+      ipvs: Fix possible deadlock in sync code
+      ipvs: Fix possible deadlock in estimator code
+      ipvs: Use ARRAY_SIZE()
+      ipvs: Use list_empty() instead of open-coding the same functionality
+      ipvs: Initialize schedulers' struct list_head at compile time
+      ipvs: Annotate init functions with __init
+      ipvs: Mark net_vs_ctl_path const
+      ipvs: Embed estimator object into stats object
+      ipvs: No need to zero out ip_vs_stats during initialization
 
--- 
-Google Switzerland GmbH
+ include/net/ip_vs.h         |   26 ++++++++--
+ net/ipv4/ipvs/ip_vs_app.c   |    2 +-
+ net/ipv4/ipvs/ip_vs_conn.c  |    2 +-
+ net/ipv4/ipvs/ip_vs_ctl.c   |   12 ++--
+ net/ipv4/ipvs/ip_vs_dh.c    |    2 +-
+ net/ipv4/ipvs/ip_vs_est.c   |  116 ++++++++++++++----------------------------
+ net/ipv4/ipvs/ip_vs_lblc.c  |    2 +-
+ net/ipv4/ipvs/ip_vs_lblcr.c |    2 +-
+ net/ipv4/ipvs/ip_vs_lc.c    |    2 +-
+ net/ipv4/ipvs/ip_vs_nq.c    |    2 +-
+ net/ipv4/ipvs/ip_vs_proto.c |    2 +-
+ net/ipv4/ipvs/ip_vs_rr.c    |    2 +-
+ net/ipv4/ipvs/ip_vs_sched.c |    4 +-
+ net/ipv4/ipvs/ip_vs_sed.c   |    2 +-
+ net/ipv4/ipvs/ip_vs_sh.c    |    2 +-
+ net/ipv4/ipvs/ip_vs_sync.c  |    4 +-
+ net/ipv4/ipvs/ip_vs_wlc.c   |    2 +-
+ net/ipv4/ipvs/ip_vs_wrr.c   |    2 +-
+ 18 files changed, 84 insertions(+), 104 deletions(-)
+
+
