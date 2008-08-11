@@ -1,20 +1,21 @@
-From: Simon Horman <horms@verge.net.au>
+From: Sven Wegener <sven.wegener@stealer.net>
 Subject: Re: [PATCH] ipvs: A couple of fixes and cleanups
-Date: Mon, 11 Aug 2008 17:19:14 +1000
-Message-ID: <20080811071912.GA12605@verge.net.au>
-References: <1218366459-23971-1-git-send-email-sven.wegener@stealer.net> <alpine.LNX.1.10.0808102032180.12259@titan.stealer.net> <20080811005016.GC19825@verge.net.au> <alpine.LNX.1.10.0808110821200.12259@titan.stealer.net> <20080811065647.GD1792@verge.net.au>
+Date: Mon, 11 Aug 2008 10:19:09 +0200 (CEST)
+Message-ID: <alpine.LNX.1.10.0808111016500.12259@titan.stealer.net>
+References: <1218366459-23971-1-git-send-email-sven.wegener@stealer.net> <alpine.LNX.1.10.0808102032180.12259@titan.stealer.net> <20080811005016.GC19825@verge.net.au> <alpine.LNX.1.10.0808110821200.12259@titan.stealer.net>
+ <20080811065647.GD1792@verge.net.au>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <20080811065647.GD1792@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Sven Wegener <sven.wegener@stealer.net>
+To: Simon Horman <horms@verge.net.au>
 Cc: wensong@linux-vs.org, ja@ssi.bg, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Mon, Aug 11, 2008 at 04:56:48PM +1000, Simon Horman wrote:
+On Mon, 11 Aug 2008, Simon Horman wrote:
+
 > On Mon, Aug 11, 2008 at 08:43:54AM +0200, Sven Wegener wrote:
 > > On Mon, 11 Aug 2008, Simon Horman wrote:
 > > 
@@ -70,49 +71,13 @@ On Mon, Aug 11, 2008 at 04:56:48PM +1000, Simon Horman wrote:
 > To be honest I prefer direct assignment too. I think it is less fragile
 > as the structures can be re-ordered without effecting how clear works.
 > I'll post a (trivial) patch shortly.
+> 
+> > Also the estimator and statistics structures can be optimized to avoid 
+> > some padding. I'll include these changes and resend.
+> 
+> Great.
 
-And here it is...
+Sadly the layout of the stats structure is shared with user space, so this 
+can't be changed easily without breaking ABI.
 
---------------------------------------------------
-
-ipvs: Explictly clear ip_vs_status members
-
-In order to align the coding styles of ip_vs_zero_stats() and
-its child-function ip_vs_zero_estimator(), clear ip_vs_status
-members explicitlty rather than doing a limited memset().
-
-This was chosen over modifying ip_vs_zero_estimator() to use
-memset() as it is more robust against changes in members
-in the relevant structures. memset() would be prefered if
-all members of the structure were to be cleared.
-
-Cc: Sven Wegener <sven.wegener@stealer.net>
-Signed-off-by: Simon Horman <horms@verge.net.au>
-
-Index: net-2.6/net/ipv4/ipvs/ip_vs_ctl.c
-===================================================================
---- net-2.6.orig/net/ipv4/ipvs/ip_vs_ctl.c	2008-08-11 17:15:04.000000000 +1000
-+++ net-2.6/net/ipv4/ipvs/ip_vs_ctl.c	2008-08-11 17:15:07.000000000 +1000
-@@ -683,8 +683,21 @@ static void
- ip_vs_zero_stats(struct ip_vs_stats *stats)
- {
- 	spin_lock_bh(&stats->lock);
--	memset(stats, 0, (char *)&stats->lock - (char *)stats);
-+
-+	stats->conns = 0;
-+	stats->inpkts = 0;
-+	stats->outpkts = 0;
-+	stats->inbytes = 0;
-+	stats->outbytes = 0;
-+
-+	stats->cps = 0;
-+	stats->inpps = 0;
-+	stats->outpps = 0;
-+	stats->inbps = 0;
-+	stats->outbps = 0;
-+
- 	ip_vs_zero_estimator(stats);
-+
- 	spin_unlock_bh(&stats->lock);
- }
- 
+Sven
