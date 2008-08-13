@@ -1,61 +1,41 @@
-From: Sven Wegener <sven.wegener@stealer.net>
-Subject: Re: [RFC,PATCH] ipvs: Fix race condition in lblb and lblcr
- schedulers
-Date: Wed, 13 Aug 2008 12:36:59 +0200 (CEST)
-Message-ID: <alpine.LNX.1.10.0808131119560.12259@titan.stealer.net>
-References: <alpine.LNX.1.10.0808112202270.12259@titan.stealer.net> <20080812021053.GD22142@verge.net.au> <alpine.LNX.1.10.0808120606200.12259@titan.stealer.net> <alpine.LNX.1.10.0808121007130.12259@titan.stealer.net> <20080813054247.GA21168@verge.net.au>
- <alpine.LNX.1.10.0808130842540.12259@titan.stealer.net> <20080813071221.GB4872@verge.net.au>
+From: "Julius Volz" <juliusv@google.com>
+Subject: Re: [PATCHv3 0/2] IPVS: Add Generic Netlink configuration interface
+Date: Wed, 13 Aug 2008 18:00:41 +0200
+Message-ID: <f4845fc0808130900o550511dn2ec425bb2c911738@mail.gmail.com>
+References: <1218120219-1117-1-git-send-email-juliusv@google.com>
+	 <20080808022607.GB6094@verge.net.au>
+	 <20080808120642.GB32458@google.com>
+	 <20080809142331.GA3497@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20080813071221.GB4872@verge.net.au>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1218643242; bh=lwh+bN42BNpGN5vCpUASjnnEuh4=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=pPDcT6x8Pocr0fPv7csDBCwRwT8pYR7A
+	CuPgm5r7wOdWerOVMUwUB2In4OHpf7JerfqrDipS/eYxzZDFhKbcvA==
+In-Reply-To: <20080809142331.GA3497@verge.net.au>
+Content-Disposition: inline
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: julius.volz@gmail.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, davem@davemloft.net, tgraf@suug.ch, vbusam@google.com
 
-On Wed, 13 Aug 2008, Simon Horman wrote:
+On Sat, Aug 9, 2008 at 4:23 PM, Simon Horman <horms@verge.net.au> wrote:
+> Hi Julius,
+>
+> your latest patch does resolve the problem that I was seeing
+> with ipvsadm-1.25-nl-2. ipvsadm-1.25-nl-3 also works :-)
+>
+> I'd like to try and stress it out a bit more.
+> I will try and get to that tomorrow or on Monday.
 
-> On Wed, Aug 13, 2008 at 08:59:32AM +0200, Sven Wegener wrote:
-> > On Wed, 13 Aug 2008, Simon Horman wrote:
-> > 
-> > > On Tue, Aug 12, 2008 at 03:07:48PM +0200, Sven Wegener wrote:
-> > > > 
-> > > > +
-> > > > +		/*
-> > > > +		 * If the destination is not available, i.e. it's in the trash,
-> > > > +		 * ignore it, as it may be removed from under our feet
-> > > > +		 */
-> > > > +
-> > > > +		if (!(dest->flags & IP_VS_DEST_F_AVAILABLE))
-> > > > +			dest = NULL;
-> > > >  	}
-> > > > -	en->lastuse = jiffies;
-> > > 
-> > > At this point we know that dest exists and is not in the trash.
-> > > We know that dest can't disapear given that its not already
-> > > in the trash and our caller holds a read lock on __ip_vs_svc_lock.
-> > > So dest will be safe until after ip_vs_lblc_schedule() returns.
-> > > 
-> > > Dest seems ok :-)
-> > > 
-> > > Ok, that seems complex but non-racy to me :-)
-> > > 
-> > > Perhaps a longer comment would be in order.
-> > 
-> > Yeah, that's the point where we prevent the race with the trash purging. 
-> > We could change the purging of destinations from the trash to be under 
-> > __ip_vs_svc_lock write locked, then we know that all destinations, even 
-> > the ones in the trash are valid. Might make more sense than duplicating 
-> > this logic in other schedulers.
-> 
-> That sounds like a good way to simplify things.
+Hi, you were probably occupied by the other IPVS patches. Is there any
+news on this?
 
-Looking at the code it doesn't seem that simple. We lock __ip_vs_svc_lock 
-for writing and then wait for all current users of the service to go away. 
-But it's still possible that we clean up destinations from other services. 
-And when we restrict it to only clean up the destinations that match our 
-service, we have a chance of leaving destinations in the trash for good.
+Julius
 
-Sven
+-- 
+Google Switzerland GmbH
