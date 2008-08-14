@@ -1,22 +1,20 @@
-From: Simon Horman <horms@verge.net.au>
+From: Sven Wegener <sven.wegener@stealer.net>
 Subject: Re: [PATCHv3 2/2] IPVS: Add genetlink interface implementation
-Date: Thu, 14 Aug 2008 19:52:48 +1000
-Message-ID: <20080814095245.GA8901@verge.net.au>
+Date: Thu, 14 Aug 2008 12:04:50 +0200 (CEST)
+Message-ID: <alpine.LNX.1.10.0808141144240.12259@titan.stealer.net>
 References: <1218120219-1117-1-git-send-email-juliusv@google.com> <1218120219-1117-3-git-send-email-juliusv@google.com> <20080808112937.GA32458@google.com> <alpine.LNX.1.10.0808132326310.12259@titan.stealer.net> <20080814093201.GA8046@google.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
 In-Reply-To: <20080814093201.GA8046@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julius Volz <juliusv@google.com>
-Cc: Sven Wegener <sven.wegener@stealer.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, davem@davemloft.net, tgraf@suug.ch, vbusam@google.com
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, horms@verge.net.au, kaber@trash.net, davem@davemloft.net, tgraf@suug.ch, vbusam@google.com
 
-On Thu, Aug 14, 2008 at 11:32:02AM +0200, Julius Volz wrote:
-> Hi Sven,
-> 
+On Thu, 14 Aug 2008, Julius Volz wrote:
+
 > On Wed, Aug 13, 2008 at 11:51:06PM +0200, Sven Wegener wrote:
 > > On Fri, 8 Aug 2008, Julius Volz wrote:
 > > > +static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
@@ -54,18 +52,18 @@ On Thu, Aug 14, 2008 at 11:32:02AM +0200, Julius Volz wrote:
 > Ouch, thanks! Fixed this and locked the mutex later. I also removed the
 > "if (msg)" from out_err, as it becomes unneeded now. Here's the updated
 > patch:
-> 
+
+You missed the static on the register and unregister functions down at the 
+bottom. :) Also see my comments to your change regarding the above issue 
+down here.
+
 > -------------
 > Add the implementation of the new Generic Netlink interface to IPVS and
 > keep the old set/getsockopt interface for userspace backwards
 > compatibility.
 > 
 > Signed-off-by: Julius Volz <juliusv@google.com>
-
-Acked-by: Simon Horman <horms@verge.net.au>
-
-(ditto for the other patch in the series)
-
+> 
 >  1 files changed, 878 insertions(+), 0 deletions(-)
 > 
 > diff --git a/net/ipv4/ipvs/ip_vs_ctl.c b/net/ipv4/ipvs/ip_vs_ctl.c
@@ -764,8 +762,16 @@ Acked-by: Simon Horman <horms@verge.net.au>
 > +	reply = genlmsg_put_reply(msg, info, &ip_vs_genl_family, 0, reply_cmd);
 > +	if (reply == NULL)
 > +		goto nla_put_failure;
+
+These gotos now unlock a not locked mutex down in the error path.
+
 > +
 > +	mutex_lock(&__ip_vs_mutex);
+
+Is there a reason not using mutex_lock_interruptible() like the sockopt 
+interface does? I wondered in your earlier patch, but didn't really 
+bother.
+
 > +
 > +	switch (cmd) {
 > +	case IPVS_CMD_GET_SERVICE:
@@ -927,6 +933,9 @@ Acked-by: Simon Horman <horms@verge.net.au>
 > +};
 > +
 > +int ip_vs_genl_register(void)
+
+static int __init
+
 > +{
 > +	int ret, i;
 > +
@@ -947,6 +956,9 @@ Acked-by: Simon Horman <horms@verge.net.au>
 > +}
 > +
 > +void ip_vs_genl_unregister(void)
+
+static void
+
 > +{
 > +	genl_unregister_family(&ip_vs_genl_family);
 > +}
@@ -978,5 +990,4 @@ Acked-by: Simon Horman <horms@verge.net.au>
 >  	nf_unregister_sockopt(&ip_vs_sockopts);
 >  	LeaveFunction(2);
 >  }
-> -- 
-> 1.5.4.5
+> 
