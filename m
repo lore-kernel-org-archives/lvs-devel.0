@@ -1,36 +1,59 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCHv3 2/2] IPVS: Add genetlink interface implementation
-Date: Fri, 15 Aug 2008 08:53:56 +1000
-Message-ID: <20080814225354.GB15825@verge.net.au>
-References: <1218120219-1117-1-git-send-email-juliusv@google.com> <1218120219-1117-3-git-send-email-juliusv@google.com> <20080808112937.GA32458@google.com> <alpine.LNX.1.10.0808132326310.12259@titan.stealer.net> <20080814093201.GA8046@google.com> <alpine.LNX.1.10.0808141144240.12259@titan.stealer.net> <20080814102719.GB8046@google.com> <20080814120843.GC8046@google.com> <alpine.LNX.1.10.0808141508370.12259@titan.stealer.net> <f4845fc0808140722j78698483wcf8d7a4b6bc5cc5a@mail.gmail.com>
+Subject: [GIT] Please pull updates for IPVS
+Date: Fri, 15 Aug 2008 10:12:52 +1000
+Message-ID: <20080815001250.GC15825@verge.net.au>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <f4845fc0808140722j78698483wcf8d7a4b6bc5cc5a@mail.gmail.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julius Volz <juliusv@google.com>
-Cc: Sven Wegener <sven.wegener@stealer.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, davem@davemloft.net, tgraf@suug.ch, vbusam@google.com
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: David Miller <davem@davemloft.net>, Sven Wegener <sven.wegener@stealer.net>, Julius Volz <juliusv@google.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-On Thu, Aug 14, 2008 at 04:22:33PM +0200, Julius Volz wrote:
-> On Thu, Aug 14, 2008 at 3:32 PM, Sven Wegener <sven.wegener@stealer.net> wrote:
-> > On Thu, 14 Aug 2008, Julius Volz wrote:
-> >> Ok, fixed this up. The mutex is not completely moved down to make the
-> >> code look a bit nicer (nla_put_failure assumes locked mutex). There
-> >> should not be much concurrency anyways since this mutex only locks the
-> >> userspace interface, which is mainly used by ipvsadm.
-> >
-> > True, it was just a hint for an optimization. Looks good to me.
-> >
-> > Acked-by: Sven Wegener <sven.wegener@stealer.net>
-> 
-> Thanks for the help with this!
-> 
-> > Should we get this into 2.6.27? It's a new interface, currently unused, so
-> > the chance of breaking anything is marginal.
-> 
-> Yeah, it shouldn't break anything existing and that would be great!
+Hi Dave,
 
-Fine by me.
+I have pulled together the handful of unmerged but agreed to
+IPVS patches that are floating around.
+
+Julius, Sven and I would particularly like Julius' two changes to go
+in. They add a new interface which is currently unused and thus the
+likelihood of breakage seems low.
+
+The other changes are clean ups.
+
+
+
+The following changes since commit 0eb8b1fe9238ca4c1797e4c105d5790abda1726f:
+  Michael Chan (1):
+        bnx2: Update version to 1.8.0.
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-2.6.git master
+
+Julius Volz (2):
+      IPVS: Add genetlink interface definitions to ip_vs.h
+      IPVS: Add genetlink interface implementation
+
+Simon Horman (1):
+      ipvs: rename __ip_vs_wlc_schedule in lblc and lblcr schedulers
+
+Sven Wegener (2):
+      ipvs: Only call init_service, update_service and done_service for schedulers if defined
+      ipvs: Create init functions for estimator code
+
+ include/linux/ip_vs.h       |  160 ++++++++
+ include/net/ip_vs.h         |    2 +
+ net/ipv4/ipvs/ip_vs_core.c  |    8 +-
+ net/ipv4/ipvs/ip_vs_ctl.c   |  896 ++++++++++++++++++++++++++++++++++++++++++-
+ net/ipv4/ipvs/ip_vs_est.c   |   18 +-
+ net/ipv4/ipvs/ip_vs_lblc.c  |   13 +-
+ net/ipv4/ipvs/ip_vs_lblcr.c |   13 +-
+ net/ipv4/ipvs/ip_vs_lc.c    |   21 -
+ net/ipv4/ipvs/ip_vs_nq.c    |   24 --
+ net/ipv4/ipvs/ip_vs_rr.c    |    7 -
+ net/ipv4/ipvs/ip_vs_sed.c   |   24 --
+ net/ipv4/ipvs/ip_vs_wlc.c   |   24 --
+ 12 files changed, 1072 insertions(+), 138 deletions(-)
