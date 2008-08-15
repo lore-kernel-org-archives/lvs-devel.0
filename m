@@ -1,68 +1,39 @@
 From: Sven Wegener <sven.wegener@stealer.net>
-Subject: Re: [RFC,PATCH] ipvs: Fix race condition in lblb and lblcr
- schedulers
-Date: Fri, 15 Aug 2008 08:03:32 +0200 (CEST)
-Message-ID: <alpine.LNX.1.10.0808150801560.12259@titan.stealer.net>
-References: <alpine.LNX.1.10.0808112202270.12259@titan.stealer.net> <20080812021053.GD22142@verge.net.au> <alpine.LNX.1.10.0808120606200.12259@titan.stealer.net> <alpine.LNX.1.10.0808121007130.12259@titan.stealer.net> <20080813054247.GA21168@verge.net.au>
- <alpine.LNX.1.10.0808130842540.12259@titan.stealer.net> <20080813071221.GB4872@verge.net.au> <alpine.LNX.1.10.0808131119560.12259@titan.stealer.net>
+Subject: Re: [GIT] Please pull updates for IPVS
+Date: Fri, 15 Aug 2008 08:09:12 +0200 (CEST)
+Message-ID: <alpine.LNX.1.10.0808150803570.12259@titan.stealer.net>
+References: <20080815001250.GC15825@verge.net.au> <20080814.172508.15803616.davem@davemloft.net> <20080815010235.GD15825@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LNX.1.10.0808131119560.12259@titan.stealer.net>
+In-Reply-To: <20080815010235.GD15825@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: David Miller <davem@davemloft.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, juliusv@google.com, wensong@linux-vs.org, ja@ssi.bg
 
-On Wed, 13 Aug 2008, Sven Wegener wrote:
+On Fri, 15 Aug 2008, Simon Horman wrote:
 
-> On Wed, 13 Aug 2008, Simon Horman wrote:
-> 
-> > On Wed, Aug 13, 2008 at 08:59:32AM +0200, Sven Wegener wrote:
-> > > On Wed, 13 Aug 2008, Simon Horman wrote:
-> > > 
-> > > > On Tue, Aug 12, 2008 at 03:07:48PM +0200, Sven Wegener wrote:
-> > > > > 
-> > > > > +
-> > > > > +		/*
-> > > > > +		 * If the destination is not available, i.e. it's in the trash,
-> > > > > +		 * ignore it, as it may be removed from under our feet
-> > > > > +		 */
-> > > > > +
-> > > > > +		if (!(dest->flags & IP_VS_DEST_F_AVAILABLE))
-> > > > > +			dest = NULL;
-> > > > >  	}
-> > > > > -	en->lastuse = jiffies;
-> > > > 
-> > > > At this point we know that dest exists and is not in the trash.
-> > > > We know that dest can't disapear given that its not already
-> > > > in the trash and our caller holds a read lock on __ip_vs_svc_lock.
-> > > > So dest will be safe until after ip_vs_lblc_schedule() returns.
-> > > > 
-> > > > Dest seems ok :-)
-> > > > 
-> > > > Ok, that seems complex but non-racy to me :-)
-> > > > 
-> > > > Perhaps a longer comment would be in order.
-> > > 
-> > > Yeah, that's the point where we prevent the race with the trash purging. 
-> > > We could change the purging of destinations from the trash to be under 
-> > > __ip_vs_svc_lock write locked, then we know that all destinations, even 
-> > > the ones in the trash are valid. Might make more sense than duplicating 
-> > > this logic in other schedulers.
+> On Thu, Aug 14, 2008 at 05:25:08PM -0700, David Miller wrote:
+> > From: Simon Horman <horms@verge.net.au>
+> > Date: Fri, 15 Aug 2008 10:12:52 +1000
 > > 
-> > That sounds like a good way to simplify things.
+> > > Julius, Sven and I would particularly like Julius' two changes to go
+> > > in. They add a new interface which is currently unused and thus the
+> > > likelihood of breakage seems low.
+> > 
+> > Actually these are the two changes that should not go in at this
+> > time.  This netlink stuff is a new feature, therefore not appropriate
+> > to merge outside of the merge window.
+> > 
+> > Bug fixes only now, please.
 > 
-> Looking at the code it doesn't seem that simple. We lock __ip_vs_svc_lock 
-> for writing and then wait for all current users of the service to go away. 
-> But it's still possible that we clean up destinations from other services. 
-> And when we restrict it to only clean up the destinations that match our 
-> service, we have a chance of leaving destinations in the trash for good.
+> thanks for the clarification. In that case I believe that
+> all of these changes can wait.
 
-Still thinking about it, I'm against doing it globally. It's too much 
-hassle and in the end we still need to check for IP_VS_DEST_F_AVAILABLE in 
-the schedulers, because destinations in the trash shouldn't be used for 
-further connections.
+We should get something cooked up for -next, so that we can push these 
+changes this way into wider testing. Having a place for -next might be 
+good in general, not for this case only.
 
 Sven
