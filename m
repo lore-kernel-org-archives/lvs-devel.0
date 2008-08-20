@@ -1,64 +1,52 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCH RFC 00/24] IPVS: Add first IPv6 support to IPVS
-Date: Wed, 20 Aug 2008 18:15:07 +0200
-Message-ID: <1219248931-15064-1-git-send-email-juliusv@google.com>
+Subject: [PATCH RFC 13/24] IPVS: Add IPv6 support to ip_vs_conn_hashkey()
+Date: Wed, 20 Aug 2008 18:15:20 +0200
+Message-ID: <1219248931-15064-14-git-send-email-juliusv@google.com>
+References: <1219248931-15064-1-git-send-email-juliusv@google.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1219248940; bh=OaiWbA82Le/thS6BAunjac+6LQM=;
-	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer;
-	b=VboKs1peRPYw3EY2i1tYp4i0+tmFG8vSb7HDMe7jHJUR7za+DS4nuCKmaCHFckp4J
-	2F9njdFsJJqeaCrVd5h9Q==
+	t=1219248943; bh=AtzxAilRFczfoocDm7Zf73aJe2E=;
+	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
+	 In-Reply-To:References; b=YMdcEiIGTtVW7+NZRWdF6K1a0WLTdvDjNKEoPJ8n
+	th8jve9+Fx1I5DMU4Lly0LLxj84l3+2pry/mIPc8nBMn3Q==
+In-Reply-To: <1219248931-15064-1-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com
+Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-Hi,
+Add IPv6 support to ip_vs_conn_hashkey() by adding an 'af' argument and
+update callers.
 
-Ok, it might be the time to post these experimental IPv6 patches for IPVS
-again to get some comments and help. Since the last time, I've worked on
-reducing a lot of unnecessary code duplication, but some is still there
-where it was harder to get rid of. Also, we've implemented a genetlink
-interface (the first two patches in this series are exactly the v4
-version of that) and updated ipvsadm to work with it, so we do not have
-to break the existing sockopt userspace interface. Of course, there are
-also many other small fixes and changes since the last version.
+Signed-off-by: Julius Volz <juliusv@google.com>
 
-- Full kernel patch in one file against davem's net-2.6:
-http://www-user.tu-chemnitz.de/~volz/ipvs_ipv6/ipvs_ipv6.patch
+ 1 files changed, 13 insertions(+), 5 deletions(-)
 
-While not all IPv6 features are working or tested, existing IPv4 features
-should still work as before. However, to use any of the new features, you
-will need a new ipvsadm with support for genetlink and IPv6:
-
-http://sixpak.org/vince/google/ipvsadm/
-(by Vince Busam)
-
-To enable IPv6 support in IPVS, set CONFIG_IP_VS_IPV6=y.
-
-Short overview:
-
-What works with IPv6:
-- forwarding mechanisms: NAT, DR, maybe Tunnel (not fully tested yet)
-- protocols: TCP, UDP, ESP, AH (last two not tested)
-- manipulation and inspection of both IPv4 and IPv6 entries with ipvsadm
-- 6 out of 10 schedulers
-
-What is not supported with IPv6:
-- handling fragmentation or other extension headers
-- FTP application helper (can be loaded, but only operates on v4)
-- sync daemon (can be started, but only operates on v4)
-- probably some incorrect handling of ICMPv6 or other corner cases
-
-Since fragmentation and extension headers should not occur very often,
-things should "mostly" work. I tested HTTP and DNS over NAT and DR
-with various supported schedulers without encountering any problems.
-But we didn't test any exotic situations. Also, there are some TODOs
-in the code for things that haven't been tested or implemented yet.
-
-Thanks for any comments!
-
-Julius
+diff --git a/net/ipv4/ipvs/ip_vs_conn.c b/net/ipv4/ipvs/ip_vs_conn.c
+index 1a6b9d8..5e013c9 100644
+--- a/net/ipv4/ipvs/ip_vs_conn.c
++++ b/net/ipv4/ipvs/ip_vs_conn.c
+@@ -114,13 +114,21 @@ static inline void ct_write_unlock_bh(unsigned key)
+ /*
+  *	Returns hash value for IPVS connection entry
+  */
+-static unsigned int ip_vs_conn_hashkey(unsigned proto, __be32 addr, __be16 port)
++static unsigned int ip_vs_conn_hashkey(int af, unsigned proto,
++				       const union nf_inet_addr *addr,
++				       __be16 port)
+ {
+-	return jhash_3words((__force u32)addr, (__force u32)port, proto, ip_vs_conn_rnd)
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6)
++		return jhash_3words(jhash(addr, 16, ip_vs_conn_rnd),
++				    (__force u32)port, proto, ip_vs_conn_rnd)
++			& IP_VS_CONN_TAB_MASK;
++#endif
++	return jhash_3words((__force u32)addr->ip, (__force u32)port, proto,
++			    ip_vs_conn_rnd)
+ 		& IP_VS_CONN_TAB_MASK;
+ }
+ 
