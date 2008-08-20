@@ -1,14 +1,14 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCH RFC 06/24] IPVS: Add debug macros for v4 and v6 address output
-Date: Wed, 20 Aug 2008 18:15:13 +0200
-Message-ID: <1219248931-15064-7-git-send-email-juliusv@google.com>
+Subject: [PATCH RFC 10/24] IPVS: Extend scheduling functions for IPv6 support
+Date: Wed, 20 Aug 2008 18:15:17 +0200
+Message-ID: <1219248931-15064-11-git-send-email-juliusv@google.com>
 References: <1219248931-15064-1-git-send-email-juliusv@google.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1219248968; bh=RUulA7VBqf10jmBdMfBtHoVj790=;
+	t=1219248942; bh=gM55FurBEyXDjyOyo1SkY+YMBhI=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=pwCs9QiLwoIueR83alOcSKiKvoAbgeMAZp5+8dPT
-	d6KVgRupX+0IH4UhluGnuIiCwAdWo+jqddYvqI9mHqOUxw==
+	 In-Reply-To:References; b=vWmvZYaZedzLKAROzSRLNfz63TgbxzQEllKNqFSn
+	Vkf+KnS8WQV74tZiO5tA0qtvmQffmyyHGCaedyahwsZ2Qw==
 In-Reply-To: <1219248931-15064-1-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -18,77 +18,188 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-Add some debugging macros that allow conditional output of either v4 or v6
-addresses, depending on an 'af' parameter. This is done by creating a
-temporary string buffer in an outer debug macro and writing addresses'
-string representations into it from another macro which can only be used
-when inside the outer one.
+Convert ip_vs_schedule() and ip_vs_sched_persist() to support scheduling
+IPv6 connections.
 
 Signed-off-by: Julius Volz <juliusv@google.com>
 
- 1 files changed, 43 insertions(+), 0 deletions(-)
+ 1 files changed, 58 insertions(+), 43 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 016af19..82037b7 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -79,6 +79,47 @@ static inline int ip_vs_addr_equal(int af, const union nf_inet_addr *a,
- #include <linux/net.h>
+diff --git a/net/ipv4/ipvs/ip_vs_core.c b/net/ipv4/ipvs/ip_vs_core.c
+index 99e8938..0f9a0a2 100644
+--- a/net/ipv4/ipvs/ip_vs_core.c
++++ b/net/ipv4/ipvs/ip_vs_core.c
+@@ -183,14 +183,21 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 		    __be16 ports[2])
+ {
+ 	struct ip_vs_conn *cp = NULL;
+-	struct iphdr *iph = ip_hdr(skb);
++	struct ip_vs_iphdr iph;
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_conn *ct;
+-	__be16  dport;	 /* destination port to forward */
+-	__be32  snet;	 /* source network of the client, after masking */
++	__be16  dport;			/* destination port to forward */
++	union nf_inet_addr snet;	/* source network of the client, after masking */
++
++	ip_vs_fill_iphdr(svc->af, skb_network_header(skb), &iph);
  
- extern int ip_vs_get_debug_level(void);
-+
-+static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
-+					 const union nf_inet_addr *addr,
-+					 int *idx)
-+{
-+	int len;
+ 	/* Mask saddr with the netmask to adjust template granularity */
+-	snet = iph->saddr & svc->netmask;
 +#ifdef CONFIG_IP_VS_IPV6
-+	if (af == AF_INET)
-+#endif
-+		len = snprintf(&buf[*idx], buf_len - *idx, NIPQUAD_FMT,
-+			       NIPQUAD(addr->ip)) + 1;
-+#ifdef CONFIG_IP_VS_IPV6
++	if (svc->af == AF_INET6)
++		ipv6_addr_prefix(&snet.in6, &iph.saddr.in6, svc->netmask);
 +	else
-+		len = snprintf(&buf[*idx], buf_len - *idx, "[" NIP6_FMT "]",
-+			       NIP6(addr->in6)) + 1;
 +#endif
++		snet.ip = iph.saddr.ip & svc->netmask;
+ 
+ 	IP_VS_DBG_BUF(6, "p-schedule: src %s:%u dest %s:%u "
+ 		      "mnet %s\n",
+@@ -214,11 +221,11 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	if (ports[1] == svc->port) {
+ 		/* Check if a template already exists */
+ 		if (svc->port != FTPPORT)
+-			ct = ip_vs_ct_in_get(iph->protocol, snet, 0,
+-					       iph->daddr, ports[1]);
++			ct = ip_vs_ct_in_get(svc->af, iph.protocol, &snet, 0,
++					     &iph.daddr, ports[1]);
+ 		else
+-			ct = ip_vs_ct_in_get(iph->protocol, snet, 0,
+-					       iph->daddr, 0);
++			ct = ip_vs_ct_in_get(svc->af, iph.protocol, &snet, 0,
++					     &iph.daddr, 0);
+ 
+ 		if (!ct || !ip_vs_check_template(ct)) {
+ 			/*
+@@ -238,18 +245,18 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 			 * for ftp service.
+ 			 */
+ 			if (svc->port != FTPPORT)
+-				ct = ip_vs_conn_new(iph->protocol,
+-						    snet, 0,
+-						    iph->daddr,
++				ct = ip_vs_conn_new(svc->af, iph.protocol,
++						    &snet, 0,
++						    &iph.daddr,
+ 						    ports[1],
+-						    dest->addr, dest->port,
++						    &dest->addr, dest->port,
+ 						    IP_VS_CONN_F_TEMPLATE,
+ 						    dest);
+ 			else
+-				ct = ip_vs_conn_new(iph->protocol,
+-						    snet, 0,
+-						    iph->daddr, 0,
+-						    dest->addr, 0,
++				ct = ip_vs_conn_new(svc->af, iph.protocol,
++						    &snet, 0,
++						    &iph.daddr, 0,
++						    &dest->addr, 0,
+ 						    IP_VS_CONN_F_TEMPLATE,
+ 						    dest);
+ 			if (ct == NULL)
+@@ -268,12 +275,16 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 		 * fwmark template: <IPPROTO_IP,caddr,0,fwmark,0,daddr,0>
+ 		 * port zero template: <protocol,caddr,0,vaddr,0,daddr,0>
+ 		 */
+-		if (svc->fwmark)
+-			ct = ip_vs_ct_in_get(IPPROTO_IP, snet, 0,
+-					       htonl(svc->fwmark), 0);
+-		else
+-			ct = ip_vs_ct_in_get(iph->protocol, snet, 0,
+-					       iph->daddr, 0);
++		if (svc->fwmark) {
++			union nf_inet_addr fwmark = {
++				.all = { 0, 0, 0, htonl(svc->fwmark) }
++			};
 +
-+	*idx += len;
-+	return &buf[*idx - len];
-+}
++			ct = ip_vs_ct_in_get(svc->af, IPPROTO_IP, &snet, 0,
++					     &fwmark, 0);
++		} else
++			ct = ip_vs_ct_in_get(svc->af, iph.protocol, &snet, 0,
++					     &iph.daddr, 0);
+ 
+ 		if (!ct || !ip_vs_check_template(ct)) {
+ 			/*
+@@ -292,18 +303,22 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 			/*
+ 			 * Create a template according to the service
+ 			 */
+-			if (svc->fwmark)
+-				ct = ip_vs_conn_new(IPPROTO_IP,
+-						    snet, 0,
+-						    htonl(svc->fwmark), 0,
+-						    dest->addr, 0,
++			if (svc->fwmark) {
++				union nf_inet_addr fwmark = {
++					.all = { 0, 0, 0, htonl(svc->fwmark) }
++				};
 +
-+#define IP_VS_DBG_BUF(level, msg...)			\
-+    do {						\
-+	    char ip_vs_dbg_buf[160];			\
-+	    int ip_vs_dbg_idx = 0;			\
-+	    if (level <= ip_vs_get_debug_level())	\
-+		    printk(KERN_DEBUG "IPVS: " msg);	\
-+    } while (0)
-+#define IP_VS_ERR_BUF(msg...)				\
-+    do {						\
-+	    char ip_vs_dbg_buf[160];			\
-+	    int ip_vs_dbg_idx = 0;			\
-+	    printk(KERN_ERR "IPVS: " msg);		\
-+    } while (0)
-+
-+/* Only use from within IP_VS_DBG_BUF() macro */
-+#define IP_VS_DBG_ADDR(af, addr)			\
-+    ip_vs_dbg_addr(af, ip_vs_dbg_buf,			\
-+		   sizeof(ip_vs_dbg_buf), addr,		\
-+		   &ip_vs_dbg_idx)
-+
- #define IP_VS_DBG(level, msg...)			\
-     do {						\
- 	    if (level <= ip_vs_get_debug_level())	\
-@@ -101,6 +142,8 @@ extern int ip_vs_get_debug_level(void);
- 		pp->debug_packet(pp, skb, ofs, msg);	\
-     } while (0)
- #else	/* NO DEBUGGING at ALL */
-+#define IP_VS_DBG_BUF(level, msg...)  do {} while (0)
-+#define IP_VS_ERR_BUF(msg...)  do {} while (0)
- #define IP_VS_DBG(level, msg...)  do {} while (0)
- #define IP_VS_DBG_RL(msg...)  do {} while (0)
- #define IP_VS_DBG_PKT(level, pp, skb, ofs, msg)		do {} while (0)
++				ct = ip_vs_conn_new(svc->af, IPPROTO_IP,
++						    &snet, 0,
++						    &fwmark, 0,
++						    &dest->addr, 0,
+ 						    IP_VS_CONN_F_TEMPLATE,
+ 						    dest);
+-			else
+-				ct = ip_vs_conn_new(iph->protocol,
+-						    snet, 0,
+-						    iph->daddr, 0,
+-						    dest->addr, 0,
++			} else
++				ct = ip_vs_conn_new(svc->af, iph.protocol,
++						    &snet, 0,
++						    &iph.daddr, 0,
++						    &dest->addr, 0,
+ 						    IP_VS_CONN_F_TEMPLATE,
+ 						    dest);
+ 			if (ct == NULL)
+@@ -320,10 +335,10 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	/*
+ 	 *    Create a new connection according to the template
+ 	 */
+-	cp = ip_vs_conn_new(iph->protocol,
+-			    iph->saddr, ports[0],
+-			    iph->daddr, ports[1],
+-			    dest->addr, dport,
++	cp = ip_vs_conn_new(svc->af, iph.protocol,
++			    &iph.saddr, ports[0],
++			    &iph.daddr, ports[1],
++			    &dest->addr, dport,
+ 			    0,
+ 			    dest);
+ 	if (cp == NULL) {
+@@ -352,12 +367,12 @@ struct ip_vs_conn *
+ ip_vs_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ {
+ 	struct ip_vs_conn *cp = NULL;
+-	struct iphdr *iph = ip_hdr(skb);
++	struct ip_vs_iphdr iph;
+ 	struct ip_vs_dest *dest;
+ 	__be16 _ports[2], *pptr;
+ 
+-	pptr = skb_header_pointer(skb, iph->ihl*4,
+-				  sizeof(_ports), _ports);
++	ip_vs_fill_iphdr(svc->af, skb_network_header(skb), &iph);
++	pptr = skb_header_pointer(skb, iph.len, sizeof(_ports), _ports);
+ 	if (pptr == NULL)
+ 		return NULL;
+ 
+@@ -387,10 +402,10 @@ ip_vs_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 	/*
+ 	 *    Create a connection entry.
+ 	 */
+-	cp = ip_vs_conn_new(iph->protocol,
+-			    iph->saddr, pptr[0],
+-			    iph->daddr, pptr[1],
+-			    dest->addr, dest->port?dest->port:pptr[1],
++	cp = ip_vs_conn_new(svc->af, iph.protocol,
++			    &iph.saddr, pptr[0],
++			    &iph.daddr, pptr[1],
++			    &dest->addr, dest->port ? dest->port : pptr[1],
+ 			    0,
+ 			    dest);
+ 	if (cp == NULL)
 -- 
 1.5.4.5
 
