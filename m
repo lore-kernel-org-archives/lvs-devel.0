@@ -1,43 +1,62 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH RFC 19/24] IPVS: Add IPv6 support flag to schedulers
-Date: Thu, 21 Aug 2008 23:23:11 +1000
-Message-ID: <20080821132309.GA13563@verge.net.au>
-References: <1219248931-15064-1-git-send-email-juliusv@google.com> <1219248931-15064-20-git-send-email-juliusv@google.com> <20080821014813.GH19235@verge.net.au> <f4845fc0808210321m342f2504i69d01c6b33298fc7@mail.gmail.com>
+From: Brian Haley <brian.haley@hp.com>
+Subject: Re: [PATCH RFC 08/24] IPVS: Make protocol handler functions support
+ IPv6
+Date: Thu, 21 Aug 2008 09:29:31 -0400
+Message-ID: <48AD6DBB.9030607@hp.com>
+References: <1219248931-15064-1-git-send-email-juliusv@google.com> <1219248931-15064-9-git-send-email-juliusv@google.com>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <f4845fc0808210321m342f2504i69d01c6b33298fc7@mail.gmail.com>
+In-Reply-To: <1219248931-15064-9-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
 To: Julius Volz <juliusv@google.com>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, horms@verge.net.au, kaber@trash.net, vbusam@google.com
 
-On Thu, Aug 21, 2008 at 12:21:39PM +0200, Julius Volz wrote:
-> On Thu, Aug 21, 2008 at 3:48 AM, Simon Horman wrote:
-> > On Wed, Aug 20, 2008 at 06:15:26PM +0200, Julius Volz wrote:
-> >> Add 'supports_ipv6' flag to struct ip_vs_scheduler to indicate whether a
-> >> scheduler supports IPv6. Set the flag to 1 in schedulers that work with
-> >> IPv6, 0 otherwise. This flag is checked in a later patch while trying to
-> >> add a service with a specific scheduler.
-> >
-> > I wonder if there are some spare bits inside the flags
-> > member of ip_vs_scheduler that could be used for this purpose?
-> 
-> Hm, there isn't any 'flags' member or similar in that struct...
-> 
-> > Otherwise, I'm fine with this, we can juggle things around
-> > later to use the other bits in supports_ipv6 for other things
-> > if and when the need arises.
-> 
-> Yes, then we could also rename it to 'flags' once needed.
-> 
-> > Here is a version that applies against lvs-2.6
-> 
-> Thanks, I guess I should start basing all of my IPVS patches on this
-> tree rather than net-2.6?
+Julius Volz wrote:
+> +void
+> +ip_vs_tcpudp_debug_packet(struct ip_vs_protocol *pp,
+> +			  const struct sk_buff *skb,
+> +			  int offset,
+> +			  const char *msg)
+> +{
+> +#ifdef CONFIG_IP_VS_IPV6
+> +	if (skb->protocol == __constant_htons(ETH_P_IPV6))
+> +		ip_vs_tcpudp_debug_packet_v6(pp, skb, offset, msg);
+> +	else
+> +#endif
 
-That would make things slightly more convenient for me.
-But I'm not the only fish in the sea :-)
+I don't think you need the __constant_htons() here, just htons() - 
+that's what tcp_ipv6.c does.
 
+> +static void
+> +ah_debug_packet(struct ip_vs_protocol *pp, const struct sk_buff *skb,
+> +		int offset, const char *msg)
+> +{
+> +#ifdef CONFIG_IP_VS_IPV6
+> +	if (skb->protocol == __constant_htons(ETH_P_IPV6))
+> +		ah_debug_packet_v6(pp, skb, offset, msg);
+> +	else
+> +#endif
+
+htons()
+
+> +static void
+> +esp_debug_packet(struct ip_vs_protocol *pp, const struct sk_buff *skb,
+> +		 int offset, const char *msg)
+> +{
+> +#ifdef CONFIG_IP_VS_IPV6
+> +	if (skb->protocol == __constant_htons(ETH_P_IPV6))
+> +		esp_debug_packet_v6(pp, skb, offset, msg);
+> +	else
+> +#endif
+
+htons()
+
+I think there's more in one of the other patches too.
+
+So why can't you just create one ip_vs_debug_packet_v6() instead of 
+these ah and esp ones which are identical?
+
+-Brian
