@@ -1,12 +1,12 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH RFC 00/24] IPVS: Add first IPv6 support to IPVS
-Date: Thu, 21 Aug 2008 11:17:17 +1000
-Message-ID: <20080821011715.GG19235@verge.net.au>
-References: <1219248931-15064-1-git-send-email-juliusv@google.com>
+Subject: Re: [PATCH RFC 19/24] IPVS: Add IPv6 support flag to schedulers
+Date: Thu, 21 Aug 2008 11:48:15 +1000
+Message-ID: <20080821014813.GH19235@verge.net.au>
+References: <1219248931-15064-1-git-send-email-juliusv@google.com> <1219248931-15064-20-git-send-email-juliusv@google.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1219248931-15064-1-git-send-email-juliusv@google.com>
+In-Reply-To: <1219248931-15064-20-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -14,60 +14,200 @@ Content-Transfer-Encoding: 7bit
 To: Julius Volz <juliusv@google.com>
 Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com
 
-On Wed, Aug 20, 2008 at 06:15:07PM +0200, Julius Volz wrote:
-> Hi,
-> 
-> Ok, it might be the time to post these experimental IPv6 patches for IPVS
-> again to get some comments and help. Since the last time, I've worked on
-> reducing a lot of unnecessary code duplication, but some is still there
-> where it was harder to get rid of. Also, we've implemented a genetlink
-> interface (the first two patches in this series are exactly the v4
-> version of that) and updated ipvsadm to work with it, so we do not have
-> to break the existing sockopt userspace interface. Of course, there are
-> also many other small fixes and changes since the last version.
-> 
-> - Full kernel patch in one file against davem's net-2.6:
-> http://www-user.tu-chemnitz.de/~volz/ipvs_ipv6/ipvs_ipv6.patch
-> 
-> While not all IPv6 features are working or tested, existing IPv4 features
-> should still work as before. However, to use any of the new features, you
-> will need a new ipvsadm with support for genetlink and IPv6:
-> 
-> http://sixpak.org/vince/google/ipvsadm/
-> (by Vince Busam)
-> 
-> To enable IPv6 support in IPVS, set CONFIG_IP_VS_IPV6=y.
-> 
-> Short overview:
-> 
-> What works with IPv6:
-> - forwarding mechanisms: NAT, DR, maybe Tunnel (not fully tested yet)
-> - protocols: TCP, UDP, ESP, AH (last two not tested)
-> - manipulation and inspection of both IPv4 and IPv6 entries with ipvsadm
-> - 6 out of 10 schedulers
-> 
-> What is not supported with IPv6:
-> - handling fragmentation or other extension headers
-> - FTP application helper (can be loaded, but only operates on v4)
-> - sync daemon (can be started, but only operates on v4)
+On Wed, Aug 20, 2008 at 06:15:26PM +0200, Julius Volz wrote:
+> Add 'supports_ipv6' flag to struct ip_vs_scheduler to indicate whether a
+> scheduler supports IPv6. Set the flag to 1 in schedulers that work with
+> IPv6, 0 otherwise. This flag is checked in a later patch while trying to
+> add a service with a specific scheduler.
 
-Other than the packet format of the sync deamon, are there any
-fundamental restrictions here? If we extended the sync daemon,
-could it work? If so, perhaps we could rev the sync deamon protocol
-and fix a few other kinks, like the handling of timeouts and the
-general lack of extendability, at the same time.
+I wonder if there are some spare bits inside the flags
+member of ip_vs_scheduler that could be used for this purpose?
 
-> - probably some incorrect handling of ICMPv6 or other corner cases
-> 
-> Since fragmentation and extension headers should not occur very often,
-> things should "mostly" work. I tested HTTP and DNS over NAT and DR
-> with various supported schedulers without encountering any problems.
-> But we didn't test any exotic situations. Also, there are some TODOs
-> in the code for things that haven't been tested or implemented yet.
-> 
-> Thanks for any comments!
+Otherwise, I'm fine with this, we can juggle things around
+later to use the other bits in supports_ipv6 for other things
+if and when the need arises.
 
-Unfortunately (or fortunately depending on how you look at it),
-I'm going to be away skiing for the next couple of days. Apologies
-for the slow responses that will lead to.
+Here is a version that applies against lvs-2.6
 
+From: Julius Volz <juliusv@google.com>
+
+IPVS: Add IPv6 support flag to schedulers
+
+Add 'supports_ipv6' flag to struct ip_vs_scheduler to indicate whether a
+scheduler supports IPv6. Set the flag to 1 in schedulers that work with
+IPv6, 0 otherwise. This flag is checked in a later patch while trying to
+add a service with a specific scheduler.
+
+Signed-off-by: Julius Volz <juliusv@google.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+
+--- 
+
+ include/net/ip_vs.h         |    3 +++
+ net/ipv4/ipvs/ip_vs_dh.c    |    3 +++
+ net/ipv4/ipvs/ip_vs_lblc.c  |    3 +++
+ net/ipv4/ipvs/ip_vs_lblcr.c |    3 +++
+ net/ipv4/ipvs/ip_vs_lc.c    |    3 +++
+ net/ipv4/ipvs/ip_vs_nq.c    |    3 +++
+ net/ipv4/ipvs/ip_vs_rr.c    |    3 +++
+ net/ipv4/ipvs/ip_vs_sed.c   |    3 +++
+ net/ipv4/ipvs/ip_vs_sh.c    |    3 +++
+ net/ipv4/ipvs/ip_vs_wlc.c   |    3 +++
+ net/ipv4/ipvs/ip_vs_wrr.c   |    3 +++
+ 11 files changed, 33 insertions(+)
+
+b8c297df2a43ab6a2143f6ec5ccfb4943231e1c5
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index f591d7d..66ca986 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -475,6 +475,9 @@ struct ip_vs_scheduler {
+ 	char			*name;		/* scheduler name */
+ 	atomic_t		refcnt;		/* reference counter */
+ 	struct module		*module;	/* THIS_MODULE/NULL */
++#ifdef CONFIG_IP_VS_IPV6
++	int			supports_ipv6;	/* scheduler has IPv6 support */
++#endif
+ 
+ 	/* scheduler initializing service */
+ 	int (*init_service)(struct ip_vs_service *svc);
+diff --git a/net/ipv4/ipvs/ip_vs_dh.c b/net/ipv4/ipvs/ip_vs_dh.c
+index fa66824..bb0d426 100644
+--- a/net/ipv4/ipvs/ip_vs_dh.c
++++ b/net/ipv4/ipvs/ip_vs_dh.c
+@@ -234,6 +234,9 @@ static struct ip_vs_scheduler ip_vs_dh_scheduler =
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_dh_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	0,
++#endif
+ 	.init_service =		ip_vs_dh_init_svc,
+ 	.done_service =		ip_vs_dh_done_svc,
+ 	.update_service =	ip_vs_dh_update_svc,
+diff --git a/net/ipv4/ipvs/ip_vs_lblc.c b/net/ipv4/ipvs/ip_vs_lblc.c
+index d2a43aa..2d2287d 100644
+--- a/net/ipv4/ipvs/ip_vs_lblc.c
++++ b/net/ipv4/ipvs/ip_vs_lblc.c
+@@ -522,6 +522,9 @@ static struct ip_vs_scheduler ip_vs_lblc_scheduler =
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_lblc_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	0,
++#endif
+ 	.init_service =		ip_vs_lblc_init_svc,
+ 	.done_service =		ip_vs_lblc_done_svc,
+ 	.schedule =		ip_vs_lblc_schedule,
+diff --git a/net/ipv4/ipvs/ip_vs_lblcr.c b/net/ipv4/ipvs/ip_vs_lblcr.c
+index 375a1ff..1da5e7f 100644
+--- a/net/ipv4/ipvs/ip_vs_lblcr.c
++++ b/net/ipv4/ipvs/ip_vs_lblcr.c
+@@ -722,6 +722,9 @@ static struct ip_vs_scheduler ip_vs_lblcr_scheduler =
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_lblcr_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	0,
++#endif
+ 	.init_service =		ip_vs_lblcr_init_svc,
+ 	.done_service =		ip_vs_lblcr_done_svc,
+ 	.schedule =		ip_vs_lblcr_schedule,
+diff --git a/net/ipv4/ipvs/ip_vs_lc.c b/net/ipv4/ipvs/ip_vs_lc.c
+index 2ad4e99..32e9ce7 100644
+--- a/net/ipv4/ipvs/ip_vs_lc.c
++++ b/net/ipv4/ipvs/ip_vs_lc.c
+@@ -83,6 +83,9 @@ static struct ip_vs_scheduler ip_vs_lc_scheduler = {
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_lc_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	1,
++#endif
+ 	.schedule =		ip_vs_lc_schedule,
+ };
+ 
+diff --git a/net/ipv4/ipvs/ip_vs_nq.c b/net/ipv4/ipvs/ip_vs_nq.c
+index 38adb1c..fa4cd7c 100644
+--- a/net/ipv4/ipvs/ip_vs_nq.c
++++ b/net/ipv4/ipvs/ip_vs_nq.c
+@@ -117,6 +117,9 @@ static struct ip_vs_scheduler ip_vs_nq_scheduler =
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_nq_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	1,
++#endif
+ 	.schedule =		ip_vs_nq_schedule,
+ };
+ 
+diff --git a/net/ipv4/ipvs/ip_vs_rr.c b/net/ipv4/ipvs/ip_vs_rr.c
+index f749291..f82719c 100644
+--- a/net/ipv4/ipvs/ip_vs_rr.c
++++ b/net/ipv4/ipvs/ip_vs_rr.c
+@@ -89,6 +89,9 @@ static struct ip_vs_scheduler ip_vs_rr_scheduler = {
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_rr_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	1,
++#endif
+ 	.init_service =		ip_vs_rr_init_svc,
+ 	.update_service =	ip_vs_rr_update_svc,
+ 	.schedule =		ip_vs_rr_schedule,
+diff --git a/net/ipv4/ipvs/ip_vs_sed.c b/net/ipv4/ipvs/ip_vs_sed.c
+index 691a6a0..7d2f22f 100644
+--- a/net/ipv4/ipvs/ip_vs_sed.c
++++ b/net/ipv4/ipvs/ip_vs_sed.c
+@@ -118,6 +118,9 @@ static struct ip_vs_scheduler ip_vs_sed_scheduler =
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_sed_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	1,
++#endif
+ 	.schedule =		ip_vs_sed_schedule,
+ };
+ 
+diff --git a/net/ipv4/ipvs/ip_vs_sh.c b/net/ipv4/ipvs/ip_vs_sh.c
+index 7b979e2..12f9ccc 100644
+--- a/net/ipv4/ipvs/ip_vs_sh.c
++++ b/net/ipv4/ipvs/ip_vs_sh.c
+@@ -231,6 +231,9 @@ static struct ip_vs_scheduler ip_vs_sh_scheduler =
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list	 =		LIST_HEAD_INIT(ip_vs_sh_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	0,
++#endif
+ 	.init_service =		ip_vs_sh_init_svc,
+ 	.done_service =		ip_vs_sh_done_svc,
+ 	.update_service =	ip_vs_sh_update_svc,
+diff --git a/net/ipv4/ipvs/ip_vs_wlc.c b/net/ipv4/ipvs/ip_vs_wlc.c
+index 57b452b..8c596e7 100644
+--- a/net/ipv4/ipvs/ip_vs_wlc.c
++++ b/net/ipv4/ipvs/ip_vs_wlc.c
+@@ -106,6 +106,9 @@ static struct ip_vs_scheduler ip_vs_wlc_scheduler =
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_wlc_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	1,
++#endif
+ 	.schedule =		ip_vs_wlc_schedule,
+ };
+ 
+diff --git a/net/ipv4/ipvs/ip_vs_wrr.c b/net/ipv4/ipvs/ip_vs_wrr.c
+index 2f618dc..7ea92fe 100644
+--- a/net/ipv4/ipvs/ip_vs_wrr.c
++++ b/net/ipv4/ipvs/ip_vs_wrr.c
+@@ -213,6 +213,9 @@ static struct ip_vs_scheduler ip_vs_wrr_scheduler = {
+ 	.refcnt =		ATOMIC_INIT(0),
+ 	.module =		THIS_MODULE,
+ 	.n_list =		LIST_HEAD_INIT(ip_vs_wrr_scheduler.n_list),
++#ifdef CONFIG_IP_VS_IPV6
++	.supports_ipv6 =	1,
++#endif
+ 	.init_service =		ip_vs_wrr_init_svc,
+ 	.done_service =		ip_vs_wrr_done_svc,
+ 	.update_service =	ip_vs_wrr_update_svc,
