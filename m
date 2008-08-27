@@ -1,81 +1,60 @@
 From: "Julius Volz" <juliusv@google.com>
-Subject: Re: [PATCH RFC 00/24] IPVS: Add first IPv6 support to IPVS
-Date: Wed, 27 Aug 2008 17:24:53 +0200
-Message-ID: <f4845fc0808270824u2588159dle7caa2910e70a22c@mail.gmail.com>
+Subject: Re: [PATCH RFC 10/24] IPVS: Extend scheduling functions for IPv6 support
+Date: Wed, 27 Aug 2008 18:02:59 +0200
+Message-ID: <f4845fc0808270902l4b5a6f5br7e0a749a5741a1b5@mail.gmail.com>
 References: <1219248931-15064-1-git-send-email-juliusv@google.com>
-	 <f4845fc0808210259n2b4bbd41tb0a93c49592a2029@mail.gmail.com>
-	 <20080821212948.GB4407@verge.net.au>
-	 <20080821220444.GA2758@verge.net.au>
-	 <f4845fc0808220256y4649f48djf8498fa8e5499dca@mail.gmail.com>
-	 <1219399551.4246.10.camel@ernie.internal.graemef.net>
-	 <f4845fc0808220349r6c498eddkae80eb47ed0b5a06@mail.gmail.com>
-	 <alpine.LNX.1.10.0808221316530.10895@titan.stealer.net>
-	 <f4845fc0808220514y64a2db11s459f4662703e6b0e@mail.gmail.com>
-	 <20080827060943.GB3816@verge.net.au>
+	 <1219248931-15064-11-git-send-email-juliusv@google.com>
+	 <20080827062822.GC3816@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1219850696; bh=wIrkxnAnSfY8VqSW7+hwwLhkOBM=;
+	t=1219852983; bh=uNNcGpYqPVIuVL+naq+ILklwwdE=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=tPY0pX7FX6m/JsSaGZYljK2rN6MoZVBy
-	r/79S3QYyg2KViRszHn/SZbKg+FL/EVO9OlpnlMKymfT8Bz7y4YPgw==
-In-Reply-To: <20080827060943.GB3816@verge.net.au>
+	 Content-Disposition:References; b=hqKfHJ/0i7ub0ibjbHKge8Z2/iJWyXtF
+	8Ac8v7muDAvikvNt2qOdCDbEZDL2j3cS+iUe86ceV9bGeN6tIWlODg==
+In-Reply-To: <20080827062822.GC3816@verge.net.au>
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>
-Cc: Sven Wegener <sven.wegener@stealer.net>, Graeme Fowler <graeme@graemef.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com
 
-On Wed, Aug 27, 2008 at 8:09 AM, Simon Horman <horms@verge.net.au> wrote:
-> On Fri, Aug 22, 2008 at 02:14:11PM +0200, Julius Volz wrote:
->> On Fri, Aug 22, 2008 at 1:23 PM, Sven Wegener <sven.wegener@stealer.net> wrote:
->> >> He :) Imagine an old kernel on the backup receiving new messages and
->> >> not understanding them. How could we at least handle that situation
->> >> gracefully (without totally confusing the older kernel)? We'd need to
->> >> do it in a way that old features are still communicated in the same
->> >> way. E.g., v4-only connection syncs still use the same message format,
->> >> but once you use v6 entries, an unused flag or the 'reserved' field in
->> >> ip_vs_sync_conn is used. A v6 message would still confuse an older
->> >> kernel then, but a user would already notice that ipvsadm can't
->> >> configure the v6 services on the older kernel, so that's not too bad.
->> >
->> > If that's a problem, we can easily change the communication port and even
->> > completely redesign the protocol this way, without having old kernels
->> > getting confused about the data they get. We might lose the ability to
->> > sync between different versions, but in the end this is just the
->> > connection synchronziation and both systems should be running the same
->> > version. We could also keep the old communication port for some time, if
->> > that's really needed.
+On Wed, Aug 27, 2008 at 8:28 AM, Simon Horman <horms@verge.net.au> wrote:
+> On Wed, Aug 20, 2008 at 06:15:17PM +0200, Julius Volz wrote:
+>> Convert ip_vs_schedule() and ip_vs_sched_persist() to support scheduling
+>> IPv6 connections.
 >>
->> Yes, starting from scratch on another port sounds like a good idea.
->> Losing sync ability totally isn't as bad as confusing an older kernel
->> with new messages, so I hope it's not necessary to keep the old
->> baggage around?
+>> Signed-off-by: Julius Volz <juliusv@google.com>
+>>
+>>  1 files changed, 58 insertions(+), 43 deletions(-)
+>>
+>> diff --git a/net/ipv4/ipvs/ip_vs_core.c b/net/ipv4/ipvs/ip_vs_core.c
+>> index 99e8938..0f9a0a2 100644
+>> --- a/net/ipv4/ipvs/ip_vs_core.c
+>> +++ b/net/ipv4/ipvs/ip_vs_core.c
+>> @@ -183,14 +183,21 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+>>                   __be16 ports[2])
+>>  {
+>>       struct ip_vs_conn *cp = NULL;
+>> -     struct iphdr *iph = ip_hdr(skb);
+>> +     struct ip_vs_iphdr iph;
+>>       struct ip_vs_dest *dest;
+>>       struct ip_vs_conn *ct;
+>> -     __be16  dport;   /* destination port to forward */
+>> -     __be32  snet;    /* source network of the client, after masking */
+>> +     __be16  dport;                  /* destination port to forward */
+>> +     union nf_inet_addr snet;        /* source network of the client, after masking */
 >
-> That does sound like a nice idea. I think that is important that we don't
-> confuse older kernels. I guess the only time that ineroperability would be
-> important is when upgrading kernels, where you might want to take the
-> master ldirector down to upgrade it, then the standby.
+> Can you break the line above so that it is <= 80 columns wide?
 
-Good, that makes two votes for not keeping the old protocol in parallel? ;)
+Sure! Same for all the other cases.
 
->> Is there enough motivation for doing this though before having a
->> cleaned-up minimal v6 version without the sync daemon? This is where
->> I'm currently a bit stuck with... any help is appreciated :)
->
-> IPv6 without sync is fine by me. Its certainly much better than no IPv6.
-> Lets tackle sync a bit later.
-
-Ok, going for cleaning up and reworking more of the current IPv6 code then...
+Julius
 
 -- 
-Julius Volz
-Corporate Operations - SysOps
+Julius Volz - Corporate Operations - SysOps
 
-Google Switzerland GmbH
-
-Identification No.:
-CH-020.4.028.116-1
+Google Switzerland GmbH - Identification No.: CH-020.4.028.116-1
