@@ -1,63 +1,93 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH RFC 00/24] IPVS: Add first IPv6 support to IPVS
-Date: Thu, 28 Aug 2008 09:49:16 +1000
-Message-ID: <20080827234915.GB9336@verge.net.au>
-References: <f4845fc0808210259n2b4bbd41tb0a93c49592a2029@mail.gmail.com> <20080821212948.GB4407@verge.net.au> <20080821220444.GA2758@verge.net.au> <f4845fc0808220256y4649f48djf8498fa8e5499dca@mail.gmail.com> <1219399551.4246.10.camel@ernie.internal.graemef.net> <f4845fc0808220349r6c498eddkae80eb47ed0b5a06@mail.gmail.com> <alpine.LNX.1.10.0808221316530.10895@titan.stealer.net> <f4845fc0808220514y64a2db11s459f4662703e6b0e@mail.gmail.com> <20080827060943.GB3816@verge.net.au> <f4845fc0808270824u2588159dle7caa2910e70a22c@mail.gmail.com>
-Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <f4845fc0808270824u2588159dle7caa2910e70a22c@mail.gmail.com>
-Sender: netdev-owner@vger.kernel.org
+From: Julius Volz <juliusv@google.com>
+Subject: [PATCHv2 RFC 04/25] IPVS: Add debug macros for v4 and v6 address output
+Date: Mon,  1 Sep 2008 14:56:01 +0200
+Message-ID: <1220273782-19901-5-git-send-email-juliusv@google.com>
+References: <1220273782-19901-1-git-send-email-juliusv@google.com>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1220273820; bh=XXdb0GpoEFbMISHII9nzNpud000=;
+	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
+	 In-Reply-To:References; b=vJ4dduQdC9flXwOX5E/Tg8I+ldt7a/MaR3rFRTG3
+	vwmlAhYW9uP8HFrnQPWlf9ue46nN1aOKmtHa0s+zFkKjuA==
+In-Reply-To: <1220273782-19901-1-git-send-email-juliusv@google.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julius Volz <juliusv@google.com>
-Cc: Sven Wegener <sven.wegener@stealer.net>, Graeme Fowler <graeme@graemef.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com
+To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-On Wed, Aug 27, 2008 at 05:24:53PM +0200, Julius Volz wrote:
-> On Wed, Aug 27, 2008 at 8:09 AM, Simon Horman <horms@verge.net.au> wrote:
-> > On Fri, Aug 22, 2008 at 02:14:11PM +0200, Julius Volz wrote:
-> >> On Fri, Aug 22, 2008 at 1:23 PM, Sven Wegener <sven.wegener@stealer.net> wrote:
-> >> >> He :) Imagine an old kernel on the backup receiving new messages and
-> >> >> not understanding them. How could we at least handle that situation
-> >> >> gracefully (without totally confusing the older kernel)? We'd need to
-> >> >> do it in a way that old features are still communicated in the same
-> >> >> way. E.g., v4-only connection syncs still use the same message format,
-> >> >> but once you use v6 entries, an unused flag or the 'reserved' field in
-> >> >> ip_vs_sync_conn is used. A v6 message would still confuse an older
-> >> >> kernel then, but a user would already notice that ipvsadm can't
-> >> >> configure the v6 services on the older kernel, so that's not too bad.
-> >> >
-> >> > If that's a problem, we can easily change the communication port and even
-> >> > completely redesign the protocol this way, without having old kernels
-> >> > getting confused about the data they get. We might lose the ability to
-> >> > sync between different versions, but in the end this is just the
-> >> > connection synchronziation and both systems should be running the same
-> >> > version. We could also keep the old communication port for some time, if
-> >> > that's really needed.
-> >>
-> >> Yes, starting from scratch on another port sounds like a good idea.
-> >> Losing sync ability totally isn't as bad as confusing an older kernel
-> >> with new messages, so I hope it's not necessary to keep the old
-> >> baggage around?
-> >
-> > That does sound like a nice idea. I think that is important that we don't
-> > confuse older kernels. I guess the only time that ineroperability would be
-> > important is when upgrading kernels, where you might want to take the
-> > master ldirector down to upgrade it, then the standby.
-> 
-> Good, that makes two votes for not keeping the old protocol in parallel? ;)
+Add some debugging macros that allow conditional output of either v4 or v6
+addresses, depending on an 'af' parameter. This is done by creating a
+temporary string buffer in an outer debug macro and writing addresses'
+string representations into it from another macro which can only be used
+when inside the outer one.
 
-I'd like to keep compatibility if possible. But I think there is
-a treshold of pain that we shouldn't cross. 
+Signed-off-by: Julius Volz <juliusv@google.com>
 
-> >> Is there enough motivation for doing this though before having a
-> >> cleaned-up minimal v6 version without the sync daemon? This is where
-> >> I'm currently a bit stuck with... any help is appreciated :)
-> >
-> > IPv6 without sync is fine by me. Its certainly much better than no IPv6.
-> > Lets tackle sync a bit later.
-> 
-> Ok, going for cleaning up and reworking more of the current IPv6 code then...
+ 1 files changed, 42 insertions(+), 0 deletions(-)
 
-:-)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 6d9a360..45a7458 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -78,6 +78,46 @@ static inline int ip_vs_addr_equal(int af, const union nf_inet_addr *a,
+ #include <linux/net.h>
+ 
+ extern int ip_vs_get_debug_level(void);
++
++static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
++					 const union nf_inet_addr *addr,
++					 int *idx)
++{
++	int len;
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6)
++		len = snprintf(&buf[*idx], buf_len - *idx, "[" NIP6_FMT "]",
++			       NIP6(addr->in6)) + 1;
++	else
++#endif
++		len = snprintf(&buf[*idx], buf_len - *idx, NIPQUAD_FMT,
++			       NIPQUAD(addr->ip)) + 1;
++
++	*idx += len;
++	BUG_ON(*idx > buf_len + 1);
++	return &buf[*idx - len];
++}
++
++#define IP_VS_DBG_BUF(level, msg...)			\
++    do {						\
++	    char ip_vs_dbg_buf[160];			\
++	    int ip_vs_dbg_idx = 0;			\
++	    if (level <= ip_vs_get_debug_level())	\
++		    printk(KERN_DEBUG "IPVS: " msg);	\
++    } while (0)
++#define IP_VS_ERR_BUF(msg...)				\
++    do {						\
++	    char ip_vs_dbg_buf[160];			\
++	    int ip_vs_dbg_idx = 0;			\
++	    printk(KERN_ERR "IPVS: " msg);		\
++    } while (0)
++
++/* Only use from within IP_VS_DBG_BUF() or IP_VS_ERR_BUF macros */
++#define IP_VS_DBG_ADDR(af, addr)			\
++    ip_vs_dbg_addr(af, ip_vs_dbg_buf,			\
++		   sizeof(ip_vs_dbg_buf), addr,		\
++		   &ip_vs_dbg_idx)
++
+ #define IP_VS_DBG(level, msg...)			\
+     do {						\
+ 	    if (level <= ip_vs_get_debug_level())	\
+@@ -100,6 +140,8 @@ extern int ip_vs_get_debug_level(void);
+ 		pp->debug_packet(pp, skb, ofs, msg);	\
+     } while (0)
+ #else	/* NO DEBUGGING at ALL */
++#define IP_VS_DBG_BUF(level, msg...)  do {} while (0)
++#define IP_VS_ERR_BUF(msg...)  do {} while (0)
+ #define IP_VS_DBG(level, msg...)  do {} while (0)
+ #define IP_VS_DBG_RL(msg...)  do {} while (0)
+ #define IP_VS_DBG_PKT(level, pp, skb, ofs, msg)		do {} while (0)
+-- 
+1.5.4.5
+
