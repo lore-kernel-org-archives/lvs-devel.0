@@ -1,16 +1,16 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv2 RFC 07/25] IPVS: Add v6 support to ip_vs_service_get()
-Date: Mon,  1 Sep 2008 14:56:04 +0200
-Message-ID: <1220273782-19901-8-git-send-email-juliusv@google.com>
+Subject: [PATCHv2 RFC 15/25] IPVS: Extend scheduling functions for IPv6 support
+Date: Mon,  1 Sep 2008 14:56:12 +0200
+Message-ID: <1220273782-19901-16-git-send-email-juliusv@google.com>
 References: <1220273782-19901-1-git-send-email-juliusv@google.com>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220273823; bh=4VMrTwQXBflzklWEiNwNdDwAemM=;
+	t=1220273824; bh=wHd8fChJ894Rb5ywTXO5xqL5BgU=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=aCgRO8SRmwPiYX7Lu++KV4VHK9vish7KJiOWBNvK
-	w5c4omAbEQ8Tknb2knzQkEuTDoe9ycFoqb86okB+yRtzng==
+	 In-Reply-To:References; b=qO6TXMqnxqweME0EQDE/8CJlFcnZgFNo8/lBkja5
+	P+0J0I+spli9R/S2rDjP72Pxwk0Aw6ocLh7sBh5VuZQpyQ==
 In-Reply-To: <1220273782-19901-1-git-send-email-juliusv@google.com>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -18,156 +18,151 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-Add support for selecting services based on their address family to
-ip_vs_service_get() and adjust the callers.
+Convert ip_vs_schedule() and ip_vs_sched_persist() to support scheduling of
+IPv6 connections.
 
 Signed-off-by: Julius Volz <juliusv@google.com>
 
- 4 files changed, 27 insertions(+), 19 deletions(-)
+ 1 files changed, 31 insertions(+), 25 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 9657bd4..d653e8b 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -783,7 +783,8 @@ extern struct ip_vs_stats ip_vs_stats;
- extern const struct ctl_path net_vs_ctl_path[];
- 
- extern struct ip_vs_service *
--ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport);
-+ip_vs_service_get(int af, __u32 fwmark, __u16 protocol,
-+		  const union nf_inet_addr *vaddr, __be16 vport);
- 
- static inline void ip_vs_service_put(struct ip_vs_service *svc)
- {
-diff --git a/net/ipv4/ipvs/ip_vs_ctl.c b/net/ipv4/ipvs/ip_vs_ctl.c
-index aa74d20..151d368 100644
---- a/net/ipv4/ipvs/ip_vs_ctl.c
-+++ b/net/ipv4/ipvs/ip_vs_ctl.c
-@@ -421,23 +421,24 @@ __ip_vs_svc_fwm_get(int af, __u32 fwmark)
- }
- 
- struct ip_vs_service *
--ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
-+ip_vs_service_get(int af, __u32 fwmark, __u16 protocol,
-+		  const union nf_inet_addr *vaddr, __be16 vport)
- {
- 	struct ip_vs_service *svc;
--	union nf_inet_addr _vaddr = { .ip = vaddr };
-+
- 	read_lock(&__ip_vs_svc_lock);
- 
- 	/*
- 	 *	Check the table hashed by fwmark first
- 	 */
--	if (fwmark && (svc = __ip_vs_svc_fwm_get(AF_INET, fwmark)))
-+	if (fwmark && (svc = __ip_vs_svc_fwm_get(af, fwmark)))
- 		goto out;
- 
- 	/*
- 	 *	Check the table hashed by <protocol,addr,port>
- 	 *	for "full" addressed entries
- 	 */
--	svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, vport);
-+	svc = __ip_vs_service_get(af, protocol, vaddr, vport);
- 
- 	if (svc == NULL
- 	    && protocol == IPPROTO_TCP
-@@ -447,7 +448,7 @@ ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
- 		 * Check if ftp service entry exists, the packet
- 		 * might belong to FTP data connections.
- 		 */
--		svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, FTPPORT);
-+		svc = __ip_vs_service_get(af, protocol, vaddr, FTPPORT);
- 	}
- 
- 	if (svc == NULL
-@@ -455,16 +456,16 @@ ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
- 		/*
- 		 * Check if the catch-all port (port zero) exists
- 		 */
--		svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, 0);
-+		svc = __ip_vs_service_get(af, protocol, vaddr, 0);
- 	}
- 
-   out:
- 	read_unlock(&__ip_vs_svc_lock);
- 
--	IP_VS_DBG(9, "lookup service: fwm %u %s %u.%u.%u.%u:%u %s\n",
--		  fwmark, ip_vs_proto_name(protocol),
--		  NIPQUAD(vaddr), ntohs(vport),
--		  svc?"hit":"not hit");
-+	IP_VS_DBG_BUF(9, "lookup service: fwm %u %s %s:%u %s\n",
-+		      fwmark, ip_vs_proto_name(protocol),
-+		      IP_VS_DBG_ADDR(af, vaddr), ntohs(vport),
-+		      svc ? "hit" : "not hit");
- 
- 	return svc;
- }
-@@ -605,8 +606,9 @@ struct ip_vs_dest *ip_vs_find_dest(__be32 daddr, __be16 dport,
- {
+diff --git a/net/ipv4/ipvs/ip_vs_core.c b/net/ipv4/ipvs/ip_vs_core.c
+index d6f5bf9..8bfd7c2 100644
+--- a/net/ipv4/ipvs/ip_vs_core.c
++++ b/net/ipv4/ipvs/ip_vs_core.c
+@@ -176,19 +176,25 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	struct ip_vs_iphdr iph;
  	struct ip_vs_dest *dest;
- 	struct ip_vs_service *svc;
-+	union nf_inet_addr _vaddr = { .ip = vaddr };
+ 	struct ip_vs_conn *ct;
+-	__be16  dport;	 /* destination port to forward */
++	__be16  dport;			/* destination port to forward */
+ 	union nf_inet_addr snet;	/* source network of the client,
+ 					   after masking */
+-	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
++
++	ip_vs_fill_iphdr(svc->af, skb_network_header(skb), &iph);
  
--	svc = ip_vs_service_get(0, protocol, vaddr, vport);
-+	svc = ip_vs_service_get(AF_INET, 0, protocol, &_vaddr, vport);
- 	if (!svc)
+ 	/* Mask saddr with the netmask to adjust template granularity */
+-	snet.ip = iph.saddr.ip & svc->netmask;
++#ifdef CONFIG_IP_VS_IPV6
++	if (svc->af == AF_INET6)
++		ipv6_addr_prefix(&snet.in6, &iph.saddr.in6, svc->netmask);
++	else
++#endif
++		snet.ip = iph.saddr.ip & svc->netmask;
+ 
+-	IP_VS_DBG(6, "p-schedule: src %u.%u.%u.%u:%u dest %u.%u.%u.%u:%u "
+-		  "mnet %u.%u.%u.%u\n",
+-		  NIPQUAD(iph.saddr.ip), ntohs(ports[0]),
+-		  NIPQUAD(iph.daddr.ip), ntohs(ports[1]),
+-		  NIPQUAD(snet));
++	IP_VS_DBG_BUF(6, "p-schedule: src %s:%u dest %s:%u "
++		      "mnet %s\n",
++		      IP_VS_DBG_ADDR(svc->af, &iph.saddr), ntohs(ports[0]),
++		      IP_VS_DBG_ADDR(svc->af, &iph.daddr), ntohs(ports[1]),
++		      IP_VS_DBG_ADDR(svc->af, &snet));
+ 
+ 	/*
+ 	 * As far as we know, FTP is a very complicated network protocol, and
+@@ -206,10 +212,10 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	if (ports[1] == svc->port) {
+ 		/* Check if a template already exists */
+ 		if (svc->port != FTPPORT)
+-			ct = ip_vs_ct_in_get(AF_INET, iph.protocol, &snet, 0,
++			ct = ip_vs_ct_in_get(svc->af, iph.protocol, &snet, 0,
+ 					     &iph.daddr, ports[1]);
+ 		else
+-			ct = ip_vs_ct_in_get(AF_INET, iph.protocol, &snet, 0,
++			ct = ip_vs_ct_in_get(svc->af, iph.protocol, &snet, 0,
+ 					     &iph.daddr, 0);
+ 
+ 		if (!ct || !ip_vs_check_template(ct)) {
+@@ -230,7 +236,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 			 * for ftp service.
+ 			 */
+ 			if (svc->port != FTPPORT)
+-				ct = ip_vs_conn_new(AF_INET, iph.protocol,
++				ct = ip_vs_conn_new(svc->af, iph.protocol,
+ 						    &snet, 0,
+ 						    &iph.daddr,
+ 						    ports[1],
+@@ -238,7 +244,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 						    IP_VS_CONN_F_TEMPLATE,
+ 						    dest);
+ 			else
+-				ct = ip_vs_conn_new(AF_INET, iph.protocol,
++				ct = ip_vs_conn_new(svc->af, iph.protocol,
+ 						    &snet, 0,
+ 						    &iph.daddr, 0,
+ 						    &dest->addr, 0,
+@@ -265,10 +271,10 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 				.all = { 0, 0, 0, htonl(svc->fwmark) }
+ 			};
+ 
+-			ct = ip_vs_ct_in_get(AF_INET, IPPROTO_IP, &snet, 0,
++			ct = ip_vs_ct_in_get(svc->af, IPPROTO_IP, &snet, 0,
+ 					     &fwmark, 0);
+ 		} else
+-			ct = ip_vs_ct_in_get(AF_INET, iph.protocol, &snet, 0,
++			ct = ip_vs_ct_in_get(svc->af, iph.protocol, &snet, 0,
+ 					     &iph.daddr, 0);
+ 
+ 		if (!ct || !ip_vs_check_template(ct)) {
+@@ -293,14 +299,14 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 					.all = { 0, 0, 0, htonl(svc->fwmark) }
+ 				};
+ 
+-				ct = ip_vs_conn_new(AF_INET, IPPROTO_IP,
++				ct = ip_vs_conn_new(svc->af, IPPROTO_IP,
+ 						    &snet, 0,
+ 						    &fwmark, 0,
+ 						    &dest->addr, 0,
+ 						    IP_VS_CONN_F_TEMPLATE,
+ 						    dest);
+ 			} else
+-				ct = ip_vs_conn_new(AF_INET, iph.protocol,
++				ct = ip_vs_conn_new(svc->af, iph.protocol,
+ 						    &snet, 0,
+ 						    &iph.daddr, 0,
+ 						    &dest->addr, 0,
+@@ -320,7 +326,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	/*
+ 	 *    Create a new connection according to the template
+ 	 */
+-	cp = ip_vs_conn_new(AF_INET, iph.protocol,
++	cp = ip_vs_conn_new(svc->af, iph.protocol,
+ 			    &iph.saddr, ports[0],
+ 			    &iph.daddr, ports[1],
+ 			    &dest->addr, dport,
+@@ -387,7 +393,7 @@ ip_vs_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 	/*
+ 	 *    Create a connection entry.
+ 	 */
+-	cp = ip_vs_conn_new(AF_INET, iph.protocol,
++	cp = ip_vs_conn_new(svc->af, iph.protocol,
+ 			    &iph.saddr, pptr[0],
+ 			    &iph.daddr, pptr[1],
+ 			    &dest->addr, dest->port ? dest->port : pptr[1],
+@@ -396,13 +402,13 @@ ip_vs_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 	if (cp == NULL)
  		return NULL;
- 	dest = ip_vs_lookup_dest(svc, daddr, dport);
-diff --git a/net/ipv4/ipvs/ip_vs_proto_tcp.c b/net/ipv4/ipvs/ip_vs_proto_tcp.c
-index 15860e1..fe93c9e 100644
---- a/net/ipv4/ipvs/ip_vs_proto_tcp.c
-+++ b/net/ipv4/ipvs/ip_vs_proto_tcp.c
-@@ -74,16 +74,19 @@ tcp_conn_schedule(struct sk_buff *skb,
- {
- 	struct ip_vs_service *svc;
- 	struct tcphdr _tcph, *th;
-+	struct ip_vs_iphdr iph;
  
--	th = skb_header_pointer(skb, ip_hdrlen(skb), sizeof(_tcph), &_tcph);
-+	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
-+
-+	th = skb_header_pointer(skb, iph.len, sizeof(_tcph), &_tcph);
- 	if (th == NULL) {
- 		*verdict = NF_DROP;
- 		return 0;
- 	}
+-	IP_VS_DBG(6, "Schedule fwd:%c c:%u.%u.%u.%u:%u v:%u.%u.%u.%u:%u "
+-		  "d:%u.%u.%u.%u:%u conn->flags:%X conn->refcnt:%d\n",
+-		  ip_vs_fwd_tag(cp),
+-		  NIPQUAD(cp->caddr.ip), ntohs(cp->cport),
+-		  NIPQUAD(cp->vaddr.ip), ntohs(cp->vport),
+-		  NIPQUAD(cp->daddr.ip), ntohs(cp->dport),
+-		  cp->flags, atomic_read(&cp->refcnt));
++	IP_VS_DBG_BUF(6, "Schedule fwd:%c c:%s:%u v:%s:%u "
++		      "d:%s:%u conn->flags:%X conn->refcnt:%d\n",
++		      ip_vs_fwd_tag(cp),
++		      IP_VS_DBG_ADDR(svc->af, &cp->caddr), ntohs(cp->cport),
++		      IP_VS_DBG_ADDR(svc->af, &cp->vaddr), ntohs(cp->vport),
++		      IP_VS_DBG_ADDR(svc->af, &cp->daddr), ntohs(cp->dport),
++		      cp->flags, atomic_read(&cp->refcnt));
  
- 	if (th->syn &&
--	    (svc = ip_vs_service_get(skb->mark, ip_hdr(skb)->protocol,
--				     ip_hdr(skb)->daddr, th->dest))) {
-+	    (svc = ip_vs_service_get(AF_INET, skb->mark, iph.protocol,
-+				     &iph.daddr, th->dest))) {
- 		if (ip_vs_todrop()) {
- 			/*
- 			 * It seems that we are very loaded.
-diff --git a/net/ipv4/ipvs/ip_vs_proto_udp.c b/net/ipv4/ipvs/ip_vs_proto_udp.c
-index 8dfad5d..5aefdf5 100644
---- a/net/ipv4/ipvs/ip_vs_proto_udp.c
-+++ b/net/ipv4/ipvs/ip_vs_proto_udp.c
-@@ -80,16 +80,18 @@ udp_conn_schedule(struct sk_buff *skb, struct ip_vs_protocol *pp,
- {
- 	struct ip_vs_service *svc;
- 	struct udphdr _udph, *uh;
-+	struct ip_vs_iphdr iph;
- 
--	uh = skb_header_pointer(skb, ip_hdrlen(skb),
--				sizeof(_udph), &_udph);
-+	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
-+
-+	uh = skb_header_pointer(skb, iph.len, sizeof(_udph), &_udph);
- 	if (uh == NULL) {
- 		*verdict = NF_DROP;
- 		return 0;
- 	}
- 
--	if ((svc = ip_vs_service_get(skb->mark, ip_hdr(skb)->protocol,
--				     ip_hdr(skb)->daddr, uh->dest))) {
-+	if ((svc = ip_vs_service_get(AF_INET, skb->mark, iph.protocol,
-+				     &iph.daddr, uh->dest))) {
- 		if (ip_vs_todrop()) {
- 			/*
- 			 * It seems that we are very loaded.
+ 	ip_vs_conn_stats(cp, svc);
+ 	return cp;
 -- 
 1.5.4.5
 
