@@ -1,16 +1,16 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv2 RFC 13/25] IPVS: Add IPv6 support to xmit() support functions
-Date: Mon,  1 Sep 2008 14:56:10 +0200
-Message-ID: <1220273782-19901-14-git-send-email-juliusv@google.com>
+Subject: [PATCHv2 RFC 06/25] IPVS: Convert __ip_vs_svc_get() and __ip_vs_fwm_get()
+Date: Mon,  1 Sep 2008 14:56:03 +0200
+Message-ID: <1220273782-19901-7-git-send-email-juliusv@google.com>
 References: <1220273782-19901-1-git-send-email-juliusv@google.com>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220273823; bh=td7szclNKxWCFBYg5x+0kiNjlFw=;
+	t=1220273823; bh=Sa58yXOL6euR2/Bc5XI7cEEp2Jw=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=LibR5yG6JDyukAbqPmfStTYSTNivWXGtS9icelHt
-	XRW8WDREcMips57B9BzgB/mlQhM4kTAuRy2u141FplrL+A==
+	 In-Reply-To:References; b=TNAw7CVaKNNBRQaat08f4MtVsdIO/KoU2x8aGGLW
+	9lobPy/f/odw0fmy9HXh4VqgJsRHYV3WinlDpuvujjq9BQ==
 In-Reply-To: <1220273782-19901-1-git-send-email-juliusv@google.com>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -18,146 +18,227 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-Add IPv6 support to IP_VS_XMIT() and to the xmit routing cache, introducing
-a new function __ip_vs_get_out_rt_v6().
+Add support for getting services based on their address family to
+__ip_vs_service_get(), __ip_vs_fwm_get() and the helper hash function
+ip_vs_svc_hashkey(). Adjust the callers.
 
 Signed-off-by: Julius Volz <juliusv@google.com>
 
- 1 files changed, 63 insertions(+), 7 deletions(-)
+ 1 files changed, 47 insertions(+), 31 deletions(-)
 
-diff --git a/net/ipv4/ipvs/ip_vs_xmit.c b/net/ipv4/ipvs/ip_vs_xmit.c
-index 88199c9..7bebd5c 100644
---- a/net/ipv4/ipvs/ip_vs_xmit.c
-+++ b/net/ipv4/ipvs/ip_vs_xmit.c
-@@ -20,6 +20,9 @@
- #include <net/udp.h>
- #include <net/icmp.h>                   /* for icmp_send */
- #include <net/route.h>                  /* for ip_route_output */
-+#include <net/ipv6.h>
-+#include <net/ip6_route.h>
-+#include <linux/icmpv6.h>
- #include <linux/netfilter.h>
- #include <linux/netfilter_ipv4.h>
+diff --git a/net/ipv4/ipvs/ip_vs_ctl.c b/net/ipv4/ipvs/ip_vs_ctl.c
+index 52b3c1e..aa74d20 100644
+--- a/net/ipv4/ipvs/ip_vs_ctl.c
++++ b/net/ipv4/ipvs/ip_vs_ctl.c
+@@ -282,11 +282,19 @@ static atomic_t ip_vs_nullsvc_counter = ATOMIC_INIT(0);
+  *	Returns hash value for virtual service
+  */
+ static __inline__ unsigned
+-ip_vs_svc_hashkey(unsigned proto, __be32 addr, __be16 port)
++ip_vs_svc_hashkey(int af, unsigned proto, const union nf_inet_addr *addr,
++		  __be16 port)
+ {
+ 	register unsigned porth = ntohs(port);
++	__be32 addr_fold = addr->ip;
  
-@@ -47,7 +50,8 @@ __ip_vs_dst_check(struct ip_vs_dest *dest, u32 rtos, u32 cookie)
- 
- 	if (!dst)
- 		return NULL;
--	if ((dst->obsolete || rtos != dest->dst_rtos) &&
-+	if ((dst->obsolete
-+	     || (dest->af == AF_INET && rtos != dest->dst_rtos)) &&
- 	    dst->ops->check(dst, cookie) == NULL) {
- 		dest->dst_cache = NULL;
- 		dst_release(dst);
-@@ -109,6 +113,58 @@ __ip_vs_get_out_rt(struct ip_vs_conn *cp, u32 rtos)
- 	return rt;
- }
- 
+-	return (proto^ntohl(addr)^(porth>>IP_VS_SVC_TAB_BITS)^porth)
 +#ifdef CONFIG_IP_VS_IPV6
-+static struct rt6_info *
-+__ip_vs_get_out_rt_v6(struct ip_vs_conn *cp)
-+{
-+	struct rt6_info *rt;			/* Route to the other host */
-+	struct ip_vs_dest *dest = cp->dest;
-+
-+	if (dest) {
-+		spin_lock(&dest->dst_lock);
-+		if (!(rt = (struct rt6_info *)
-+		      __ip_vs_dst_check(dest, 0, 0))) {
-+			struct flowi fl = {
-+				.oif = 0,
-+				.nl_u = {
-+					.ip6_u = {
-+						.daddr = dest->addr.in6,
-+						.saddr = { .s6_addr32 = {0, 0, 0, 0} }, } },
-+			};
-+
-+			if (!(rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl))) {
-+				spin_unlock(&dest->dst_lock);
-+				IP_VS_DBG_RL("ip6_route_output error, "
-+					     "dest: " NIP6_FMT "\n",
-+					     NIP6(dest->addr.in6));
-+				return NULL;
-+			}
-+			__ip_vs_dst_set(dest, 0, dst_clone(&rt->u.dst));
-+			IP_VS_DBG(10, "new dst " NIP6_FMT ", refcnt=%d\n",
-+				  NIP6(dest->addr.in6),
-+				  atomic_read(&rt->u.dst.__refcnt));
-+		}
-+		spin_unlock(&dest->dst_lock);
-+	} else {
-+		struct flowi fl = {
-+			.oif = 0,
-+			.nl_u = {
-+				.ip6_u = {
-+					.daddr = cp->daddr.in6,
-+					.saddr = { .s6_addr32 = {0, 0, 0, 0}}, } },
-+		};
-+
-+		if (!(rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl))) {
-+			IP_VS_DBG_RL("ip6_route_output error, dest: "
-+				     NIP6_FMT "\n", NIP6(cp->daddr.in6));
-+			return NULL;
-+		}
-+	}
-+
-+	return rt;
-+}
++	if (af == AF_INET6)
++		addr_fold = addr->ip6[0]^addr->ip6[1]^
++			    addr->ip6[2]^addr->ip6[3];
 +#endif
 +
- 
- /*
-  *	Release dest->dst_cache before a dest is removed
-@@ -123,11 +179,11 @@ ip_vs_dst_reset(struct ip_vs_dest *dest)
- 	dst_release(old_dst);
++	return (proto^ntohl(addr_fold)^(porth>>IP_VS_SVC_TAB_BITS)^porth)
+ 		& IP_VS_SVC_TAB_MASK;
  }
  
--#define IP_VS_XMIT(skb, rt)				\
-+#define IP_VS_XMIT(pf, skb, rt)				\
- do {							\
- 	(skb)->ipvs_property = 1;			\
- 	skb_forward_csum(skb);				\
--	NF_HOOK(PF_INET, NF_INET_LOCAL_OUT, (skb), NULL,	\
-+	NF_HOOK(pf, NF_INET_LOCAL_OUT, (skb), NULL,	\
- 		(rt)->u.dst.dev, dst_output);		\
- } while (0)
+@@ -317,7 +325,8 @@ static int ip_vs_svc_hash(struct ip_vs_service *svc)
+ 		/*
+ 		 *  Hash it by <protocol,addr,port> in ip_vs_svc_table
+ 		 */
+-		hash = ip_vs_svc_hashkey(svc->protocol, svc->addr.ip, svc->port);
++		hash = ip_vs_svc_hashkey(svc->af, svc->protocol, &svc->addr,
++					 svc->port);
+ 		list_add(&svc->s_list, &ip_vs_svc_table[hash]);
+ 	} else {
+ 		/*
+@@ -364,16 +373,18 @@ static int ip_vs_svc_unhash(struct ip_vs_service *svc)
+  *	Get service by {proto,addr,port} in the service table.
+  */
+ static __inline__ struct ip_vs_service *
+-__ip_vs_service_get(__u16 protocol, __be32 vaddr, __be16 vport)
++__ip_vs_service_get(int af, __u16 protocol, const union nf_inet_addr *vaddr,
++		    __be16 vport)
+ {
+ 	unsigned hash;
+ 	struct ip_vs_service *svc;
  
-@@ -200,7 +256,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->local_df = 1;
+ 	/* Check for "full" addressed entries */
+-	hash = ip_vs_svc_hashkey(protocol, vaddr, vport);
++	hash = ip_vs_svc_hashkey(af, protocol, vaddr, vport);
  
--	IP_VS_XMIT(skb, rt);
-+	IP_VS_XMIT(PF_INET, skb, rt);
+ 	list_for_each_entry(svc, &ip_vs_svc_table[hash], s_list){
+-		if ((svc->addr.ip == vaddr)
++		if ((svc->af == af)
++		    && ip_vs_addr_equal(af, &svc->addr, vaddr)
+ 		    && (svc->port == vport)
+ 		    && (svc->protocol == protocol)) {
+ 			/* HIT */
+@@ -389,7 +400,8 @@ __ip_vs_service_get(__u16 protocol, __be32 vaddr, __be16 vport)
+ /*
+  *	Get service by {fwmark} in the service table.
+  */
+-static __inline__ struct ip_vs_service *__ip_vs_svc_fwm_get(__u32 fwmark)
++static __inline__ struct ip_vs_service *
++__ip_vs_svc_fwm_get(int af, __u32 fwmark)
+ {
+ 	unsigned hash;
+ 	struct ip_vs_service *svc;
+@@ -398,7 +410,7 @@ static __inline__ struct ip_vs_service *__ip_vs_svc_fwm_get(__u32 fwmark)
+ 	hash = ip_vs_svc_fwm_hashkey(fwmark);
  
- 	LeaveFunction(10);
- 	return NF_STOLEN;
-@@ -276,7 +332,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->local_df = 1;
+ 	list_for_each_entry(svc, &ip_vs_svc_fwm_table[hash], f_list) {
+-		if (svc->fwmark == fwmark) {
++		if (svc->fwmark == fwmark && svc->af == af) {
+ 			/* HIT */
+ 			atomic_inc(&svc->usecnt);
+ 			return svc;
+@@ -412,20 +424,20 @@ struct ip_vs_service *
+ ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
+ {
+ 	struct ip_vs_service *svc;
+-
++	union nf_inet_addr _vaddr = { .ip = vaddr };
+ 	read_lock(&__ip_vs_svc_lock);
  
--	IP_VS_XMIT(skb, rt);
-+	IP_VS_XMIT(PF_INET, skb, rt);
+ 	/*
+ 	 *	Check the table hashed by fwmark first
+ 	 */
+-	if (fwmark && (svc = __ip_vs_svc_fwm_get(fwmark)))
++	if (fwmark && (svc = __ip_vs_svc_fwm_get(AF_INET, fwmark)))
+ 		goto out;
  
- 	LeaveFunction(10);
- 	return NF_STOLEN;
-@@ -467,7 +523,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->local_df = 1;
+ 	/*
+ 	 *	Check the table hashed by <protocol,addr,port>
+ 	 *	for "full" addressed entries
+ 	 */
+-	svc = __ip_vs_service_get(protocol, vaddr, vport);
++	svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, vport);
  
--	IP_VS_XMIT(skb, rt);
-+	IP_VS_XMIT(PF_INET, skb, rt);
+ 	if (svc == NULL
+ 	    && protocol == IPPROTO_TCP
+@@ -435,7 +447,7 @@ ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
+ 		 * Check if ftp service entry exists, the packet
+ 		 * might belong to FTP data connections.
+ 		 */
+-		svc = __ip_vs_service_get(protocol, vaddr, FTPPORT);
++		svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, FTPPORT);
+ 	}
  
- 	LeaveFunction(10);
- 	return NF_STOLEN;
-@@ -540,7 +596,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->local_df = 1;
+ 	if (svc == NULL
+@@ -443,7 +455,7 @@ ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
+ 		/*
+ 		 * Check if the catch-all port (port zero) exists
+ 		 */
+-		svc = __ip_vs_service_get(protocol, vaddr, 0);
++		svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, 0);
+ 	}
  
--	IP_VS_XMIT(skb, rt);
-+	IP_VS_XMIT(PF_INET, skb, rt);
+   out:
+@@ -2015,10 +2027,10 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
  
- 	rc = NF_STOLEN;
- 	goto out;
+ 	/* Lookup the exact service by <protocol, addr, port> or fwmark */
+ 	if (usvc.fwmark == 0)
+-		svc = __ip_vs_service_get(usvc.protocol,
+-					  usvc.addr.ip, usvc.port);
++		svc = __ip_vs_service_get(usvc.af, usvc.protocol,
++					  &usvc.addr, usvc.port);
+ 	else
+-		svc = __ip_vs_svc_fwm_get(usvc.fwmark);
++		svc = __ip_vs_svc_fwm_get(usvc.af, usvc.fwmark);
+ 
+ 	if (cmd != IP_VS_SO_SET_ADD
+ 	    && (svc == NULL || svc->protocol != usvc.protocol)) {
+@@ -2140,13 +2152,15 @@ __ip_vs_get_dest_entries(const struct ip_vs_get_dests *get,
+ 			 struct ip_vs_get_dests __user *uptr)
+ {
+ 	struct ip_vs_service *svc;
++	union nf_inet_addr addr = { .ip = get->addr };
+ 	int ret = 0;
+ 
+ 	if (get->fwmark)
+-		svc = __ip_vs_svc_fwm_get(get->fwmark);
++		svc = __ip_vs_svc_fwm_get(AF_INET, get->fwmark);
+ 	else
+-		svc = __ip_vs_service_get(get->protocol,
+-					  get->addr, get->port);
++		svc = __ip_vs_service_get(AF_INET, get->protocol, &addr,
++					  get->port);
++
+ 	if (svc) {
+ 		int count = 0;
+ 		struct ip_vs_dest *dest;
+@@ -2281,13 +2295,15 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 	{
+ 		struct ip_vs_service_entry *entry;
+ 		struct ip_vs_service *svc;
++		union nf_inet_addr addr;
+ 
+ 		entry = (struct ip_vs_service_entry *)arg;
++		addr.ip = entry->addr;
+ 		if (entry->fwmark)
+-			svc = __ip_vs_svc_fwm_get(entry->fwmark);
++			svc = __ip_vs_svc_fwm_get(AF_INET, entry->fwmark);
+ 		else
+-			svc = __ip_vs_service_get(entry->protocol,
+-						  entry->addr, entry->port);
++			svc = __ip_vs_service_get(AF_INET, entry->protocol,
++						  &addr, entry->port);
+ 		if (svc) {
+ 			ip_vs_copy_service(entry, svc);
+ 			if (copy_to_user(user, entry, sizeof(*entry)) != 0)
+@@ -2612,10 +2628,10 @@ static int ip_vs_genl_parse_service(struct ip_vs_service_user_kern *usvc,
+ 
+ 		/* prefill flags from service if it already exists */
+ 		if (usvc->fwmark)
+-			svc = __ip_vs_svc_fwm_get(usvc->fwmark);
++			svc = __ip_vs_svc_fwm_get(usvc->af, usvc->fwmark);
+ 		else
+-			svc = __ip_vs_service_get(usvc->protocol, usvc->addr.ip,
+-						  usvc->port);
++			svc = __ip_vs_service_get(usvc->af, usvc->protocol,
++						  &usvc->addr, usvc->port);
+ 		if (svc) {
+ 			usvc->flags = svc->flags;
+ 			ip_vs_service_put(svc);
+@@ -2643,10 +2659,10 @@ static struct ip_vs_service *ip_vs_genl_find_service(struct nlattr *nla)
+ 		return ERR_PTR(ret);
+ 
+ 	if (usvc.fwmark)
+-		return __ip_vs_svc_fwm_get(usvc.fwmark);
++		return __ip_vs_svc_fwm_get(usvc.af, usvc.fwmark);
+ 	else
+-		return __ip_vs_service_get(usvc.protocol, usvc.addr.ip,
+-					   usvc.port);
++		return __ip_vs_service_get(usvc.af, usvc.protocol,
++					   &usvc.addr, usvc.port);
+ }
+ 
+ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
+@@ -2954,10 +2970,10 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 
+ 	/* Lookup the exact service by <protocol, addr, port> or fwmark */
+ 	if (usvc.fwmark == 0)
+-		svc = __ip_vs_service_get(usvc.protocol, usvc.addr.ip,
+-					  usvc.port);
++		svc = __ip_vs_service_get(usvc.af, usvc.protocol,
++					  &usvc.addr, usvc.port);
+ 	else
+-		svc = __ip_vs_svc_fwm_get(usvc.fwmark);
++		svc = __ip_vs_svc_fwm_get(usvc.af, usvc.fwmark);
+ 
+ 	/* Unless we're adding a new service, the service must already exist */
+ 	if ((cmd != IPVS_CMD_NEW_SERVICE) && (svc == NULL)) {
 -- 
 1.5.4.5
 
