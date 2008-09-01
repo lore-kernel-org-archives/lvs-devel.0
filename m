@@ -1,14 +1,14 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv2 RFC 14/25] IPVS: Add and bind IPv6 xmit functions
-Date: Mon,  1 Sep 2008 14:56:11 +0200
-Message-ID: <1220273782-19901-15-git-send-email-juliusv@google.com>
+Subject: [PATCHv2 RFC 11/25] IPVS: Extend protocol DNAT/SNAT and state handlers
+Date: Mon,  1 Sep 2008 14:56:08 +0200
+Message-ID: <1220273782-19901-12-git-send-email-juliusv@google.com>
 References: <1220273782-19901-1-git-send-email-juliusv@google.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220273824; bh=upn4KGQbBV9li2vNo6xcLHPCm0g=;
+	t=1220273825; bh=H+hljNpmSjWz0a/IWami8LOIffY=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=G64C63vix/AP3mQQ1NO5yPvX81xITfnRk4QAaSeh
-	bYrBMMHanUy6IfdiROKm/wIdpVV4FQKrVkICuFRhtv1l/Q==
+	 In-Reply-To:References; b=qVIHS3CA1UmJpPf0VP9pAxKuUWpTnOJJk+wuQloR
+	F/vDQZ1C2z5w9KX9xvRqdnAiT/+2Tx3EhWt2dL7hEEFFiA==
 In-Reply-To: <1220273782-19901-1-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -18,560 +18,374 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-Add xmit functions for IPv6. Also add the already needed __ip_vs_get_out_rt_v6()
-to ip_vs_core.c. Bind the new xmit functions to v6 connections.
+Extend protocol DNAT/SNAT and state handlers to work with IPv6. Also
+change/introduce new checksumming helper functions for this.
 
 Signed-off-by: Julius Volz <juliusv@google.com>
 
- 4 files changed, 462 insertions(+), 2 deletions(-)
+ 3 files changed, 142 insertions(+), 36 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 7de9eb4..a7eda08 100644
+index 3305d1b..15f1a48 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -855,6 +855,18 @@ extern int ip_vs_icmp_xmit
- (struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp, int offset);
- extern void ip_vs_dst_reset(struct ip_vs_dest *dest);
- 
-+#ifdef CONFIG_IP_VS_IPV6
-+extern int ip_vs_bypass_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
-+extern int ip_vs_nat_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
-+extern int ip_vs_tunnel_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
-+extern int ip_vs_dr_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
-+extern int ip_vs_icmp_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp, int offset);
-+#endif
- 
- /*
-  *	This is a simple mechanism to ignore packets when
-@@ -899,7 +911,12 @@ static inline char ip_vs_fwd_tag(struct ip_vs_conn *cp)
- }
- 
- extern void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
--		struct ip_vs_conn *cp, int dir);
-+			   struct ip_vs_conn *cp, int dir);
-+
-+#ifdef CONFIG_IP_VS_IPV6
-+extern void ip_vs_nat_icmp_v6(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+			      struct ip_vs_conn *cp, int dir);
-+#endif
- 
- extern __sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset);
- 
-diff --git a/net/ipv4/ipvs/ip_vs_conn.c b/net/ipv4/ipvs/ip_vs_conn.c
-index 664b42c..814d416 100644
---- a/net/ipv4/ipvs/ip_vs_conn.c
-+++ b/net/ipv4/ipvs/ip_vs_conn.c
-@@ -388,6 +388,33 @@ static inline void ip_vs_bind_xmit(struct ip_vs_conn *cp)
- 	}
+@@ -904,6 +904,17 @@ static inline __wsum ip_vs_check_diff4(__be32 old, __be32 new, __wsum oldsum)
+ 	return csum_partial((char *) diff, sizeof(diff), oldsum);
  }
  
 +#ifdef CONFIG_IP_VS_IPV6
-+static inline void ip_vs_bind_xmit_v6(struct ip_vs_conn *cp)
++static inline __wsum ip_vs_check_diff16(const __be32 *old, const __be32 *new,
++					__wsum oldsum)
 +{
-+	switch (IP_VS_FWD_METHOD(cp)) {
-+	case IP_VS_CONN_F_MASQ:
-+		cp->packet_xmit = ip_vs_nat_xmit_v6;
-+		break;
++	__be32 diff[8] = { ~old[3], ~old[2], ~old[1], ~old[0],
++			    new[3],  new[2],  new[1],  new[0] };
 +
-+	case IP_VS_CONN_F_TUNNEL:
-+		cp->packet_xmit = ip_vs_tunnel_xmit_v6;
-+		break;
-+
-+	case IP_VS_CONN_F_DROUTE:
-+		cp->packet_xmit = ip_vs_dr_xmit_v6;
-+		break;
-+
-+	case IP_VS_CONN_F_LOCALNODE:
-+		cp->packet_xmit = ip_vs_null_xmit;
-+		break;
-+
-+	case IP_VS_CONN_F_BYPASS:
-+		cp->packet_xmit = ip_vs_bypass_xmit_v6;
-+		break;
-+	}
++	return csum_partial((char *) diff, sizeof(diff), oldsum);
 +}
 +#endif
 +
- 
- static inline int ip_vs_dest_totalconns(struct ip_vs_dest *dest)
+ static inline __wsum ip_vs_check_diff2(__be16 old, __be16 new, __wsum oldsum)
  {
-@@ -693,7 +720,12 @@ ip_vs_conn_new(int af, int proto, const union nf_inet_addr *caddr, __be16 cport,
- 	cp->timeout = 3*HZ;
+ 	__be16 diff[2] = { ~old, new };
+diff --git a/net/ipv4/ipvs/ip_vs_proto_tcp.c b/net/ipv4/ipvs/ip_vs_proto_tcp.c
+index 9211afa..3daae43 100644
+--- a/net/ipv4/ipvs/ip_vs_proto_tcp.c
++++ b/net/ipv4/ipvs/ip_vs_proto_tcp.c
+@@ -114,11 +114,21 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
  
- 	/* Bind its packet transmitter */
--	ip_vs_bind_xmit(cp);
+ 
+ static inline void
+-tcp_fast_csum_update(struct tcphdr *tcph, __be32 oldip, __be32 newip,
++tcp_fast_csum_update(int af, struct tcphdr *tcph,
++		     const union nf_inet_addr *oldip,
++		     const union nf_inet_addr *newip,
+ 		     __be16 oldport, __be16 newport)
+ {
 +#ifdef CONFIG_IP_VS_IPV6
 +	if (af == AF_INET6)
-+		ip_vs_bind_xmit_v6(cp);
++		tcph->check =
++			csum_fold(ip_vs_check_diff16(oldip->ip6, newip->ip6,
++					 ip_vs_check_diff2(oldport, newport,
++						~csum_unfold(tcph->check))));
 +	else
 +#endif
-+		ip_vs_bind_xmit(cp);
- 
- 	if (unlikely(pp && atomic_read(&pp->appcnt)))
- 		ip_vs_bind_app(cp, pp);
-diff --git a/net/ipv4/ipvs/ip_vs_core.c b/net/ipv4/ipvs/ip_vs_core.c
-index 2d5a433..d6f5bf9 100644
---- a/net/ipv4/ipvs/ip_vs_core.c
-+++ b/net/ipv4/ipvs/ip_vs_core.c
-@@ -570,6 +570,49 @@ void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 			"Forwarding altered incoming ICMP");
+ 	tcph->check =
+-		csum_fold(ip_vs_check_diff4(oldip, newip,
++		csum_fold(ip_vs_check_diff4(oldip->ip, newip->ip,
+ 				 ip_vs_check_diff2(oldport, newport,
+ 						~csum_unfold(tcph->check))));
  }
- 
+@@ -129,7 +139,14 @@ tcp_snat_handler(struct sk_buff *skb,
+ 		 struct ip_vs_protocol *pp, struct ip_vs_conn *cp)
+ {
+ 	struct tcphdr *tcph;
+-	const unsigned int tcphoff = ip_hdrlen(skb);
++	unsigned int tcphoff;
++
 +#ifdef CONFIG_IP_VS_IPV6
-+void ip_vs_nat_icmp_v6(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+		    struct ip_vs_conn *cp, int inout)
-+{
-+	struct ipv6hdr *iph	 = ipv6_hdr(skb);
-+	unsigned int icmp_offset = sizeof(struct ipv6hdr);
-+	struct icmp6hdr *icmph	 = (struct icmp6hdr *)(skb_network_header(skb) +
-+						      icmp_offset);
-+	struct ipv6hdr *ciph	 = (struct ipv6hdr *)(icmph + 1);
-+
-+	if (inout) {
-+		iph->saddr = cp->vaddr.in6;
-+		ciph->daddr = cp->vaddr.in6;
-+	} else {
-+		iph->daddr = cp->daddr.in6;
-+		ciph->saddr = cp->daddr.in6;
-+	}
-+
-+	/* the TCP/UDP port */
-+	if (IPPROTO_TCP == ciph->nexthdr || IPPROTO_UDP == ciph->nexthdr) {
-+		__be16 *ports = (void *)ciph + sizeof(struct ipv6hdr);
-+
-+		if (inout)
-+			ports[1] = cp->vport;
-+		else
-+			ports[0] = cp->dport;
-+	}
-+
-+	/* And finally the ICMP checksum */
-+	icmph->icmp6_cksum = 0;
-+	/* TODO IPv6: is this correct for ICMPv6? */
-+	ip_vs_checksum_complete(skb, icmp_offset);
-+	skb->ip_summed = CHECKSUM_UNNECESSARY;
-+
-+	if (inout)
-+		IP_VS_DBG_PKT(11, pp, skb, (void *)ciph - (void *)iph,
-+			"Forwarding altered outgoing ICMPv6");
++	if (cp->af == AF_INET6)
++		tcphoff = sizeof(struct ipv6hdr);
 +	else
-+		IP_VS_DBG_PKT(11, pp, skb, (void *)ciph - (void *)iph,
-+			"Forwarding altered incoming ICMPv6");
-+}
 +#endif
-+
- /*
-  *	Handle ICMP messages in the inside-to-outside direction (outgoing).
-  *	Find any that might be relevant, check against existing connections,
-diff --git a/net/ipv4/ipvs/ip_vs_xmit.c b/net/ipv4/ipvs/ip_vs_xmit.c
-index 7bebd5c..15c59aa 100644
---- a/net/ipv4/ipvs/ip_vs_xmit.c
-+++ b/net/ipv4/ipvs/ip_vs_xmit.c
-@@ -269,6 +269,68 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	return NF_STOLEN;
- }
++		tcphoff = ip_hdrlen(skb);
  
+ 	/* csum_check requires unshared skb */
+ 	if (!skb_make_writable(skb, tcphoff+sizeof(*tcph)))
+@@ -137,7 +154,7 @@ tcp_snat_handler(struct sk_buff *skb,
+ 
+ 	if (unlikely(cp->app != NULL)) {
+ 		/* Some checks before mangling */
+-		if (pp->csum_check && !pp->csum_check(AF_INET, skb, pp))
++		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+ 			return 0;
+ 
+ 		/* Call application helper if needed */
+@@ -145,13 +162,13 @@ tcp_snat_handler(struct sk_buff *skb,
+ 			return 0;
+ 	}
+ 
+-	tcph = (void *)ip_hdr(skb) + tcphoff;
++	tcph = (void *)skb_network_header(skb) + tcphoff;
+ 	tcph->source = cp->vport;
+ 
+ 	/* Adjust TCP checksums */
+ 	if (!cp->app) {
+ 		/* Only port and addr are changed, do fast csum update */
+-		tcp_fast_csum_update(tcph, cp->daddr.ip, cp->vaddr.ip,
++		tcp_fast_csum_update(cp->af, tcph, &cp->daddr, &cp->vaddr,
+ 				     cp->dport, cp->vport);
+ 		if (skb->ip_summed == CHECKSUM_COMPLETE)
+ 			skb->ip_summed = CHECKSUM_NONE;
+@@ -159,9 +176,20 @@ tcp_snat_handler(struct sk_buff *skb,
+ 		/* full checksum calculation */
+ 		tcph->check = 0;
+ 		skb->csum = skb_checksum(skb, tcphoff, skb->len - tcphoff, 0);
+-		tcph->check = csum_tcpudp_magic(cp->vaddr.ip, cp->caddr.ip,
+-						skb->len - tcphoff,
+-						cp->protocol, skb->csum);
 +#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+		     struct ip_vs_protocol *pp)
-+{
-+	struct rt6_info *rt;			/* Route to the other host */
-+	struct ipv6hdr  *iph = ipv6_hdr(skb);
-+	int    mtu;
-+	struct flowi fl = {
-+		.oif = 0,
-+		.nl_u = {
-+			.ip6_u = {
-+				.daddr = iph->daddr,
-+				.saddr = { .s6_addr32 = {0, 0, 0, 0} }, } },
-+	};
-+
-+	EnterFunction(10);
-+
-+	if (!(rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl))) {
-+		IP_VS_DBG_RL("ip_vs_bypass_xmit_v6(): ip6_route_output error, "
-+			     "dest: " NIP6_FMT "\n", NIP6(iph->daddr));
-+		goto tx_error_icmp;
-+	}
-+
-+	/* MTU checking */
-+	mtu = dst_mtu(&rt->u.dst);
-+	if (skb->len > mtu) {
-+		dst_release(&rt->u.dst);
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		IP_VS_DBG_RL("ip_vs_bypass_xmit_v6(): frag needed\n");
-+		goto tx_error;
-+	}
-+
-+	/*
-+	 * Call ip_send_check because we are not sure it is called
-+	 * after ip_defrag. Is copy-on-write needed?
-+	 */
-+	if (unlikely((skb = skb_share_check(skb, GFP_ATOMIC)) == NULL)) {
-+		dst_release(&rt->u.dst);
-+		return NF_STOLEN;
-+	}
-+
-+	/* drop old route */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	IP_VS_XMIT(PF_INET6, skb, rt);
-+
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+
-+ tx_error_icmp:
-+	dst_link_failure(skb);
-+ tx_error:
-+	kfree_skb(skb);
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+}
-+#endif
- 
- /*
-  *      NAT transmitter (only for outside-to-inside nat forwarding)
-@@ -348,6 +410,80 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	goto tx_error;
- }
- 
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+	          struct ip_vs_protocol *pp)
-+{
-+	struct rt6_info *rt;		/* Route to the other host */
-+	int mtu;
-+
-+	EnterFunction(10);
-+
-+	/* check if it is a connection of no-client-port */
-+	if (unlikely(cp->flags & IP_VS_CONN_F_NO_CPORT)) {
-+		__be16 _pt, *p;
-+		p = skb_header_pointer(skb, sizeof(struct ipv6hdr), sizeof(_pt), &_pt);
-+		if (p == NULL)
-+			goto tx_error;
-+		ip_vs_conn_fill_cport(cp, *p);
-+		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
-+	}
-+
-+	if (!(rt = __ip_vs_get_out_rt_v6(cp)))
-+		goto tx_error_icmp;
-+
-+	/* MTU checking */
-+	mtu = dst_mtu(&rt->u.dst);
-+	if (skb->len > mtu) {
-+		dst_release(&rt->u.dst);
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		IP_VS_DBG_RL_PKT(0, pp, skb, 0, "ip_vs_nat_xmit_v6(): frag needed for");
-+		goto tx_error;
-+	}
-+
-+	/* copy-on-write the packet before mangling it */
-+	if (!skb_make_writable(skb, sizeof(struct ipv6hdr)))
-+		goto tx_error_put;
-+
-+	if (skb_cow(skb, rt->u.dst.dev->hard_header_len))
-+		goto tx_error_put;
-+
-+	/* drop old route */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	/* mangle the packet */
-+	if (pp->dnat_handler && !pp->dnat_handler(skb, pp, cp))
-+		goto tx_error;
-+	ipv6_hdr(skb)->daddr = cp->daddr.in6;
-+
-+	IP_VS_DBG_PKT(10, pp, skb, 0, "After DNAT");
-+
-+	/* FIXME: when application helper enlarges the packet and the length
-+	   is larger than the MTU of outgoing device, there will be still
-+	   MTU problem. */
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	IP_VS_XMIT(PF_INET6, skb, rt);
-+
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+
-+  tx_error_icmp:
-+	dst_link_failure(skb);
-+  tx_error:
-+	LeaveFunction(10);
-+	kfree_skb(skb);
-+	return NF_STOLEN;
-+  tx_error_put:
-+	dst_release(&rt->u.dst);
-+	goto tx_error;
-+}
-+#endif
-+
- 
- /*
-  *   IP Tunneling transmitter
-@@ -479,6 +615,111 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	return NF_STOLEN;
- }
- 
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+		     struct ip_vs_protocol *pp)
-+{
-+	struct rt6_info *rt;			/* Route to the other host */
-+	struct net_device *tdev;		/* Device to other host */
-+	struct ipv6hdr  *old_iph = ipv6_hdr(skb);
-+	sk_buff_data_t old_transport_header = skb->transport_header;
-+	struct ipv6hdr  *iph;			/* Our new IP header */
-+	unsigned int max_headroom;		/* The extra header space needed */
-+	int    mtu;
-+
-+	EnterFunction(10);
-+
-+	if (skb->protocol != htons(ETH_P_IPV6)) {
-+		IP_VS_DBG_RL("ip_vs_tunnel_xmit_v6(): protocol error, "
-+			     "ETH_P_IPV6: %d, skb protocol: %d\n",
-+			     htons(ETH_P_IPV6), skb->protocol);
-+		goto tx_error;
-+	}
-+
-+	if (!(rt = __ip_vs_get_out_rt_v6(cp)))
-+		goto tx_error_icmp;
-+
-+	tdev = rt->u.dst.dev;
-+
-+	mtu = dst_mtu(&rt->u.dst) - sizeof(struct ipv6hdr);
-+	/* TODO IPv6: do we need this check in IPv6? */
-+	if (mtu < 1280) {
-+		dst_release(&rt->u.dst);
-+		IP_VS_DBG_RL("ip_vs_tunnel_xmit_v6(): mtu less than 1280\n");
-+		goto tx_error;
-+	}
-+	if (skb->dst)
-+		skb->dst->ops->update_pmtu(skb->dst, mtu);
-+
-+	if (mtu < ntohs(old_iph->payload_len) + sizeof(struct ipv6hdr)) {
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		dst_release(&rt->u.dst);
-+		IP_VS_DBG_RL("ip_vs_tunnel_xmit_v6(): frag needed\n");
-+		goto tx_error;
-+	}
-+
-+	/*
-+	 * Okay, now see if we can stuff it in the buffer as-is.
-+	 */
-+	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
-+
-+	if (skb_headroom(skb) < max_headroom
-+	    || skb_cloned(skb) || skb_shared(skb)) {
-+		struct sk_buff *new_skb =
-+			skb_realloc_headroom(skb, max_headroom);
-+		if (!new_skb) {
-+			dst_release(&rt->u.dst);
-+			kfree_skb(skb);
-+			IP_VS_ERR_RL("ip_vs_tunnel_xmit_v6(): no memory\n");
-+			return NF_STOLEN;
-+		}
-+		kfree_skb(skb);
-+		skb = new_skb;
-+		old_iph = ipv6_hdr(skb);
-+	}
-+
-+	skb->transport_header = old_transport_header;
-+
-+	skb_push(skb, sizeof(struct ipv6hdr));
-+	skb_reset_network_header(skb);
-+	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
-+
-+	/* drop old route */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	/*
-+	 *	Push down and install the IPIP header.
-+	 */
-+	iph			=	ipv6_hdr(skb);
-+	iph->version		=	6;
-+	iph->nexthdr		=	IPPROTO_IPV6;
-+	iph->payload_len	=	old_iph->payload_len + sizeof(old_iph);
-+	iph->priority		=	old_iph->priority;
-+	memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
-+	iph->daddr		=	rt->rt6i_dst.addr;
-+	iph->saddr		=	cp->vaddr.in6; /* rt->rt6i_src.addr; */
-+	iph->hop_limit		=	old_iph->hop_limit;
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	ip6_local_out(skb);
-+
-+	LeaveFunction(10);
-+
-+	return NF_STOLEN;
-+
-+  tx_error_icmp:
-+	dst_link_failure(skb);
-+  tx_error:
-+	kfree_skb(skb);
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+}
-+#endif
-+
- 
- /*
-  *      Direct Routing transmitter
-@@ -536,6 +777,58 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	return NF_STOLEN;
- }
- 
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+	         struct ip_vs_protocol *pp)
-+{
-+	struct rt6_info *rt;			/* Route to the other host */
-+	int    mtu;
-+
-+	EnterFunction(10);
-+
-+	if (!(rt = __ip_vs_get_out_rt_v6(cp)))
-+		goto tx_error_icmp;
-+
-+	/* MTU checking */
-+	mtu = dst_mtu(&rt->u.dst);
-+	if (skb->len > mtu) {
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		dst_release(&rt->u.dst);
-+		IP_VS_DBG_RL("ip_vs_dr_xmit_v6(): frag needed\n");
-+		goto tx_error;
-+	}
-+
-+	/*
-+	 * Call ip_send_check because we are not sure it is called
-+	 * after ip_defrag. Is copy-on-write needed?
-+	 */
-+	if (unlikely((skb = skb_share_check(skb, GFP_ATOMIC)) == NULL)) {
-+		dst_release(&rt->u.dst);
-+		return NF_STOLEN;
-+	}
-+
-+	/* drop old route */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	IP_VS_XMIT(PF_INET6, skb, rt);
-+
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+
-+  tx_error_icmp:
-+	dst_link_failure(skb);
-+  tx_error:
-+	kfree_skb(skb);
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+}
-+#endif
-+
- 
- /*
-  *	ICMP packet transmitter
-@@ -613,3 +906,78 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	ip_rt_put(rt);
- 	goto tx_error;
- }
-+
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+		struct ip_vs_protocol *pp, int offset)
-+{
-+	struct rt6_info	*rt;	/* Route to the other host */
-+	int mtu;
-+	int rc;
-+
-+	EnterFunction(10);
-+
-+	/* The ICMP packet for VS/TUN, VS/DR and LOCALNODE will be
-+	   forwarded directly here, because there is no need to
-+	   translate address/port back */
-+	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ) {
-+		if (cp->packet_xmit)
-+			rc = cp->packet_xmit(skb, cp, pp);
++		if (cp->af == AF_INET6)
++			tcph->check = csum_ipv6_magic(&cp->vaddr.in6,
++						      &cp->caddr.in6,
++						      skb->len - tcphoff,
++						      cp->protocol, skb->csum);
 +		else
-+			rc = NF_ACCEPT;
-+		/* do not touch skb anymore */
-+		atomic_inc(&cp->in_pkts);
-+		goto out;
-+	}
-+
-+	/*
-+	 * mangle and send the packet here (only for VS/NAT)
-+	 */
-+
-+	if (!(rt = __ip_vs_get_out_rt_v6(cp)))
-+		goto tx_error_icmp;
-+
-+	/* MTU checking */
-+	mtu = dst_mtu(&rt->u.dst);
-+	if (skb->len > mtu) {
-+		dst_release(&rt->u.dst);
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		IP_VS_DBG_RL("ip_vs_in_icmp(): frag needed\n");
-+		goto tx_error;
-+	}
-+
-+	/* copy-on-write the packet before mangling it */
-+	if (!skb_make_writable(skb, offset))
-+		goto tx_error_put;
-+
-+	if (skb_cow(skb, rt->u.dst.dev->hard_header_len))
-+		goto tx_error_put;
-+
-+	/* drop the old route when skb is not shared */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	ip_vs_nat_icmp_v6(skb, pp, cp, 0);
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	IP_VS_XMIT(PF_INET6, skb, rt);
-+
-+	rc = NF_STOLEN;
-+	goto out;
-+
-+  tx_error_icmp:
-+	dst_link_failure(skb);
-+  tx_error:
-+	dev_kfree_skb(skb);
-+	rc = NF_STOLEN;
-+  out:
-+	LeaveFunction(10);
-+	return rc;
-+  tx_error_put:
-+	dst_release(&rt->u.dst);
-+	goto tx_error;
-+}
 +#endif
++			tcph->check = csum_tcpudp_magic(cp->vaddr.ip,
++							cp->caddr.ip,
++							skb->len - tcphoff,
++							cp->protocol,
++							skb->csum);
++
+ 		IP_VS_DBG(11, "O-pkt: %s O-csum=%d (+%zd)\n",
+ 			  pp->name, tcph->check,
+ 			  (char*)&(tcph->check) - (char*)tcph);
+@@ -175,7 +203,14 @@ tcp_dnat_handler(struct sk_buff *skb,
+ 		 struct ip_vs_protocol *pp, struct ip_vs_conn *cp)
+ {
+ 	struct tcphdr *tcph;
+-	const unsigned int tcphoff = ip_hdrlen(skb);
++	unsigned int tcphoff;
++
++#ifdef CONFIG_IP_VS_IPV6
++	if (cp->af == AF_INET6)
++		tcphoff = sizeof(struct ipv6hdr);
++	else
++#endif
++		tcphoff = ip_hdrlen(skb);
+ 
+ 	/* csum_check requires unshared skb */
+ 	if (!skb_make_writable(skb, tcphoff+sizeof(*tcph)))
+@@ -183,7 +218,7 @@ tcp_dnat_handler(struct sk_buff *skb,
+ 
+ 	if (unlikely(cp->app != NULL)) {
+ 		/* Some checks before mangling */
+-		if (pp->csum_check && !pp->csum_check(AF_INET, skb, pp))
++		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+ 			return 0;
+ 
+ 		/*
+@@ -194,7 +229,7 @@ tcp_dnat_handler(struct sk_buff *skb,
+ 			return 0;
+ 	}
+ 
+-	tcph = (void *)ip_hdr(skb) + tcphoff;
++	tcph = (void *)skb_network_header(skb) + tcphoff;
+ 	tcph->dest = cp->dport;
+ 
+ 	/*
+@@ -202,7 +237,7 @@ tcp_dnat_handler(struct sk_buff *skb,
+ 	 */
+ 	if (!cp->app) {
+ 		/* Only port and addr are changed, do fast csum update */
+-		tcp_fast_csum_update(tcph, cp->vaddr.ip, cp->daddr.ip,
++		tcp_fast_csum_update(cp->af, tcph, &cp->vaddr, &cp->daddr,
+ 				     cp->vport, cp->dport);
+ 		if (skb->ip_summed == CHECKSUM_COMPLETE)
+ 			skb->ip_summed = CHECKSUM_NONE;
+@@ -210,9 +245,19 @@ tcp_dnat_handler(struct sk_buff *skb,
+ 		/* full checksum calculation */
+ 		tcph->check = 0;
+ 		skb->csum = skb_checksum(skb, tcphoff, skb->len - tcphoff, 0);
+-		tcph->check = csum_tcpudp_magic(cp->caddr.ip, cp->daddr.ip,
+-						skb->len - tcphoff,
+-						cp->protocol, skb->csum);
++#ifdef CONFIG_IP_VS_IPV6
++		if (cp->af == AF_INET6)
++			tcph->check = csum_ipv6_magic(&cp->caddr.in6,
++						      &cp->daddr.in6,
++						      skb->len - tcphoff,
++						      cp->protocol, skb->csum);
++		else
++#endif
++			tcph->check = csum_tcpudp_magic(cp->caddr.ip,
++							cp->daddr.ip,
++							skb->len - tcphoff,
++							cp->protocol,
++							skb->csum);
+ 		skb->ip_summed = CHECKSUM_UNNECESSARY;
+ 	}
+ 	return 1;
+@@ -487,7 +532,13 @@ tcp_state_transition(struct ip_vs_conn *cp, int direction,
+ {
+ 	struct tcphdr _tcph, *th;
+ 
+-	th = skb_header_pointer(skb, ip_hdrlen(skb), sizeof(_tcph), &_tcph);
++#ifdef CONFIG_IP_VS_IPV6
++	int ihl = cp->af == AF_INET ? ip_hdrlen(skb) : sizeof(struct ipv6hdr);
++#else
++	int ihl = ip_hdrlen(skb);
++#endif
++
++	th = skb_header_pointer(skb, ihl, sizeof(_tcph), &_tcph);
+ 	if (th == NULL)
+ 		return 0;
+ 
+diff --git a/net/ipv4/ipvs/ip_vs_proto_udp.c b/net/ipv4/ipvs/ip_vs_proto_udp.c
+index 5d9e684..fabe9ba 100644
+--- a/net/ipv4/ipvs/ip_vs_proto_udp.c
++++ b/net/ipv4/ipvs/ip_vs_proto_udp.c
+@@ -119,13 +119,23 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 
+ 
+ static inline void
+-udp_fast_csum_update(struct udphdr *uhdr, __be32 oldip, __be32 newip,
++udp_fast_csum_update(int af, struct udphdr *uhdr,
++		     const union nf_inet_addr *oldip,
++		     const union nf_inet_addr *newip,
+ 		     __be16 oldport, __be16 newport)
+ {
+-	uhdr->check =
+-		csum_fold(ip_vs_check_diff4(oldip, newip,
+-				 ip_vs_check_diff2(oldport, newport,
+-					~csum_unfold(uhdr->check))));
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6)
++		uhdr->check =
++			csum_fold(ip_vs_check_diff16(oldip->ip6, newip->ip6,
++					 ip_vs_check_diff2(oldport, newport,
++						~csum_unfold(uhdr->check))));
++	else
++#endif
++		uhdr->check =
++			csum_fold(ip_vs_check_diff4(oldip->ip, newip->ip,
++					 ip_vs_check_diff2(oldport, newport,
++						~csum_unfold(uhdr->check))));
+ 	if (!uhdr->check)
+ 		uhdr->check = CSUM_MANGLED_0;
+ }
+@@ -135,7 +145,14 @@ udp_snat_handler(struct sk_buff *skb,
+ 		 struct ip_vs_protocol *pp, struct ip_vs_conn *cp)
+ {
+ 	struct udphdr *udph;
+-	const unsigned int udphoff = ip_hdrlen(skb);
++	unsigned int udphoff;
++
++#ifdef CONFIG_IP_VS_IPV6
++	if (cp->af == AF_INET6)
++		udphoff = sizeof(struct ipv6hdr);
++	else
++#endif
++		udphoff = ip_hdrlen(skb);
+ 
+ 	/* csum_check requires unshared skb */
+ 	if (!skb_make_writable(skb, udphoff+sizeof(*udph)))
+@@ -143,7 +160,7 @@ udp_snat_handler(struct sk_buff *skb,
+ 
+ 	if (unlikely(cp->app != NULL)) {
+ 		/* Some checks before mangling */
+-		if (pp->csum_check && !pp->csum_check(AF_INET, skb, pp))
++		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+ 			return 0;
+ 
+ 		/*
+@@ -153,7 +170,7 @@ udp_snat_handler(struct sk_buff *skb,
+ 			return 0;
+ 	}
+ 
+-	udph = (void *)ip_hdr(skb) + udphoff;
++	udph = (void *)skb_network_header(skb) + udphoff;
+ 	udph->source = cp->vport;
+ 
+ 	/*
+@@ -161,7 +178,7 @@ udp_snat_handler(struct sk_buff *skb,
+ 	 */
+ 	if (!cp->app && (udph->check != 0)) {
+ 		/* Only port and addr are changed, do fast csum update */
+-		udp_fast_csum_update(udph, cp->daddr.ip, cp->vaddr.ip,
++		udp_fast_csum_update(cp->af, udph, &cp->daddr, &cp->vaddr,
+ 				     cp->dport, cp->vport);
+ 		if (skb->ip_summed == CHECKSUM_COMPLETE)
+ 			skb->ip_summed = CHECKSUM_NONE;
+@@ -169,9 +186,19 @@ udp_snat_handler(struct sk_buff *skb,
+ 		/* full checksum calculation */
+ 		udph->check = 0;
+ 		skb->csum = skb_checksum(skb, udphoff, skb->len - udphoff, 0);
+-		udph->check = csum_tcpudp_magic(cp->vaddr.ip, cp->caddr.ip,
+-						skb->len - udphoff,
+-						cp->protocol, skb->csum);
++#ifdef CONFIG_IP_VS_IPV6
++		if (cp->af == AF_INET6)
++			udph->check = csum_ipv6_magic(&cp->vaddr.in6,
++						      &cp->caddr.in6,
++						      skb->len - udphoff,
++						      cp->protocol, skb->csum);
++		else
++#endif
++			udph->check = csum_tcpudp_magic(cp->vaddr.ip,
++							cp->caddr.ip,
++							skb->len - udphoff,
++							cp->protocol,
++							skb->csum);
+ 		if (udph->check == 0)
+ 			udph->check = CSUM_MANGLED_0;
+ 		IP_VS_DBG(11, "O-pkt: %s O-csum=%d (+%zd)\n",
+@@ -187,7 +214,14 @@ udp_dnat_handler(struct sk_buff *skb,
+ 		 struct ip_vs_protocol *pp, struct ip_vs_conn *cp)
+ {
+ 	struct udphdr *udph;
+-	unsigned int udphoff = ip_hdrlen(skb);
++	unsigned int udphoff;
++
++#ifdef CONFIG_IP_VS_IPV6
++	if (cp->af == AF_INET6)
++		udphoff = sizeof(struct ipv6hdr);
++	else
++#endif
++		udphoff = ip_hdrlen(skb);
+ 
+ 	/* csum_check requires unshared skb */
+ 	if (!skb_make_writable(skb, udphoff+sizeof(*udph)))
+@@ -195,7 +229,7 @@ udp_dnat_handler(struct sk_buff *skb,
+ 
+ 	if (unlikely(cp->app != NULL)) {
+ 		/* Some checks before mangling */
+-		if (pp->csum_check && !pp->csum_check(AF_INET, skb, pp))
++		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+ 			return 0;
+ 
+ 		/*
+@@ -206,7 +240,7 @@ udp_dnat_handler(struct sk_buff *skb,
+ 			return 0;
+ 	}
+ 
+-	udph = (void *)ip_hdr(skb) + udphoff;
++	udph = (void *)skb_network_header(skb) + udphoff;
+ 	udph->dest = cp->dport;
+ 
+ 	/*
+@@ -214,7 +248,7 @@ udp_dnat_handler(struct sk_buff *skb,
+ 	 */
+ 	if (!cp->app && (udph->check != 0)) {
+ 		/* Only port and addr are changed, do fast csum update */
+-		udp_fast_csum_update(udph, cp->vaddr.ip, cp->daddr.ip,
++		udp_fast_csum_update(cp->af, udph, &cp->vaddr, &cp->daddr,
+ 				     cp->vport, cp->dport);
+ 		if (skb->ip_summed == CHECKSUM_COMPLETE)
+ 			skb->ip_summed = CHECKSUM_NONE;
+@@ -222,9 +256,19 @@ udp_dnat_handler(struct sk_buff *skb,
+ 		/* full checksum calculation */
+ 		udph->check = 0;
+ 		skb->csum = skb_checksum(skb, udphoff, skb->len - udphoff, 0);
+-		udph->check = csum_tcpudp_magic(cp->caddr.ip, cp->daddr.ip,
+-						skb->len - udphoff,
+-						cp->protocol, skb->csum);
++#ifdef CONFIG_IP_VS_IPV6
++		if (cp->af == AF_INET6)
++			udph->check = csum_ipv6_magic(&cp->caddr.in6,
++						      &cp->daddr.in6,
++						      skb->len - udphoff,
++						      cp->protocol, skb->csum);
++		else
++#endif
++			udph->check = csum_tcpudp_magic(cp->caddr.ip,
++							cp->daddr.ip,
++							skb->len - udphoff,
++							cp->protocol,
++							skb->csum);
+ 		if (udph->check == 0)
+ 			udph->check = CSUM_MANGLED_0;
+ 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 -- 
 1.5.4.5
 
