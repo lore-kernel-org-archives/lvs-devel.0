@@ -1,14 +1,14 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv2 RFC 08/25] IPVS: Add IPv6 support flag to schedulers
-Date: Mon,  1 Sep 2008 14:56:05 +0200
-Message-ID: <1220273782-19901-9-git-send-email-juliusv@google.com>
+Subject: [PATCHv2 RFC 03/25] IPVS: Add general v4/v6 helper functions / data structures
+Date: Mon,  1 Sep 2008 14:56:00 +0200
+Message-ID: <1220273782-19901-4-git-send-email-juliusv@google.com>
 References: <1220273782-19901-1-git-send-email-juliusv@google.com>
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220273822; bh=dadq1mQ/ljgvWPdK95AtlzZvAjg=;
+	t=1220273820; bh=Jk/FqXocDCrBLusqvBUr1yfmXLY=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=QtJWLXvSEEeANtKDx+CZ/6yiW1h6Otk2I4CJVzL2
-	EHQkOiglnkIzhRKDbMCZHGv3z78QkogrSx44gnaYUjOtrw==
+	 In-Reply-To:References; b=XEAhILBumS3Vfedf10L8vcTnqmNIWJl7dbdLQwOL
+	8y/izRmZl9Rsr1JeAP4nnASLXH/sHBQxBuNdpV1cqOlXQA==
 In-Reply-To: <1220273782-19901-1-git-send-email-juliusv@google.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -18,278 +18,75 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-Add 'supports_ipv6' flag to struct ip_vs_scheduler to indicate whether a
-scheduler supports IPv6. Set the flag to 1 in schedulers that work with
-IPv6, 0 otherwise. This flag is checked in a later patch while trying to
-add a service with a specific scheduler. Adjust debug in v6-supporting
-schedulers to work with both address families.
+Add a struct ip_vs_iphdr for easier handling of common v4 and v6 header
+fields in the same code path. ip_vs_fill_iphdr() helps to fill this struct
+from an IPv4 or IPv6 header. Add further helper functions for copying and
+comparing addresses.
 
 Signed-off-by: Julius Volz <juliusv@google.com>
 
- 11 files changed, 66 insertions(+), 33 deletions(-)
+ 1 files changed, 49 insertions(+), 0 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index d653e8b..881e60a 100644
+index 01cabd6..6d9a360 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -516,6 +516,9 @@ struct ip_vs_scheduler {
- 	char			*name;		/* scheduler name */
- 	atomic_t		refcnt;		/* reference counter */
- 	struct module		*module;	/* THIS_MODULE/NULL */
+@@ -25,6 +25,55 @@
+ #include <linux/ipv6.h>			/* for struct ipv6hdr */
+ #include <net/ipv6.h>			/* for ipv6_addr_copy */
+ 
++struct ip_vs_iphdr {
++	int len;
++	__u8 protocol;
++	union nf_inet_addr saddr;
++	union nf_inet_addr daddr;
++};
++
++static inline void
++ip_vs_fill_iphdr(int af, const void *nh, struct ip_vs_iphdr *iphdr)
++{
 +#ifdef CONFIG_IP_VS_IPV6
-+	int			supports_ipv6;	/* scheduler has IPv6 support */
++	if (af == AF_INET6) {
++		const struct ipv6hdr *iph = nh;
++		iphdr->len = sizeof(struct ipv6hdr);
++		iphdr->protocol = iph->nexthdr;
++		ipv6_addr_copy(&iphdr->saddr.in6, &iph->saddr);
++		ipv6_addr_copy(&iphdr->daddr.in6, &iph->daddr);
++	} else
 +#endif
- 
- 	/* scheduler initializing service */
- 	int (*init_service)(struct ip_vs_service *svc);
-diff --git a/net/ipv4/ipvs/ip_vs_dh.c b/net/ipv4/ipvs/ip_vs_dh.c
-index 9f9d795..a16943f 100644
---- a/net/ipv4/ipvs/ip_vs_dh.c
-+++ b/net/ipv4/ipvs/ip_vs_dh.c
-@@ -234,6 +234,9 @@ static struct ip_vs_scheduler ip_vs_dh_scheduler =
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_dh_scheduler.n_list),
++	{
++		const struct iphdr *iph = nh;
++		iphdr->len = iph->ihl * 4;
++		iphdr->protocol = iph->protocol;
++		iphdr->saddr.ip = iph->saddr;
++		iphdr->daddr.ip = iph->daddr;
++	}
++}
++
++static inline void ip_vs_addr_copy(int af, union nf_inet_addr *dst,
++				   const union nf_inet_addr *src)
++{
 +#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	0,
++	if (af == AF_INET6)
++		ipv6_addr_copy(&dst->in6, &src->in6);
++	else
 +#endif
- 	.init_service =		ip_vs_dh_init_svc,
- 	.done_service =		ip_vs_dh_done_svc,
- 	.update_service =	ip_vs_dh_update_svc,
-diff --git a/net/ipv4/ipvs/ip_vs_lblc.c b/net/ipv4/ipvs/ip_vs_lblc.c
-index 69309ed..6ecef35 100644
---- a/net/ipv4/ipvs/ip_vs_lblc.c
-+++ b/net/ipv4/ipvs/ip_vs_lblc.c
-@@ -522,6 +522,9 @@ static struct ip_vs_scheduler ip_vs_lblc_scheduler =
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_lblc_scheduler.n_list),
++	dst->ip = src->ip;
++}
++
++static inline int ip_vs_addr_equal(int af, const union nf_inet_addr *a,
++				   const union nf_inet_addr *b)
++{
 +#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	0,
++	if (af == AF_INET6)
++		return ipv6_addr_equal(&a->in6, &b->in6);
 +#endif
- 	.init_service =		ip_vs_lblc_init_svc,
- 	.done_service =		ip_vs_lblc_done_svc,
- 	.schedule =		ip_vs_lblc_schedule,
-diff --git a/net/ipv4/ipvs/ip_vs_lblcr.c b/net/ipv4/ipvs/ip_vs_lblcr.c
-index 51c746e..1f75ea8 100644
---- a/net/ipv4/ipvs/ip_vs_lblcr.c
-+++ b/net/ipv4/ipvs/ip_vs_lblcr.c
-@@ -722,6 +722,9 @@ static struct ip_vs_scheduler ip_vs_lblcr_scheduler =
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_lblcr_scheduler.n_list),
-+#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	0,
-+#endif
- 	.init_service =		ip_vs_lblcr_init_svc,
- 	.done_service =		ip_vs_lblcr_done_svc,
- 	.schedule =		ip_vs_lblcr_schedule,
-diff --git a/net/ipv4/ipvs/ip_vs_lc.c b/net/ipv4/ipvs/ip_vs_lc.c
-index 551d293..b69f808 100644
---- a/net/ipv4/ipvs/ip_vs_lc.c
-+++ b/net/ipv4/ipvs/ip_vs_lc.c
-@@ -67,10 +67,10 @@ ip_vs_lc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 	}
++	return a->ip == b->ip;
++}
++
+ #ifdef CONFIG_IP_VS_DEBUG
+ #include <linux/net.h>
  
- 	if (least)
--	IP_VS_DBG(6, "LC: server %u.%u.%u.%u:%u activeconns %d inactconns %d\n",
--		  NIPQUAD(least->addr.ip), ntohs(least->port),
--		  atomic_read(&least->activeconns),
--		  atomic_read(&least->inactconns));
-+	IP_VS_DBG_BUF(6, "LC: server %s:%u activeconns %d inactconns %d\n",
-+		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      atomic_read(&least->activeconns),
-+		      atomic_read(&least->inactconns));
- 
- 	return least;
- }
-@@ -81,6 +81,9 @@ static struct ip_vs_scheduler ip_vs_lc_scheduler = {
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_lc_scheduler.n_list),
-+#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	1,
-+#endif
- 	.schedule =		ip_vs_lc_schedule,
- };
- 
-diff --git a/net/ipv4/ipvs/ip_vs_nq.c b/net/ipv4/ipvs/ip_vs_nq.c
-index aa0e32a..9a2d803 100644
---- a/net/ipv4/ipvs/ip_vs_nq.c
-+++ b/net/ipv4/ipvs/ip_vs_nq.c
-@@ -99,12 +99,12 @@ ip_vs_nq_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 		return NULL;
- 
-   out:
--	IP_VS_DBG(6, "NQ: server %u.%u.%u.%u:%u "
--		  "activeconns %d refcnt %d weight %d overhead %d\n",
--		  NIPQUAD(least->addr.ip), ntohs(least->port),
--		  atomic_read(&least->activeconns),
--		  atomic_read(&least->refcnt),
--		  atomic_read(&least->weight), loh);
-+	IP_VS_DBG_BUF(6, "NQ: server %s:%u "
-+		      "activeconns %d refcnt %d weight %d overhead %d\n",
-+		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      atomic_read(&least->activeconns),
-+		      atomic_read(&least->refcnt),
-+		      atomic_read(&least->weight), loh);
- 
- 	return least;
- }
-@@ -116,6 +116,9 @@ static struct ip_vs_scheduler ip_vs_nq_scheduler =
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_nq_scheduler.n_list),
-+#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	1,
-+#endif
- 	.schedule =		ip_vs_nq_schedule,
- };
- 
-diff --git a/net/ipv4/ipvs/ip_vs_rr.c b/net/ipv4/ipvs/ip_vs_rr.c
-index 27f0b62..a22195f 100644
---- a/net/ipv4/ipvs/ip_vs_rr.c
-+++ b/net/ipv4/ipvs/ip_vs_rr.c
-@@ -74,11 +74,11 @@ ip_vs_rr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
-   out:
- 	svc->sched_data = q;
- 	write_unlock(&svc->sched_lock);
--	IP_VS_DBG(6, "RR: server %u.%u.%u.%u:%u "
--		  "activeconns %d refcnt %d weight %d\n",
--		  NIPQUAD(dest->addr.ip), ntohs(dest->port),
--		  atomic_read(&dest->activeconns),
--		  atomic_read(&dest->refcnt), atomic_read(&dest->weight));
-+	IP_VS_DBG_BUF(6, "RR: server %s:%u "
-+		      "activeconns %d refcnt %d weight %d\n",
-+		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port),
-+		      atomic_read(&dest->activeconns),
-+		      atomic_read(&dest->refcnt), atomic_read(&dest->weight));
- 
- 	return dest;
- }
-@@ -89,6 +89,9 @@ static struct ip_vs_scheduler ip_vs_rr_scheduler = {
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_rr_scheduler.n_list),
-+#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	1,
-+#endif
- 	.init_service =		ip_vs_rr_init_svc,
- 	.update_service =	ip_vs_rr_update_svc,
- 	.schedule =		ip_vs_rr_schedule,
-diff --git a/net/ipv4/ipvs/ip_vs_sed.c b/net/ipv4/ipvs/ip_vs_sed.c
-index 38b574b..7d2f22f 100644
---- a/net/ipv4/ipvs/ip_vs_sed.c
-+++ b/net/ipv4/ipvs/ip_vs_sed.c
-@@ -101,12 +101,12 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 		}
- 	}
- 
--	IP_VS_DBG(6, "SED: server %u.%u.%u.%u:%u "
--		  "activeconns %d refcnt %d weight %d overhead %d\n",
--		  NIPQUAD(least->addr.ip), ntohs(least->port),
--		  atomic_read(&least->activeconns),
--		  atomic_read(&least->refcnt),
--		  atomic_read(&least->weight), loh);
-+	IP_VS_DBG_BUF(6, "SED: server %s:%u "
-+		      "activeconns %d refcnt %d weight %d overhead %d\n",
-+		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      atomic_read(&least->activeconns),
-+		      atomic_read(&least->refcnt),
-+		      atomic_read(&least->weight), loh);
- 
- 	return least;
- }
-@@ -118,6 +118,9 @@ static struct ip_vs_scheduler ip_vs_sed_scheduler =
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_sed_scheduler.n_list),
-+#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	1,
-+#endif
- 	.schedule =		ip_vs_sed_schedule,
- };
- 
-diff --git a/net/ipv4/ipvs/ip_vs_sh.c b/net/ipv4/ipvs/ip_vs_sh.c
-index c9e54e2..1d96de2 100644
---- a/net/ipv4/ipvs/ip_vs_sh.c
-+++ b/net/ipv4/ipvs/ip_vs_sh.c
-@@ -231,6 +231,9 @@ static struct ip_vs_scheduler ip_vs_sh_scheduler =
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list	 =		LIST_HEAD_INIT(ip_vs_sh_scheduler.n_list),
-+#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	0,
-+#endif
- 	.init_service =		ip_vs_sh_init_svc,
- 	.done_service =		ip_vs_sh_done_svc,
- 	.update_service =	ip_vs_sh_update_svc,
-diff --git a/net/ipv4/ipvs/ip_vs_wlc.c b/net/ipv4/ipvs/ip_vs_wlc.c
-index 09fd993..8c596e7 100644
---- a/net/ipv4/ipvs/ip_vs_wlc.c
-+++ b/net/ipv4/ipvs/ip_vs_wlc.c
-@@ -89,12 +89,12 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 		}
- 	}
- 
--	IP_VS_DBG(6, "WLC: server %u.%u.%u.%u:%u "
--		  "activeconns %d refcnt %d weight %d overhead %d\n",
--		  NIPQUAD(least->addr.ip), ntohs(least->port),
--		  atomic_read(&least->activeconns),
--		  atomic_read(&least->refcnt),
--		  atomic_read(&least->weight), loh);
-+	IP_VS_DBG_BUF(6, "WLC: server %s:%u "
-+		      "activeconns %d refcnt %d weight %d overhead %d\n",
-+		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      atomic_read(&least->activeconns),
-+		      atomic_read(&least->refcnt),
-+		      atomic_read(&least->weight), loh);
- 
- 	return least;
- }
-@@ -106,6 +106,9 @@ static struct ip_vs_scheduler ip_vs_wlc_scheduler =
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_wlc_scheduler.n_list),
-+#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	1,
-+#endif
- 	.schedule =		ip_vs_wlc_schedule,
- };
- 
-diff --git a/net/ipv4/ipvs/ip_vs_wrr.c b/net/ipv4/ipvs/ip_vs_wrr.c
-index 19c49b2..7ea92fe 100644
---- a/net/ipv4/ipvs/ip_vs_wrr.c
-+++ b/net/ipv4/ipvs/ip_vs_wrr.c
-@@ -195,12 +195,12 @@ ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 		}
- 	}
- 
--	IP_VS_DBG(6, "WRR: server %u.%u.%u.%u:%u "
--		  "activeconns %d refcnt %d weight %d\n",
--		  NIPQUAD(dest->addr.ip), ntohs(dest->port),
--		  atomic_read(&dest->activeconns),
--		  atomic_read(&dest->refcnt),
--		  atomic_read(&dest->weight));
-+	IP_VS_DBG_BUF(6, "WRR: server %s:%u "
-+		      "activeconns %d refcnt %d weight %d\n",
-+		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port),
-+		      atomic_read(&dest->activeconns),
-+		      atomic_read(&dest->refcnt),
-+		      atomic_read(&dest->weight));
- 
-   out:
- 	write_unlock(&svc->sched_lock);
-@@ -213,6 +213,9 @@ static struct ip_vs_scheduler ip_vs_wrr_scheduler = {
- 	.refcnt =		ATOMIC_INIT(0),
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_wrr_scheduler.n_list),
-+#ifdef CONFIG_IP_VS_IPV6
-+	.supports_ipv6 =	1,
-+#endif
- 	.init_service =		ip_vs_wrr_init_svc,
- 	.done_service =		ip_vs_wrr_done_svc,
- 	.update_service =	ip_vs_wrr_update_svc,
 -- 
 1.5.4.5
 
