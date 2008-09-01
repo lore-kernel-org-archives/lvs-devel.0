@@ -1,63 +1,64 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv2 RFC 00/00] Add first IPv6 support to IPVS
-Date: Mon,  1 Sep 2008 14:55:57 +0200
-Message-ID: <1220273782-19901-1-git-send-email-juliusv@google.com>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Subject: [PATCHv2 RFC 20/25] IPVS: Turn off FTP application helper for IPv6
+Date: Mon,  1 Sep 2008 14:56:17 +0200
+Message-ID: <1220273782-19901-21-git-send-email-juliusv@google.com>
+References: <1220273782-19901-1-git-send-email-juliusv@google.com>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220273819; bh=y0O6pvL4eoYT6mJhCrBjH7Qp2NM=;
-	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer;
-	b=gs/qtIJotM5M/OdBsZ+kEuvpxej+IqJ0ajBnnnUCAlbMVy3+VvLyj+MvwEoAKOjwH
-	AFOJSpK17JOMzZQEoiTYA==
-Sender: lvs-devel-owner@vger.kernel.org
+	t=1220273825; bh=8wycyaTd6bAZg3DtMpOb1cW3Mw0=;
+	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
+	 In-Reply-To:References; b=R2Nt+YkSVgWi95wUOq26iIPF2EB+dLKR02qp3qMQ
+	Gg2nnp7KHRUYqzUq1LfHwir2YL+NtgfcOscuTe05Mpcwfw==
+In-Reply-To: <1220273782-19901-1-git-send-email-juliusv@google.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com
+Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-I now managed to rework the IPVS IPv6 patches in a way that the kernel
-builds after each patch in the series. Sometimes, this adds some
-ugliness in the form of temporary constructs which are introduced in one
-patch and deleted in the next ones. I've also integrated other small bug
-fixes and cleanups from comments on the mailing lists.
+Immediately return from FTP application helper and do nothing when dealing
+with IPv6 packets. IPv6 is not supported by this helper yet.
 
-Note: these patches are not based on net-2.6 anymore, but on lvs-2.6:
+Signed-off-by: Julius Volz <juliusv@google.com>
 
-git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-2.6.git
+ 1 files changed, 16 insertions(+), 0 deletions(-)
 
-- Full kernel patch in one file:
-  http://www-user.tu-chemnitz.de/~volz/ipvs_ipv6/ipvs_ipv6_v2.patch
+diff --git a/net/ipv4/ipvs/ip_vs_ftp.c b/net/ipv4/ipvs/ip_vs_ftp.c
+index c56b2bd..2abc34a 100644
+--- a/net/ipv4/ipvs/ip_vs_ftp.c
++++ b/net/ipv4/ipvs/ip_vs_ftp.c
+@@ -147,6 +147,14 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	unsigned buf_len;
+ 	int ret;
+ 
++#ifdef CONFIG_IP_VS_IPV6
++	/* This application helper doesn't work with IPv6 yet,
++	 * so turn this into a no-op for IPv6 packets
++	 */
++	if (cp->af == AF_INET6)
++		return 1;
++#endif
++
+ 	*diff = 0;
+ 
+ 	/* Only useful for established sessions */
+@@ -247,6 +255,14 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	__be16 port;
+ 	struct ip_vs_conn *n_cp;
+ 
++#ifdef CONFIG_IP_VS_IPV6
++	/* This application helper doesn't work with IPv6 yet,
++	 * so turn this into a no-op for IPv6 packets
++	 */
++	if (cp->af == AF_INET6)
++		return 1;
++#endif
++
+ 	/* no diff required for incoming packets */
+ 	*diff = 0;
+ 
+-- 
+1.5.4.5
 
-While not all IPv6 features are working or tested, existing IPv4 features
-should still work as before. However, to use any of the new features, you
-will need a new ipvsadm with support for genetlink and IPv6:
-
-  http://sixpak.org/vince/google/ipvsadm/
-  (by Vince Busam)
-
-To enable IPv6 support in IPVS, set CONFIG_IP_VS_IPV6=y.
-
-Short overview:
-
-What works with IPv6:
-- forwarding mechanisms: NAT, DR, maybe Tunnel (not fully tested yet)
-- protocols: TCP, UDP, ESP, AH (last two not tested)
-- manipulation and inspection of both IPv4 and IPv6 entries with ipvsadm
-- 6 out of 10 schedulers
-
-What is not supported with IPv6:
-- handling fragmentation or other extension headers
-- FTP application helper (can be loaded, but only operates on v4)
-- sync daemon (can be started, but only operates on v4)
-- probably some incorrect handling of ICMPv6 or other corner cases
-
-Since fragmentation and extension headers should not occur very often,
-things should "mostly" work. I tested HTTP and DNS over NAT and DR
-with various supported schedulers without encountering any problems.
-But we didn't test any exotic situations. Also, there are some TODOs
-in the code for things that haven't been tested or implemented yet.
-
-Thanks for any comments!
-
-Julius
