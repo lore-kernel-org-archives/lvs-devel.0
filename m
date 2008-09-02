@@ -1,16 +1,16 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv3 14/24] IPVS: Add and bind IPv6 xmit functions
-Date: Tue,  2 Sep 2008 15:55:45 +0200
-Message-ID: <1220363755-9854-15-git-send-email-juliusv@google.com>
+Subject: [PATCHv3 07/24] IPVS: Add v6 support to ip_vs_service_get()
+Date: Tue,  2 Sep 2008 15:55:38 +0200
+Message-ID: <1220363755-9854-8-git-send-email-juliusv@google.com>
 References: <1220363755-9854-1-git-send-email-juliusv@google.com>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220363767; bh=5ydrqBfFitZl4ISRj6dc2Vo17Pc=;
+	t=1220363762; bh=NOZq/3uG7PN5nDePbF0KyDAadkc=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=Cq/W1W1C6sFFNf0bTGRAIkLtZq8O71TEUkdeu2wX
-	Bwikzrg195fzlWhcK1zXGAPZR+e48s+XsaXJD087DuNMZA==
+	 In-Reply-To:References; b=FgKDB59eZxOQHPAJoMXRqcROp3mGeELuoxdENCIy
+	6yx6IVmSYeIDiwSyg3kcB7PuHP1vnemLzftyv5q2EAIy/g==
 In-Reply-To: <1220363755-9854-1-git-send-email-juliusv@google.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -18,570 +18,157 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-Add xmit functions for IPv6. Also add the already needed __ip_vs_get_out_rt_v6()
-to ip_vs_core.c. Bind the new xmit functions to v6 connections.
+Add support for selecting services based on their address family to
+ip_vs_service_get() and adjust the callers.
 
 Signed-off-by: Julius Volz <juliusv@google.com>
 
- 4 files changed, 472 insertions(+), 2 deletions(-)
+ 4 files changed, 28 insertions(+), 19 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 2689349..ac709fa 100644
+index 1adf8a0..30baed0 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -855,6 +855,19 @@ extern int ip_vs_icmp_xmit
- (struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp, int offset);
- extern void ip_vs_dst_reset(struct ip_vs_dest *dest);
+@@ -783,7 +783,8 @@ extern struct ip_vs_stats ip_vs_stats;
+ extern const struct ctl_path net_vs_ctl_path[];
  
-+#ifdef CONFIG_IP_VS_IPV6
-+extern int ip_vs_bypass_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
-+extern int ip_vs_nat_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
-+extern int ip_vs_tunnel_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
-+extern int ip_vs_dr_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp);
-+extern int ip_vs_icmp_xmit_v6
-+(struct sk_buff *skb, struct ip_vs_conn *cp, struct ip_vs_protocol *pp,
-+ int offset);
-+#endif
+ extern struct ip_vs_service *
+-ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport);
++ip_vs_service_get(int af, __u32 fwmark, __u16 protocol,
++		  const union nf_inet_addr *vaddr, __be16 vport);
  
- /*
-  *	This is a simple mechanism to ignore packets when
-@@ -899,7 +912,12 @@ static inline char ip_vs_fwd_tag(struct ip_vs_conn *cp)
- }
- 
- extern void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
--		struct ip_vs_conn *cp, int dir);
-+			   struct ip_vs_conn *cp, int dir);
-+
-+#ifdef CONFIG_IP_VS_IPV6
-+extern void ip_vs_nat_icmp_v6(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+			      struct ip_vs_conn *cp, int dir);
-+#endif
- 
- extern __sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset);
- 
-diff --git a/net/ipv4/ipvs/ip_vs_conn.c b/net/ipv4/ipvs/ip_vs_conn.c
-index 15eec28..f5dddad 100644
---- a/net/ipv4/ipvs/ip_vs_conn.c
-+++ b/net/ipv4/ipvs/ip_vs_conn.c
-@@ -389,6 +389,33 @@ static inline void ip_vs_bind_xmit(struct ip_vs_conn *cp)
- 	}
- }
- 
-+#ifdef CONFIG_IP_VS_IPV6
-+static inline void ip_vs_bind_xmit_v6(struct ip_vs_conn *cp)
-+{
-+	switch (IP_VS_FWD_METHOD(cp)) {
-+	case IP_VS_CONN_F_MASQ:
-+		cp->packet_xmit = ip_vs_nat_xmit_v6;
-+		break;
-+
-+	case IP_VS_CONN_F_TUNNEL:
-+		cp->packet_xmit = ip_vs_tunnel_xmit_v6;
-+		break;
-+
-+	case IP_VS_CONN_F_DROUTE:
-+		cp->packet_xmit = ip_vs_dr_xmit_v6;
-+		break;
-+
-+	case IP_VS_CONN_F_LOCALNODE:
-+		cp->packet_xmit = ip_vs_null_xmit;
-+		break;
-+
-+	case IP_VS_CONN_F_BYPASS:
-+		cp->packet_xmit = ip_vs_bypass_xmit_v6;
-+		break;
-+	}
-+}
-+#endif
-+
- 
- static inline int ip_vs_dest_totalconns(struct ip_vs_dest *dest)
+ static inline void ip_vs_service_put(struct ip_vs_service *svc)
  {
-@@ -694,7 +721,12 @@ ip_vs_conn_new(int af, int proto, const union nf_inet_addr *caddr, __be16 cport,
- 	cp->timeout = 3*HZ;
- 
- 	/* Bind its packet transmitter */
--	ip_vs_bind_xmit(cp);
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (af == AF_INET6)
-+		ip_vs_bind_xmit_v6(cp);
-+	else
-+#endif
-+		ip_vs_bind_xmit(cp);
- 
- 	if (unlikely(pp && atomic_read(&pp->appcnt)))
- 		ip_vs_bind_app(cp, pp);
-diff --git a/net/ipv4/ipvs/ip_vs_core.c b/net/ipv4/ipvs/ip_vs_core.c
-index 2d5a433..d6f5bf9 100644
---- a/net/ipv4/ipvs/ip_vs_core.c
-+++ b/net/ipv4/ipvs/ip_vs_core.c
-@@ -570,6 +570,49 @@ void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 			"Forwarding altered incoming ICMP");
+diff --git a/net/ipv4/ipvs/ip_vs_ctl.c b/net/ipv4/ipvs/ip_vs_ctl.c
+index a2d69b2..1f3fc66 100644
+--- a/net/ipv4/ipvs/ip_vs_ctl.c
++++ b/net/ipv4/ipvs/ip_vs_ctl.c
+@@ -421,23 +421,24 @@ __ip_vs_svc_fwm_get(int af, __u32 fwmark)
  }
  
-+#ifdef CONFIG_IP_VS_IPV6
-+void ip_vs_nat_icmp_v6(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+		    struct ip_vs_conn *cp, int inout)
-+{
-+	struct ipv6hdr *iph	 = ipv6_hdr(skb);
-+	unsigned int icmp_offset = sizeof(struct ipv6hdr);
-+	struct icmp6hdr *icmph	 = (struct icmp6hdr *)(skb_network_header(skb) +
-+						      icmp_offset);
-+	struct ipv6hdr *ciph	 = (struct ipv6hdr *)(icmph + 1);
+ struct ip_vs_service *
+-ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
++ip_vs_service_get(int af, __u32 fwmark, __u16 protocol,
++		  const union nf_inet_addr *vaddr, __be16 vport)
+ {
+ 	struct ip_vs_service *svc;
+-	union nf_inet_addr _vaddr = { .ip = vaddr };
 +
-+	if (inout) {
-+		iph->saddr = cp->vaddr.in6;
-+		ciph->daddr = cp->vaddr.in6;
-+	} else {
-+		iph->daddr = cp->daddr.in6;
-+		ciph->saddr = cp->daddr.in6;
-+	}
-+
-+	/* the TCP/UDP port */
-+	if (IPPROTO_TCP == ciph->nexthdr || IPPROTO_UDP == ciph->nexthdr) {
-+		__be16 *ports = (void *)ciph + sizeof(struct ipv6hdr);
-+
-+		if (inout)
-+			ports[1] = cp->vport;
-+		else
-+			ports[0] = cp->dport;
-+	}
-+
-+	/* And finally the ICMP checksum */
-+	icmph->icmp6_cksum = 0;
-+	/* TODO IPv6: is this correct for ICMPv6? */
-+	ip_vs_checksum_complete(skb, icmp_offset);
-+	skb->ip_summed = CHECKSUM_UNNECESSARY;
-+
-+	if (inout)
-+		IP_VS_DBG_PKT(11, pp, skb, (void *)ciph - (void *)iph,
-+			"Forwarding altered outgoing ICMPv6");
-+	else
-+		IP_VS_DBG_PKT(11, pp, skb, (void *)ciph - (void *)iph,
-+			"Forwarding altered incoming ICMPv6");
-+}
-+#endif
-+
- /*
-  *	Handle ICMP messages in the inside-to-outside direction (outgoing).
-  *	Find any that might be relevant, check against existing connections,
-diff --git a/net/ipv4/ipvs/ip_vs_xmit.c b/net/ipv4/ipvs/ip_vs_xmit.c
-index fd8342e..02ddc2b 100644
---- a/net/ipv4/ipvs/ip_vs_xmit.c
-+++ b/net/ipv4/ipvs/ip_vs_xmit.c
-@@ -281,6 +281,70 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	return NF_STOLEN;
+ 	read_lock(&__ip_vs_svc_lock);
+ 
+ 	/*
+ 	 *	Check the table hashed by fwmark first
+ 	 */
+-	if (fwmark && (svc = __ip_vs_svc_fwm_get(AF_INET, fwmark)))
++	if (fwmark && (svc = __ip_vs_svc_fwm_get(af, fwmark)))
+ 		goto out;
+ 
+ 	/*
+ 	 *	Check the table hashed by <protocol,addr,port>
+ 	 *	for "full" addressed entries
+ 	 */
+-	svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, vport);
++	svc = __ip_vs_service_get(af, protocol, vaddr, vport);
+ 
+ 	if (svc == NULL
+ 	    && protocol == IPPROTO_TCP
+@@ -447,7 +448,7 @@ ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
+ 		 * Check if ftp service entry exists, the packet
+ 		 * might belong to FTP data connections.
+ 		 */
+-		svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, FTPPORT);
++		svc = __ip_vs_service_get(af, protocol, vaddr, FTPPORT);
+ 	}
+ 
+ 	if (svc == NULL
+@@ -455,16 +456,16 @@ ip_vs_service_get(__u32 fwmark, __u16 protocol, __be32 vaddr, __be16 vport)
+ 		/*
+ 		 * Check if the catch-all port (port zero) exists
+ 		 */
+-		svc = __ip_vs_service_get(AF_INET, protocol, &_vaddr, 0);
++		svc = __ip_vs_service_get(af, protocol, vaddr, 0);
+ 	}
+ 
+   out:
+ 	read_unlock(&__ip_vs_svc_lock);
+ 
+-	IP_VS_DBG(9, "lookup service: fwm %u %s %u.%u.%u.%u:%u %s\n",
+-		  fwmark, ip_vs_proto_name(protocol),
+-		  NIPQUAD(vaddr), ntohs(vport),
+-		  svc?"hit":"not hit");
++	IP_VS_DBG_BUF(9, "lookup service: fwm %u %s %s:%u %s\n",
++		      fwmark, ip_vs_proto_name(protocol),
++		      IP_VS_DBG_ADDR(af, vaddr), ntohs(vport),
++		      svc ? "hit" : "not hit");
+ 
+ 	return svc;
  }
+@@ -605,8 +606,9 @@ struct ip_vs_dest *ip_vs_find_dest(__be32 daddr, __be16 dport,
+ {
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_service *svc;
++	union nf_inet_addr _vaddr = { .ip = vaddr };
  
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+		     struct ip_vs_protocol *pp)
-+{
-+	struct rt6_info *rt;			/* Route to the other host */
-+	struct ipv6hdr  *iph = ipv6_hdr(skb);
-+	int    mtu;
-+	struct flowi fl = {
-+		.oif = 0,
-+		.nl_u = {
-+			.ip6_u = {
-+				.daddr = iph->daddr,
-+				.saddr = { .s6_addr32 = {0, 0, 0, 0} }, } },
-+	};
-+
-+	EnterFunction(10);
-+
-+	rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl);
-+	if (!rt) {
-+		IP_VS_DBG_RL("ip_vs_bypass_xmit_v6(): ip6_route_output error, "
-+			     "dest: " NIP6_FMT "\n", NIP6(iph->daddr));
-+		goto tx_error_icmp;
-+	}
-+
-+	/* MTU checking */
-+	mtu = dst_mtu(&rt->u.dst);
-+	if (skb->len > mtu) {
-+		dst_release(&rt->u.dst);
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		IP_VS_DBG_RL("ip_vs_bypass_xmit_v6(): frag needed\n");
-+		goto tx_error;
-+	}
-+
-+	/*
-+	 * Call ip_send_check because we are not sure it is called
-+	 * after ip_defrag. Is copy-on-write needed?
-+	 */
-+	skb = skb_share_check(skb, GFP_ATOMIC);
-+	if (unlikely(skb == NULL)) {
-+		dst_release(&rt->u.dst);
-+		return NF_STOLEN;
-+	}
-+
-+	/* drop old route */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	IP_VS_XMIT(PF_INET6, skb, rt);
-+
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+
-+ tx_error_icmp:
-+	dst_link_failure(skb);
-+ tx_error:
-+	kfree_skb(skb);
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+}
-+#endif
+-	svc = ip_vs_service_get(0, protocol, vaddr, vport);
++	svc = ip_vs_service_get(AF_INET, 0, protocol, &_vaddr, vport);
+ 	if (!svc)
+ 		return NULL;
+ 	dest = ip_vs_lookup_dest(svc, daddr, dport);
+diff --git a/net/ipv4/ipvs/ip_vs_proto_tcp.c b/net/ipv4/ipvs/ip_vs_proto_tcp.c
+index 15860e1..fe93c9e 100644
+--- a/net/ipv4/ipvs/ip_vs_proto_tcp.c
++++ b/net/ipv4/ipvs/ip_vs_proto_tcp.c
+@@ -74,16 +74,19 @@ tcp_conn_schedule(struct sk_buff *skb,
+ {
+ 	struct ip_vs_service *svc;
+ 	struct tcphdr _tcph, *th;
++	struct ip_vs_iphdr iph;
  
- /*
-  *      NAT transmitter (only for outside-to-inside nat forwarding)
-@@ -360,6 +424,83 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	goto tx_error;
- }
+-	th = skb_header_pointer(skb, ip_hdrlen(skb), sizeof(_tcph), &_tcph);
++	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
++
++	th = skb_header_pointer(skb, iph.len, sizeof(_tcph), &_tcph);
+ 	if (th == NULL) {
+ 		*verdict = NF_DROP;
+ 		return 0;
+ 	}
  
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+		  struct ip_vs_protocol *pp)
-+{
-+	struct rt6_info *rt;		/* Route to the other host */
-+	int mtu;
-+
-+	EnterFunction(10);
-+
-+	/* check if it is a connection of no-client-port */
-+	if (unlikely(cp->flags & IP_VS_CONN_F_NO_CPORT)) {
-+		__be16 _pt, *p;
-+		p = skb_header_pointer(skb, sizeof(struct ipv6hdr),
-+				       sizeof(_pt), &_pt);
-+		if (p == NULL)
-+			goto tx_error;
-+		ip_vs_conn_fill_cport(cp, *p);
-+		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
-+	}
-+
-+	rt = __ip_vs_get_out_rt_v6(cp);
-+	if (!rt)
-+		goto tx_error_icmp;
-+
-+	/* MTU checking */
-+	mtu = dst_mtu(&rt->u.dst);
-+	if (skb->len > mtu) {
-+		dst_release(&rt->u.dst);
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		IP_VS_DBG_RL_PKT(0, pp, skb, 0,
-+				 "ip_vs_nat_xmit_v6(): frag needed for");
-+		goto tx_error;
-+	}
-+
-+	/* copy-on-write the packet before mangling it */
-+	if (!skb_make_writable(skb, sizeof(struct ipv6hdr)))
-+		goto tx_error_put;
-+
-+	if (skb_cow(skb, rt->u.dst.dev->hard_header_len))
-+		goto tx_error_put;
-+
-+	/* drop old route */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	/* mangle the packet */
-+	if (pp->dnat_handler && !pp->dnat_handler(skb, pp, cp))
-+		goto tx_error;
-+	ipv6_hdr(skb)->daddr = cp->daddr.in6;
-+
-+	IP_VS_DBG_PKT(10, pp, skb, 0, "After DNAT");
-+
-+	/* FIXME: when application helper enlarges the packet and the length
-+	   is larger than the MTU of outgoing device, there will be still
-+	   MTU problem. */
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	IP_VS_XMIT(PF_INET6, skb, rt);
-+
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+
-+tx_error_icmp:
-+	dst_link_failure(skb);
-+tx_error:
-+	LeaveFunction(10);
-+	kfree_skb(skb);
-+	return NF_STOLEN;
-+tx_error_put:
-+	dst_release(&rt->u.dst);
-+	goto tx_error;
-+}
-+#endif
-+
+ 	if (th->syn &&
+-	    (svc = ip_vs_service_get(skb->mark, ip_hdr(skb)->protocol,
+-				     ip_hdr(skb)->daddr, th->dest))) {
++	    (svc = ip_vs_service_get(AF_INET, skb->mark, iph.protocol,
++				     &iph.daddr, th->dest))) {
+ 		if (ip_vs_todrop()) {
+ 			/*
+ 			 * It seems that we are very loaded.
+diff --git a/net/ipv4/ipvs/ip_vs_proto_udp.c b/net/ipv4/ipvs/ip_vs_proto_udp.c
+index 8dfad5d..d208ed6 100644
+--- a/net/ipv4/ipvs/ip_vs_proto_udp.c
++++ b/net/ipv4/ipvs/ip_vs_proto_udp.c
+@@ -80,16 +80,19 @@ udp_conn_schedule(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ {
+ 	struct ip_vs_service *svc;
+ 	struct udphdr _udph, *uh;
++	struct ip_vs_iphdr iph;
  
- /*
-  *   IP Tunneling transmitter
-@@ -491,6 +632,112 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	return NF_STOLEN;
- }
+-	uh = skb_header_pointer(skb, ip_hdrlen(skb),
+-				sizeof(_udph), &_udph);
++	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
++
++	uh = skb_header_pointer(skb, iph.len, sizeof(_udph), &_udph);
+ 	if (uh == NULL) {
+ 		*verdict = NF_DROP;
+ 		return 0;
+ 	}
  
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+		     struct ip_vs_protocol *pp)
-+{
-+	struct rt6_info *rt;		/* Route to the other host */
-+	struct net_device *tdev;	/* Device to other host */
-+	struct ipv6hdr  *old_iph = ipv6_hdr(skb);
-+	sk_buff_data_t old_transport_header = skb->transport_header;
-+	struct ipv6hdr  *iph;		/* Our new IP header */
-+	unsigned int max_headroom;	/* The extra header space needed */
-+	int    mtu;
-+
-+	EnterFunction(10);
-+
-+	if (skb->protocol != htons(ETH_P_IPV6)) {
-+		IP_VS_DBG_RL("ip_vs_tunnel_xmit_v6(): protocol error, "
-+			     "ETH_P_IPV6: %d, skb protocol: %d\n",
-+			     htons(ETH_P_IPV6), skb->protocol);
-+		goto tx_error;
-+	}
-+
-+	rt = __ip_vs_get_out_rt_v6(cp);
-+	if (!rt)
-+		goto tx_error_icmp;
-+
-+	tdev = rt->u.dst.dev;
-+
-+	mtu = dst_mtu(&rt->u.dst) - sizeof(struct ipv6hdr);
-+	/* TODO IPv6: do we need this check in IPv6? */
-+	if (mtu < 1280) {
-+		dst_release(&rt->u.dst);
-+		IP_VS_DBG_RL("ip_vs_tunnel_xmit_v6(): mtu less than 1280\n");
-+		goto tx_error;
-+	}
-+	if (skb->dst)
-+		skb->dst->ops->update_pmtu(skb->dst, mtu);
-+
-+	if (mtu < ntohs(old_iph->payload_len) + sizeof(struct ipv6hdr)) {
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		dst_release(&rt->u.dst);
-+		IP_VS_DBG_RL("ip_vs_tunnel_xmit_v6(): frag needed\n");
-+		goto tx_error;
-+	}
-+
-+	/*
-+	 * Okay, now see if we can stuff it in the buffer as-is.
-+	 */
-+	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
-+
-+	if (skb_headroom(skb) < max_headroom
-+	    || skb_cloned(skb) || skb_shared(skb)) {
-+		struct sk_buff *new_skb =
-+			skb_realloc_headroom(skb, max_headroom);
-+		if (!new_skb) {
-+			dst_release(&rt->u.dst);
-+			kfree_skb(skb);
-+			IP_VS_ERR_RL("ip_vs_tunnel_xmit_v6(): no memory\n");
-+			return NF_STOLEN;
-+		}
-+		kfree_skb(skb);
-+		skb = new_skb;
-+		old_iph = ipv6_hdr(skb);
-+	}
-+
-+	skb->transport_header = old_transport_header;
-+
-+	skb_push(skb, sizeof(struct ipv6hdr));
-+	skb_reset_network_header(skb);
-+	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
-+
-+	/* drop old route */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	/*
-+	 *	Push down and install the IPIP header.
-+	 */
-+	iph			=	ipv6_hdr(skb);
-+	iph->version		=	6;
-+	iph->nexthdr		=	IPPROTO_IPV6;
-+	iph->payload_len	=	old_iph->payload_len + sizeof(old_iph);
-+	iph->priority		=	old_iph->priority;
-+	memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
-+	iph->daddr		=	rt->rt6i_dst.addr;
-+	iph->saddr		=	cp->vaddr.in6; /* rt->rt6i_src.addr; */
-+	iph->hop_limit		=	old_iph->hop_limit;
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	ip6_local_out(skb);
-+
-+	LeaveFunction(10);
-+
-+	return NF_STOLEN;
-+
-+tx_error_icmp:
-+	dst_link_failure(skb);
-+tx_error:
-+	kfree_skb(skb);
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+}
-+#endif
-+
- 
- /*
-  *      Direct Routing transmitter
-@@ -548,6 +795,60 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	return NF_STOLEN;
- }
- 
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+		 struct ip_vs_protocol *pp)
-+{
-+	struct rt6_info *rt;			/* Route to the other host */
-+	int    mtu;
-+
-+	EnterFunction(10);
-+
-+	rt = __ip_vs_get_out_rt_v6(cp);
-+	if (!rt)
-+		goto tx_error_icmp;
-+
-+	/* MTU checking */
-+	mtu = dst_mtu(&rt->u.dst);
-+	if (skb->len > mtu) {
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		dst_release(&rt->u.dst);
-+		IP_VS_DBG_RL("ip_vs_dr_xmit_v6(): frag needed\n");
-+		goto tx_error;
-+	}
-+
-+	/*
-+	 * Call ip_send_check because we are not sure it is called
-+	 * after ip_defrag. Is copy-on-write needed?
-+	 */
-+	skb = skb_share_check(skb, GFP_ATOMIC);
-+	if (unlikely(skb == NULL)) {
-+		dst_release(&rt->u.dst);
-+		return NF_STOLEN;
-+	}
-+
-+	/* drop old route */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	IP_VS_XMIT(PF_INET6, skb, rt);
-+
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+
-+tx_error_icmp:
-+	dst_link_failure(skb);
-+tx_error:
-+	kfree_skb(skb);
-+	LeaveFunction(10);
-+	return NF_STOLEN;
-+}
-+#endif
-+
- 
- /*
-  *	ICMP packet transmitter
-@@ -625,3 +926,79 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	ip_rt_put(rt);
- 	goto tx_error;
- }
-+
-+#ifdef CONFIG_IP_VS_IPV6
-+int
-+ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-+		struct ip_vs_protocol *pp, int offset)
-+{
-+	struct rt6_info	*rt;	/* Route to the other host */
-+	int mtu;
-+	int rc;
-+
-+	EnterFunction(10);
-+
-+	/* The ICMP packet for VS/TUN, VS/DR and LOCALNODE will be
-+	   forwarded directly here, because there is no need to
-+	   translate address/port back */
-+	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ) {
-+		if (cp->packet_xmit)
-+			rc = cp->packet_xmit(skb, cp, pp);
-+		else
-+			rc = NF_ACCEPT;
-+		/* do not touch skb anymore */
-+		atomic_inc(&cp->in_pkts);
-+		goto out;
-+	}
-+
-+	/*
-+	 * mangle and send the packet here (only for VS/NAT)
-+	 */
-+
-+	rt = __ip_vs_get_out_rt_v6(cp);
-+	if (!rt)
-+		goto tx_error_icmp;
-+
-+	/* MTU checking */
-+	mtu = dst_mtu(&rt->u.dst);
-+	if (skb->len > mtu) {
-+		dst_release(&rt->u.dst);
-+		icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, skb->dev);
-+		IP_VS_DBG_RL("ip_vs_in_icmp(): frag needed\n");
-+		goto tx_error;
-+	}
-+
-+	/* copy-on-write the packet before mangling it */
-+	if (!skb_make_writable(skb, offset))
-+		goto tx_error_put;
-+
-+	if (skb_cow(skb, rt->u.dst.dev->hard_header_len))
-+		goto tx_error_put;
-+
-+	/* drop the old route when skb is not shared */
-+	dst_release(skb->dst);
-+	skb->dst = &rt->u.dst;
-+
-+	ip_vs_nat_icmp_v6(skb, pp, cp, 0);
-+
-+	/* Another hack: avoid icmp_send in ip_fragment */
-+	skb->local_df = 1;
-+
-+	IP_VS_XMIT(PF_INET6, skb, rt);
-+
-+	rc = NF_STOLEN;
-+	goto out;
-+
-+tx_error_icmp:
-+	dst_link_failure(skb);
-+tx_error:
-+	dev_kfree_skb(skb);
-+	rc = NF_STOLEN;
-+out:
-+	LeaveFunction(10);
-+	return rc;
-+tx_error_put:
-+	dst_release(&rt->u.dst);
-+	goto tx_error;
-+}
-+#endif
+-	if ((svc = ip_vs_service_get(skb->mark, ip_hdr(skb)->protocol,
+-				     ip_hdr(skb)->daddr, uh->dest))) {
++	svc = ip_vs_service_get(AF_INET, skb->mark, iph.protocol,
++				&iph.daddr, uh->dest);
++	if (svc) {
+ 		if (ip_vs_todrop()) {
+ 			/*
+ 			 * It seems that we are very loaded.
 -- 
 1.5.4.5
 
