@@ -1,160 +1,145 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv3 18/24] IPVS: Convert procfs files for IPv6 entry output
-Date: Tue,  2 Sep 2008 15:55:49 +0200
-Message-ID: <1220363755-9854-19-git-send-email-juliusv@google.com>
+Subject: [PATCHv3 24/24] IPVS: Allow adding IPv6 services from userspace
+Date: Tue,  2 Sep 2008 15:55:55 +0200
+Message-ID: <1220363755-9854-25-git-send-email-juliusv@google.com>
 References: <1220363755-9854-1-git-send-email-juliusv@google.com>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220363767; bh=iKL9DswDGoIh5YIxmPfnnOHXxo8=;
+	t=1220363768; bh=PLdNh+1+bz9nOOxR74RDJ+L0uN0=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=Db/RZdqgZ0YkzdYmMkvRTjwx+qNBzto2/uI8a953
-	zp4h2E5yMdU8CsEP8S0UWAfQE6Ac+Rts8Rx7g2nPEOipDA==
+	 In-Reply-To:References; b=Cb1MUsVSHNsYX+OfDCfhazlRJALkHyKVRbTl4Z2E
+	00M0uzK8QHQxB+w8NafOJuIKDyLYDcuRyWuI2ewQgKEt9Q==
 In-Reply-To: <1220363755-9854-1-git-send-email-juliusv@google.com>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com
+Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-From: Vince Busam <vbusam@google.com>
+Allow adding IPv6 services through the genetlink interface and add checks
+to see if the chosen scheduler is supported with IPv6 and whether the
+supplied prefix length is sane. Make sure the service count exported via
+the sockopt interface only counts IPv4 services.
 
-Correctly output IPv6 connection/service/dest entries in procfs files.
+Signed-off-by: Julius Volz <juliusv@google.com>
 
-Signed-off-by: Vince Busam <vbusam@google.com>
+ 1 files changed, 48 insertions(+), 5 deletions(-)
 
- 2 files changed, 73 insertions(+), 18 deletions(-)
-
-diff --git a/net/ipv4/ipvs/ip_vs_conn.c b/net/ipv4/ipvs/ip_vs_conn.c
-index c2a42a6..e7603d7 100644
---- a/net/ipv4/ipvs/ip_vs_conn.c
-+++ b/net/ipv4/ipvs/ip_vs_conn.c
-@@ -815,8 +815,22 @@ static int ip_vs_conn_seq_show(struct seq_file *seq, void *v)
- 	else {
- 		const struct ip_vs_conn *cp = v;
- 
--		seq_printf(seq,
--			"%-3s %08X %04X %08X %04X %08X %04X %-11s %7lu\n",
-+#ifdef CONFIG_IP_VS_IPV6
-+		if (cp->af == AF_INET6)
-+			seq_printf(seq,
-+				"%-3s " NIP6_FMT " %04X " NIP6_FMT
-+				" %04X " NIP6_FMT " %04X %-11s %7lu\n",
-+				ip_vs_proto_name(cp->protocol),
-+				NIP6(cp->caddr.in6), ntohs(cp->cport),
-+				NIP6(cp->vaddr.in6), ntohs(cp->vport),
-+				NIP6(cp->daddr.in6), ntohs(cp->dport),
-+				ip_vs_state_name(cp->protocol, cp->state),
-+				(cp->timer.expires-jiffies)/HZ);
-+		else
-+#endif
-+			seq_printf(seq,
-+				"%-3s %08X %04X %08X %04X"
-+				" %08X %04X %-11s %7lu\n",
- 				ip_vs_proto_name(cp->protocol),
- 				ntohl(cp->caddr.ip), ntohs(cp->cport),
- 				ntohl(cp->vaddr.ip), ntohs(cp->vport),
-@@ -864,8 +878,23 @@ static int ip_vs_conn_sync_seq_show(struct seq_file *seq, void *v)
- 	else {
- 		const struct ip_vs_conn *cp = v;
- 
--		seq_printf(seq,
--			"%-3s %08X %04X %08X %04X %08X %04X %-11s %-6s %7lu\n",
-+#ifdef CONFIG_IP_VS_IPV6
-+		if (cp->af == AF_INET6)
-+			seq_printf(seq,
-+				"%-3s " NIP6_FMT " %04X " NIP6_FMT
-+				" %04X " NIP6_FMT " %04X %-11s %-6s %7lu\n",
-+				ip_vs_proto_name(cp->protocol),
-+				NIP6(cp->caddr.in6), ntohs(cp->cport),
-+				NIP6(cp->vaddr.in6), ntohs(cp->vport),
-+				NIP6(cp->daddr.in6), ntohs(cp->dport),
-+				ip_vs_state_name(cp->protocol, cp->state),
-+				ip_vs_origin_name(cp->flags),
-+				(cp->timer.expires-jiffies)/HZ);
-+		else
-+#endif
-+			seq_printf(seq,
-+				"%-3s %08X %04X %08X %04X "
-+				"%08X %04X %-11s %-6s %7lu\n",
- 				ip_vs_proto_name(cp->protocol),
- 				ntohl(cp->caddr.ip), ntohs(cp->cport),
- 				ntohl(cp->vaddr.ip), ntohs(cp->vport),
 diff --git a/net/ipv4/ipvs/ip_vs_ctl.c b/net/ipv4/ipvs/ip_vs_ctl.c
-index bb0e1e3..25d9e98 100644
+index 6dbc527..7f89c58 100644
 --- a/net/ipv4/ipvs/ip_vs_ctl.c
 +++ b/net/ipv4/ipvs/ip_vs_ctl.c
-@@ -1793,15 +1793,25 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
- 		const struct ip_vs_iter *iter = seq->private;
- 		const struct ip_vs_dest *dest;
- 
--		if (iter->table == ip_vs_svc_table)
--			seq_printf(seq, "%s  %08X:%04X %s ",
--				   ip_vs_proto_name(svc->protocol),
--				   ntohl(svc->addr.ip),
--				   ntohs(svc->port),
--				   svc->scheduler->name);
--		else
-+		if (iter->table == ip_vs_svc_table) {
-+#ifdef CONFIG_IP_VS_IPV6
-+			if (svc->af == AF_INET6)
-+				seq_printf(seq, "%s  [" NIP6_FMT "]:%04X %s ",
-+					   ip_vs_proto_name(svc->protocol),
-+					   NIP6(svc->addr.in6),
-+					   ntohs(svc->port),
-+					   svc->scheduler->name);
-+			else
-+#endif
-+				seq_printf(seq, "%s  %08X:%04X %s ",
-+					   ip_vs_proto_name(svc->protocol),
-+					   ntohl(svc->addr.ip),
-+					   ntohs(svc->port),
-+					   svc->scheduler->name);
-+		} else {
- 			seq_printf(seq, "FWM  %08X %s ",
- 				   svc->fwmark, svc->scheduler->name);
-+		}
- 
- 		if (svc->flags & IP_VS_SVC_F_PERSISTENT)
- 			seq_printf(seq, "persistent %d %08X\n",
-@@ -1811,13 +1821,29 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
- 			seq_putc(seq, '\n');
- 
- 		list_for_each_entry(dest, &svc->destinations, n_list) {
--			seq_printf(seq,
--				   "  -> %08X:%04X      %-7s %-6d %-10d %-10d\n",
--				   ntohl(dest->addr.ip), ntohs(dest->port),
--				   ip_vs_fwd_name(atomic_read(&dest->conn_flags)),
--				   atomic_read(&dest->weight),
--				   atomic_read(&dest->activeconns),
--				   atomic_read(&dest->inactconns));
-+#ifdef CONFIG_IP_VS_IPV6
-+			if (dest->af == AF_INET6)
-+				seq_printf(seq,
-+					   "  -> [" NIP6_FMT "]:%04X"
-+					   "      %-7s %-6d %-10d %-10d\n",
-+					   NIP6(dest->addr.in6),
-+					   ntohs(dest->port),
-+					   ip_vs_fwd_name(atomic_read(&dest->conn_flags)),
-+					   atomic_read(&dest->weight),
-+					   atomic_read(&dest->activeconns),
-+					   atomic_read(&dest->inactconns));
-+			else
-+#endif
-+				seq_printf(seq,
-+					   "  -> %08X:%04X      "
-+					   "%-7s %-6d %-10d %-10d\n",
-+					   ntohl(dest->addr.ip),
-+					   ntohs(dest->port),
-+					   ip_vs_fwd_name(atomic_read(&dest->conn_flags)),
-+					   atomic_read(&dest->weight),
-+					   atomic_read(&dest->activeconns),
-+					   atomic_read(&dest->inactconns));
-+
- 		}
+@@ -1177,6 +1177,19 @@ ip_vs_add_service(struct ip_vs_service_user_kern *u,
+ 		goto out_mod_dec;
  	}
- 	return 0;
+ 
++#ifdef CONFIG_IP_VS_IPV6
++	if (u->af == AF_INET6) {
++		if (!sched->supports_ipv6) {
++			ret = -EAFNOSUPPORT;
++			goto out_err;
++		}
++		if ((u->netmask < 1) || (u->netmask > 128)) {
++			ret = -EINVAL;
++			goto out_err;
++		}
++	}
++#endif
++
+ 	svc = kzalloc(sizeof(struct ip_vs_service), GFP_ATOMIC);
+ 	if (svc == NULL) {
+ 		IP_VS_DBG(1, "ip_vs_add_service: kmalloc failed.\n");
+@@ -1214,7 +1227,10 @@ ip_vs_add_service(struct ip_vs_service_user_kern *u,
+ 		atomic_inc(&ip_vs_nullsvc_counter);
+ 
+ 	ip_vs_new_estimator(&svc->stats);
+-	ip_vs_num_services++;
++
++	/* Count only IPv4 services for old get/setsockopt interface */
++	if (svc->af == AF_INET)
++		ip_vs_num_services++;
+ 
+ 	/* Hash the service into the service table */
+ 	write_lock_bh(&__ip_vs_svc_lock);
+@@ -1265,6 +1281,19 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
+ 	}
+ 	old_sched = sched;
+ 
++#ifdef CONFIG_IP_VS_IPV6
++	if (u->af == AF_INET6) {
++		if (!sched->supports_ipv6) {
++			ret = EAFNOSUPPORT;
++			goto out;
++		}
++		if ((u->netmask < 1) || (u->netmask > 128)) {
++			ret = EINVAL;
++			goto out;
++		}
++	}
++#endif
++
+ 	write_lock_bh(&__ip_vs_svc_lock);
+ 
+ 	/*
+@@ -1329,7 +1358,10 @@ static void __ip_vs_del_service(struct ip_vs_service *svc)
+ 	struct ip_vs_dest *dest, *nxt;
+ 	struct ip_vs_scheduler *old_sched;
+ 
+-	ip_vs_num_services--;
++	/* Count only IPv4 services for old get/setsockopt interface */
++	if (svc->af == AF_INET)
++		ip_vs_num_services--;
++
+ 	ip_vs_kill_estimator(&svc->stats);
+ 
+ 	/* Unbind scheduler */
+@@ -2212,6 +2244,10 @@ __ip_vs_get_service_entries(const struct ip_vs_get_services *get,
+ 
+ 	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
+ 		list_for_each_entry(svc, &ip_vs_svc_table[idx], s_list) {
++			/* Only expose IPv4 entries to old interface */
++			if (svc->af != AF_INET)
++				continue;
++
+ 			if (count >= get->num_services)
+ 				goto out;
+ 			memset(&entry, 0, sizeof(entry));
+@@ -2227,6 +2263,10 @@ __ip_vs_get_service_entries(const struct ip_vs_get_services *get,
+ 
+ 	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
+ 		list_for_each_entry(svc, &ip_vs_svc_fwm_table[idx], f_list) {
++			/* Only expose IPv4 entries to old interface */
++			if (svc->af != AF_INET)
++				continue;
++
+ 			if (count >= get->num_services)
+ 				goto out;
+ 			memset(&entry, 0, sizeof(entry));
+@@ -2584,7 +2624,7 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
+ 	if (!nl_service)
+ 		return -EMSGSIZE;
+ 
+-	NLA_PUT_U16(skb, IPVS_SVC_ATTR_AF, AF_INET);
++	NLA_PUT_U16(skb, IPVS_SVC_ATTR_AF, svc->af);
+ 
+ 	if (svc->fwmark) {
+ 		NLA_PUT_U32(skb, IPVS_SVC_ATTR_FWMARK, svc->fwmark);
+@@ -2691,8 +2731,11 @@ static int ip_vs_genl_parse_service(struct ip_vs_service_user_kern *usvc,
+ 		return -EINVAL;
+ 
+ 	usvc->af = nla_get_u16(nla_af);
+-	/* For now, only support IPv4 */
+-	if (nla_get_u16(nla_af) != AF_INET)
++#ifdef CONFIG_IP_VS_IPV6
++	if (usvc->af != AF_INET && usvc->af != AF_INET6)
++#else
++	if (usvc->af != AF_INET)
++#endif
+ 		return -EAFNOSUPPORT;
+ 
+ 	if (nla_fwmark) {
 -- 
 1.5.4.5
 
