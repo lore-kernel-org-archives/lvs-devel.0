@@ -1,14 +1,14 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv3 21/24] IPVS: Add function to determine if IPv6 address is local
-Date: Tue,  2 Sep 2008 15:55:52 +0200
-Message-ID: <1220363755-9854-22-git-send-email-juliusv@google.com>
+Subject: [PATCHv3 10/24] IPVS: Add protocol debug functions for IPv6
+Date: Tue,  2 Sep 2008 15:55:41 +0200
+Message-ID: <1220363755-9854-11-git-send-email-juliusv@google.com>
 References: <1220363755-9854-1-git-send-email-juliusv@google.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220363766; bh=9sRaxxLTw3HFPUTXdzOyuGDOrsA=;
+	t=1220363768; bh=TbJ0mUsJWEqhYNLDE0HZ5v8zHas=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=syMSwSZ0eKCYZe1YVuE50sZnCnXu1eX9shUUZvug
-	peqWMEbIe2e4/BVi/aWx6TtEZY+k/J69oUj8EHLdoxQ+vQ==
+	 In-Reply-To:References; b=WgSZ0c3wrjwtVL8E7UDDUfoLgVZEMZArej2Hixqs
+	6peoYOI0GdPEekRDPcHWTUL391SEMltzSFqDSmgV1QSTgg==
 In-Reply-To: <1220363755-9854-1-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -16,106 +16,150 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com
+Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-From: Vince Busam <vbusam@google.com>
+Add protocol (TCP, UDP, AH, ESP) debug functions for IPv6 packet debug
+output.
 
-Add __ip_vs_addr_is_local_v6() to find out if an IPv6 address belongs to a
-local interface. Use this function to decide whether to set the
-IP_VS_CONN_F_LOCALNODE flag for IPv6 destinations.
+Signed-off-by: Julius Volz <juliusv@google.com>
 
-Signed-off-by: Vince Busam <vbusam@google.com>
+ 2 files changed, 93 insertions(+), 6 deletions(-)
 
- 1 files changed, 49 insertions(+), 7 deletions(-)
-
-diff --git a/net/ipv4/ipvs/ip_vs_ctl.c b/net/ipv4/ipvs/ip_vs_ctl.c
-index 25d9e98..640203a 100644
---- a/net/ipv4/ipvs/ip_vs_ctl.c
-+++ b/net/ipv4/ipvs/ip_vs_ctl.c
-@@ -35,6 +35,10 @@
+diff --git a/net/ipv4/ipvs/ip_vs_proto.c b/net/ipv4/ipvs/ip_vs_proto.c
+index 6099a88..50f6215 100644
+--- a/net/ipv4/ipvs/ip_vs_proto.c
++++ b/net/ipv4/ipvs/ip_vs_proto.c
+@@ -152,10 +152,10 @@ const char * ip_vs_state_name(__u16 proto, int state)
  
- #include <net/net_namespace.h>
- #include <net/ip.h>
-+#ifdef CONFIG_IP_VS_IPV6
-+#include <net/ipv6.h>
-+#include <net/ip6_route.h>
-+#endif
- #include <net/route.h>
- #include <net/sock.h>
- #include <net/genetlink.h>
-@@ -91,6 +95,26 @@ int ip_vs_get_debug_level(void)
+ 
+ void
+-ip_vs_tcpudp_debug_packet(struct ip_vs_protocol *pp,
+-			  const struct sk_buff *skb,
+-			  int offset,
+-			  const char *msg)
++ip_vs_tcpudp_debug_packet_v4(struct ip_vs_protocol *pp,
++			     const struct sk_buff *skb,
++			     int offset,
++			     const char *msg)
+ {
+ 	char buf[128];
+ 	struct iphdr _iph, *ih;
+@@ -189,6 +189,61 @@ ip_vs_tcpudp_debug_packet(struct ip_vs_protocol *pp,
+ 	printk(KERN_DEBUG "IPVS: %s: %s\n", msg, buf);
  }
- #endif
  
 +#ifdef CONFIG_IP_VS_IPV6
-+/* Taken from rt6_fill_node() in net/ipv6/route.c, is there a better way? */
-+static int __ip_vs_addr_is_local_v6(const struct in6_addr *addr)
++void
++ip_vs_tcpudp_debug_packet_v6(struct ip_vs_protocol *pp,
++			     const struct sk_buff *skb,
++			     int offset,
++			     const char *msg)
 +{
-+	struct rt6_info *rt;
-+	struct flowi fl = {
-+		.oif = 0,
-+		.nl_u = {
-+			.ip6_u = {
-+				.daddr = *addr,
-+				.saddr = { .s6_addr32 = {0, 0, 0, 0} }, } },
-+	};
++	char buf[192];
++	struct ipv6hdr _iph, *ih;
 +
-+	rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl);
-+	if (rt && rt->rt6i_dev && (rt->rt6i_dev->flags & IFF_LOOPBACK))
-+			return 1;
++	ih = skb_header_pointer(skb, offset, sizeof(_iph), &_iph);
++	if (ih == NULL)
++		sprintf(buf, "%s TRUNCATED", pp->name);
++	else if (ih->nexthdr == IPPROTO_FRAGMENT)
++		sprintf(buf, "%s " NIP6_FMT "->" NIP6_FMT " frag",
++			pp->name, NIP6(ih->saddr),
++			NIP6(ih->daddr));
++	else {
++		__be16 _ports[2], *pptr;
 +
-+	return 0;
++		pptr = skb_header_pointer(skb, offset + sizeof(struct ipv6hdr),
++					  sizeof(_ports), _ports);
++		if (pptr == NULL)
++			sprintf(buf, "%s TRUNCATED " NIP6_FMT "->" NIP6_FMT,
++				pp->name,
++				NIP6(ih->saddr),
++				NIP6(ih->daddr));
++		else
++			sprintf(buf, "%s " NIP6_FMT ":%u->" NIP6_FMT ":%u",
++				pp->name,
++				NIP6(ih->saddr),
++				ntohs(pptr[0]),
++				NIP6(ih->daddr),
++				ntohs(pptr[1]));
++	}
++
++	printk(KERN_DEBUG "IPVS: %s: %s\n", msg, buf);
 +}
 +#endif
- /*
-  *	update_defense_level is called from keventd and from sysctl,
-  *	so it needs to protect itself from softirqs
-@@ -751,10 +775,18 @@ __ip_vs_update_dest(struct ip_vs_service *svc,
- 	conn_flags = udest->conn_flags | IP_VS_CONN_F_INACTIVE;
- 
- 	/* check if local node and update the flags */
--	if (inet_addr_type(&init_net, udest->addr.ip) == RTN_LOCAL) {
--		conn_flags = (conn_flags & ~IP_VS_CONN_F_FWD_MASK)
--			| IP_VS_CONN_F_LOCALNODE;
--	}
++
++
++void
++ip_vs_tcpudp_debug_packet(struct ip_vs_protocol *pp,
++			  const struct sk_buff *skb,
++			  int offset,
++			  const char *msg)
++{
 +#ifdef CONFIG_IP_VS_IPV6
-+	if (svc->af == AF_INET6) {
-+		if (__ip_vs_addr_is_local_v6(&udest->addr.in6)) {
-+			conn_flags = (conn_flags & ~IP_VS_CONN_F_FWD_MASK)
-+				| IP_VS_CONN_F_LOCALNODE;
-+		}
-+	} else
++	if (skb->protocol == __constant_htons(ETH_P_IPV6))
++		ip_vs_tcpudp_debug_packet_v6(pp, skb, offset, msg);
++	else
 +#endif
-+		if (inet_addr_type(&init_net, udest->addr.ip) == RTN_LOCAL) {
-+			conn_flags = (conn_flags & ~IP_VS_CONN_F_FWD_MASK)
-+				| IP_VS_CONN_F_LOCALNODE;
-+		}
++		ip_vs_tcpudp_debug_packet_v4(pp, skb, offset, msg);
++}
++
  
- 	/* set the IP_VS_CONN_F_NOOUTPUT flag if not masquerading/NAT */
- 	if ((conn_flags & IP_VS_CONN_F_FWD_MASK) != 0) {
-@@ -803,9 +835,19 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
+ int __init ip_vs_protocol_init(void)
+ {
+diff --git a/net/ipv4/ipvs/ip_vs_proto_ah_esp.c b/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
+index 2a361a9..4b0b8f2 100644
+--- a/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
++++ b/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
+@@ -125,8 +125,8 @@ ah_esp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
  
- 	EnterFunction(2);
  
--	atype = inet_addr_type(&init_net, udest->addr.ip);
--	if (atype != RTN_LOCAL && atype != RTN_UNICAST)
--		return -EINVAL;
+ static void
+-ah_esp_debug_packet(struct ip_vs_protocol *pp, const struct sk_buff *skb,
+-		    int offset, const char *msg)
++ah_esp_debug_packet_v4(struct ip_vs_protocol *pp, const struct sk_buff *skb,
++		       int offset, const char *msg)
+ {
+ 	char buf[256];
+ 	struct iphdr _iph, *ih;
+@@ -142,6 +142,38 @@ ah_esp_debug_packet(struct ip_vs_protocol *pp, const struct sk_buff *skb,
+ 	printk(KERN_DEBUG "IPVS: %s: %s\n", msg, buf);
+ }
+ 
 +#ifdef CONFIG_IP_VS_IPV6
-+	if (svc->af == AF_INET6) {
-+		atype = ipv6_addr_type(&udest->addr.in6);
-+		if (!(atype & IPV6_ADDR_UNICAST) &&
-+			!__ip_vs_addr_is_local_v6(&udest->addr.in6))
-+			return -EINVAL;
-+	} else
++static void
++ah_esp_debug_packet_v6(struct ip_vs_protocol *pp, const struct sk_buff *skb,
++		       int offset, const char *msg)
++{
++	char buf[256];
++	struct ipv6hdr _iph, *ih;
++
++	ih = skb_header_pointer(skb, offset, sizeof(_iph), &_iph);
++	if (ih == NULL)
++		sprintf(buf, "%s TRUNCATED", pp->name);
++	else
++		sprintf(buf, "%s " NIP6_FMT "->" NIP6_FMT,
++			pp->name, NIP6(ih->saddr),
++			NIP6(ih->daddr));
++
++	printk(KERN_DEBUG "IPVS: %s: %s\n", msg, buf);
++}
 +#endif
-+	{
-+		atype = inet_addr_type(&init_net, udest->addr.ip);
-+		if (atype != RTN_LOCAL && atype != RTN_UNICAST)
-+			return -EINVAL;
-+	}
++
++static void
++ah_esp_debug_packet(struct ip_vs_protocol *pp, const struct sk_buff *skb,
++		    int offset, const char *msg)
++{
++#ifdef CONFIG_IP_VS_IPV6
++	if (skb->protocol == __constant_htons(ETH_P_IPV6))
++		ah_esp_debug_packet_v6(pp, skb, offset, msg);
++	else
++#endif
++		ah_esp_debug_packet_v4(pp, skb, offset, msg);
++}
++
  
- 	dest = kzalloc(sizeof(struct ip_vs_dest), GFP_ATOMIC);
- 	if (dest == NULL) {
+ static void ah_esp_init(struct ip_vs_protocol *pp)
+ {
 -- 
 1.5.4.5
 
