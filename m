@@ -1,14 +1,14 @@
 From: Julius Volz <juliusv@google.com>
-Subject: [PATCHv3 04/24] IPVS: Add debug macros for v4 and v6 address output
-Date: Tue,  2 Sep 2008 15:55:35 +0200
-Message-ID: <1220363755-9854-5-git-send-email-juliusv@google.com>
+Subject: [PATCHv3 09/24] IPVS: Add 'af' args to protocol handler functions
+Date: Tue,  2 Sep 2008 15:55:40 +0200
+Message-ID: <1220363755-9854-10-git-send-email-juliusv@google.com>
 References: <1220363755-9854-1-git-send-email-juliusv@google.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220363761; bh=DEWvI4uHnYlzYZJIuDbR+GZO4lE=;
+	t=1220363764; bh=jK64JheQp62Qot9aWjVpTq6ddBI=;
 	h=DomainKey-Signature:From:To:Cc:Subject:Date:Message-Id:X-Mailer:
-	 In-Reply-To:References; b=iPIquD64BtBkNw+UXombHZq7rV86NipyTD7wPPiF
-	SdjzYra04VihobiP3GC0a+WP7e+LS1UK5FMmVCllWIxZRw==
+	 In-Reply-To:References; b=HZf+qmbiKqH8xfKYn+D2JOavgw4WxD673qg8RoCV
+	mIK5kY1l3Z8ymFvBwCybF8CtUPqAx6oUi/OUd9JQ782gqA==
 In-Reply-To: <1220363755-9854-1-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -18,76 +18,690 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: horms@verge.net.au, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
 
-Add some debugging macros that allow conditional output of either v4 or v6
-addresses, depending on an 'af' parameter. This is done by creating a
-temporary string buffer in an outer debug macro and writing addresses'
-string representations into it from another macro which can only be used
-when inside the outer one.
+Add 'af' arguments to conn_schedule(), conn_in_get(), conn_out_get() and
+csum_check() function pointers in struct ip_vs_protocol. Extend the
+respective functions for TCP, UDP, AH and ESP and adjust the callers.
+
+The changes in the callers need to be somewhat extensive, since they now
+need to pass a filled out struct ip_vs_iphdr * to the modified functions
+instead of a struct iphdr *.
 
 Signed-off-by: Julius Volz <juliusv@google.com>
 
- 1 files changed, 42 insertions(+), 0 deletions(-)
+ 5 files changed, 171 insertions(+), 124 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 5d6313d..0400e59 100644
+index 3d3b699..68f004f 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -78,6 +78,46 @@ static inline int ip_vs_addr_equal(int af, const union nf_inet_addr *a,
- #include <linux/net.h>
+@@ -296,21 +296,23 @@ struct ip_vs_protocol {
  
- extern int ip_vs_get_debug_level(void);
+ 	void (*exit)(struct ip_vs_protocol *pp);
+ 
+-	int (*conn_schedule)(struct sk_buff *skb,
++	int (*conn_schedule)(int af, struct sk_buff *skb,
+ 			     struct ip_vs_protocol *pp,
+ 			     int *verdict, struct ip_vs_conn **cpp);
+ 
+ 	struct ip_vs_conn *
+-	(*conn_in_get)(const struct sk_buff *skb,
++	(*conn_in_get)(int af,
++		       const struct sk_buff *skb,
+ 		       struct ip_vs_protocol *pp,
+-		       const struct iphdr *iph,
++		       const struct ip_vs_iphdr *iph,
+ 		       unsigned int proto_off,
+ 		       int inverse);
+ 
+ 	struct ip_vs_conn *
+-	(*conn_out_get)(const struct sk_buff *skb,
++	(*conn_out_get)(int af,
++			const struct sk_buff *skb,
+ 			struct ip_vs_protocol *pp,
+-			const struct iphdr *iph,
++			const struct ip_vs_iphdr *iph,
+ 			unsigned int proto_off,
+ 			int inverse);
+ 
+@@ -320,7 +322,8 @@ struct ip_vs_protocol {
+ 	int (*dnat_handler)(struct sk_buff *skb,
+ 			    struct ip_vs_protocol *pp, struct ip_vs_conn *cp);
+ 
+-	int (*csum_check)(struct sk_buff *skb, struct ip_vs_protocol *pp);
++	int (*csum_check)(int af, struct sk_buff *skb,
++			  struct ip_vs_protocol *pp);
+ 
+ 	const char *(*state_name)(int state);
+ 
+diff --git a/net/ipv4/ipvs/ip_vs_core.c b/net/ipv4/ipvs/ip_vs_core.c
+index 4a54f33..34aaa14 100644
+--- a/net/ipv4/ipvs/ip_vs_core.c
++++ b/net/ipv4/ipvs/ip_vs_core.c
+@@ -572,6 +572,7 @@ static int ip_vs_out_icmp(struct sk_buff *skb, int *related)
+ 	struct iphdr *iph;
+ 	struct icmphdr	_icmph, *ic;
+ 	struct iphdr	_ciph, *cih;	/* The ip header contained within the ICMP */
++	struct ip_vs_iphdr ciph;
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_protocol *pp;
+ 	unsigned int offset, ihl, verdict;
+@@ -627,8 +628,9 @@ static int ip_vs_out_icmp(struct sk_buff *skb, int *related)
+ 
+ 	offset += cih->ihl * 4;
+ 
++	ip_vs_fill_iphdr(AF_INET, cih, &ciph);
+ 	/* The embedded headers contain source and dest in reverse order */
+-	cp = pp->conn_out_get(skb, pp, cih, offset, 1);
++	cp = pp->conn_out_get(AF_INET, skb, pp, &ciph, offset, 1);
+ 	if (!cp)
+ 		return NF_ACCEPT;
+ 
+@@ -686,43 +688,41 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb,
+ 	  const struct net_device *in, const struct net_device *out,
+ 	  int (*okfn)(struct sk_buff *))
+ {
+-	struct iphdr	*iph;
++	struct ip_vs_iphdr iph;
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_conn *cp;
+-	int ihl;
+ 
+ 	EnterFunction(11);
+ 
+ 	if (skb->ipvs_property)
+ 		return NF_ACCEPT;
+ 
+-	iph = ip_hdr(skb);
+-	if (unlikely(iph->protocol == IPPROTO_ICMP)) {
++	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
++	if (unlikely(iph.protocol == IPPROTO_ICMP)) {
+ 		int related, verdict = ip_vs_out_icmp(skb, &related);
+ 
+ 		if (related)
+ 			return verdict;
+-		iph = ip_hdr(skb);
++		ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
+ 	}
+ 
+-	pp = ip_vs_proto_get(iph->protocol);
++	pp = ip_vs_proto_get(iph.protocol);
+ 	if (unlikely(!pp))
+ 		return NF_ACCEPT;
+ 
+ 	/* reassemble IP fragments */
+-	if (unlikely(iph->frag_off & htons(IP_MF|IP_OFFSET) &&
++	if (unlikely(ip_hdr(skb)->frag_off & htons(IP_MF|IP_OFFSET) &&
+ 		     !pp->dont_defrag)) {
+ 		if (ip_vs_gather_frags(skb, IP_DEFRAG_VS_OUT))
+ 			return NF_STOLEN;
+-		iph = ip_hdr(skb);
+-	}
+ 
+-	ihl = iph->ihl << 2;
++		ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
++	}
+ 
+ 	/*
+ 	 * Check if the packet belongs to an existing entry
+ 	 */
+-	cp = pp->conn_out_get(skb, pp, iph, ihl, 0);
++	cp = pp->conn_out_get(AF_INET, skb, pp, &iph, iph.len, 0);
+ 
+ 	if (unlikely(!cp)) {
+ 		if (sysctl_ip_vs_nat_icmp_send &&
+@@ -730,18 +730,18 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb,
+ 		     pp->protocol == IPPROTO_UDP)) {
+ 			__be16 _ports[2], *pptr;
+ 
+-			pptr = skb_header_pointer(skb, ihl,
++			pptr = skb_header_pointer(skb, iph.len,
+ 						  sizeof(_ports), _ports);
+ 			if (pptr == NULL)
+ 				return NF_ACCEPT;	/* Not for me */
+-			if (ip_vs_lookup_real_service(iph->protocol,
+-						      iph->saddr, pptr[0])) {
++			if (ip_vs_lookup_real_service(iph.protocol,
++						      iph.saddr.ip, pptr[0])) {
+ 				/*
+ 				 * Notify the real server: there is no
+ 				 * existing entry if it is not RST
+ 				 * packet or not TCP packet.
+ 				 */
+-				if (iph->protocol != IPPROTO_TCP
++				if (iph.protocol != IPPROTO_TCP
+ 				    || !is_tcp_reset(skb)) {
+ 					icmp_send(skb,ICMP_DEST_UNREACH,
+ 						  ICMP_PORT_UNREACH, 0);
+@@ -756,7 +756,7 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb,
+ 
+ 	IP_VS_DBG_PKT(11, pp, skb, 0, "Outgoing packet");
+ 
+-	if (!skb_make_writable(skb, ihl))
++	if (!skb_make_writable(skb, iph.len))
+ 		goto drop;
+ 
+ 	/* mangle the packet */
+@@ -804,6 +804,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	struct iphdr *iph;
+ 	struct icmphdr	_icmph, *ic;
+ 	struct iphdr	_ciph, *cih;	/* The ip header contained within the ICMP */
++	struct ip_vs_iphdr ciph;
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_protocol *pp;
+ 	unsigned int offset, ihl, verdict;
+@@ -860,8 +861,9 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 
+ 	offset += cih->ihl * 4;
+ 
++	ip_vs_fill_iphdr(AF_INET, cih, &ciph);
+ 	/* The embedded headers contain source and dest in reverse order */
+-	cp = pp->conn_in_get(skb, pp, cih, offset, 1);
++	cp = pp->conn_in_get(AF_INET, skb, pp, &ciph, offset, 1);
+ 	if (!cp)
+ 		return NF_ACCEPT;
+ 
+@@ -897,11 +899,12 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb,
+ 	 const struct net_device *in, const struct net_device *out,
+ 	 int (*okfn)(struct sk_buff *))
+ {
+-	struct iphdr	*iph;
++	struct ip_vs_iphdr iph;
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_conn *cp;
+ 	int ret, restart;
+-	int ihl;
 +
-+static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
-+					 const union nf_inet_addr *addr,
-+					 int *idx)
-+{
-+	int len;
++	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
+ 
+ 	/*
+ 	 *	Big tappo: only PACKET_HOST (neither loopback nor mcasts)
+@@ -909,38 +912,35 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb,
+ 	 */
+ 	if (unlikely(skb->pkt_type != PACKET_HOST
+ 		     || skb->dev->flags & IFF_LOOPBACK || skb->sk)) {
+-		IP_VS_DBG(12, "packet type=%d proto=%d daddr=%d.%d.%d.%d ignored\n",
+-			  skb->pkt_type,
+-			  ip_hdr(skb)->protocol,
+-			  NIPQUAD(ip_hdr(skb)->daddr));
++		IP_VS_DBG_BUF(12, "packet type=%d proto=%d daddr=%s ignored\n",
++			      skb->pkt_type,
++			      iph.protocol,
++			      IP_VS_DBG_ADDR(AF_INET, &iph.daddr));
+ 		return NF_ACCEPT;
+ 	}
+ 
+-	iph = ip_hdr(skb);
+-	if (unlikely(iph->protocol == IPPROTO_ICMP)) {
++	if (unlikely(iph.protocol == IPPROTO_ICMP)) {
+ 		int related, verdict = ip_vs_in_icmp(skb, &related, hooknum);
+ 
+ 		if (related)
+ 			return verdict;
+-		iph = ip_hdr(skb);
++		ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
+ 	}
+ 
+ 	/* Protocol supported? */
+-	pp = ip_vs_proto_get(iph->protocol);
++	pp = ip_vs_proto_get(iph.protocol);
+ 	if (unlikely(!pp))
+ 		return NF_ACCEPT;
+ 
+-	ihl = iph->ihl << 2;
+-
+ 	/*
+ 	 * Check if the packet belongs to an existing connection entry
+ 	 */
+-	cp = pp->conn_in_get(skb, pp, iph, ihl, 0);
++	cp = pp->conn_in_get(AF_INET, skb, pp, &iph, iph.len, 0);
+ 
+ 	if (unlikely(!cp)) {
+ 		int v;
+ 
+-		if (!pp->conn_schedule(skb, pp, &v, &cp))
++		if (!pp->conn_schedule(AF_INET, skb, pp, &v, &cp))
+ 			return v;
+ 	}
+ 
+diff --git a/net/ipv4/ipvs/ip_vs_proto_ah_esp.c b/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
+index 3f9ebd7..2a361a9 100644
+--- a/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
++++ b/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
+@@ -39,25 +39,23 @@ struct isakmp_hdr {
+ 
+ 
+ static struct ip_vs_conn *
+-ah_esp_conn_in_get(const struct sk_buff *skb,
+-		   struct ip_vs_protocol *pp,
+-		   const struct iphdr *iph,
+-		   unsigned int proto_off,
++ah_esp_conn_in_get(int af, const struct sk_buff *skb, struct ip_vs_protocol *pp,
++		   const struct ip_vs_iphdr *iph, unsigned int proto_off,
+ 		   int inverse)
+ {
+ 	struct ip_vs_conn *cp;
+ 
+ 	if (likely(!inverse)) {
+ 		cp = ip_vs_conn_in_get(IPPROTO_UDP,
+-				       iph->saddr,
++				       iph->saddr.ip,
+ 				       htons(PORT_ISAKMP),
+-				       iph->daddr,
++				       iph->daddr.ip,
+ 				       htons(PORT_ISAKMP));
+ 	} else {
+ 		cp = ip_vs_conn_in_get(IPPROTO_UDP,
+-				       iph->daddr,
++				       iph->daddr.ip,
+ 				       htons(PORT_ISAKMP),
+-				       iph->saddr,
++				       iph->saddr.ip,
+ 				       htons(PORT_ISAKMP));
+ 	}
+ 
+@@ -66,12 +64,12 @@ ah_esp_conn_in_get(const struct sk_buff *skb,
+ 		 * We are not sure if the packet is from our
+ 		 * service, so our conn_schedule hook should return NF_ACCEPT
+ 		 */
+-		IP_VS_DBG(12, "Unknown ISAKMP entry for outin packet "
+-			  "%s%s %u.%u.%u.%u->%u.%u.%u.%u\n",
+-			  inverse ? "ICMP+" : "",
+-			  pp->name,
+-			  NIPQUAD(iph->saddr),
+-			  NIPQUAD(iph->daddr));
++		IP_VS_DBG_BUF(12, "Unknown ISAKMP entry for outin packet "
++			      "%s%s %s->%s\n",
++			      inverse ? "ICMP+" : "",
++			      pp->name,
++			      IP_VS_DBG_ADDR(af, &iph->saddr),
++			      IP_VS_DBG_ADDR(af, &iph->daddr));
+ 	}
+ 
+ 	return cp;
+@@ -79,32 +77,35 @@ ah_esp_conn_in_get(const struct sk_buff *skb,
+ 
+ 
+ static struct ip_vs_conn *
+-ah_esp_conn_out_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+-		    const struct iphdr *iph, unsigned int proto_off, int inverse)
++ah_esp_conn_out_get(int af, const struct sk_buff *skb,
++		    struct ip_vs_protocol *pp,
++		    const struct ip_vs_iphdr *iph,
++		    unsigned int proto_off,
++		    int inverse)
+ {
+ 	struct ip_vs_conn *cp;
+ 
+ 	if (likely(!inverse)) {
+ 		cp = ip_vs_conn_out_get(IPPROTO_UDP,
+-					iph->saddr,
++					iph->saddr.ip,
+ 					htons(PORT_ISAKMP),
+-					iph->daddr,
++					iph->daddr.ip,
+ 					htons(PORT_ISAKMP));
+ 	} else {
+ 		cp = ip_vs_conn_out_get(IPPROTO_UDP,
+-					iph->daddr,
++					iph->daddr.ip,
+ 					htons(PORT_ISAKMP),
+-					iph->saddr,
++					iph->saddr.ip,
+ 					htons(PORT_ISAKMP));
+ 	}
+ 
+ 	if (!cp) {
+-		IP_VS_DBG(12, "Unknown ISAKMP entry for inout packet "
+-			  "%s%s %u.%u.%u.%u->%u.%u.%u.%u\n",
+-			  inverse ? "ICMP+" : "",
+-			  pp->name,
+-			  NIPQUAD(iph->saddr),
+-			  NIPQUAD(iph->daddr));
++		IP_VS_DBG_BUF(12, "Unknown ISAKMP entry for inout packet "
++			      "%s%s %s->%s\n",
++			      inverse ? "ICMP+" : "",
++			      pp->name,
++			      IP_VS_DBG_ADDR(af, &iph->saddr),
++			      IP_VS_DBG_ADDR(af, &iph->daddr));
+ 	}
+ 
+ 	return cp;
+@@ -112,8 +113,7 @@ ah_esp_conn_out_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 
+ 
+ static int
+-ah_esp_conn_schedule(struct sk_buff *skb,
+-		     struct ip_vs_protocol *pp,
++ah_esp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 		     int *verdict, struct ip_vs_conn **cpp)
+ {
+ 	/*
+diff --git a/net/ipv4/ipvs/ip_vs_proto_tcp.c b/net/ipv4/ipvs/ip_vs_proto_tcp.c
+index fe93c9e..9211afa 100644
+--- a/net/ipv4/ipvs/ip_vs_proto_tcp.c
++++ b/net/ipv4/ipvs/ip_vs_proto_tcp.c
+@@ -25,8 +25,9 @@
+ 
+ 
+ static struct ip_vs_conn *
+-tcp_conn_in_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+-		const struct iphdr *iph, unsigned int proto_off, int inverse)
++tcp_conn_in_get(int af, const struct sk_buff *skb, struct ip_vs_protocol *pp,
++		const struct ip_vs_iphdr *iph, unsigned int proto_off,
++		int inverse)
+ {
+ 	__be16 _ports[2], *pptr;
+ 
+@@ -36,18 +37,19 @@ tcp_conn_in_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 
+ 	if (likely(!inverse)) {
+ 		return ip_vs_conn_in_get(iph->protocol,
+-					 iph->saddr, pptr[0],
+-					 iph->daddr, pptr[1]);
++					 iph->saddr.ip, pptr[0],
++					 iph->daddr.ip, pptr[1]);
+ 	} else {
+ 		return ip_vs_conn_in_get(iph->protocol,
+-					 iph->daddr, pptr[1],
+-					 iph->saddr, pptr[0]);
++					 iph->daddr.ip, pptr[1],
++					 iph->saddr.ip, pptr[0]);
+ 	}
+ }
+ 
+ static struct ip_vs_conn *
+-tcp_conn_out_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+-		 const struct iphdr *iph, unsigned int proto_off, int inverse)
++tcp_conn_out_get(int af, const struct sk_buff *skb, struct ip_vs_protocol *pp,
++		 const struct ip_vs_iphdr *iph, unsigned int proto_off,
++		 int inverse)
+ {
+ 	__be16 _ports[2], *pptr;
+ 
+@@ -57,26 +59,25 @@ tcp_conn_out_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 
+ 	if (likely(!inverse)) {
+ 		return ip_vs_conn_out_get(iph->protocol,
+-					  iph->saddr, pptr[0],
+-					  iph->daddr, pptr[1]);
++					  iph->saddr.ip, pptr[0],
++					  iph->daddr.ip, pptr[1]);
+ 	} else {
+ 		return ip_vs_conn_out_get(iph->protocol,
+-					  iph->daddr, pptr[1],
+-					  iph->saddr, pptr[0]);
++					  iph->daddr.ip, pptr[1],
++					  iph->saddr.ip, pptr[0]);
+ 	}
+ }
+ 
+ 
+ static int
+-tcp_conn_schedule(struct sk_buff *skb,
+-		  struct ip_vs_protocol *pp,
++tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 		  int *verdict, struct ip_vs_conn **cpp)
+ {
+ 	struct ip_vs_service *svc;
+ 	struct tcphdr _tcph, *th;
+ 	struct ip_vs_iphdr iph;
+ 
+-	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
++	ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
+ 
+ 	th = skb_header_pointer(skb, iph.len, sizeof(_tcph), &_tcph);
+ 	if (th == NULL) {
+@@ -85,8 +86,8 @@ tcp_conn_schedule(struct sk_buff *skb,
+ 	}
+ 
+ 	if (th->syn &&
+-	    (svc = ip_vs_service_get(AF_INET, skb->mark, iph.protocol,
+-				     &iph.daddr, th->dest))) {
++	    (svc = ip_vs_service_get(af, skb->mark, iph.protocol, &iph.daddr,
++				     th->dest))) {
+ 		if (ip_vs_todrop()) {
+ 			/*
+ 			 * It seems that we are very loaded.
+@@ -136,7 +137,7 @@ tcp_snat_handler(struct sk_buff *skb,
+ 
+ 	if (unlikely(cp->app != NULL)) {
+ 		/* Some checks before mangling */
+-		if (pp->csum_check && !pp->csum_check(skb, pp))
++		if (pp->csum_check && !pp->csum_check(AF_INET, skb, pp))
+ 			return 0;
+ 
+ 		/* Call application helper if needed */
+@@ -182,7 +183,7 @@ tcp_dnat_handler(struct sk_buff *skb,
+ 
+ 	if (unlikely(cp->app != NULL)) {
+ 		/* Some checks before mangling */
+-		if (pp->csum_check && !pp->csum_check(skb, pp))
++		if (pp->csum_check && !pp->csum_check(AF_INET, skb, pp))
+ 			return 0;
+ 
+ 		/*
+@@ -219,21 +220,43 @@ tcp_dnat_handler(struct sk_buff *skb,
+ 
+ 
+ static int
+-tcp_csum_check(struct sk_buff *skb, struct ip_vs_protocol *pp)
++tcp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp)
+ {
+-	const unsigned int tcphoff = ip_hdrlen(skb);
++	unsigned int tcphoff;
++
 +#ifdef CONFIG_IP_VS_IPV6
 +	if (af == AF_INET6)
-+		len = snprintf(&buf[*idx], buf_len - *idx, "[" NIP6_FMT "]",
-+			       NIP6(addr->in6)) + 1;
++		tcphoff = sizeof(struct ipv6hdr);
 +	else
 +#endif
-+		len = snprintf(&buf[*idx], buf_len - *idx, NIPQUAD_FMT,
-+			       NIPQUAD(addr->ip)) + 1;
++		tcphoff = ip_hdrlen(skb);
+ 
+ 	switch (skb->ip_summed) {
+ 	case CHECKSUM_NONE:
+ 		skb->csum = skb_checksum(skb, tcphoff, skb->len - tcphoff, 0);
+ 	case CHECKSUM_COMPLETE:
+-		if (csum_tcpudp_magic(ip_hdr(skb)->saddr, ip_hdr(skb)->daddr,
+-				      skb->len - tcphoff,
+-				      ip_hdr(skb)->protocol, skb->csum)) {
+-			IP_VS_DBG_RL_PKT(0, pp, skb, 0,
+-					 "Failed checksum for");
+-			return 0;
+-		}
++#ifdef CONFIG_IP_VS_IPV6
++		if (af == AF_INET6) {
++			if (csum_ipv6_magic(&ipv6_hdr(skb)->saddr,
++					    &ipv6_hdr(skb)->daddr,
++					    skb->len - tcphoff,
++					    ipv6_hdr(skb)->nexthdr,
++					    skb->csum)) {
++				IP_VS_DBG_RL_PKT(0, pp, skb, 0,
++						 "Failed checksum for");
++				return 0;
++			}
++		} else
++#endif
++			if (csum_tcpudp_magic(ip_hdr(skb)->saddr,
++					      ip_hdr(skb)->daddr,
++					      skb->len - tcphoff,
++					      ip_hdr(skb)->protocol,
++					      skb->csum)) {
++				IP_VS_DBG_RL_PKT(0, pp, skb, 0,
++						 "Failed checksum for");
++				return 0;
++			}
+ 		break;
+ 	default:
+ 		/* No need to checksum. */
+diff --git a/net/ipv4/ipvs/ip_vs_proto_udp.c b/net/ipv4/ipvs/ip_vs_proto_udp.c
+index d208ed6..d3a1b1f 100644
+--- a/net/ipv4/ipvs/ip_vs_proto_udp.c
++++ b/net/ipv4/ipvs/ip_vs_proto_udp.c
+@@ -24,8 +24,9 @@
+ #include <net/ip.h>
+ 
+ static struct ip_vs_conn *
+-udp_conn_in_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+-		const struct iphdr *iph, unsigned int proto_off, int inverse)
++udp_conn_in_get(int af, const struct sk_buff *skb, struct ip_vs_protocol *pp,
++		const struct ip_vs_iphdr *iph, unsigned int proto_off,
++		int inverse)
+ {
+ 	struct ip_vs_conn *cp;
+ 	__be16 _ports[2], *pptr;
+@@ -36,12 +37,12 @@ udp_conn_in_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 
+ 	if (likely(!inverse)) {
+ 		cp = ip_vs_conn_in_get(iph->protocol,
+-				       iph->saddr, pptr[0],
+-				       iph->daddr, pptr[1]);
++				       iph->saddr.ip, pptr[0],
++				       iph->daddr.ip, pptr[1]);
+ 	} else {
+ 		cp = ip_vs_conn_in_get(iph->protocol,
+-				       iph->daddr, pptr[1],
+-				       iph->saddr, pptr[0]);
++				       iph->daddr.ip, pptr[1],
++				       iph->saddr.ip, pptr[0]);
+ 	}
+ 
+ 	return cp;
+@@ -49,25 +50,25 @@ udp_conn_in_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 
+ 
+ static struct ip_vs_conn *
+-udp_conn_out_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+-		 const struct iphdr *iph, unsigned int proto_off, int inverse)
++udp_conn_out_get(int af, const struct sk_buff *skb, struct ip_vs_protocol *pp,
++		 const struct ip_vs_iphdr *iph, unsigned int proto_off,
++		 int inverse)
+ {
+ 	struct ip_vs_conn *cp;
+ 	__be16 _ports[2], *pptr;
+ 
+-	pptr = skb_header_pointer(skb, ip_hdrlen(skb),
+-				  sizeof(_ports), _ports);
++	pptr = skb_header_pointer(skb, proto_off, sizeof(_ports), _ports);
+ 	if (pptr == NULL)
+ 		return NULL;
+ 
+ 	if (likely(!inverse)) {
+ 		cp = ip_vs_conn_out_get(iph->protocol,
+-					iph->saddr, pptr[0],
+-					iph->daddr, pptr[1]);
++					iph->saddr.ip, pptr[0],
++					iph->daddr.ip, pptr[1]);
+ 	} else {
+ 		cp = ip_vs_conn_out_get(iph->protocol,
+-					iph->daddr, pptr[1],
+-					iph->saddr, pptr[0]);
++					iph->daddr.ip, pptr[1],
++					iph->saddr.ip, pptr[0]);
+ 	}
+ 
+ 	return cp;
+@@ -75,14 +76,14 @@ udp_conn_out_get(const struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 
+ 
+ static int
+-udp_conn_schedule(struct sk_buff *skb, struct ip_vs_protocol *pp,
++udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 		  int *verdict, struct ip_vs_conn **cpp)
+ {
+ 	struct ip_vs_service *svc;
+ 	struct udphdr _udph, *uh;
+ 	struct ip_vs_iphdr iph;
+ 
+-	ip_vs_fill_iphdr(AF_INET, skb_network_header(skb), &iph);
++	ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
+ 
+ 	uh = skb_header_pointer(skb, iph.len, sizeof(_udph), &_udph);
+ 	if (uh == NULL) {
+@@ -90,7 +91,7 @@ udp_conn_schedule(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 		return 0;
+ 	}
+ 
+-	svc = ip_vs_service_get(AF_INET, skb->mark, iph.protocol,
++	svc = ip_vs_service_get(af, skb->mark, iph.protocol,
+ 				&iph.daddr, uh->dest);
+ 	if (svc) {
+ 		if (ip_vs_todrop()) {
+@@ -143,7 +144,7 @@ udp_snat_handler(struct sk_buff *skb,
+ 
+ 	if (unlikely(cp->app != NULL)) {
+ 		/* Some checks before mangling */
+-		if (pp->csum_check && !pp->csum_check(skb, pp))
++		if (pp->csum_check && !pp->csum_check(AF_INET, skb, pp))
+ 			return 0;
+ 
+ 		/*
+@@ -195,7 +196,7 @@ udp_dnat_handler(struct sk_buff *skb,
+ 
+ 	if (unlikely(cp->app != NULL)) {
+ 		/* Some checks before mangling */
+-		if (pp->csum_check && !pp->csum_check(skb, pp))
++		if (pp->csum_check && !pp->csum_check(AF_INET, skb, pp))
+ 			return 0;
+ 
+ 		/*
+@@ -234,10 +235,17 @@ udp_dnat_handler(struct sk_buff *skb,
+ 
+ 
+ static int
+-udp_csum_check(struct sk_buff *skb, struct ip_vs_protocol *pp)
++udp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp)
+ {
+ 	struct udphdr _udph, *uh;
+-	const unsigned int udphoff = ip_hdrlen(skb);
++	unsigned int udphoff;
 +
-+	*idx += len;
-+	BUG_ON(*idx > buf_len + 1);
-+	return &buf[*idx - len];
-+}
-+
-+#define IP_VS_DBG_BUF(level, msg...)			\
-+    do {						\
-+	    char ip_vs_dbg_buf[160];			\
-+	    int ip_vs_dbg_idx = 0;			\
-+	    if (level <= ip_vs_get_debug_level())	\
-+		    printk(KERN_DEBUG "IPVS: " msg);	\
-+    } while (0)
-+#define IP_VS_ERR_BUF(msg...)				\
-+    do {						\
-+	    char ip_vs_dbg_buf[160];			\
-+	    int ip_vs_dbg_idx = 0;			\
-+	    printk(KERN_ERR "IPVS: " msg);		\
-+    } while (0)
-+
-+/* Only use from within IP_VS_DBG_BUF() or IP_VS_ERR_BUF macros */
-+#define IP_VS_DBG_ADDR(af, addr)			\
-+    ip_vs_dbg_addr(af, ip_vs_dbg_buf,			\
-+		   sizeof(ip_vs_dbg_buf), addr,		\
-+		   &ip_vs_dbg_idx)
-+
- #define IP_VS_DBG(level, msg...)			\
-     do {						\
- 	    if (level <= ip_vs_get_debug_level())	\
-@@ -100,6 +140,8 @@ extern int ip_vs_get_debug_level(void);
- 		pp->debug_packet(pp, skb, ofs, msg);	\
-     } while (0)
- #else	/* NO DEBUGGING at ALL */
-+#define IP_VS_DBG_BUF(level, msg...)  do {} while (0)
-+#define IP_VS_ERR_BUF(msg...)  do {} while (0)
- #define IP_VS_DBG(level, msg...)  do {} while (0)
- #define IP_VS_DBG_RL(msg...)  do {} while (0)
- #define IP_VS_DBG_PKT(level, pp, skb, ofs, msg)		do {} while (0)
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6)
++		udphoff = sizeof(struct ipv6hdr);
++	else
++#endif
++		udphoff = ip_hdrlen(skb);
+ 
+ 	uh = skb_header_pointer(skb, udphoff, sizeof(_udph), &_udph);
+ 	if (uh == NULL)
+@@ -249,15 +257,28 @@ udp_csum_check(struct sk_buff *skb, struct ip_vs_protocol *pp)
+ 			skb->csum = skb_checksum(skb, udphoff,
+ 						 skb->len - udphoff, 0);
+ 		case CHECKSUM_COMPLETE:
+-			if (csum_tcpudp_magic(ip_hdr(skb)->saddr,
+-					      ip_hdr(skb)->daddr,
+-					      skb->len - udphoff,
+-					      ip_hdr(skb)->protocol,
+-					      skb->csum)) {
+-				IP_VS_DBG_RL_PKT(0, pp, skb, 0,
+-						 "Failed checksum for");
+-				return 0;
+-			}
++#ifdef CONFIG_IP_VS_IPV6
++			if (af == AF_INET6) {
++				if (csum_ipv6_magic(&ipv6_hdr(skb)->saddr,
++						    &ipv6_hdr(skb)->daddr,
++						    skb->len - udphoff,
++						    ipv6_hdr(skb)->nexthdr,
++						    skb->csum)) {
++					IP_VS_DBG_RL_PKT(0, pp, skb, 0,
++							 "Failed checksum for");
++					return 0;
++				}
++			} else
++#endif
++				if (csum_tcpudp_magic(ip_hdr(skb)->saddr,
++						      ip_hdr(skb)->daddr,
++						      skb->len - udphoff,
++						      ip_hdr(skb)->protocol,
++						      skb->csum)) {
++					IP_VS_DBG_RL_PKT(0, pp, skb, 0,
++							 "Failed checksum for");
++					return 0;
++				}
+ 			break;
+ 		default:
+ 			/* No need to checksum. */
 -- 
 1.5.4.5
 
