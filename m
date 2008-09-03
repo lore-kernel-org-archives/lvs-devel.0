@@ -1,80 +1,43 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCHv3 16/24] IPVS: Add/adjust Netfilter hook functions and
-	helpers for v6
-Date: Wed, 3 Sep 2008 15:44:00 +1000
-Message-ID: <20080903054359.GB16875@verge.net.au>
-References: <1220363755-9854-1-git-send-email-juliusv@google.com> <1220363755-9854-17-git-send-email-juliusv@google.com>
+From: "Julius Volz" <juliusv@google.com>
+Subject: Re: [PATCHv2 RFC 13/25] IPVS: Add IPv6 support to xmit() support functions
+Date: Wed, 3 Sep 2008 10:43:13 +0200
+Message-ID: <f4845fc0809030143k8126654k7d1c8e3d4c5d28a9@mail.gmail.com>
+References: <1220273782-19901-1-git-send-email-juliusv@google.com>
+	 <1220273782-19901-14-git-send-email-juliusv@google.com>
+	 <20080902222814.GA6035@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1220431397; bh=9auqIHTuHylrTbAWUg6tE73wYDc=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=nUwVPNJgvLbVWzxvGR+GQo9XVIbJlrT/
+	66ivMCTWOymXkStyBK9xqZ3ScHIAZLZh9Db2RedrFvbuGCtgz81Www==
+In-Reply-To: <20080902222814.GA6035@verge.net.au>
 Content-Disposition: inline
-In-Reply-To: <1220363755-9854-17-git-send-email-juliusv@google.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julius Volz <juliusv@google.com>
+To: Simon Horman <horms@verge.net.au>
 Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com
 
-On Tue, Sep 02, 2008 at 03:55:47PM +0200, Julius Volz wrote:
-> Add Netfilter hook functions or modify existing ones, if possible, to
-> process IPv6 packets. Some support functions are also added/modified for
-> this. ip_vs_nat_icmp_v6() was already added in the patch that added the v6
-> xmit functions, as it is called from one of them.
+On Wed, Sep 3, 2008 at 12:28 AM, Simon Horman <horms@verge.net.au> wrote:
+> On Mon, Sep 01, 2008 at 02:56:10PM +0200, Julius Volz wrote:
+>> Add IPv6 support to IP_VS_XMIT() and to the xmit routing cache, introducing
+>> a new function __ip_vs_get_out_rt_v6().
+>
+> Hi,
+>
+> sorry, I missed this one yesteray. Could you run checkpatch.pl over
+> this one also?
 
-Hi Julius,
+Yes, already cleaned up in the latest posted version (I ran
+checkpatch.pl over all patches yesterday).
 
-I was looking over this code a bit more closely to rebase someone
-elses patch (which I intend to post very soon). I noticed two
-minor things.
+Julius
 
-1) ipl doesn't seem to be needed in ip_vs_out_icmp() any more.
-   But actually I'm quite ok with it staying there because the
-   patch I was working on will need it.
+-- 
+Julius Volz - Corporate Operations - SysOps
 
-2) I wonder if iph could be initialised earleir in ip_vs_out_icmp_v6()
-
-[snip]
-
-> @@ -727,11 +759,117 @@ static int ip_vs_out_icmp(struct sk_buff *skb, int *related)
-
->  	return verdict;
->  }
->  
-> -static inline int is_tcp_reset(const struct sk_buff *skb)
-> +#ifdef CONFIG_IP_VS_IPV6
-> +static int ip_vs_out_icmp_v6(struct sk_buff *skb, int *related)
-> +{
-> +	struct ipv6hdr *iph;
-> +	struct icmp6hdr	_icmph, *ic;
-> +	struct ipv6hdr	_ciph, *cih;	/* The ip header contained
-> +					   within the ICMP */
-> +	struct ip_vs_iphdr ciph;
-> +	struct ip_vs_conn *cp;
-> +	struct ip_vs_protocol *pp;
-> +	unsigned int offset, verdict;
-> +
-> +	*related = 1;
-> +
-> +	/* reassemble IP fragments */
-> +	if (ipv6_hdr(skb)->nexthdr == IPPROTO_FRAGMENT) {
-> +		if (ip_vs_gather_frags_v6(skb, IP_DEFRAG_VS_OUT))
-> +			return NF_STOLEN;
-> +	}
-> +
-> +	iph = ipv6_hdr(skb);
-
-Would it be worthwhile rearanging things so that iph is intialised
-before "/* reassemble IP fragments */" and used instead
-of ipv6_hdr(skb)->nexthdr in the if statement?
-
-> +	offset = sizeof(struct ipv6hdr);
-> +	ic = skb_header_pointer(skb, offset, sizeof(_icmph), &_icmph);
-> +	if (ic == NULL)
-> +		return NF_DROP;
-> +
-> +	IP_VS_DBG(12, "Outgoing ICMPv6 (%d,%d) " NIP6_FMT "->" NIP6_FMT "\n",
-> +		  ic->icmp6_type, ntohs(icmpv6_id(ic)),
-> +		  NIP6(iph->saddr), NIP6(iph->daddr));
-
-[snip]
-
+Google Switzerland GmbH - Identification No.: CH-020.4.028.116-1
