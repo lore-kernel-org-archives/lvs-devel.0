@@ -1,38 +1,31 @@
-From: Sven Wegener <sven.wegener@stealer.net>
-Subject: [PATCH] ipvs: Reject ipv6 link-local addresses for destinations
-Date: Fri, 5 Sep 2008 16:53:49 +0200 (CEST)
-Message-ID: <alpine.LNX.2.00.0809051638480.18192@titan.stealer.net>
-References: <1220363755-9854-1-git-send-email-juliusv@google.com> <1220363755-9854-22-git-send-email-juliusv@google.com>
+From: Brian Haley <brian.haley@hp.com>
+Subject: Re: [PATCH 2/2] ipvs: load balance ipv6 connections from a local
+ process
+Date: Fri, 05 Sep 2008 11:55:44 -0400
+Message-ID: <48C15680.7010004@hp.com>
+References: <20080905013609.GD14128@verge.net.au>	 <20080905013755.GE14128@verge.net.au> <f4845fc0809050440g24f304d9xec7982e984830c6e@mail.gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1220363755-9854-22-git-send-email-juliusv@google.com>
-Sender: lvs-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com, Julius Volz <juliusv@google.com>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <f4845fc0809050440g24f304d9xec7982e984830c6e@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: Julius Volz <juliusv@google.com>
+Cc: Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Malcolm Turnbull <malcolm@loadbalancer.org>, =?ISO-8859-1?Q?Siim_P=F5der?= <siim@p6drad-teel.net>, Vince Busam <vbusam@google.com>
 
-We can't use non-local link-local addresses for destinations, without
-knowing the interface on which we can reach the address. Reject them for
-now.
+Julius Volz wrote:
+>> -out:
+>> -       __ip_vs_conn_put(cp);
+>> -
+>> -       return verdict;
+>> +       snet.in6 = iph->saddr;
+> 
+> I've always been told to use ipv6_addr_copy() for this. I'm not sure
+> what the problem with the direct struct assignment is though... would
+> be nice if someone could explain.
 
-Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
----
- net/ipv4/ipvs/ip_vs_ctl.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+Because an in6_addr is a union of 4 u32's, which won't all be copied in 
+a struct assignment.  That's the way I've always understood it.
 
-diff --git a/net/ipv4/ipvs/ip_vs_ctl.c b/net/ipv4/ipvs/ip_vs_ctl.c
-index d2dc05a..e53efe4 100644
---- a/net/ipv4/ipvs/ip_vs_ctl.c
-+++ b/net/ipv4/ipvs/ip_vs_ctl.c
-@@ -838,7 +838,8 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- #ifdef CONFIG_IP_VS_IPV6
- 	if (svc->af == AF_INET6) {
- 		atype = ipv6_addr_type(&udest->addr.in6);
--		if (!(atype & IPV6_ADDR_UNICAST) &&
-+		if ((!(atype & IPV6_ADDR_UNICAST) ||
-+			atype & IPV6_ADDR_LINKLOCAL) &&
- 			!__ip_vs_addr_is_local_v6(&udest->addr.in6))
- 			return -EINVAL;
- 	} else
+-Brian
