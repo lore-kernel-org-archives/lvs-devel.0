@@ -1,63 +1,48 @@
-From: Siim =?iso-8859-15?Q?P=F5der?= <siim@p6drad-teel.net>
-Subject: Re: [PATCH 1/2] ipvs: load balance IPv4 connections from a local 
-     process
-Date: Fri, 5 Sep 2008 08:49:52 +0300 (EEST)
-Message-ID: <60dee71e238f7fa03da7bc5338ec4bf5.squirrel@p6drad-teel.net>
+From: "Julius Volz" <juliusv@google.com>
+Subject: Re: [PATCH 1/2] ipvs: load balance IPv4 connections from a local process
+Date: Fri, 5 Sep 2008 13:02:44 +0200
+Message-ID: <f4845fc0809050402x5552f526pc8511026d7faa359@mail.gmail.com>
 References: <20080905013609.GD14128@verge.net.au>
-    <Pine.LNX.4.58.0809050750550.2831@u.domain.uli>
-Reply-To: siim@p6drad-teel.net
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.58.0809050750550.2831@u.domain.uli>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1220612568; bh=wMzFumwQOJVriFCKbz7fhHnjrzs=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=dJo3Y/lyyTU4gFp6Qm5eAWgwyZBUPO44
+	C5OVUSJG7XxA50towAMk162QPpDrgpWWV02Xq2bNp6H5jjX4oTOGjA==
+In-Reply-To: <20080905013609.GD14128@verge.net.au>
+Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Malcolm Turnbull <malcolm@loadbalancer.org>, Siim =?iso-8859-15?Q?P=F5der?= <siim@p6drad-teel.net>, Julius Volz <juliusv@google.com>, Vince Busam <vbusam@google.com>
+Content-Type: text/plain; charset="us-ascii"
+To: Simon Horman <horms@verge.net.au>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Malcolm Turnbull <malcolm@loadbalancer.org>, =?ISO-8859-1?Q?Siim_P=F5der?= <siim@p6drad-teel.net>, Vince Busam <vbusam@google.com>
 
-Hi
+On Fri, Sep 5, 2008 at 3:36 AM, Simon Horman <horms@verge.net.au> wrote:
+> @@ -1244,11 +1278,12 @@ ip_vs_in(unsigned int hooknum, struct sk
+>        ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
+>
+>        /*
+> -        *      Big tappo: only PACKET_HOST (neither loopback nor mcasts)
+> -        *      ... don't know why 1st test DOES NOT include 2nd (?)
+> +        *      Big tappo: only PACKET_HOST, including loopback for local client
+> +        *      Don't handle local packets on IPv6 for now
+>         */
+> -       if (unlikely(skb->pkt_type != PACKET_HOST
+> -                    || skb->dev->flags & IFF_LOOPBACK || skb->sk)) {
+> +       if (unlikely(skb->pkt_type != PACKET_HOST ||
+> +                    (af == AF_INET6 || (skb->dev->flags & IFF_LOOPBACK ||
+> +                                        skb->sk)))) {
 
-> 	TCP checksum is not optional, why this change appeared?
+Hm, shouldn't this be (af == AF_INET6 && ...) instead of "||"? The
+current expression just NF_ACCEPTs _any_ incoming IPv6 packets, even
+non-local ones.
 
-The new packets that we handle are on the loopback device and no checks=
-ums
-appear to be generated there. I initially changed the condition to chec=
-k
-for loopback device (which we could do), but checking udp code found th=
-at
-it already handled it by checking zero checksum, hence the same
-implementation in tcp code.
+Julius
 
->> Index: lvs-2.6/net/ipv4/ipvs/ip_vs_proto_tcp.c
->> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->> --- lvs-2.6.orig/net/ipv4/ipvs/ip_vs_proto_tcp.c	2008-09-03
->> 10:56:05.000000000 +1000
->> +++ lvs-2.6/net/ipv4/ipvs/ip_vs_proto_tcp.c	2008-09-03
->> 11:24:26.000000000 +1000
->> @@ -166,7 +166,7 @@ tcp_snat_handler(struct sk_buff *skb,
->>  	tcph->source =3D cp->vport;
->>
->>  	/* Adjust TCP checksums */
->> -	if (!cp->app) {
->> +	if (!cp->app && (tcph->check !=3D 0)) {
->>  		/* Only port and addr are changed, do fast csum update */
->>  		tcp_fast_csum_update(cp->af, tcph, &cp->daddr, &cp->vaddr,
->>  				     cp->dport, cp->vport);
->> @@ -235,7 +235,7 @@ tcp_dnat_handler(struct sk_buff *skb,
->>  	/*
->>  	 *	Adjust TCP checksums
->>  	 */
->> -	if (!cp->app) {
->> +	if (!cp->app && (tcph->check !=3D 0)) {
->>  		/* Only port and addr are changed, do fast csum update */
->>  		tcp_fast_csum_update(cp->af, tcph, &cp->vaddr, &cp->daddr,
->>  				     cp->vport, cp->dport);
->> --
+-- 
+Julius Volz - Corporate Operations - SysOps
 
---=20
-Siiralt Teie,
-Elektromehaaniline P=F5der
-
+Google Switzerland GmbH - Identification No.: CH-020.4.028.116-1
