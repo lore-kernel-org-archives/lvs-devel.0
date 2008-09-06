@@ -1,30 +1,46 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 2/2] ipvs: load balance ipv6 connections from a local
-	process
-Date: Sat, 6 Sep 2008 14:14:37 +1000
-Message-ID: <20080906041436.GB21521@verge.net.au>
-References: <20080905013609.GD14128@verge.net.au> <20080905013755.GE14128@verge.net.au> <f4845fc0809050440g24f304d9xec7982e984830c6e@mail.gmail.com>
+Subject: Re: [PATCH] ipvs: Use pointer to address from sync message
+Date: Sat, 6 Sep 2008 14:26:11 +1000
+Message-ID: <20080906042610.GC21521@verge.net.au>
+References: <1220363755-9854-1-git-send-email-juliusv@google.com> <1220363755-9854-13-git-send-email-juliusv@google.com> <alpine.LNX.2.00.0809051342360.18192@titan.stealer.net> <f4845fc0809050528q253789fbi60ca6c229a08d8ab@mail.gmail.com>
 Mime-Version: 1.0
 Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <f4845fc0809050440g24f304d9xec7982e984830c6e@mail.gmail.com>
+In-Reply-To: <f4845fc0809050528q253789fbi60ca6c229a08d8ab@mail.gmail.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julius Volz <juliusv@google.com>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Malcolm Turnbull <malcolm@loadbalancer.org>, Siim =?iso-8859-1?Q?P=F5der?= <siim@p6drad-teel.net>, Vince Busam <vbusam@google.com>
+Cc: Sven Wegener <sven.wegener@stealer.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com
 
-On Fri, Sep 05, 2008 at 01:40:31PM +0200, Julius Volz wrote:
-> Hi,
+On Fri, Sep 05, 2008 at 02:28:48PM +0200, Julius Volz wrote:
+> On Fri, Sep 5, 2008 at 1:46 PM, Sven Wegener <sven.wegener@stealer.net> wrote:
+> > We want a pointer to it, not the value casted to a pointer.
 > 
-> Just some minor things:
+> Ouch, right!
+> 
+> > Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+> > ---
+> >  net/ipv4/ipvs/ip_vs_sync.c |    6 +++---
+> >  1 files changed, 3 insertions(+), 3 deletions(-)
+> >
+> > I've been too late with having a look at these patches. I'm going to
+> > send follow-up patches for the issues I find.
 
-Hi Julius,
+Sven, as always thanks very much for your patches.
 
-thanks for pointing these out. I will send patches to fix these problems ASAP.
+> Thanks! There are probably still lots of these easy-to-miss (but bad)
+> bugs in this big new bunch of code...
+> 
+> > Simon, please apply onto lvs-next-2.6.
+> 
+> Yes!
 
-More generally speaking, sorry to all parties concerned for applying
-these two patches a little prematurely. At this stage I'd rather move
-forward rather than roll the tree back. But I am happy to discuss this.
+Julius, can I take that as an Acked-by for the follwing changes?
+
+[PATCH] ipvs: Use pointer to address from sync message
+[PATCH] ipvs: Return negative error values from
+[PATCH] ipvs: Mark tcp/udp v4 and v6 debug functions static
+[PATCH] ipvs: Reject ipv6 link-local addresses for destinations
 
