@@ -1,38 +1,45 @@
 From: "Julius Volz" <juliusv@google.com>
-Subject: Re: [PATCH] ipvs: Use pointer to address from sync message
-Date: Sat, 6 Sep 2008 11:04:54 +0200
-Message-ID: <f4845fc0809060204j37b1201eh82b1c8fa8c6a91c7@mail.gmail.com>
-References: <1220363755-9854-1-git-send-email-juliusv@google.com>
-	 <1220363755-9854-13-git-send-email-juliusv@google.com>
-	 <alpine.LNX.2.00.0809051342360.18192@titan.stealer.net>
-	 <f4845fc0809050528q253789fbi60ca6c229a08d8ab@mail.gmail.com>
-	 <20080906042610.GC21521@verge.net.au>
+Subject: Re: [PATCH 2/2] ipvs: load balance ipv6 connections from a local process
+Date: Sat, 6 Sep 2008 11:26:29 +0200
+Message-ID: <f4845fc0809060226g4ee00f4fs210ba76309130be7@mail.gmail.com>
+References: <20080905013609.GD14128@verge.net.au>
+	 <20080905013755.GE14128@verge.net.au>
+	 <f4845fc0809050440g24f304d9xec7982e984830c6e@mail.gmail.com>
+	 <20080906041436.GB21521@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220691898; bh=8fOcbQW3yRezgkABgd5rfClWzmI=;
+	t=1220693193; bh=xIOvwt0XEiAAQsimzv19ygVMtEU=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=OyOP43JOrwUD73A9gkhKepRFgWqef19+
-	Vqvwkd2ydI53GISgAl05V/9g9HVTEq7HArQEUBjQylQF1HlijTafZQ==
-In-Reply-To: <20080906042610.GC21521@verge.net.au>
+	 Content-Disposition:References; b=OwC/KUMvbuCU5TKu6PJNag8nex0mtqwB
+	KDAFi0t3mYJ1sbt1MDvPnlm3BC4wEyBhO9yHfccbUFs2cnvqj7oBhQ==
+In-Reply-To: <20080906041436.GB21521@verge.net.au>
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>
-Cc: Sven Wegener <sven.wegener@stealer.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kaber@trash.net, vbusam@google.com
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Malcolm Turnbull <malcolm@loadbalancer.org>, =?ISO-8859-1?Q?Siim_P=F5der?= <siim@p6drad-teel.net>, Vince Busam <vbusam@google.com>
 
-On Sat, Sep 6, 2008 at 6:26 AM, Simon Horman <horms@verge.net.au> wrote:
-> Julius, can I take that as an Acked-by for the follwing changes?
+On Sat, Sep 6, 2008 at 6:14 AM, Simon Horman <horms@verge.net.au> wrote:
+> On Fri, Sep 05, 2008 at 01:40:31PM +0200, Julius Volz wrote:
+>> Hi,
+>>
+>> Just some minor things:
 >
-> [PATCH] ipvs: Use pointer to address from sync message
-> [PATCH] ipvs: Return negative error values from
-> [PATCH] ipvs: Mark tcp/udp v4 and v6 debug functions static
-> [PATCH] ipvs: Reject ipv6 link-local addresses for destinations
+> Hi Julius,
+>
+> thanks for pointing these out. I will send patches to fix these problems ASAP.
 
-Yes, they all look good to me! Thanks, Sven.
+Thanks, looking good!
+
+> More generally speaking, sorry to all parties concerned for applying
+> these two patches a little prematurely. At this stage I'd rather move
+> forward rather than roll the tree back. But I am happy to discuss this.
+
+Probably better to just go forward when the tree is already public?
 
 Julius
 
