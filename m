@@ -1,44 +1,63 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [rfc 0/3] IPVS: checksum updates
-Date: Mon, 8 Sep 2008 20:41:22 +1000
-Message-ID: <20080908104120.GB5795@verge.net.au>
-References: <20080908020420.313463898@vergenet.net> <f4845fc0809080303s53094205kc045e6003014cd24@mail.gmail.com>
+From: Sven Wegener <sven.wegener@stealer.net>
+Subject: [PATCH] ipvs: Restrict connection table size via Kconfig
+Date: Mon, 8 Sep 2008 13:38:11 +0200 (CEST)
+Message-ID: <alpine.LNX.2.00.0809081332270.18192@titan.stealer.net>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <f4845fc0809080303s53094205kc045e6003014cd24@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julius Volz <juliusv@google.com>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Siim =?iso-8859-1?Q?P=F5der?= <siim@p6drad-teel.net>, Julian Anastasov <ja@ssi.bg>, Malcolm Turnbull <malcolm@loadbalancer.org>, Vince Busam <vbusam@google.com>, Herbert Xu <herbert@gondor.apana.org.au>
+To: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>
 
-On Mon, Sep 08, 2008 at 12:03:04PM +0200, Julius Volz wrote:
-> On Mon, Sep 8, 2008 at 4:04 AM, Simon Horman wrote:
-> > Hi,
-> >
-> > The impetus for this series of patches is Julian Anastasov noting
-> > that "load balance IPv4 connections from a local process" checks
-> > for 0 TCP checksums. Herbert Xu confirmed that this is not legal,
-> > even on loopback traffic, but that rather partial checksums are
-> > possible.
-> >
-> > The first patch in this series is a proposed solution to handle
-> > partial checksums for both TCP and UDP.
-> >
-> > The other two patches clean things up a bit.
-> >
-> > I have not tested this code beyond compilation yet.
-> 
-> After some first tests, remote connections are still working, but not
-> local ones from the director. The TCP handshake works and the
-> connection is established, but all following packets arriving at the
-> real server have an incorrect TCP checksum.
-> 
-> Btw., this happens both with and without this last series of patches,
-> so I can't get the local client feature working at all. Looking at it
-> further...
+Instead of checking the value in include/net/ip_vs.h, we can just
+restrict the range in our Kconfig file. This will prevent values outside
+of the range early.
 
-Ok, is this for both IPv4 & IPv6? Does it still occur with just the first
-patch in this series applied?
+Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+---
+ include/net/ip_vs.h   |   10 +---------
+ net/ipv4/ipvs/Kconfig |    3 ++-
+ 2 files changed, 3 insertions(+), 10 deletions(-)
+
+Don't know if we really should remove the check in ip_vs.h, but to some 
+part we should trust our own code.
+
+Based on lvs-next.
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 1b13cef..38f4f69 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -621,16 +621,8 @@ extern void ip_vs_init_hash_table(struct list_head *table, int rows);
+ #ifndef CONFIG_IP_VS_TAB_BITS
+ #define CONFIG_IP_VS_TAB_BITS   12
+ #endif
+-/* make sure that IP_VS_CONN_TAB_BITS is located in [8, 20] */
+-#if CONFIG_IP_VS_TAB_BITS < 8
+-#define IP_VS_CONN_TAB_BITS	8
+-#endif
+-#if CONFIG_IP_VS_TAB_BITS > 20
+-#define IP_VS_CONN_TAB_BITS	20
+-#endif
+-#if 8 <= CONFIG_IP_VS_TAB_BITS && CONFIG_IP_VS_TAB_BITS <= 20
++
+ #define IP_VS_CONN_TAB_BITS	CONFIG_IP_VS_TAB_BITS
+-#endif
+ #define IP_VS_CONN_TAB_SIZE     (1 << IP_VS_CONN_TAB_BITS)
+ #define IP_VS_CONN_TAB_MASK     (IP_VS_CONN_TAB_SIZE - 1)
+ 
+diff --git a/net/ipv4/ipvs/Kconfig b/net/ipv4/ipvs/Kconfig
+index 794cecb..de6004d 100644
+--- a/net/ipv4/ipvs/Kconfig
++++ b/net/ipv4/ipvs/Kconfig
+@@ -41,7 +41,8 @@ config	IP_VS_DEBUG
+ 
+ config	IP_VS_TAB_BITS
+ 	int "IPVS connection table size (the Nth power of 2)"
+-	default "12" 
++	range 8 20
++	default 12
+ 	---help---
+ 	  The IPVS connection hash table uses the chaining scheme to handle
+ 	  hash collisions. Using a big IPVS connection hash table will greatly
