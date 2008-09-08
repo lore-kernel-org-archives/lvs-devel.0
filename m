@@ -1,32 +1,53 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Subject: Re: [rfc 1/3] ipvs: handle PARTIAL_CHECKSUM
-Date: Mon, 8 Sep 2008 19:54:04 +1000
-Message-ID: <20080908095403.GA14746@gondor.apana.org.au>
-References: <20080908020420.313463898@vergenet.net> <20080908021535.063462678@vergenet.net> <20080908072439.GA27257@gondor.apana.org.au> <20080908090525.GA855@verge.net.au>
+From: "Julius Volz" <juliusv@google.com>
+Subject: Re: [rfc 0/3] IPVS: checksum updates
+Date: Mon, 8 Sep 2008 12:03:04 +0200
+Message-ID: <f4845fc0809080303s53094205kc045e6003014cd24@mail.gmail.com>
+References: <20080908020420.313463898@vergenet.net>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1220868186; bh=xMXN3QLaDAyLiNHVv4xadoIfWR8=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=cV7qsPcXZ2iKu4l9y1A21w2U2Xq05v4I
+	hxPptKcfIlQJ5MqRE5L2M5dzGeS7K0EsPDxOGevLDqTgqn472oOv2g==
+In-Reply-To: <20080908020420.313463898@vergenet.net>
 Content-Disposition: inline
-In-Reply-To: <20080908090525.GA855@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="hz-gb-2312"
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Siim =?iso-8859-1?B?UMO1ZGVy?= <siim@p6drad-teel.net>, Julian Anastasov <ja@ssi.bg>, Malcolm Turnbull <malcolm@loadbalancer.org>, Julius Volz <juliusv@google.com>, Vince Busam <vbusam@google.com>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, =?ISO-8859-1?Q?Siim_P=C3=B5der?= <siim@p6drad-teel.net>, Julian Anastasov <ja@ssi.bg>, Malcolm Turnbull <malcolm@loadbalancer.org>, Vince Busam <vbusam@google.com>, Herbert Xu <herbert@gondor.apana.org.au>
 
-T24gTW9uLCBTZXAgMDgsIDIwMDggYXQgMDc6MDU6MjdQTSArMTAwMCwgU2ltb24gSG9ybWFuIHdy
-b3RlOgo+IAo+IElmIGNwLT5hcHAgaXMgbm90IHByZXNlbnQsIHRoZW4gb25seSB0aGUgZGVzdGlh
-bnRpb24gSVAgYWRkcmVzcwo+IGFuZCBwb3NzaWJseSBwb3J0IHdpbGwgaGF2ZSBiZWVuIGFsdGVy
-ZWQuIElmIGl0IGlzIHByZXNlbnQsCj4gdGhlbiBvdGhlciBwYXJ0cyBvZiB0aGUgcGFja2V0IG1h
-eSBhbHNvIGhhdmUgYmVlbiBhbHRlcmVkLgoKUmlnaHQsIHdoZW4gY3AtPmFwcCBpcyBwcmVzZW50
-LCBhbmQgd2UncmUgdXNpbmcgcGFydGlhbCBjaGVja3N1bXMsCnlvdSBkb24ndCBuZWVkIHRvIHVw
-ZGF0ZSBhbnl0aGluZyBhcGFydCBmcm9tIHRoZSBJUCBhZGRyZXNzIGJlY2F1c2UKdGhlIGhhcmR3
-YXJlIHdpbGwgY29tcHV0ZSB0aGUgY2hlY2tzdW0gbGF0ZXIuCgpUaGFua3MgZm9yIHRoZSBleHBs
-YW5hdGlvbiEKCkNoZWVycywKLS0gClZpc2l0IE9wZW5zd2FuIGF0IGh0dHA6Ly93d3cub3BlbnN3
-YW4ub3JnLwpFbWFpbDogSGVyYmVydCBYdSB+e1BtVj5ISX59IDxoZXJiZXJ0QGdvbmRvci5hcGFu
-YS5vcmcuYXU+CkhvbWUgUGFnZTogaHR0cDovL2dvbmRvci5hcGFuYS5vcmcuYXUvfmhlcmJlcnQv
-ClBHUCBLZXk6IGh0dHA6Ly9nb25kb3IuYXBhbmEub3JnLmF1L35oZXJiZXJ0L3B1YmtleS50eHQK
-LS0KVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2Ny
-aWJlIGx2cy1kZXZlbCIgaW4KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2Vy
-Lmtlcm5lbC5vcmcKTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9y
-Zy9tYWpvcmRvbW8taW5mby5odG1sCg==
+On Mon, Sep 8, 2008 at 4:04 AM, Simon Horman wrote:
+> Hi,
+>
+> The impetus for this series of patches is Julian Anastasov noting
+> that "load balance IPv4 connections from a local process" checks
+> for 0 TCP checksums. Herbert Xu confirmed that this is not legal,
+> even on loopback traffic, but that rather partial checksums are
+> possible.
+>
+> The first patch in this series is a proposed solution to handle
+> partial checksums for both TCP and UDP.
+>
+> The other two patches clean things up a bit.
+>
+> I have not tested this code beyond compilation yet.
+
+After some first tests, remote connections are still working, but not
+local ones from the director. The TCP handshake works and the
+connection is established, but all following packets arriving at the
+real server have an incorrect TCP checksum.
+
+Btw., this happens both with and without this last series of patches,
+so I can't get the local client feature working at all. Looking at it
+further...
+
+Julius
+
+-- 
+Julius Volz - Corporate Operations - SysOps
+
+Google Switzerland GmbH - Identification No.: CH-020.4.028.116-1
