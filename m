@@ -1,81 +1,52 @@
 From: "Julius Volz" <juliusv@google.com>
-Subject: Re: [PATCH] ipvs: Restrict connection table size via Kconfig
-Date: Mon, 8 Sep 2008 16:13:54 +0200
-Message-ID: <f4845fc0809080713u3da3d7d7g5df8810a19c9306c@mail.gmail.com>
-References: <alpine.LNX.2.00.0809081332270.18192@titan.stealer.net>
+Subject: Re: [rfc 0/3] IPVS: checksum updates
+Date: Mon, 8 Sep 2008 17:32:47 +0200
+Message-ID: <f4845fc0809080832w69f8aab2q12b63e0a8f6f1fdf@mail.gmail.com>
+References: <20080908020420.313463898@vergenet.net>
+	 <20080908104120.GB5795@verge.net.au>
+	 <20080908114258.GA29477@google.com>
+	 <20080908115734.GA24228@verge.net.au>
+	 <20080908120413.GB24228@verge.net.au>
+	 <f4845fc0809080514i6118cc4bt6510da3d93483156@mail.gmail.com>
+	 <20080908123450.GC24228@verge.net.au>
+	 <f4845fc0809080612n77a77791v8ccbac8178ecf1f4@mail.gmail.com>
+	 <20080908132049.GA11119@verge.net.au>
+	 <f4845fc0809080642t1629ed27ld9087d788828d24d@mail.gmail.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1220883235; bh=JRDKeTKwF0FP3GO9lRVv+6xS6CY=;
+	t=1220887970; bh=3n0xeWL1U3uXfyHKcXueWoWI2r0=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=A1OiT5My1Ds+UUqy+V+ajeCaOaj0OvDp
-	a8lfHss9dfgTb04jghMmF8HX5U0VBFDFBv7yiEyrey/IfENhRNwbuw==
-In-Reply-To: <alpine.LNX.2.00.0809081332270.18192@titan.stealer.net>
+	 Content-Disposition:References; b=WR3SAEGDdStoV0lpdmM2dS7JZY0Rayo1
+	8jaFGdoymCy06XeoP2ZFXD1GaoFVvmpXIiogRxePsxajLqeBUl5fnA==
+In-Reply-To: <f4845fc0809080642t1629ed27ld9087d788828d24d@mail.gmail.com>
 Content-Disposition: inline
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Sven Wegener <sven.wegener@stealer.net>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, =?ISO-8859-1?Q?Siim_P=F5der?= <siim@p6drad-teel.net>, Julian Anastasov <ja@ssi.bg>, Malcolm Turnbull <malcolm@loadbalancer.org>, Vince Busam <vbusam@google.com>, Herbert Xu <herbert@gondor.apana.org.au>
 
-On Mon, Sep 8, 2008 at 1:38 PM, Sven Wegener wrote:
-> Instead of checking the value in include/net/ip_vs.h, we can just
-> restrict the range in our Kconfig file. This will prevent values outside
-> of the range early.
+On Mon, Sep 8, 2008 at 3:42 PM, Julius Volz <juliusv@google.com> wrote:
+> On Mon, Sep 8, 2008 at 3:20 PM, Simon Horman <horms@verge.net.au> wrote:
+>> I'm not so concerned about IPv6 local not working for now -
+>> its a combination of two new features. And hopefully we
+>> can iron it out in the not to distant future anyway.
 >
-> Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
-> ---
->  include/net/ip_vs.h   |   10 +---------
->  net/ipv4/ipvs/Kconfig |    3 ++-
->  2 files changed, 3 insertions(+), 10 deletions(-)
->
-> Don't know if we really should remove the check in ip_vs.h, but to some
-> part we should trust our own code.
+> Yes, probably just some minor bug...
 
-Seems ok!
+Actually, it wasn't even a kernel bug, but a configuration error - I
+was using LVS/NAT, but still had the dummy0 interface with the IPv6
+VIP configured on the real server (from the DR case). And in the local
+client case, the source address is the VIP, so the real server just
+delivered the response to itself.
 
-> Based on lvs-next.
->
-> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-> index 1b13cef..38f4f69 100644
-> --- a/include/net/ip_vs.h
-> +++ b/include/net/ip_vs.h
-> @@ -621,16 +621,8 @@ extern void ip_vs_init_hash_table(struct list_head *table, int rows);
->  #ifndef CONFIG_IP_VS_TAB_BITS
->  #define CONFIG_IP_VS_TAB_BITS   12
->  #endif
-> -/* make sure that IP_VS_CONN_TAB_BITS is located in [8, 20] */
-> -#if CONFIG_IP_VS_TAB_BITS < 8
-> -#define IP_VS_CONN_TAB_BITS    8
-> -#endif
-> -#if CONFIG_IP_VS_TAB_BITS > 20
-> -#define IP_VS_CONN_TAB_BITS    20
-> -#endif
-> -#if 8 <= CONFIG_IP_VS_TAB_BITS && CONFIG_IP_VS_TAB_BITS <= 20
-> +
->  #define IP_VS_CONN_TAB_BITS    CONFIG_IP_VS_TAB_BITS
-> -#endif
->  #define IP_VS_CONN_TAB_SIZE     (1 << IP_VS_CONN_TAB_BITS)
->  #define IP_VS_CONN_TAB_MASK     (IP_VS_CONN_TAB_SIZE - 1)
->
-> diff --git a/net/ipv4/ipvs/Kconfig b/net/ipv4/ipvs/Kconfig
-> index 794cecb..de6004d 100644
-> --- a/net/ipv4/ipvs/Kconfig
-> +++ b/net/ipv4/ipvs/Kconfig
-> @@ -41,7 +41,8 @@ config        IP_VS_DEBUG
->
->  config IP_VS_TAB_BITS
->        int "IPVS connection table size (the Nth power of 2)"
-> -       default "12"
-> +       range 8 20
-> +       default 12
->        ---help---
->          The IPVS connection hash table uses the chaining scheme to handle
->          hash collisions. Using a big IPVS connection hash table will greatly
+Now I can confirm that everything is working (without your last two
+patches and with the one removing the wrong ip_route_me_harder)!
 
-Reviewed-by: Julius Volz <juliusv@google.com>
+Julius
 
 -- 
 Julius Volz - Corporate Operations - SysOps
