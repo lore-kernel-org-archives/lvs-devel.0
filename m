@@ -1,25 +1,38 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] IPVS: Remove incorrect ip_route_me_harder(), fix IPv6
-Date: Tue, 9 Sep 2008 09:44:10 +1000
-Message-ID: <20080908234409.GG13048@verge.net.au>
-References: <1220878542-1864-1-git-send-email-juliusv@google.com>
+Subject: Re: [PATCH] ipvs: Restrict connection table size via Kconfig
+Date: Tue, 9 Sep 2008 09:52:33 +1000
+Message-ID: <20080908235232.GH13048@verge.net.au>
+References: <alpine.LNX.2.00.0809081332270.18192@titan.stealer.net> <f4845fc0809080713u3da3d7d7g5df8810a19c9306c@mail.gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1220878542-1864-1-git-send-email-juliusv@google.com>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <f4845fc0809080713u3da3d7d7g5df8810a19c9306c@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julius Volz <juliusv@google.com>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, siim@p6drad-teel.net, ja@ssi.bg, malcolm@loadbalancer.org, vbusam@google.com, herbert@gondor.apana.org.au
+Cc: Sven Wegener <sven.wegener@stealer.net>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>
 
-On Mon, Sep 08, 2008 at 02:55:42PM +0200, Julius Volz wrote:
-> Remove an incorrect ip_route_me_harder() that was probably a result of
-> merging my IPv6 patches with the local client patches. With this, IPv6+NAT
-> are working again.
+On Mon, Sep 08, 2008 at 04:13:54PM +0200, Julius Volz wrote:
+> On Mon, Sep 8, 2008 at 1:38 PM, Sven Wegener wrote:
+> > Instead of checking the value in include/net/ip_vs.h, we can just
+> > restrict the range in our Kconfig file. This will prevent values outside
+> > of the range early.
+> >
+> > Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+> > ---
+> >  include/net/ip_vs.h   |   10 +---------
+> >  net/ipv4/ipvs/Kconfig |    3 ++-
+> >  2 files changed, 3 insertions(+), 10 deletions(-)
+> >
+> > Don't know if we really should remove the check in ip_vs.h, but to some
+> > part we should trust our own code.
+> 
+> Seems ok!
 
-Hi Julius,
+I agree, this sounds entirely reasonable to me.
 
-I have applied this to lvs-next-2.6, along with my first CSUM patch,
-as we discussed.
+> > Based on lvs-next.
+
+Thanks, applied.
