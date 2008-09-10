@@ -1,27 +1,51 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [GIT] Please pull updates for IPVS
-Date: Tue, 09 Sep 2008 19:57:17 -0700 (PDT)
-Message-ID: <20080909.195717.143018843.davem@davemloft.net>
-References: <20080909234538.GA12883@verge.net.au>
+From: "Julius Volz" <juliusv@google.com>
+Subject: Re: [rfc 0/3] IPVS: checksum updates
+Date: Wed, 10 Sep 2008 19:30:52 +0200
+Message-ID: <f4845fc0809101030u2bd4dec4jb478ecc65240ea74@mail.gmail.com>
+References: <20080908020420.313463898@vergenet.net>
+	 <20080908234028.GF13048@verge.net.au>
+	 <f4845fc0809090230h1cbc01ev45c6ab4bdba61955@mail.gmail.com>
+	 <20080909113131.GA3605@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20080909234538.GA12883@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1221067855; bh=LCnGcgngqafe2VkoB6YnGzMkYKQ=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=mEAuOT4jOtpp+6TtubUgtadomQGleCDZ
+	SgryM4KYF8xpBUf6HjfA47X9Ms3/IHgKEXjgQXEiynLQ8ublnsGhcQ==
+In-Reply-To: <20080909113131.GA3605@verge.net.au>
+Content-Disposition: inline
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: horms@verge.net.au
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, herbert@gondor.apana.org.au, sven.wegener@stealer.net, juliusv@google.com, vbusam@google.com, malcolm@loadbalancer.org, siim@p6drad-teel.net, wensong@linux-vs.org, ja@ssi.bg
+Content-Type: text/plain; charset="us-ascii"
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Vince Busam <vbusam@google.com>, wensong@linux-vs.org
 
-From: Simon Horman <horms@verge.net.au>
-Date: Wed, 10 Sep 2008 09:45:40 +1000
+On Tue, Sep 9, 2008 at 1:31 PM, Simon Horman <horms@verge.net.au> wrote:
+> On Tue, Sep 09, 2008 at 11:30:29AM +0200, Julius Volz wrote:
+>> Great, thanks! I have tested TCP+UDP, local+remote clients, v4+v6,
+>> NAT+DSR+TUN in all combinations that are expected to be working and
+>> found no problems.
+>
+> Thanks once again for your testing. I'll send a pull request to Dave in
+> the morning.
 
-> Sorry for not sending a pull-request for a while. There are two new
-> features, IPv6 and local process load balancing. Unfortunately there were
-> some conflicts to shake out. And even more unfortunately some errors were
-> introduced along the way. In hindsight I should have merged IPv6 first and
-> sent you that. But I think that things are in order now.
- ...
->   git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-2.6.git lvs-next-2.6
+Thanks very much!
 
-Pulled and pushed back out to net-next-2.6, thanks Simon.
+(CC: Wensong)
+I guess it would make sense to start hosting the new ipvsadm version
+somewhere on http://www.linuxvirtualserver.org/ soon. It could still
+be marked as unstable and saying, "If you intend to use the
+experimental IPv6 support for IPVS introduced in kernel 2.6.XX, you
+will need this new version of ipvsadm: ...". Also, we can then point
+to it in the Kconfig help text in CONFIG_IP_VS_IPV6. What do you
+think?
+
+Julius
+
+-- 
+Julius Volz - Corporate Operations - SysOps
+
+Google Switzerland GmbH - Identification No.: CH-020.4.028.116-1
