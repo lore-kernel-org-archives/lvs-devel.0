@@ -1,61 +1,78 @@
-From: "Julius Volz" <juliusv@google.com>
-Subject: Adding SNAT support to LVS/NAT
-Date: Sat, 13 Sep 2008 13:12:54 +0200
-Message-ID: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com>
+From: Joseph Mack NA3T <jmack@wm7d.net>
+Subject: Re: Adding SNAT support to LVS/NAT
+Date: Sat, 13 Sep 2008 11:17:33 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0809131100320.20936@wm7d.net>
+References: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1221304375; bh=fGNHoDtydrJwzqtwSprg4VCGCpk=;
-	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition; b=QLgIKwIoQ8c53syA6KuA4jaN9/ilmgMOGQ4y8F3sFYP
-	qB1a4BOh0BC1fFaZJGGDQT0t81FKdWt9CKoEDWDIfOA==
-Content-Disposition: inline
+In-Reply-To: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
-Cc: j.stubbs@linkthink.co.jp
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: Julius Volz <juliusv@google.com>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, j.stubbs@linkthink.co.jp
 
-Hi,
+On Sat, 13 Sep 2008, Julius Volz wrote:
 
-I'm wondering about how hard it would be to add SNAT support to IPVS
-(that is, the director rewriting packets from the client to backends
-to appear to be from the VIP and some randomly allocated port). This
-would allow us to have remote real servers with LVS/NAT. I realize
-that Jason Stubb's PRE/POSTROUTING patches would also make this
-possible, but they seemed risky and we haven't heard of them in a long
-time. Also, having this option directly integrated into the rest of
-the IPVS NAT code might make it easier to use: just add another flag
-on the ipvsadm command line when you want SNAT for an LVS/NAT backend.
+> Hi,
+>
+> I'm wondering about how hard it would be to add SNAT 
+> support to IPVS (that is, the director rewriting packets 
+> from the client to backends to appear to be from the VIP 
+> and some randomly allocated port).
 
-Two problems I noticed immediately:
+when we've discussed it before, the packets will appear to 
+come from the DIP, a private IP (or whatever IP the servers 
+were using for their default route before they were put into 
+an LVS).
 
-- Getting a free port:
-We need to find an unused port for the SNAT for each connection. Is
-there some subsystem function than can be used to easily find/allocate
-a free TCP/UDP port (sockets and netfilter NAT would need this too)?
-Also, this would only allow <64k connections to each backend. The only
-way to possibly differentiate between more would be to look at
-sequence numbers, but IPVS doesn't do that at all currently...
+> This would allow us to have remote real servers with 
+> LVS/NAT.
 
-- Connection entry lookup:
-Connection entries are currently hashed and looked up by [client IP,
-client port]. In the new SNAT case, packets coming from the real
-server to the director would have to be looked up by [VIP, xport],
-where xport is a port that is allocated by IPVS for each connection. A
-simple (hacky?) solution would be to just hash each connection entry
-twice. Is there a better way?
+more importantly, people who are bound by serious IT rules 
+setup by managers, can duplicate their (real) servers only 
+with a change in RIP on each server and can keep the default 
+route.
 
-Are there any other major problems with this? Is it the right way to
-go in general? I'm mainly just doing some exploration into this now...
+> I realize that Jason Stubb's PRE/POSTROUTING patches would 
+> also make this possible, but they seemed risky and we 
+> haven't heard of them in a long time.
 
-Thanks for any comments!
+Jason just sent me his current patch this week. You could 
+ask him for it directly. Apparently it's little/no different 
+to the patch he posted at
 
-Julius
+http://archive.linuxvirtualserver.org/html/lvs-devel/2008-04/msg00041.html
+
+(hope I'm paraphrasing Horms correctly here...)
+Horms would be happy to have this in the main release if it 
+could be invoked as an option.
+
+> Also, having this option directly integrated into the rest 
+> of the IPVS NAT code might make it easier to use: just add 
+> another flag on the ipvsadm command line when you want 
+> SNAT for an LVS/NAT backend.
+
+sounds great to me.
+
+From talking to Horms, LVS-NAT (and possibly LVS-DR) sends 
+the packets to the realservers via
+
+ip_vs_post_routing()
+
+which bypasses the OUTPUT chain. It would seem to me that if 
+you instead injected the packets into the OUTPUT chain, then 
+normal iptables rules could handle the SNAT to the 
+realservers. It might be slower that rewriting the packets 
+yourself, but for a first attempt, I think people will be so 
+happy to have the functionality that they won't quibble 
+about speed.
+
+Joe
 
 -- 
-Julius Volz - Corporate Operations - SysOps
-
-Google Switzerland GmbH - Identification No.: CH-020.4.028.116-1
+Joseph Mack NA3T EME(B,D), FM05lw North Carolina
+jmack (at) wm7d (dot) net - azimuthal equidistant map
+generator at http://www.wm7d.net/azproj.shtml
+Homepage http://www.austintek.com/ It's GNU/Linux!
