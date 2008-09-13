@@ -1,78 +1,51 @@
-From: Joseph Mack NA3T <jmack@wm7d.net>
+From: Graeme Fowler <graeme@graemef.net>
 Subject: Re: Adding SNAT support to LVS/NAT
-Date: Sat, 13 Sep 2008 11:17:33 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0809131100320.20936@wm7d.net>
+Date: Sat, 13 Sep 2008 19:55:09 +0100
+Message-ID: <1221332109.4327.25.camel@ernie.internal.graemef.net>
 References: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com>
+	 <Pine.LNX.4.64.0809131100320.20936@wm7d.net>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com>
-Sender: netdev-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
-To: Julius Volz <juliusv@google.com>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, j.stubbs@linkthink.co.jp
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <Pine.LNX.4.64.0809131100320.20936@wm7d.net>
+Sender: lvs-devel-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+To: Joseph Mack NA3T <jmack@wm7d.net>
+Cc: Julius Volz <juliusv@google.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, j.stubbs@linkthink.co.jp
 
-On Sat, 13 Sep 2008, Julius Volz wrote:
+Hi
 
-> Hi,
->
-> I'm wondering about how hard it would be to add SNAT 
-> support to IPVS (that is, the director rewriting packets 
-> from the client to backends to appear to be from the VIP 
-> and some randomly allocated port).
+On Sat, 2008-09-13 at 11:17 -0700, Joseph Mack NA3T wrote:
+> when we've discussed it before, the packets will appear to 
+> come from the DIP, a private IP (or whatever IP the servers 
+> were using for their default route before they were put into 
+> an LVS).
 
-when we've discussed it before, the packets will appear to 
-come from the DIP, a private IP (or whatever IP the servers 
-were using for their default route before they were put into 
-an LVS).
+I'm a bit late to the party, but...
 
-> This would allow us to have remote real servers with 
-> LVS/NAT.
+Ideally, the packets would appear to come from the "inside face" of the
+director - usually (and in the most basic case) the NIC with an address
+on the same layer 3 network as the real servers. This way the default
+route would be ignored as there would normally be a more specific route
+for that network, namely straight out of the device the packets arrived
+on. Of course, if that coincides with the default gateway address, it'll
+still work anyway.
 
-more importantly, people who are bound by serious IT rules 
-setup by managers, can duplicate their (real) servers only 
-with a change in RIP on each server and can keep the default 
-route.
+> more importantly, people who are bound by serious IT rules 
+> setup by managers, can duplicate their (real) servers only 
+> with a change in RIP on each server and can keep the default 
+> route.
 
-> I realize that Jason Stubb's PRE/POSTROUTING patches would 
-> also make this possible, but they seemed risky and we 
-> haven't heard of them in a long time.
+This is the single most compelling thing about this setup.
 
-Jason just sent me his current patch this week. You could 
-ask him for it directly. Apparently it's little/no different 
-to the patch he posted at
+It's simultaneously a problem in that for (say) an HTTP server, all the
+requests will appear to be sourced from the director's internal address.
+For many applications this won't be acceptable, not least in that for
+the webserver case log processing will be an irrelevance!
 
-http://archive.linuxvirtualserver.org/html/lvs-devel/2008-04/msg00041.html
+Anyone know how the F5 hardware gets around this? I can't get my hands
+on any to test...
 
-(hope I'm paraphrasing Horms correctly here...)
-Horms would be happy to have this in the main release if it 
-could be invoked as an option.
+Graeme
 
-> Also, having this option directly integrated into the rest 
-> of the IPVS NAT code might make it easier to use: just add 
-> another flag on the ipvsadm command line when you want 
-> SNAT for an LVS/NAT backend.
-
-sounds great to me.
-
-From talking to Horms, LVS-NAT (and possibly LVS-DR) sends 
-the packets to the realservers via
-
-ip_vs_post_routing()
-
-which bypasses the OUTPUT chain. It would seem to me that if 
-you instead injected the packets into the OUTPUT chain, then 
-normal iptables rules could handle the SNAT to the 
-realservers. It might be slower that rewriting the packets 
-yourself, but for a first attempt, I think people will be so 
-happy to have the functionality that they won't quibble 
-about speed.
-
-Joe
-
--- 
-Joseph Mack NA3T EME(B,D), FM05lw North Carolina
-jmack (at) wm7d (dot) net - azimuthal equidistant map
-generator at http://www.wm7d.net/azproj.shtml
-Homepage http://www.austintek.com/ It's GNU/Linux!
