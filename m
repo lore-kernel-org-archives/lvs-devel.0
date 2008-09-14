@@ -1,97 +1,66 @@
 From: "Julius Volz" <juliusv@google.com>
 Subject: Re: Adding SNAT support to LVS/NAT
-Date: Sun, 14 Sep 2008 02:31:15 +0200
-Message-ID: <f4845fc0809131731g7f953b21t57aa226ebdc9641e@mail.gmail.com>
+Date: Sun, 14 Sep 2008 02:41:30 +0200
+Message-ID: <f4845fc0809131741w15fd73d7w298b7e7c5dd4956a@mail.gmail.com>
 References: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com>
 	 <Pine.LNX.4.64.0809131100320.20936@wm7d.net>
+	 <1221332109.4327.25.camel@ernie.internal.graemef.net>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1221352277; bh=SITwK3eKw4MtoBaYSgq1NPcP9zc=;
+	t=1221352891; bh=VCh/iE+8glhIz3459g6Ublz1uUE=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=baCc4LDrTqfI8AKLPYpKQMxlXKErVeG1
-	EJGfuRPvGiUygTUlwNCcTDSOjMESXucSpeh8A6w4qeRPfwl1Qldeew==
-In-Reply-To: <Pine.LNX.4.64.0809131100320.20936@wm7d.net>
+	 Content-Disposition:References; b=NJGGWIR8MwNkG4YfKsbcT+l47aU2nh28
+	RdtZdFAjSS8RBotLLG2pxlMG+tfsN/d4n7h8XEBeU5cdPSHqyNkZMw==
+In-Reply-To: <1221332109.4327.25.camel@ernie.internal.graemef.net>
 Content-Disposition: inline
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Joseph Mack NA3T <jmack@wm7d.net>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, j.stubbs@linkthink.co.jp
+To: Graeme Fowler <graeme@graemef.net>
+Cc: Joseph Mack NA3T <jmack@wm7d.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, j.stubbs@linkthink.co.jp
 
-On Sat, Sep 13, 2008 at 8:17 PM, Joseph Mack NA3T <jmack@wm7d.net> wrote:
-> On Sat, 13 Sep 2008, Julius Volz wrote:
+On Sat, Sep 13, 2008 at 8:55 PM, Graeme Fowler <graeme@graemef.net> wrote:
+> Hi
 >
->> Hi,
->>
->> I'm wondering about how hard it would be to add SNAT support to IPVS (that
->> is, the director rewriting packets from the client to backends to appear to
->> be from the VIP and some randomly allocated port).
+> On Sat, 2008-09-13 at 11:17 -0700, Joseph Mack NA3T wrote:
+>> when we've discussed it before, the packets will appear to
+>> come from the DIP, a private IP (or whatever IP the servers
+>> were using for their default route before they were put into
+>> an LVS).
 >
-> when we've discussed it before, the packets will appear to come from the
-> DIP, a private IP (or whatever IP the servers were using for their default
-> route before they were put into an LVS).
-
-Good point, that would be better in some circumstances. We're already
-looking up the route to the real server anyways and I think the route
-entry also contains the source IP that a packet to that host would
-have.
-
->> This would allow us to have remote real servers with LVS/NAT.
+> I'm a bit late to the party, but...
 >
-> more importantly, people who are bound by serious IT rules setup by
-> managers, can duplicate their (real) servers only with a change in RIP on
-> each server and can keep the default route.
+> Ideally, the packets would appear to come from the "inside face" of the
+> director - usually (and in the most basic case) the NIC with an address
+> on the same layer 3 network as the real servers. This way the default
+> route would be ignored as there would normally be a more specific route
+> for that network, namely straight out of the device the packets arrived
+> on. Of course, if that coincides with the default gateway address, it'll
+> still work anyway.
 
-Right!
+Yes. I think this is what I meant in my previous answer to Joe.
 
->> I realize that Jason Stubb's PRE/POSTROUTING patches would also make this
->> possible, but they seemed risky and we haven't heard of them in a long time.
+>> more importantly, people who are bound by serious IT rules
+>> setup by managers, can duplicate their (real) servers only
+>> with a change in RIP on each server and can keep the default
+>> route.
 >
-> Jason just sent me his current patch this week. You could ask him for it
-> directly. Apparently it's little/no different to the patch he posted at
+> This is the single most compelling thing about this setup.
 >
-> http://archive.linuxvirtualserver.org/html/lvs-devel/2008-04/msg00041.html
+> It's simultaneously a problem in that for (say) an HTTP server, all the
+> requests will appear to be sourced from the director's internal address.
+> For many applications this won't be acceptable, not least in that for
+> the webserver case log processing will be an irrelevance!
 >
-> (hope I'm paraphrasing Horms correctly here...)
-> Horms would be happy to have this in the main release if it could be invoked
-> as an option.
+> Anyone know how the F5 hardware gets around this? I can't get my hands
+> on any to test...
 
-Ok, just from the replies in that thread, it sounds like you have to
-rethink many assumptions and cases which might be dangerous with that
-patch. Or have these worries been resolved? Then it would be a nice
-thing to have, of course.
-
->> Also, having this option directly integrated into the rest of the IPVS NAT
->> code might make it easier to use: just add another flag on the ipvsadm
->> command line when you want SNAT for an LVS/NAT backend.
->
-> sounds great to me.
->
-> From talking to Horms, LVS-NAT (and possibly LVS-DR) sends the packets to
-> the realservers via
->
-> ip_vs_post_routing()
-
-Hm, that happens in ip_vs_in(), which then calls the connection's
-transmit function. ip_vs_postrouting() just stops further netfilter
-hook processing for packets handled by IPVS.
-
-> which bypasses the OUTPUT chain. It would seem to me that if you instead
-> injected the packets into the OUTPUT chain, then normal iptables rules could
-> handle the SNAT to the realservers. It might be slower that rewriting the
-> packets yourself, but for a first attempt, I think people will be so happy
-> to have the functionality that they won't quibble about speed.
-
-Looks like the packet is already injected into the OUTPUT chain in
-IP_VS_XMIT(). To transmit the packet to the real server, it does:
-
-NF_HOOK(PF_INET, NF_INET_LOCAL_OUT, (skb), NULL,
-                (rt)->u.dst.dev, dst_output);
-
-So maybe it would already work? ;)
+Yes, this is a known issue that is usually handled by injecting
+something like an X-User-IP header into the HTTP request. Hard to do
+in IPVS (could be done in an app helper though, I assume).
 
 Julius
 
