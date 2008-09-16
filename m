@@ -1,40 +1,52 @@
-From: Jason Stubbs <j.stubbs@linkthink.co.jp>
-Subject: Re: Adding SNAT support to LVS/NAT
-Date: Tue, 16 Sep 2008 11:04:06 +0900
-Message-ID: <200809161104.07239.j.stubbs@linkthink.co.jp>
-References: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com> <200809161031.58743.j.stubbs@linkthink.co.jp> <Pine.LNX.4.64.0809151852060.9622@wm7d.net>
-Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+From: Simon Horman <horms@verge.net.au>
+Subject: [patch 3/3] ipvs: add __aquire/__release annotations to ip_vs_info_seq_start/ip_vs_info_seq_stop
+Date: Tue, 16 Sep 2008 17:13:21 +1000
+Message-ID: <20080916071610.739703917@vergenet.net>
+References: <20080916071318.939200044@vergenet.net>
 Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.64.0809151852060.9622@wm7d.net>
-Content-Disposition: inline
+Content-Disposition: inline; filename=ip_vs_info_seq_start-__acquires-annotation.patch
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Joseph Mack NA3T <jmack@wm7d.net>
-Cc: Simon Horman <horms@verge.net.au>, Julius Volz <juliusv@google.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Siim =?utf-8?q?P=C3=B5der?= <siim@p6drad-teel.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: Julius Volz <juliusv@google.com>, Vince Busam <vbusam@google.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Sven Wegener <sven.wegener@stealer.net>
 
-On Tuesday 16 September 2008 10:54:04 Joseph Mack NA3T wrote:
-> On Tue, 16 Sep 2008, Jason Stubbs wrote:
->=20
-> > For what it's worth, I'm currently using DNAT alongside LVS-NAT
-> > for certain connections. It only serves a secondary purpose and
-> > there are other ways (although not as simple) to achieve the
-> > purpose, but it has proven useful.
->=20
-> I'm having a bit of trouble fitting DNAT into the OUTPUT of=20
-> a director (at least on the OUTPUT of the inside nic). What=20
-> are you doing this for?
+This teaches sparse that the following are not problems:
 
-Hmm.. with LVS-NAT happening in OUTPUT, it may not be possible - or at
-least not useful. I'm using DNAT before LVS-NAT to redirect the VIP to
-a different internal IP for certain source addresses. If LVS-NAT
-happens before DNAT, DNAT could only be used with RIPs which I can't
-imagine to be useful at all...
+make C=1
+  CHECK   net/ipv4/ipvs/ip_vs_ctl.c
+net/ipv4/ipvs/ip_vs_ctl.c:1793:14: warning: context imbalance in 'ip_vs_info_seq_start' - wrong count at exit
+net/ipv4/ipvs/ip_vs_ctl.c:1842:13: warning: context imbalance in 'ip_vs_info_seq_stop' - unexpected unlock
 
---=20
-Jason Stubbs <j.stubbs@linkthink.co.jp>
-LINKTHINK INC.
-=E6=9D=B1=E4=BA=AC=E9=83=BD=E6=B8=8B=E8=B0=B7=E5=8C=BA=E6=A1=9C=E3=83=B6=
-=E4=B8=98=E7=94=BA22-14 N.E.S S=E6=A3=9F 3F
-TEL 03-5728-4772  FAX 03-5728-4773
+Signed-off-by: Simon Horman <horms@verge.net.au>
+
+Index: lvs-2.6/net/ipv4/ipvs/ip_vs_ctl.c
+===================================================================
+--- lvs-2.6.orig/net/ipv4/ipvs/ip_vs_ctl.c	2008-09-16 15:32:45.000000000 +1000
++++ lvs-2.6/net/ipv4/ipvs/ip_vs_ctl.c	2008-09-16 15:36:48.000000000 +1000
+@@ -1787,6 +1787,7 @@ static struct ip_vs_service *ip_vs_info_
+ }
+ 
+ static void *ip_vs_info_seq_start(struct seq_file *seq, loff_t *pos)
++__acquires(__ip_vs_svc_lock)
+ {
+ 
+ 	read_lock_bh(&__ip_vs_svc_lock);
+@@ -1840,6 +1841,7 @@ static void *ip_vs_info_seq_next(struct 
+ }
+ 
+ static void ip_vs_info_seq_stop(struct seq_file *seq, void *v)
++__releases(__ip_vs_svc_lock)
+ {
+ 	read_unlock_bh(&__ip_vs_svc_lock);
+ }
+
+-- 
+
+-- 
+Simon Horman
+  VA Linux Systems Japan K.K., Sydney, Australia Satellite Office
+  H: www.vergenet.net/~horms/             W: www.valinux.co.jp/en
+
