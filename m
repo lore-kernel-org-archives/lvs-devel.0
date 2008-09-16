@@ -1,61 +1,39 @@
-From: Brian Haley <brian.haley@hp.com>
-Subject: [PATCH] ipvs: change some __constant_htons() to htons()
-Date: Tue, 16 Sep 2008 11:11:11 -0400
-Message-ID: <48CFCC8F.1040702@hp.com>
+From: "Julius Volz" <juliusv@google.com>
+Subject: Re: [PATCH] ipvs: change some __constant_htons() to htons()
+Date: Tue, 16 Sep 2008 17:31:39 +0200
+Message-ID: <f4845fc0809160831i6868459en6610a7e8b2204367@mail.gmail.com>
+References: <48CFCC8F.1040702@hp.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------000809030502090009010403"
-Return-path: <netdev-owner@vger.kernel.org>
-Sender: netdev-owner@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1221579101; bh=HPMd+8LZte+wbRumMLQs4PbcpBo=;
+	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
+	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 Content-Disposition:References; b=ILhgcjE/x9oKCLpb1FvXdk2kOnVVKJDs
+	pT8oTO159sMUeX2f+YCkb6qkACUytH2FIfGiz0M6ia6vDz5gK4sk4w==
+In-Reply-To: <48CFCC8F.1040702@hp.com>
+Content-Disposition: inline
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: Brian Haley <brian.haley@hp.com>
+Cc: David Miller <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------000809030502090009010403
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Tue, Sep 16, 2008 at 5:11 PM, Brian Haley <brian.haley@hp.com> wrote:
+> Change __contant_htons() to htons() in the IPVS code when not in an
+> initializer.
+>
+> -Brian
+>
+> Signed-off-by: Brian Haley <brian.haley@hp.com>
 
-Change __contant_htons() to htons() in the IPVS code when not in an 
-initializer.
+Thanks. I somehow missed that in the patch series that got in,
+although you mentioned it before, sorry!
 
--Brian
+Julius
 
-Signed-off-by: Brian Haley <brian.haley@hp.com>
----
+-- 
+Julius Volz - Corporate Operations - SysOps
 
---------------000809030502090009010403
-Content-Type: text/x-patch;
- name="ipvs.htons.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="ipvs.htons.patch"
-
-diff --git a/net/ipv4/ipvs/ip_vs_proto.c b/net/ipv4/ipvs/ip_vs_proto.c
-index b06da1c..0791f9e 100644
---- a/net/ipv4/ipvs/ip_vs_proto.c
-+++ b/net/ipv4/ipvs/ip_vs_proto.c
-@@ -237,7 +237,7 @@ ip_vs_tcpudp_debug_packet(struct ip_vs_protocol *pp,
- 			  const char *msg)
- {
- #ifdef CONFIG_IP_VS_IPV6
--	if (skb->protocol == __constant_htons(ETH_P_IPV6))
-+	if (skb->protocol == htons(ETH_P_IPV6))
- 		ip_vs_tcpudp_debug_packet_v6(pp, skb, offset, msg);
- 	else
- #endif
-diff --git a/net/ipv4/ipvs/ip_vs_proto_ah_esp.c b/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
-index 2b18a78..80ab0c8 100644
---- a/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
-+++ b/net/ipv4/ipvs/ip_vs_proto_ah_esp.c
-@@ -167,7 +167,7 @@ ah_esp_debug_packet(struct ip_vs_protocol *pp, const struct sk_buff *skb,
- 		    int offset, const char *msg)
- {
- #ifdef CONFIG_IP_VS_IPV6
--	if (skb->protocol == __constant_htons(ETH_P_IPV6))
-+	if (skb->protocol == htons(ETH_P_IPV6))
- 		ah_esp_debug_packet_v6(pp, skb, offset, msg);
- 	else
- #endif
-
---------------000809030502090009010403--
+Google Switzerland GmbH - Identification No.: CH-020.4.028.116-1
