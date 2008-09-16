@@ -1,50 +1,35 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Joseph Mack NA3T <jmack@wm7d.net>
 Subject: Re: Adding SNAT support to LVS/NAT
-Date: Tue, 16 Sep 2008 01:56:31 +0300 (EEST)
-Message-ID: <Pine.LNX.4.58.0809160103160.3009@u.domain.uli>
-References: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com> 
- <Pine.LNX.4.64.0809131100320.20936@wm7d.net> 
- <f4845fc0809131731g7f953b21t57aa226ebdc9641e@mail.gmail.com> 
- <Pine.LNX.4.64.0809131835001.12375@wm7d.net> 
- <f4845fc0809140339p1d3be327j98ddcb02c4efc786@mail.gmail.com>
- <f4845fc0809140747u63f6ad63m43877bbbf09c4778@mail.gmail.com>
+Date: Mon, 15 Sep 2008 18:54:04 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0809151852060.9622@wm7d.net>
+References: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com>
+ <20080915014337.GA10026@verge.net.au> <Pine.LNX.4.64.0809150815580.32594@wm7d.net>
+ <200809161031.58743.j.stubbs@linkthink.co.jp>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <f4845fc0809140747u63f6ad63m43877bbbf09c4778@mail.gmail.com>
+In-Reply-To: <200809161031.58743.j.stubbs@linkthink.co.jp>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
-To: Julius Volz <juliusv@google.com>
-Cc: Joseph Mack NA3T <jmack@wm7d.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, j.stubbs@linkthink.co.jp
+To: Jason Stubbs <j.stubbs@linkthink.co.jp>
+Cc: Simon Horman <horms@verge.net.au>, Julius Volz <juliusv@google.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Siim =?utf-8?q?P=C3=B5der?= <siim@p6drad-teel.net>
 
+On Tue, 16 Sep 2008, Jason Stubbs wrote:
 
-	Hello,
+> For what it's worth, I'm currently using DNAT alongside LVS-NAT
+> for certain connections. It only serves a secondary purpose and
+> there are other ways (although not as simple) to achieve the
+> purpose, but it has proven useful.
 
-On Sun, 14 Sep 2008, Julius Volz wrote:
+I'm having a bit of trouble fitting DNAT into the OUTPUT of 
+a director (at least on the OUTPUT of the inside nic). What 
+are you doing this for?
 
-> > Thanks for the info! Right, I even said myself in the previous reply
-> > that ip_vs_postrouting() stops further processing in the POSTROUTING
-> > chain, so it never reaches netfilter NAT code.
-> 
-> Actually, what if we modify or remove that function to allow further
-> processing in POSTROUTING? Could SNAT work with IPVS then?
-> 
-> The comment above it says that the function specifically wants to
-> avoid further NAT by netfilter. But is this always a problem?
+Joe
 
-	This check (now flag ipvs_property) was implemented to avoid
-netfilter to modify packet which was already changed by IPVS.
-What happened was that FTP commands (TCP header and payload) were
-modified first by ip_vs_ftp and then by netfilter. The result:
-packet with wrong SEQ number. Later, after some Netfilter 
-changes (2.6.11), TCP payload was modified always in POST_ROUTING
-while address can be  modified in PRE_ROUTING. Not sure what happens
-now, Netfilter code was reorganized and new code review and tests
-are needed, may be such double manipulation (if ipvs_property is
-not set) still can cause problems.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+-- 
+Joseph Mack NA3T EME(B,D), FM05lw North Carolina
+jmack (at) wm7d (dot) net - azimuthal equidistant map
+generator at http://www.wm7d.net/azproj.shtml
+Homepage http://www.austintek.com/ It's GNU/Linux!
