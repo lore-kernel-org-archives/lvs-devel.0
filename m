@@ -1,29 +1,39 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: Should we move IPVS out of net/ipv4 now?
-Date: Wed, 17 Sep 2008 13:14:45 -0700 (PDT)
-Message-ID: <20080917.131445.19943427.davem@davemloft.net>
-References: <f4845fc0809170600s28495494l128f7dd6f00e34e3@mail.gmail.com>
-	<48D14E6D.4020407@redhat.com>
+From: Joseph Mack NA3T <jmack@wm7d.net>
+Subject: Re: Adding SNAT support to LVS/NAT
+Date: Wed, 17 Sep 2008 15:53:15 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0809171552030.9336@wm7d.net>
+References: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com> 
+ <Pine.LNX.4.64.0809131100320.20936@wm7d.net> 
+ <f4845fc0809131731g7f953b21t57aa226ebdc9641e@mail.gmail.com> 
+ <Pine.LNX.4.64.0809131835001.12375@wm7d.net> 
+ <f4845fc0809140339p1d3be327j98ddcb02c4efc786@mail.gmail.com> 
+ <f4845fc0809140747u63f6ad63m43877bbbf09c4778@mail.gmail.com> 
+ <20080915014337.GA10026@verge.net.au> <f4845fc0809161345r2f24cfa4sf33bd9173f50041b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <48D14E6D.4020407@redhat.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <f4845fc0809161345r2f24cfa4sf33bd9173f50041b@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: csnook@redhat.com
-Cc: juliusv@google.com, horms@verge.net.au, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: Julius Volz <juliusv@google.com>
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, j.stubbs@linkthink.co.jp, =?ISO-8859-1?Q?Siim_P=F5der?= <siim@p6drad-teel.net>, Vince Busam <vbusam@google.com>
 
-From: Chris Snook <csnook@redhat.com>
-Date: Wed, 17 Sep 2008 14:37:33 -0400
+On Tue, 16 Sep 2008, Julius Volz wrote:
 
-> Julius Volz wrote:
-> > Since IPVS now does partial IPv6, should we finally move it from
-> > "net/ipv4/ipvs" to "net" or to "net/netfilter"? I posted that patch a
-> > long time ago, but that was before any of the actual v6 features, so
-> > there was probably no interest.
-> 
-> Whatever the netfilter people want is fine with me.
+> Amazingly, the first SYN and the SYN/ACK of a TCP connection to the
+> VIP:vport do not traverse the NAT chain in POSTROUTING at all
 
-I think, especially in the long term, putting IPVS under net/netfilter/
-is the right thing to do.
+:-(
+
+> (verified by LOG target),
+
+you didn't see the packets in the logs?
+
+Joe
+
+-- 
+Joseph Mack NA3T EME(B,D), FM05lw North Carolina
+jmack (at) wm7d (dot) net - azimuthal equidistant map
+generator at http://www.wm7d.net/azproj.shtml
+Homepage http://www.austintek.com/ It's GNU/Linux!
