@@ -1,34 +1,30 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: change some __constant_htons() to htons()
-Date: Wed, 17 Sep 2008 10:14:39 +1000
-Message-ID: <20080917001436.GA15750@verge.net.au>
-References: <48CFCC8F.1040702@hp.com> <f4845fc0809160831i6868459en6610a7e8b2204367@mail.gmail.com>
+Subject: Re: [patch 0/3] ipvs: sparse fixes
+Date: Wed, 17 Sep 2008 10:15:08 +1000
+Message-ID: <20080917001506.GB15750@verge.net.au>
+References: <20080916071318.939200044@vergenet.net> <alpine.LNX.2.00.0809161126070.3805@titan.stealer.net> <f4845fc0809160401g5c271dfq991c73ee17f260c8@mail.gmail.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <f4845fc0809160831i6868459en6610a7e8b2204367@mail.gmail.com>
-Sender: netdev-owner@vger.kernel.org
+In-Reply-To: <f4845fc0809160401g5c271dfq991c73ee17f260c8@mail.gmail.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julius Volz <juliusv@google.com>
-Cc: Brian Haley <brian.haley@hp.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Cc: Sven Wegener <sven.wegener@stealer.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Vince Busam <vbusam@google.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-On Tue, Sep 16, 2008 at 05:31:39PM +0200, Julius Volz wrote:
-> On Tue, Sep 16, 2008 at 5:11 PM, Brian Haley <brian.haley@hp.com> wrote:
-> > Change __contant_htons() to htons() in the IPVS code when not in an
-> > initializer.
+On Tue, Sep 16, 2008 at 01:01:09PM +0200, Julius Volz wrote:
+> On Tue, Sep 16, 2008 at 11:28 AM, Sven Wegener wrote:
+> > On Tue, 16 Sep 2008, Simon Horman wrote:
 > >
-> > -Brian
+> >> Some fixes and annotations for sparse warnings.
 > >
-> > Signed-off-by: Brian Haley <brian.haley@hp.com>
+> > All look good to me.
 > 
-> Thanks. I somehow missed that in the patch series that got in,
-> although you mentioned it before, sorry!
-> 
-> Julius
+> To me too. Sorry for the v6-related screwups and thanks for fixing!
 
-Thanks, applied to the lvs-next-2.6 branch of lvs-2.6.
+Not at all. Thanks for all your help :-)
 
 -- 
 Simon Horman
