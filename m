@@ -1,51 +1,45 @@
 From: "Julius Volz" <juliusv@google.com>
-Subject: Re: Adding SNAT support to LVS/NAT
-Date: Thu, 18 Sep 2008 10:38:31 +0200
-Message-ID: <f4845fc0809180138x1eb793ebq153a54c46373bd90@mail.gmail.com>
-References: <f4845fc0809130412n41967d79l1240558492c84cb7@mail.gmail.com>
-	 <Pine.LNX.4.64.0809131100320.20936@wm7d.net>
-	 <f4845fc0809131731g7f953b21t57aa226ebdc9641e@mail.gmail.com>
-	 <Pine.LNX.4.64.0809131835001.12375@wm7d.net>
-	 <f4845fc0809140339p1d3be327j98ddcb02c4efc786@mail.gmail.com>
-	 <f4845fc0809140747u63f6ad63m43877bbbf09c4778@mail.gmail.com>
-	 <20080915014337.GA10026@verge.net.au>
-	 <f4845fc0809161345r2f24cfa4sf33bd9173f50041b@mail.gmail.com>
-	 <Pine.LNX.4.64.0809171552030.9336@wm7d.net>
+Subject: Re: Should we move IPVS out of net/ipv4 now?
+Date: Thu, 18 Sep 2008 22:04:28 +0200
+Message-ID: <f4845fc0809181304y25e3df07xfde0f23406b519a2@mail.gmail.com>
+References: <f4845fc0809170600s28495494l128f7dd6f00e34e3@mail.gmail.com>
+	 <48D14E6D.4020407@redhat.com>
+	 <20080917.131445.19943427.davem@davemloft.net>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1221727115; bh=O1VekjS7ODo2HVlYIRvH8OJyoPo=;
+	t=1221768271; bh=nVPHorkIWfHJvXn5Mp/29Woq3zE=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References; b=cul+ViHQSreLsm8nuPsiNjo+MbqB3llh
-	SPFnxiYXWQ2HoIfca5e16e5E6sq7yUrR6TilV1UK9LYzawRdmAx/ng==
-In-Reply-To: <Pine.LNX.4.64.0809171552030.9336@wm7d.net>
+	 Content-Disposition:References; b=GBUDRXipZaysySvDb/bfvp9rLc3Z35Zw
+	XOUe/Wc7yjC3ggAviEXHSg3+QZJNvAM8zdAg+tx+WNAdG1jdvEHn/Q==
+In-Reply-To: <20080917.131445.19943427.davem@davemloft.net>
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Joseph Mack NA3T <jmack@wm7d.net>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, j.stubbs@linkthink.co.jp, =?ISO-8859-1?Q?Siim_P=F5der?= <siim@p6drad-teel.net>, Vince Busam <vbusam@google.com>
+To: David Miller <davem@davemloft.net>
+Cc: csnook@redhat.com, horms@verge.net.au, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-On Thu, Sep 18, 2008 at 12:53 AM, Joseph Mack NA3T <jmack@wm7d.net> wrote:
-> On Tue, 16 Sep 2008, Julius Volz wrote:
+On Wed, Sep 17, 2008 at 10:14 PM, David Miller wrote:
+> From: Chris Snook <csnook@redhat.com>
+> Date: Wed, 17 Sep 2008 14:37:33 -0400
 >
->> Amazingly, the first SYN and the SYN/ACK of a TCP connection to the
->> VIP:vport do not traverse the NAT chain in POSTROUTING at all
+>> Julius Volz wrote:
+>> > Since IPVS now does partial IPv6, should we finally move it from
+>> > "net/ipv4/ipvs" to "net" or to "net/netfilter"? I posted that patch a
+>> > long time ago, but that was before any of the actual v6 features, so
+>> > there was probably no interest.
+>>
+>> Whatever the netfilter people want is fine with me.
 >
-> :-(
->
->> (verified by LOG target),
->
-> you didn't see the packets in the logs?
+> I think, especially in the long term, putting IPVS under net/netfilter/
+> is the right thing to do.
 
-Exactly. No matter what I do, only the ACK in response to the SYN/ACK
-appears in the logs. With SNAT without IPVS, the SYN packet correctly
-enters the chain/table.
-
-I haven't found anything in the IPVS or Netfilter code yet that could
-cause this problem...
+Ok thanks, I'll send the patch for that once lvs-next-2.6 or
+net-next-2.6 builds for ARCH=um again (there seems to be some breakage
+at the moment)...
 
 Julius
 
