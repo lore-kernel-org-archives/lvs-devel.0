@@ -1,31 +1,44 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [GIT] Please pull updates for IPVS
-Date: Thu, 18 Sep 2008 14:44:28 -0700 (PDT)
-Message-ID: <20080918.144428.138835100.davem@davemloft.net>
-References: <20080917002146.GC15750@verge.net.au>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20080917002146.GC15750@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: horms@verge.net.au
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, brian.haley@hp.com, sven.wegener@stealer.net, juliusv@google.com, vbusam@google.com, wensong@linux-vs.org, ja@ssi.bg
-
 From: Simon Horman <horms@verge.net.au>
-Date: Wed, 17 Sep 2008 10:21:48 +1000
+Subject: Re: Should we move IPVS out of net/ipv4 now?
+Date: Fri, 19 Sep 2008 09:52:22 +1000
+Message-ID: <20080918235220.GD13536@verge.net.au>
+References: <f4845fc0809170600s28495494l128f7dd6f00e34e3@mail.gmail.com> <48D14E6D.4020407@redhat.com> <20080917.131445.19943427.davem@davemloft.net> <f4845fc0809181304y25e3df07xfde0f23406b519a2@mail.gmail.com>
+Mime-Version: 1.0
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <f4845fc0809181304y25e3df07xfde0f23406b519a2@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Julius Volz <juliusv@google.com>
+Cc: David Miller <davem@davemloft.net>, csnook@redhat.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-> the following are several cleanup patches, mainly resulting from
-> the IPv6 merge. The "ipvs: supply a valid 0 address to ip_vs_conn_new()"
-> change appears to be a fix for a regression caused by that merge,
-> though I don't believe that anyone has observed it causing a problem.
+On Thu, Sep 18, 2008 at 10:04:28PM +0200, Julius Volz wrote:
+> On Wed, Sep 17, 2008 at 10:14 PM, David Miller wrote:
+> > From: Chris Snook <csnook@redhat.com>
+> > Date: Wed, 17 Sep 2008 14:37:33 -0400
+> >
+> >> Julius Volz wrote:
+> >> > Since IPVS now does partial IPv6, should we finally move it from
+> >> > "net/ipv4/ipvs" to "net" or to "net/netfilter"? I posted that patch a
+> >> > long time ago, but that was before any of the actual v6 features, so
+> >> > there was probably no interest.
+> >>
+> >> Whatever the netfilter people want is fine with me.
+> >
+> > I think, especially in the long term, putting IPVS under net/netfilter/
+> > is the right thing to do.
 > 
-> The following changes are available in the git repository at:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-2.6.git lvs-next-2.6
-> 
-> They should apply cleanly to net-next-2.6, which I pulled and merged this
-> morning.
+> Ok thanks, I'll send the patch for that once lvs-next-2.6 or
+> net-next-2.6 builds for ARCH=um again (there seems to be some breakage
+> at the moment)...
 
-Pulled, thanks a lot Simon.
+Once net-next-2.6 is working again, let me know and I'll pull it
+into lvs-next-2.6.
+
+-- 
+Simon Horman
+  VA Linux Systems Japan K.K., Sydney, Australia Satellite Office
+  H: www.vergenet.net/~horms/             W: www.valinux.co.jp/en
+
