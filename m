@@ -1,58 +1,64 @@
-From: Sven Wegener <sven.wegener@stealer.net>
-Subject: [PATCH] ipvs: Restrict sync message to 255 connections
-Date: Fri, 19 Sep 2008 20:41:56 +0200 (CEST)
-Message-ID: <alpine.LNX.2.00.0809192040250.22510@titan.stealer.net>
+From: David Miller <davem@davemloft.net>
+Subject: Re: Should we move IPVS out of net/ipv4 now?
+Date: Fri, 19 Sep 2008 12:45:53 -0700 (PDT)
+Message-ID: <20080919.124553.193698159.davem@davemloft.net>
+References: <20080918235220.GD13536@verge.net.au>
+	<20080918.170030.32445027.davem@davemloft.net>
+	<f4845fc0809190247l631c2a56se956f46078b41ef3@mail.gmail.com>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <f4845fc0809190247l631c2a56se956f46078b41ef3@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>
+Content-Type: Text/Plain; charset="us-ascii"
+To: juliusv@google.com
+Cc: horms@verge.net.au, csnook@redhat.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-The nr_conns variable in the sync message header is only eight bits wide
-and will overflow on interfaces with a large MTU. As a result the backup
-won't parse all connections contained in the sync buffer. On regular
-ethernet with an MTU of 1500 this isn't a problem, because we can't
-overflow the value, but consider jumbo frames being used on a cross-over
-connection between both directors.
+From: "Julius Volz" <juliusv@google.com>
+Date: Fri, 19 Sep 2008 11:47:13 +0200
 
-We now restrict the size of the sync buffer, so that we never put more
-than 255 connections into a single sync buffer.
+> The build with ARCH=um seems to have a problem with the
+> architecture-specific headers:
+> 
+> net/core/skb_dma_map.c: In function 'skb_dma_map':
+> net/core/skb_dma_map.c:20: error: implicit declaration of function
+> 'dma_mapping_error'
+> 
+> The bad commit that introduces the skb_dma_map.c file (and this error)
+> is a40c24a1336. Previous versions build fine.
 
-Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+I'll commit the following to net-next-2.6, let me know if it doesn't
+take care of the problem:
+
+net: Fix build with ARCH=um
+
+If UM is going to claim that it supports DMA by setting
+HAS_DMA, it should provide a dma_mapping_error() implementation.
+
+Based upon a report by Julius Volz.
+
+Signed-off-by: David S. Miller <davem@davemloft.net>
 ---
- net/ipv4/ipvs/ip_vs_sync.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ include/asm-um/dma-mapping.h |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-diff --git a/net/ipv4/ipvs/ip_vs_sync.c b/net/ipv4/ipvs/ip_vs_sync.c
-index 28237a5..de5e7e1 100644
---- a/net/ipv4/ipvs/ip_vs_sync.c
-+++ b/net/ipv4/ipvs/ip_vs_sync.c
-@@ -30,6 +30,7 @@
- #include <linux/err.h>
- #include <linux/kthread.h>
- #include <linux/wait.h>
-+#include <linux/kernel.h>
+diff --git a/include/asm-um/dma-mapping.h b/include/asm-um/dma-mapping.h
+index f0ee4fb..90fc708 100644
+--- a/include/asm-um/dma-mapping.h
++++ b/include/asm-um/dma-mapping.h
+@@ -118,4 +118,11 @@ dma_cache_sync(struct device *dev, void *vaddr, size_t size,
+ 	BUG();
+ }
  
- #include <net/ip.h>
- #include <net/sock.h>
-@@ -99,6 +100,7 @@ struct ip_vs_sync_thread_data {
- */
- 
- #define SYNC_MESG_HEADER_LEN	4
-+#define MAX_CONNS_PER_SYNCBUFF	255 /* nr_conns in ip_vs_sync_mesg is 8 bit */
- 
- struct ip_vs_sync_mesg {
- 	__u8                    nr_conns;
-@@ -516,8 +518,8 @@ static int set_sync_mesg_maxlen(int sync_state)
- 		num = (dev->mtu - sizeof(struct iphdr) -
- 		       sizeof(struct udphdr) -
- 		       SYNC_MESG_HEADER_LEN - 20) / SIMPLE_CONN_SIZE;
--		sync_send_mesg_maxlen =
--			SYNC_MESG_HEADER_LEN + SIMPLE_CONN_SIZE * num;
-+		sync_send_mesg_maxlen = SYNC_MESG_HEADER_LEN +
-+			SIMPLE_CONN_SIZE * min(num, MAX_CONNS_PER_SYNCBUFF);
- 		IP_VS_DBG(7, "setting the maximum length of sync sending "
- 			  "message %d.\n", sync_send_mesg_maxlen);
- 	} else if (sync_state == IP_VS_STATE_BACKUP) {
++static inline int
++dma_mapping_error(struct device *dev, dma_addr_t dma_handle)
++{
++	BUG();
++	return 0;
++}
++
+ #endif
+-- 
+1.5.6.5
+
