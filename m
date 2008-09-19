@@ -1,38 +1,58 @@
-From: "Julius Volz" <juliusv@google.com>
-Subject: [PATCH] IPVS: Move IPVS to net/netfilter/ipvs
-Date: Fri, 19 Sep 2008 12:45:47 +0200
-Message-ID: <f4845fc0809190345k1d9f8ba6i53d891548ddb0565@mail.gmail.com>
+From: Sven Wegener <sven.wegener@stealer.net>
+Subject: [PATCH] ipvs: Restrict sync message to 255 connections
+Date: Fri, 19 Sep 2008 20:41:56 +0200 (CEST)
+Message-ID: <alpine.LNX.2.00.0809192040250.22510@titan.stealer.net>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1221821150; bh=pRV16sS/bThNloGCRv0IMwmPoJQ=;
-	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:X-GMailtapped-By; b=Id/TIjtGXxAlR3pyARcwikq2f7
-	v2aSH4wengYK66ZaRaxWtSpBJDcXKIp4epxEYZPyyASn5dBa4EWmJqioreCw==
-Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>
 
-Hi Horms,
+The nr_conns variable in the sync message header is only eight bits wide
+and will overflow on interfaces with a large MTU. As a result the backup
+won't parse all connections contained in the sync buffer. On regular
+ethernet with an MTU of 1500 this isn't a problem, because we can't
+overflow the value, but consider jumbo frames being used on a cross-over
+connection between both directors.
 
-I worked around the unrelated UML build problems for now and did the
-IPVS move from net/ipv4/ipvs to net/netfilter/ipvs, as discussed.
-Since the patch is huge (732K), I uploaded it rather than trying to
-include it in the mail:
+We now restrict the size of the sync buffer, so that we never put more
+than 255 connections into a single sync buffer.
 
-http://www.mindbasket.com/ipvs/0001-IPVS-Move-IPVS-to-net-netfilter-ipvs.patch
+Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+---
+ net/ipv4/ipvs/ip_vs_sync.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-The menuconfig option for IPVS is now also in the Netfilter submenu.
-Everything builds and runs ok here...
-
-Julius
-
--- 
-Julius Volz - Corporate Operations - SysOps
-
-Google Switzerland GmbH - Identification No.: CH-020.4.028.116-1
+diff --git a/net/ipv4/ipvs/ip_vs_sync.c b/net/ipv4/ipvs/ip_vs_sync.c
+index 28237a5..de5e7e1 100644
+--- a/net/ipv4/ipvs/ip_vs_sync.c
++++ b/net/ipv4/ipvs/ip_vs_sync.c
+@@ -30,6 +30,7 @@
+ #include <linux/err.h>
+ #include <linux/kthread.h>
+ #include <linux/wait.h>
++#include <linux/kernel.h>
+ 
+ #include <net/ip.h>
+ #include <net/sock.h>
+@@ -99,6 +100,7 @@ struct ip_vs_sync_thread_data {
+ */
+ 
+ #define SYNC_MESG_HEADER_LEN	4
++#define MAX_CONNS_PER_SYNCBUFF	255 /* nr_conns in ip_vs_sync_mesg is 8 bit */
+ 
+ struct ip_vs_sync_mesg {
+ 	__u8                    nr_conns;
+@@ -516,8 +518,8 @@ static int set_sync_mesg_maxlen(int sync_state)
+ 		num = (dev->mtu - sizeof(struct iphdr) -
+ 		       sizeof(struct udphdr) -
+ 		       SYNC_MESG_HEADER_LEN - 20) / SIMPLE_CONN_SIZE;
+-		sync_send_mesg_maxlen =
+-			SYNC_MESG_HEADER_LEN + SIMPLE_CONN_SIZE * num;
++		sync_send_mesg_maxlen = SYNC_MESG_HEADER_LEN +
++			SIMPLE_CONN_SIZE * min(num, MAX_CONNS_PER_SYNCBUFF);
+ 		IP_VS_DBG(7, "setting the maximum length of sync sending "
+ 			  "message %d.\n", sync_send_mesg_maxlen);
+ 	} else if (sync_state == IP_VS_STATE_BACKUP) {
