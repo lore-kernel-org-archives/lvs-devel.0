@@ -1,34 +1,33 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] IPVS: Move IPVS to net/netfilter/ipvs
-Date: Mon, 22 Sep 2008 09:53:56 +1000
-Message-ID: <20080921235355.GA1342@verge.net.au>
-References: <f4845fc0809190345k1d9f8ba6i53d891548ddb0565@mail.gmail.com>
+Subject: Re: [PATCH] ipvs: Restrict sync message to 255 connections
+Date: Mon, 22 Sep 2008 09:56:28 +1000
+Message-ID: <20080921235627.GB1342@verge.net.au>
+References: <alpine.LNX.2.00.0809192040250.22510@titan.stealer.net>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <f4845fc0809190345k1d9f8ba6i53d891548ddb0565@mail.gmail.com>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <alpine.LNX.2.00.0809192040250.22510@titan.stealer.net>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julius Volz <juliusv@google.com>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, David Miller <davem@davemloft.net>, Patrick Hardy <kaber@trash.net>
+To: Sven Wegener <sven.wegener@stealer.net>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Wensong Zhang <wensong@linux-vs.org>
 
-On Fri, Sep 19, 2008 at 12:45:47PM +0200, Julius Volz wrote:
-> Hi Horms,
+On Fri, Sep 19, 2008 at 08:41:56PM +0200, Sven Wegener wrote:
+> The nr_conns variable in the sync message header is only eight bits wide
+> and will overflow on interfaces with a large MTU. As a result the backup
+> won't parse all connections contained in the sync buffer. On regular
+> ethernet with an MTU of 1500 this isn't a problem, because we can't
+> overflow the value, but consider jumbo frames being used on a cross-over
+> connection between both directors.
 > 
-> I worked around the unrelated UML build problems for now and did the
-> IPVS move from net/ipv4/ipvs to net/netfilter/ipvs, as discussed.
-> Since the patch is huge (732K), I uploaded it rather than trying to
-> include it in the mail:
+> We now restrict the size of the sync buffer, so that we never put more
+> than 255 connections into a single sync buffer.
 > 
-> http://www.mindbasket.com/ipvs/0001-IPVS-Move-IPVS-to-net-netfilter-ipvs.patch
-> 
-> The menuconfig option for IPVS is now also in the Netfilter submenu.
-> Everything builds and runs ok here...
+> Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
 
-Hi Julius, this seems fine to me. Dave, Patrick, are you ok with this
-change? If so I'll suck it into lvs-2.6 and send a pull request.
+Thanks Sven, applied.
 
 -- 
 Simon Horman
