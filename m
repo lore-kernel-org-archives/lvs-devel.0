@@ -1,77 +1,79 @@
 From: "Julius Volz" <juliusv@google.com>
-Subject: Re: Should we move IPVS out of net/ipv4 now?
-Date: Mon, 22 Sep 2008 11:16:10 +0200
-Message-ID: <f4845fc0809220216p543af0fcu9ee486feba287c12@mail.gmail.com>
-References: <20080918235220.GD13536@verge.net.au>
-	 <20080918.170030.32445027.davem@davemloft.net>
-	 <f4845fc0809190247l631c2a56se956f46078b41ef3@mail.gmail.com>
-	 <20080919.124553.193698159.davem@davemloft.net>
+Subject: Re: Getting IPVS and Netfilter SNAT to play together
+Date: Wed, 24 Sep 2008 14:44:15 +0200
+Message-ID: <f4845fc0809240544x3ed6a65emdbe440ecd840b122@mail.gmail.com>
+References: <f4845fc0809230313y14e69dc6s7b5e3e2f33f6beae@mail.gmail.com>
+	 <alpine.LNX.1.10.0809230827410.29878@fbirervta.pbzchgretzou.qr>
+	 <f4845fc0809230545n6c879a7eg7214b0a3b3db61a3@mail.gmail.com>
+	 <f4845fc0809230613l68c1ba90s16e5482479bd3c9c@mail.gmail.com>
+	 <alpine.LNX.1.10.0809230920330.29878@fbirervta.pbzchgretzou.qr>
+	 <f4845fc0809230654o159334d6p76952663f00cb881@mail.gmail.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1222074973; bh=QjeyDcaE9Wgx3XLrDNuj3v5hwj4=;
+	t=1222260259; bh=ZBwtWIcMdAg0GFHr1PIBlnORTDQ=;
 	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
 	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References:X-GMailtapped-By; b=LTjyzYnzDiTw7Ni
-	ogjAJnowHa8goRG6n0HHShstEEU5PNhN5hgsrKb8lOSDsDAAf2bvTkR6UkbY8atYhgB
-	Hndw==
-In-Reply-To: <20080919.124553.193698159.davem@davemloft.net>
+	 Content-Disposition:References:X-GMailtapped-By; b=AVbmG6RF+lI4pJz
+	I6CUMZiQk337WePwssjpRKpOgkFesYMI+PFZsOy86cmLdRP17OmxYI/pbaOyuEhzKN+
+	9Gjw==
+In-Reply-To: <f4845fc0809230654o159334d6p76952663f00cb881@mail.gmail.com>
 Content-Disposition: inline
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: David Miller <davem@davemloft.net>
-Cc: horms@verge.net.au, csnook@redhat.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+To: Jan Engelhardt <jengelh@medozas.de>
+Cc: netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, Joseph Mack NA3T <jmack@wm7d.net>, lvs-devel@vger.kernel.org
 
-On Fri, Sep 19, 2008 at 9:45 PM, David Miller <davem@davemloft.net> wrote:
-> From: "Julius Volz" <juliusv@google.com>
-> Date: Fri, 19 Sep 2008 11:47:13 +0200
->
->> The build with ARCH=um seems to have a problem with the
->> architecture-specific headers:
->>
->> net/core/skb_dma_map.c: In function 'skb_dma_map':
->> net/core/skb_dma_map.c:20: error: implicit declaration of function
->> 'dma_mapping_error'
->>
->> The bad commit that introduces the skb_dma_map.c file (and this error)
->> is a40c24a1336. Previous versions build fine.
->
-> I'll commit the following to net-next-2.6, let me know if it doesn't
-> take care of the problem:
->
-> net: Fix build with ARCH=um
->
-> If UM is going to claim that it supports DMA by setting
-> HAS_DMA, it should provide a dma_mapping_error() implementation.
->
-> Based upon a report by Julius Volz.
->
-> Signed-off-by: David S. Miller <davem@davemloft.net>
-> ---
->  include/asm-um/dma-mapping.h |    7 +++++++
->  1 files changed, 7 insertions(+), 0 deletions(-)
->
-> diff --git a/include/asm-um/dma-mapping.h b/include/asm-um/dma-mapping.h
-> index f0ee4fb..90fc708 100644
-> --- a/include/asm-um/dma-mapping.h
-> +++ b/include/asm-um/dma-mapping.h
-> @@ -118,4 +118,11 @@ dma_cache_sync(struct device *dev, void *vaddr, size_t size,
->        BUG();
->  }
->
-> +static inline int
-> +dma_mapping_error(struct device *dev, dma_addr_t dma_handle)
-> +{
-> +       BUG();
-> +       return 0;
-> +}
-> +
->  #endif
-> --
+Didn't include lvs-devel in CC of the original message, adding it now...
 
-Thanks, that got rid of the problem!
+On Tue, Sep 23, 2008 at 3:54 PM, Julius Volz <juliusv@google.com> wrote:
+> On Tue, Sep 23, 2008 at 3:21 PM, Jan Engelhardt <jengelh@medozas.de> wrote:
+>>
+>> On Tuesday 2008-09-23 09:13, Julius Volz wrote:
+>>>
+>>>Ok, the SYN/ACK from the backend is logged as --cstate INVALID in
+>>>PREROUTING and INPUT. This means that Netfilter thinks it doesn't
+>>>belong to any connection, although it just SNATed the SYN to the
+>>>backend correctly? Hmm... how can this be?
+>>
+>> That probably means skb->nfct is lost (set to NULL, which is what INVALID
+>> indicates) after SNAT (PREROUTING), when IPVS kicks in.
+>
+> But at PREROUTING, the skb hasn't seen any part of IPVS yet. And the
+> prior SNAT for the SYN packet happened in POSTROUTING after all of
+> IPVS was finished. Basically, there should be no IPVS involved from
+> the time that the SYN is correctly SNATed and the time that the
+> SYN/ACK is not. Please correct me if I'm missing something here...
+
+Ok, after lots of debugging, I've found the problem and got SNAT
+working with IPVS (in a very hacky way).
+
+The problem was that Netfilter already assigns a conntrack entry (in
+skb->nfct) to the CIP->VIP SYN packet in PREROUTING. This contains a
+tuple which contains source and destination addresses as seen by
+Netfilter during PREROUTING (before IPVS). IPVS then modifies the
+destination address without updating the associated skb->nfct entry.
+Later, Netfilter SNAT in POSTROUTING finds the already assigned tuple
+and updates it with the new source address, but the destination
+address changed by IPVS is never updated in this tuple. This is why
+this wrong conntrack entry does not match the SYN/ACK packet returning
+from the backend server.
+
+So as a proof of concept for IPVS SNAT, it is enough to remove the
+ip_vs_post_routing() function (to let Netfilter handle anything at all
+in POSTROUTING) and put a simple "skb->nfct = NULL;" into the IPVS NAT
+transmitter function, ip_vs_nat_xmit(), to let the conntrack tuple be
+regenerated in by Netfilter POSTROUTING. Of course, this is a memory
+leak, the conntrack hash entries aren't removed, etc.
+
+I guess to do this correctly, we should probably update the skb->nfct
+entry in IPVS while doing our manual DNAT?
+
+I realize there's a big patch integrating IPVS with conntrack
+(http://www.ssi.bg/~ja/nfct/) in some way, but it seems like that does
+much more than would be needed for SNAT.
 
 Julius
 
