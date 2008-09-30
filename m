@@ -1,80 +1,126 @@
-From: "Julius Volz" <juliusv@google.com>
-Subject: Re: Getting IPVS and Netfilter SNAT to play together
-Date: Wed, 24 Sep 2008 14:44:15 +0200
-Message-ID: <f4845fc0809240544x3ed6a65emdbe440ecd840b122@mail.gmail.com>
-References: <f4845fc0809230313y14e69dc6s7b5e3e2f33f6beae@mail.gmail.com>
-	 <alpine.LNX.1.10.0809230827410.29878@fbirervta.pbzchgretzou.qr>
-	 <f4845fc0809230545n6c879a7eg7214b0a3b3db61a3@mail.gmail.com>
-	 <f4845fc0809230613l68c1ba90s16e5482479bd3c9c@mail.gmail.com>
-	 <alpine.LNX.1.10.0809230920330.29878@fbirervta.pbzchgretzou.qr>
-	 <f4845fc0809230654o159334d6p76952663f00cb881@mail.gmail.com>
+From: juliusv@google.com (Julius Volz)
+Subject: Making conntrack like packets DNATed by IPVS
+Date: Tue, 30 Sep 2008 14:21:59 +0200
+Message-ID: <20080930122158.GA31253@google.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1222260259; bh=ZBwtWIcMdAg0GFHr1PIBlnORTDQ=;
-	h=DomainKey-Signature:Message-ID:Date:From:To:Subject:Cc:
-	 In-Reply-To:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 Content-Disposition:References:X-GMailtapped-By; b=AVbmG6RF+lI4pJz
-	I6CUMZiQk337WePwssjpRKpOgkFesYMI+PFZsOy86cmLdRP17OmxYI/pbaOyuEhzKN+
-	9Gjw==
-In-Reply-To: <f4845fc0809230654o159334d6p76952663f00cb881@mail.gmail.com>
+	t=1222777329; bh=9+csuDmVbyM1UkIz9k8RqmiHrsg=;
+	h=DomainKey-Signature:Date:To:Cc:Subject:Message-ID:MIME-Version:
+	 Content-Type:Content-Disposition:User-Agent:From; b=TqCKhNe46xrNOP
+	b5jjoz0XwbZzmbKcpcMGLMrick5jmfsjlZ5XudinqoAXxn3wytIt0sY9RbnudKKnJO6
+	x1mRw==
 Content-Disposition: inline
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Jan Engelhardt <jengelh@medozas.de>
-Cc: netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, Joseph Mack NA3T <jmack@wm7d.net>, lvs-devel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: netfilter-devel@vger.kernel.org
+Cc: vbusam@google.com, jengelh@medozas.de, horms@verge.net.au, lvs-devel@vger.kernel.org, ja@ssi.bg
 
-Didn't include lvs-devel in CC of the original message, adding it now...
+Hi,
 
-On Tue, Sep 23, 2008 at 3:54 PM, Julius Volz <juliusv@google.com> wrote:
-> On Tue, Sep 23, 2008 at 3:21 PM, Jan Engelhardt <jengelh@medozas.de> wrote:
->>
->> On Tuesday 2008-09-23 09:13, Julius Volz wrote:
->>>
->>>Ok, the SYN/ACK from the backend is logged as --cstate INVALID in
->>>PREROUTING and INPUT. This means that Netfilter thinks it doesn't
->>>belong to any connection, although it just SNATed the SYN to the
->>>backend correctly? Hmm... how can this be?
->>
->> That probably means skb->nfct is lost (set to NULL, which is what INVALID
->> indicates) after SNAT (PREROUTING), when IPVS kicks in.
->
-> But at PREROUTING, the skb hasn't seen any part of IPVS yet. And the
-> prior SNAT for the SYN packet happened in POSTROUTING after all of
-> IPVS was finished. Basically, there should be no IPVS involved from
-> the time that the SYN is correctly SNATed and the time that the
-> SYN/ACK is not. Please correct me if I'm missing something here...
+I'm still stuck trying to get IPVS/NAT to work together with Netfilter
+conntrack/Netfilter SNAT. First, I removed the Netfilter hook function
+in IPVS that prevented further processing in POSTROUTING. Then, I made
+IPVS reflect its own DNAT changes in the skb->nfct tuples just before
+IPVS injects the packet back into LOCAL_OUT:
 
-Ok, after lots of debugging, I've found the problem and got SNAT
-working with IPVS (in a very hacky way).
+======================
+diff --git a/net/ipv4/ipvs/ip_vs_core.c b/net/ipv4/ipvs/ip_vs_core.c
+index 958abf3..96d24b5 100644
+--- a/net/ipv4/ipvs/ip_vs_core.c
++++ b/net/ipv4/ipvs/ip_vs_core.c
+@@ -1429,13 +1429,13 @@ static struct nf_hook_ops ip_vs_ops[] __read_mostly = {
+ 		.priority       = 99,
+ 	},
+ 	/* Before the netfilter connection tracking, exit from POST_ROUTING */
+-	{
++	/*{
+ 		.hook		= ip_vs_post_routing,
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET,
+ 		.hooknum        = NF_INET_POST_ROUTING,
+ 		.priority       = NF_IP_PRI_NAT_SRC-1,
+-	},
++	},*/
+ #ifdef CONFIG_IP_VS_IPV6
+ 	/* After packet filtering, forward packet through VS/DR, VS/TUN,
+ 	 * or VS/NAT(change destination), so that filtering rules can be
+diff --git a/net/ipv4/ipvs/ip_vs_xmit.c b/net/ipv4/ipvs/ip_vs_xmit.c
+index 02ddc2b..de7feb5 100644
+--- a/net/ipv4/ipvs/ip_vs_xmit.c
++++ b/net/ipv4/ipvs/ip_vs_xmit.c
+@@ -24,6 +24,7 @@
+ #include <net/ip6_route.h>
+ #include <linux/icmpv6.h>
+ #include <linux/netfilter.h>
++#include <net/netfilter/nf_conntrack.h>
+ #include <linux/netfilter_ipv4.h>
+ 
+ #include <net/ip_vs.h>
+@@ -360,6 +361,21 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 
+ 	EnterFunction(10);
+ 
++	if (skb->nfct) {
++		struct nf_conn *ct = (struct nf_conn*)skb->nfct;
++
++		ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip = cp->daddr.ip;
++		ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.tcp.port = cp->dport;
++
++		ct->tuplehash[IP_CT_DIR_REPLY].tuple.src.u3.ip = cp->daddr.ip;
++		ct->tuplehash[IP_CT_DIR_REPLY].tuple.src.u.tcp.port = cp->dport;
++
++		/* Netfilter SNAT was already marked done in LOCAL_IN, but
++		 * somehow, the packet still contains the original source IP,
++		 * so we want it to be done again in POSTROUTING */
++		clear_bit(IPS_SRC_NAT_DONE_BIT, &ct->status);
++	}
++
+ 	/* check if it is a connection of no-client-port */
+ 	if (unlikely(cp->flags & IP_VS_CONN_F_NO_CPORT)) {
+ 		__be16 _pt, *p;
 
-The problem was that Netfilter already assigns a conntrack entry (in
-skb->nfct) to the CIP->VIP SYN packet in PREROUTING. This contains a
-tuple which contains source and destination addresses as seen by
-Netfilter during PREROUTING (before IPVS). IPVS then modifies the
-destination address without updating the associated skb->nfct entry.
-Later, Netfilter SNAT in POSTROUTING finds the already assigned tuple
-and updates it with the new source address, but the destination
-address changed by IPVS is never updated in this tuple. This is why
-this wrong conntrack entry does not match the SYN/ACK packet returning
-from the backend server.
+======================
 
-So as a proof of concept for IPVS SNAT, it is enough to remove the
-ip_vs_post_routing() function (to let Netfilter handle anything at all
-in POSTROUTING) and put a simple "skb->nfct = NULL;" into the IPVS NAT
-transmitter function, ip_vs_nat_xmit(), to let the conntrack tuple be
-regenerated in by Netfilter POSTROUTING. Of course, this is a memory
-leak, the conntrack hash entries aren't removed, etc.
+The Netfilter SNAT rule is simply:
 
-I guess to do this correctly, we should probably update the skb->nfct
-entry in IPVS while doing our manual DNAT?
+$ iptables -t -nat -A POSTROUTING -o eth1 -j SNAT -to <director IP>
 
-I realize there's a big patch integrating IPVS with conntrack
-(http://www.ssi.bg/~ja/nfct/) in some way, but it seems like that does
-much more than would be needed for SNAT.
+The SYN and SYN/ACK packets of a new connection get handled correctly by
+IPVS and even get SNATed correctly. The ACK to the SYN/ACK still gets
+handled correctly by IPVS but is NF_DROPed in POSTROUTING in
+__nf_conntrack_confirm() as a result of a check finding the associated
+conntrack tuple already in the nf_conntrack_hash (meaning, the
+connection has already been confirmed). If I understand it correctly, we
+shouldn't be entering that function for the ACK packet anyways, so
+I'm doing something very wrong...
 
+A packet trace on the director looks like this:
+
+CIP: client IP
+VIP: virtual service IP
+DIP: director (load balancer) IP
+RIP: real server (backend) IP
+
+11:28:51.431221 IP <CIP>.49988 > <VIP>.80: S 1151908514:1151908514(0) win 5840 <mss 1460,sackOK,timestamp 74963354 0,nop,wscale 7>
+11:28:51.432294 IP <DIP>.49988 > <RIP>.80: S 1151908514:1151908514(0) win 5840 <mss 1460,sackOK,timestamp 74963354 0,nop,wscale 7>
+11:28:51.432822 IP <RIP>.80 > <DIP>.49988: S 1508888076:1508888076(0) ack 1151908515 win 5792 <sackOK,timestamp 7468557 74963354,mss 1460,nop,wscale 4>
+11:28:51.434159 IP <VIP>.80 > <CIP>.49988: S 1508888076:1508888076(0) ack 1151908515 win 5792 <sackOK,timestamp 7468557 74963354,mss 1460,nop,wscale 4>
+11:28:51.434253 IP <CIP>.49988 > <VIP>.80: . ack 1 win 46 <nop,nop,timestamp 74963362 7468557>
+(the above packet is dropped in POSTROUTING...)
+11:28:52.029604 IP <CIP>.49988 > <VIP>.80: P 1:3(2) ack 1 win 46 <nop,nop,timestamp 74963957 7468557>
+11:28:52.237975 IP <CIP>.49988 > <VIP>.80: P 1:3(2) ack 1 win 46 <nop,nop,timestamp 74964165 7468557>
+...
+
+The various places in Netfilter at which tuples are created, modified,
+checked, inserted, etc. are kind of confusing to me and I'm missing the
+necessary Netfilter internals knowledge to understand and handle this
+correctly. I'd be glad if someone could give me a pointer into the right
+direction or help out in any other way!
+
+Thanks,
 Julius
 
 -- 
