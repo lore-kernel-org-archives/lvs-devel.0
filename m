@@ -1,40 +1,111 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] IPVS: Move IPVS to net/netfilter/ipvs
-Date: Thu, 2 Oct 2008 19:59:33 +1000
-Message-ID: <20081002095931.GA31502@verge.net.au>
-References: <f4845fc0809190345k1d9f8ba6i53d891548ddb0565@mail.gmail.com> <20080921235355.GA1342@verge.net.au> <20080922000748.GE1342@verge.net.au> <20081001060725.GA28433@verge.net.au> <48E4964E.5090806@trash.net>
+Subject: [GIT] Please pull updates for IPVS
+Date: Tue, 7 Oct 2008 11:17:10 +1100
+Message-ID: <20081007001707.GA12647@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <48E4964E.5090806@trash.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Patrick McHardy <kaber@trash.net>
-Cc: Julius Volz <juliusv@google.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, David Miller <davem@davemloft.net>
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: David Miller <davem@davemloft.net>, Patrick McHardy <kaber@trash.net>, Sven Wegener <sven.wegener@stealer.net>, Julius Volz <juliusv@google.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-On Thu, Oct 02, 2008 at 11:37:18AM +0200, Patrick McHardy wrote:
-> Simon Horman wrote:
->>> http://www.vergenet.net/~horms/tmp/0001-IPVS-Move-IPVS-to-net-netfilter-ipvs.2.patch
->>>     
->>
->> Hi Patrick,
->>
->> could you take a moment to look at this?
->> Unfortunately the patch is too long to post to the list
->> but it really is as simple as the description (below) claims.
->>
->> I can handle the patch longness problem by pushing it into
->> lvs-2.6 and getting Dave to do a pull from there. But I'd
->> like to make sure that the move is ok with you first.
->>   
->
-> I'm fine with this move. Probably easier if Dave takes it directly from
-> you since I usually send my patches as patches and this one is really
-> huge :)
+Hi Dave,
 
-Great. I'll merge it into my tree and get Dave to pull it from there.
+Please pull the following changes. Sorry I have let some of
+them sit in my tree for a while, I wanted to be sure that
+Patrick McHardy was ok with the move to netfilter.
+
+1) Fix from Sven Wegener to prevent more than 255 connections
+   from being added to a synchronisation packet - which results
+   in something unparsable by the other end. The cause of this was
+   an assumption that 1500 would be the largest MTU.
+
+   This bug is likely as old as the synchronisation code.
+
+2) An unused label fix from Sven Wegener.
+
+   This is just minor fall-out from the the IPVS IPv6 merge.
+
+3) Julius Volz moved IPVS from net/ipv4/ipvs/ to net/netfilter/ipvs/
+
+   This is an enourmous patch, but really is a simple as
+   the commit message claims.
+
+
+The following changes are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-2.6.git lvs-next-2.6
+
+They should apply cleanly to net-next-2.6, which I pulled and merged this
+morning.
+
+Julius Volz (1):
+      IPVS: Move IPVS to net/netfilter/ipvs
+
+Simon Horman (1):
+      Merge git://git.kernel.org/.../davem/net-next-2.6 into lvs-next-2.6
+
+Sven Wegener (2):
+      ipvs: Restrict sync message to 255 connections
+      ipvs: Fix unused label warning
+
+ net/ipv4/Kconfig                        |    2 
+ net/ipv4/Makefile                       |    1 
+ net/ipv4/ipvs/Kconfig                   |  239 --
+ net/ipv4/ipvs/Makefile                  |   33 
+ net/ipv4/ipvs/ip_vs_app.c               |  622 -----
+ net/ipv4/ipvs/ip_vs_conn.c              | 1110 ---------
+ net/ipv4/ipvs/ip_vs_core.c              | 1542 -------------
+ net/ipv4/ipvs/ip_vs_ctl.c               | 3441 ------------------------------
+ net/ipv4/ipvs/ip_vs_est.c               |  166 -
+ net/ipv4/ipvs/ip_vs_ftp.c               |  410 ---
+ net/ipv4/ipvs/ip_vs_lblc.c              |  555 ----
+ net/ipv4/ipvs/ip_vs_lblcr.c             |  755 ------
+ net/ipv4/ipvs/ip_vs_lc.c                |  103 
+ net/ipv4/ipvs/ip_vs_nq.c                |  138 -
+ net/ipv4/ipvs/ip_vs_proto.c             |  288 --
+ net/ipv4/ipvs/ip_vs_proto_ah_esp.c      |  235 --
+ net/ipv4/ipvs/ip_vs_proto_tcp.c         |  732 ------
+ net/ipv4/ipvs/ip_vs_proto_udp.c         |  533 ----
+ net/ipv4/ipvs/ip_vs_rr.c                |  112 -
+ net/ipv4/ipvs/ip_vs_sched.c             |  251 --
+ net/ipv4/ipvs/ip_vs_sed.c               |  140 -
+ net/ipv4/ipvs/ip_vs_sh.c                |  258 --
+ net/ipv4/ipvs/ip_vs_sync.c              |  940 --------
+ net/ipv4/ipvs/ip_vs_wlc.c               |  128 -
+ net/ipv4/ipvs/ip_vs_wrr.c               |  237 --
+ net/ipv4/ipvs/ip_vs_xmit.c              | 1004 ---------
+ net/netfilter/Kconfig                   |    2 
+ net/netfilter/Makefile                  |    3 
+ net/netfilter/ipvs/Kconfig              |  239 ++
+ net/netfilter/ipvs/Makefile             |   33 
+ net/netfilter/ipvs/ip_vs_app.c          |  622 +++++
+ net/netfilter/ipvs/ip_vs_conn.c         | 1110 +++++++++
+ net/netfilter/ipvs/ip_vs_core.c         | 1542 +++++++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c          | 3443 +++++++++++++++++++++++++++++++
+ net/netfilter/ipvs/ip_vs_dh.c           |  261 ++
+ net/netfilter/ipvs/ip_vs_est.c          |  166 +
+ net/netfilter/ipvs/ip_vs_ftp.c          |  410 +++
+ net/netfilter/ipvs/ip_vs_lblc.c         |  555 ++++
+ net/netfilter/ipvs/ip_vs_lblcr.c        |  755 ++++++
+ net/netfilter/ipvs/ip_vs_lc.c           |  103 
+ net/netfilter/ipvs/ip_vs_nq.c           |  138 +
+ net/netfilter/ipvs/ip_vs_proto.c        |  288 ++
+ net/netfilter/ipvs/ip_vs_proto_ah_esp.c |  235 ++
+ net/netfilter/ipvs/ip_vs_proto_tcp.c    |  732 ++++++
+ net/netfilter/ipvs/ip_vs_proto_udp.c    |  533 ++++
+ net/netfilter/ipvs/ip_vs_rr.c           |  112 +
+ net/netfilter/ipvs/ip_vs_sched.c        |  251 ++
+ net/netfilter/ipvs/ip_vs_sed.c          |  140 +
+ net/netfilter/ipvs/ip_vs_sh.c           |  258 ++
+ net/netfilter/ipvs/ip_vs_sync.c         |  942 ++++++++
+ net/netfilter/ipvs/ip_vs_wlc.c          |  128 +
+ net/netfilter/ipvs/ip_vs_wrr.c          |  237 ++
+ net/netfilter/ipvs/ip_vs_xmit.c         | 1004 +++++++++
+ 53 files changed, 14242 insertions(+), 13975 deletions(-)
 
 -- 
 Simon Horman
