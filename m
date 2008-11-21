@@ -1,73 +1,91 @@
-From: "Julius Volz" <julius.volz@gmail.com>
-Subject: Re: [RFC-PATCH] netfilter: payload_len is be16, add size of struct rather than size of pointer
-Date: Sat, 8 Nov 2008 01:51:13 +0100
-Message-ID: <43ca39800811071651s68da93b4if9cf2c84eec0e3f5@mail.gmail.com>
-References: <1226078023.11596.17.camel@brick>
+From: James Zheng <jameswork66@gmail.com>
+Subject: Re: Unable to handle kernel paging request at virtual address f8c7a7e8
+Date: Fri, 21 Nov 2008 09:33:26 +0800
+Message-ID: <49260FE6.7080800@gmail.com>
+References: <S1756639AbYKTOrH/20081120144708Z+1723@vger.kernel.org> <49257CE2.4050608@gmail.com> <49257EA0.4000905@gmail.com> <49260B77.7040203@gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=gamma;
-        h=domainkey-signature:received:received:message-id:date:from:to
-         :subject:cc:in-reply-to:mime-version:content-type
-         :content-transfer-encoding:content-disposition:references;
-        bh=Ata7RZKQq1BiI6tliMZ2O+vbksKhoaYAwrBeaPkF3DI=;
-        b=skiJVuCnag/FKE+QoWgKX5MY9W3J0+8Vgd2oaN64kA+5J5mLwNnt2hCdh94cyCA3JI
-         dj7PrJDRrbRmE2HWFa4FaicacfdR3D4CR/JaGyUmqTZ9A8YYkt6M75SZ72W3jk1tFlNM
-         Q5311WCqWQavXR/CEquTwZPZXTTcesCLj4yIA=
-In-Reply-To: <1226078023.11596.17.camel@brick>
-Content-Disposition: inline
-Sender: netdev-owner@vger.kernel.org
+        h=domainkey-signature:received:received:message-id:date:from
+         :user-agent:mime-version:to:subject:references:in-reply-to
+         :content-type:content-transfer-encoding;
+        bh=OciLSTm3OAzWsgzMx66G202kzJYm43YoAT3oUrO49+o=;
+        b=HlkEZtcoKaav6x3vOvBvrs+PuBGkYlUcDGop40UsFL3SgBsOacx+HLizJkI4fzhNEz
+         p+OIuH0p1jQiJUEYIMq3JDzU61xPBeTkDkZ871DM/jEbZ1JFIq985WG0t4hjorm56plP
+         AM4VZ7XgcU9hPyQ7MF+85RoBC1yvlvkgocmxc=
+In-Reply-To: <49260B77.7040203@gmail.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Harvey Harrison <harvey.harrison@gmail.com>
-Cc: Wensong Zhang <wensong@linuxvirtualserver.org>, Julian Anastasov <ja@ssi.bg>, David Miller <davem@davemloft.net>, linux-netdev <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"; format="flowed"
+To: lvs-devel@vger.kernel.org
 
-On Fri, Nov 7, 2008 at 6:13 PM, Harvey Harrison
-<harvey.harrison@gmail.com> wrote:
-> payload_len is a be16 value, not cpu_endian, also the size of a ponter
-> to a struct ipv6hdr was being added, not the size of the struct itself.
->
-> Signed-off-by: Harvey Harrison <harvey.harrison@gmail.com>
-> ---
-> I'm quite supicious of the following code in net/netfilter/ipvs/ip_vs_xmit.c
->
-> Line 714:
->        iph->payload_len        =       old_iph->payload_len + sizeof(old_iph);
->
-> I believe that the payload_len is a big-endian value and this is treating it as
-> cpu-ordered.  In addition, it is adding the size of a pointer to a struct ipv6hdr
-> and not the size of the struct itself.
->
-> If I'm correct, I'd suggest the following is what _may_ have been intended.
->
->  net/netfilter/ipvs/ip_vs_xmit.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
->
-> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-> index 2f36721..425ab14 100644
-> --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> @@ -711,7 +711,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
->        iph                     =       ipv6_hdr(skb);
->        iph->version            =       6;
->        iph->nexthdr            =       IPPROTO_IPV6;
-> -       iph->payload_len        =       old_iph->payload_len + sizeof(old_iph);
-> +       iph->payload_len        =       old_iph->payload_len;
-> +       be16_add_cpu(&iph->payload_len, sizeof(*old_iph));
->        iph->priority           =       old_iph->priority;
->        memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
->        iph->daddr              =       rt->rt6i_dst.addr;
-> --
-> 1.6.0.3.756.gb776d
+I got the error in "/var/log/message" after I installed the ipvsadmin=20
+under the Centos 4.7,  and the server is down.
 
-Yes, both of that makes sense, thank you!
 
-This function was never tested because IIRC there was/is no
-decapsulation support for IPv6 in IPv6 tunneling on the receiving side
-(please correct me if I'm wrong). I sent some packets through it which
-somehow arrived at the real server, but that was about it. So the
-whole code in that function is pretty only an idea of how the v6
-tunneling should work ;)
+Do you know  how to fix the bug?
 
-Julius
+
+Many thanks.
+
+
+Kernel=EF=BC=9A2.6.9-78.0.5.ELsmp
+
+Ipvadmin: 1.24-6
+
+
+This is LOG:
+
+Nov 20 22:24:50 cd03 iptables: succeeded
+Nov 20 22:24:50 cd03 iptables: succeeded
+Nov 20 22:24:52 cd03 kernel: Unable to handle kernel paging request at=20
+virtual address f8c7a7e8
+Nov 20 22:24:52 cd03 kernel: printing eip:
+Nov 20 22:24:52 cd03 kernel: c0294afa
+Nov 20 22:24:52 cd03 kernel: *pde =3D f5e93558
+Nov 20 22:24:52 cd03 kernel: Oops: 0000 [#1]
+Nov 20 22:24:52 cd03 kernel: SMP
+Nov 20 22:24:52 cd03 kernel: Modules linked in: ip_vs_rr ip_vs ip_table=
+s=20
+parport_pc lp parport autofs4 i2c_dev i2c_core sunrpc md5 ipv6=20
+cpufreq_powersave loo
+p button battery ac ohci_hcd tg3 floppy sg dm_snapshot dm_zero dm_mirro=
+r=20
+ext3 jbd dm_mod mptscsih mptsas mptspi mptscsi mptbase sd_mod scsi_mod
+Nov 20 22:24:52 cd03 kernel: CPU: 3
+Nov 20 22:24:52 cd03 kernel: EIP: 0060:[] Not tainted VLI
+Nov 20 22:24:52 cd03 kernel: EFLAGS: 00010212 (2.6.9-78.0.5.ELsmp)
+Nov 20 22:24:52 cd03 kernel: EIP is at nf_unregister_sockopt+0x48/0x83
+Nov 20 22:24:52 cd03 kernel: eax: 00000002 ebx: c035e784 ecx: f6c2a540=20
+edx: f8c7a7e0
+Nov 20 22:24:52 cd03 kernel: esi: f89355e0 edi: 00000000 ebp: f6382000=20
+esp: f6382f5c
+Nov 20 22:24:52 cd03 kernel: ds: 007b es: 007b ss: 0068
+Nov 20 22:24:52 cd03 kernel: Process modprobe (pid: 18385,=20
+threadinfo=3Df6382000 task=3De4e413b0)
+Nov 20 22:24:52 cd03 kernel: Stack: 00000000 c0337ba8 f8933865 f8935700=
+=20
+c01373ce 00000000 745f7069 656c6261
+Nov 20 22:24:52 cd03 kernel: f5250073 c0151ec2 f525c6c4 d53bfa6c=20
+c01521f2 b7fad000 b7fae000 b7fae000
+Nov 20 22:24:52 cd03 kernel: b7fae000 d27bc4ec f525c680 f525c6b0=20
+00000000 f6382000 082ac828 00000000
+Nov 20 22:24:52 cd03 kernel: Call Trace:
+Nov 20 22:24:52 cd03 kernel: [] fini+0xd/0x35 [ip_tables]
+Nov 20 22:24:52 cd03 kernel: [] sys_delete_module+0x13b/0x184
+Nov 20 22:24:52 cd03 kernel: [] unmap_vma_list+0xe/0x17
+Nov 20 22:24:52 cd03 kernel: [] do_munmap+0x108/0x116
+Nov 20 22:24:52 cd03 kernel: [] syscall_call+0x7/0xb
+Nov 20 22:24:52 cd03 kernel: Code: 04 00 89 d9 f0 ff 0d 84 e7 35 c0 0f=20
+88 93 0c 00 00 8b 0d 9c e7 35 c0 8b 01 0f 18 00 90 81 f9 9c e7 35 c0 74=
+=20
+2f 8b 51 08 8b
+46 08 42 08 8b 11 75 1e 8b 41 04 89 42 04 89 10 89 c8 c7 01 00 01
+Nov 20 22:24:52 cd03 kernel: Fatal exception: panic in 5 seconds
+
+CPU: Intel(R) Xeon(TM) CPU 2.80GHz *2
+Mem=EF=BC=9A 4G
+
+Thanks.
