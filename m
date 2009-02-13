@@ -1,23 +1,22 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [patch] IPVS: Make "no destination available" message more
- consistent between schedulers
-Date: Mon, 29 Dec 2008 18:37:47 -0800 (PST)
-Message-ID: <20081229.183747.67525369.davem@davemloft.net>
-References: <20081230004644.GA18464@verge.net.au>
+From: Graeme Fowler <graeme@graemef.net>
+Subject: Bugzilla
+Date: Fri, 13 Feb 2009 13:10:46 +0000
+Message-ID: <1234530646.27072.7.camel@ernie.internal.graemef.net>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20081230004644.GA18464@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: horms@verge.net.au
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, jmack@wm7d.net, graeme@graemef.net, windo@p6drad-teel.net
+Content-Type: text/plain; charset="us-ascii"
+To: lvs-devel@vger.kernel.org
 
-From: Simon Horman <horms@verge.net.au>
-Date: Tue, 30 Dec 2008 11:46:44 +1100
+Guys
 
-> Acked-by: Graeme Fowler <graeme@graemef.net>
-> Signed-off-by: Simon Horman <horms@verge.net.au>
+Is it time, do you think, that we started using something like Bugzilla
+or Trac to keep, erm, track of coding changes, issues and/or bugs as
+they arise?
 
-Applied, thanks a lot Simon.
+I'm happy to host an instance of something if it helps.
+
+Graeme
+
