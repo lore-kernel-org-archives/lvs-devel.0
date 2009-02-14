@@ -1,35 +1,35 @@
-From: Simon Horman <horms@verge.net.au>
+From: Graeme Fowler <graeme@graemef.net>
 Subject: Re: Bugzilla
-Date: Sat, 14 Feb 2009 09:15:43 +1100
-Message-ID: <20090213221543.GD11970@verge.net.au>
+Date: Sat, 14 Feb 2009 09:49:01 +0000
+Message-ID: <1234604941.29925.15.camel@ernie.internal.graemef.net>
 References: <1234530646.27072.7.camel@ernie.internal.graemef.net>
+	 <20090213221543.GD11970@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1234530646.27072.7.camel@ernie.internal.graemef.net>
+In-Reply-To: <20090213221543.GD11970@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Graeme Fowler <graeme@graemef.net>
-Cc: lvs-devel@vger.kernel.org
+To: lvs-devel@vger.kernel.org
 
-On Fri, Feb 13, 2009 at 01:10:46PM +0000, Graeme Fowler wrote:
-> Guys
-> 
-> Is it time, do you think, that we started using something like Bugzilla
-> or Trac to keep, erm, track of coding changes, issues and/or bugs as
-> they arise?
-> 
-> I'm happy to host an instance of something if it helps.
+On Sat, 2009-02-14 at 09:15 +1100, Simon Horman wrote:
+> In terms of managing patches, patchwork seems to be the new and
+> exciting tool to use.
 
-In terms of managing patches, patchwork seems to be the new and
-exciting tool to use. But in terms of managing bugs, tasks and the like,
-I'm happy to work with whatever makes life easier for you, Joe, Malcolm
-and the other people feilding lots questions on lvs-users.
+I hadn't come across this - the only "patchwork" I knew about was the
+one on Savannah, which died some time ago. As this one appears to be
+Jeremy Kerr's, I'll give it a good look-see!
 
--- 
-Simon Horman
-  VA Linux Systems Japan K.K., Sydney, Australia Satellite Office
-  H: www.vergenet.net/~horms/             W: www.valinux.co.jp/en
+> But in terms of managing bugs, tasks and the like,
+> I'm happy to work with whatever makes life easier for you, Joe, Malcolm
+> and the other people feilding lots questions on lvs-users.
+
+...and Joe said, privately:
+> I think anything here would help
+
+I'll try to get something workable up this weekend, children
+permitting...
+
+Graeme
 
