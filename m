@@ -1,61 +1,114 @@
-From: Julius Volz <julius.volz@gmail.com>
+From: Simon Horman <horms@verge.net.au>
 Subject: Re: [bug] FWMARKs and persistence in IPVS: The Use of Unions
-Date: Tue, 28 Apr 2009 12:57:51 +0200
-Message-ID: <43ca39800904280357q25dd3ec4x50ee78b11a94ba3f@mail.gmail.com>
-References: <20090428081509.GA746@verge.net.au>
+Date: Tue, 28 Apr 2009 20:59:41 +1000
+Message-ID: <20090428105941.GA20907@verge.net.au>
+References: <20090428081509.GA746@verge.net.au> <alpine.LSU.2.00.0904281103250.27149@fbirervta.pbzchgretzou.qr> <20090428092351.GC8165@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=gamma;
-        h=domainkey-signature:mime-version:received:in-reply-to:references
-         :date:message-id:subject:from:to:cc:content-type
-         :content-transfer-encoding;
-        bh=sQHA0Vhz1EF05DwzwOsHMIJgNPpiIVCZb+pwgNFO14o=;
-        b=L7UlCAYRGGEhNcDP1B9d6Bf09DxTrn+nWY4SXqchPwXshvJ5K0ujPO2+xq7iDByQdc
-         IyQRf1tVPCKjwPVOi6KPsJcfGzdcW1usT6/ssC4/BPA5y7tRIKeoA2Hl2hZntJ7KEzPK
-         RgTO747Jxf5Mq1ExXT7PnYAKwYx3JDb/6Mo3g=
-In-Reply-To: <20090428081509.GA746@verge.net.au>
+Content-Disposition: inline
+In-Reply-To: <20090428092351.GC8165@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-To: Simon Horman <horms@verge.net.au>
-Cc: netfilter-devel <netfilter-devel@vger.kernel.org>, lvs-devel@vger.kernel.org, =?ISO-8859-1?Q?Fabien_Duch=EAne?= <fabien.duchene@student.uclouvain.be>, Joseph Mack NA3T <jmack@wm7d.net>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Jan Engelhardt <jengelh@medozas.de>
+Cc: netfilter-devel <netfilter-devel@vger.kernel.org>, lvs-devel@vger.kernel.org, Fabien =?iso-8859-1?Q?Duch=EAne?= <fabien.duchene@student.uclouvain.be>, Joseph Mack NA3T <jmack@wm7d.net>, Julius Volz <julius.volz@gmail.com>
 
-Hi,
+On Tue, Apr 28, 2009 at 07:23:55PM +1000, Simon Horman wrote:
+> On Tue, Apr 28, 2009 at 11:07:40AM +0200, Jan Engelhardt wrote:
+> > 
+> > On Tuesday 2009-04-28 10:15, Simon Horman wrote:
+> > >
+> > >It seems to me that it should be easy enough to fix by changing
+> > >fwmark in ip_vs_sched_persist() from:
+> > >
+> > >union nf_inet_addr fwmark = {
+> > >	.all = { 0, 0, 0, htonl(svc->fwmark) }
+> > >};
+> > >
+> > >to:
+> > >
+> > >union nf_inet_addr fwmark = {
+> > >	.all = { htonl(svc->fwmark), 0, 0, 0 }
+> > >};
+> > >
+> > >Assuming that this would result in fwmark->ip being set to
+> > >htonl(svc->fwmark), which is relevant if svc->af is AF_INET - that is,
+> > >for IPv4.[...]
+> > >An alternate idea would be to change the af value used for fwmarks,
+> > >but this seems to be even less clean than the current (slightly broken)
+> > >technique of using nf_inet_addr for IPv4 or IPv6 addresses, or fwmarks.
+> > 
+> > If you use ->all, then using NFPROTO_UNSPEC as af
+> > seems to me like a good match.
 
-On Tue, Apr 28, 2009 at 10:15 AM, Simon Horman <horms@verge.net.au> wro=
-te:
-> [ Moving to netfilter-devel / lvs-devel for discussion on how to reso=
-lve this.
-> =A0Added Julius Volz to Cc, he wrote most of the IPv6 portion of LVS.
-> =A0Remove lvs-users from Cc, it is not an open list. ]
+I am guessing that AF_UNSPEC is more appropriate than NFPROTO_UNSPEC.
+Please correct me if I am wrong.
 
-Thanks for the notice and sorry for the v4 breakage.
+> That seems reasonable, though ip_vs_ct_in_get() would still
+> need to use the real af for the cp->af == af and
+> ip_vs_addr_equal(af, s_addr, &cp->caddr) portinos of the check.
 
-> A simple fix that comes to mind is to just store the fwmark in
-> the first octet of .all, and set the other octets to zero.
-> But is .ip always going to be the same as .all[0]?
+It looks like checking for proto == IPPROTO_IP can tell us if
+the destination is a fwmark. This is based on the assumption that
+iph.protocol can never be IPPROTO_IP in ip_vs_sched_persist().
 
-I prefer this and would have assumed that it is ok, but maybe someone
-else can answer that more confidently.
+The following patch expresses these ideas as they crrently stand.
+Fabien, is it possible for you to test this?
 
-> Is a different approach required? For example, one where we know to c=
-ompare
-> .all or perhaps a single octet of .all in the case where fmarks are u=
-sed.
+Index: net-next-2.6/net/netfilter/ipvs/ip_vs_conn.c
+===================================================================
+--- net-next-2.6.orig/net/netfilter/ipvs/ip_vs_conn.c	2009-04-28 20:37:48.000000000 +1000
++++ net-next-2.6/net/netfilter/ipvs/ip_vs_conn.c	2009-04-28 20:37:51.000000000 +1000
+@@ -260,7 +260,10 @@ struct ip_vs_conn *ip_vs_ct_in_get
+ 	list_for_each_entry(cp, &ip_vs_conn_tab[hash], c_list) {
+ 		if (cp->af == af &&
+ 		    ip_vs_addr_equal(af, s_addr, &cp->caddr) &&
+-		    ip_vs_addr_equal(af, d_addr, &cp->vaddr) &&
++		    /* protocol should only be IPPROTO_IP if
++		     * d_addr is a fwmark */
++		    ip_vs_addr_equal(protocol == IPPROTO_IP ? AF_UNSPEC : af,
++		                     d_addr, &cp->vaddr) &&
+ 		    s_port == cp->cport && d_port == cp->vport &&
+ 		    cp->flags & IP_VS_CONN_F_TEMPLATE &&
+ 		    protocol == cp->protocol) {
+@@ -698,7 +701,9 @@ ip_vs_conn_new(int af, int proto, const 
+ 	cp->cport	   = cport;
+ 	ip_vs_addr_copy(af, &cp->vaddr, vaddr);
+ 	cp->vport	   = vport;
+-	ip_vs_addr_copy(af, &cp->daddr, daddr);
++	/* proto should only be IPPROTO_IP if d_addr is a fwmark */
++	ip_vs_addr_copy(proto == IPPROTO_IP ? AF_UNSPEC : af,
++			&cp->daddr, daddr);
+ 	cp->dport          = dport;
+ 	cp->flags	   = flags;
+ 	spin_lock_init(&cp->lock);
+Index: net-next-2.6/net/netfilter/ipvs/ip_vs_core.c
+===================================================================
+--- net-next-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2009-04-28 20:37:48.000000000 +1000
++++ net-next-2.6/net/netfilter/ipvs/ip_vs_core.c	2009-04-28 20:37:51.000000000 +1000
+@@ -278,7 +278,7 @@ ip_vs_sched_persist(struct ip_vs_service
+ 		 */
+ 		if (svc->fwmark) {
+ 			union nf_inet_addr fwmark = {
+-				.all = { 0, 0, 0, htonl(svc->fwmark) }
++				.ip = htonl(svc->fwmark)
+ 			};
+ 
+ 			ct = ip_vs_ct_in_get(svc->af, IPPROTO_IP, &snet, 0,
+@@ -306,7 +306,7 @@ ip_vs_sched_persist(struct ip_vs_service
+ 			 */
+ 			if (svc->fwmark) {
+ 				union nf_inet_addr fwmark = {
+-					.all = { 0, 0, 0, htonl(svc->fwmark) }
++					.ip = htonl(svc->fwmark)
+ 				};
+ 
+ 				ct = ip_vs_conn_new(svc->af, IPPROTO_IP,
 
-I guess that could be done by only specializing the lookup comparisons
-in __ip_vs_conn_in_get() and ip_vs_ct_in_get() when the ports are 0.
-Would blow up those if-statements even more though...
 
-> This particular change should be easy enough. I believe that fwmarks =
-are
-> only used in this way twice, both inside ip_vs_schedule(). But
-> ip_vs_addr_equal() is more generic, so I'd prefer only to mangle it i=
-f
-> needed.
+-- 
+Simon Horman
+  VA Linux Systems Japan K.K. Satellite Lab in Sydney, Australia
+  H: www.vergenet.net/~horms/            W: www.valinux.co.jp/en
 
-I agree.
-
-Julius
