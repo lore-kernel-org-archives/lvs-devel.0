@@ -1,120 +1,92 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH] ipvs: IPv4 FWMARK virtual services
-Date: Thu, 7 May 2009 11:02:29 +1000
-Message-ID: <20090507010229.GD10063@verge.net.au>
+From: Caleb Anthony <caleb.anthony@gmail.com>
+Subject: Re: Ldirectord Feature Request
+Date: Thu, 7 May 2009 10:08:52 -0600
+Message-ID: <33afbbe70905070908xf712994j31973ca80b02e3f8@mail.gmail.com>
+References: <33afbbe70905011318j35d226a6h31e0dfaeb1b77b45@mail.gmail.com>
+	 <20090502021644.GA15603@verge.net.au>
+	 <Pine.LNX.4.64.0905020531001.18799@wm7d.net>
+	 <20090505124520.GA19402@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=gamma;
+        h=domainkey-signature:mime-version:received:in-reply-to:references
+         :date:message-id:subject:from:to:cc:content-type
+         :content-transfer-encoding;
+        bh=NP9gmr+KvbzDJT5MD8XkwznWFtH7LkYBs8Ph0X2aei0=;
+        b=NMFqavyIaCCcG8fso521a7SjwPPNvGvH8l3TFc0kaB5nSX0+wrLjIrpD0Km0Dhz7lH
+         pytj7g3f8KLbOV8ZzyKW3YWMviOpxAZYTabwr9HjwiGixtzBGsfmv39Fz0v49pmaSUrP
+         6eKq66J7MdrFK5Gh6ZWL9ybR+sJ+vldEalzJc=
+In-Reply-To: <20090505124520.GA19402@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="iso-8859-1"
-To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: David Miller <davem@davemloft.net>, Jan Engelhardt <jengelh@medozas.de>, Fabien =?iso-8859-1?Q?Duch=EAne?= <fabien.duchene@student.uclouvain.be>, Joseph Mack NA3T <jmack@wm7d.net>, Julius Volz <julius.volz@gmail.com>
+To: Simon Horman <horms@verge.net.au>
+Cc: Joseph Mack NA3T <jmack@wm7d.net>, lvs-devel@vger.kernel.org
 
-This fixes the use of fwmarks to denote IPv4 virtual services
-which was unfortunately broken as a result of the integration
-of IPv6 support into IPVS, which was included in 2.6.28.
+I just ran a test (on kernel 2.6.27-7) and Simon is right, weight does
+not equal the number of connections with the source hash scheduler.
+Looks like the documentation needs to be updated.
 
-The problem arises because fwmarks are stored in the 4th octet
-of a union nf_inet_addr .all, however in the case of IPv4 only
-the first octet, corresponding to .ip, is assigned and compared.
+Thanks for pointing this out.
 
-In other words, using .all =3D { 0, 0, 0, htonl(svc->fwmark) always
-results in a value of 0 (32bits) being stored for IPv4. This means
-that one fwmark can be used, as it ends up being mapped to 0, but thing=
-s
-break down when multiple fwmarks are used, as they all end up being map=
-ped
-to 0.
+Since ldirectord doesn't need to be changed in regards to the weight
+setting for a fallback server for my situation, I'll take a stab at
+adding the functionality to specify multiple fallback servers in
+ldirectord.cf. It seems like it should be a simple enough addition.
 
-As fwmarks are 32bits a reasonable fix seems to be to just store the fw=
-mark
-in .ip, and comparing and storing .ip when fwmarks are used.
+Thanks again.
 
-This patch makes the assumption that in calls to ip_vs_ct_in_get()
-and ip_vs_sched_persist() if the proto parameter is IPPROTO_IP then
-we are dealing with an fwmark. I believe this is valid as ip_vs_in()
-does fairly strict filtering on the protocol and IPPROTO_IP should
-not be used in these calls unless explicitly passed when making
-these calls for fwmarks in ip_vs_sched_persist().
-
-Tested-by: Fabien Duch=EAne <fabien.duchene@student.uclouvain.be>
-Cc: Joseph Mack NA3T <jmack@wm7d.net>
-Cc: Julius Volz <julius.volz@gmail.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
-
---=20
-
-This problem should probably be fixed in stable too.
-Either using this patch, or a simpler though arguably less correct one =
-that
-uses:
-
-	.all =3D { htonl(svc->fwmark), 0, 0, 0 }
-
-That change doesn't require updating ip_vs_ct_in_get() or ip_vs_conn_ne=
-w(),
-nor any assumptions about the value of proto. Fabien Duch=EAne has test=
-ed
-this simpler change and found it to work.
-
-Index: net-next-2.6/net/netfilter/ipvs/ip_vs_conn.c
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
---- net-next-2.6.orig/net/netfilter/ipvs/ip_vs_conn.c	2009-04-28 20:37:=
-48.000000000 +1000
-+++ net-next-2.6/net/netfilter/ipvs/ip_vs_conn.c	2009-04-28 20:37:51.00=
-0000000 +1000
-@@ -260,7 +260,10 @@ struct ip_vs_conn *ip_vs_ct_in_get
- 	list_for_each_entry(cp, &ip_vs_conn_tab[hash], c_list) {
- 		if (cp->af =3D=3D af &&
- 		    ip_vs_addr_equal(af, s_addr, &cp->caddr) &&
--		    ip_vs_addr_equal(af, d_addr, &cp->vaddr) &&
-+		    /* protocol should only be IPPROTO_IP if
-+		     * d_addr is a fwmark */
-+		    ip_vs_addr_equal(protocol =3D=3D IPPROTO_IP ? AF_UNSPEC : af,
-+		                     d_addr, &cp->vaddr) &&
- 		    s_port =3D=3D cp->cport && d_port =3D=3D cp->vport &&
- 		    cp->flags & IP_VS_CONN_F_TEMPLATE &&
- 		    protocol =3D=3D cp->protocol) {
-@@ -698,7 +701,9 @@ ip_vs_conn_new(int af, int proto, const=20
- 	cp->cport	   =3D cport;
- 	ip_vs_addr_copy(af, &cp->vaddr, vaddr);
- 	cp->vport	   =3D vport;
--	ip_vs_addr_copy(af, &cp->daddr, daddr);
-+	/* proto should only be IPPROTO_IP if d_addr is a fwmark */
-+	ip_vs_addr_copy(proto =3D=3D IPPROTO_IP ? AF_UNSPEC : af,
-+			&cp->daddr, daddr);
- 	cp->dport          =3D dport;
- 	cp->flags	   =3D flags;
- 	spin_lock_init(&cp->lock);
-Index: net-next-2.6/net/netfilter/ipvs/ip_vs_core.c
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
---- net-next-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2009-04-28 20:37:=
-48.000000000 +1000
-+++ net-next-2.6/net/netfilter/ipvs/ip_vs_core.c	2009-04-28 20:37:51.00=
-0000000 +1000
-@@ -278,7 +278,7 @@ ip_vs_sched_persist(struct ip_vs_service
- 		 */
- 		if (svc->fwmark) {
- 			union nf_inet_addr fwmark =3D {
--				.all =3D { 0, 0, 0, htonl(svc->fwmark) }
-+				.ip =3D htonl(svc->fwmark)
- 			};
-=20
- 			ct =3D ip_vs_ct_in_get(svc->af, IPPROTO_IP, &snet, 0,
-@@ -306,7 +306,7 @@ ip_vs_sched_persist(struct ip_vs_service
- 			 */
- 			if (svc->fwmark) {
- 				union nf_inet_addr fwmark =3D {
--					.all =3D { 0, 0, 0, htonl(svc->fwmark) }
-+					.ip =3D htonl(svc->fwmark)
- 				};
-=20
- 				ct =3D ip_vs_conn_new(svc->af, IPPROTO_IP,
-
-
+On Tue, May 5, 2009 at 6:45 AM, Simon Horman <horms@verge.net.au> wrote=
+:
+> Hi Joe,
+>
+> On Sat, May 02, 2009 at 05:33:43AM -0700, Joseph Mack NA3T wrote:
+>>
+>> On Sat, 2 May 2009, Simon Horman wrote:
+>>
+>>> I'll double check, but I think the weight specifies a proportion
+>>> of conections rather than an absolute number. Could you let
+>>> me know which documentation you are looking at?
+>>
+>> it's the number of connections
+>>
+>> see section 4.10.2 of
+>>
+>> http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.ipvsadm.html#=
+SH-scheduler
+>
+> That may have been the case in the past, but examining the code now
+> I don't see any evidence of weight =3D number of connections for the =
+purpose
+> of calculating overload.
+>
+> As far as I can see a real-server is only regarded as
+> being overloaded if the IP_VS_DEST_F_OVERLOAD flag is set.
+> And that flag only seems to be set in ip_vs_bind_dest()
+> where the criteria is that u-threshhold - as supplied
+> by ipvsadm - has been exceeded.
+>
+> Specifically, I am looking at ip_vs_sh_schedule(), ip_vs_sh_get()
+> and is_overloaded() in net/netfilter/ipvs/ip_vs_sh.c in 2.6.30-rc4.
+>
+> Caleb, are you observing that weight =3D number of connections?
+> If so, which kernel are you running?
+>
+>> no-one used the -SH scheduler for years because no-one understood ho=
+w to
+>> use it. I expect that weighting by the number of connections was pro=
+bably
+>> the easiest to code up, but it's not particularly useful
+>
+> I agree with your comments regarding utility.
+> If it is the case then I think it should be changed.
+>
+> --
+> Simon Horman
+> =A0VA Linux Systems Japan K.K. Satellite Lab in Sydney, Australia
+> =A0H: www.vergenet.net/~horms/ =A0 =A0 =A0 =A0 =A0 =A0W: www.valinux.=
+co.jp/en
+>
+>
