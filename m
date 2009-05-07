@@ -1,92 +1,125 @@
 From: Caleb Anthony <caleb.anthony@gmail.com>
-Subject: Re: Ldirectord Feature Request
-Date: Thu, 7 May 2009 10:08:52 -0600
-Message-ID: <33afbbe70905070908xf712994j31973ca80b02e3f8@mail.gmail.com>
-References: <33afbbe70905011318j35d226a6h31e0dfaeb1b77b45@mail.gmail.com>
-	 <20090502021644.GA15603@verge.net.au>
-	 <Pine.LNX.4.64.0905020531001.18799@wm7d.net>
-	 <20090505124520.GA19402@verge.net.au>
+Subject: Re: [PATCH] ldirectord: Allow sending email via external SMTP server
+Date: Thu, 7 May 2009 14:09:34 -0600
+Message-ID: <33afbbe70905071309m3cd9e124u95169563460397ce@mail.gmail.com>
+References: <33afbbe70904271254j17e1896fqdb51e88ebd71b2b7@mail.gmail.com>
+	 <20090428062636.GB19369@verge.net.au>
+	 <33afbbe70904280647x33fafef1w258303ebe4eec313@mail.gmail.com>
+	 <20090428151120.GB8377@verge.net.au>
+	 <33afbbe70905011242m2423ff3eg4606d7d0ef287387@mail.gmail.com>
+	 <20090505124718.GC19402@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: multipart/mixed; boundary=001e68378aa332e27c0469581708
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=gamma;
         h=domainkey-signature:mime-version:received:in-reply-to:references
-         :date:message-id:subject:from:to:cc:content-type
-         :content-transfer-encoding;
-        bh=NP9gmr+KvbzDJT5MD8XkwznWFtH7LkYBs8Ph0X2aei0=;
-        b=NMFqavyIaCCcG8fso521a7SjwPPNvGvH8l3TFc0kaB5nSX0+wrLjIrpD0Km0Dhz7lH
-         pytj7g3f8KLbOV8ZzyKW3YWMviOpxAZYTabwr9HjwiGixtzBGsfmv39Fz0v49pmaSUrP
-         6eKq66J7MdrFK5Gh6ZWL9ybR+sJ+vldEalzJc=
-In-Reply-To: <20090505124520.GA19402@verge.net.au>
+         :date:message-id:subject:from:to:cc:content-type;
+        bh=m3fwdogsEz84s9hnGghFrXC08tRw61W2VdpCBZMXPI4=;
+        b=wmJOG+K8gXLAj6Ow87ZJRsXEez006Pkz7ucPan00QOuDLahUmJ4pR1ylQrbbtjaxOa
+         ybyAkHvunXHvfQCelgYgVB91OvIu6/3LZb8Kg9c8zbzdpEuPXcU3HWrawwxc1MBbM7jz
+         Ue0jCVVg0l6Bijm1nT0EIH8rhtQOGCxqjIu94=
+In-Reply-To: <20090505124718.GC19402@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
 To: Simon Horman <horms@verge.net.au>
-Cc: Joseph Mack NA3T <jmack@wm7d.net>, lvs-devel@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org
 
-I just ran a test (on kernel 2.6.27-7) and Simon is right, weight does
-not equal the number of connections with the source hash scheduler.
-Looks like the documentation needs to be updated.
+--001e68378aa332e27c0469581708
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-Thanks for pointing this out.
+Attached is a new patch. This one adds two new subs:
+ld_emailalert_net_smtp and ld_emailalert_mail_send. If an SMTP server
+is set in ldirectord.cf, then ld_emailalert_net_smtp will be called
+and the email will be sent via SMTP. If an SMTP server is not set in
+ldirectord.cf then ld_emailalert_mail_send will be called and the
+email will be sent via the Mail::Send methods.
 
-Since ldirectord doesn't need to be changed in regards to the weight
-setting for a fallback server for my situation, I'll take a stab at
-adding the functionality to specify multiple fallback servers in
-ldirectord.cf. It seems like it should be a simple enough addition.
+Let me know what you think.
 
-Thanks again.
+Caleb
 
-On Tue, May 5, 2009 at 6:45 AM, Simon Horman <horms@verge.net.au> wrote=
-:
-> Hi Joe,
+On Tue, May 5, 2009 at 6:47 AM, Simon Horman <horms@verge.net.au> wrote:
+> On Fri, May 01, 2009 at 01:42:06PM -0600, Caleb Anthony wrote:
+>> I think that's a good idea, I'll see what I can do to get a patch that
+>> adds that functionality.
 >
-> On Sat, May 02, 2009 at 05:33:43AM -0700, Joseph Mack NA3T wrote:
->>
->> On Sat, 2 May 2009, Simon Horman wrote:
->>
->>> I'll double check, but I think the weight specifies a proportion
->>> of conections rather than an absolute number. Could you let
->>> me know which documentation you are looking at?
->>
->> it's the number of connections
->>
->> see section 4.10.2 of
->>
->> http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.ipvsadm.html#=
-SH-scheduler
->
-> That may have been the case in the past, but examining the code now
-> I don't see any evidence of weight =3D number of connections for the =
-purpose
-> of calculating overload.
->
-> As far as I can see a real-server is only regarded as
-> being overloaded if the IP_VS_DEST_F_OVERLOAD flag is set.
-> And that flag only seems to be set in ip_vs_bind_dest()
-> where the criteria is that u-threshhold - as supplied
-> by ipvsadm - has been exceeded.
->
-> Specifically, I am looking at ip_vs_sh_schedule(), ip_vs_sh_get()
-> and is_overloaded() in net/netfilter/ipvs/ip_vs_sh.c in 2.6.30-rc4.
->
-> Caleb, are you observing that weight =3D number of connections?
-> If so, which kernel are you running?
->
->> no-one used the -SH scheduler for years because no-one understood ho=
-w to
->> use it. I expect that weighting by the number of connections was pro=
-bably
->> the easiest to code up, but it's not particularly useful
->
-> I agree with your comments regarding utility.
-> If it is the case then I think it should be changed.
+> Great, thanks.
 >
 > --
 > Simon Horman
 > =A0VA Linux Systems Japan K.K. Satellite Lab in Sydney, Australia
-> =A0H: www.vergenet.net/~horms/ =A0 =A0 =A0 =A0 =A0 =A0W: www.valinux.=
-co.jp/en
+> =A0H: www.vergenet.net/~horms/ =A0 =A0 =A0 =A0 =A0 =A0W: www.valinux.co.j=
+p/en
 >
 >
+
+--001e68378aa332e27c0469581708
+Content-Type: application/octet-stream; name="ldirectord.patch"
+Content-Disposition: attachment; filename="ldirectord.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_fufw5cw30
+
+LS0tIC90bXAvbGRpcmVjdG9yZC5vcmlnL2xkaXJlY3RvcmQJMjAwOS0wMS0wOSAxNDo1NTo0OS4w
+MDAwMDAwMDAgLTA3MDAKKysrIC90bXAvbGRpcmVjdG9yZC5zbXRwL2xkaXJlY3RvcmQJMjAwOS0w
+NS0wNyAxNDowNjo0Ni4wMDAwMDAwMDAgLTA2MDAKQEAgLTIyOSw2ICsyMjksMTMgQEAKIERlZmF1
+bHQ6IGFsbAogCiAKK0I8c210cCA9ID5JPGlwX2FkZHJlc3N8aG9zdG5hbWU+QjwiPgorCitBIHZh
+bGlkIFNNVFAgc2VydmVyIGFkZHJlc3MgdG8gdXNlIGZvciBzZW5kaW5nIGVtYWlsIHZpYSBTTVRQ
+LgorCitJZiBkZWZpbmVkIGluIGEgdmlydHVhbCBzZXJ2ZXIgc2VjdGlvbiB0aGVuIHRoZSBnbG9i
+YWwgdmFsdWUgaXMgb3ZlcnJpZGRlbi4KKworCiBCPGV4ZWN1dGUgPSAiPkk8Y29uZmlndXJhdGlv
+bj5CPCI+CiAKIFVzZSB0aGlzIGRpcmVjdGl2ZSB0byBzdGFydCBhbiBpbnN0YW5jZSBvZiBsZGly
+ZWN0b3JkIGZvcgpAQCAtNjExLDYgKzYxOCw3IEBACiAJICAgICRFTUFJTEFMRVJUCiAJICAgICRF
+TUFJTEFMRVJURlJFUQogCSAgICAkRU1BSUxBTEVSVFNUQVRVUworCSAgICAkU01UUAogCiAJICAg
+ICRDQUxMQkFDSwogCSAgICAkQ0ZHTkFNRQpAQCAtMTMyMSw2ICsxMzI5LDkgQEAKIAkJCQkJCSZj
+b25maWdfZXJyb3IoJGxpbmUsICJ1bmFibGUgdG8gb3BlbiBtb25pdG9yZmlsZSAkbW9uaXRvcmZp
+bGU6ICQhIik7CiAJCQkJCX0KIAkJCQkJJHZzcnZ7bW9uaXRvcmZpbGV9ID0gJG1vbml0b3JmaWxl
+OworCQkJCX0gZWxzaWYgICgkcmNtZCA9fiAvXnNtdHBccyo9XHMqKC4qKS8pIHsKKwkJCQkJJDEg
+PX4gLyheKFswLTlBLVphLXouXystXSspKS8gb3IgJmNvbmZpZ19lcnJvcigkbGluZSwgImludmFs
+aWQgU01UUCBzZXJ2ZXIgYWRkcmVzcyIpOworCQkJCQkkdnNydntzbXRwfSA9ICQxOwogCQkJCX0g
+ZWxzZSB7CiAJCQkJCSZjb25maWdfZXJyb3IoJGxpbmUsICJVbmtub3duIGNvbW1hbmQgXCIkbGlu
+ZWRhdGFcIiIpOwogCQkJCX0KQEAgLTE0MzIsNiArMTQ0MywxMCBAQAogCQkJJEVNQUlMQUxFUlRG
+UkVRID0gJDE7CiAJCX0gZWxzaWYgICgkbGluZWRhdGEgID1+IC9eZW1haWxhbGVydHN0YXR1c1xz
+Kj1ccyooLiopLykgewogCQkJJEVNQUlMQUxFUlRTVEFUVVMgPSAmcGFyc2VfZW1haWxhbGVydHN0
+YXR1cygkbGluZSwgJDEpOworCQl9IGVsc2lmICAoJGxpbmVkYXRhICA9fiAvXnNtdHBccyo9XHMq
+KC4qKS8pIHsKKwkJCSQxID1+IC8oXihbMC05QS1aYS16Ll8rLV0rKSkvIG9yICZjb25maWdfZXJy
+b3IoJGxpbmUsCisJCQkJCSJpbnZhbGlkIFNNVFAgc2VydmVyIGFkZHJlc3MiKTsKKwkJCSRTTVRQ
+ID0gJDE7CiAJCX0gZWxzZSB7CiAJCQlpZiAoJGxpbmVkYXRhICA9fiAvXnRpbWVvdXRccyo9XHMq
+KC4qKS8pIHsKIAkJCQkmY29uZmlnX2Vycm9yKCRsaW5lLCAKQEAgLTM4ODAsMTQgKzM4OTUsMTMg
+QEAKIHN1YiBsZF9lbWFpbGFsZXJ0X3NlbmQKIHsKIAlteSAoJHN1YmplY3QsICR2LCAkcnNlcnZl
+ciwgJGN1cnJlbnR0aW1lKSA9IChAXyk7Ci0JbXkgJGVtYWlsbXNnOwotCW15ICRlbWFpbGZoOwog
+CW15ICRzdGF0dXMgPSAwOwogCW15ICR0b19hZGRyOwogCW15ICRmcmVxdWVuY3k7CiAJbXkgJHZp
+cnR1YWxfc3RyOwogCW15ICRpZDsKIAlteSAkc3RhdHVzZmlsdGVyOworCW15ICRzbXRwX3NlcnZl
+cjsKIAogCSRmcmVxdWVuY3kgPSBkZWZpbmVkICR2LT57ZW1haWxhbGVydGZyZXF9ID8gJHYtPntl
+bWFpbGFsZXJ0fSA6CiAJCQkJJEVNQUlMQUxFUlRGUkVROwpAQCAtMzkxNCw2ICszOTI4LDcyIEBA
+CiAJCXJldHVybiAwOwogCX0KIAorCSRzbXRwX3NlcnZlciA9IGRlZmluZWQgJHYtPntzbXRwfSA/
+ICR2LT57c210cH0gOgorCQkJCSRTTVRQOworCisJaWYgKGRlZmluZWQgJHNtdHBfc2VydmVyKSB7
+CisJCSRzdGF0dXMgPSAmbGRfZW1haWxhbGVydF9uZXRfc210cCgkc210cF9zZXJ2ZXIsICR0b19h
+ZGRyLCAkc3ViamVjdCk7CisJfQorCWVsc2UgeworCQkkc3RhdHVzID0gJmxkX2VtYWlsYWxlcnRf
+bWFpbF9zZW5kKCR0b19hZGRyLCAkc3ViamVjdCk7CisJfQorCisJcmV0dXJuKCRzdGF0dXMpOwor
+fQorCisjIGxkX2VtYWlsYWxlcnRfbmV0X3NtdHAKKyMgU2VuZCBlbWFpbCBhbGVydHMgdmlhIFNN
+VFAgc2VydmVyCisjIHByZTogc210cDogU01UUCBzZXJ2ZXIgZGVmaW5lZAorIyBwb3N0OiBtZXNz
+YWdlIGlzIGVtYWlsZWQgaWYgU01UUCBzZXJ2ZXIgaXMgdmFsaWQgYW5kIHdvcmtpbmcKKyMgcmV0
+dXJuOiAwIG9uIHN1Y2Nlc3MKKyMJICAxIG9uIGVycm9yCisKK3N1YiBsZF9lbWFpbGFsZXJ0X25l
+dF9zbXRwCit7CisJbXkgKCRzbXRwX3NlcnZlciwgJHRvX2FkZHIsICRzdWJqZWN0KSA9IChAXyk7
+CisJbXkgJHN0YXR1cyA9IDA7CisKKwl1c2UgTmV0OjpTTVRQOworCXVzZSBTeXM6Okhvc3RuYW1l
+OworCisJbXkgJGhvc3RuYW1lID0gaG9zdG5hbWU7CisKKwlteSAkc210cCA9IE5ldDo6U01UUC0+
+bmV3KCRzbXRwX3NlcnZlcik7CisKKwlpZiAoJHNtdHApIHsKKwkJJHNtdHAtPm1haWwoIiRFTlZ7
+VVNFUn1cQCRob3N0bmFtZSIpOworCQkkc210cC0+dG8oJHRvX2FkZHIpOworCQkkc210cC0+ZGF0
+YSgpOworCQkkc210cC0+ZGF0YXNlbmQoIkZyb206ICRFTlZ7VVNFUn1cQCRob3N0bmFtZVxuIik7
+CisJCSRzbXRwLT5kYXRhc2VuZCgiVG86ICR0b19hZGRyXG4iKTsKKwkJJHNtdHAtPmRhdGFzZW5k
+KCJTdWJqZWN0OiAkc3ViamVjdFxuXG4iKTsKKwkJJHNtdHAtPmRhdGFzZW5kKCJMb2ctTWVzc2Fn
+ZTogJHN1YmplY3RcbiIgLgorCQkJCSJEYWVtb24tU3RhdHVzOiAiIC4KKwkJCQkmZGFlbW9uX3N0
+YXR1c19zdHIoKSAuICJcbiIpOworCQkkc210cC0+ZGF0YWVuZCgpOworCQkkc210cC0+cXVpdDsK
+Kwl9IGVsc2UgeworCQkmbGRfbG9nKCJmYWlsZWQgdG8gc2VuZCBTTVRQIGVtYWlsIG1lc3NhZ2Vc
+biIpOworCQkkc3RhdHVzID0gMTsKKwl9CisKKwlyZXR1cm4oJHN0YXR1cyk7Cit9CisKKyMgbGRf
+ZW1haWxhbGVydF9tYWlsX3NlbmQKKyMgU2VuZCBlbWFpbCBhbGVydHMgdmlhIE1haWw6OlNlbmQK
+KyMgcHJlOiBzbXRwOiBTTVRQIHNlcnZlciBub3QgZGVmaW5lZAorIyBwb3N0OiBtZXNzYWdlIGlz
+IGVtYWlsZWQgaWYgb25lIG9mIHRoZSBNYWlsOjpTZW5kIG1ldGhvZHMgd29ya3MKKyMgcmV0dXJu
+OiAwIG9uIHN1Y2Nlc3MKKyMJICAxIG9uIGVycm9yCisKK3N1YiBsZF9lbWFpbGFsZXJ0X21haWxf
+c2VuZAoreworCW15ICgkdG9fYWRkciwgJHN1YmplY3QpID0gKEBfKTsKKwlteSAkZW1haWxtc2c7
+CisJbXkgJGVtYWlsZmg7CisJbXkgJHN0YXR1cyA9IDA7CisKIAl1c2UgTWFpbDo6U2VuZDsKIAog
+CSZsZF9sb2coImVtYWlsYWxlcnQ6ICRzdWJqZWN0Iik7CkBAIC0zOTMxLDcgKzQwMTEsNiBAQAog
+CXJldHVybigkc3RhdHVzKTsKIH0KIAotCiAjIGxkX2VtYWlsYWxlcnRfcmVzZW5kCiAjIFJlc2Vu
+ZCBlbWFpbCBhbGVydHMgYXMgbmVjY2Vzc2FyeQogIyBwcmU6IG5vbmUK
+--001e68378aa332e27c0469581708--
