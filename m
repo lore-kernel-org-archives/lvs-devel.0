@@ -1,27 +1,27 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ldirectord: Allow sending email via external SMTP
-	server
-Date: Tue, 5 May 2009 22:47:18 +1000
-Message-ID: <20090505124718.GC19402@verge.net.au>
-References: <33afbbe70904271254j17e1896fqdb51e88ebd71b2b7@mail.gmail.com> <20090428062636.GB19369@verge.net.au> <33afbbe70904280647x33fafef1w258303ebe4eec313@mail.gmail.com> <20090428151120.GB8377@verge.net.au> <33afbbe70905011242m2423ff3eg4606d7d0ef287387@mail.gmail.com>
+Subject: Re: [bug] FWMARKs and persistence in IPVS: The Use of Unions
+Date: Thu, 7 May 2009 10:43:15 +1000
+Message-ID: <20090507004314.GC10063@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <33afbbe70905011242m2423ff3eg4606d7d0ef287387@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Caleb Anthony <caleb.anthony@gmail.com>
-Cc: lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+To: Fabien =?iso-8859-1?Q?Duch=EAne?= <fabien.duchene@student.uclouvain.be>
+Cc: 'Jan Engelhardt' <jengelh@medozas.de>, 'netfilter-devel' <netfilter-devel@vger.kernel.org>, lvs-devel@vger.kernel.org, 'Joseph Mack NA3T' <jmack@wm7d.net>, 'Julius Volz' <julius.volz@gmail.com>
 
-On Fri, May 01, 2009 at 01:42:06PM -0600, Caleb Anthony wrote:
-> I think that's a good idea, I'll see what I can do to get a patch that
-> adds that functionality.
+On Fri, May 01, 2009 at 02:49:07PM +0200, Fabien Duch=EAne wrote:
+> Hello,
+>=20
+> Yes, it's working perfectly, no any problems and no difference in the
+> performances.
+> Tested with a lot (100 000+) of connections for 3 days now.. :)
 
 Great, thanks.
 
--- 
+--=20
 Simon Horman
   VA Linux Systems Japan K.K. Satellite Lab in Sydney, Australia
   H: www.vergenet.net/~horms/            W: www.valinux.co.jp/en
