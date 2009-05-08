@@ -1,125 +1,174 @@
-From: Caleb Anthony <caleb.anthony@gmail.com>
-Subject: Re: [PATCH] ldirectord: Allow sending email via external SMTP server
-Date: Thu, 7 May 2009 14:09:34 -0600
-Message-ID: <33afbbe70905071309m3cd9e124u95169563460397ce@mail.gmail.com>
-References: <33afbbe70904271254j17e1896fqdb51e88ebd71b2b7@mail.gmail.com>
-	 <20090428062636.GB19369@verge.net.au>
-	 <33afbbe70904280647x33fafef1w258303ebe4eec313@mail.gmail.com>
-	 <20090428151120.GB8377@verge.net.au>
-	 <33afbbe70905011242m2423ff3eg4606d7d0ef287387@mail.gmail.com>
-	 <20090505124718.GC19402@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH] ldirectord: Allow sending email via external SMTP
+	server
+Date: Fri, 8 May 2009 10:28:52 +1000
+Message-ID: <20090508002852.GL10892@verge.net.au>
+References: <33afbbe70904271254j17e1896fqdb51e88ebd71b2b7@mail.gmail.com> <20090428062636.GB19369@verge.net.au> <33afbbe70904280647x33fafef1w258303ebe4eec313@mail.gmail.com> <20090428151120.GB8377@verge.net.au> <33afbbe70905011242m2423ff3eg4606d7d0ef287387@mail.gmail.com> <20090505124718.GC19402@verge.net.au> <33afbbe70905071309m3cd9e124u95169563460397ce@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=001e68378aa332e27c0469581708
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=gamma;
-        h=domainkey-signature:mime-version:received:in-reply-to:references
-         :date:message-id:subject:from:to:cc:content-type;
-        bh=m3fwdogsEz84s9hnGghFrXC08tRw61W2VdpCBZMXPI4=;
-        b=wmJOG+K8gXLAj6Ow87ZJRsXEez006Pkz7ucPan00QOuDLahUmJ4pR1ylQrbbtjaxOa
-         ybyAkHvunXHvfQCelgYgVB91OvIu6/3LZb8Kg9c8zbzdpEuPXcU3HWrawwxc1MBbM7jz
-         Ue0jCVVg0l6Bijm1nT0EIH8rhtQOGCxqjIu94=
-In-Reply-To: <20090505124718.GC19402@verge.net.au>
+Content-Disposition: inline
+In-Reply-To: <33afbbe70905071309m3cd9e124u95169563460397ce@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: Simon Horman <horms@verge.net.au>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Caleb Anthony <caleb.anthony@gmail.com>
 Cc: lvs-devel@vger.kernel.org
 
---001e68378aa332e27c0469581708
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
+On Thu, May 07, 2009 at 02:09:34PM -0600, Caleb Anthony wrote:
+> Attached is a new patch. This one adds two new subs:
+> ld_emailalert_net_smtp and ld_emailalert_mail_send. If an SMTP server
+> is set in ldirectord.cf, then ld_emailalert_net_smtp will be called
+> and the email will be sent via SMTP. If an SMTP server is not set in
+> ldirectord.cf then ld_emailalert_mail_send will be called and the
+> email will be sent via the Mail::Send methods.
+> 
+> Let me know what you think.
 
-Attached is a new patch. This one adds two new subs:
-ld_emailalert_net_smtp and ld_emailalert_mail_send. If an SMTP server
-is set in ldirectord.cf, then ld_emailalert_net_smtp will be called
-and the email will be sent via SMTP. If an SMTP server is not set in
-ldirectord.cf then ld_emailalert_mail_send will be called and the
-email will be sent via the Mail::Send methods.
+Hi Caleb,
 
-Let me know what you think.
+That looks pretty good to me. How well tested is it?
 
-Caleb
+I have rediffed it against the current http://hg.linux-ha.org/dev tree.
+The result is below:
 
-On Tue, May 5, 2009 at 6:47 AM, Simon Horman <horms@verge.net.au> wrote:
-> On Fri, May 01, 2009 at 01:42:06PM -0600, Caleb Anthony wrote:
->> I think that's a good idea, I'll see what I can do to get a patch that
->> adds that functionality.
->
-> Great, thanks.
->
-> --
-> Simon Horman
-> =A0VA Linux Systems Japan K.K. Satellite Lab in Sydney, Australia
-> =A0H: www.vergenet.net/~horms/ =A0 =A0 =A0 =A0 =A0 =A0W: www.valinux.co.j=
-p/en
->
->
-
---001e68378aa332e27c0469581708
-Content-Type: application/octet-stream; name="ldirectord.patch"
-Content-Disposition: attachment; filename="ldirectord.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_fufw5cw30
-
-LS0tIC90bXAvbGRpcmVjdG9yZC5vcmlnL2xkaXJlY3RvcmQJMjAwOS0wMS0wOSAxNDo1NTo0OS4w
-MDAwMDAwMDAgLTA3MDAKKysrIC90bXAvbGRpcmVjdG9yZC5zbXRwL2xkaXJlY3RvcmQJMjAwOS0w
-NS0wNyAxNDowNjo0Ni4wMDAwMDAwMDAgLTA2MDAKQEAgLTIyOSw2ICsyMjksMTMgQEAKIERlZmF1
-bHQ6IGFsbAogCiAKK0I8c210cCA9ID5JPGlwX2FkZHJlc3N8aG9zdG5hbWU+QjwiPgorCitBIHZh
-bGlkIFNNVFAgc2VydmVyIGFkZHJlc3MgdG8gdXNlIGZvciBzZW5kaW5nIGVtYWlsIHZpYSBTTVRQ
-LgorCitJZiBkZWZpbmVkIGluIGEgdmlydHVhbCBzZXJ2ZXIgc2VjdGlvbiB0aGVuIHRoZSBnbG9i
-YWwgdmFsdWUgaXMgb3ZlcnJpZGRlbi4KKworCiBCPGV4ZWN1dGUgPSAiPkk8Y29uZmlndXJhdGlv
-bj5CPCI+CiAKIFVzZSB0aGlzIGRpcmVjdGl2ZSB0byBzdGFydCBhbiBpbnN0YW5jZSBvZiBsZGly
-ZWN0b3JkIGZvcgpAQCAtNjExLDYgKzYxOCw3IEBACiAJICAgICRFTUFJTEFMRVJUCiAJICAgICRF
-TUFJTEFMRVJURlJFUQogCSAgICAkRU1BSUxBTEVSVFNUQVRVUworCSAgICAkU01UUAogCiAJICAg
-ICRDQUxMQkFDSwogCSAgICAkQ0ZHTkFNRQpAQCAtMTMyMSw2ICsxMzI5LDkgQEAKIAkJCQkJCSZj
-b25maWdfZXJyb3IoJGxpbmUsICJ1bmFibGUgdG8gb3BlbiBtb25pdG9yZmlsZSAkbW9uaXRvcmZp
-bGU6ICQhIik7CiAJCQkJCX0KIAkJCQkJJHZzcnZ7bW9uaXRvcmZpbGV9ID0gJG1vbml0b3JmaWxl
-OworCQkJCX0gZWxzaWYgICgkcmNtZCA9fiAvXnNtdHBccyo9XHMqKC4qKS8pIHsKKwkJCQkJJDEg
-PX4gLyheKFswLTlBLVphLXouXystXSspKS8gb3IgJmNvbmZpZ19lcnJvcigkbGluZSwgImludmFs
-aWQgU01UUCBzZXJ2ZXIgYWRkcmVzcyIpOworCQkJCQkkdnNydntzbXRwfSA9ICQxOwogCQkJCX0g
-ZWxzZSB7CiAJCQkJCSZjb25maWdfZXJyb3IoJGxpbmUsICJVbmtub3duIGNvbW1hbmQgXCIkbGlu
-ZWRhdGFcIiIpOwogCQkJCX0KQEAgLTE0MzIsNiArMTQ0MywxMCBAQAogCQkJJEVNQUlMQUxFUlRG
-UkVRID0gJDE7CiAJCX0gZWxzaWYgICgkbGluZWRhdGEgID1+IC9eZW1haWxhbGVydHN0YXR1c1xz
-Kj1ccyooLiopLykgewogCQkJJEVNQUlMQUxFUlRTVEFUVVMgPSAmcGFyc2VfZW1haWxhbGVydHN0
-YXR1cygkbGluZSwgJDEpOworCQl9IGVsc2lmICAoJGxpbmVkYXRhICA9fiAvXnNtdHBccyo9XHMq
-KC4qKS8pIHsKKwkJCSQxID1+IC8oXihbMC05QS1aYS16Ll8rLV0rKSkvIG9yICZjb25maWdfZXJy
-b3IoJGxpbmUsCisJCQkJCSJpbnZhbGlkIFNNVFAgc2VydmVyIGFkZHJlc3MiKTsKKwkJCSRTTVRQ
-ID0gJDE7CiAJCX0gZWxzZSB7CiAJCQlpZiAoJGxpbmVkYXRhICA9fiAvXnRpbWVvdXRccyo9XHMq
-KC4qKS8pIHsKIAkJCQkmY29uZmlnX2Vycm9yKCRsaW5lLCAKQEAgLTM4ODAsMTQgKzM4OTUsMTMg
-QEAKIHN1YiBsZF9lbWFpbGFsZXJ0X3NlbmQKIHsKIAlteSAoJHN1YmplY3QsICR2LCAkcnNlcnZl
-ciwgJGN1cnJlbnR0aW1lKSA9IChAXyk7Ci0JbXkgJGVtYWlsbXNnOwotCW15ICRlbWFpbGZoOwog
-CW15ICRzdGF0dXMgPSAwOwogCW15ICR0b19hZGRyOwogCW15ICRmcmVxdWVuY3k7CiAJbXkgJHZp
-cnR1YWxfc3RyOwogCW15ICRpZDsKIAlteSAkc3RhdHVzZmlsdGVyOworCW15ICRzbXRwX3NlcnZl
-cjsKIAogCSRmcmVxdWVuY3kgPSBkZWZpbmVkICR2LT57ZW1haWxhbGVydGZyZXF9ID8gJHYtPntl
-bWFpbGFsZXJ0fSA6CiAJCQkJJEVNQUlMQUxFUlRGUkVROwpAQCAtMzkxNCw2ICszOTI4LDcyIEBA
-CiAJCXJldHVybiAwOwogCX0KIAorCSRzbXRwX3NlcnZlciA9IGRlZmluZWQgJHYtPntzbXRwfSA/
-ICR2LT57c210cH0gOgorCQkJCSRTTVRQOworCisJaWYgKGRlZmluZWQgJHNtdHBfc2VydmVyKSB7
-CisJCSRzdGF0dXMgPSAmbGRfZW1haWxhbGVydF9uZXRfc210cCgkc210cF9zZXJ2ZXIsICR0b19h
-ZGRyLCAkc3ViamVjdCk7CisJfQorCWVsc2UgeworCQkkc3RhdHVzID0gJmxkX2VtYWlsYWxlcnRf
-bWFpbF9zZW5kKCR0b19hZGRyLCAkc3ViamVjdCk7CisJfQorCisJcmV0dXJuKCRzdGF0dXMpOwor
-fQorCisjIGxkX2VtYWlsYWxlcnRfbmV0X3NtdHAKKyMgU2VuZCBlbWFpbCBhbGVydHMgdmlhIFNN
-VFAgc2VydmVyCisjIHByZTogc210cDogU01UUCBzZXJ2ZXIgZGVmaW5lZAorIyBwb3N0OiBtZXNz
-YWdlIGlzIGVtYWlsZWQgaWYgU01UUCBzZXJ2ZXIgaXMgdmFsaWQgYW5kIHdvcmtpbmcKKyMgcmV0
-dXJuOiAwIG9uIHN1Y2Nlc3MKKyMJICAxIG9uIGVycm9yCisKK3N1YiBsZF9lbWFpbGFsZXJ0X25l
-dF9zbXRwCit7CisJbXkgKCRzbXRwX3NlcnZlciwgJHRvX2FkZHIsICRzdWJqZWN0KSA9IChAXyk7
-CisJbXkgJHN0YXR1cyA9IDA7CisKKwl1c2UgTmV0OjpTTVRQOworCXVzZSBTeXM6Okhvc3RuYW1l
-OworCisJbXkgJGhvc3RuYW1lID0gaG9zdG5hbWU7CisKKwlteSAkc210cCA9IE5ldDo6U01UUC0+
-bmV3KCRzbXRwX3NlcnZlcik7CisKKwlpZiAoJHNtdHApIHsKKwkJJHNtdHAtPm1haWwoIiRFTlZ7
-VVNFUn1cQCRob3N0bmFtZSIpOworCQkkc210cC0+dG8oJHRvX2FkZHIpOworCQkkc210cC0+ZGF0
-YSgpOworCQkkc210cC0+ZGF0YXNlbmQoIkZyb206ICRFTlZ7VVNFUn1cQCRob3N0bmFtZVxuIik7
-CisJCSRzbXRwLT5kYXRhc2VuZCgiVG86ICR0b19hZGRyXG4iKTsKKwkJJHNtdHAtPmRhdGFzZW5k
-KCJTdWJqZWN0OiAkc3ViamVjdFxuXG4iKTsKKwkJJHNtdHAtPmRhdGFzZW5kKCJMb2ctTWVzc2Fn
-ZTogJHN1YmplY3RcbiIgLgorCQkJCSJEYWVtb24tU3RhdHVzOiAiIC4KKwkJCQkmZGFlbW9uX3N0
-YXR1c19zdHIoKSAuICJcbiIpOworCQkkc210cC0+ZGF0YWVuZCgpOworCQkkc210cC0+cXVpdDsK
-Kwl9IGVsc2UgeworCQkmbGRfbG9nKCJmYWlsZWQgdG8gc2VuZCBTTVRQIGVtYWlsIG1lc3NhZ2Vc
-biIpOworCQkkc3RhdHVzID0gMTsKKwl9CisKKwlyZXR1cm4oJHN0YXR1cyk7Cit9CisKKyMgbGRf
-ZW1haWxhbGVydF9tYWlsX3NlbmQKKyMgU2VuZCBlbWFpbCBhbGVydHMgdmlhIE1haWw6OlNlbmQK
-KyMgcHJlOiBzbXRwOiBTTVRQIHNlcnZlciBub3QgZGVmaW5lZAorIyBwb3N0OiBtZXNzYWdlIGlz
-IGVtYWlsZWQgaWYgb25lIG9mIHRoZSBNYWlsOjpTZW5kIG1ldGhvZHMgd29ya3MKKyMgcmV0dXJu
-OiAwIG9uIHN1Y2Nlc3MKKyMJICAxIG9uIGVycm9yCisKK3N1YiBsZF9lbWFpbGFsZXJ0X21haWxf
-c2VuZAoreworCW15ICgkdG9fYWRkciwgJHN1YmplY3QpID0gKEBfKTsKKwlteSAkZW1haWxtc2c7
-CisJbXkgJGVtYWlsZmg7CisJbXkgJHN0YXR1cyA9IDA7CisKIAl1c2UgTWFpbDo6U2VuZDsKIAog
-CSZsZF9sb2coImVtYWlsYWxlcnQ6ICRzdWJqZWN0Iik7CkBAIC0zOTMxLDcgKzQwMTEsNiBAQAog
-CXJldHVybigkc3RhdHVzKTsKIH0KIAotCiAjIGxkX2VtYWlsYWxlcnRfcmVzZW5kCiAjIFJlc2Vu
-ZCBlbWFpbCBhbGVydHMgYXMgbmVjY2Vzc2FyeQogIyBwcmU6IG5vbmUK
---001e68378aa332e27c0469581708--
+Index: dev/ldirectord/ldirectord.in
+===================================================================
+--- dev.orig/ldirectord/ldirectord.in	2009-05-08 10:21:45.000000000 +1000
++++ dev/ldirectord/ldirectord.in	2009-05-08 10:27:02.000000000 +1000
+@@ -248,6 +248,13 @@ If defined in a virtual server section t
+ Default: all
+ 
+ 
++B<smtp = >I<ip_address|hostname>B<">
++
++A valid SMTP server address to use for sending email via SMTP.
++
++If defined in a virtual server section then the global value is overridden.
++
++
+ B<execute = ">I<configuration>B<">
+ 
+ Use this directive to start an instance of ldirectord for
+@@ -662,6 +669,7 @@ use vars qw(
+ 	    $EMAILALERT
+ 	    $EMAILALERTFREQ
+ 	    $EMAILALERTSTATUS
++	    $SMTP
+ 	    $CLEANSTOP
+ 
+ 	    $CALLBACK
+@@ -1422,6 +1430,9 @@ sub read_config
+ 					($1 eq "yes" || $1 eq "no")
+ 						or &config_error($line, "cleanstop must be 'yes' or 'no'");
+ 					$vsrv{cleanstop} = $1;
++				} elsif  ($rcmd =~ /^smtp\s*=\s*(.*)/) {
++					$1 =~ /(^([0-9A-Za-z._+-]+))/ or &config_error($line, "invalid SMTP server address");
++					$vsrv{smtp} = $1;
+ 				} else {
+ 					&config_error($line, "Unknown command \"$linedata\"");
+ 				}
+@@ -1540,6 +1551,10 @@ sub read_config
+ 			($1 eq "yes" || $1 eq "no")
+ 			    or &config_error($line, "cleanstop must be 'yes' or 'no'");
+ 			$CLEANSTOP = $1;
++		} elsif  ($linedata  =~ /^smtp\s*=\s*(.*)/) {
++			$1 =~ /(^([0-9A-Za-z._+-]+))/ or &config_error($line,
++					"invalid SMTP server address");
++			$SMTP = $1;
+ 		} else {
+ 			if ($linedata  =~ /^timeout\s*=\s*(.*)/) {
+ 				&config_error($line, 
+@@ -4109,14 +4124,13 @@ sub daemon_status_str
+ sub ld_emailalert_send
+ {
+ 	my ($subject, $v, $rserver, $currenttime) = (@_);
+-	my $emailmsg;
+-	my $emailfh;
+ 	my $status = 0;
+ 	my $to_addr;
+ 	my $frequency;
+ 	my $virtual_str;
+ 	my $id;
+ 	my $statusfilter;
++	my $smtp_server;
+ 
+ 	$frequency = defined $v->{emailalertfreq} ? $v->{emailalert} :
+ 				$EMAILALERTFREQ;
+@@ -4143,6 +4157,72 @@ sub ld_emailalert_send
+ 		return 0;
+ 	}
+ 
++	$smtp_server = defined $v->{smtp} ? $v->{smtp} :
++				$SMTP;
++
++	if (defined $smtp_server) {
++		$status = &ld_emailalert_net_smtp($smtp_server, $to_addr, $subject);
++	}
++	else {
++		$status = &ld_emailalert_mail_send($to_addr, $subject);
++	}
++
++	return($status);
++}
++
++# ld_emailalert_net_smtp
++# Send email alerts via SMTP server
++# pre: smtp: SMTP server defined
++# post: message is emailed if SMTP server is valid and working
++# return: 0 on success
++#	  1 on error
++
++sub ld_emailalert_net_smtp
++{
++	my ($smtp_server, $to_addr, $subject) = (@_);
++	my $status = 0;
++
++	use Net::SMTP;
++	use Sys::Hostname;
++
++	my $hostname = hostname;
++
++	my $smtp = Net::SMTP->new($smtp_server);
++
++	if ($smtp) {
++		$smtp->mail("$ENV{USER}\@$hostname");
++		$smtp->to($to_addr);
++		$smtp->data();
++		$smtp->datasend("From: $ENV{USER}\@$hostname\n");
++		$smtp->datasend("To: $to_addr\n");
++		$smtp->datasend("Subject: $subject\n\n");
++		$smtp->datasend("Log-Message: $subject\n" .
++				"Daemon-Status: " .
++				&daemon_status_str() . "\n");
++		$smtp->dataend();
++		$smtp->quit;
++	} else {
++		&ld_log("failed to send SMTP email message\n");
++		$status = 1;
++	}
++
++	return($status);
++}
++
++# ld_emailalert_mail_send
++# Send email alerts via Mail::Send
++# pre: smtp: SMTP server not defined
++# post: message is emailed if one of the Mail::Send methods works
++# return: 0 on success
++#	  1 on error
++
++sub ld_emailalert_mail_send
++{
++	my ($to_addr, $subject) = (@_);
++	my $emailmsg;
++	my $emailfh;
++	my $status = 0;
++
+ 	use Mail::Send;
+ 
+ 	&ld_log("emailalert: $subject");
+@@ -4160,7 +4240,6 @@ sub ld_emailalert_send
+ 	return($status);
+ }
+ 
