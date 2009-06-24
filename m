@@ -1,43 +1,78 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ldirectord: Allow sending email via external SMTP
-	server
-Date: Sat, 9 May 2009 12:05:01 +1000
-Message-ID: <20090509020458.GA11404@verge.net.au>
-References: <33afbbe70904271254j17e1896fqdb51e88ebd71b2b7@mail.gmail.com> <20090428062636.GB19369@verge.net.au> <33afbbe70904280647x33fafef1w258303ebe4eec313@mail.gmail.com> <20090428151120.GB8377@verge.net.au> <33afbbe70905011242m2423ff3eg4606d7d0ef287387@mail.gmail.com> <20090505124718.GC19402@verge.net.au> <33afbbe70905071309m3cd9e124u95169563460397ce@mail.gmail.com> <20090508002852.GL10892@verge.net.au> <33afbbe70905080638u4d6959fdoa4770e86b876c924@mail.gmail.com> <20090508152657.GB17812@verge.net.au>
+From: Julius Volz <julius.volz@gmail.com>
+Subject: [PATCH] IPVS: Add handling of incoming ICMPV6_PKT_TOOBIG messages
+Date: Wed, 24 Jun 2009 15:22:32 +0200
+Message-ID: <20090624132232.GA9633@egardia>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=gamma;
+        h=domainkey-signature:received:received:date:from:to:cc:subject
+         :message-id:mime-version:content-type:content-disposition:user-agent;
+        bh=Mc6oaprkQb4u2nVh4/GxCtUMDDhgpGqZj1WpGm+Fors=;
+        b=fMOZddJJhvK64M4WY7wE8E8hh4p1du8IfhirGbRn4DoGagYTOnmZkIC3fP/kNLYh41
+         /zMRiZlug/si4KQ8xhgaRHECM9lnyQXz8I77AWYqMjD609nJFv22YnvB/hMdJITk702L
+         YT20+81x0yN3JjFBHZ0I9gO9PZvnlMA6FaoQc=
 Content-Disposition: inline
-In-Reply-To: <20090508152657.GB17812@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Caleb Anthony <caleb.anthony@gmail.com>
-Cc: lvs-devel@vger.kernel.org
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: robert.gallagher@heanet.ie, horms@verge.net.au
 
-On Sat, May 09, 2009 at 01:26:57AM +1000, Simon Horman wrote:
-> On Fri, May 08, 2009 at 07:38:34AM -0600, Caleb Anthony wrote:
-> > It's fairly well tested. I tried to break it as much as I could -
-> > setting an unreachable SMTP server, setting an invalid SMTP server
-> > address, sending a ton of e-mails with the code by starting, stopping,
-> > adding and removing real servers, etc. I'm going to put it into
-> > production on a few IPVS directors I have here. I can report back in
-> > about a week if you would like.
-> > 
-> > Also, there needs to be one addition to the ld_emailalert_net_smtp
-> > sub. The ld_emailalert_mail_send sub logs a message in ldirectord.log
-> > once an email is sent: &ld_log("emailalert: $subject");. I meant to
-> > include that same line in ld_emailalert_net_smtp so that each sub
-> > would be as similar as possible.
-> > 
-> > Could you add that line to ld_emailalert_net_smtp before you commit?
+Add handling of incoming ICMPv6 Packet Too Big messages. This message
+is received when a realserver sends a packet >PMTU to the client. The
+hop on this path with insufficient MTU will generate an ICMPv6 Packet
+Too Big message back to the VIP. The LVS server receives this message,
+but the call to the function handling this has been missing. Thus, IPVS
+fails to forward the message to the real server, which then does not
+adjust the path MTU. This patch adds the missing call to
+ip_vs_in_icmp_v6() in ip_vs_in() to handle this situation.
 
-I have moved the &ld_log() call to the parent function applied the change.
+Thanks to Rob Gallagher from HEAnet for reporting this issue and for
+testing this patch in production (with direct routing mode).
 
-http://hg.linux-ha.org/dev/rev/fdd0e04fb520
+Signed-off-by: Julius Volz <julius.volz@gmail.com>
+Tested-by: Rob Gallagher <robert.gallagher@heanet.ie>
+---
+ net/netfilter/ipvs/ip_vs_core.c |   23 +++++++++++++++++------
+ 1 files changed, 17 insertions(+), 6 deletions(-)
 
-If any further changes/fixes are needed please make them
-as an additional patch.
-
-Thanks
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 8dddb17..5750800 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1274,13 +1274,24 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb,
+ 		return NF_ACCEPT;
+ 	}
+ 
+-	if (unlikely(iph.protocol == IPPROTO_ICMP)) {
+-		int related, verdict = ip_vs_in_icmp(skb, &related, hooknum);
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6) {
++		if (unlikely(iph.protocol == IPPROTO_ICMPV6)) {
++			int related, verdict = ip_vs_in_icmp_v6(skb, &related, hooknum);
+ 
+-		if (related)
+-			return verdict;
+-		ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
+-	}
++			if (related)
++				return verdict;
++			ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
++		}
++	} else
++#endif
++		if (unlikely(iph.protocol == IPPROTO_ICMP)) {
++			int related, verdict = ip_vs_in_icmp(skb, &related, hooknum);
++
++			if (related)
++				return verdict;
++			ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
++		}
+ 
+ 	/* Protocol supported? */
+ 	pp = ip_vs_proto_get(iph.protocol);
+-- 
+1.6.0.4
 
