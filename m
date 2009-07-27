@@ -1,72 +1,67 @@
 From: Hannes Eder <heder@google.com>
-Subject: [RFC][PATCH 0/5] IPVS full NAT support + netfilter 'ipvs' match support
-Date: Mon, 27 Jul 2009 15:46:11 +0200
-Message-ID: <20090727134457.12897.272.stgit@jazzy.zrh.corp.google.com>
+Subject: [RFC][PATCH 1/5] IPVS: prefix EnterFunction and LeaveFunction msg with
+	"IPVS:"
+Date: Mon, 27 Jul 2009 15:46:16 +0200
+Message-ID: <20090727134616.12897.7639.stgit@jazzy.zrh.corp.google.com>
+References: <20090727134457.12897.272.stgit@jazzy.zrh.corp.google.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752667AbZG0Pb2@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752842AbZG0Pba@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1248708680; bh=O4Blt+yC77RtYKzkmrCcS0SXyAQ=;
-	h=DomainKey-Signature:Subject:To:From:Cc:Date:Message-ID:User-Agent:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 X-System-Of-Record; b=a3xgzD48AtfHWJIMGdOVtUG1+d1OLX1xjdsFI6oUHRnv
-	Y0xyrVr+wOWY4XpQmwCDAYvilykj4rr2ZYb1/5c75A==
+	t=1248708681; bh=AQZezPrL8G2ZolBIaDDKK6G/xsk=;
+	h=DomainKey-Signature:Subject:To:From:Cc:Date:Message-ID:
+	 In-Reply-To:References:User-Agent:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:X-System-Of-Record; b=mlFhwuJm/lwDbF6W4K
+	3r5HUQZ8i8FG+v2owOs64dn0dVLNs06tEnWO8hSPKZ4HLoDRIRlWVUNX+PLZWhmjYlb
+	A==
+In-Reply-To: <20090727134457.12897.272.stgit@jazzy.zrh.corp.google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: lvs-devel@vger.kernel.org
 Cc: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 
-The following series is aiming at adding full NAT support to IPVS.  The
-approach is via a minimal change to IPVS (make friends with nf_conntrack)
-and adding a netfilter matcher (xt_ipvs + libxt_ipvs).
+From: Hannes Eder <hannes@hanneseder.net>
 
-Example usage:
+Now all printk messages from IPVS are prefixed with "IPVS:".
 
-% ipvsadm -A -t 192.168.100.30:8080 -s rr
-% ipvsadm -a -t 192.168.100.30:8080 -r 192.168.10.20:8080 -m
-# ...
+Signed-off-by: Hannes Eder <heder@google.com>
 
-# SNAT for VIP 192.168.100.30:8080
-% iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 --vport 8080 \
-> -j SNAT --to-source 192.168.10.10 
+ include/net/ip_vs.h |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
-Comments?
-
-Changes to the linux kernel:
-
-Hannes Eder (4):
-      IPVS: debugging output for ip_vs_update_conntrack
-      IPVS: make friends with nf_conntrack
-      netfilter: xt_ipvs (netfilter matcher for ipvs)
-      IPVS: prefix EnterFunction and LeaveFunction msg with "IPVS:"
-
- include/linux/netfilter/xt_ipvs.h |   32 +++++++
- include/net/ip_vs.h               |   24 +++--
- net/netfilter/Kconfig             |    8 ++
- net/netfilter/Makefile            |    1 
- net/netfilter/ipvs/ip_vs_core.c   |   36 --------
- net/netfilter/ipvs/ip_vs_proto.c  |    1 
- net/netfilter/ipvs/ip_vs_xmit.c   |   54 ++++++++++++
- net/netfilter/xt_ipvs.c           |  171 +++++++++++++++++++++++++++++++++++++
- 8 files changed, 279 insertions(+), 48 deletions(-)
- create mode 100644 include/linux/netfilter/xt_ipvs.h
- create mode 100644 net/netfilter/xt_ipvs.c
-
-
-Changes to iptables:
-
-Hannes Eder (1):
-      libxt_ipvs: user space lib for netfilter matcher xt_ipvs
-
- extensions/libxt_ipvs.c           |  350 +++++++++++++++++++++++++++++++++++++
- extensions/libxt_ipvs.man         |    7 +
- include/linux/netfilter/xt_ipvs.h |   32 +++
- 3 files changed, 389 insertions(+), 0 deletions(-)
- create mode 100644 extensions/libxt_ipvs.c
- create mode 100644 extensions/libxt_ipvs.man
- create mode 100644 include/linux/netfilter/xt_ipvs.h
-
-
-Cheers,
--Hannes
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index e01cc2d..e03524e 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -161,18 +161,18 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+     } while (0)
+ 
+ #ifdef CONFIG_IP_VS_DEBUG
+-#define EnterFunction(level)						\
+-    do {								\
+-	    if (level <= ip_vs_get_debug_level())			\
+-		    printk(KERN_DEBUG "Enter: %s, %s line %i\n",	\
+-			   __func__, __FILE__, __LINE__);		\
+-    } while (0)
+-#define LeaveFunction(level)                                            \
+-    do {                                                                \
+-	    if (level <= ip_vs_get_debug_level())                       \
+-			printk(KERN_DEBUG "Leave: %s, %s line %i\n",    \
+-			       __func__, __FILE__, __LINE__);       \
+-    } while (0)
++#define EnterFunction(level)						       \
++	do {								       \
++		if (level <= ip_vs_get_debug_level())			       \
++			printk(KERN_DEBUG "IPVS: Enter: %s, %s line %i\n",     \
++				__func__, __FILE__, __LINE__);		       \
++	} while (0)
++#define LeaveFunction(level)						       \
++	do {								       \
++		if (level <= ip_vs_get_debug_level())			       \
++			printk(KERN_DEBUG "IPVS: Leave: %s, %s line %i\n",     \
++				__func__, __FILE__, __LINE__);		       \
++	} while (0)
+ #else
+ #define EnterFunction(level)   do {} while (0)
+ #define LeaveFunction(level)   do {} while (0)
