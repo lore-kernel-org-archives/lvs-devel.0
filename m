@@ -1,296 +1,553 @@
 From: Hannes Eder <heder@google.com>
-Subject: Re: [RFC][PATCH 2/5] netfilter: xt_ipvs (netfilter matcher for ipvs)
-Date: Tue, 28 Jul 2009 16:55:01 +0200
-Message-ID: <b5ddba180907280755k725440fag79d39f18ebc7d28d@mail.gmail.com>
-References: <20090727134457.12897.272.stgit@jazzy.zrh.corp.google.com>
-	 <20090727134621.12897.75558.stgit@jazzy.zrh.corp.google.com>
-	 <alpine.LSU.2.00.0907272017280.20984@fbirervta.pbzchgretzou.qr>
+Subject: [PATCH 1/2] IPVS: use pr_fmt
+Date: Tue, 28 Jul 2009 18:06:04 +0200
+Message-ID: <20090728160536.12503.82355.stgit@jazzy.zrh.corp.google.com>
+References: <20090728160145.12503.61834.stgit@jazzy.zrh.corp.google.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1248792907; bh=9qBTFdShFzAZKwTr166KyYQ/xGI=;
-	h=DomainKey-Signature:MIME-Version:In-Reply-To:References:Date:
-	 Message-ID:Subject:From:To:Cc:Content-Type:
-	 Content-Transfer-Encoding:X-System-Of-Record; b=ZWm4nzzjBj0xYR++7v
-	eyHYN5E+qdGtyr+VtY+W57TrrMNKzdR265unhj8ZXdURLSN0Q1Sg6wAxKCN3ozaDtmr
-	g==
-In-Reply-To: <alpine.LSU.2.00.0907272017280.20984@fbirervta.pbzchgretzou.qr>
-Sender: netfilter-devel-owner@vger.kernel.org
+	t=1248797289; bh=kBP+q5h2rg9YCD4W960dJ+rSlRk=;
+	h=DomainKey-Signature:Subject:To:From:Cc:Date:Message-ID:
+	 In-Reply-To:References:User-Agent:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:X-System-Of-Record; b=lP0KA/MNkyanAp7n0m
+	6UCdZzAG10AVxhZTeppDiihEnJ8QlCzYXx5Lg5hQuJL99UEDTScbWskMQjys0Xs5DtD
+	w==
+In-Reply-To: <20090728160145.12503.61834.stgit@jazzy.zrh.corp.google.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-To: Jan Engelhardt <jengelh@medozas.de>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>
 
-On Mon, Jul 27, 2009 at 20:35, Jan Engelhardt<jengelh@medozas.de> wrote=
-:
->
-> On Monday 2009-07-27 15:46, Hannes Eder wrote:
->>--- /dev/null
->>+++ b/include/linux/netfilter/xt_ipvs.h
->>@@ -0,0 +1,32 @@
->>+#ifndef _XT_IPVS_H
->>+#define _XT_IPVS_H 1
->>+
->>+#ifndef _IP_VS_H
->
-> Do the definitions (should probably be enums) exist in
-> very old <linux/ip_vs.h>? Then maybe you can get rid of them
-> from xt_ipvs.h.
+While being at it cleanup whitespace.
 
-Definitions removed from xt_ipvs.h.  For xt_ipvs.c I just included
-linux/ip_vs.h.  For libxt_ipvs (user space library) I added the entire
-linux/ip_vs.h.  Do you think this is better?
+Signed-off-by: Hannes Eder <heder@google.com>
 
->>+#define IP_VS_CONN_F_FWD_MASK 0x0007 =A0 =A0 =A0 =A0 =A0/* mask for =
-the fwd methods */
->>+#define IP_VS_CONN_F_MASQ =A0 =A0 0x0000 =A0 =A0 =A0 =A0 =A0/* masqu=
-erading/NAT */
->>+#define IP_VS_CONN_F_LOCALNODE =A0 =A0 =A0 =A00x0001 =A0 =A0 =A0 =A0=
- =A0/* local node */
->>+#define IP_VS_CONN_F_TUNNEL =A0 0x0002 =A0 =A0 =A0 =A0 =A0/* tunneli=
-ng */
->>+#define IP_VS_CONN_F_DROUTE =A0 0x0003 =A0 =A0 =A0 =A0 =A0/* direct =
-routing */
->>+#define IP_VS_CONN_F_BYPASS =A0 0x0004 =A0 =A0 =A0 =A0 =A0/* cache b=
-ypass */
->>+#endif
->>+
->>+#define XT_IPVS_IPVS =A0 =A0 =A0 =A0 =A00x01 /* this is implied by a=
-ll other options */
->>+#define XT_IPVS_PROTO =A0 =A0 =A0 =A0 0x02
->>+#define XT_IPVS_VADDR =A0 =A0 =A0 =A0 0x04
->>+#define XT_IPVS_VPORT =A0 =A0 =A0 =A0 0x08
->>+#define XT_IPVS_DIR =A0 =A0 =A0 =A0 =A0 0x10
->>+#define XT_IPVS_METHOD =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A00x20
->>+#define XT_IPVS_MASK =A0 =A0 =A0 =A0 =A0(0x40 - 1)
->>+#define XT_IPVS_ONCE_MASK =A0 =A0 (XT_IPVS_MASK & ~XT_IPVS_IPVS)
->>+
->>+struct xt_ipvs {
->>+ =A0 =A0 =A0union nf_inet_addr =A0 =A0 =A0vaddr, vmask;
->>+ =A0 =A0 =A0__be16 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0vport;
->>+ =A0 =A0 =A0u_int16_t =A0 =A0 =A0 =A0 =A0 =A0 =A0 l4proto;
->>+ =A0 =A0 =A0u_int16_t =A0 =A0 =A0 =A0 =A0 =A0 =A0 fwd_method;
->>+
->>+ =A0 =A0 =A0u_int8_t invert;
->>+ =A0 =A0 =A0u_int8_t bitmask;
->>+};
->
-> As per the "Writing Netfilter modules" e-book, __u16/__u8 is required=
-=2E
+ include/net/ip_vs.h                     |  119 +++++++++++++++----------------
+ net/netfilter/ipvs/ip_vs_app.c          |    3 +
+ net/netfilter/ipvs/ip_vs_conn.c         |    3 +
+ net/netfilter/ipvs/ip_vs_core.c         |    3 +
+ net/netfilter/ipvs/ip_vs_ctl.c          |    3 +
+ net/netfilter/ipvs/ip_vs_dh.c           |    3 +
+ net/netfilter/ipvs/ip_vs_est.c          |    4 +
+ net/netfilter/ipvs/ip_vs_ftp.c          |    3 +
+ net/netfilter/ipvs/ip_vs_lblc.c         |    3 +
+ net/netfilter/ipvs/ip_vs_lblcr.c        |    3 +
+ net/netfilter/ipvs/ip_vs_lc.c           |    3 +
+ net/netfilter/ipvs/ip_vs_nq.c           |    3 +
+ net/netfilter/ipvs/ip_vs_proto.c        |    7 +-
+ net/netfilter/ipvs/ip_vs_proto_ah_esp.c |    7 +-
+ net/netfilter/ipvs/ip_vs_proto_tcp.c    |    3 +
+ net/netfilter/ipvs/ip_vs_proto_udp.c    |    3 +
+ net/netfilter/ipvs/ip_vs_rr.c           |    3 +
+ net/netfilter/ipvs/ip_vs_sched.c        |    3 +
+ net/netfilter/ipvs/ip_vs_sed.c          |    3 +
+ net/netfilter/ipvs/ip_vs_sh.c           |    3 +
+ net/netfilter/ipvs/ip_vs_sync.c         |    3 +
+ net/netfilter/ipvs/ip_vs_wlc.c          |    3 +
+ net/netfilter/ipvs/ip_vs_wrr.c          |    3 +
+ net/netfilter/ipvs/ip_vs_xmit.c         |    3 +
+ 24 files changed, 133 insertions(+), 64 deletions(-)
 
-Done.
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index e01cc2d..99f09ab 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -99,47 +99,47 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+ 	return &buf[*idx - len];
+ }
+ 
+-#define IP_VS_DBG_BUF(level, msg...)			\
+-    do {						\
+-	    char ip_vs_dbg_buf[160];			\
+-	    int ip_vs_dbg_idx = 0;			\
+-	    if (level <= ip_vs_get_debug_level())	\
+-		    printk(KERN_DEBUG "IPVS: " msg);	\
+-    } while (0)
+-#define IP_VS_ERR_BUF(msg...)				\
+-    do {						\
+-	    char ip_vs_dbg_buf[160];			\
+-	    int ip_vs_dbg_idx = 0;			\
+-	    printk(KERN_ERR "IPVS: " msg);		\
+-    } while (0)
++#define IP_VS_DBG_BUF(level, msg...)				\
++	do {							\
++		char ip_vs_dbg_buf[160];			\
++		int ip_vs_dbg_idx = 0;				\
++		if (level <= ip_vs_get_debug_level())		\
++			pr_debug(msg);				\
++	} while (0)
++#define IP_VS_ERR_BUF(msg...)					\
++	do {							\
++		char ip_vs_dbg_buf[160];			\
++		int ip_vs_dbg_idx = 0;				\
++		pr_err(msg);					\
++	} while (0)
+ 
+ /* Only use from within IP_VS_DBG_BUF() or IP_VS_ERR_BUF macros */
+-#define IP_VS_DBG_ADDR(af, addr)			\
+-    ip_vs_dbg_addr(af, ip_vs_dbg_buf,			\
+-		   sizeof(ip_vs_dbg_buf), addr,		\
+-		   &ip_vs_dbg_idx)
+-
+-#define IP_VS_DBG(level, msg...)			\
+-    do {						\
+-	    if (level <= ip_vs_get_debug_level())	\
+-		    printk(KERN_DEBUG "IPVS: " msg);	\
+-    } while (0)
+-#define IP_VS_DBG_RL(msg...)				\
+-    do {						\
+-	    if (net_ratelimit())			\
+-		    printk(KERN_DEBUG "IPVS: " msg);	\
+-    } while (0)
+-#define IP_VS_DBG_PKT(level, pp, skb, ofs, msg)		\
+-    do {						\
+-	    if (level <= ip_vs_get_debug_level())	\
+-		pp->debug_packet(pp, skb, ofs, msg);	\
+-    } while (0)
+-#define IP_VS_DBG_RL_PKT(level, pp, skb, ofs, msg)	\
+-    do {						\
+-	    if (level <= ip_vs_get_debug_level() &&	\
+-		net_ratelimit())			\
+-		pp->debug_packet(pp, skb, ofs, msg);	\
+-    } while (0)
++#define IP_VS_DBG_ADDR(af, addr)				\
++	ip_vs_dbg_addr(af, ip_vs_dbg_buf,			\
++		       sizeof(ip_vs_dbg_buf), addr,		\
++		       &ip_vs_dbg_idx)
++
++#define IP_VS_DBG(level, msg...)				\
++	do {							\
++		if (level <= ip_vs_get_debug_level())		\
++			pr_debug(msg);				\
++	} while (0)
++#define IP_VS_DBG_RL(msg...)					\
++	do {							\
++		if (net_ratelimit())				\
++			pr_debug(msg);				\
++	} while (0)
++#define IP_VS_DBG_PKT(level, pp, skb, ofs, msg)			\
++	do {							\
++		if (level <= ip_vs_get_debug_level())		\
++			pp->debug_packet(pp, skb, ofs, msg);	\
++	} while (0)
++#define IP_VS_DBG_RL_PKT(level, pp, skb, ofs, msg)		\
++	do {							\
++		if (level <= ip_vs_get_debug_level() &&		\
++		    net_ratelimit())				\
++			pp->debug_packet(pp, skb, ofs, msg);	\
++	} while (0)
+ #else	/* NO DEBUGGING at ALL */
+ #define IP_VS_DBG_BUF(level, msg...)  do {} while (0)
+ #define IP_VS_ERR_BUF(msg...)  do {} while (0)
+@@ -150,29 +150,28 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+ #endif
+ 
+ #define IP_VS_BUG() BUG()
+-#define IP_VS_ERR(msg...) printk(KERN_ERR "IPVS: " msg)
+-#define IP_VS_INFO(msg...) printk(KERN_INFO "IPVS: " msg)
+-#define IP_VS_WARNING(msg...) \
+-	printk(KERN_WARNING "IPVS: " msg)
+-#define IP_VS_ERR_RL(msg...)				\
+-    do {						\
+-	    if (net_ratelimit())			\
+-		    printk(KERN_ERR "IPVS: " msg);	\
+-    } while (0)
++#define IP_VS_ERR(msg...) pr_err(msg)
++#define IP_VS_INFO(msg...) pr_info(msg)
++#define IP_VS_WARNING(msg...) pr_warning(msg)
++#define IP_VS_ERR_RL(msg...)					\
++	do {							\
++		if (net_ratelimit())				\
++			pr_err(msg);				\
++	} while (0)
+ 
+ #ifdef CONFIG_IP_VS_DEBUG
+-#define EnterFunction(level)						\
+-    do {								\
+-	    if (level <= ip_vs_get_debug_level())			\
+-		    printk(KERN_DEBUG "Enter: %s, %s line %i\n",	\
+-			   __func__, __FILE__, __LINE__);		\
+-    } while (0)
+-#define LeaveFunction(level)                                            \
+-    do {                                                                \
+-	    if (level <= ip_vs_get_debug_level())                       \
+-			printk(KERN_DEBUG "Leave: %s, %s line %i\n",    \
+-			       __func__, __FILE__, __LINE__);       \
+-    } while (0)
++#define EnterFunction(level)					\
++	do {							\
++		if (level <= ip_vs_get_debug_level())		\
++			pr_debug("Enter: %s, %s line %i\n",	\
++				 __func__, __FILE__, __LINE__);	\
++	} while (0)
++#define LeaveFunction(level)					\
++	do {							\
++		if (level <= ip_vs_get_debug_level())		\
++			pr_debug("Leave: %s, %s line %i\n",	\
++				 __func__, __FILE__, __LINE__);	\
++	} while (0)
+ #else
+ #define EnterFunction(level)   do {} while (0)
+ #define LeaveFunction(level)   do {} while (0)
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index 201b8ea..c1781f8 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -18,6 +18,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ #include <linux/skbuff.h>
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 928af1c..e613745 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -22,6 +22,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/interrupt.h>
+ #include <linux/in.h>
+ #include <linux/net.h>
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 8dddb17..6811dca 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -24,6 +24,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ #include <linux/ip.h>
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index beaf129..83a7ab6 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -18,6 +18,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/init.h>
+ #include <linux/types.h>
+diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
+index a9dac74..d0c0594 100644
+--- a/net/netfilter/ipvs/ip_vs_dh.c
++++ b/net/netfilter/ipvs/ip_vs_dh.c
+@@ -35,6 +35,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/ip.h>
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 2eb2860..702b53c 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -11,6 +11,10 @@
+  * Changes:
+  *
+  */
++
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/kernel.h>
+ #include <linux/jiffies.h>
+ #include <linux/slab.h>
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 428edbf..9c16a3f 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -22,6 +22,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
+ #include <linux/kernel.h>
+diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+index 537a7a1..66f625b 100644
+--- a/net/netfilter/ipvs/ip_vs_lblc.c
++++ b/net/netfilter/ipvs/ip_vs_lblc.c
+@@ -39,6 +39,9 @@
+  * me to write this module.
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/ip.h>
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+index c8f8687..63cca2b 100644
+--- a/net/netfilter/ipvs/ip_vs_lblcr.c
++++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+@@ -37,6 +37,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/ip.h>
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+diff --git a/net/netfilter/ipvs/ip_vs_lc.c b/net/netfilter/ipvs/ip_vs_lc.c
+index d0dadc8..4ecd5e1 100644
+--- a/net/netfilter/ipvs/ip_vs_lc.c
++++ b/net/netfilter/ipvs/ip_vs_lc.c
+@@ -14,6 +14,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_nq.c b/net/netfilter/ipvs/ip_vs_nq.c
+index 694952d..2224478 100644
+--- a/net/netfilter/ipvs/ip_vs_nq.c
++++ b/net/netfilter/ipvs/ip_vs_nq.c
+@@ -31,6 +31,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index a01520e..a95bc40 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -13,6 +13,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ #include <linux/skbuff.h>
+@@ -181,7 +184,7 @@ ip_vs_tcpudp_debug_packet_v4(struct ip_vs_protocol *pp,
+ 				&ih->daddr, ntohs(pptr[1]));
+ 	}
+ 
+-	printk(KERN_DEBUG "IPVS: %s: %s\n", msg, buf);
++	pr_debug("%s: %s\n", msg, buf);
+ }
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+@@ -215,7 +218,7 @@ ip_vs_tcpudp_debug_packet_v6(struct ip_vs_protocol *pp,
+ 				&ih->daddr, ntohs(pptr[1]));
+ 	}
+ 
+-	printk(KERN_DEBUG "IPVS: %s: %s\n", msg, buf);
++	pr_debug("%s: %s\n", msg, buf);
+ }
+ #endif
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+index 79f56c1..c30b43c 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+@@ -10,6 +10,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/in.h>
+ #include <linux/ip.h>
+ #include <linux/module.h>
+@@ -138,7 +141,7 @@ ah_esp_debug_packet_v4(struct ip_vs_protocol *pp, const struct sk_buff *skb,
+ 		sprintf(buf, "%s %pI4->%pI4",
+ 			pp->name, &ih->saddr, &ih->daddr);
+ 
+-	printk(KERN_DEBUG "IPVS: %s: %s\n", msg, buf);
++	pr_debug("%s: %s\n", msg, buf);
+ }
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+@@ -156,7 +159,7 @@ ah_esp_debug_packet_v6(struct ip_vs_protocol *pp, const struct sk_buff *skb,
+ 		sprintf(buf, "%s %pI6->%pI6",
+ 			pp->name, &ih->saddr, &ih->daddr);
+ 
+-	printk(KERN_DEBUG "IPVS: %s: %s\n", msg, buf);
++	pr_debug("%s: %s\n", msg, buf);
+ }
+ #endif
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 8cba418..c36c80d 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -13,6 +13,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/kernel.h>
+ #include <linux/ip.h>
+ #include <linux/tcp.h>                  /* for tcphdr */
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index d2930a7..96ebe40 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -13,6 +13,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/in.h>
+ #include <linux/ip.h>
+ #include <linux/kernel.h>
+diff --git a/net/netfilter/ipvs/ip_vs_rr.c b/net/netfilter/ipvs/ip_vs_rr.c
+index 2d16ab7..b01007e 100644
+--- a/net/netfilter/ipvs/ip_vs_rr.c
++++ b/net/netfilter/ipvs/ip_vs_rr.c
+@@ -19,6 +19,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
+index a46ad9e..87bc5ea 100644
+--- a/net/netfilter/ipvs/ip_vs_sched.c
++++ b/net/netfilter/ipvs/ip_vs_sched.c
+@@ -17,6 +17,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/spinlock.h>
+ #include <linux/interrupt.h>
+diff --git a/net/netfilter/ipvs/ip_vs_sed.c b/net/netfilter/ipvs/ip_vs_sed.c
+index 20e4657..4f745dd 100644
+--- a/net/netfilter/ipvs/ip_vs_sed.c
++++ b/net/netfilter/ipvs/ip_vs_sed.c
+@@ -35,6 +35,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index 75709eb..fb4d2d2 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -32,6 +32,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/ip.h>
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 5c48378..cc04c99 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -17,6 +17,9 @@
+  *	Justin Ossevoort	:	Fix endian problem on sync message size.
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/slab.h>
+ #include <linux/inetdevice.h>
+diff --git a/net/netfilter/ipvs/ip_vs_wlc.c b/net/netfilter/ipvs/ip_vs_wlc.c
+index 8e94256..bbddfdb 100644
+--- a/net/netfilter/ipvs/ip_vs_wlc.c
++++ b/net/netfilter/ipvs/ip_vs_wlc.c
+@@ -19,6 +19,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_wrr.c b/net/netfilter/ipvs/ip_vs_wrr.c
+index f7d74ef..c39ebb6 100644
+--- a/net/netfilter/ipvs/ip_vs_wrr.c
++++ b/net/netfilter/ipvs/ip_vs_wrr.c
+@@ -18,6 +18,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ #include <linux/net.h>
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 425ab14..e5e0025 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -13,6 +13,9 @@
+  *
+  */
+ 
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
+ #include <linux/kernel.h>
+ #include <linux/tcp.h>                  /* for tcphdr */
+ #include <net/ip.h>
 
->>+config NETFILTER_XT_MATCH_IPVS
->>+ =A0 =A0 =A0tristate '"ipvs" match support'
->>+ =A0 =A0 =A0depends on NETFILTER_ADVANCED
->>+ =A0 =A0 =A0help
->>+ =A0 =A0 =A0 =A0This option allows you to match against ipvs propert=
-ies of a packet.
->>+
->>+ =A0 =A0 =A0 =A0 =A0To compile it as a module, choos M here. =A0If u=
-nsure, say N.
->>+
->IMHO the "to compile it as a module, choos[e] M" is a relict from
-> old times and should just be dropped. These days, I stupilate,
-> everyone knows that M makes modules. And if it doesnot, then
-> it's not allowed by Kconfig :>
-
-Done.
-
->>+MODULE_AUTHOR("Hannes Eder <heder@google.com>");
->>+MODULE_DESCRIPTION("Xtables: match ipvs");
->
-> "Match IPVS connection properties" is what you previously stated,
-> and which I think is good. Use it here, too.
-
-Done.
-
->>+bool ipvs_mt(const struct sk_buff *skb, const struct xt_match_param =
-*par)
->>+{
->>+ =A0 =A0 =A0const struct xt_ipvs *data =3D par->matchinfo;
->>+ =A0 =A0 =A0const u_int8_t family =3D par->family;
->>+ =A0 =A0 =A0struct ip_vs_iphdr iph;
->>+ =A0 =A0 =A0struct ip_vs_protocol *pp;
->>+ =A0 =A0 =A0struct ip_vs_conn *cp;
->>+ =A0 =A0 =A0int af;
->>+ =A0 =A0 =A0bool match =3D true;
->>+
->>+ =A0 =A0 =A0if (data->bitmask =3D=3D XT_IPVS_IPVS) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0match =3D !!(skb->ipvs_property)
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0^ !!(data->invert & XT_I=
-PVS_IPVS);
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
->>+ =A0 =A0 =A0}
->
-> XT_IPVS_IPVS? What's that supposed to tell me...
-
-Just matching aginst the skb->ipvs_property, I changed to name to
-XT_IPVS_IPVS_PROPERTY.
-
-> Anyway, this can be made much shorter, given that all following
-> the "out" label is a return:
-
-You are right.  For the moment, I'll keep it as is.  Having a single
-entry/exit point makes it easier to instrument the function for
-debugging.
-
->
-> =A0 =A0 =A0 =A0if (data->bitmask =3D=3D XT_IPVS_IPVS)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return skb->ipvs_property ^ !!(data->i=
-nvert & XT_IPVS_IPVS);
->
->>+ =A0 =A0 =A0/* other flags than XT_IPVS_IPVS are set */
->>+ =A0 =A0 =A0if (!skb->ipvs_property) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0match =3D false;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
->>+ =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0if (!skb->ipvs_property)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return false;
->
->>+ =A0 =A0 =A0ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
->>+
->>+ =A0 =A0 =A0if (data->bitmask & XT_IPVS_PROTO)
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0if ((iph.protocol =3D=3D data->l4proto)
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0^ !(data->invert & XT_IPVS_PROTO=
-)) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0match =3D false;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (iph.protocol =3D=3D data->l4proto =
-^
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0!(data->invert & XT_IPVS_PROTO=
-))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return false;
->
->>+ =A0 =A0 =A0pp =3D ip_vs_proto_get(iph.protocol);
->>+ =A0 =A0 =A0if (unlikely(!pp)) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0match =3D false;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
->>+ =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0if (unlikely(pp =3D=3D NULL))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return false;
->
-> Only after here we really need goto (to put pp).
->
->>+ =A0 =A0 =A0/*
->>+ =A0 =A0 =A0 * Check if the packet belongs to an existing entry
->>+ =A0 =A0 =A0 */
->>+ =A0 =A0 =A0/* TODO: why does it only match in inverse? */
->
-> FIXME: Figure it out :)
-
-Still working on that ;)
-
->>+ =A0 =A0 =A0cp =3D pp->conn_out_get(af, skb, pp, &iph, iph.len, 1 /*=
- inverse */);
->>+ =A0 =A0 =A0if (unlikely(!cp)) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0match =3D false;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
->>+ =A0 =A0 =A0}
->>+
->>+ =A0 =A0 =A0/*
->>+ =A0 =A0 =A0 * We found a connection, i.e. ct !=3D 0, make sure to c=
-all
->>+ =A0 =A0 =A0 * __ip_vs_conn_put before returning. =A0In our case jum=
-p to out_put_con.
->>+ =A0 =A0 =A0 */
->>+
->>+ =A0 =A0 =A0if (data->bitmask & XT_IPVS_VPORT)
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0if ((cp->vport =3D=3D data->vport)
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0^ !(data->invert & XT_IPVS_VPORT=
-)) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0match =3D false;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_put_ct;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->>+
->>+ =A0 =A0 =A0if (data->bitmask & XT_IPVS_DIR) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0/* TODO: implement */
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* Yes please */
-
-Here we go:
-
-	if (data->bitmask & XT_IPVS_DIR) {
-		enum ip_conntrack_info ctinfo;
-		struct nf_conn *ct =3D nf_ct_get(skb, &ctinfo);
-
-		if (ct =3D=3D NULL || ct =3D=3D &nf_conntrack_untracked) {
-			match =3D false;
-			goto out_put_cp;
-		}
-
-		if ((ctinfo >=3D IP_CT_IS_REPLY) ^
-		    !!(data->invert & XT_IPVS_DIR)) {
-			match =3D false;
-			goto out_put_cp;
-		}
-	}
-
->>+ =A0 =A0 =A0}
->>+
->>+ =A0 =A0 =A0if (data->bitmask & XT_IPVS_METHOD)
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0if (((cp->flags & IP_VS_CONN_F_FWD_MASK)=
- =3D=3D data->fwd_method)
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0^ !(data->invert & XT_IPVS_METHO=
-D)) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0match =3D false;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_put_ct;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->>+
->>+ =A0 =A0 =A0if (data->bitmask & XT_IPVS_VADDR) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0if (af !=3D family) {
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0match =3D false;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_put_ct;
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->>+
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0if (ipvs_mt_addrcmp(&cp->vaddr, &data->v=
-addr, &data->vmask, af)
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0^ !(data->invert & XT_IPVS_VADDR=
-)) {
->
-> I think the operator (^ in this case) always goes onto the same line =
-as the ')'
-> ((a) ^\n(b), not ((a)\n ^(b)), though some legacy code seems to do it
-> random so-so.)
-
-I changed it as suggested, though I could not find anything in
-Documentation/CodingStyle about that.
-
->>+ =A0 =A0 =A0return match;
->>+}
->>+EXPORT_SYMBOL(ipvs_mt);
->
-> What will be using ipvs_mt?
-
-Nobody, EXPORT_SYMBOL removed.
-
->>+static struct xt_match xt_ipvs_mt_reg[] __read_mostly =3D {
->>+ =A0 =A0 =A0{
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0.name =A0 =A0 =A0 =3D "ipvs",
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0.revision =A0 =3D 0,
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0.family =A0 =A0 =3D NFPROTO_UNSPEC,
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0.match =A0 =A0 =A0=3D ipvs_mt,
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0.matchsize =A0=3D sizeof(struct xt_ipvs)=
-,
->>+ =A0 =A0 =A0 =A0 =A0 =A0 =A0.me =A0 =A0 =A0 =A0 =3D THIS_MODULE,
->>+ =A0 =A0 =A0},
->>+};
->
-> There is just one element, so no strict need for the [] array.
-
-You are right.  Done.
-
-Thanks for the review.
-
-Cheers,
--Hannes
---
-To unsubscribe from this list: send the line "unsubscribe netfilter-dev=
-el" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
