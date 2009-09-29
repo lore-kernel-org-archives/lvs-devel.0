@@ -1,498 +1,119 @@
-From: Hannes Eder <heder@google.com>
-Subject: [PATCH v2 4/4] libxt_ipvs: user-space lib for netfilter matcher
-	xt_ipvs
-Date: Tue, 29 Sep 2009 14:36:29 +0200
-Message-ID: <20090929123620.14039.14551.stgit@jazzy.zrh.corp.google.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH v2 0/4] IPVS full NAT support + netfilter 'ipvs' match
+ support
+Date: Wed, 30 Sep 2009 00:51:56 +1000
+Message-ID: <20090929145156.GB19797@verge.net.au>
 References: <20090929123501.13798.84004.stgit@jazzy.zrh.corp.google.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1254230008; bh=HZOTcUHN2dOarOipXBxkdj9oYbk=;
-	h=DomainKey-Signature:Subject:To:From:Cc:Date:Message-ID:
-	 In-Reply-To:References:User-Agent:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding; b=o6HfoJ6vSwuQuA1/p/mzEAzLXSKcRTUG170Nx
-	8XQ7kRxsNTtWJwvftD0BN1reYjq8TuSHs1BuubE0dUm3VIbsw==
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <20090929123501.13798.84004.stgit@jazzy.zrh.corp.google.com>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: lvs-devel@vger.kernel.org
-Cc: Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, lvs-users@linuxvirtualserver.org, Laurent Grawet <laurent.grawet@uclouvain.be>, Jean-Luc Fortemaison <jl.fortemaison@uclouvain.be>, linux-kernel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, =?ISO-8859-1?Q?Fabien_Duch=EAne?= <mad_fab@skynet.be>, Joseph Mack NA3T <jmack@wm7d.net>, Patrick McHardy <kaber@trash.net>
+Content-Transfer-Encoding: 7bit
+To: Hannes Eder <heder@google.com>
+Cc: lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, lvs-users@linuxvirtualserver.org, Laurent Grawet <laurent.grawet@uclouvain.be>, Jean-Luc Fortemaison <jl.fortemaison@uclouvain.be>, linux-kernel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>, Julian Anastasov <ja@ssi.bg>, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Fabien =?utf-8?Q?Duch=C3=AAne?= <mad_fab@skynet.be>, Joseph Mack NA3T <jmack@wm7d.net>, Patrick McHardy <kaber@trash.net>
 
-The user-space library for the netfilter matcher xt_ipvs.
+On Tue, Sep 29, 2009 at 02:35:15PM +0200, Hannes Eder wrote:
+> The following series implements full NAT support for IPVS.  The
+> approach is via a minimal change to IPVS (make friends with
+> nf_conntrack) and adding a netfilter matcher, kernel- and user-space
+> part, i.e. xt_ipvs and libxt_ipvs.
 
-Signed-off-by: Hannes Eder <heder@google.com>
+Its a bit late in the day for me to review the code, but I have a few
+quick comments.
 
- configure.ac                      |   11 +
- extensions/libxt_ipvs.c           |  365 +++++++++++++++++++++++++++++++++++++
- extensions/libxt_ipvs.man         |   24 ++
- include/linux/netfilter/xt_ipvs.h |   25 +++
- 4 files changed, 422 insertions(+), 3 deletions(-)
- create mode 100644 extensions/libxt_ipvs.c
- create mode 100644 extensions/libxt_ipvs.man
- create mode 100644 include/linux/netfilter/xt_ipvs.h
+> 
+> Example usage:
+> 
+> % ipvsadm -A -t 192.168.100.30:80 -s rr
+> % ipvsadm -a -t 192.168.100.30:80 -r 192.168.10.20:80 -m
+> # ...
+> 
+> # Source NAT for VIP 192.168.100.30:80
+> % iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 \
+> > --vport 80 -j SNAT --to-source 192.168.10.10
+> 
+> or SNAT-ing only a specific real server:
+> 
+> % iptables -t nat -A POSTROUTING --dst 192.168.11.20 \
+> > -m ipvs --vaddr 192.168.100.30/32 -j SNAT --to-source 192.168.10.10
 
-diff --git a/configure.ac b/configure.ac
-index 0419ea7..52e9223 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1,4 +1,3 @@
--
- AC_INIT([iptables], [1.4.5])
- 
- # See libtool.info "Libtool's versioning system"
-@@ -47,12 +46,18 @@ AC_ARG_WITH([pkgconfigdir], AS_HELP_STRING([--with-pkgconfigdir=PATH],
- 	[Path to the pkgconfig directory [[LIBDIR/pkgconfig]]]),
- 	[pkgconfigdir="$withval"], [pkgconfigdir='${libdir}/pkgconfig'])
- 
--AC_CHECK_HEADER([linux/dccp.h])
--
- blacklist_modules="";
-+
-+AC_CHECK_HEADER([linux/dccp.h])
- if test "$ac_cv_header_linux_dccp_h" != "yes"; then
- 	blacklist_modules="$blacklist_modules dccp";
- fi;
-+
-+AC_CHECK_HEADER([linux/ip_vs.h])
-+if test "$ac_cv_header_linux_ip_vs_h" != "yes"; then
-+	blacklist_modules="$blacklist_modules ipvs";
-+fi;
-+
- AC_SUBST([blacklist_modules])
- 
- AM_CONDITIONAL([ENABLE_STATIC], [test "$enable_static" = "yes"])
-diff --git a/extensions/libxt_ipvs.c b/extensions/libxt_ipvs.c
-new file mode 100644
-index 0000000..6843551
---- /dev/null
-+++ b/extensions/libxt_ipvs.c
-@@ -0,0 +1,365 @@
-+/*
-+ * Shared library add-on to iptables to add IPVS matching.
-+ *
-+ * Detailed doc is in the kernel module source net/netfilter/xt_ipvs.c
-+ *
-+ * Author: Hannes Eder <heder@google.com>
-+ */
-+#include <sys/types.h>
-+#include <assert.h>
-+#include <ctype.h>
-+#include <errno.h>
-+#include <getopt.h>
-+#include <netdb.h>
-+#include <stdlib.h>
-+#include <stdio.h>
-+#include <string.h>
-+#include <xtables.h>
-+#include <linux/ip_vs.h>
-+#include <linux/netfilter/xt_ipvs.h>
-+
-+static const struct option ipvs_mt_opts[] = {
-+	{ .name = "ipvs",     .has_arg = false, .val = '0' },
-+	{ .name = "vproto",   .has_arg = true,  .val = '1' },
-+	{ .name = "vaddr",    .has_arg = true,  .val = '2' },
-+	{ .name = "vport",    .has_arg = true,  .val = '3' },
-+	{ .name = "vdir",     .has_arg = true,  .val = '4' },
-+	{ .name = "vmethod",  .has_arg = true,  .val = '5' },
-+	{ .name = "vportctl", .has_arg = true,  .val = '6' },
-+	{ .name = NULL }
-+};
-+
-+static void ipvs_mt_help(void)
-+{
-+	printf(
-+"IPVS match options:\n"
-+"[!] --ipvs                      packet belongs to an IPVS connection\n"
-+"\n"
-+"Any of the following options implies --ipvs (even negated)\n"
-+"[!] --vproto protocol           VIP protocol to match; by number or name,\n"
-+"                                e.g. \"tcp\"\n"
-+"[!] --vaddr address[/mask]      VIP address to match\n"
-+"[!] --vport port                VIP port to match; by number or name,\n"
-+"                                e.g. \"http\"\n"
-+"    --vdir {ORIGINAL|REPLY}     flow direction of packet\n"
-+"[!] --vmethod {GATE|IPIP|MASQ}  IPVS forwarding method used\n"
-+"[!] --vportctl port             VIP port of the controlling connection to\n"
-+"                                match, e.g. 21 for FTP\n"
-+		);
-+}
-+
-+static void ipvs_mt_parse_addr_and_mask(const char *arg,
-+					union nf_inet_addr *address,
-+					union nf_inet_addr *mask,
-+					unsigned int family)
-+{
-+	struct in_addr *addr = NULL;
-+	struct in6_addr *addr6 = NULL;
-+	unsigned int naddrs = 0;
-+
-+	if (family == NFPROTO_IPV4) {
-+		xtables_ipparse_any(arg, &addr, &mask->in, &naddrs);
-+		if (naddrs > 1)
-+			xtables_error(PARAMETER_PROBLEM,
-+				      "multiple IP addresses not allowed");
-+		if (naddrs == 1)
-+			memcpy(&address->in, addr, sizeof(*addr));
-+	} else if (family == NFPROTO_IPV6) {
-+		xtables_ip6parse_any(arg, &addr6, &mask->in6, &naddrs);
-+		if (naddrs > 1)
-+			xtables_error(PARAMETER_PROBLEM,
-+				      "multiple IP addresses not allowed");
-+		if (naddrs == 1)
-+			memcpy(&address->in6, addr6, sizeof(*addr6));
-+	} else {
-+		/* Hu? */
-+		assert(false);
-+	}
-+}
-+
-+/* Function which parses command options; returns true if it ate an option */
-+static int ipvs_mt_parse(int c, char **argv, int invert, unsigned int *flags,
-+			 const void *entry, struct xt_entry_match **match,
-+			 unsigned int family)
-+{
-+	struct xt_ipvs_mtinfo *data = (void *)(*match)->data;
-+	char *p = NULL;
-+	u_int8_t op = 0;
-+
-+	if ('0' <= c && c <= '6') {
-+		static const int ops[] = {
-+			XT_IPVS_IPVS_PROPERTY,
-+			XT_IPVS_PROTO,
-+			XT_IPVS_VADDR,
-+			XT_IPVS_VPORT,
-+			XT_IPVS_DIR,
-+			XT_IPVS_METHOD,
-+			XT_IPVS_VPORTCTL
-+		};
-+		op = ops[c - '0'];
-+	} else
-+		return 0;
-+
-+	if (*flags & op & XT_IPVS_ONCE_MASK)
-+		goto multiple_use;
-+
-+	switch (c) {
-+	case '0': /* --ipvs */
-+		/* Nothing to do here. */
-+		break;
-+
-+	case '1': /* --vproto */
-+		/* Canonicalize into lower case */
-+		for (p = optarg; *p != '\0'; ++p)
-+			*p = tolower(*p);
-+
-+		data->l4proto = xtables_parse_protocol(optarg);
-+		break;
-+
-+	case '2': /* --vaddr */
-+		ipvs_mt_parse_addr_and_mask(optarg, &data->vaddr,
-+					    &data->vmask, family);
-+		break;
-+
-+	case '3': /* --vport */
-+		data->vport = htons(xtables_parse_port(optarg, "tcp"));
-+		break;
-+
-+	case '4': /* --vdir */
-+		xtables_param_act(XTF_NO_INVERT, "ipvs", "--vdir", invert);
-+		if (strcasecmp(optarg, "ORIGINAL") == 0) {
-+			data->bitmask |= XT_IPVS_DIR;
-+			data->invert   &= ~XT_IPVS_DIR;
-+		} else if (strcasecmp(optarg, "REPLY") == 0) {
-+			data->bitmask |= XT_IPVS_DIR;
-+			data->invert  |= XT_IPVS_DIR;
-+		} else {
-+			xtables_param_act(XTF_BAD_VALUE,
-+					  "ipvs", "--vdir", optarg);
-+		}
-+		break;
-+
-+	case '5': /* --vmethod */
-+		if (strcasecmp(optarg, "GATE") == 0)
-+			data->fwd_method = IP_VS_CONN_F_DROUTE;
-+		else if (strcasecmp(optarg, "IPIP") == 0)
-+			data->fwd_method = IP_VS_CONN_F_TUNNEL;
-+		else if (strcasecmp(optarg, "MASQ") == 0)
-+			data->fwd_method = IP_VS_CONN_F_MASQ;
-+		else
-+			xtables_param_act(XTF_BAD_VALUE,
-+					  "ipvs", "--vmethod", optarg);
-+		break;
-+
-+	case '6': /* --vportctl */
-+		data->vportctl = htons(xtables_parse_port(optarg, "tcp"));
-+		break;
-+
-+	default:
-+		/* Hu? How did we come here? */
-+		assert(false);
-+		return 0;
-+	}
-+
-+	if (op & XT_IPVS_ONCE_MASK) {
-+		if (data->invert & XT_IPVS_IPVS_PROPERTY)
-+			xtables_error(PARAMETER_PROBLEM,
-+				      "! --ipvs cannot be together with"
-+				      " other options");
-+		data->bitmask |= XT_IPVS_IPVS_PROPERTY;
-+	}
-+
-+	data->bitmask |= op;
-+	if (invert)
-+		data->invert |= op;
-+	*flags |= op;
-+	return 1;
-+
-+multiple_use:
-+	xtables_error(PARAMETER_PROBLEM,
-+		      "multiple use of the same IPVS option is not allowed");
-+}
-+
-+static int ipvs_mt4_parse(int c, char **argv, int invert, unsigned int *flags,
-+			  const void *entry, struct xt_entry_match **match)
-+{
-+	return ipvs_mt_parse(c, argv, invert, flags, entry, match,
-+			     NFPROTO_IPV4);
-+}
-+
-+static int ipvs_mt6_parse(int c, char **argv, int invert, unsigned int *flags,
-+			  const void *entry, struct xt_entry_match **match)
-+{
-+	return ipvs_mt_parse(c, argv, invert, flags, entry, match,
-+			     NFPROTO_IPV6);
-+}
-+
-+static void ipvs_mt_check(unsigned int flags)
-+{
-+	if (flags == 0)
-+		xtables_error(PARAMETER_PROBLEM,
-+			      "IPVS: At least one option is required");
-+}
-+
-+/* Shamelessly copied from libxt_conntrack.c */
-+static void ipvs_mt_dump_addr(const union nf_inet_addr *addr,
-+			      const union nf_inet_addr *mask,
-+			      unsigned int family, bool numeric)
-+{
-+	char buf[BUFSIZ];
-+
-+	if (family == NFPROTO_IPV4) {
-+		if (!numeric && addr->ip == 0) {
-+			printf("anywhere ");
-+			return;
-+		}
-+		if (numeric)
-+			strcpy(buf, xtables_ipaddr_to_numeric(&addr->in));
-+		else
-+			strcpy(buf, xtables_ipaddr_to_anyname(&addr->in));
-+		strcat(buf, xtables_ipmask_to_numeric(&mask->in));
-+		printf("%s ", buf);
-+	} else if (family == NFPROTO_IPV6) {
-+		if (!numeric && addr->ip6[0] == 0 && addr->ip6[1] == 0 &&
-+		    addr->ip6[2] == 0 && addr->ip6[3] == 0) {
-+			printf("anywhere ");
-+			return;
-+		}
-+		if (numeric)
-+			strcpy(buf, xtables_ip6addr_to_numeric(&addr->in6));
-+		else
-+			strcpy(buf, xtables_ip6addr_to_anyname(&addr->in6));
-+		strcat(buf, xtables_ip6mask_to_numeric(&mask->in6));
-+		printf("%s ", buf);
-+	}
-+}
-+
-+static void ipvs_mt_dump(const void *ip, const struct xt_ipvs_mtinfo *data,
-+			 unsigned int family, bool numeric, const char *prefix)
-+{
-+	if (data->bitmask == XT_IPVS_IPVS_PROPERTY) {
-+		if (data->invert & XT_IPVS_IPVS_PROPERTY)
-+			printf("! ");
-+		printf("%sipvs ", prefix);
-+	}
-+
-+	if (data->bitmask & XT_IPVS_PROTO) {
-+		if (data->invert & XT_IPVS_PROTO)
-+			printf("! ");
-+		printf("%sproto %u ", prefix, data->l4proto);
-+	}
-+
-+	if (data->bitmask & XT_IPVS_VADDR) {
-+		if (data->invert & XT_IPVS_VADDR)
-+			printf("! ");
-+
-+		printf("%svaddr ", prefix);
-+		ipvs_mt_dump_addr(&data->vaddr, &data->vmask, family, numeric);
-+	}
-+
-+	if (data->bitmask & XT_IPVS_VPORT) {
-+		if (data->invert & XT_IPVS_VPORT)
-+			printf("! ");
-+
-+		printf("%svport %u ", prefix, ntohs(data->vport));
-+	}
-+
-+	if (data->bitmask & XT_IPVS_DIR) {
-+		if (data->invert & XT_IPVS_DIR)
-+			printf("%svdir REPLY ", prefix);
-+		else
-+			printf("%svdir ORIGINAL ", prefix);
-+	}
-+
-+	if (data->bitmask & XT_IPVS_METHOD) {
-+		if (data->invert & XT_IPVS_METHOD)
-+			printf("! ");
-+
-+		printf("%svmethod ", prefix);
-+		switch (data->fwd_method) {
-+		case IP_VS_CONN_F_DROUTE:
-+			printf("GATE ");
-+			break;
-+		case IP_VS_CONN_F_TUNNEL:
-+			printf("IPIP ");
-+			break;
-+		case IP_VS_CONN_F_MASQ:
-+			printf("MASQ ");
-+			break;
-+		default:
-+			/* Hu? */
-+			printf("UNKNOWN ");
-+			break;
-+		}
-+	}
-+
-+	if (data->bitmask & XT_IPVS_VPORTCTL) {
-+		if (data->invert & XT_IPVS_VPORTCTL)
-+			printf("! ");
-+
-+		printf("%svportctl %u ", prefix, ntohs(data->vportctl));
-+	}
-+}
-+
-+static void ipvs_mt4_print(const void *ip, const struct xt_entry_match *match,
-+			   int numeric)
-+{
-+	const struct xt_ipvs_mtinfo *data = (const void *)match->data;
-+	ipvs_mt_dump(ip, data, NFPROTO_IPV4, numeric, "");
-+}
-+
-+static void ipvs_mt6_print(const void *ip, const struct xt_entry_match *match,
-+			   int numeric)
-+{
-+	const struct xt_ipvs_mtinfo *data = (const void *)match->data;
-+	ipvs_mt_dump(ip, data, NFPROTO_IPV6, numeric, "");
-+}
-+
-+static void ipvs_mt4_save(const void *ip, const struct xt_entry_match *match)
-+{
-+	const struct xt_ipvs_mtinfo *data = (const void *)match->data;
-+	ipvs_mt_dump(ip, data, NFPROTO_IPV4, true, "--");
-+}
-+
-+static void ipvs_mt6_save(const void *ip, const struct xt_entry_match *match)
-+{
-+	const struct xt_ipvs_mtinfo *data = (const void *)match->data;
-+	ipvs_mt_dump(ip, data, NFPROTO_IPV6, true, "--");
-+}
-+
-+static struct xtables_match ipvs_matches_reg[] = {
-+	{
-+		.version       = XTABLES_VERSION,
-+		.name          = "ipvs",
-+		.revision      = 0,
-+		.family        = NFPROTO_IPV4,
-+		.size          = XT_ALIGN(sizeof(struct xt_ipvs_mtinfo)),
-+		.userspacesize = XT_ALIGN(sizeof(struct xt_ipvs_mtinfo)),
-+		.help          = ipvs_mt_help,
-+		.parse         = ipvs_mt4_parse,
-+		.final_check   = ipvs_mt_check,
-+		.print         = ipvs_mt4_print,
-+		.save          = ipvs_mt4_save,
-+		.extra_opts    = ipvs_mt_opts,
-+	},
-+	{
-+		.version       = XTABLES_VERSION,
-+		.name          = "ipvs",
-+		.revision      = 0,
-+		.family        = NFPROTO_IPV6,
-+		.size          = XT_ALIGN(sizeof(struct xt_ipvs_mtinfo)),
-+		.userspacesize = XT_ALIGN(sizeof(struct xt_ipvs_mtinfo)),
-+		.help          = ipvs_mt_help,
-+		.parse         = ipvs_mt6_parse,
-+		.final_check   = ipvs_mt_check,
-+		.print         = ipvs_mt6_print,
-+		.save          = ipvs_mt6_save,
-+		.extra_opts    = ipvs_mt_opts,
-+	},
-+};
-+
-+void _init(void)
-+{
-+	xtables_register_matches(ipvs_matches_reg,
-+				 ARRAY_SIZE(ipvs_matches_reg));
-+}
-diff --git a/extensions/libxt_ipvs.man b/extensions/libxt_ipvs.man
-new file mode 100644
-index 0000000..8968e1a
---- /dev/null
-+++ b/extensions/libxt_ipvs.man
-@@ -0,0 +1,24 @@
-+Match IPVS connection properties.
-+.TP
-+[\fB!\fR] \fB\-\-ipvs\fP
-+packet belongs to an IPVS connection
-+.TP
-+Any of the following options implies \-\-ipvs (even negated)
-+.TP
-+[\fB!\fR] \fB\-\-vproto\fP \fIprotocol\fP
-+VIP protocol to match; by number or name, e.g. "tcp"
-+.TP
-+[\fB!\fR] \fB\-\-vaddr\fP \fIaddress\fP[\fB/\fP\fImask\fP]
-+VIP address to match
-+.TP
-+[\fB!\fR] \fB\-\-vport\fP \fIport\fP
-+VIP port to match; by number or name, e.g. "http"
-+.TP
-+\fB\-\-vdir\fP {\fBORIGINAL\fP|\fBREPLY\fP}
-+flow direction of packet
-+.TP
-+[\fB!\fR] \fB\-\-vmethod\fP {\fBGATE\fP|\fBIPIP\fP|\fBMASQ\fP}
-+IPVS forwarding method used
-+.TP
-+[\fB!\fR] \fB\-\-vportctl\fP \fIport\fP
-+VIP port of the controlling connection to match, e.g. 21 for FTP
-diff --git a/include/linux/netfilter/xt_ipvs.h b/include/linux/netfilter/xt_ipvs.h
-new file mode 100644
-index 0000000..32f3051
---- /dev/null
-+++ b/include/linux/netfilter/xt_ipvs.h
-@@ -0,0 +1,25 @@
-+#ifndef _XT_IPVS_H
-+#define _XT_IPVS_H 1
-+
-+#define XT_IPVS_IPVS_PROPERTY	(1 << 0) /* all other options imply this one */
-+#define XT_IPVS_PROTO		(1 << 1)
-+#define XT_IPVS_VADDR		(1 << 2)
-+#define XT_IPVS_VPORT		(1 << 3)
-+#define XT_IPVS_DIR		(1 << 4)
-+#define XT_IPVS_METHOD		(1 << 5)
-+#define XT_IPVS_VPORTCTL	(1 << 6)
-+#define XT_IPVS_MASK		((1 << 7) - 1)
-+#define XT_IPVS_ONCE_MASK	(XT_IPVS_MASK & ~XT_IPVS_IPVS_PROPERTY)
-+
-+struct xt_ipvs_mtinfo {
-+	union nf_inet_addr	vaddr, vmask;
-+	__be16			vport;
-+	__u16			l4proto;
-+	__u16			fwd_method;
-+	__be16			vportctl;
-+
-+	__u8			invert;
-+	__u8			bitmask;
-+};
-+
-+#endif /* _XT_IPVS_H */
+If the iptables rule is not in place does LVS just use
+its old NAT behaviour?
 
+> First of all, thanks for all the feedback.  This is the changelog for v2:
+> 
+> - Make ip_vs_ftp work again.  Setup nf_conntrack expectations for
+>   related data connections (based on Julian's patch see
+>   http://www.ssi.bg/~ja/nfct/) and let nf_conntrack/nf_nat do the
+>   packet mangling and the TCP sequence adjusting.
+> 
+>   This change rises the question how to deal with ip_vs_sync?  Does it
+>   work together with conntrackd?  Wild idea: what about getting rid of
+>   ip_vs_sync and piggy packing all on nf_conntrack and use conntrackd?
+> 
+>   Any comments on this?
+
+    That sounds like a reasonable suggestion.
+
+    I think that ip_vs_sync came along before conntrackd
+    and no one has given much thought to merging the functionality.
+
+> - xt_ipvs: add new rule '--vportctl port' to match the VIP port of the
+>   controlling connection, e.g. port 21 for FTP.  Can be used to match
+>   a related data connection for FTP:
+> 
+>   # SNAT FTP control connection
+>   % iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 \
+>   > --vport 21 -j SNAT --to-source 192.168.10.10
+>   
+>   # SNAT FTP passive data connection
+>   % iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 \
+>   > --vportctl 21 -j SNAT --to-source 192.168.10.10
+> 
+> - xt_ipvs: use 'par->family' instead of 'skb->protocol'
+> 
+> - xt_ipvs: add ipvs_mt_check and restrict to NFPROTO_IPV4 and NFPROTO_IPV6
+> 
+> - Call nf_conntrack_alter_reply(), so helper lookup is performed based
+>   on the changed tuple.
+> 
+> Changes to the linux kernel (rebased to next-20090925):
+> 
+> Hannes Eder (3):
+>       netfilter: xt_ipvs (netfilter matcher for IPVS)
+>       IPVS: make friends with nf_conntrack
+>       IPVS: make FTP work with full NAT support
+> 
+> 
+>  include/linux/netfilter/xt_ipvs.h |   25 +++++
+>  include/net/ip_vs.h               |    2 
+>  net/netfilter/Kconfig             |    9 ++
+>  net/netfilter/Makefile            |    1 
+>  net/netfilter/ipvs/Kconfig        |    4 -
+>  net/netfilter/ipvs/ip_vs_app.c    |   43 ---------
+>  net/netfilter/ipvs/ip_vs_core.c   |   37 -------
+>  net/netfilter/ipvs/ip_vs_ftp.c    |  178 ++++++++++++++++++++++++++++++++---
+>  net/netfilter/ipvs/ip_vs_proto.c  |    1 
+>  net/netfilter/ipvs/ip_vs_xmit.c   |   30 ++++++
+>  net/netfilter/xt_ipvs.c           |  187 +++++++++++++++++++++++++++++++++++++
+>  11 files changed, 418 insertions(+), 99 deletions(-)
+>  create mode 100644 include/linux/netfilter/xt_ipvs.h
+>  create mode 100644 net/netfilter/xt_ipvs.c
+> 
+> 
+> Changes to iptables (relative to 1.4.5):
+> 
+> Hannes Eder (1):
+>       libxt_ipvs: user-space lib for netfilter matcher xt_ipvs
+> 
+>  configure.ac                      |   11 +
+>  extensions/libxt_ipvs.c           |  365 +++++++++++++++++++++++++++++++++++++
+>  extensions/libxt_ipvs.man         |   24 ++
+>  include/linux/netfilter/xt_ipvs.h |   25 +++
+>  4 files changed, 422 insertions(+), 3 deletions(-)
+>  create mode 100644 extensions/libxt_ipvs.c
+>  create mode 100644 extensions/libxt_ipvs.man
+>  create mode 100644 include/linux/netfilter/xt_ipvs.h
