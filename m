@@ -1,131 +1,109 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch] ipvs: Use atomic operations atomicly
-Date: Sat, 19 Sep 2009 19:51:23 +1000
-Message-ID: <20090919095122.GA480@verge.net.au>
-References: <20090828023722.GA12136@verge.net.au>
- <4A9BC082.3090804@trash.net>
- <20090901015909.GA12252@verge.net.au>
- <4A9E6B62.8080208@trash.net>
+From: Hannes Eder <heder@google.com>
+Subject: [PATCH v2 0/4] IPVS full NAT support + netfilter 'ipvs' match support
+Date: Tue, 29 Sep 2009 14:35:15 +0200
+Message-ID: <20090929123501.13798.84004.stgit@jazzy.zrh.corp.google.com>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4A9E6B62.8080208@trash.net>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
+	t=1254229897; bh=nSegKcTV1atEHlFK/DhYya9qBXc=;
+	h=DomainKey-Signature:Subject:To:From:Cc:Date:Message-ID:User-Agent:
+	 MIME-Version:Content-Type:Content-Transfer-Encoding; b=BBo6LA+SZ3s
+	xeo+GsVZVwoADsDCIbreZafC1/5AMG+bMFMcCVCl6UxkFCl5RvBXxYS7zMb4Iu79bp6
+	t6U5Ddtw==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Patrick McHardy <kaber@trash.net>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, ?? shin hong <hongshin@gmail.com>, David Miller <davem@davemloft.net>
+To: lvs-devel@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, lvs-users@linuxvirtualserver.org, Laurent Grawet <laurent.grawet@uclouvain.be>, Jean-Luc Fortemaison <jl.fortemaison@uclouvain.be>, linux-kernel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, =?ISO-8859-1?Q?Fabien_Duch=EAne?= <mad_fab@skynet.be>, Joseph Mack NA3T <jmack@wm7d.net>, Patrick McHardy <kaber@trash.net>
 
-[ re-post with CC list ]
+The following series implements full NAT support for IPVS.  The
+approach is via a minimal change to IPVS (make friends with
+nf_conntrack) and adding a netfilter matcher, kernel- and user-space
+part, i.e. xt_ipvs and libxt_ipvs.
 
-On Wed, Sep 02, 2009 at 02:56:02PM +0200, Patrick McHardy wrote:
-> Simon Horman wrote:
-> > On Mon, Aug 31, 2009 at 02:22:26PM +0200, Patrick McHardy wrote:
-> >> It seems that proc_do_sync_threshold() should check whether this value
-> >> is zero. The current checks also look racy since incorrect values are
-> >> first updated, then overwritten again.
-> > 
-> > I'm wondering if an approach along the lines of the following is valid.
-> > The idea is that the value in the ctl_table is essentially a scratch
-> > value that is used by the parser and then copied into ip_vs_sync_threshold
-> > if it is valid.
-> 
-> Even simpler would be to use a temporary buffer on the stack for copying
-> the values from userspace and then copy them to the final buffer after
-> validation.
+Example usage:
 
-Do you mean something like what I have done using read_table in
-the new patch below?
+% ipvsadm -A -t 192.168.100.30:80 -s rr
+% ipvsadm -a -t 192.168.100.30:80 -r 192.168.10.20:80 -m
+# ...
 
-> > I'm concerned that there are atomicity issues
-> > surrounding writing ip_vs_sync_threshold while there might be readers.
-> 
-> That might be a problem if they are required to be "synchronized".
+# Source NAT for VIP 192.168.100.30:80
+% iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 \
+> --vport 80 -j SNAT --to-source 192.168.10.10
 
-I don't think that the sychronisation needs extend beyond their
-use in this snippet.
+or SNAT-ing only a specific real server:
 
-> 
-> > --- a/net/netfilter/ipvs/ip_vs_core.c
-> > +++ b/net/netfilter/ipvs/ip_vs_core.c
-> > @@ -1362,8 +1362,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb,
-> >  	    (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
-> >  	    (((cp->protocol != IPPROTO_TCP ||
-> >  	       cp->state == IP_VS_TCP_S_ESTABLISHED) &&
-> > -	      (pkts % sysctl_ip_vs_sync_threshold[1]
-> > -	       == sysctl_ip_vs_sync_threshold[0])) ||
-> > +	      (pkts % ip_vs_sync_threshold[1] == ip_vs_sync_threshold[0])) ||
-> >  	     ((cp->protocol == IPPROTO_TCP) && (cp->old_state != cp->state) &&
-> >  	      ((cp->state == IP_VS_TCP_S_FIN_WAIT) ||
-> >  	       (cp->state == IP_VS_TCP_S_CLOSE_WAIT) ||
-> > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> > index fba2892..8a9ff21 100644
-> > --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> > @@ -76,6 +76,11 @@ static atomic_t ip_vs_dropentry = ATOMIC_INIT(0);
-> >  /* number of virtual services */
-> >  static int ip_vs_num_services = 0;
-> >  
-> > +/* threshold handling */
-> > +static int ip_vs_sync_threshold_min = 0;
-> > +static int ip_vs_sync_threshold_max = INT_MAX;
-> > +int ip_vs_sync_threshold[2] = { 3, 50 };
-> > +
-> 
-> min should be 1 I guess or you still need to manually check
-> that ip_vs_sync_threshold[1] != 0 to avoid a division be zero.
+% iptables -t nat -A POSTROUTING --dst 192.168.11.20 \
+> -m ipvs --vaddr 192.168.100.30/32 -j SNAT --to-source 192.168.10.10
 
-I think that the check that val[0] < val[1] ensures this.
 
-Something that I noticed while putting this new patch together,
-should the code be checking the value of rc and only assigning  values if
-its 0. If so, I probably needs to be changed in a few places.
+First of all, thanks for all the feedback.  This is the changelog for v2:
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index fba2892..c33ef7d 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -76,6 +76,9 @@ static atomic_t ip_vs_dropentry = ATOMIC_INIT(0);
- /* number of virtual services */
- static int ip_vs_num_services = 0;
- 
-+static int ip_vs_sync_threshold_min = 0;
-+static int ip_vs_sync_threshold_max = INT_MAX;
-+
- /* sysctl variables */
- static int sysctl_ip_vs_drop_entry = 0;
- static int sysctl_ip_vs_drop_packet = 0;
-@@ -1520,18 +1523,17 @@ static int
- proc_do_sync_threshold(ctl_table *table, int write, struct file *filp,
- 		       void __user *buffer, size_t *lenp, loff_t *ppos)
- {
-+	struct ctl_table read_table;
- 	int *valp = table->data;
- 	int val[2];
- 	int rc;
- 
--	/* backup the value first */
--	memcpy(val, valp, sizeof(val));
-+	memcpy(&read_table, table, sizeof(read_table));
-+	read_table.data = &val;
- 
--	rc = proc_dointvec(table, write, filp, buffer, lenp, ppos);
--	if (write && (valp[0] < 0 || valp[1] < 0 || valp[0] >= valp[1])) {
--		/* Restore the correct value */
-+	rc = proc_dointvec_minmax(&read_table, write, filp, buffer, lenp, ppos);
-+	if (write && (val[0] >= val[1]))
- 		memcpy(valp, val, sizeof(val));
--	}
- 	return rc;
- }
- 
-@@ -1698,6 +1700,8 @@ static struct ctl_table vs_vars[] = {
- 		.maxlen		= sizeof(sysctl_ip_vs_sync_threshold),
- 		.mode		= 0644,
- 		.proc_handler	= proc_do_sync_threshold,
-+		.extra1		= &ip_vs_sync_threshold_min,
-+		.extra2		= &ip_vs_sync_threshold_max,
- 	},
- 	{
- 		.procname	= "nat_icmp_send",
+- Make ip_vs_ftp work again.  Setup nf_conntrack expectations for
+  related data connections (based on Julian's patch see
+  http://www.ssi.bg/~ja/nfct/) and let nf_conntrack/nf_nat do the
+  packet mangling and the TCP sequence adjusting.
+
+  This change rises the question how to deal with ip_vs_sync?  Does it
+  work together with conntrackd?  Wild idea: what about getting rid of
+  ip_vs_sync and piggy packing all on nf_conntrack and use conntrackd?
+
+  Any comments on this?
+
+- xt_ipvs: add new rule '--vportctl port' to match the VIP port of the
+  controlling connection, e.g. port 21 for FTP.  Can be used to match
+  a related data connection for FTP:
+
+  # SNAT FTP control connection
+  % iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 \
+  > --vport 21 -j SNAT --to-source 192.168.10.10
+  
+  # SNAT FTP passive data connection
+  % iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 \
+  > --vportctl 21 -j SNAT --to-source 192.168.10.10
+
+- xt_ipvs: use 'par->family' instead of 'skb->protocol'
+
+- xt_ipvs: add ipvs_mt_check and restrict to NFPROTO_IPV4 and NFPROTO_IPV6
+
+- Call nf_conntrack_alter_reply(), so helper lookup is performed based
+  on the changed tuple.
+
+Changes to the linux kernel (rebased to next-20090925):
+
+Hannes Eder (3):
+      netfilter: xt_ipvs (netfilter matcher for IPVS)
+      IPVS: make friends with nf_conntrack
+      IPVS: make FTP work with full NAT support
+
+
+ include/linux/netfilter/xt_ipvs.h |   25 +++++
+ include/net/ip_vs.h               |    2 
+ net/netfilter/Kconfig             |    9 ++
+ net/netfilter/Makefile            |    1 
+ net/netfilter/ipvs/Kconfig        |    4 -
+ net/netfilter/ipvs/ip_vs_app.c    |   43 ---------
+ net/netfilter/ipvs/ip_vs_core.c   |   37 -------
+ net/netfilter/ipvs/ip_vs_ftp.c    |  178 ++++++++++++++++++++++++++++++++---
+ net/netfilter/ipvs/ip_vs_proto.c  |    1 
+ net/netfilter/ipvs/ip_vs_xmit.c   |   30 ++++++
+ net/netfilter/xt_ipvs.c           |  187 +++++++++++++++++++++++++++++++++++++
+ 11 files changed, 418 insertions(+), 99 deletions(-)
+ create mode 100644 include/linux/netfilter/xt_ipvs.h
+ create mode 100644 net/netfilter/xt_ipvs.c
+
+
+Changes to iptables (relative to 1.4.5):
+
+Hannes Eder (1):
+      libxt_ipvs: user-space lib for netfilter matcher xt_ipvs
+
+ configure.ac                      |   11 +
+ extensions/libxt_ipvs.c           |  365 +++++++++++++++++++++++++++++++++++++
+ extensions/libxt_ipvs.man         |   24 ++
+ include/linux/netfilter/xt_ipvs.h |   25 +++
+ 4 files changed, 422 insertions(+), 3 deletions(-)
+ create mode 100644 extensions/libxt_ipvs.c
+ create mode 100644 extensions/libxt_ipvs.man
+ create mode 100644 include/linux/netfilter/xt_ipvs.h
