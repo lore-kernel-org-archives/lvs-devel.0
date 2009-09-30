@@ -1,94 +1,82 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH v2 0/4] IPVS full NAT support + netfilter 'ipvs' match
- support
-Date: Wed, 30 Sep 2009 09:18:48 +1000
-Message-ID: <20090929231845.GA7255@verge.net.au>
-References: <20090929123501.13798.84004.stgit@jazzy.zrh.corp.google.com>
- <20090929145156.GB19797@verge.net.au>
- <b5ddba180909290807j4d1d1d2dl48af9453542612ff@mail.gmail.com>
+From: Robin Bowes <robin-lists@robinbowes.com>
+Subject: Is net-snmp-lvs-module maintained?
+Date: Wed, 30 Sep 2009 19:31:35 +0100
+Message-ID: <ha0867$44i$2@ger.gmane.org>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <b5ddba180909290807j4d1d1d2dl48af9453542612ff@mail.gmail.com>
-Sender: netfilter-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Hannes Eder <heder@google.com>
-Cc: lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, lvs-users@linuxvirtualserver.org, Laurent Grawet <laurent.grawet@uclouvain.be>, Jean-Luc Fortemaison <jl.fortemaison@uclouvain.be>, linux-kernel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>, Julian Anastasov <ja@ssi.bg>, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Fabien =?utf-8?Q?Duch=C3=AAne?= <mad_fab@skynet.be>, Joseph Mack NA3T <jmack@wm7d.net>, Patrick McHardy <kaber@trash.net>
+Content-Type: text/plain; charset="us-ascii"
+To: lvs-devel@vger.kernel.org
+Cc: lvs-users@LinuxVirtualServer.org, net-snmp-users@lists.sourceforge.net, lvs-users@LinuxVirtualServer.org
 
-On Tue, Sep 29, 2009 at 05:07:24PM +0200, Hannes Eder wrote:
-> On Tue, Sep 29, 2009 at 16:51, Simon Horman <horms@verge.net.au> wrot=
-e:
-> > On Tue, Sep 29, 2009 at 02:35:15PM +0200, Hannes Eder wrote:
-> >> The following series implements full NAT support for IPVS. =C2=A0T=
-he
-> >> approach is via a minimal change to IPVS (make friends with
-> >> nf_conntrack) and adding a netfilter matcher, kernel- and user-spa=
-ce
-> >> part, i.e. xt_ipvs and libxt_ipvs.
-> >
-> > Its a bit late in the day for me to review the code, but I have a f=
-ew
-> > quick comments.
-> >
-> >>
-> >> Example usage:
-> >>
-> >> % ipvsadm -A -t 192.168.100.30:80 -s rr
-> >> % ipvsadm -a -t 192.168.100.30:80 -r 192.168.10.20:80 -m
-> >> # ...
-> >>
-> >> # Source NAT for VIP 192.168.100.30:80
-> >> % iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32=
- \
-> >> > --vport 80 -j SNAT --to-source 192.168.10.10
-> >>
-> >> or SNAT-ing only a specific real server:
-> >>
-> >> % iptables -t nat -A POSTROUTING --dst 192.168.11.20 \
-> >> > -m ipvs --vaddr 192.168.100.30/32 -j SNAT --to-source 192.168.10=
-=2E10
-> >
-> > If the iptables rule is not in place does LVS just use
-> > its old NAT behaviour?
->=20
-> Yes, without iptables rules LVS NAT does DNAT.
+Hi,
 
-Great.
+I'm using the net-snmp-lvs-module which I've successfully built into an
+x86_64 RPM and installed on CentOS 5.3 with net-snmp 5.4.2.1.
 
-> >> First of all, thanks for all the feedback. =C2=A0This is the chang=
-elog for v2:
-> >>
-> >> - Make ip_vs_ftp work again. =C2=A0Setup nf_conntrack expectations=
- for
-> >> =C2=A0 related data connections (based on Julian's patch see
-> >> =C2=A0 http://www.ssi.bg/~ja/nfct/) and let nf_conntrack/nf_nat do=
- the
-> >> =C2=A0 packet mangling and the TCP sequence adjusting.
-> >>
-> >> =C2=A0 This change rises the question how to deal with ip_vs_sync?=
- =C2=A0Does it
-> >> =C2=A0 work together with conntrackd? =C2=A0Wild idea: what about =
-getting rid of
-> >> =C2=A0 ip_vs_sync and piggy packing all on nf_conntrack and use co=
-nntrackd?
-> >>
-> >> =C2=A0 Any comments on this?
-> >
-> > =C2=A0 =C2=A0That sounds like a reasonable suggestion.
-> >
-> > =C2=A0 =C2=A0I think that ip_vs_sync came along before conntrackd
-> > =C2=A0 =C2=A0and no one has given much thought to merging the funct=
-ionality.
->=20
-> Okay, I'll dig further in this direction.
+However, I'm seeing a couple of bugs, and I wondered if this module is
+maintained, and where/who best to report them to?
 
-Assuming the technical side is clean, I suspect the major problem will =
-be
-how to migrate users away from ip_vs_sync.
---
-To unsubscribe from this list: send the line "unsubscribe netfilter-dev=
-el" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Here are the problems I'm seeing:
+
+1. When started up, I see this error in /var/log/messages:
+
+Sep 30 14:04:32 a003 snmpd[25050]: IPVS initialization for
+Sep 30 14:04:32 a003 snmpd[25050]: netsnmp_assert !"registration !=
+duplicate" failed agent_registry.c:536 netsnmp_subtree_load()
+Sep 30 14:04:32 a003 snmpd[25050]: NET-SNMP version 5.4.2.1
+
+Looking in lvs.c, I see these lines in init_lvs:
+
+netsnmp_register_read_only_instance(netsnmp_create_handler_registration("lvsNumServices",
+get_lvs_var, lvsNumServices_oid, OID_LENGTH(lvsNumServices_oid),
+HANDLER_CAN_RONLY));
+
+netsnmp_register_read_only_instance(netsnmp_create_handler_registration("lvsNumServices",
+get_lvs_var, lvsHashTableSize_oid, OID_LENGTH(lvsHashTableSize_oid),
+HANDLER_CAN_RONLY));
+
+netsnmp_register_read_only_instance(netsnmp_create_handler_registration("lvsNumServices",
+get_lvs_var, lvsHashTableSize_oid, OID_LENGTH(lvsHashTableSize_oid),
+HANDLER_CAN_RONLY));
+
+It seems to me that at least one of those is wrong/a duplicate.
+
+I don't know if this is the cause of the error message
+
+
+2. None of the Connection rate counters seem to be working, but the
+bytes/packet counters are OK:
+
+LVS-MIB::lvsServiceRateCps.1 = Gauge32: 0 <-- not working
+LVS-MIB::lvsServiceRateInPPS.1 = Gauge32: 9672
+LVS-MIB::lvsServiceRateOutPPS.1 = Gauge32: 0
+LVS-MIB::lvsServiceRateInBPS.1 = Gauge32: 969111
+LVS-MIB::lvsServiceRateOutBPS.1 = Gauge32: 0
+
+LVS-MIB::lvsRealRateCps.1.1 = Gauge32: 0 <-- not working
+LVS-MIB::lvsRealRateCps.1.2 = Gauge32: 0 <-- not working
+LVS-MIB::lvsRealRateCps.1.3 = Gauge32: 0 <-- not working
+LVS-MIB::lvsRealRateInPPS.1.1 = Gauge32: 3224
+LVS-MIB::lvsRealRateInPPS.1.2 = Gauge32: 3224
+LVS-MIB::lvsRealRateInPPS.1.3 = Gauge32: 3224
+LVS-MIB::lvsRealRateOutPPS.1.1 = Gauge32: 0
+LVS-MIB::lvsRealRateOutPPS.1.2 = Gauge32: 0
+LVS-MIB::lvsRealRateOutPPS.1.3 = Gauge32: 0
+LVS-MIB::lvsRealRateInBPS.1.1 = Gauge32: 323083
+LVS-MIB::lvsRealRateInBPS.1.2 = Gauge32: 323025
+LVS-MIB::lvsRealRateInBPS.1.3 = Gauge32: 323003
+LVS-MIB::lvsRealRateOutBPS.1.1 = Gauge32: 0
+LVS-MIB::lvsRealRateOutBPS.1.2 = Gauge32: 0
+LVS-MIB::lvsRealRateOutBPS.1.3 = Gauge32: 0
+
+(I'm using DR so I expect the "Out" counters to be 0.)
+
+Is anyone listening who might be in a position to look at these issues?
+
+Thanks,
+
+R.
+
