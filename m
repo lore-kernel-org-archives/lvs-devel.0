@@ -1,93 +1,61 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH 1/2] net/netfilter/ipvs: Move #define KMSG_COMPONENT to
- Makefile
-Date: Thu, 01 Oct 2009 08:55:57 -0700
-Message-ID: <1254412557.1799.68.camel@Joe-Laptop.home>
-References: <cover.1254349374.git.joe@perches.com>
-	 <0026bcf5aad9ae5036e68fc2dcda9c778d30dc47.1254349375.git.joe@perches.com>
-	 <alpine.LSU.2.00.0910010042540.782@obet.zrqbmnf.qr>
-	 <1254352160.2960.119.camel@Joe-Laptop.home>
-	 <alpine.LSU.2.00.0910010219100.7559@obet.zrqbmnf.qr>
-	 <1254358235.2960.145.camel@Joe-Laptop.home>
-	 <alpine.LSU.2.00.0910011016480.24025@obet.zrqbmnf.qr>
+From: Julius Volz <julius.volz@gmail.com>
+Subject: Re: IPVS_IPV6 Kconfig fix
+Date: Sat, 10 Oct 2009 16:38:51 +0200
+Message-ID: <43ca39800910100738pa3a55f0g7db877303846db2f@mail.gmail.com>
+References: <BF3B9AC4-D881-4EC7-812B-58BDFA793D68@isohunt.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LSU.2.00.0910011016480.24025@obet.zrqbmnf.qr>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=gamma;
+        h=domainkey-signature:mime-version:received:in-reply-to:references
+         :date:message-id:subject:from:to:cc:content-type
+         :content-transfer-encoding;
+        bh=YACaeM9e+KuzuTHspGAWfhxa481xfkVBVFPE3rZ1S4E=;
+        b=i2En5DFoH+8jhvhDB7EIPXCFmo6pAfnYxoy/VkxiDKqKzH6cGo5z5g5gaf719InOT4
+         br5mXanH6osDsSrgb5R0BVx1GYy92zcMGWvtu/iTP3G+mnMYUnyhOfhclKTkTU5+lqyd
+         OcHPcL8B877wizGiyYLMIxinhTk13RZT+we8c=
+In-Reply-To: <BF3B9AC4-D881-4EC7-812B-58BDFA793D68@isohunt.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Jan Engelhardt <jengelh@medozas.de>
-Cc: Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Netfilter Developer Mailing List <netfilter-devel@vger.kernel.org>, netdev@vger.kernel.org, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+To: Allen Parker <parker@isohunt.com>
+Cc: davem@davemloft.net, lvs-devel@vger.kernel.org
 
-On Thu, 2009-10-01 at 10:27 +0200, Jan Engelhardt wrote:
-> On Thursday 2009-10-01 02:50, Joe Perches wrote:
-> >I imagine an eventual goal of standardizing the default
-> >pr_fmt define in kernel.h to
-> >	#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-> >so that all pr_<level> calls get this unless otherwise
-> >specified.
-> 
-> I like that approach. Saves me adding that line to .c
-> files repeatedly.
+Hi Allen,
 
-There aren't too many existing pr_<level> calls so
-that this couldn't be considered.
+On Sat, Oct 10, 2009 at 4:03 PM, Allen Parker <parker@isohunt.com> wrot=
+e:
+> Unless there's a very good reason to exclude CONFIG_IPV6=3Dm from
+> CONFIG_IPVS_IPV6, you probably shouldn't do it. This patch fixes the
+> "hidden" IPVS_IPV6 when IPV6=3Dm.
+>
+> diff -Nur linux-2.6.30.4/net/netfilter/ipvs/Kconfig
+> linux-2.6.30.4-fixed/net/netfilter/ipvs/Kconfig
+> --- linux-2.6.30.4/net/netfilter/ipvs/Kconfig =A0 2009-10-10
+> 13:59:50.000000000 +0000
+> +++ linux-2.6.30.4-fixed/net/netfilter/ipvs/Kconfig =A0 =A0 2009-10-1=
+0
+> 13:59:24.000000000 +0000
+> @@ -26,7 +26,7 @@
+>
+> =A0config IP_VS_IPV6
+> =A0 =A0 =A0 =A0bool "IPv6 support for IPVS"
+> - =A0 =A0 =A0 depends on EXPERIMENTAL && (IPV6 =3D y|| IP_VS =3D IPV6=
+)
+> + =A0 =A0 =A0 depends on EXPERIMENTAL && (IPV6 || IP_VS =3D IPV6)
+> =A0 =A0 =A0 =A0---help---
+> =A0 =A0 =A0 =A0 =A0Add IPv6 support to IPVS. This is incomplete and m=
+ight be
+> dangerous.
 
-Files with pr_<level> without pr_fmt:
+The problem is that IP_VS_IPV6 doesn't support modularity, so it has
+to depend on IPV6 being statically compiled in as well.
 
-$ grep -rPl --include=*.[ch] \
-	"\bpr_(info|warning|err|alert|notice|crit)\b" * |
-  xargs grep -Lw "pr_fmt" | wc -l
-569
+An alternative to the current configuration is to automatically select
+IPV6=3Dy in the background when selecting IP_VS_IPV6 (and always showin=
+g
+IP_VS_IPV6). I remember a thread on lkml about that a long while ago,
+but don't know the current Kconfig policies regarding this.
 
-Uses of pr_<level> without pr_fmt:
-
-$ grep -rPl --include=*.[ch] \
-	"\bpr_(info|warning|err|alert|notice|crit)\b" * |
-  xargs grep -Lw "pr_fmt" |
-  xargs grep -P "\bpr_(info|warning|err|alert|notice|crit)\b" |
-  wc -l
-2885
-
-If you look at the pr_<levels>, it's nearly
-a mechanical thing to strip the ones with
-some sort of prefix and add a #define pr_fmt
-to replace them.  Most all of them without
-prefixes might benefit by using a standardized
-#define pr_fmt(etc...) in kernel.h, so the
-actual count of changes isn't that high.
-
-> >Or perhaps better, to get rid of pr_fmt(fmt) altogether and
-> >have printk emit the filename/modulename, function and/or
-> >code offset by using something like %pS after the level.
-> I object to that. You would be spamming the dmesg ring buffer
-> with all that info
-
-Of course printks could not change, there are way too
-many of those to consider doing that globally.
-
-But the printks emitted by pr_<level> might change.
-Maybe by setting a bit in the string "<level>" or by
-some other mechanism.
-
-> filename: you would have to keep filename strings in the kernel.
-> Surely I do not find that thrilling when there are ~18000
-> non-arch .[ch] files whose pathnames amount to 542K.
-> Same goes similar for functions.
-> 
-> modulename: obj-y files would only get "<built-in>" or something
-> for KBUILD_MODNAME. Printing that to dmesg is not too useful.
-
-The removal of KBUILD_MODNAME could only be done
-for builds with CONFIG_KALLSYMS or
-CONFIG_DYNAMIC_DEBUG.
-
-It might also be possible to use something like
-CONFIG_DYNAMIC_DEBUG to control which modules get
-MODNAME, __func__, __LINE__ or offset emitted
-by the pr_<level> via some boot/module/sysconf
-or FTRACE like parameters.
-
-cheers, Joe
-
+Julius
