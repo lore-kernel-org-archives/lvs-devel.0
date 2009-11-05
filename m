@@ -1,45 +1,36 @@
 From: Simon Kirby <sim@hostway.ca>
-Subject: Re: [PATCH] Fix ip_vs_lblcr_full_check to remove unused entries instead of used entries.
-Date: Thu, 5 Nov 2009 01:43:58 -0800
-Message-ID: <20091105094358.GA19068@hostway.ca>
-References: <20091105003801.GA20042@hostway.ca> <20091105013511.GA12797@verge.net.au> <20091105083716.GE5244@hostway.ca>
+Subject: Re: test
+Date: Thu, 5 Nov 2009 02:11:18 -0800
+Message-ID: <20091105101118.GG5244@hostway.ca>
+References: <20091104202716.GE14821@hostway.ca> <Pine.LNX.4.58.0911051119190.2761@u.domain.uli>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20091105083716.GE5244@hostway.ca>
+In-Reply-To: <Pine.LNX.4.58.0911051119190.2761@u.domain.uli>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 
-D'oh.  Don't apply this -- the argument order makes the original correct.
+On Thu, Nov 05, 2009 at 11:26:27AM +0200, Julian Anastasov wrote:
+
+> 	If 'time to expire' is after current time then continue,
+> i.e. current time didn't reached the limit, seems correct,
+> no need to patch. For better reading and to match
+> ip_vs_lblcr_check_expire() it can be converted to:
+> 
+> if (time_before(now, en->lastuse+sysctl_ip_vs_lblcr_expiration))
+> 	continue;
+
+D'oh.  I noticed the use of time_before() further down in
+ip_vs_lblcr_check_expire(), but not the reversed arguments, hence my
+confusion.
+
+I still suspect there may be something not quite right, or which could
+perhaps do with some tuning.  It's difficult to see exactly how it's
+working internally, since there's currently nothing to get a summary of
+the dest_sets to userspace.  I'll follow up if I find anything.
 
 Simon-
-
-On Thu, Nov 05, 2009 at 12:37:16AM -0800, Simon Kirby wrote:
-
-> Tested with real packets -- seems to work.
-> 
-> Signed-off-by: Simon Kirby <sim@hostway.ca>
-> 
-> ---
->  net/netfilter/ipvs/ip_vs_lblcr.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
-> index 715b57f..937743f 100644
-> --- a/net/netfilter/ipvs/ip_vs_lblcr.c
-> +++ b/net/netfilter/ipvs/ip_vs_lblcr.c
-> @@ -432,7 +432,7 @@ static inline void ip_vs_lblcr_full_check(struct ip_vs_service *svc)
->  
->  		write_lock(&svc->sched_lock);
->  		list_for_each_entry_safe(en, nxt, &tbl->bucket[j], list) {
-> -			if (time_after(en->lastuse+sysctl_ip_vs_lblcr_expiration,
-> +			if (time_before(en->lastuse+sysctl_ip_vs_lblcr_expiration,
->  				       now))
->  				continue;
->  
-> -- 
-> 1.6.5.2
