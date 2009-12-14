@@ -1,37 +1,58 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH] ipvs: fix synchronization on connection close
-Date: Mon, 14 Dec 2009 16:39:32 +0100
-Message-ID: <4B265C34.6070205@trash.net>
-References: <1260434502-14166-1-git-send-email-dfeng@redhat.com> <20091211033542.GA28136@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: [patch] ipvs: zero usvc and udest
+Date: Tue, 15 Dec 2009 09:39:03 +1100
+Message-ID: <20091214223902.GA3784@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20091211033542.GA28136@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: Xiaotian Feng <dfeng@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, "David S. Miller" <davem@davemloft.net>
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: Deon van der Merwe <dvdm@truteq.co.za>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, David Miller <davem@davemloft.org>
 
-Simon Horman wrote:
-> On Thu, Dec 10, 2009 at 04:41:42PM +0800, Xiaotian Feng wrote:
->> commit 9d3a0de makes slaves expire as they would do on the master
->> with much shorter timeouts. But it introduces another problem:
->> When we close a connection, on master server the connection became
->> CLOSE_WAIT/TIME_WAIT, it was synced to slaves, but if master is
->> finished within it's timeouts (CLOSE), it will not be synced to
->> slaves. Then slaves will be kept on CLOSE_WAIT/TIME_WAIT until
->> timeout reaches. Thus we should also sync with CLOSE.
->>
->> Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
->> Cc: Wensong Zhang <wensong@linux-vs.org>
->> Cc: Simon Horman <horms@verge.net.au>
->> Cc: Julian Anastasov <ja@ssi.bg>
->> Cc: David S. Miller <davem@davemloft.net>
-> 
-> This seems reasonable to me.
-> 
-> Acked-by: Simon Horman <horms@verge.net.au>
+Make sure that any otherwise uninitialised fields of usvc are zero.
 
-Applied, thanks.
+This has been obvserved to cause a problem whereby the port of
+fwmark services may end up as a non-zero value which causes
+scheduling of a destination server to fail for persisitent services.
+
+As observed by Deon van der Merwe <dvdm@truteq.co.za>.
+This fix suggested by Julian Anastasov <ja@ssi.bg>.
+
+For good measure also zero udest.
+
+Cc: Deon van der Merwe <dvdm@truteq.co.za>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+
+--- 
+
+This bug has been present since the netlink interface to IPVS was
+introduced in 2.6.28. I think it is relevant for 2.6.33 as well
+as -stable.
+
+Index: linux-2.6/net/netfilter/ipvs/ip_vs_ctl.c
+===================================================================
+--- linux-2.6.orig/net/netfilter/ipvs/ip_vs_ctl.c	2009-12-11 14:22:23.000000000 +0900
++++ linux-2.6/net/netfilter/ipvs/ip_vs_ctl.c	2009-12-14 11:05:50.000000000 +0900
+@@ -2714,6 +2714,8 @@ static int ip_vs_genl_parse_service(stru
+ 	if (!(nla_af && (nla_fwmark || (nla_port && nla_protocol && nla_addr))))
+ 		return -EINVAL;
+ 
++	memset(usvc, 0, sizeof(*usvc));
++
+ 	usvc->af = nla_get_u16(nla_af);
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (usvc->af != AF_INET && usvc->af != AF_INET6)
+@@ -2901,6 +2903,8 @@ static int ip_vs_genl_parse_dest(struct 
+ 	if (!(nla_addr && nla_port))
+ 		return -EINVAL;
+ 
++	memset(udest, 0, sizeof(*udest));
++
+ 	nla_memcpy(&udest->addr, nla_addr, sizeof(udest->addr));
+ 	udest->port = nla_get_u16(nla_port);
+ 
 
