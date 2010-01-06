@@ -1,60 +1,41 @@
-From: Mark Bergsma <mark@wikimedia.org>
-Subject: Re: [PATCH] IPVS: Allow boot time change of hash size.
-Date: Tue, 05 Jan 2010 12:02:20 +0100
-Message-ID: <4B431C3C.5080203@wikimedia.org>
-References: <20091229013401.GE10172@verge.net.au> <4B41F3C2.6050006@trash.net> <20100104232445.GC2554@verge.net.au>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20100104232445.GC2554@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH 0/8] Remove most uses of NIPQUAD and NIPQUAD_FMT
+Date: Tue,  5 Jan 2010 17:20:12 -0800
+Message-ID: <cover.1262726222.git.joe@perches.com>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: Patrick McHardy <kaber@trash.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, "Catalin(ux) M. BOIE" <catab@embedromix.ro>, Joseph Mack NA3T <jmack@wm7d.net>, Graeme Fowler <graeme@graemef.net>, David Miller <davem@davemloft.net>
+Content-Transfer-Encoding: 7bit
+To: linux-kernel@vger.kernel.org
+Cc: "James E.J. Bottomley" <James.Bottomley@suse.de>, Greg Kroah-Hartman <gregkh@suse.de>, Mark Fasheh <mfasheh@suse.com>, Joel Becker <joel.becker@oracle.com>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Andy Grover <andy.grover@oracle.com>, "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>, linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org, ocfs2-devel@oss.oracle.com, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, rds
 
-On 05-01-10 00:24, Simon Horman wrote:
-> On Mon, Jan 04, 2010 at 02:57:22PM +0100, Patrick McHardy wrote:
->> Simon Horman wrote:
->>> On Mon, Dec 28, 2009 at 07:49:38PM +0100, Mark Bergsma wrote:
->>>> On 03-12-08 01:37, David Miller wrote:
->>>>> From: "Catalin(ux) M. BOIE" <catab@embedromix.ro>
->>>>> Date: Tue, 2 Dec 2008 16:16:04 -0700 (MST)
->>>>>> I was looking for anything that could get me past of 88.000 request per
->>>>>> seconds.
->>>>>> The help text told me to raise that value if I have big number of
->>>>>> connections. I just needed an easy way to test.
->>>>> You're just repeating what I said, you "think" it should be
->>>>> changed and as a result you are wasting everyones time.
->>>>>
->>>>> You don't actually "know", you're just guessing using random
->>>>> snippets from documentation rather than good hard evidence of
->>>>> a need.
->>>> Hello,
->>>>
->>>> I just found this year-old thread about a patch allowing the IPVS
->>>> connection hash table size to be set at load time by a module parameter.
->>>> Apparently the conclusion reached was that allowing this configuration
->>>> setting to be changed would be useless, and that the poster's
->>>> performance problems would likely lie elsewhere, since he had no
->>>> evidence it was caused by the hash table size.
->>>
->>> Hi Mark,
->>>
->>> thanks for your test results. I have added them to the patch.
->>> Feel free to edit the text.
->>
->> Just wondering because of this comment - do you want me to apply this
->> patch?
-> 
-> I was fishing for an response from Mark.
-> I'll resubmit it properly as that doesn't seem to be forthcoming.
+Convert them to the %pI4 format extension where possible
+Only a couple uses are left in netfilter.
 
-Hi Simon/Patrick,
+Joe Perches (8):
+  drivers/scsi: Remove uses of NIPQUAD, use %pI4
+  drivers/staging/pohmelfs/inode.c: Remove uses of NIPQUAD, use %pI4
+  net/rds: Remove uses of NIPQUAD, use %pI4
+  net/sunrpc: Remove uses of NIPQUAD, use %pI4
+  net/ipv4/netfilter/nf_nat_ftp.c: Convert NIPQUAD to %pI4
+  net/netfilter/ipvs/ip_vs_ftp.c: Use standardized format in sprintf
+  fs/ocfs2/cluster/tcp.c: Remove use of NIPQUAD, use %pI4
+  drivers/firmware/iscsi_ibft.c: Remove NIPQUAD_FMT, use %pI4
 
-Sorry for the late reply, and yes, this is fine. Thanks for applying the
-patch!
+ drivers/firmware/iscsi_ibft.c        |    8 +++-----
+ drivers/scsi/bnx2i/bnx2i_iscsi.c     |    4 ++--
+ drivers/scsi/cxgb3i/cxgb3i_iscsi.c   |    5 ++---
+ drivers/scsi/cxgb3i/cxgb3i_offload.c |    7 ++++---
+ drivers/staging/pohmelfs/inode.c     |    3 +--
+ fs/ocfs2/cluster/tcp.c               |    4 ++--
+ net/ipv4/netfilter/nf_nat_ftp.c      |    2 +-
+ net/netfilter/ipvs/ip_vs_ftp.c       |    2 +-
+ net/rds/tcp_connect.c                |    7 +++----
+ net/rds/tcp_listen.c                 |    6 +++---
+ net/rds/tcp_send.c                   |    4 ++--
+ net/sunrpc/xprtrdma/transport.c      |    3 +--
+ net/sunrpc/xprtsock.c                |    5 ++---
+ 13 files changed, 27 insertions(+), 33 deletions(-)
 
--- 
-Mark Bergsma <mark@wikimedia.org>
-Operations Engineer, Wikimedia Foundation
