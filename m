@@ -1,104 +1,42 @@
 From: Mohan Reddy <mohanreddykv@gmail.com>
-Subject: Re: [PATCH] IPVS: SCTP Tranport Load Balancing Support to IPVS
-Date: Wed, 20 Jan 2010 22:25:05 +0530
-Message-ID: <20100120165502.GC4195@mohan-laptop>
-References: <20100118175009.GA7812@mohan-laptop> <20100118232148.GB20302@verge.net.au>
+Subject: SCTP Trasport Loadbalancing Support for IPVS
+Date: Fri, 12 Feb 2010 17:53:04 +0530
+Message-ID: <20100212122301.GA4376@mohan-laptop>
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=gamma;
         h=domainkey-signature:received:received:date:from:to:cc:subject
-         :message-id:references:mime-version:content-type:content-disposition
-         :content-transfer-encoding:in-reply-to:user-agent;
-        bh=H7BqoNwN3UD0F1vjeEApYm28QnEgUULnnb40hW3YiAE=;
-        b=tQaCnMhynVu9BpxP3VvbAnpOLh2qLku4SxZchwzM+mAb/WWdqXqzzGd+XD+HsIjJyb
-         91r4gB5vNVUsiW1mvBy2eBOVXr78pnMF0NXLaM1HkekjAoHgXgsseOGVBB52/5XUrSOs
-         7nbPkITN5De6rfdijy4xCfOJyl5ao9rFJFd5k=
+         :message-id:mime-version:content-type:content-disposition
+         :content-transfer-encoding:user-agent;
+        bh=w2iB+X5PMYHeW+ar9fvXqmSj2NgsD7zKYYbRh9uMFlE=;
+        b=fiU+2xpPd2ntEjqOyt/QiMXFw2xGNFDLQ6VXz1NNkdr4/RY3jzbNBQ1OwUixk1KXGs
+         FiAzo/OpSAFm1wOYliu+8+hx6/gwcQG+wyfB6SceqBLCRAPxWwyncsEfqchyjbzUl+mK
+         8GP4pINEX3x9HwPLxnhw5d/GzL3NS3V5BAZlI=
 Content-Disposition: inline
-In-Reply-To: <20100118232148.GB20302@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="utf-8"
-To: Simon Horman <horms@verge.net.au>
-Cc: wensong@linux-vs.org, ja@ssi.bg, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org
+To: horms@verge.net.au, wensong@linux-vs.org
+Cc: linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, ja@ssi.bg, kvmrdy@gmail.com
 
-On Tue, Jan 19, 2010 at 12:21:48PM +1300, Simon Horman wrote:
-> On Mon, Jan 18, 2010 at 11:20:11PM +0530, Mohan Reddy wrote:
-> > This patch adds SCTP packet load balancing support to IPVS. This pa=
-tch is written against linux-2.6.32.3 kernel. This has been written bas=
-ed on the SCTP FSM desribed in the RFC 4960. All the posibilities of ch=
-unks have been taken care.=20
-> >=20
-> > Once the IPVS receives an SCTP packet with INIT chunk we will creat=
-e a=20
-> > connection object and chooses a real and forward the packet based o=
-n the
-> > forwarding method. After creating the connection we will drive the =
-=46SM based=20
-> > on the chunks(in this code they are called as events). The return p=
-acket from
-> > the server will be an INIT ACK chunck, then we will move the FSM st=
-ate to
-> > IP_VS_S_INIT_ACK_SER. Like this all the chunks have next states.=20
-> >=20
-> > As all the packets are destined to the virtual server (VIP) we have=
-n't handled
-> > multihomed endpoints.
-> >=20
-> >=20
-> > Signed-off-by : Venkata Mohan Reddy Koppula <mohanreddykv@gmail.com=
->
-> >=20
-> >=20
-> >  =20
->=20
-> Hi,
->=20
-> I haven't had time to review your patch properly yet.
-> But I have two minor comments.
->=20
-> Firstly, could you please base your work on Patrick McHardy's nf-next=
--2.6
-> tree or at least Dave Miller's the net-next-2.6 tree. At this stage i=
-t just
-> looks like you'll need to re-diff the patch.
->=20
-> [snip]
->=20
-> > diff -Npaur linux-2.6.32.3/net/netfilter/ipvs/Kconfig linux-2.6.32.=
-3_new/net/netfilter/ipvs/Kconfig
-> > --- linux-2.6.32.3/net/netfilter/ipvs/Kconfig	2010-01-07 04:37:45.0=
-00000000 +0530
-> > +++ linux-2.6.32.3_new/net/netfilter/ipvs/Kconfig	2010-01-16 21:19:=
-54.772760964 +0530
-> > @@ -100,6 +100,12 @@ config	IP_VS_PROTO_AH
-> >  	  This option enables support for load balancing AH (Authenticati=
-on
-> >  	  Header) transport protocol. Say Y if unsure.
-> > =20
-> > +config  IP_VS_PROTO_SCTP
-> > +	bool "SCTP load balancing support"
->=20
-> You need=20
->=20
-> 	select CRC32C
->=20
-> here.
->=20
-> > +	---help---
-> > +	  This option enables support for load balancing SCTP transport
-> > +	  protocol. Say Y if unsure.
-> > +
-> >  comment "IPVS scheduler"
-> > =20
-> >  config	IP_VS_RR
->=20
-> [snip]
+Hi Simon&Wensong,
 
-As suggested by Simon I have taken diffs against nf-next.2.6 tree and r=
-esending
-the patch. I built the kernel with nf-next.2.6 tree and tested.
+Please some review this code and let me know your comments. I am re-pos=
+ting this
+as there is no response from any one. You are welcome for any type of c=
+omments.
+
+This patch enhances IPVS to load balance SCTP transport protocol packet=
+s. This
+is done based on the SCTP rfc 4960. All possible control chunks have be=
+en=20
+taken care. The state machine used in this code looks some what lengthy=
+=2E I
+tried to make the state machine easy to understand.=20
+
+This patch is against nf-next.2.6 tree.
 
 Thanks,
 Mohan Reddy
@@ -1646,3 +1584,4 @@ er, const size_t buflen)
  		}
 =20
  		if (opt)
+ =20
