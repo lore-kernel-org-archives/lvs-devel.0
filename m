@@ -1,37 +1,32 @@
-From: Venkata Mohan Reddy <mohanreddykv@gmail.com>
-Subject: Re: SCTP Trasport Loadbalancing Support for IPVS
-Date: Wed, 17 Feb 2010 23:16:34 +0530
-Message-ID: <20100217174628.GA22885@mohan-laptop>
-References: <20100212122301.GA4376@mohan-laptop> <20100216051355.GF28421@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: [IPVS] SCTP Trasport Loadbalancing Support
+Date: Thu, 18 Feb 2010 12:06:42 +1100
+Message-ID: <20100218010642.GD16530@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=gamma;
-        h=domainkey-signature:received:received:date:from:to:cc:subject
-         :message-id:references:mime-version:content-type:content-disposition
-         :content-transfer-encoding:in-reply-to:user-agent;
-        bh=qtQ4gAgsmCdEzLHhjCKfN4XTGs+9wyNWA3BUx8sxuJk=;
-        b=kS6sNKcS8S58GwUB37MQG4xXmX/SI9aQg2SuZhsaL3psVjhuz9tVV/z45glSakT3+6
-         7cZE0nTIMDd/WGTrESGK2PWlTMUuYCMYcA+Pdm63qxrtucbVRfLNjZ7JNPK2xcggp1uh
-         Ee/781pLoRAj+VFmN+1Uey+BQGmxeNt2X7tkM=
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20100216051355.GF28421@verge.net.au>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="utf-8"
-To: Simon Horman <horms@verge.net.au>
-Cc: wensong@linux-vs.org, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, ja@ssi.bg
+To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Venkata Mohan Reddy <mohanreddykv@gmail.com>, Patrick McHardy <kaber@trash.net>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-Hi Simon,
+=46rom: Venkata Mohan Reddy <mohanreddykv@gmail.com>
 
-I have addressed all your review comments and re-posting the patch.
+Enhance IPVS to load balance SCTP transport protocol packets. This is d=
+one
+based on the SCTP rfc 4960. All possible control chunks have been taken
+care. The state machine used in this code looks some what lengthy. I tr=
+ied
+to make the state machine easy to understand.
 
-Thanks,
-Mohan Reddy
+Signed-off-by: Venkata Mohan Reddy Koppula <mohanreddykv@gmail.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
 
-Signed-off-by : Venkata Mohan Reddy Koppula <mohanreddykv@gmail.com>
+---=20
 
+Patrick, please consider for 2.6.35.
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
 index a816c37..fe82b1e 100644
