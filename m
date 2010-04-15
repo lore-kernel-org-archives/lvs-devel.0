@@ -1,7 +1,7 @@
 From: Brian Carpio <bcarpio@broadhop.com>
 Subject: RE: [Linux-HA] UDP / DHCP / LDIRECTORD
-Date: Tue, 13 Apr 2010 10:00:10 -0700
-Message-ID: <131ECB70A13234449BBD551EC5022B6868E6E344D1@VA3DIAXVS061.RED001.local>
+Date: Thu, 15 Apr 2010 12:57:29 -0700
+Message-ID: <131ECB70A13234449BBD551EC5022B6868E7205F84@VA3DIAXVS061.RED001.local>
 References: <20100412020447.GB10826@verge.net.au>
  <20100413025551.GA25064@verge.net.au>
 Mime-Version: 1.0
@@ -12,11 +12,25 @@ In-Reply-To: <20100413025551.GA25064@verge.net.au>
 Content-Language: en-US
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: 
-Cc: "linux-ha@lists.linux-ha.org" <linux-ha@lists.linux-ha.org>, lvs-devel <lvs-devel@vger.kernel.org>
+To: Simon Horman <horms@verge.net.au>
+Cc: "linux-ha@lists.linux-ha.org" <linux-ha@lists.linux-ha.org>, lvs-devel <lvs-devel@vger.kernel.org>, Julian Anastasov <ja@ssi.bg>
 
-VGhhbmtzIHNvIG11Y2ghISBXZSB3aWxsIHN0YXJ0IHRlc3RpbmcgdGhpcyB0b2RheSEgDQoNCkJy
-aWFuIENhcnBpbw0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogU2ltb24gSG9y
+U2ltb24sDQoNClRoYW5rcyBhZ2FpbiBmb3IgYWxsIG9mIHlvdXIgaGFyZCB3b3JrLCBJIGhhdmUg
+c2VudCBvdmVyIGEgbWlsbGlvbiBVRFAgREhDUCBwYWNrZXRzIGF0IHRoZSBuZXcga2VybmVsL2lw
+dnNhZG0gd2l0aCB0aGUgcGF0Y2hlcyBhcHBsaWVkIGFuZCBjdXJyZW50bHkgdGhlIG9ubHkgaXNz
+dWUgKHdoaWNoIHlvdSBrbm93IGFib3V0IGFscmVhZHkpIGlzIHRoYXQgbGRpcmVjdG9yZCBkb2Vz
+bid0IGtub3cgYWJvdXQgdGhlIC1vIG9wdGlvbiB3aGljaCBjYXVzZXMgYSBzbGlnaHQgaXNzdWUg
+d2l0aCBoZWFydGJlYXQgKGJ1dCBJIGp1c3QgcHV0IGluIGEgY2hlYXAgZml4IGluIG15IGxkaXJl
+Y3RvcmQgc3RhcnQgc2NyaXB0IHRvIGVkaXQgdGhlIHNlcnZpY2VzIGNyZWF0ZWQgYnkgbGRpcmVj
+dG9yZCkuLiANCg0KU28gbm90IG9ubHkgaGF2ZSBJIHNlbnQgb3ZlciAxLDAwMCwwMDAgcGFja2V0
+cyB0byB0aGlzIHNldHVwIGJ1dCBJIGhhdmUgYWxzbyBzZW50IHRoZW0gYXMgZmFzdCBhcyAxMCBw
+YWNrZXRzIGV2ZXJ5IDMgbWlsbGlzZWNvbmRzLCBJIHBsYW4gdG8gZG8gYSBsb25nIHRlcm0gd2Vl
+ayBsb25nIHRlc3QgYnV0IEkgZG9uJ3QgZm9yZXNlZSBhbnkgaXNzdWVzLi4gDQoNCkxldCBtZSBr
+bm93IGlmIHRoZXJlIGlzIGFueSBvdGhlciB0ZXN0aW5nIHlvdSB3b3VsZCBsaWtlIHVzIHRvIGRv
+Li4gb3IgaWYgeW91IHdvdWxkIGxpa2UgbWUgdG8gc2VuZCBvdXQgdGhlIGtlcm5lbC0yLjYuMTgt
+MTI4IHdpdGggdGhlIHBhdGNoIGFuZCB0aGUgaXB2c2FkbS0xLjI0LTEwIHJwbSB3aXRoIHRoZSBw
+YXRjaC4uIA0KDQpUaGFua3MgYWdhaW4gU2ltb24geW91IGFyZSB0aGUgbWFuISENCg0KQnJpYW4g
+Q2FycGlvDQoNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogU2ltb24gSG9y
 bWFuIFttYWlsdG86aG9ybXNAdmVyZ2UubmV0LmF1XSANClNlbnQ6IE1vbmRheSwgQXByaWwgMTIs
 IDIwMTAgODo1NiBQTQ0KVG86IEJyaWFuIENhcnBpbw0KQ2M6IGxpbnV4LWhhQGxpc3RzLmxpbnV4
 LWhhLm9yZzsgbHZzLWRldmVsOyBKdWxpYW4gQW5hc3Rhc292DQpTdWJqZWN0OiBSZTogW0xpbnV4
