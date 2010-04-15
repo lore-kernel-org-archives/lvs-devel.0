@@ -1,55 +1,41 @@
-From: Brian Carpio <bcarpio@broadhop.com>
-Subject: RE: [Linux-HA] UDP / DHCP / LDIRECTORD
-Date: Thu, 15 Apr 2010 12:57:29 -0700
-Message-ID: <131ECB70A13234449BBD551EC5022B6868E7205F84@VA3DIAXVS061.RED001.local>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [Linux-HA] UDP / DHCP / LDIRECTORD
+Date: Fri, 16 Apr 2010 08:52:45 +1000
+Message-ID: <20100415225245.GJ12674@verge.net.au>
 References: <20100412020447.GB10826@verge.net.au>
  <20100413025551.GA25064@verge.net.au>
+ <131ECB70A13234449BBD551EC5022B6868E7205F84@VA3DIAXVS061.RED001.local>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: base64
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20100413025551.GA25064@verge.net.au>
-Content-Language: en-US
+Content-Disposition: inline
+In-Reply-To: <131ECB70A13234449BBD551EC5022B6868E7205F84@VA3DIAXVS061.RED001.local>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: Simon Horman <horms@verge.net.au>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Brian Carpio <bcarpio@broadhop.com>
 Cc: "linux-ha@lists.linux-ha.org" <linux-ha@lists.linux-ha.org>, lvs-devel <lvs-devel@vger.kernel.org>, Julian Anastasov <ja@ssi.bg>
 
-U2ltb24sDQoNClRoYW5rcyBhZ2FpbiBmb3IgYWxsIG9mIHlvdXIgaGFyZCB3b3JrLCBJIGhhdmUg
-c2VudCBvdmVyIGEgbWlsbGlvbiBVRFAgREhDUCBwYWNrZXRzIGF0IHRoZSBuZXcga2VybmVsL2lw
-dnNhZG0gd2l0aCB0aGUgcGF0Y2hlcyBhcHBsaWVkIGFuZCBjdXJyZW50bHkgdGhlIG9ubHkgaXNz
-dWUgKHdoaWNoIHlvdSBrbm93IGFib3V0IGFscmVhZHkpIGlzIHRoYXQgbGRpcmVjdG9yZCBkb2Vz
-bid0IGtub3cgYWJvdXQgdGhlIC1vIG9wdGlvbiB3aGljaCBjYXVzZXMgYSBzbGlnaHQgaXNzdWUg
-d2l0aCBoZWFydGJlYXQgKGJ1dCBJIGp1c3QgcHV0IGluIGEgY2hlYXAgZml4IGluIG15IGxkaXJl
-Y3RvcmQgc3RhcnQgc2NyaXB0IHRvIGVkaXQgdGhlIHNlcnZpY2VzIGNyZWF0ZWQgYnkgbGRpcmVj
-dG9yZCkuLiANCg0KU28gbm90IG9ubHkgaGF2ZSBJIHNlbnQgb3ZlciAxLDAwMCwwMDAgcGFja2V0
-cyB0byB0aGlzIHNldHVwIGJ1dCBJIGhhdmUgYWxzbyBzZW50IHRoZW0gYXMgZmFzdCBhcyAxMCBw
-YWNrZXRzIGV2ZXJ5IDMgbWlsbGlzZWNvbmRzLCBJIHBsYW4gdG8gZG8gYSBsb25nIHRlcm0gd2Vl
-ayBsb25nIHRlc3QgYnV0IEkgZG9uJ3QgZm9yZXNlZSBhbnkgaXNzdWVzLi4gDQoNCkxldCBtZSBr
-bm93IGlmIHRoZXJlIGlzIGFueSBvdGhlciB0ZXN0aW5nIHlvdSB3b3VsZCBsaWtlIHVzIHRvIGRv
-Li4gb3IgaWYgeW91IHdvdWxkIGxpa2UgbWUgdG8gc2VuZCBvdXQgdGhlIGtlcm5lbC0yLjYuMTgt
-MTI4IHdpdGggdGhlIHBhdGNoIGFuZCB0aGUgaXB2c2FkbS0xLjI0LTEwIHJwbSB3aXRoIHRoZSBw
-YXRjaC4uIA0KDQpUaGFua3MgYWdhaW4gU2ltb24geW91IGFyZSB0aGUgbWFuISENCg0KQnJpYW4g
-Q2FycGlvDQoNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogU2ltb24gSG9y
-bWFuIFttYWlsdG86aG9ybXNAdmVyZ2UubmV0LmF1XSANClNlbnQ6IE1vbmRheSwgQXByaWwgMTIs
-IDIwMTAgODo1NiBQTQ0KVG86IEJyaWFuIENhcnBpbw0KQ2M6IGxpbnV4LWhhQGxpc3RzLmxpbnV4
-LWhhLm9yZzsgbHZzLWRldmVsOyBKdWxpYW4gQW5hc3Rhc292DQpTdWJqZWN0OiBSZTogW0xpbnV4
-LUhBXSBVRFAgLyBESENQIC8gTERJUkVDVE9SRA0KDQpIaSBCcmlhbiwNCg0KaGVyZSBhcmUgc29t
-ZSBwYXRjaGVzIHRvIHRlc3QuDQpJIGhhdmUgb25seSBsaWdodGx5IHRlc3RlZCB0aGVtIHRvIHRo
-ZSBleHRlbnQgdGhhdCB0aGV5IGNvbXBpbGUgYW5kIGFwcGVhciB0byBjb25maWd1cmUgYSB2YWxp
-ZCBzZXJ2aWNlLg0KDQpZb3UgY2FuIGVuYWJsZSBvbmUgcGFja2V0IHNjaGVkdWxpbmcgKE9QUykg
-YnkgcGFzc2luZyB0aGUgLW8gb3B0aW9uIHRvIGlwdnNhZG0gd2hlbiBjcmVhdGluZyBhIHZpcnR1
-YWwgc2VydmljZS4NCg0KCWUuZy4NCg0KCSMgaXB2c2FkbSAtQSAtdSAxNzIuMTcuNjAuMjExOjgw
-IC1vDQoJIyBpcHZzYWRtIC1MIC1uDQoJSVAgVmlydHVhbCBTZXJ2ZXIgdmVyc2lvbiAxLjIuMSAo
-c2l6ZT00MDk2KQ0KCVByb3QgTG9jYWxBZGRyZXNzOlBvcnQgU2NoZWR1bGVyIEZsYWdzDQoJICAt
-PiBSZW1vdGVBZGRyZXNzOlBvcnQgICAgICAgICAgIEZvcndhcmQgV2VpZ2h0IEFjdGl2ZUNvbm4g
-SW5BY3RDb25uDQoJVURQICAxNzIuMTcuNjAuMjExOjgwIHdsYyBvcHMNCg0KVGhlcmUgYXJlIHRo
-cmVlIHBhdGNoZXM6DQoNCm9wcy1rZXJuZWwtMi42LjE4LTEyOC5lbDUucGF0Y2g6IFBhdGNoIGFn
-YWluc3QgQ2VudE9TLTUuMydzIDIuNi4xOC0xMjgga2VybmVsLg0Kb3BzLWlwdnNhZG0tMS4yNC0x
-MDogUGF0Y2ggYWdhaW5zdCBDZW50T1MtNS4zJ3MgaXB2c2FkbSAxLjI0LTEwLg0Kb3BzLWlwdnNh
-ZG0tMS4yNDogUGF0Y2ggYWdhaW5zdCB1cHN0cmVhbSBpcHZzYWRtIDEuMjQNCg0KSSBoYXZlIG5v
-dCB1cC1wb3J0ZWQgdGhlIGNvZGUgdG8gdGhlIDIuNi4zMyBrZXJuZWwgYW5kIGlwdnNhZG0gMS4y
-NSB5ZXQuDQoNCg0KTm8gdmlydXMgZm91bmQgaW4gdGhpcyBpbmNvbWluZyBtZXNzYWdlLg0KQ2hl
-Y2tlZCBieSBBVkcgLSB3d3cuYXZnLmNvbQ0KVmVyc2lvbjogOS4wLjgwMSAvIFZpcnVzIERhdGFi
-YXNlOiAyNzEuMS4xLzI4MDggLSBSZWxlYXNlIERhdGU6IDA0LzEzLzEwIDAwOjMyOjAwDQo=
+On Thu, Apr 15, 2010 at 12:57:29PM -0700, Brian Carpio wrote:
+> Simon,
+> 
+> Thanks again for all of your hard work, I have sent over a million UDP DHCP packets at the new kernel/ipvsadm with the patches applied and currently the only issue (which you know about already) is that ldirectord doesn't know about the -o option which causes a slight issue with heartbeat (but I just put in a cheap fix in my ldirectord start script to edit the services created by ldirectord).. 
+> 
+> So not only have I sent over 1,000,000 packets to this setup but I have also sent them as fast as 10 packets every 3 milliseconds, I plan to do a long term week long test but I don't foresee any issues.. 
+> 
+> Let me know if there is any other testing you would like us to do.. or if you would like me to send out the kernel-2.6.18-128 with the patch and the ipvsadm-1.24-10 rpm with the patch.. 
+> 
+> Thanks again Simon you are the man!!
 
+Hi Brian,
+
+thanks for your testing, it is very valuable.  I'm very glad that the code
+is working,  though the real credit should go to Julian Anastasov, I just
+up-ported the code.
+
+I will try and make another up-port to 2.6.33, which is likely to be a bit
+more involved than the port to 2.6.18, as quite a lot of changes have
+passed under the bridge between 2.6.18 and 2.6.33.
+
+On a personal note, I'm in the process of moving at the moment.
+Unfortunately that is likely to impact on my time for the next month or so.
