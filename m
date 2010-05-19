@@ -1,75 +1,195 @@
-From: Hannes Eder <heder@google.com>
-Subject: Re: [patch v2.2 1/4] [PATCH v2.1 1/4] netfilter: xt_ipvs (netfilter 
-	matcher for IPVS)
-Date: Mon, 3 May 2010 13:29:46 +0200
-Message-ID: <AANLkTikIzHuzxo4z1_8_fEGLBC2-0Uz0X8SOc8n2msuX@mail.gmail.com>
-References: <20100501032014.406353538@vergenet.net>
-	 <20100501032120.298829234@vergenet.net> <4BDC543F.7060500@trash.net>
+From: Simon Horman <horms@verge.net.au>
+Subject: [patch] IPVS: one-packet scheduling
+Date: Wed, 19 May 2010 12:14:08 +0900
+Message-ID: <20100519031408.GC18534@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=google.com; s=beta;
-	t=1272886199; bh=+dU6WPEwkR13G5U6xxzmeOetATI=;
-	h=MIME-Version:In-Reply-To:References:Date:Message-ID:Subject:From:
-	 To:Cc:Content-Type:Content-Transfer-Encoding;
-	b=ETKzKo+3KMWrPUchUsr7cjJbaJs/sC+Ut0jTTjiKZhtxo41WStVj/IJQzVMKY0RqP
-	 u6JqmJ2qpmcDSaaypBkqA==
-In-Reply-To: <4BDC543F.7060500@trash.net>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-To: Patrick McHardy <kaber@trash.net>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, "David S. Miller" <davem@davemloft.net>, Netfilter Development Mailinglist <netfilter-devel@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Nick Chalk <nick@loadbalancer.org>
 
-Thank you for picking this series of patches up again and thanks for
-the feedback.
+From: Nick Chalk <nick@loadbalancer.org>
 
-I'll send an updated version in the next days.
+IPVS: one-packet scheduling
 
-Cheers, -Hannes
+Allow one-packet scheduling for UDP connections. When the fwmark-based or
+normal virtual service is marked with '-o' or '--ops' options all
+connections are created only to schedule one packet. Useful to schedule UDP
+packets from same client port to different real servers. Recommended with
+RR or WRR schedulers (the connections are not visible with ipvsadm -L).
 
-On Sat, May 1, 2010 at 18:18, Patrick McHardy <kaber@trash.net> wrote:
-> Simon Horman wrote:
->
->> @@ -0,0 +1,25 @@
->> +#ifndef _XT_IPVS_H
->> +#define _XT_IPVS_H 1
->
-> You don't need to define a value.
->
->> +config NETFILTER_XT_MATCH_IPVS
->> + =A0 =A0 tristate '"ipvs" match support'
->> + =A0 =A0 depends on IP_VS
->> + =A0 =A0 depends on NETFILTER_ADVANCED
->> + =A0 =A0 help
->> + =A0 =A0 =A0 This option allows you to match against IPVS propertie=
-s of a packet.
->> +
->> + =A0 =A0 =A0 If unsure, say N.
->
-> You're using conntrack symbols, so this seems to need a dependency
-> on NF_CONNTRACK.
->
->> +static bool ipvs_mt_check(const struct xt_mtchk_param *par)
->
-> We've changed the signature to "int" in nf-next to be able to
-> return errno codes. Please rebase your patches onto nf-next-2.6.git.
->
-> Please also CC netfilter-devel at least for those parts that affect
-> non-IPVS netfilter.
->
->> +{
->> + =A0 =A0 if (par->family !=3D NFPROTO_IPV4
->> +#ifdef CONFIG_IP_VS_IPV6
->> + =A0 =A0 =A0 =A0 && par->family !=3D NFPROTO_IPV6
->> +#endif
->> + =A0 =A0 =A0 =A0 =A0 =A0 ) {
->> + =A0 =A0 =A0 =A0 =A0 =A0 pr_info("protocol family %u not supported\=
-n", par->family);
->> + =A0 =A0 =A0 =A0 =A0 =A0 return false;
->> + =A0 =A0 }
->> +
->> + =A0 =A0 return true;
->> +}
->
->
+Signed-off-by: Nick Chalk <nick@loadbalancer.org>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+
+--- 
+U
+Up-port of http://www.ssi.bg/~ja/tmp/ops-2.4.32-1.diff
+
+Patrick, please consider merging this
+
+Index: nf-next-2.6/include/linux/ip_vs.h
+===================================================================
+--- nf-next-2.6.orig/include/linux/ip_vs.h	2010-05-19 11:59:32.000000000 +0900
++++ nf-next-2.6/include/linux/ip_vs.h	2010-05-19 12:06:23.000000000 +0900
+@@ -19,6 +19,7 @@
+  */
+ #define IP_VS_SVC_F_PERSISTENT	0x0001		/* persistent port */
+ #define IP_VS_SVC_F_HASHED	0x0002		/* hashed entry */
++#define IP_VS_SVC_F_ONEPACKET	0x0004		/* one-packet scheduling */
+ 
+ /*
+  *      Destination Server Flags
+@@ -85,6 +86,7 @@
+ #define IP_VS_CONN_F_SEQ_MASK	0x0600		/* in/out sequence mask */
+ #define IP_VS_CONN_F_NO_CPORT	0x0800		/* no client port set yet */
+ #define IP_VS_CONN_F_TEMPLATE	0x1000		/* template, not connection */
++#define IP_VS_CONN_F_ONE_PACKET	0x2000		/* forward only one packet */
+ 
+ #define IP_VS_SCHEDNAME_MAXLEN	16
+ #define IP_VS_IFNAME_MAXLEN	16
+Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_conn.c
+===================================================================
+--- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_conn.c	2010-05-19 11:59:32.000000000 +0900
++++ nf-next-2.6/net/netfilter/ipvs/ip_vs_conn.c	2010-05-19 12:06:23.000000000 +0900
+@@ -158,6 +158,9 @@ static inline int ip_vs_conn_hash(struct
+ 	unsigned hash;
+ 	int ret;
+ 
++	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
++		return 0;
++
+ 	/* Hash by protocol, client address and port */
+ 	hash = ip_vs_conn_hashkey(cp->af, cp->protocol, &cp->caddr, cp->cport);
+ 
+@@ -355,8 +358,9 @@ struct ip_vs_conn *ip_vs_conn_out_get
+  */
+ void ip_vs_conn_put(struct ip_vs_conn *cp)
+ {
+-	/* reset it expire in its timeout */
+-	mod_timer(&cp->timer, jiffies+cp->timeout);
++	unsigned long t = (cp->flags & IP_VS_CONN_F_ONE_PACKET) ?
++		0 : cp->timeout;
++	mod_timer(&cp->timer, jiffies+t);
+ 
+ 	__ip_vs_conn_put(cp);
+ }
+@@ -649,7 +653,7 @@ static void ip_vs_conn_expire(unsigned l
+ 	/*
+ 	 *	unhash it if it is hashed in the conn table
+ 	 */
+-	if (!ip_vs_conn_unhash(cp))
++	if (!ip_vs_conn_unhash(cp) && !(cp->flags & IP_VS_CONN_F_ONE_PACKET))
+ 		goto expire_later;
+ 
+ 	/*
+Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_core.c
+===================================================================
+--- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2010-05-19 11:59:32.000000000 +0900
++++ nf-next-2.6/net/netfilter/ipvs/ip_vs_core.c	2010-05-19 12:08:08.000000000 +0900
+@@ -194,6 +194,7 @@ ip_vs_sched_persist(struct ip_vs_service
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_conn *ct;
+ 	__be16  dport;			/* destination port to forward */
++	__be16  flags;
+ 	union nf_inet_addr snet;	/* source network of the client,
+ 					   :wq
+					   :wqafter masking */
+ 
+@@ -340,6 +341,10 @@ ip_vs_sched_persist(struct ip_vs_service
+ 		dport = ports[1];
+ 	}
+ 
++	flags = (svc->flags & IP_VS_SVC_F_ONEPACKET
++		 && iph.protocol == IPPROTO_UDP)?
++		IP_VS_CONN_F_ONE_PACKET : 0;
++
+ 	/*
+ 	 *    Create a new connection according to the template
+ 	 */
+@@ -347,7 +352,7 @@ ip_vs_sched_persist(struct ip_vs_service
+ 			    &iph.saddr, ports[0],
+ 			    &iph.daddr, ports[1],
+ 			    &dest->addr, dport,
+-			    0,
++			    flags,
+ 			    dest);
+ 	if (cp == NULL) {
+ 		ip_vs_conn_put(ct);
+@@ -377,7 +382,7 @@ ip_vs_schedule(struct ip_vs_service *svc
+ 	struct ip_vs_conn *cp = NULL;
+ 	struct ip_vs_iphdr iph;
+ 	struct ip_vs_dest *dest;
+-	__be16 _ports[2], *pptr;
++	__be16 _ports[2], *pptr, flags;
+ 
+ 	ip_vs_fill_iphdr(svc->af, skb_network_header(skb), &iph);
+ 	pptr = skb_header_pointer(skb, iph.len, sizeof(_ports), _ports);
+@@ -407,6 +412,10 @@ ip_vs_schedule(struct ip_vs_service *svc
+ 		return NULL;
+ 	}
+ 
++	flags = (svc->flags & IP_VS_SVC_F_ONEPACKET
++		 && iph.protocol == IPPROTO_UDP)?
++		IP_VS_CONN_F_ONE_PACKET : 0;
++
+ 	/*
+ 	 *    Create a connection entry.
+ 	 */
+@@ -414,7 +423,7 @@ ip_vs_schedule(struct ip_vs_service *svc
+ 			    &iph.saddr, pptr[0],
+ 			    &iph.daddr, pptr[1],
+ 			    &dest->addr, dest->port ? dest->port : pptr[1],
+-			    0,
++			    flags,
+ 			    dest);
+ 	if (cp == NULL)
+ 		return NULL;
+@@ -464,6 +473,9 @@ int ip_vs_leave(struct ip_vs_service *sv
+ 	if (sysctl_ip_vs_cache_bypass && svc->fwmark && unicast) {
+ 		int ret, cs;
+ 		struct ip_vs_conn *cp;
++		__u16 flags = (svc->flags & IP_VS_SVC_F_ONEPACKET &&
++				iph.protocol == IPPROTO_UDP)?
++				IP_VS_CONN_F_ONE_PACKET : 0;
+ 		union nf_inet_addr daddr =  { .all = { 0, 0, 0, 0 } };
+ 
+ 		ip_vs_service_put(svc);
+@@ -474,7 +486,7 @@ int ip_vs_leave(struct ip_vs_service *sv
+ 				    &iph.saddr, pptr[0],
+ 				    &iph.daddr, pptr[1],
+ 				    &daddr, 0,
+-				    IP_VS_CONN_F_BYPASS,
++				    IP_VS_CONN_F_BYPASS | flags,
+ 				    NULL);
+ 		if (cp == NULL)
+ 			return NF_DROP;
+Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c
+===================================================================
+--- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_ctl.c	2010-05-19 11:59:32.000000000 +0900
++++ nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c	2010-05-19 12:06:23.000000000 +0900
+@@ -1864,14 +1864,16 @@ static int ip_vs_info_seq_show(struct se
+ 					   svc->scheduler->name);
+ 			else
+ #endif
+-				seq_printf(seq, "%s  %08X:%04X %s ",
++				seq_printf(seq, "%s  %08X:%04X %s %s ",
+ 					   ip_vs_proto_name(svc->protocol),
+ 					   ntohl(svc->addr.ip),
+ 					   ntohs(svc->port),
+-					   svc->scheduler->name);
++					   svc->scheduler->name,
++					   (svc->flags & IP_VS_SVC_F_ONEPACKET)?"ops ":"");
+ 		} else {
+-			seq_printf(seq, "FWM  %08X %s ",
+-				   svc->fwmark, svc->scheduler->name);
++			seq_printf(seq, "FWM  %08X %s %s",
++				   svc->fwmark, svc->scheduler->name,
++				   (svc->flags & IP_VS_SVC_F_ONEPACKET)?"ops ":"");
+ 		}
+ 
+ 		if (svc->flags & IP_VS_SVC_F_PERSISTENT)
+
