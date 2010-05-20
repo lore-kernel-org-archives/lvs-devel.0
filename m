@@ -1,130 +1,36 @@
-From: Sven Wegener <sven.wegener@stealer.net>
-Subject: [PATCH] ipvs: Add missing locking during connection table hashing
- and unhashing
-Date: Thu, 20 May 2010 22:55:32 +0200 (CEST)
-Message-ID: <alpine.LNX.2.00.1005202243480.22717@titan.stealer.net>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [patch] IPVS: one-packet scheduling
+Date: Fri, 21 May 2010 07:31:42 +0900
+Message-ID: <20100520223141.GH3444@verge.net.au>
+References: <20100519031408.GC18534@verge.net.au>
+ <4BF55294.9030908@trash.net>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4BF55294.9030908@trash.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Wensong Zhang <wensong@linux-vs.org>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+To: Patrick McHardy <kaber@trash.net>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Nick Chalk <nick@loadbalancer.org>
 
-The code that hashes and unhashes connections from the connection table
-is missing locking of the connection being modified, which opens up a
-race condition and results in memory corruption when this race condition
-is hit.
+On Thu, May 20, 2010 at 05:17:40PM +0200, Patrick McHardy wrote:
+> Simon Horman wrote:
+> > From: Nick Chalk <nick@loadbalancer.org>
+> > 
+> > IPVS: one-packet scheduling
+> > 
+> > Allow one-packet scheduling for UDP connections. When the fwmark-based or
+> > normal virtual service is marked with '-o' or '--ops' options all
+> > connections are created only to schedule one packet. Useful to schedule UDP
+> > packets from same client port to different real servers. Recommended with
+> > RR or WRR schedulers (the connections are not visible with ipvsadm -L).
+> 
+> I'm afraid its too late in this merge window for new features
+> since Dave has already sent his merge request to Linus.
+> 
+> Please resend once the net-next (and nf-next) tree opens up.
 
-Here is what happens in pretty verbose form:
+Sure, will do.
 
-CPU 0					CPU 1
-------------				------------
-An active connection is terminated and
-we schedule ip_vs_conn_expire() on this
-CPU to expire this connection.
-
-					IRQ assignment is changed to this CPU,
-					but the expire timer stays scheduled on
-					the other CPU.
-
-					New connection from same ip:port comes
-					in right before the timer expires, we
-					find the inactive connection in our
-					connection table and get a reference to
-					it. We proper lock the connection in
-					tcp_state_transition() and read the
-					connection flags in set_tcp_state().
-
-ip_vs_conn_expire() gets called, we
-unhash the connection from our
-connection table and remove the hashed
-flag in ip_vs_conn_unhash(), without
-proper locking!
-
-					While still holding proper locks we
-					write the connection flags in
-					set_tcp_state() and this sets the hashed
-					flag again.
-
-ip_vs_conn_expire() fails to expire the
-connection, because the other CPU has
-incremented the reference count. We try
-to re-insert the connection into our
-connection table, but this fails in
-ip_vs_conn_hash(), because the hashed
-flag has been set by the other CPU. We
-re-schedule execution of
-ip_vs_conn_expire(). Now this connection
-has the hashed flag set, but isn't
-actually hashed in our connection table
-and has a dangling list_head.
-
-					We drop the reference we held on the
-					connection and schedule the expire timer
-					for timeouting the connection on this
-					CPU. Further packets won't be able to
-					find this connection in our connection
-					table.
-
-					ip_vs_conn_expire() gets called again,
-					we think it's already hashed, but the
-					list_head is dangling and while removing
-					the connection from our connection table
-					we write to the memory location where
-					this list_head points to.
-
-The result will probably be a kernel oops at some other point in time.
-
-Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
-Cc: stable@kernel.org
----
- net/netfilter/ipvs/ip_vs_conn.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
-
-This race condition is pretty subtle, but it can be triggered remotely.
-It needs the IRQ assignment change or another circumstance where packets
-coming from the same ip:port for the same service are being processed on
-different CPUs. And it involves hitting the exact time at which
-ip_vs_conn_expire() gets called. It can be avoided by making sure that
-all packets from one connection are always processed on the same CPU and
-can be made harder to exploit by changing the connection timeouts to
-some custom values.
-
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index d8f7e8e..ff04e9e 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -162,6 +162,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
- 	hash = ip_vs_conn_hashkey(cp->af, cp->protocol, &cp->caddr, cp->cport);
- 
- 	ct_write_lock(hash);
-+	spin_lock(&cp->lock);
- 
- 	if (!(cp->flags & IP_VS_CONN_F_HASHED)) {
- 		list_add(&cp->c_list, &ip_vs_conn_tab[hash]);
-@@ -174,6 +175,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
- 		ret = 0;
- 	}
- 
-+	spin_unlock(&cp->lock);
- 	ct_write_unlock(hash);
- 
- 	return ret;
-@@ -193,6 +195,7 @@ static inline int ip_vs_conn_unhash(struct ip_vs_conn *cp)
- 	hash = ip_vs_conn_hashkey(cp->af, cp->protocol, &cp->caddr, cp->cport);
- 
- 	ct_write_lock(hash);
-+	spin_lock(&cp->lock);
- 
- 	if (cp->flags & IP_VS_CONN_F_HASHED) {
- 		list_del(&cp->c_list);
-@@ -202,6 +205,7 @@ static inline int ip_vs_conn_unhash(struct ip_vs_conn *cp)
- 	} else
- 		ret = 0;
- 
-+	spin_unlock(&cp->lock);
- 	ct_write_unlock(hash);
- 
- 	return ret;
