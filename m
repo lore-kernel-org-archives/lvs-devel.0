@@ -1,28 +1,49 @@
-From: Thomas Graf <tgraf@infradead.org>
-Subject: Re: [PATCH] one-packet scheduling
-Date: Fri, 25 Jun 2010 03:40:20 -0400
-Message-ID: <20100625074020.GA29930@bombadil.infradead.org>
-References: <20100624122919.GB26308@bombadil.infradead.org>
- <20100625004031.GH2687@verge.net.au>
-Mime-Version: 1.0
+From: Michal Marek <mmarek@suse.cz>
+Subject: [PATCH] ipvs: Kconfig cleanup
+Date: Fri,  2 Jul 2010 22:32:08 +0200
+Message-ID: <1278102728-20217-1-git-send-email-mmarek@suse.cz>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100625004031.GH2687@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org
+To: lvs-devel@vger.kernel.org
+Cc: netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, linux-kernel@vger.kernel.org
 
-On Fri, Jun 25, 2010 at 09:40:32AM +0900, Simon Horman wrote:
-> a very similar change was recently added to nf-next-2.6,
-> though it hasn't shown up in net-next-2.6 yet.
-> 
-> The main difference is that your version has ip_vs_onepacket_enabled(),
-> where as the merged version is open-coded. Do you have any interest in
-> sending that change by itself?  If not, I'm happy to do the minor legwork.
+IP_VS_PROTO_AH_ESP should be set iff either of IP_VS_PROTO_{AH,ESP} is
+selected. Express this with standard kconfig syntax.
 
-Ah, I missed that. I'll send that cleanup work as follow-up.
+Signed-off-by: Michal Marek <mmarek@suse.cz>
+---
+ net/netfilter/ipvs/Kconfig |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
 
-Thanks!
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index f2d7623..91e7373 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -83,19 +83,16 @@ config	IP_VS_PROTO_UDP
+ 	  protocol. Say Y if unsure.
+ 
+ config	IP_VS_PROTO_AH_ESP
+-	bool
+-	depends on UNDEFINED
++	def_bool IP_VS_PROTO_ESP || IP_VS_PROTO_AH
+ 
+ config	IP_VS_PROTO_ESP
+ 	bool "ESP load balancing support"
+-	select IP_VS_PROTO_AH_ESP
+ 	---help---
+ 	  This option enables support for load balancing ESP (Encapsulation
+ 	  Security Payload) transport protocol. Say Y if unsure.
+ 
+ config	IP_VS_PROTO_AH
+ 	bool "AH load balancing support"
+-	select IP_VS_PROTO_AH_ESP
+ 	---help---
+ 	  This option enables support for load balancing AH (Authentication
+ 	  Header) transport protocol. Say Y if unsure.
+-- 
+1.7.1
+
