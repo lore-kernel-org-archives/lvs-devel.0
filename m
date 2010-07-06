@@ -1,30 +1,40 @@
 From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [patch v2.3 2/4] IPVS: make friends with nf_conntrack
-Date: Tue, 06 Jul 2010 13:36:43 +0200
-Message-ID: <4C33154B.7090907@trash.net>
-References: <20100704113246.562399500@vergenet.net> <20100704114808.668473084@vergenet.net>
+Subject: Re: [patch v2.3 3/4] IPVS: make FTP work with full NAT support
+Date: Tue, 06 Jul 2010 13:43:44 +0200
+Message-ID: <4C3316F0.2030807@trash.net>
+References: <20100704113246.562399500@vergenet.net> <20100704114808.932594876@vergenet.net>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20100704114808.668473084@vergenet.net>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20100704114808.932594876@vergenet.net>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"; format="flowed"
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org, Malcolm Turnbull <malcolm@loadbalancer.org>, Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, "David S. Miller" <davem@davemloft.net>, Hannes Eder <heder@google.com>
 
 Simon Horman wrote:
-> +static void
-> +ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp)
-> +{
-> +	struct nf_conn *ct = (struct nf_conn *)skb->nfct;
-> +	struct nf_conntrack_tuple new_tuple;
+> @@ -219,19 +358,23 @@ static int ip_vs_ftp_out(struct ip_vs_ap
+>  
+>  		buf_len = strlen(buf);
+>  
+> +		ct = nf_ct_get(skb, &ctinfo);
+> +		ret = nf_nat_mangle_tcp_packet(skb,
+> +					       ct,
+> +					       ctinfo,
+> +					       start-data,
+> +					       end-start,
+> +					       buf,
+> +					       buf_len);
 > +
-> +	if (ct == NULL || ct == &nf_conntrack_untracked ||
-> +	    nf_ct_is_confirmed(ct))
+> +		if (ct && ct != &nf_conntrack_untracked)
 >   
-Similar to the last patch, this needs to use nf_ct_is_untracked().
+This does not make sense, you're already using the conntrack above
+in the call to nf_nat_mangle_tcp_packet(), so the check should
+probably happen before that. You also should be checking the
+return value of nf_nat_mangle_tcp_packet() before setting up the
+expectation.
 
-> +		return;
-> +
+> +			ip_vs_expect_related(skb, ct, n_cp,
+> +					     IPPROTO_TCP, NULL, 0);
 
