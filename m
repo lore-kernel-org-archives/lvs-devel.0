@@ -1,34 +1,64 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH] lvs sctp protocol handler is incorrectly invoked ip_vs_app_pkt_out
-Date: Fri, 09 Jul 2010 17:29:56 +0200
-Message-ID: <4C374074.8000103@trash.net>
-References: <AANLkTikS9SSVT5soWZYmzxeJkR5vO__cuedk7ZgmTx5y@mail.gmail.com> <20100708121319.GC17985@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [patch v2.3 3/4] IPVS: make FTP work with full NAT support
+Date: Sat, 10 Jul 2010 10:54:21 +0900
+Message-ID: <20100710015420.GK5443@verge.net.au>
+References: <20100704113246.562399500@vergenet.net>
+ <20100704114808.932594876@vergenet.net>
+ <4C3316F0.2030807@trash.net>
+ <20100707065324.GC20424@verge.net.au>
+ <4C373F48.8080504@trash.net>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20100708121319.GC17985@verge.net.au>
+Content-Disposition: inline
+In-Reply-To: <4C373F48.8080504@trash.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: xiaoyu Du <tingsrain@gmail.com>, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, wensong@linux-vs.org, NetDev <netdev@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+To: Patrick McHardy <kaber@trash.net>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org, Malcolm Turnbull <malcolm@loadbalancer.org>, Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, "David S. Miller" <davem@davemloft.net>, Hannes Eder <heder@google.com>
 
-Am 08.07.2010 14:13, schrieb Simon Horman:
-> On Thu, Jul 08, 2010 at 09:55:04AM +0800, xiaoyu Du wrote:
->> lvs sctp protocol handler is incorrectly invoked ip_vs_app_pkt_out
->> Since there's no sctp helpers at present, it does the same thing as
->> ip_vs_app_pkt_in.
->>
->> Signed-off-by: Xiaoyu Du <tingsrain@gmail.com>
+On Fri, Jul 09, 2010 at 05:24:56PM +0200, Patrick McHardy wrote:
+> Am 07.07.2010 08:53, schrieb Simon Horman:
+> > On Tue, Jul 06, 2010 at 01:43:44PM +0200, Patrick McHardy wrote:
+> >> Simon Horman wrote:
+> >>> @@ -219,19 +358,23 @@ static int ip_vs_ftp_out(struct ip_vs_ap
+> >>> 		buf_len = strlen(buf);
+> >>> +		ct = nf_ct_get(skb, &ctinfo);
+> >>> +		ret = nf_nat_mangle_tcp_packet(skb,
+> >>> +					       ct,
+> >>> +					       ctinfo,
+> >>> +					       start-data,
+> >>> +					       end-start,
+> >>> +					       buf,
+> >>> +					       buf_len);
+> >>> +
+> >>> +		if (ct && ct != &nf_conntrack_untracked)
+> >> This does not make sense, you're already using the conntrack above
+> >> in the call to nf_nat_mangle_tcp_packet(), so the check should
+> >> probably happen before that. You also should be checking the
+> >> return value of nf_nat_mangle_tcp_packet() before setting up the
+> >> expectation.
+> >>
+> >>> +			ip_vs_expect_related(skb, ct, n_cp,
+> >>> +					     IPPROTO_TCP, NULL, 0);
+> > 
+> > Good point. Is this better?
+> > 
+> > 		ct = nf_ct_get(skb, &ctinfo);
+> > 		if (ct && !nf_ct_is_untracked()) {
+> > 			ret = nf_nat_mangle_tcp_packet(skb, ct, ctinfo,
+> > 						       start-data, end-start,
+> > 						       buf, buf_len);
+> > 			if (ret)
+> > 				ip_vs_expect_related(skb, ct, n_cp,
+> > 						     IPPROTO_TCP, NULL, 0);
 > 
-> Thanks Xiaoyu.
-> 
-> Acked-by: Simon Horman <horms@verge.net.au>
-> 
-> Patrick, please consider applying this.
-> nf-next should be sufficient, as according
-> to Xiaoyu there aren't actually helpers
-> that exercise this code at the moment.
+> Yes, that's better, although we're usually dropping packets
+> when mangling fails. This can only happen under memory pressure,
+> the assumption is that we might be able to properly mangle
+> the packet when it is retransmitted.
 
-Applied, thanks.
+I didn't notice this either, but ret will be end up being the return value
+of ip_vs_ftp_out(), and if that is zero the packet will be dropped.
 
