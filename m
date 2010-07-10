@@ -1,12 +1,12 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [patch v2.4 1/4] netfilter: xt_ipvs (netfilter matcher for IPVS)
-Date: Sat, 10 Jul 2010 11:03:52 +0900
-Message-ID: <20100710021048.209299056@vergenet.net>
+Subject: [patch v2.4 2/4] IPVS: make friends with nf_conntrack
+Date: Sat, 10 Jul 2010 11:03:53 +0900
+Message-ID: <20100710021048.401947602@vergenet.net>
 References: <20100710020351.168273435@vergenet.net>
-Return-path: <netfilter-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 From: Simon Horman <horms@verge.net.au>
-Content-Disposition: inline; filename=netfilter-xt_ipvs-netfilter-matcher-for-IPVS.patch
-Sender: netfilter-owner@vger.kernel.org
+Content-Disposition: inline; filename=IPVS-make-friends-with-nf_conntrack.patch
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -16,7 +16,13 @@ Cc: Malcolm Turnbull <malcolm@loadbalancer.org>, Wensong Zhang <wensong@linux-vs
 
 From:	Hannes Eder <heder@google.com>
 
-This implements the kernel-space side of the netfilter matcher xt_ipvs.
+Update the nf_conntrack tuple in reply direction, as we will see
+traffic from the real server (RIP) to the client (CIP).  Once this is
+done we can use netfilters SNAT in POSTROUTING, especially with
+xt_ipvs, to do source NAT, e.g.:
+
+% iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 --vport 80 \
+> -j SNAT --to-source 192.168.10.10
 
 [ minor fixes by Simon Horman <horms@verge.net.au> ]
 Signed-off-by: Hannes Eder <heder@google.com>
@@ -24,300 +30,151 @@ Signed-off-by: Simon Horman <horms@verge.net.au>
 
 --- 
 
- include/linux/netfilter/xt_ipvs.h |   25 ++++
- net/netfilter/Kconfig             |   10 +
- net/netfilter/Makefile            |    1 
- net/netfilter/ipvs/ip_vs_proto.c  |    1 
- net/netfilter/xt_ipvs.c           |  187 +++++++++++++++++++++++++++++++++++++
- 5 files changed, 224 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/netfilter/xt_ipvs.h
- create mode 100644 net/netfilter/xt_ipvs.c
+ net/netfilter/ipvs/Kconfig      |    2 +-
+ net/netfilter/ipvs/ip_vs_core.c |   36 ------------------------------------
+ net/netfilter/ipvs/ip_vs_xmit.c |   30 ++++++++++++++++++++++++++++++
+ 3 files changed, 31 insertions(+), 37 deletions(-)
 
 v2.4
 As per advice from Patrick McHardy
-* Reduce size of l4proto and fwd_method members of struct xt_ipvs_mtinf
-  from __u16 to __u8
 * Use nf_conntrack_untracked() instead of &nf_conntrack_untracked
 
-v2.3
-As per advice from Patrick McHardy
-* Don't define a value for _XT_IPVS_H in xt_ipvs.h
-* Depend on NF_CONNTRACK
-* Update to new API
-  - ipvs_mt_check() should return an int rather than a bool
-  - Change type of ipvs_mt()'s par parameter from
-    struct xt_action_param to struct xt_match_param
-  - Make ipvs_mt()'s par parameter non-const
+v2.1, v2.2, v2.3
+No change
 
-v2.1, v2.2
-No Change
-Index: nf-next-2.6/include/linux/netfilter/xt_ipvs.h
+Index: nf-next-2.6/net/netfilter/ipvs/Kconfig
 ===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ nf-next-2.6/include/linux/netfilter/xt_ipvs.h	2010-07-07 13:33:32.000000000 +0900
-@@ -0,0 +1,25 @@
-+#ifndef _XT_IPVS_H
-+#define _XT_IPVS_H
-+
-+#define XT_IPVS_IPVS_PROPERTY	(1 << 0) /* all other options imply this one */
-+#define XT_IPVS_PROTO		(1 << 1)
-+#define XT_IPVS_VADDR		(1 << 2)
-+#define XT_IPVS_VPORT		(1 << 3)
-+#define XT_IPVS_DIR		(1 << 4)
-+#define XT_IPVS_METHOD		(1 << 5)
-+#define XT_IPVS_VPORTCTL	(1 << 6)
-+#define XT_IPVS_MASK		((1 << 7) - 1)
-+#define XT_IPVS_ONCE_MASK	(XT_IPVS_MASK & ~XT_IPVS_IPVS_PROPERTY)
-+
-+struct xt_ipvs_mtinfo {
-+	union nf_inet_addr	vaddr, vmask;
-+	__be16			vport;
-+	__u8			l4proto;
-+	__u8			fwd_method;
-+	__be16			vportctl;
-+
-+	__u8			invert;
-+	__u8			bitmask;
-+};
-+
-+#endif /* _XT_IPVS_H */
-Index: nf-next-2.6/net/netfilter/Kconfig
+--- nf-next-2.6.orig/net/netfilter/ipvs/Kconfig	2010-07-07 13:24:31.000000000 +0900
++++ nf-next-2.6/net/netfilter/ipvs/Kconfig	2010-07-07 13:38:23.000000000 +0900
+@@ -3,7 +3,7 @@
+ #
+ menuconfig IP_VS
+ 	tristate "IP virtual server support"
+-	depends on NET && INET && NETFILTER
++	depends on NET && INET && NETFILTER && NF_CONNTRACK
+ 	---help---
+ 	  IP Virtual Server support will let you build a high-performance
+ 	  virtual server based on cluster of two or more real servers. This
+Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_core.c
 ===================================================================
---- nf-next-2.6.orig/net/netfilter/Kconfig	2010-07-07 13:23:37.000000000 +0900
-+++ nf-next-2.6/net/netfilter/Kconfig	2010-07-07 13:26:35.000000000 +0900
-@@ -726,6 +726,16 @@ config NETFILTER_XT_MATCH_IPRANGE
- 
- 	If unsure, say M.
- 
-+config NETFILTER_XT_MATCH_IPVS
-+	tristate '"ipvs" match support'
-+	depends on IP_VS
-+	depends on NETFILTER_ADVANCED
-+	depends on NF_CONNTRACK
-+	help
-+	  This option allows you to match against IPVS properties of a packet.
-+
-+	  If unsure, say N.
-+
- config NETFILTER_XT_MATCH_LENGTH
- 	tristate '"length" match support'
- 	depends on NETFILTER_ADVANCED
-Index: nf-next-2.6/net/netfilter/Makefile
-===================================================================
---- nf-next-2.6.orig/net/netfilter/Makefile	2010-07-07 13:23:37.000000000 +0900
-+++ nf-next-2.6/net/netfilter/Makefile	2010-07-07 13:26:35.000000000 +0900
-@@ -76,6 +76,7 @@ obj-$(CONFIG_NETFILTER_XT_MATCH_HASHLIMI
- obj-$(CONFIG_NETFILTER_XT_MATCH_HELPER) += xt_helper.o
- obj-$(CONFIG_NETFILTER_XT_MATCH_HL) += xt_hl.o
- obj-$(CONFIG_NETFILTER_XT_MATCH_IPRANGE) += xt_iprange.o
-+obj-$(CONFIG_NETFILTER_XT_MATCH_IPVS) += xt_ipvs.o
- obj-$(CONFIG_NETFILTER_XT_MATCH_LENGTH) += xt_length.o
- obj-$(CONFIG_NETFILTER_XT_MATCH_LIMIT) += xt_limit.o
- obj-$(CONFIG_NETFILTER_XT_MATCH_MAC) += xt_mac.o
-Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_proto.c
-===================================================================
---- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_proto.c	2010-07-07 13:23:37.000000000 +0900
-+++ nf-next-2.6/net/netfilter/ipvs/ip_vs_proto.c	2010-07-07 13:26:35.000000000 +0900
-@@ -98,6 +98,7 @@ struct ip_vs_protocol * ip_vs_proto_get(
- 
- 	return NULL;
+--- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2010-07-07 13:23:37.000000000 +0900
++++ nf-next-2.6/net/netfilter/ipvs/ip_vs_core.c	2010-07-07 13:38:23.000000000 +0900
+@@ -536,26 +536,6 @@ int ip_vs_leave(struct ip_vs_service *sv
+ 	return NF_DROP;
  }
-+EXPORT_SYMBOL(ip_vs_proto_get);
  
+-
+-/*
+- *      It is hooked before NF_IP_PRI_NAT_SRC at the NF_INET_POST_ROUTING
+- *      chain, and is used for VS/NAT.
+- *      It detects packets for VS/NAT connections and sends the packets
+- *      immediately. This can avoid that iptable_nat mangles the packets
+- *      for VS/NAT.
+- */
+-static unsigned int ip_vs_post_routing(unsigned int hooknum,
+-				       struct sk_buff *skb,
+-				       const struct net_device *in,
+-				       const struct net_device *out,
+-				       int (*okfn)(struct sk_buff *))
+-{
+-	if (!skb->ipvs_property)
+-		return NF_ACCEPT;
+-	/* The packet was sent from IPVS, exit this chain */
+-	return NF_STOP;
+-}
+-
+ __sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset)
+ {
+ 	return csum_fold(skb_checksum(skb, offset, skb->len - offset, 0));
+@@ -1499,14 +1479,6 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.hooknum        = NF_INET_FORWARD,
+ 		.priority       = 99,
+ 	},
+-	/* Before the netfilter connection tracking, exit from POST_ROUTING */
+-	{
+-		.hook		= ip_vs_post_routing,
+-		.owner		= THIS_MODULE,
+-		.pf		= PF_INET,
+-		.hooknum        = NF_INET_POST_ROUTING,
+-		.priority       = NF_IP_PRI_NAT_SRC-1,
+-	},
+ #ifdef CONFIG_IP_VS_IPV6
+ 	/* After packet filtering, forward packet through VS/DR, VS/TUN,
+ 	 * or VS/NAT(change destination), so that filtering rules can be
+@@ -1535,14 +1507,6 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.hooknum        = NF_INET_FORWARD,
+ 		.priority       = 99,
+ 	},
+-	/* Before the netfilter connection tracking, exit from POST_ROUTING */
+-	{
+-		.hook		= ip_vs_post_routing,
+-		.owner		= THIS_MODULE,
+-		.pf		= PF_INET6,
+-		.hooknum        = NF_INET_POST_ROUTING,
+-		.priority       = NF_IP6_PRI_NAT_SRC-1,
+-	},
+ #endif
+ };
  
- /*
-Index: nf-next-2.6/net/netfilter/xt_ipvs.c
+Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_xmit.c
 ===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ nf-next-2.6/net/netfilter/xt_ipvs.c	2010-07-07 13:36:47.000000000 +0900
-@@ -0,0 +1,189 @@
-+/*
-+ *	xt_ipvs - kernel module to match IPVS connection properties
-+ *
-+ *	Author: Hannes Eder <heder@google.com>
-+ */
-+
-+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-+
-+#include <linux/module.h>
-+#include <linux/moduleparam.h>
-+#include <linux/spinlock.h>
-+#include <linux/skbuff.h>
-+#ifdef CONFIG_IP_VS_IPV6
-+#include <net/ipv6.h>
-+#endif
-+#include <linux/ip_vs.h>
-+#include <linux/types.h>
-+#include <linux/netfilter/x_tables.h>
-+#include <linux/netfilter/x_tables.h>
-+#include <linux/netfilter/xt_ipvs.h>
+--- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_xmit.c	2010-07-07 13:23:37.000000000 +0900
++++ nf-next-2.6/net/netfilter/ipvs/ip_vs_xmit.c	2010-07-07 13:42:22.000000000 +0900
+@@ -28,6 +28,7 @@
+ #include <net/ip6_route.h>
+ #include <linux/icmpv6.h>
+ #include <linux/netfilter.h>
 +#include <net/netfilter/nf_conntrack.h>
-+
-+#include <net/ip_vs.h>
-+
-+MODULE_AUTHOR("Hannes Eder <heder@google.com>");
-+MODULE_DESCRIPTION("Xtables: match IPVS connection properties");
-+MODULE_LICENSE("GPL");
-+MODULE_ALIAS("ipt_ipvs");
-+MODULE_ALIAS("ip6t_ipvs");
-+
-+/* borrowed from xt_conntrack */
-+static bool ipvs_mt_addrcmp(const union nf_inet_addr *kaddr,
-+			    const union nf_inet_addr *uaddr,
-+			    const union nf_inet_addr *umask,
-+			    unsigned int l3proto)
+ #include <linux/netfilter_ipv4.h>
+ 
+ #include <net/ip_vs.h>
+@@ -348,6 +349,30 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb
+ }
+ #endif
+ 
++static void
++ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp)
 +{
-+	if (l3proto == NFPROTO_IPV4)
-+		return ((kaddr->ip ^ uaddr->ip) & umask->ip) == 0;
-+#ifdef CONFIG_IP_VS_IPV6
-+	else if (l3proto == NFPROTO_IPV6)
-+		return ipv6_masked_addr_cmp(&kaddr->in6, &umask->in6,
-+		       &uaddr->in6) == 0;
-+#endif
-+	else
-+		return false;
-+}
++	struct nf_conn *ct = (struct nf_conn *)skb->nfct;
++	struct nf_conntrack_tuple new_tuple;
 +
-+static bool
-+ipvs_mt(const struct sk_buff *skb, struct xt_action_param *par)
-+{
-+	const struct xt_ipvs_mtinfo *data = par->matchinfo;
-+	/* ipvs_mt_check ensures that family is only NFPROTO_IPV[46]. */
-+	const u_int8_t family = par->family;
-+	struct ip_vs_iphdr iph;
-+	struct ip_vs_protocol *pp;
-+	struct ip_vs_conn *cp;
-+	bool match = true;
-+
-+	if (data->bitmask == XT_IPVS_IPVS_PROPERTY) {
-+		match = skb->ipvs_property ^
-+			!!(data->invert & XT_IPVS_IPVS_PROPERTY);
-+		goto out;
-+	}
-+
-+	/* other flags than XT_IPVS_IPVS_PROPERTY are set */
-+	if (!skb->ipvs_property) {
-+		match = false;
-+		goto out;
-+	}
-+
-+	ip_vs_fill_iphdr(family, skb_network_header(skb), &iph);
-+
-+	if (data->bitmask & XT_IPVS_PROTO)
-+		if ((iph.protocol == data->l4proto) ^
-+		    !(data->invert & XT_IPVS_PROTO)) {
-+			match = false;
-+			goto out;
-+		}
-+
-+	pp = ip_vs_proto_get(iph.protocol);
-+	if (unlikely(!pp)) {
-+		match = false;
-+		goto out;
-+	}
++	if (ct == NULL || nf_ct_is_untracked(ct) || nf_ct_is_confirmed(ct))
++		return;
 +
 +	/*
-+	 * Check if the packet belongs to an existing entry
++	 * The connection is not yet in the hashtable, so we update it.
++	 * CIP->VIP will remain the same, so leave the tuple in
++	 * IP_CT_DIR_ORIGINAL untouched.  When the reply comes back from the
++	 * real-server we will see RIP->DIP.
 +	 */
-+	cp = pp->conn_out_get(family, skb, pp, &iph, iph.len, 1 /* inverse */);
-+	if (unlikely(cp == NULL)) {
-+		match = false;
-+		goto out;
-+	}
-+
++	new_tuple = ct->tuplehash[IP_CT_DIR_REPLY].tuple;
++	new_tuple.src.u3 = cp->daddr;
 +	/*
-+	 * We found a connection, i.e. ct != 0, make sure to call
-+	 * __ip_vs_conn_put before returning.  In our case jump to out_put_con.
++	 * This will also take care of UDP and other protocols.
 +	 */
-+
-+	if (data->bitmask & XT_IPVS_VPORT)
-+		if ((cp->vport == data->vport) ^
-+		    !(data->invert & XT_IPVS_VPORT)) {
-+			match = false;
-+			goto out_put_cp;
-+		}
-+
-+	if (data->bitmask & XT_IPVS_VPORTCTL)
-+		if ((cp->control != NULL &&
-+		     cp->control->vport == data->vportctl) ^
-+		    !(data->invert & XT_IPVS_VPORTCTL)) {
-+			match = false;
-+			goto out_put_cp;
-+		}
-+
-+	if (data->bitmask & XT_IPVS_DIR) {
-+		enum ip_conntrack_info ctinfo;
-+		struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
-+
-+		if (ct == NULL || ct == nf_ct_is_untracked(ct)) {
-+			match = false;
-+			goto out_put_cp;
-+		}
-+
-+		if ((ctinfo >= IP_CT_IS_REPLY) ^
-+		    !!(data->invert & XT_IPVS_DIR)) {
-+			match = false;
-+			goto out_put_cp;
-+		}
-+	}
-+
-+	if (data->bitmask & XT_IPVS_METHOD)
-+		if (((cp->flags & IP_VS_CONN_F_FWD_MASK) == data->fwd_method) ^
-+		    !(data->invert & XT_IPVS_METHOD)) {
-+			match = false;
-+			goto out_put_cp;
-+		}
-+
-+	if (data->bitmask & XT_IPVS_VADDR) {
-+		if (ipvs_mt_addrcmp(&cp->vaddr, &data->vaddr,
-+				    &data->vmask, family) ^
-+		    !(data->invert & XT_IPVS_VADDR)) {
-+			match = false;
-+			goto out_put_cp;
-+		}
-+	}
-+
-+out_put_cp:
-+	__ip_vs_conn_put(cp);
-+out:
-+	pr_debug("match=%d\n", match);
-+	return match;
++	new_tuple.src.u.tcp.port = cp->dport;
++	nf_conntrack_alter_reply(ct, &new_tuple);
 +}
 +
-+static int ipvs_mt_check(const struct xt_mtchk_param *par)
-+{
-+	if (par->family != NFPROTO_IPV4
-+#ifdef CONFIG_IP_VS_IPV6
-+	    && par->family != NFPROTO_IPV6
-+#endif
-+		) {
-+		pr_info("protocol family %u not supported\n", par->family);
-+		return -EINVAL;
-+	}
+ /*
+  *      NAT transmitter (only for outside-to-inside nat forwarding)
+  *      Not used for related ICMP
+@@ -403,6 +428,8 @@ ip_vs_nat_xmit(struct sk_buff *skb, stru
+ 
+ 	IP_VS_DBG_PKT(10, pp, skb, 0, "After DNAT");
+ 
++	ip_vs_update_conntrack(skb, cp);
 +
-+	return 0;
-+}
+ 	/* FIXME: when application helper enlarges the packet and the length
+ 	   is larger than the MTU of outgoing device, there will be still
+ 	   MTU problem. */
+@@ -479,6 +506,8 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, s
+ 
+ 	IP_VS_DBG_PKT(10, pp, skb, 0, "After DNAT");
+ 
++	ip_vs_update_conntrack(skb, cp);
 +
-+static struct xt_match xt_ipvs_mt_reg __read_mostly = {
-+	.name       = "ipvs",
-+	.revision   = 0,
-+	.family     = NFPROTO_UNSPEC,
-+	.match      = ipvs_mt,
-+	.checkentry = ipvs_mt_check,
-+	.matchsize  = XT_ALIGN(sizeof(struct xt_ipvs_mtinfo)),
-+	.me         = THIS_MODULE,
-+};
-+
-+static int __init ipvs_mt_init(void)
-+{
-+	return xt_register_match(&xt_ipvs_mt_reg);
-+}
-+
-+static void __exit ipvs_mt_exit(void)
-+{
-+	xt_unregister_match(&xt_ipvs_mt_reg);
-+}
-+
-+module_init(ipvs_mt_init);
-+module_exit(ipvs_mt_exit);
+ 	/* FIXME: when application helper enlarges the packet and the length
+ 	   is larger than the MTU of outgoing device, there will be still
+ 	   MTU problem. */
 
