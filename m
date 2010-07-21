@@ -1,45 +1,60 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch v2.2 1/4] [PATCH v2.1 1/4] netfilter: xt_ipvs
- (netfilter matcher for IPVS)
-Date: Wed, 21 Jul 2010 08:34:37 +0900
-Message-ID: <20100720233437.GH9569@verge.net.au>
-References: <20100501032014.406353538@vergenet.net>
- <20100501032120.298829234@vergenet.net>
- <4BDC543F.7060500@trash.net>
- <AANLkTikIzHuzxo4z1_8_fEGLBC2-0Uz0X8SOc8n2msuX@mail.gmail.com>
- <20100622071326.GB9928@verge.net.au>
- <AANLkTimUEJGAJ6tsPKGltUGBwrdotK5YyKBIkQWbA8qZ@mail.gmail.com>
+Subject: Re: [patch v2.6 4/4] libxt_ipvs: user-space lib for netfilter
+ matcher xt_ipvs
+Date: Wed, 21 Jul 2010 10:21:47 +0900
+Message-ID: <20100721012146.GC22966@verge.net.au>
+References: <20100711090342.035149543@vergenet.net>
+ <20100711090500.421568837@vergenet.net>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <AANLkTimUEJGAJ6tsPKGltUGBwrdotK5YyKBIkQWbA8qZ@mail.gmail.com>
-Sender: netfilter-devel-owner@vger.kernel.org
+In-Reply-To: <20100711090500.421568837@vergenet.net>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hannes Eder <heder@google.com>
-Cc: Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, "David S. Miller" <davem@davemloft.net>, Netfilter Development Mailinglist <netfilter-devel@vger.kernel.org>
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: Malcolm Turnbull <malcolm@loadbalancer.org>, Wensong Zhang <wensong@linux-vs.org>, Julius Volz <julius.volz@gmail.com>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, Hannes Eder <heder@google.com>
 
-On Tue, Jul 20, 2010 at 02:44:11PM +0200, Hannes Eder wrote:
-> Hi Simon,
+On Sun, Jul 11, 2010 at 06:03:46PM +0900, horms@vergenet.net wrote:
+> From:	Hannes Eder <heder@google.com>
 > 
-> On Tue, Jun 22, 2010 at 09:13, Simon Horman <horms@verge.net.au> wrote:
-> > On Mon, May 03, 2010 at 01:29:46PM +0200, Hannes Eder wrote:
-> >> Thank you for picking this series of patches up again and thanks for
-> >> the feedback.
-> >>
-> >> I'll send an updated version in the next days.
-> >
-> > Hi Hanes,
-> >
-> > more than a few days seems to have passed.
-> > Do you have time to fix the patches up?
-> > If not, I'll take a stab at it.
-> 
-> /me working through the backlog of emails after vacation, however this
-> email was buried in my inbox before my vacation, my bad.  I've been
-> extremely busy lately and I did not have the time to work on the
-> patches.  I saw your updated versions, I appreciate very much that you
-> are taking it from there.
+> The user-space library for the netfilter matcher xt_ipvs.
 
-No problem, I assumed that you were busy with something.
+[snip]
+
+> Index: iptables/include/linux/netfilter/xt_ipvs.h
+> ===================================================================
+> --- /dev/null	1970-01-01 00:00:00.000000000 +0000
+> +++ iptables/include/linux/netfilter/xt_ipvs.h	2010-07-04 20:23:30.000000000 +0900
+> @@ -0,0 +1,25 @@
+> +#ifndef _XT_IPVS_H
+> +#define _XT_IPVS_H 1
+> +
+> +#define XT_IPVS_IPVS_PROPERTY	(1 << 0) /* all other options imply this one */
+> +#define XT_IPVS_PROTO		(1 << 1)
+> +#define XT_IPVS_VADDR		(1 << 2)
+> +#define XT_IPVS_VPORT		(1 << 3)
+> +#define XT_IPVS_DIR		(1 << 4)
+> +#define XT_IPVS_METHOD		(1 << 5)
+> +#define XT_IPVS_VPORTCTL	(1 << 6)
+> +#define XT_IPVS_MASK		((1 << 7) - 1)
+> +#define XT_IPVS_ONCE_MASK	(XT_IPVS_MASK & ~XT_IPVS_IPVS_PROPERTY)
+> +
+> +struct xt_ipvs_mtinfo {
+> +	union nf_inet_addr	vaddr, vmask;
+> +	__be16			vport;
+> +	__u16			l4proto;
+> +	__u16			fwd_method;
+
+The kernel version of this file has been updated so that
+l4proto and fwd_method are __u8. This also needs to be updated.
+I will post an updated patch (v2.7).
+
+> +	__be16			vportctl;
+> +
+> +	__u8			invert;
+> +	__u8			bitmask;
+> +};
+> +
+> +#endif /* _XT_IPVS_H */
