@@ -1,78 +1,64 @@
 From: Simon Horman <horms@verge.net.au>
 Subject: Re: Fwd: LVS on local node
-Date: Thu, 22 Jul 2010 22:20:04 +0900
-Message-ID: <20100722132003.GA28362@verge.net.au>
+Date: Thu, 22 Jul 2010 22:25:02 +0900
+Message-ID: <20100722132502.GB28362@verge.net.au>
 References: <27901279770680@web67.yandex.ru>
- <1279781811.2405.15.camel@edumazet-laptop>
- <20100722122422.GD16234@verge.net.au>
- <1279803583.2467.43.camel@edumazet-laptop>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1279803583.2467.43.camel@edumazet-laptop>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <27901279770680@web67.yandex.ru>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Franchoze Eric <franchoze@yandex.ru>, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Franchoze Eric <franchoze@yandex.ru>
+Cc: wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-On Thu, Jul 22, 2010 at 02:59:43PM +0200, Eric Dumazet wrote:
-> Le jeudi 22 juillet 2010 =C3=A0 21:24 +0900, Simon Horman a =C3=A9cri=
-t :
-> > On Thu, Jul 22, 2010 at 08:56:51AM +0200, Eric Dumazet wrote:
-> >=20
-> > [snip]
-> >=20
-> > > lvs seems not very SMP friendly and a bit complex.
-> >=20
-> > I'd be interested to hear some thoughts on
-> > how the SMP aspect of that statement could
-> > be improved.
->=20
-> Hi Simon
->=20
-> I am not familiar with LVS code, so I am probably wrong, but it seems=
- it
-> could be changed a bit.
->=20
-> Some rwlocks might become spinlocks (faster than rwlocks)
->=20
-> __ip_vs_securetcp_lock for example is always used with
-> write_lock()/write_unlock().
-> This can be a regular spinlock without even knowing the code.
+On Thu, Jul 22, 2010 at 07:51:20AM +0400, Franchoze Eric wrote:
+> Hello,
+> 
+> I'm trying to do load balancing of incoming traffic to my applications. This applications are not very  smp friendly, and I want try to run some instances according to number of cpus on single machine. And balance load of incoming traffic/connections to this applications.
+> Looks like is should be similar to http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.localnode.html
+> 
+>  linux kernel 2.6.32 with  or without hide interface patches.  Tried different configurations but could not see packets on application layer.
+> 
+> 192.168.1.165 - eth0 - interface for external connections
+> 195.0.0.1 - dummy0 - virtual interface, real application is binded to that address.
+> 
+> Configuration is:
+> -A -t 192.168.1.165:1234 -s wlc
+> -a -t 192.168.1.165:1234 -r 195.0.0.1:1234 -g -w
+> 
+> #ipvsadm -L -n
+> IP Virtual Server version 1.2.1 (size=4096)
+> Prot LocalAddress:Port Scheduler Flags
+>   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+> TCP  192.168.1.165:1234 wlc
+>   -> 195.0.0.1:1234               Local   1      0          0        
+> #
+> 
+> Log:
+> [ 2106.897409] IPVS: lookup/out TCP 192.168.1.165:44847->192.168.1.165:1234 not hit
+> [ 2106.897412] IPVS: lookup service: fwm 0 TCP 192.168.1.165:1234 hit
+> [ 2106.897414] IPVS: ip_vs_wlc_schedule(): Scheduling...
+> [ 2106.897416] IPVS: WLC: server 195.0.0.1:1234 activeconns 0 refcnt 2 weight 1 overhead 1
+> [ 2106.897418] IPVS: Enter: ip_vs_conn_new, net/netfilter/ipvs/ip_vs_conn.c line 693
+> [ 2106.897421] IPVS: Bind-dest TCP c:192.168.1.165:44847 v:192.168.1.165:1234 d:195.0.0.1:1234 fwd:L s:0 conn->flags:181 conn->refcnt:1 dest->refcnt:3
+> [ 2106.897425] IPVS: Schedule fwd:L c:192.168.1.165:44847 v:192.168.1.165:1234 d:195.0.0.1:1234 conn->flags:1C1 conn->refcnt:2
+> [ 2106.897429] IPVS: TCP input  [S...] 195.0.0.1:1234->192.168.1.165:44847 state: NONE->SYN_RECV conn->refcnt:2
+> [ 2106.897431] IPVS: Enter: ip_vs_null_xmit, net/netfilter/ipvs/ip_vs_xmit.c line 212
+> [ 2106.897439] IPVS: lookup/in TCP 192.168.1.165:1234->192.168.1.165:44847 not hit
+> [ 2106.897441] IPVS: lookup/out TCP 192.168.1.165:1234->192.168.1.165:44847 not hit
+> [ 2107.277535] IPVS: packet type=1 proto=17 daddr=255.255.255.255 ignored
+> [ 2108.542691] IPVS: packet type=1 proto=17 daddr=192.168.1.255 ignored
+> 
+> As the result, server application does receive anything on accept(). I tried to make dummy0 a hidden device and play with arp settings. But without result.
+> 
+> I will be happy to hear any idea how to do connection in this environment.
 
-I'll get that fixed.
+Hi,
 
-> Some lookups could use RCU to avoid cache line misses, and to be able=
- to
-> use spinlocks for the write side.
-
-Agreed. I took a look at RCUing things a while back, but got bogged
-down and then forgot about it. I'll take anther stab at it.
-
-> It would be good to have a bench setup with the case of 16 legacy
-> daemons, and check how many new connections per second can be
-> established, in an LVS setup and an iptables based one.
->=20
-> With 2.6.35 and RPS, a REDIRECT based solution can chose the target p=
-ort
-> without taking any lock (not counting conntrack internal costs of
-> course), each cpu accessing local memory only.
->=20
-> # No need is eth0 is a multiqueue NIC
-> echo ffff >/sys/class/net/eth0/queues/rx-0/rps_cpus
->=20
-> for c in `seq 0 15`
-> do
->   iptables -t nat -A PREROUTING -p tcp --dport 80 -m cpu --cpu $c -j
-> REDIRECT --to-port $((1000 + $c))
-> done
-
-Its hard for lvs to compete with those kind of lightweight solutions an=
-d
-it probably shouldn't. However, I'd just like to see LVS working as
-well as it can within the constraint that, as you pointed out, its rath=
-er
-complex. Thanks for your suggestions.
+while others have suggested not using LVS for this task for various reasons.
+I would just like to comment that this should work and this smells
+like a bug to me. I will try and confirm that. But it won't be today.
 
