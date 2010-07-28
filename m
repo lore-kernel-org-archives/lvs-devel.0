@@ -1,45 +1,51 @@
-From: Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
-Subject: [patch][bug][ldirectord] underscore in a servicename
-Date: Wed, 28 Jul 2010 22:30:52 +0900 (JST)
-Message-ID: <20100728.223052.102572767.sohgo@sohgo.dyndns.org>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [patch][bug][ldirectord] underscore in a servicename
+Date: Thu, 29 Jul 2010 08:41:19 +0900
+Message-ID: <20100728234119.GA4868@verge.net.au>
+References: <20100728.223052.102572767.sohgo@sohgo.dyndns.org>
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
- boundary="--Next_Part(Wed_Jul_28_22_30_52_2010_482)--"
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100728.223052.102572767.sohgo@sohgo.dyndns.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: lvs-devel@vger.kernel.org
-Cc: horms@verge.net.au
-
-----Next_Part(Wed_Jul_28_22_30_52_2010_482)--
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
+To: Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
+Cc: lvs-devel@vger.kernel.org
 
+On Wed, Jul 28, 2010 at 10:30:52PM +0900, Sohgo Takeuchi wrote:
+> 
+> Hi,
+> 
+> I found a bug in ldirectord and attach a patch to fix this
+> problem to this E-mail.
+> 
+> If a underscore is contained in a service-name of
+> hostname:servicename
+> (ex. real=realserver.example.com:pipe_server), it leads to a
+> configuration error.
 
-Hi,
+Thanks Takeuchi-san, I have applied the change as follows.
 
-I found a bug in ldirectord and attach a patch to fix this
-problem to this E-mail.
+http://hg.linux-ha.org/agents/rev/bfcc4e050a07
 
-If a underscore is contained in a service-name of
-hostname:servicename
-(ex. real=realserver.example.com:pipe_server), it leads to a
-configuration error.
+# HG changeset patch
+# User Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
+# Date 1280360397 -32400
+# Node ID bfcc4e050a07f5e8a9e52010d2072d39e0641964
+# Parent  df0d9559130c836c2a1987a6699e4ce49d9a0bfd
+Medium: ldirectord: allow underscore in service name
 
-with best regards,
+If a underscore is contained in a service-name of hostname:servicename (ex.
+real=realserver.example.com:pipe_server), it leads to a configuration
+error.
 
---
-Sohgo Takeuchi
+Signed-off-by: Simon Horman <horms@verge.net.au>
 
-----Next_Part(Wed_Jul_28_22_30_52_2010_482)--
-Content-Type: Text/X-Patch; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline; filename="ldirectord.port.patch"
-
-diff -r 6196ecad12c8 ldirectord/ldirectord.in
---- a/ldirectord/ldirectord.in	Wed Jul 28 19:22:48 2010 +0900
-+++ b/ldirectord/ldirectord.in	Wed Jul 28 22:20:20 2010 +0900
+diff -r df0d9559130c -r bfcc4e050a07 ldirectord/ldirectord.in
+--- a/ldirectord/ldirectord.in	Mon Jul 26 21:40:53 2010 +1000
++++ b/ldirectord/ldirectord.in	Thu Jul 29 08:39:57 2010 +0900
 @@ -1283,9 +1283,9 @@
  			my $virtual_line = $line;
  			my $fallback_line;
@@ -76,5 +82,3 @@ diff -r 6196ecad12c8 ldirectord/ldirectord.in
  		or return(undef);
  		$ip=$1;
  		$port=$3;
-
-----Next_Part(Wed_Jul_28_22_30_52_2010_482)----
