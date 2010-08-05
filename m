@@ -1,63 +1,85 @@
-From: Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
-Subject: Re: [patch][bug][ldirectord] a fallback server specified in a
- virtual server section without a port
-Date: Thu, 05 Aug 2010 17:09:23 +0900 (JST)
-Message-ID: <20100805.170923.260105327.sohgo@sohgo.dyndns.org>
-References: <20100728.195127.48524095.sohgo@sohgo.dyndns.org>
-	<20100805.135125.115917396.sohgo@sohgo.dyndns.org>
-	<20100805063529.GA4630@verge.net.au>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+From: Simon Horman <horms@verge.net.au>
+Subject: [rfc 00/13] IPVS: SIP Persistence Engine
+Date: Thu, 05 Aug 2010 20:47:55 +0900
+Message-ID: <20100805114755.118303531@vergenet.net>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20100805063529.GA4630@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: lvs-devel@vger.kernel.org
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
+
+This patch series adds load-balancing of UDP SIP based on Call-ID to
+IPVS as well as a frame-work for extending IPVS to handle alternate
+persistence requirements.
+
+OVERVIEW
+
+The approach that I have taken is what I call persistence engines.
+The basic idea being that you can provide a module to LVS that alters
+the way that it handles connection templates, which are at the core
+of persistence. In particular, an additional key can be added, and
+any of the normal IP address, port and protocol information can either
+be used or ignored.
+
+In the case of the SIP persistence engine, the only persistence engine, all
+the keys used by the default persistence behaviour are used and the callid
+is added as an extra key. I originally intended to ignore the cip, but this
+can optionally be done by setting the persistence mask (-M) to 0.0.0.0
+while allowing the flexibility of other mask values.
+
+It is envisaged that the SIP persistence engine will be used in conjunction
+with one-packet scheduling. I'm interested to hear if that doesn't fit your
+needs.
 
 
-Hi simon,
+CONFIGURATION
 
-From: Simon Horman <horms@verge.net.au>
-|
-> On Thu, Aug 05, 2010 at 01:51:25PM +0900, Sohgo Takeuchi wrote:
->> 
->> 
->> From: Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
->> |
->> > I found a bug in ldirectord and attach a patch to fix this
->> > problem to this E-mail.
->> > 
->> > The bug is that if a port is omitted in a "fallback" in a
->> > virtual section, the entry is never seen in the virtual server
->> > table even if all real servers are down.
->> > 
->> >     virtual=10.10.100.1:daytime
->> > 	real=10.10.100.2:daytime gate
->> > 	fallback=127.0.0.1
->> > 
->> > A debug message says like this.
->> > 
->> >     DEBUG2: Running system(/sbin/ipvsadm -a -t 10.10.100.1:13 -r 127.0.0.1: -g -w 1)
->> >     Running system(/sbin/ipvsadm -a -t 10.10.100.1:13 -r 127.0.0.1: -g -w 1)
->> >     illegal real server address[:port] specified
->> >     DEBUG2: system(/sbin/ipvsadm -a -t 10.10.100.1:13 -r 127.0.0.1: -g -w 1) failed:
->> >     system(/sbin/ipvsadm -a -t 10.10.100.1:13 -r 127.0.0.1: -g -w 1) failed:
->> > 
->> > 
->> > The problem in the source code is that when a port of "fallback"
->> > is omitted, the port is derived from a port specified in a
->> > "virtual" service (from a behavior of the parse_fallback
->> > function), but the port is used before it is defined.
->> > 
->> > I tested ldirectord on Ubuntu 10.04 with perl 5.10.1.
->> > 
->> > with best regards,
->> 
->> Does anyone have an interest in this bug?
-> 
-> Sorry, I missed your previous post.
-> I have pushed your patch into the agents tree.
+A persistence engine is associated with a virtual service
+(as are schedulers). I have added the --pe option to the
+ivpsadm -A and -E commands to allow the persistence engine
+of a virtual service to be added, changed, or deleted.
 
-Thank you very much!
+e.g. ipvsadm -A -u 10.4.3.192:5060 -p 60 -M 0.0.0.0 -o --pe sip
+
+There are no other configuration parameters at this time.
+
+
+RUNNING
+
+When a connection template is created, if its virtual service
+has a persistence engine, then the persistence engine can add
+an extra key to the connection template. For the SIP module this
+is the callid. More generically, it is known as "pe data". And
+both the name of the persistence engine, "pe name", and "pe data"
+can be viewed in /proc/net/ip_vs_conn and by passing the
+--persistent-conn option to ipvsadm -Lc.
+
+e.g.
+# ipvsadm -Lcn --persistent-conn
+UDP 00:38  UDP         10.4.3.0:0         10.4.3.192:5060    127.0.0.1:5060 sip 193373839
+
+Here we see a single persistence template (cport is 0), which has been
+handled by the sip persistence engine. The pe data (callid) is 193373839.
+
+In the case where the persistence engine can't match a packet for some
+reason, the connection will fall back to the normal persistence handling.
+This seems reasonable, as that if the packet ought to be dropped, iptables
+could be used.
+
+A limited amount of debugging information has been added which
+can be enabled using a value of 9 or greater in
+/proc/sys/net/ipv4/vs/debug_level
+
+CODE AVAILABILITY
+
+The kernel patches (13) are available in git as the pe-0.4 branch of
+git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git
+
+The ipvsadm patches (2) are available in git as the pe-0.4 branch of
+git://github.com/horms/ipvsadm-test.git
+
+I will post the ipvsadm patches separately
 
