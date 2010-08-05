@@ -1,61 +1,49 @@
 From: Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
-Subject: Re: ldirectord: a new format of ldirectord.conf for IPv6
-Date: Thu, 05 Aug 2010 00:13:30 +0900 (JST)
-Message-ID: <20100805.001330.59655583.sohgo@sohgo.dyndns.org>
-References: <20100803010342.GE14499@verge.net.au>
-	<20100804.001324.112617176.sohgo@sohgo.dyndns.org>
-	<20100804010034.GD4469@verge.net.au>
+Subject: Re: [patch][bug][ldirectord] a fallback server specified in a
+ virtual server section without a port
+Date: Thu, 05 Aug 2010 13:51:25 +0900 (JST)
+Message-ID: <20100805.135125.115917396.sohgo@sohgo.dyndns.org>
+References: <20100728.195127.48524095.sohgo@sohgo.dyndns.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20100804010034.GD4469@verge.net.au>
+In-Reply-To: <20100728.195127.48524095.sohgo@sohgo.dyndns.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: Text/Plain; charset="us-ascii"
-To: horms@verge.net.au
-Cc: lvs-devel@vger.kernel.org
+To: lvs-devel@vger.kernel.org
 
 
-Hi simon,
 
-From: Simon Horman <horms@verge.net.au>
+From: Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
 |
-> Hi Takeuchi-san,
+> I found a bug in ldirectord and attach a patch to fix this
+> problem to this E-mail.
 > 
-> On Wed, Aug 04, 2010 at 12:13:24AM +0900, Sohgo Takeuchi wrote:
->> 
->> Hi simon,
->> 
->> From: Simon Horman <horms@verge.net.au>
->> |
->> > On Mon, Aug 02, 2010 at 06:35:49PM +0900, Sohgo Takeuchi wrote:
->> >>     [Candidate 3] Completely separate IPv4 and IPv6 using
->> >> 	"hoge6" keywords.
->> >>     
->> >>     Adding new keywords which denote IPv6. These keywords can
->> >>     handle IPv6 only and have a name "hoge6".
->> >> 
->> >> 	fallback=fallback.example.com
->> >> 	fallback6=fallback.example.com
->> >>         virtual=virtual.example.com:daytime
->> >> 	    real=real1.example.com:daytime gate
->> >> 	    real=10.10.10.10:daytime gate
->> >>     	
->> >> 	virtual6=virtual.example.com:daytime
->> >> 	    real6=real1.example.com:daytime gate
->> >> 	    real6=[2001:db8::10]:daytime gate
->> >> 	    fallback6=localhost:daytime
->> >> 
->> >>     This way is very similar to [Candidate 2]. But it is
->> >>     consistent and easy to read. A demerit is a bit redundant?
->> > 
->> > I like candidate 3. Yes, it is redundant, but it is also very clear
->> > and consistent.
->> 
->> Yes.
->> 
->> I have implemented [candidate 3]. Now it works good.
+> The bug is that if a port is omitted in a "fallback" in a
+> virtual section, the entry is never seen in the virtual server
+> table even if all real servers are down.
 > 
-> Great, once you've finished your testing please post the patch.
+>     virtual=10.10.100.1:daytime
+> 	real=10.10.100.2:daytime gate
+> 	fallback=127.0.0.1
+> 
+> A debug message says like this.
+> 
+>     DEBUG2: Running system(/sbin/ipvsadm -a -t 10.10.100.1:13 -r 127.0.0.1: -g -w 1)
+>     Running system(/sbin/ipvsadm -a -t 10.10.100.1:13 -r 127.0.0.1: -g -w 1)
+>     illegal real server address[:port] specified
+>     DEBUG2: system(/sbin/ipvsadm -a -t 10.10.100.1:13 -r 127.0.0.1: -g -w 1) failed:
+>     system(/sbin/ipvsadm -a -t 10.10.100.1:13 -r 127.0.0.1: -g -w 1) failed:
+> 
+> 
+> The problem in the source code is that when a port of "fallback"
+> is omitted, the port is derived from a port specified in a
+> "virtual" service (from a behavior of the parse_fallback
+> function), but the port is used before it is defined.
+> 
+> I tested ldirectord on Ubuntu 10.04 with perl 5.10.1.
+> 
+> with best regards,
 
-Sure!
+Does anyone have an interest in this bug?
