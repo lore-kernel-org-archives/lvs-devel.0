@@ -1,10 +1,10 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [rfc 06/13] [RFC 06/13] IPVS: Allow null argument to ip_vs_scheduler_put()
-Date: Thu, 05 Aug 2010 20:48:01 +0900
-Message-ID: <20100805115240.715511400@vergenet.net>
+Subject: [rfc 07/13] [RFC 07/13] IPVS: ip_vs_{un,}bind_scheduler NULL arguments
+Date: Thu, 05 Aug 2010 20:48:02 +0900
+Message-ID: <20100805115240.905630870@vergenet.net>
 References: <20100805114755.118303531@vergenet.net>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline; filename=0006-IPVS-Allow-null-argument-to-ip_vs_scheduler_put.patch
+Content-Disposition: inline; filename=0007-IPVS-ip_vs_-un-bind_scheduler-NULL-arguments.patch
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -13,79 +13,73 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
 
-This simplifies caller logic sightly.
+In general NULL arguments aren't passed by the few callers that exist,
+so don't test for them.
+
+The exception is to make passing NULL to ip_vs_unbind_scheduler() a noop.
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c   |   13 ++++---------
- net/netfilter/ipvs/ip_vs_sched.c |    2 +-
- 2 files changed, 5 insertions(+), 10 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c   |    3 +--
+ net/netfilter/ipvs/ip_vs_sched.c |   23 +++--------------------
+ 2 files changed, 4 insertions(+), 22 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 0f0c079..84dae47 100644
+index 84dae47..d57cc4a 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1167,7 +1167,7 @@ ip_vs_add_service(struct ip_vs_service_user_kern *u,
- 	if (sched == NULL) {
- 		pr_info("Scheduler module ip_vs_%s not found\n", u->sched_name);
- 		ret = -ENOENT;
--		goto out_mod_dec;
-+		goto out_err;
- 	}
+@@ -1229,8 +1229,7 @@ ip_vs_add_service(struct ip_vs_service_user_kern *u,
  
- #ifdef CONFIG_IP_VS_IPV6
-@@ -1227,7 +1227,7 @@ ip_vs_add_service(struct ip_vs_service_user_kern *u,
- 	*svc_p = svc;
- 	return 0;
- 
--  out_err:
-+ out_err:
+  out_err:
  	if (svc != NULL) {
- 		if (svc->scheduler)
- 			ip_vs_unbind_scheduler(svc);
-@@ -1240,7 +1240,6 @@ ip_vs_add_service(struct ip_vs_service_user_kern *u,
- 	}
- 	ip_vs_scheduler_put(sched);
- 
--  out_mod_dec:
- 	/* decrease the module use count */
- 	ip_vs_use_count_dec();
- 
-@@ -1323,10 +1322,7 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
- #ifdef CONFIG_IP_VS_IPV6
-   out:
- #endif
--
--	if (old_sched)
--		ip_vs_scheduler_put(old_sched);
--
-+	ip_vs_scheduler_put(old_sched);
- 	return ret;
- }
- 
-@@ -1350,8 +1346,7 @@ static void __ip_vs_del_service(struct ip_vs_service *svc)
- 	/* Unbind scheduler */
- 	old_sched = svc->scheduler;
- 	ip_vs_unbind_scheduler(svc);
--	if (old_sched)
--		ip_vs_scheduler_put(old_sched);
-+	ip_vs_scheduler_put(old_sched);
- 
- 	/* Unbind app inc */
- 	if (svc->inc) {
+-		if (svc->scheduler)
+-			ip_vs_unbind_scheduler(svc);
++		ip_vs_unbind_scheduler(svc);
+ 		if (svc->inc) {
+ 			local_bh_disable();
+ 			ip_vs_app_inc_put(svc->inc);
 diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
-index bbc1ac7..cd77902 100644
+index cd77902..be0780a 100644
 --- a/net/netfilter/ipvs/ip_vs_sched.c
 +++ b/net/netfilter/ipvs/ip_vs_sched.c
-@@ -159,7 +159,7 @@ struct ip_vs_scheduler *ip_vs_scheduler_get(const char *sched_name)
- 
- void ip_vs_scheduler_put(struct ip_vs_scheduler *scheduler)
+@@ -46,15 +46,6 @@ int ip_vs_bind_scheduler(struct ip_vs_service *svc,
  {
--	if (scheduler->module)
-+	if (scheduler && scheduler->module)
- 		module_put(scheduler->module);
- }
+ 	int ret;
  
+-	if (svc == NULL) {
+-		pr_err("%s(): svc arg NULL\n", __func__);
+-		return -EINVAL;
+-	}
+-	if (scheduler == NULL) {
+-		pr_err("%s(): scheduler arg NULL\n", __func__);
+-		return -EINVAL;
+-	}
+-
+ 	svc->scheduler = scheduler;
+ 
+ 	if (scheduler->init_service) {
+@@ -74,18 +65,10 @@ int ip_vs_bind_scheduler(struct ip_vs_service *svc,
+  */
+ int ip_vs_unbind_scheduler(struct ip_vs_service *svc)
+ {
+-	struct ip_vs_scheduler *sched;
++	struct ip_vs_scheduler *sched = svc->scheduler;
+ 
+-	if (svc == NULL) {
+-		pr_err("%s(): svc arg NULL\n", __func__);
+-		return -EINVAL;
+-	}
+-
+-	sched = svc->scheduler;
+-	if (sched == NULL) {
+-		pr_err("%s(): svc isn't bound\n", __func__);
+-		return -EINVAL;
+-	}
++	if (!sched)
++		return 0;
+ 
+ 	if (sched->done_service) {
+ 		if (sched->done_service(svc) != 0) {
 -- 
 1.7.1
 
