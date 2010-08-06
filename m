@@ -1,32 +1,48 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: IPVS network namespace aware ?
-Date: Fri, 6 Aug 2010 22:59:17 +0900
-Message-ID: <20100806135916.GA13997@verge.net.au>
-References: <1281099450.2518.21.camel@seasc0214.dyn.rnd.as.sw.ericsson.se>
+From: Patrick McHardy <kaber@trash.net>
+Subject: Re: [rfc 02/13] [RFC 02/13] netfilter: nf_conntrack_sip: Add callid
+ parser
+Date: Fri, 06 Aug 2010 16:00:49 +0200
+Message-ID: <4C5C1591.90108@trash.net>
+References: <20100805114755.118303531@vergenet.net> <20100805115239.880722744@vergenet.net>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1281099450.2518.21.camel@seasc0214.dyn.rnd.as.sw.ericsson.se>
-Sender: lvs-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20100805115239.880722744@vergenet.net>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, lvs-devel <lvs-devel@vger.kernel.org>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-[ Cced lvs-devel ]
+Am 05.08.2010 13:47, schrieb Simon Horman:
+> diff --git a/net/netfilter/nf_conntrack_sip.c b/net/netfilter/nf_conntrack_sip.c
+> index 2fd1ea2..715ce54 100644
+> --- a/net/netfilter/nf_conntrack_sip.c
+> +++ b/net/netfilter/nf_conntrack_sip.c
+> @@ -130,6 +130,44 @@ static int digits_len(const struct nf_conn *ct, const char *dptr,
+>  	return len;
+>  }
+>  
+> +static int iswordc(const char c)
+> +{
+> +	if (isalnum(c) || c == '!' || c == '"' || c == '%' ||
+> +	    (c >= '(' && c <= '/') || c == ':' || c == '<' || c == '>' ||
+> +	    c == '?' || (c >= '[' && c <= ']') || c == '_' || c == '`' ||
+> +	    c == '{' || c == '}' || c == '~')
+> +		return 1;
+> +	return 0;
+> +}
+> +
+> +static int word_len(const char *dptr, const char *limit)
+> +{
+> +	int len = 0;
+> +	while (dptr < limit && iswordc(*dptr)) {
+> +		dptr++;
+> +		len++;
+> +	}
+> +	return len;
+> +}
 
-On Fri, Aug 06, 2010 at 02:57:30PM +0200, Hans Schillstrom wrote:
-> Hello
-> Is there any one that have made ipvs network namespace aware ?
-> There is an urgent need of it within Ericsson.
-> I could not find any trace of it in any of the normal lists.
-> 
-> I will start patching ipvs next week or give a helping hand to any
-> existing work.
-
-Hi Hans,
-
-I am not aware of any other work in this area.
-Please send any patches here :-)
-
+Since the Call-ID can't contain whitespace, couldn't we simply
+determine the length by looking for the next newline or whitespace
+character?
