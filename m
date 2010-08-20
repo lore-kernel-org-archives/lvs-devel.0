@@ -1,9 +1,8 @@
 From: Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: [patch nf-next] IPVS: convert __ip_vs_securetcp_lock to a
- spinlock
-Date: Fri, 20 Aug 2010 16:55:36 +0200
-Message-ID: <1282316136.2484.144.camel@edumazet-laptop>
-References: <20100820145206.GA11781@verge.net.au>
+Subject: Re: [patch nf-next] IPVS: convert __ip_vs_sched_lock to a spinlock
+Date: Fri, 20 Aug 2010 16:56:28 +0200
+Message-ID: <1282316188.2484.147.camel@edumazet-laptop>
+References: <20100820145249.GB11781@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <netfilter-devel-owner@vger.kernel.org>
@@ -12,11 +11,11 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         h=domainkey-signature:received:received:subject:from:to:cc
          :in-reply-to:references:content-type:date:message-id:mime-version
          :x-mailer:content-transfer-encoding;
-        bh=HXKhmqKECWWRp8MTfSZrAtHbxHM/Swe+2AItixpcVvs=;
-        b=helVOsC7OiAraLEI/aDLyVyPUqyC111shaPEgMjuXgalKchBhaqhiyeQYwatrpiYYA
-         s/5zUgNTQKsP1Tnd77qm22dMre2lNiNTPG6hUQlqpkGzINFoYckG+nfYIlqcPqxyA0QY
-         yeBXww/k7OOmRHw3skpwFI6wBWbh5u+fx2/UU=
-In-Reply-To: <20100820145206.GA11781@verge.net.au>
+        bh=hJaaTkdA2ZjIAMOfV/aEMc1CCcxlPOx+QBBwLuRrfzI=;
+        b=pF+Pfr7qJ03qrva8lkcH5nPssRlfhE1kpe1LJ3tGUK/mpUClO0CwM0n0iyuKN8iV+X
+         WIPek9DktCVVM1Ihhf+Sue5L4q2KcCffxcNG5hJplNZt5KpclvcYoex2i49rzZnKWJV2
+         +ZvHDJsqyvNbPY3SckWqAzj9lpJ1T3MwsVnZA=
+In-Reply-To: <20100820145249.GB11781@verge.net.au>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="utf-8"
@@ -25,14 +24,9 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 Le vendredi 20 ao=C3=BBt 2010 =C3=A0 23:52 +0900, Simon Horman a =C3=A9=
 crit :
-> Also rename __ip_vs_securetcp_lock to ip_vs_securetcp_lock.
+> Also rename __ip_vs_sched_lock to ip_vs_sched_lock.
 >=20
-> Spinlock conversion was suggested by Eric Dumazet.
->=20
-> Cc: Eric Dumazet <eric.dumazet@gmail.com>
 > Signed-off-by: Simon Horman <horms@verge.net.au>
->=20
-> ---=20
 
 Acked-by: Eric Dumazet <eric.dumazet@gmail.com>
 
