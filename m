@@ -1,63 +1,113 @@
-From: yao zhao <dragonlinux@gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [rfc] IPVS: convert scheduler management to RCU
-Date: Fri, 20 Aug 2010 13:54:11 -0400
-Message-ID: <AANLkTin8SXBtnKsaWdb64h2UVCZ57zHFOoZUWbbz_7HM@mail.gmail.com>
+Date: Fri, 20 Aug 2010 21:03:03 +0300 (EEST)
+Message-ID: <Pine.LNX.4.58.1008202045070.5207@u.domain.uli>
 References: <20100820133320.GA29311@verge.net.au>
-	<AANLkTimS7V3z1kEwmEFCCvPzJX=D9Oqw=BNEuN-YZ0tx@mail.gmail.com>
-	<1282313150.2484.65.camel@edumazet-laptop>
-	<AANLkTi=t7wDZO23Cim1LJ_Ot2FUe4bR+XG6H5uJfTuG+@mail.gmail.com>
-	<1282314765.2484.104.camel@edumazet-laptop>
-	<AANLkTikCd_xCWUN+dkb_BkOrkBGSPe4xkmAebtgEiufy@mail.gmail.com>
-	<1282318337.2484.219.camel@edumazet-laptop>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=gamma;
-        h=domainkey-signature:mime-version:received:received:in-reply-to
-         :references:date:message-id:subject:from:to:cc:content-type
-         :content-transfer-encoding;
-        bh=ygRrAFuHAIKYed8lY8Mr/3x5PtZhlhMxPRTi7PfaAEw=;
-        b=HT6xg9kSt0Pm3cGjt1LC/Vnx0QaiXW2eobTYmwLjR9qaQa0K86PqNBwi/TyPZ1UlpU
-         uvW0bFvprrGyxFKLoMP33yV/0dxYyyycgsLzgAPp89prz+AK8OnZW4wvdoTRMJAEr6ao
-         HoK2zwCFCxIeKSIz0rZ5ZEQMKsQki5/spQTEM=
-In-Reply-To: <1282318337.2484.219.camel@edumazet-laptop>
+In-Reply-To: <20100820133320.GA29311@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Changli Gao <xiaosuo@gmail.com>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Paul E McKenney <paulmck@linux.vnet.ibm.com>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>
 
-On Fri, Aug 20, 2010 at 11:32 AM, Eric Dumazet <eric.dumazet@gmail.com>=
- wrote:
-> Le vendredi 20 ao=FBt 2010 =E0 11:04 -0400, yao zhao a =E9crit :
->
->> The code here is deleting a global from the list, am I right? I didn=
-'t
->> see any called case.
->> what are you going to do more? free it? write_unlock_bh should make =
-the mb.
->
->
-> If you dont wait _after_ delete from list and following actions
-> (kfree() without a call_rcu(), or module unload, or whatever), a read=
-er
-> might access your data/code and crash the box.
->
-> spin_unlock_bh() wont help you at all, since only writers are freezed=
- by
-> the lock (since readers only hold rcu_lock)
->
-> Documentation/RCU/whatisRCU.txt line 705
->
-> Documentation/RCU/checklist.txt =A015)
->
->
->
->
-I read the code again and that global is in a module then you are right=
-=2E
-If that global is not in a module then you don't need it at all, as in
-that global only functions pointer or name... which never be changed.
 
-yao
+	Hello,
+
+On Fri, 20 Aug 2010, Simon Horman wrote:
+
+> Signed-off-by: Simon Horman <horms@verge.net.au>
+> 
+> --- 
+> 
+> I'm still getting my head around RCU, so review would be greatly appreciated.
+> 
+> It occurs to me that this code is not performance critical, so
+> perhaps simply replacing the rwlock with a spinlock would be better?
+
+	This specific code does not need RCU conversion, see below
+
+> Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_sched.c
+> ===================================================================
+> --- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_sched.c	2010-08-20 22:21:01.000000000 +0900
+> +++ nf-next-2.6/net/netfilter/ipvs/ip_vs_sched.c	2010-08-20 22:21:51.000000000 +0900
+> @@ -35,7 +35,7 @@
+>  static LIST_HEAD(ip_vs_schedulers);
+>  
+>  /* lock for service table */
+> -static DEFINE_RWLOCK(__ip_vs_sched_lock);
+> +static DEFINE_SPINLOCK(ip_vs_sched_mutex);
+
+	Here is what I got as list of locking points:
+
+__ip_vs_conntbl_lock_array:
+	- can benefit from RCU, main benefits come from here
+
+- ip_vs_conn_unhash() followed by ip_vs_conn_hash() is tricky with RCU,
+	needs more thinking, eg. when cport is changed
+
+cp->lock, cp->refcnt:
+	- not a problem
+
+tcp_app_lock, udp_app_lock, sctp_app_lock:
+	- can benefit from RCU (once per connection)
+
+svc->sched_lock:
+	- only 1 read_lock, mostly writers that need exclusive access
+	- so, not suitable for RCU, can be switched to spin_lock for speed
+
+__ip_vs_sched_lock:
+	- not called by packet handlers, no need for RCU
+	- used only by one ip_vs_ctl user (configuration) and the
+	scheduler modules
+	- can remain RWLOCK, no changes in locking are needed
+
+__ip_vs_svc_lock:
+	- spin_lock, use RCU
+	- restrictions for schedulers with .update_service method
+	because svc->sched_lock is write locked, see below
+
+__ip_vs_rs_lock:
+	- spin_lock, use RCU
+
+Schedulers:
+	- every .schedule method has its own locking, two examples:
+		- write_lock: to protect the scheduler state (can be
+		changed to spin_lock), see WRR. Difficult for RCU.
+		- no lock: relies on IP_VS_WAIT_WHILE, no state
+		is protected explicitly, fast like RCU, see WLC
+
+Scheduler state, eg. mark->cl:
+	- careful RCU assignment, may be all .update_service methods
+	should use copy-on-update (WRR). OTOH, ip_vs_wlc_schedule (WLC)
+	has no locks at all, thanks to the IP_VS_WAIT_WHILE, so
+	it is fast as RCU.
+
+Statistics:
+dest->stats.lock, svc->stats.lock, ip_vs_stats.lock:
+	- called for every packet, BAD for SMP, see ip_vs_in_stats(),
+	ip_vs_out_stats(), ip_vs_conn_stats()
+
+curr_sb_lock:
+	- called for every packet depending on conn state
+	- No benefits from RCU, should be spin_lock
+
+	To summarize:
+
+- the main problem remains stats:
+	dest->stats.lock, svc->stats.lock, ip_vs_stats.lock
+
+- RCU benefits when connection processes many packets per connection, eg.
+	for TCP, SCTP, not much for UDP. No gains for the 1st
+	packet in connection.
+
+- svc: no benefits from RCU, some schedulers protect state and
+need exclusive access, others have no state (and they do not use
+locks even now)
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
