@@ -1,55 +1,171 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [patch nf-next] IPVS: ICMPv6 checksum calculation
-Date: Fri, 20 Aug 2010 16:48:20 +0300 (EEST)
-Message-ID: <Pine.LNX.4.58.1008201643260.4539@u.domain.uli>
-References: <20100817070036.GB742@verge.net.au> <Pine.LNX.4.58.1008171143500.2771@u.domain.uli>
- <20100818002149.GA18114@verge.net.au> <20100817.172602.193696444.davem@davemloft.net>
- <AANLkTimW6UszuFspN+S3m8WdS1dPcwTmy+m2kT4X+7MR@mail.gmail.com>
- <20100818055716.GA32429@verge.net.au> <AANLkTi=tVieTnz1R=9Jh45LweUwJ=mtszM1U9XAEVrK7@mail.gmail.com>
+From: Changli Gao <xiaosuo@gmail.com>
+Subject: Re: [rfc] IPVS: convert scheduler management to RCU
+Date: Fri, 20 Aug 2010 21:44:08 +0800
+Message-ID: <AANLkTimS7V3z1kEwmEFCCvPzJX=D9Oqw=BNEuN-YZ0tx@mail.gmail.com>
+References: <20100820133320.GA29311@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTi=tVieTnz1R=9Jh45LweUwJ=mtszM1U9XAEVrK7@mail.gmail.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=gamma;
+        h=domainkey-signature:received:mime-version:received:in-reply-to
+         :references:from:date:message-id:subject:to:cc:content-type
+         :content-transfer-encoding;
+        bh=IHwUIy2IIohDm1578sbTicKKYSOwJKH/3dS2qUlf12c=;
+        b=BOwNqj7sVcJBFCZ7pmTyKELaBkmM+0fALJSoUUIC/FpqaIMcf7eB6CzCt2YWla5yC5
+         ICavciaPIgZLo63/tBm2HIsorQ0ivZ/dmjfkMz7kgEWu/oZ/fC9KgMNLFLQqdMikFTus
+         ivtY3XKAFGwaLCY4kHAwfrVZqwxzk2a13GMQE=
+In-Reply-To: <20100820133320.GA29311@verge.net.au>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="utf-8"
-To: xiaoyu Du <tingsrain@gmail.com>
-Cc: Simon Horman <horms@verge.net.au>, David Miller <davem@davemloft.net>, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, kaber@trash.net
+Content-Type: text/plain; charset="iso-8859-1"
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Paul E McKenney <paulmck@linux.vnet.ibm.com>
+
+On Fri, Aug 20, 2010 at 9:33 PM, Simon Horman <horms@verge.net.au> wrot=
+e:
+> Signed-off-by: Simon Horman <horms@verge.net.au>
+>
+> ---
+>
+> I'm still getting my head around RCU, so review would be greatly appr=
+eciated.
+>
+> It occurs to me that this code is not performance critical, so
+> perhaps simply replacing the rwlock with a spinlock would be better?
+>
+> Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_sched.c
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> --- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_sched.c =A0 2010-08-20 =
+22:21:01.000000000 +0900
+> +++ nf-next-2.6/net/netfilter/ipvs/ip_vs_sched.c =A0 =A0 =A0 =A02010-=
+08-20 22:21:51.000000000 +0900
+> @@ -35,7 +35,7 @@
+> =A0static LIST_HEAD(ip_vs_schedulers);
+>
+> =A0/* lock for service table */
+> -static DEFINE_RWLOCK(__ip_vs_sched_lock);
+> +static DEFINE_SPINLOCK(ip_vs_sched_mutex);
+>
+>
+> =A0/*
+> @@ -91,9 +91,9 @@ static struct ip_vs_scheduler *ip_vs_sch
+>
+> =A0 =A0 =A0 =A0IP_VS_DBG(2, "%s(): sched_name \"%s\"\n", __func__, sc=
+hed_name);
+>
+> - =A0 =A0 =A0 read_lock_bh(&__ip_vs_sched_lock);
+> + =A0 =A0 =A0 rcu_read_lock_bh();
+>
+> - =A0 =A0 =A0 list_for_each_entry(sched, &ip_vs_schedulers, n_list) {
+> + =A0 =A0 =A0 list_for_each_entry_rcu(sched, &ip_vs_schedulers, n_lis=
+t) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * Test and get the modules atomically
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 */
+> @@ -105,14 +105,14 @@ static struct ip_vs_scheduler *ip_vs_sch
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (strcmp(sched_name, sched->name)=3D=
+=3D0) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* HIT */
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 read_unlock_bh(&__ip_vs=
+_sched_lock);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 rcu_read_unlock_bh();
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return sched;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (sched->module)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0module_put(sched->modu=
+le);
+> =A0 =A0 =A0 =A0}
+>
+> - =A0 =A0 =A0 read_unlock_bh(&__ip_vs_sched_lock);
+> + =A0 =A0 =A0 rcu_read_unlock_bh();
+> =A0 =A0 =A0 =A0return NULL;
+> =A0}
+>
+> @@ -167,10 +167,10 @@ int register_ip_vs_scheduler(struct ip_v
+> =A0 =A0 =A0 =A0/* increase the module use count */
+> =A0 =A0 =A0 =A0ip_vs_use_count_inc();
+>
+> - =A0 =A0 =A0 write_lock_bh(&__ip_vs_sched_lock);
+> + =A0 =A0 =A0 spin_lock_bh(&ip_vs_sched_mutex);
+>
+> =A0 =A0 =A0 =A0if (!list_empty(&scheduler->n_list)) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 write_unlock_bh(&__ip_vs_sched_lock);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock_bh(&ip_vs_sched_mutex);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ip_vs_use_count_dec();
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0pr_err("%s(): [%s] scheduler already l=
+inked\n",
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 __func__, scheduler->name=
+);
+> @@ -181,9 +181,9 @@ int register_ip_vs_scheduler(struct ip_v
+> =A0 =A0 =A0 =A0 * =A0Make sure that the scheduler with this name does=
+n't exist
+> =A0 =A0 =A0 =A0 * =A0in the scheduler list.
+> =A0 =A0 =A0 =A0 */
+> - =A0 =A0 =A0 list_for_each_entry(sched, &ip_vs_schedulers, n_list) {
+> + =A0 =A0 =A0 list_for_each_entry_rcu(sched, &ip_vs_schedulers, n_lis=
+t) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (strcmp(scheduler->name, sched->nam=
+e) =3D=3D 0) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 write_unlock_bh(&__ip_v=
+s_sched_lock);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock_bh(&ip_vs_s=
+ched_mutex);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0ip_vs_use_count_dec();
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0pr_err("%s(): [%s] sch=
+eduler already existed "
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "in the s=
+ystem\n", __func__, scheduler->name);
+> @@ -193,8 +193,8 @@ int register_ip_vs_scheduler(struct ip_v
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * =A0 =A0 =A0Add it into the d-linked scheduler list
+> =A0 =A0 =A0 =A0 */
+> - =A0 =A0 =A0 list_add(&scheduler->n_list, &ip_vs_schedulers);
+> - =A0 =A0 =A0 write_unlock_bh(&__ip_vs_sched_lock);
+> + =A0 =A0 =A0 list_add_rcu(&scheduler->n_list, &ip_vs_schedulers);
+> + =A0 =A0 =A0 spin_unlock_bh(&ip_vs_sched_mutex);
+>
+> =A0 =A0 =A0 =A0pr_info("[%s] scheduler registered.\n", scheduler->nam=
+e);
+>
+> @@ -212,9 +212,9 @@ int unregister_ip_vs_scheduler(struct ip
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return -EINVAL;
+> =A0 =A0 =A0 =A0}
+>
+> - =A0 =A0 =A0 write_lock_bh(&__ip_vs_sched_lock);
+> + =A0 =A0 =A0 spin_lock_bh(&ip_vs_sched_mutex);
+> =A0 =A0 =A0 =A0if (list_empty(&scheduler->n_list)) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 write_unlock_bh(&__ip_vs_sched_lock);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock_bh(&ip_vs_sched_mutex);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0pr_err("%s(): [%s] scheduler is not in=
+ the list. failed\n",
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 __func__, scheduler->name=
+);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return -EINVAL;
+> @@ -223,8 +223,8 @@ int unregister_ip_vs_scheduler(struct ip
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * =A0 =A0 =A0Remove it from the d-linked scheduler li=
+st
+> =A0 =A0 =A0 =A0 */
+> - =A0 =A0 =A0 list_del(&scheduler->n_list);
+> - =A0 =A0 =A0 write_unlock_bh(&__ip_vs_sched_lock);
+> + =A0 =A0 =A0 list_del_rcu(&scheduler->n_list);
+> + =A0 =A0 =A0 spin_unlock_bh(&ip_vs_sched_mutex);
+
+Need a rcu_barrier_bh().
+
+>
+> =A0 =A0 =A0 =A0/* decrease the module use count */
+> =A0 =A0 =A0 =A0ip_vs_use_count_dec();
 
 
-	Hello,
 
-On Fri, 20 Aug 2010, xiaoyu Du wrote:
-
-> I just replied to thank for his idea then, as he gived me some ideas
-> on how to manipulate
-> checksum. I tested the code today, but it doesn't seem to work. (I ju=
-st wrote a
-> netfilter module and hooked the code on local_out , then ping6 the
-> address on another PC,
-> It failed.). I'll find out why.
-
-	May be because I copied csum_ipv6_magic() code from
-your patch. Please, try with one '~' before csum_ipv6_magic.
-
-> >> >>> =C2=A0 =C2=A0 =C2=A0icmph->icmp6_cksum =3D csum_ipv6_magic(&ip=
-h->saddr,
-> >> >>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0&iph->daddr,
-> >> >>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0skb->len - icm=
-p_offset, IPPROTO_ICMPV6,
-> >> >>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A00);
-> >> >>> =C2=A0 =C2=A0 =C2=A0skb->csum_start =3D skb_network_header(skb=
-) - skb->head +
-> >> >>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0icmp_offset;
-> >> >>> =C2=A0 =C2=A0 =C2=A0skb->csum_offset =3D offsetof(struct icmp6=
-hdr, icmp6_cksum);
-> >> >>> =C2=A0 =C2=A0 =C2=A0skb->ip_summed =3D CHECKSUM_PARTIAL;
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+--=20
+Regards,
+Changli Gao(xiaosuo@gmail.com)
 --
 To unsubscribe from this list: send the line "unsubscribe netfilter-dev=
 el" in
