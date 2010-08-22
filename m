@@ -1,116 +1,97 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [rfc] IPVS: convert scheduler management to RCU
-Date: Sat, 21 Aug 2010 12:30:25 +0900
-Message-ID: <20100821033024.GC8616@verge.net.au>
-References: <20100820133320.GA29311@verge.net.au>
- <Pine.LNX.4.58.1008202045070.5207@u.domain.uli>
-Mime-Version: 1.0
+Subject: [patch v1 00/12] IPVS: SIP Persistence Engine
+Date: Sun, 22 Aug 2010 21:44:57 +0900
+Message-ID: <20100822124457.339517323@vergenet.net>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.58.1008202045070.5207@u.domain.uli>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
 
-On Fri, Aug 20, 2010 at 09:03:03PM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Fri, 20 Aug 2010, Simon Horman wrote:
-> 
-> > Signed-off-by: Simon Horman <horms@verge.net.au>
-> > 
-> > --- 
-> > 
-> > I'm still getting my head around RCU, so review would be greatly appreciated.
-> > 
-> > It occurs to me that this code is not performance critical, so
-> > perhaps simply replacing the rwlock with a spinlock would be better?
-> 
-> 	This specific code does not need RCU conversion, see below
+This patch series adds load-balancing of UDP SIP based on Call-ID to
+IPVS as well as a frame-work for extending IPVS to handle alternate
+persistence requirements.
 
-Agreed.
+REVISIONS
 
-> > Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_sched.c
-> > ===================================================================
-> > --- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_sched.c	2010-08-20 22:21:01.000000000 +0900
-> > +++ nf-next-2.6/net/netfilter/ipvs/ip_vs_sched.c	2010-08-20 22:21:51.000000000 +0900
-> > @@ -35,7 +35,7 @@
-> >  static LIST_HEAD(ip_vs_schedulers);
-> >  
-> >  /* lock for service table */
-> > -static DEFINE_RWLOCK(__ip_vs_sched_lock);
-> > +static DEFINE_SPINLOCK(ip_vs_sched_mutex);
-> 
-> 	Here is what I got as list of locking points:
-> 
-> __ip_vs_conntbl_lock_array:
-> 	- can benefit from RCU, main benefits come from here
-> 
-> - ip_vs_conn_unhash() followed by ip_vs_conn_hash() is tricky with RCU,
-> 	needs more thinking, eg. when cport is changed
-> 
-> cp->lock, cp->refcnt:
-> 	- not a problem
-> 
-> tcp_app_lock, udp_app_lock, sctp_app_lock:
-> 	- can benefit from RCU (once per connection)
-> 
-> svc->sched_lock:
-> 	- only 1 read_lock, mostly writers that need exclusive access
-> 	- so, not suitable for RCU, can be switched to spin_lock for speed
-> 
-> __ip_vs_sched_lock:
-> 	- not called by packet handlers, no need for RCU
-> 	- used only by one ip_vs_ctl user (configuration) and the
-> 	scheduler modules
-> 	- can remain RWLOCK, no changes in locking are needed
-> 
-> __ip_vs_svc_lock:
-> 	- spin_lock, use RCU
-> 	- restrictions for schedulers with .update_service method
-> 	because svc->sched_lock is write locked, see below
-> 
-> __ip_vs_rs_lock:
-> 	- spin_lock, use RCU
-> 
-> Schedulers:
-> 	- every .schedule method has its own locking, two examples:
-> 		- write_lock: to protect the scheduler state (can be
-> 		changed to spin_lock), see WRR. Difficult for RCU.
-> 		- no lock: relies on IP_VS_WAIT_WHILE, no state
-> 		is protected explicitly, fast like RCU, see WLC
-> 
-> Scheduler state, eg. mark->cl:
-> 	- careful RCU assignment, may be all .update_service methods
-> 	should use copy-on-update (WRR). OTOH, ip_vs_wlc_schedule (WLC)
-> 	has no locks at all, thanks to the IP_VS_WAIT_WHILE, so
-> 	it is fast as RCU.
-> 
-> Statistics:
-> dest->stats.lock, svc->stats.lock, ip_vs_stats.lock:
-> 	- called for every packet, BAD for SMP, see ip_vs_in_stats(),
-> 	ip_vs_out_stats(), ip_vs_conn_stats()
-> 
-> curr_sb_lock:
-> 	- called for every packet depending on conn state
-> 	- No benefits from RCU, should be spin_lock
-> 
-> 	To summarize:
-> 
-> - the main problem remains stats:
-> 	dest->stats.lock, svc->stats.lock, ip_vs_stats.lock
-> 
-> - RCU benefits when connection processes many packets per connection, eg.
-> 	for TCP, SCTP, not much for UDP. No gains for the 1st
-> 	packet in connection.
-> 
-> - svc: no benefits from RCU, some schedulers protect state and
-> need exclusive access, others have no state (and they do not use
-> locks even now)
+This is "patch v1" of this series, which addresses a few minor problems, as
+annotated on a per-patch basis, since the initial "rfc" posting. Internally
+there were 4 rfc versions, 0.1, 0.2, 0.3 and 0.4, some of the notes for
+some of the patches reflect those versions.
 
-Thanks for the list. It looks like a good basis for some conversion work.
+OVERVIEW
+
+The approach that I have taken is what I call persistence engines.
+The basic idea being that you can provide a module to LVS that alters
+the way that it handles connection templates, which are at the core
+of persistence. In particular, an additional key can be added, and
+any of the normal IP address, port and protocol information can either
+be used or ignored.
+
+In the case of the SIP persistence engine, the only persistence engine, all
+the keys used by the default persistence behaviour are used and the callid
+is added as an extra key. I originally intended to ignore the cip, but this
+can optionally be done by setting the persistence mask (-M) to 0.0.0.0
+while allowing the flexibility of other mask values.
+
+It is envisaged that the SIP persistence engine will be used in conjunction
+with one-packet scheduling. I'm interested to hear if that doesn't fit your
+needs.
+
+
+CONFIGURATION
+
+A persistence engine is associated with a virtual service
+(as are schedulers). I have added the --pe option to the
+ivpsadm -A and -E commands to allow the persistence engine
+of a virtual service to be added, changed, or deleted.
+
+e.g. ipvsadm -A -u 10.4.3.192:5060 -p 60 -M 0.0.0.0 -o --pe sip
+
+There are no other configuration parameters at this time.
+
+
+RUNNING
+
+When a connection template is created, if its virtual service
+has a persistence engine, then the persistence engine can add
+an extra key to the connection template. For the SIP module this
+is the callid. More generically, it is known as "pe data". And
+both the name of the persistence engine, "pe name", and "pe data"
+can be viewed in /proc/net/ip_vs_conn and by passing the
+--persistent-conn option to ipvsadm -Lc.
+
+e.g.
+# ipvsadm -Lcn --persistent-conn
+UDP 00:38  UDP         10.4.3.0:0         10.4.3.192:5060    127.0.0.1:5060 sip 193373839
+
+Here we see a single persistence template (cport is 0), which has been
+handled by the sip persistence engine. The pe data (callid) is 193373839.
+
+In the case where the persistence engine can't match a packet for some
+reason, the connection will fall back to the normal persistence handling.
+This seems reasonable, as that if the packet ought to be dropped, iptables
+could be used.
+
+A limited amount of debugging information has been added which
+can be enabled using a value of 9 or greater in
+/proc/sys/net/ipv4/vs/debug_level
+
+CODE AVAILABILITY
+
+The kernel patches (13) are available in git as the pe-0.4 branch of
+git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git
+
+The ipvsadm patches (2) are available in git as the pe-0.4 branch of
+git://github.com/horms/ipvsadm-test.git
+
+I will post the ipvsadm patches separately
+
+--
+To unsubscribe from this list: send the line "unsubscribe netfilter-devel" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
