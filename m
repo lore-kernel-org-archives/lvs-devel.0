@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [patch v1 09/12] IPVS: management of persistence engine modules
-Date: Sun, 22 Aug 2010 21:45:06 +0900
-Message-ID: <20100822124859.799938979@vergenet.net>
+Subject: [patch v1 10/12] IPVS: Allow configuration of persistence engines
+Date: Sun, 22 Aug 2010 21:45:07 +0900
+Message-ID: <20100822124900.153337939@vergenet.net>
 References: <20100822124457.339517323@vergenet.net>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline; filename=pe-framework.patch
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline; filename=pe-ctl.patch
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,204 +13,172 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
 
-This is based heavily on the scheduler management code
+Allow the persistence engine of a virtual service to be set, edited
+and unset.
+
+This feature only works with the netlink user-space interface.
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 
-v1
-* As suggested by Stephen Hemminger
-  - Convert __ip_vs_pe_lock from a rwlock to a spinlock.
-    This code isn't performance-critical, so there is no need for RCU.
-  - Rename __ip_vs_pe_lock as ip_vs_pe_lock
-* Stephen also suggested open-coding ip_vs_{un,}bind_pe()
-  as they are very short. But I would prefer to keep them as they are used
-  along side ip_vs_{un,}bind_scheduler which are too long to be open-coded.
-
-v0.4
-* Export register_ip_vs_pe and unregister_ip_vs_pe
-* Use one line comment format for one line comments.
-* Only use at most one blank line consecutively
-
-Index: lvs-test-2.6/include/net/ip_vs.h
+Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c
 ===================================================================
---- lvs-test-2.6.orig/include/net/ip_vs.h	2010-08-22 21:31:05.000000000 +0900
-+++ lvs-test-2.6/include/net/ip_vs.h	2010-08-22 21:31:57.000000000 +0900
-@@ -793,6 +793,12 @@ extern int ip_vs_app_pkt_in(struct ip_vs
- extern int ip_vs_app_init(void);
- extern void ip_vs_app_cleanup(void);
+--- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_ctl.c	2010-07-27 06:20:20.000000000 +0900
++++ nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c	2010-07-27 22:11:58.000000000 +0900
+@@ -1157,6 +1157,7 @@ ip_vs_add_service(struct ip_vs_service_u
+ {
+ 	int ret = 0;
+ 	struct ip_vs_scheduler *sched = NULL;
++	struct ip_vs_pe *pe = NULL;
+ 	struct ip_vs_service *svc = NULL;
  
-+void ip_vs_bind_pe(struct ip_vs_service *svc, struct ip_vs_pe *pe);
-+void ip_vs_unbind_pe(struct ip_vs_service *svc);
-+int register_ip_vs_pe(struct ip_vs_pe *pe);
-+int unregister_ip_vs_pe(struct ip_vs_pe *pe);
-+extern struct ip_vs_pe *ip_vs_pe_get(const char *name);
-+extern void ip_vs_pe_put(struct ip_vs_pe *pe);
+ 	/* increase the module use count */
+@@ -1170,6 +1171,16 @@ ip_vs_add_service(struct ip_vs_service_u
+ 		goto out_err;
+ 	}
  
- /*
-  *	IPVS protocol functions (from ip_vs_proto.c)
-Index: lvs-test-2.6/net/netfilter/ipvs/Makefile
-===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/Makefile	2010-08-22 21:31:05.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/Makefile	2010-08-22 21:31:56.000000000 +0900
-@@ -11,7 +11,7 @@ ip_vs_proto-objs-$(CONFIG_IP_VS_PROTO_SC
- 
- ip_vs-objs :=	ip_vs_conn.o ip_vs_core.o ip_vs_ctl.o ip_vs_sched.o	   \
- 		ip_vs_xmit.o ip_vs_app.o ip_vs_sync.o	   		   \
--		ip_vs_est.o ip_vs_proto.o 				   \
-+		ip_vs_est.o ip_vs_proto.o ip_vs_pe.o		   \
- 		$(ip_vs_proto-objs-y)
- 
- 
-Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_pe.c
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_pe.c	2010-08-22 21:31:56.000000000 +0900
-@@ -0,0 +1,147 @@
-+#define KMSG_COMPONENT "IPVS"
-+#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
-+
-+#include <linux/module.h>
-+#include <linux/spinlock.h>
-+#include <linux/interrupt.h>
-+#include <asm/string.h>
-+#include <linux/kmod.h>
-+#include <linux/sysctl.h>
-+
-+#include <net/ip_vs.h>
-+
-+/* IPVS pe list */
-+static LIST_HEAD(ip_vs_pe);
-+
-+/* lock for service table */
-+static DEFINE_SPINLOCK(ip_vs_pe_lock);
-+
-+/* Bind a service with a pe */
-+void ip_vs_bind_pe(struct ip_vs_service *svc, struct ip_vs_pe *pe)
-+{
-+	svc->pe = pe;
-+}
-+
-+/* Unbind a service from its pe */
-+void ip_vs_unbind_pe(struct ip_vs_service *svc)
-+{
-+	svc->pe = NULL;
-+}
-+
-+/* Get pe in the pe list by name */
-+static struct ip_vs_pe *
-+ip_vs_pe_getbyname(const char *pe_name)
-+{
-+	struct ip_vs_pe *pe;
-+
-+	IP_VS_DBG(2, "%s(): pe_name \"%s\"\n", __func__,
-+		  pe_name);
-+
-+	spin_lock_bh(&ip_vs_pe_lock);
-+
-+	list_for_each_entry(pe, &ip_vs_pe, n_list) {
-+		/* Test and get the modules atomically */
-+		if (pe->module &&
-+		    !try_module_get(pe->module)) {
-+			/* This pe is just deleted */
-+			continue;
-+		}
-+		if (strcmp(pe_name, pe->name)==0) {
-+			/* HIT */
-+			spin_unlock_bh(&ip_vs_pe_lock);
-+			return pe;
-+		}
-+		if (pe->module)
-+			module_put(pe->module);
-+	}
-+
-+	spin_unlock_bh(&ip_vs_pe_lock);
-+	return NULL;
-+}
-+
-+/* Lookup pe and try to load it if it doesn't exist */
-+struct ip_vs_pe *ip_vs_pe_get(const char *name)
-+{
-+	struct ip_vs_pe *pe;
-+
-+	/* Search for the pe by name */
-+	pe = ip_vs_pe_getbyname(name);
-+
-+	/* If pe not found, load the module and search again */
-+	if (!pe) {
-+		request_module("ip_vs_pe_%s", name);
-+		pe = ip_vs_pe_getbyname(name);
-+	}
-+
-+	return pe;
-+}
-+
-+void ip_vs_pe_put(struct ip_vs_pe *pe)
-+{
-+	if (pe && pe->module)
-+		module_put(pe->module);
-+}
-+
-+/* Register a pe in the pe list */
-+int register_ip_vs_pe(struct ip_vs_pe *pe)
-+{
-+	struct ip_vs_pe *tmp;
-+
-+	/* increase the module use count */
-+	ip_vs_use_count_inc();
-+
-+	spin_lock_bh(&ip_vs_pe_lock);
-+
-+	if (!list_empty(&pe->n_list)) {
-+		spin_unlock_bh(&ip_vs_pe_lock);
-+		ip_vs_use_count_dec();
-+		pr_err("%s(): [%s] pe already linked\n",
-+		       __func__, pe->name);
-+		return -EINVAL;
-+	}
-+
-+	/* Make sure that the pe with this name doesn't exist
-+	 * in the pe list.
-+	 */
-+	list_for_each_entry(tmp, &ip_vs_pe, n_list) {
-+		if (strcmp(tmp->name, pe->name) == 0) {
-+			spin_unlock_bh(&ip_vs_pe_lock);
-+			ip_vs_use_count_dec();
-+			pr_err("%s(): [%s] pe already existed "
-+			       "in the system\n", __func__, pe->name);
-+			return -EINVAL;
++	if (u->pe_name && *u->pe_name) {
++		pe = ip_vs_pe_get(u->pe_name);
++		if (pe == NULL) {
++			pr_info("persistence engine module ip_vs_pe_%s "
++				"not found\n", u->pe_name);
++			ret = -ENOENT;
++			goto out_err;
 +		}
 +	}
-+	/* Add it into the d-linked pe list */
-+	list_add(&pe->n_list, &ip_vs_pe);
-+	spin_unlock_bh(&ip_vs_pe_lock);
 +
-+	pr_info("[%s] pe registered.\n", pe->name);
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (u->af == AF_INET6 && (u->netmask < 1 || u->netmask > 128)) {
+ 		ret = -EINVAL;
+@@ -1207,6 +1218,10 @@ ip_vs_add_service(struct ip_vs_service_u
+ 		goto out_err;
+ 	sched = NULL;
+ 
++	/* Bind the ct retriever */
++	ip_vs_bind_pe(svc, pe);
++	pe = NULL;
 +
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(register_ip_vs_pe);
-+
-+/* Unregister a pe from the pe list */
-+int unregister_ip_vs_pe(struct ip_vs_pe *pe)
-+{
-+	spin_lock_bh(&ip_vs_pe_lock);
-+	if (list_empty(&pe->n_list)) {
-+		spin_unlock_bh(&ip_vs_pe_lock);
-+		pr_err("%s(): [%s] pe is not in the list. failed\n",
-+		       __func__, pe->name);
-+		return -EINVAL;
+ 	/* Update the virtual service counters */
+ 	if (svc->port == FTPPORT)
+ 		atomic_inc(&ip_vs_ftpsvc_counter);
+@@ -1238,6 +1253,7 @@ ip_vs_add_service(struct ip_vs_service_u
+ 		kfree(svc);
+ 	}
+ 	ip_vs_scheduler_put(sched);
++	ip_vs_pe_put(pe);
+ 
+ 	/* decrease the module use count */
+ 	ip_vs_use_count_dec();
+@@ -1253,6 +1269,7 @@ static int
+ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
+ {
+ 	struct ip_vs_scheduler *sched, *old_sched;
++	struct ip_vs_pe *pe = NULL, *old_pe = NULL;
+ 	int ret = 0;
+ 
+ 	/*
+@@ -1265,6 +1282,17 @@ ip_vs_edit_service(struct ip_vs_service
+ 	}
+ 	old_sched = sched;
+ 
++	if (u->pe_name && *u->pe_name) {
++		pe = ip_vs_pe_get(u->pe_name);
++		if (pe == NULL) {
++			pr_info("persistence engine module ip_vs_pe_%s "
++				"not found\n", u->pe_name);
++			ret = -ENOENT;
++			goto out;
++		}
++		old_pe = pe;
 +	}
 +
-+	/* Remove it from the d-linked pe list */
-+	list_del(&pe->n_list);
-+	spin_unlock_bh(&ip_vs_pe_lock);
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (u->af == AF_INET6 && (u->netmask < 1 || u->netmask > 128)) {
+ 		ret = -EINVAL;
+@@ -1316,12 +1344,17 @@ ip_vs_edit_service(struct ip_vs_service
+ 		}
+ 	}
+ 
++	old_pe = svc->pe;
++	if (pe != old_pe) {
++		ip_vs_unbind_pe(svc);
++		ip_vs_bind_pe(svc, pe);
++	}
 +
-+	/* decrease the module use count */
-+	ip_vs_use_count_dec();
+   out_unlock:
+ 	write_unlock_bh(&__ip_vs_svc_lock);
+-#ifdef CONFIG_IP_VS_IPV6
+   out:
+-#endif
+ 	ip_vs_scheduler_put(old_sched);
++	ip_vs_pe_put(old_pe);
+ 	return ret;
+ }
+ 
+@@ -2553,6 +2586,8 @@ static const struct nla_policy ip_vs_svc
+ 	[IPVS_SVC_ATTR_FWMARK]		= { .type = NLA_U32 },
+ 	[IPVS_SVC_ATTR_SCHED_NAME]	= { .type = NLA_NUL_STRING,
+ 					    .len = IP_VS_SCHEDNAME_MAXLEN },
++	[IPVS_SVC_ATTR_PE_NAME]		= { .type = NLA_NUL_STRING,
++					    .len = IP_VS_PENAME_MAXLEN },
+ 	[IPVS_SVC_ATTR_FLAGS]		= { .type = NLA_BINARY,
+ 					    .len = sizeof(struct ip_vs_flags) },
+ 	[IPVS_SVC_ATTR_TIMEOUT]		= { .type = NLA_U32 },
+@@ -2629,6 +2664,8 @@ static int ip_vs_genl_fill_service(struc
+ 	}
+ 
+ 	NLA_PUT_STRING(skb, IPVS_SVC_ATTR_SCHED_NAME, svc->scheduler->name);
++	if (svc->pe)
++		NLA_PUT_STRING(skb, IPVS_SVC_ATTR_PE_NAME, svc->pe->name);
+ 	NLA_PUT(skb, IPVS_SVC_ATTR_FLAGS, sizeof(flags), &flags);
+ 	NLA_PUT_U32(skb, IPVS_SVC_ATTR_TIMEOUT, svc->timeout / HZ);
+ 	NLA_PUT_U32(skb, IPVS_SVC_ATTR_NETMASK, svc->netmask);
+@@ -2746,12 +2783,13 @@ static int ip_vs_genl_parse_service(stru
+ 
+ 	/* If a full entry was requested, check for the additional fields */
+ 	if (full_entry) {
+-		struct nlattr *nla_sched, *nla_flags, *nla_timeout,
++		struct nlattr *nla_sched, *nla_pe, *nla_flags, *nla_timeout,
+ 			      *nla_netmask;
+ 		struct ip_vs_flags flags;
+ 		struct ip_vs_service *svc;
+ 
+ 		nla_sched = attrs[IPVS_SVC_ATTR_SCHED_NAME];
++		nla_pe = attrs[IPVS_SVC_ATTR_PE_NAME];
+ 		nla_flags = attrs[IPVS_SVC_ATTR_FLAGS];
+ 		nla_timeout = attrs[IPVS_SVC_ATTR_TIMEOUT];
+ 		nla_netmask = attrs[IPVS_SVC_ATTR_NETMASK];
+@@ -2777,6 +2815,7 @@ static int ip_vs_genl_parse_service(stru
+ 		usvc->flags = (usvc->flags & ~flags.mask) |
+ 			      (flags.flags & flags.mask);
+ 		usvc->sched_name = nla_data(nla_sched);
++		usvc->pe_name = nla_pe ? nla_data(nla_pe) : NULL;
+ 		usvc->timeout = nla_get_u32(nla_timeout);
+ 		usvc->netmask = nla_get_u32(nla_netmask);
+ 	}
+Index: nf-next-2.6/include/linux/ip_vs.h
+===================================================================
+--- nf-next-2.6.orig/include/linux/ip_vs.h	2010-07-27 06:20:20.000000000 +0900
++++ nf-next-2.6/include/linux/ip_vs.h	2010-07-27 06:20:24.000000000 +0900
+@@ -326,6 +326,9 @@ enum {
+ 	IPVS_SVC_ATTR_NETMASK,		/* persistent netmask */
+ 
+ 	IPVS_SVC_ATTR_STATS,		/* nested attribute for service stats */
 +
-+	pr_info("[%s] pe unregistered.\n", pe->name);
++	IPVS_SVC_ATTR_PE_NAME,		/* name of ct retriever */
 +
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(unregister_ip_vs_pe);
+ 	__IPVS_SVC_ATTR_MAX,
+ };
+ 
+Index: nf-next-2.6/include/net/ip_vs.h
+===================================================================
+--- nf-next-2.6.orig/include/net/ip_vs.h	2010-07-27 06:20:20.000000000 +0900
++++ nf-next-2.6/include/net/ip_vs.h	2010-07-27 06:20:24.000000000 +0900
+@@ -442,6 +442,7 @@ struct ip_vs_service_user_kern {
+ 
+ 	/* virtual service options */
+ 	char			*sched_name;
++	char			*pe_name;
+ 	unsigned		flags;		/* virtual service flags */
+ 	unsigned		timeout;	/* persistent timeout in sec */
+ 	u32			netmask;	/* persistent netmask */
 
