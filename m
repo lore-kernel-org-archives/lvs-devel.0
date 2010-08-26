@@ -1,58 +1,50 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [patch net-next 3/4] [patch nf-next] IPVS: convert __ip_vs_securetcp_lock to a spinlock
-Date: Thu, 26 Aug 2010 21:54:30 +0900
-Message-ID: <20100826125727.116740610@vergenet.net>
+Subject: [patch net-next 4/4] [PATCH net-next-2.6] ipvs: switch to GFP_KERNEL allocations
+Date: Thu, 26 Aug 2010 21:54:31 +0900
+Message-ID: <20100826125727.437158980@vergenet.net>
 References: <20100826125427.056491061@vergenet.net>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline; filename=__ip_vs_securetcp_lock.patch
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline; filename=ipvs-switch-to-GFP_KERNEL-allocations.patch
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, Stephen Hemminger <shemminger@vyatta.com>, Eric Dumazet <eric.dumazet@gmail.com>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <eric.dumazet@gmail.com>
 
-Also rename __ip_vs_securetcp_lock to ip_vs_securetcp_lock.
+Switch from GFP_ATOMIC allocations to GFP_KERNEL ones in
+ip_vs_add_service() and ip_vs_new_dest(), as we hold a mutex and are
+allowed to sleep in this context.
 
-Spinlock conversion was suggested by Eric Dumazet.
-
-Acked-by: Eric Dumazet <eric.dumazet@gmail.com>
+Signed-off-by: Eric Dumazet <eric.dumazet@gmail.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 
---- 
+---
+ net/netfilter/ipvs/ip_vs_ctl.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Compile tested only
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 0f0c079..896f34b 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -843,7 +843,7 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
+ 			return -EINVAL;
+ 	}
+ 
+-	dest = kzalloc(sizeof(struct ip_vs_dest), GFP_ATOMIC);
++	dest = kzalloc(sizeof(struct ip_vs_dest), GFP_KERNEL);
+ 	if (dest == NULL) {
+ 		pr_err("%s(): no memory.\n", __func__);
+ 		return -ENOMEM;
+@@ -1177,7 +1177,7 @@ ip_vs_add_service(struct ip_vs_service_user_kern *u,
+ 	}
+ #endif
+ 
+-	svc = kzalloc(sizeof(struct ip_vs_service), GFP_ATOMIC);
++	svc = kzalloc(sizeof(struct ip_vs_service), GFP_KERNEL);
+ 	if (svc == NULL) {
+ 		IP_VS_DBG(1, "%s(): no memory\n", __func__);
+ 		ret = -ENOMEM;
 
-Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c
-===================================================================
---- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_ctl.c	2010-08-20 22:41:52.000000000 +0900
-+++ nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c	2010-08-20 23:29:49.000000000 +0900
-@@ -61,7 +61,7 @@ static DEFINE_RWLOCK(__ip_vs_svc_lock);
- static DEFINE_RWLOCK(__ip_vs_rs_lock);
- 
- /* lock for state and timeout tables */
--static DEFINE_RWLOCK(__ip_vs_securetcp_lock);
-+static DEFINE_SPINLOCK(ip_vs_securetcp_lock);
- 
- /* lock for drop entry handling */
- static DEFINE_SPINLOCK(__ip_vs_dropentry_lock);
-@@ -204,7 +204,7 @@ static void update_defense_level(void)
- 	spin_unlock(&__ip_vs_droppacket_lock);
- 
- 	/* secure_tcp */
--	write_lock(&__ip_vs_securetcp_lock);
-+	spin_lock(&ip_vs_securetcp_lock);
- 	switch (sysctl_ip_vs_secure_tcp) {
- 	case 0:
- 		if (old_secure_tcp >= 2)
-@@ -238,7 +238,7 @@ static void update_defense_level(void)
- 	old_secure_tcp = sysctl_ip_vs_secure_tcp;
- 	if (to_change >= 0)
- 		ip_vs_protocol_timeout_change(sysctl_ip_vs_secure_tcp>1);
--	write_unlock(&__ip_vs_securetcp_lock);
-+	spin_unlock(&ip_vs_securetcp_lock);
- 
- 	local_bh_enable();
- }
 
