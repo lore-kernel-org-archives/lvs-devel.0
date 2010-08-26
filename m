@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [patch net-next 2/4] [patch nf-next] IPVS: convert __ip_vs_sched_lock to a spinlock
-Date: Thu, 26 Aug 2010 21:54:29 +0900
-Message-ID: <20100826125726.902260649@vergenet.net>
+Subject: [patch net-next 3/4] [patch nf-next] IPVS: convert __ip_vs_securetcp_lock to a spinlock
+Date: Thu, 26 Aug 2010 21:54:30 +0900
+Message-ID: <20100826125727.116740610@vergenet.net>
 References: <20100826125427.056491061@vergenet.net>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline; filename=__ip_vs_sched_lock.patch
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline; filename=__ip_vs_securetcp_lock.patch
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,7 +13,9 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, Stephen Hemminger <shemminger@vyatta.com>, Eric Dumazet <eric.dumazet@gmail.com>
 
-Also rename __ip_vs_sched_lock to ip_vs_sched_lock.
+Also rename __ip_vs_securetcp_lock to ip_vs_securetcp_lock.
+
+Spinlock conversion was suggested by Eric Dumazet.
 
 Acked-by: Eric Dumazet <eric.dumazet@gmail.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
@@ -22,95 +24,35 @@ Signed-off-by: Simon Horman <horms@verge.net.au>
 
 Compile tested only
 
-Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_sched.c
+Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c
 ===================================================================
---- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_sched.c	2010-08-20 23:43:29.000000000 +0900
-+++ nf-next-2.6/net/netfilter/ipvs/ip_vs_sched.c	2010-08-20 23:46:02.000000000 +0900
-@@ -35,7 +35,7 @@
- static LIST_HEAD(ip_vs_schedulers);
+--- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_ctl.c	2010-08-20 22:41:52.000000000 +0900
++++ nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c	2010-08-20 23:29:49.000000000 +0900
+@@ -61,7 +61,7 @@ static DEFINE_RWLOCK(__ip_vs_svc_lock);
+ static DEFINE_RWLOCK(__ip_vs_rs_lock);
  
- /* lock for service table */
--static DEFINE_RWLOCK(__ip_vs_sched_lock);
-+static DEFINE_SPINLOCK(ip_vs_sched_lock);
+ /* lock for state and timeout tables */
+-static DEFINE_RWLOCK(__ip_vs_securetcp_lock);
++static DEFINE_SPINLOCK(ip_vs_securetcp_lock);
  
+ /* lock for drop entry handling */
+ static DEFINE_SPINLOCK(__ip_vs_dropentry_lock);
+@@ -204,7 +204,7 @@ static void update_defense_level(void)
+ 	spin_unlock(&__ip_vs_droppacket_lock);
  
- /*
-@@ -108,7 +108,7 @@ static struct ip_vs_scheduler *ip_vs_sch
+ 	/* secure_tcp */
+-	write_lock(&__ip_vs_securetcp_lock);
++	spin_lock(&ip_vs_securetcp_lock);
+ 	switch (sysctl_ip_vs_secure_tcp) {
+ 	case 0:
+ 		if (old_secure_tcp >= 2)
+@@ -238,7 +238,7 @@ static void update_defense_level(void)
+ 	old_secure_tcp = sysctl_ip_vs_secure_tcp;
+ 	if (to_change >= 0)
+ 		ip_vs_protocol_timeout_change(sysctl_ip_vs_secure_tcp>1);
+-	write_unlock(&__ip_vs_securetcp_lock);
++	spin_unlock(&ip_vs_securetcp_lock);
  
- 	IP_VS_DBG(2, "%s(): sched_name \"%s\"\n", __func__, sched_name);
- 
--	read_lock_bh(&__ip_vs_sched_lock);
-+	spin_lock_bh(&ip_vs_sched_lock);
- 
- 	list_for_each_entry(sched, &ip_vs_schedulers, n_list) {
- 		/*
-@@ -122,14 +122,14 @@ static struct ip_vs_scheduler *ip_vs_sch
- 		}
- 		if (strcmp(sched_name, sched->name)==0) {
- 			/* HIT */
--			read_unlock_bh(&__ip_vs_sched_lock);
-+			spin_unlock_bh(&ip_vs_sched_lock);
- 			return sched;
- 		}
- 		if (sched->module)
- 			module_put(sched->module);
- 	}
- 
--	read_unlock_bh(&__ip_vs_sched_lock);
-+	spin_unlock_bh(&ip_vs_sched_lock);
- 	return NULL;
+ 	local_bh_enable();
  }
- 
-@@ -184,10 +184,10 @@ int register_ip_vs_scheduler(struct ip_v
- 	/* increase the module use count */
- 	ip_vs_use_count_inc();
- 
--	write_lock_bh(&__ip_vs_sched_lock);
-+	spin_lock_bh(&ip_vs_sched_lock);
- 
- 	if (!list_empty(&scheduler->n_list)) {
--		write_unlock_bh(&__ip_vs_sched_lock);
-+		spin_unlock_bh(&ip_vs_sched_lock);
- 		ip_vs_use_count_dec();
- 		pr_err("%s(): [%s] scheduler already linked\n",
- 		       __func__, scheduler->name);
-@@ -200,7 +200,7 @@ int register_ip_vs_scheduler(struct ip_v
- 	 */
- 	list_for_each_entry(sched, &ip_vs_schedulers, n_list) {
- 		if (strcmp(scheduler->name, sched->name) == 0) {
--			write_unlock_bh(&__ip_vs_sched_lock);
-+			spin_unlock_bh(&ip_vs_sched_lock);
- 			ip_vs_use_count_dec();
- 			pr_err("%s(): [%s] scheduler already existed "
- 			       "in the system\n", __func__, scheduler->name);
-@@ -211,7 +211,7 @@ int register_ip_vs_scheduler(struct ip_v
- 	 *	Add it into the d-linked scheduler list
- 	 */
- 	list_add(&scheduler->n_list, &ip_vs_schedulers);
--	write_unlock_bh(&__ip_vs_sched_lock);
-+	spin_unlock_bh(&ip_vs_sched_lock);
- 
- 	pr_info("[%s] scheduler registered.\n", scheduler->name);
- 
-@@ -229,9 +229,9 @@ int unregister_ip_vs_scheduler(struct ip
- 		return -EINVAL;
- 	}
- 
--	write_lock_bh(&__ip_vs_sched_lock);
-+	spin_lock_bh(&ip_vs_sched_lock);
- 	if (list_empty(&scheduler->n_list)) {
--		write_unlock_bh(&__ip_vs_sched_lock);
-+		spin_unlock_bh(&ip_vs_sched_lock);
- 		pr_err("%s(): [%s] scheduler is not in the list. failed\n",
- 		       __func__, scheduler->name);
- 		return -EINVAL;
-@@ -241,7 +241,7 @@ int unregister_ip_vs_scheduler(struct ip
- 	 *	Remove it from the d-linked scheduler list
- 	 */
- 	list_del(&scheduler->n_list);
--	write_unlock_bh(&__ip_vs_sched_lock);
-+	spin_unlock_bh(&ip_vs_sched_lock);
- 
- 	/* decrease the module use count */
- 	ip_vs_use_count_dec();
 
