@@ -1,127 +1,138 @@
-From: Simon Horman <horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH v2.6.36-rc2 RFC] ipvs: Netfilter connection tracking
  changes
-Date: Wed, 1 Sep 2010 13:30:06 +0900
-Message-ID: <20100901043006.GB15123@verge.net.au>
+Date: Wed, 1 Sep 2010 11:12:16 +0300 (EEST)
+Message-ID: <Pine.LNX.4.58.1009011012460.5403@u.domain.uli>
 References: <Pine.LNX.4.58.1009010142350.21284@u.domain.uli>
+ <20100901043006.GB15123@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.58.1009010142350.21284@u.domain.uli>
+In-Reply-To: <20100901043006.GB15123@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
+To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, Hannes Eder <heder@google.com>
 
-Hi Julian,
 
-On Wed, Sep 01, 2010 at 02:22:12AM +0300, Julian Anastasov wrote:
-> 
-> 	Add more code to IPVS to work with Netfilter connection
-> tracking and fix some problems.
-> 
-> - Allow IPVS to be compiled without connection tracking as in
-> 2.6.35 and before. This can avoid keeping conntracks for all
-> IPVS connections because this costs memory. ip_vs_ftp still
-> depends on connection tracking and NAT as implemented for 2.6.36.
-> 
-> - Add sysctl var "conntrack" to enable connection tracking for
-> all IPVS connections. For loaded IPVS directors it needs
-> tuning of nf_conntrack_max limit.
-> 
-> - Add IP_VS_CONN_F_NFCT connection flag to request the connection
-> to use connection tracking. This allows user space to provide this
-> flag, for example, in dest->conn_flags. This can be useful to
-> request connection tracking per real server instead of forcing it
-> for all connections with the "conntrack" sysctl. This flag is
-> set currently only by ip_vs_ftp and of course by "conntrack" sysctl.
-> 
-> - Add ip_vs_nfct.c file to hold all connection tracking code,
-> by this way main code should not depend of netfilter conntrack
-> support.
-> 
-> - Return back the ip_vs_post_routing handler as in 2.6.35 and use
-> skb->ipvs_property=1 to allow IPVS to work without connection
-> tracking
-> 
-> - new sysctl flag "snat_reroute". Recent kernels use
-> ip_route_me_harder() to route LVS-NAT responses properly by
-> VIP when there are multiple paths to client. But setups
-> that do not have alternative default routes can skip this
-> routing lookup by using snat_reroute=0.
-> 
-> Connection tracking:
-> 
-> - most of the code is already in 2.6.36-rc
-> 
-> - alter conntrack reply tuple for LVS-NAT connections when first packet
-> from client is forwarded and conntrack state is NEW or RELATED.
-> Additionally, alter reply for RELATED connections from real server,
-> again for packet in original direction.
-> 
-> - add IP_VS_XMIT_TUNNEL to confirm conntrack (without altering
-> reply) for LVS-TUN early because we want to call nf_reset. It is
-> needed because we add IPIP header and we want the original conntrack
-> to be preserved, not destroyed. The transmitted IPIP packets
-> can reuse same conntrack, so we do not set skb->ipvs_property
-> 
-> - try to destroy conntrack when the IPVS connection is destroyed.
-> It is not fatal if conntrack disappears before that, it depends
-> on the used timers.
-> 
-> Fix problems from long time:
-> 
-> - add skb->ip_summed = CHECKSUM_NONE for the LVS-TUN transmitters
-> 
-> Fix problems only in 2.6.36-rc:
-> 
-> - when altering PASV response in ip_vs_ftp we should check with
-> nfct_nat(ct) if NAT is enabled for conntrack before calling
-> nf_nat_mangle_tcp_packet. This avoids possible crash when
-> iptable_nat is not loaded.
-> 
-> - do not create expectation in ip_vs_ftp when PORT command is
-> forwarded, leave it to nf_conntrack_ftp.c:help(). This
-> avoids packet drops because nf_ct_expect_related() fails in help().
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
-> 
-> 	Simon, this patch is against 2.6.36-rc2, I tested it
-> for IPv4. In fact, it is ready for inclusion in net-next but
-> I'm not sure if it applies properly.
+	Hello,
 
-I can fix that if you prefer.
+On Wed, 1 Sep 2010, Simon Horman wrote:
 
-> After first comments we can
-> move the discussion to netdev. The snat_reroute part can be
-> separated, if needed at all.
+> > 	Simon, this patch is against 2.6.36-rc2, I tested it
+> > for IPv4. In fact, it is ready for inclusion in net-next but
+> > I'm not sure if it applies properly.
+> 
+> I can fix that if you prefer.
 
-I'd prefer a separate patch.
+	Yes, please. Check if it applies and fix any conflicts.
+But let's first see what changes to what kernels should go
+and what flags will be used, see below.
 
-> Also, IP_VS_CONN_F_NFCT can be
-> added to ipvsadm as real server option.
+> > After first comments we can
+> > move the discussion to netdev. The snat_reroute part can be
+> > separated, if needed at all.
+> 
+> I'd prefer a separate patch.
 
-I can handle ipvsadm patches these days.
-I can even make the patch if you'd prefer.
+	Yes, I'll do it
 
-> The two problems
-> in ip_vs_ftp can be also fixed in next 2.6.36-rc kernels.
+> > Also, IP_VS_CONN_F_NFCT can be
+> > added to ipvsadm as real server option.
+> 
+> I can handle ipvsadm patches these days.
+> I can even make the patch if you'd prefer.
 
-Yes, as they are regressions since 2.6.35 please break those changes out
-into one or two separate patches so they can be submitted for inclusion in
-2.6.36.
+	Yes, please. I worry that flags in struct ip_vs_conn
+are u16, we are reaching the limit. In real server it is 4 bytes,
+in struct ip_vs_dest conn_flags is atomic_t, I'm not sure how many
+bits we can use there. The problem is that struct ip_vs_sync_conn
+has 16-bit flags and we can not change it. May be we should
+be more careful about flags that are useful for sync. Others
+should not be added in cp->flags, may be in cp->local_flags.
 
-> May be Hannes Eder can comment if he can see these problems.
-> But I worry that this full patch is needed for 2.6.36
-> because not all systems use netfilter conntrack and are
-> not tuned for many conntracks. Now 2.6.36 can come as
-> surprise to them because IPVS requires Netfilter connection
-> tracking support.
+	For example, we should decide where to put IP_VS_CONN_F_NFCT.
+For now, IP_VS_CONN_F_HASHED can be excluded and this bit
+can be used for other flag that needs syncing. But such
+change for IP_VS_CONN_F_HASHED is incompatible (the flag
+is ignored in backup server), so this flag should be occupied
+when all other 15 bits are occupied.
 
-Unfortunately I think its too late to get the bulk of this into 2.6.36.
-Are you concerned about a performance problem? Even when
-Hannes's new features aren't used? Is the snat_reroute flag a
-solution/workaround? If so we could try to get that into 2.6.36,
-although I'm not sure how well it would be received.
+	Even IP_VS_CONN_F_NFCT does not need to be sync-ed
+because the backup server can use its own flags. It can use
+"conntrack" flag, real server flags, even ip_vs_ftp
+enables conntracking for its own connections. So, I think,
+IP_VS_CONN_F_NFCT can go to cp->local_flags. Or better,
+first 16 bits to be used for sync, other local flags to
+be added from 16 above (after changing cp->flags to 4 bytes).
+This will not change the way we get flags from user space.
+
+> > The two problems
+> > in ip_vs_ftp can be also fixed in next 2.6.36-rc kernels.
+> 
+> Yes, as they are regressions since 2.6.35 please break those changes out
+> into one or two separate patches so they can be submitted for inclusion in
+> 2.6.36.
+
+	OK
+
+> > May be Hannes Eder can comment if he can see these problems.
+> > But I worry that this full patch is needed for 2.6.36
+> > because not all systems use netfilter conntrack and are
+> > not tuned for many conntracks. Now 2.6.36 can come as
+> > surprise to them because IPVS requires Netfilter connection
+> > tracking support.
+> 
+> Unfortunately I think its too late to get the bulk of this into 2.6.36.
+> Are you concerned about a performance problem? Even when
+> Hannes's new features aren't used? Is the snat_reroute flag a
+> solution/workaround? If so we could try to get that into 2.6.36,
+> although I'm not sure how well it would be received.
+
+	snat_reroute is not related to NFCT, it helps only
+for performance. It is for 2.6.37.
+
+	Hannes's new features bring connection tracking even
+for LVS-DR, not only for FTP. For some setups with large
+nf_conntrack_max the difference should be only in performance.
+And of course, IPVS is 160 bytes and conntrack is 200 bytes,
+the space in memory for connections is decreased more than twice.
+Only tests can prove if performance is increased when
+conntracks are kept or when destroyed for every connection.
+I can not test the performance difference properly in my
+test setup. For some systems the increased memory for
+conntracks can play role too.
+
+Here is the picture:
+
+Connection tracking for LVS-DR, LVS-TUN:
+	2.6.35: No conntracks (destroyed for every packet)
+	Hannes 2.6.36-rc: Yes, conntrack enforced for all conns, 
+		conntracks stay in SYN_RECV state if
+		forward_shared is not used
+	My patch: conntrack is optional, depends on sysctl.
+		If disabled, conntracks are destroyed for every
+		packet.
+
+Connection tracking for LVS-NAT, ip_vs_ftp for example:
+	2.6.35: No conntracks (destroyed for every packet)
+	Hannes 2.6.36-rc: Yes, conntracks in correct state
+	My patch: Yes, conntracks in correct state. If
+		sysctl "conntrack" is not set, only ip_vs_ftp
+		conns use connection tracking, all other LVS-NAT
+		and other methods do not keep conntracks.
+
+	BTW, I didn't tested connection tracking support
+combined with NAT rules, I don't know what kind of
+NAT some users apply for the IPVS connections. My tests
+were only for -m state matching, FTP connections:
+
+- LVS-NAT (Local Process too)
+- LVS-DR
+- LVS-TUN
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
