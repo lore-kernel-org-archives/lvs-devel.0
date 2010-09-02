@@ -1,37 +1,41 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH] ipvs: use pkts for SCTP too
-Date: Thu, 2 Sep 2010 02:47:26 +0300 (EEST)
-Message-ID: <Pine.LNX.4.58.1009020242060.14271@u.domain.uli>
+Subject: Re: [RFC] ipvs: Keep track of backlog connections
+Date: Thu, 2 Sep 2010 03:16:40 +0300 (EEST)
+Message-ID: <Pine.LNX.4.58.1009020249090.14356@u.domain.uli>
+References: <alpine.LNX.2.00.1008311411190.5292@titan.stealer.net>
+ <Pine.LNX.4.58.1009011113560.5403@u.domain.uli> <20100901132834.GI4998@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20100901132834.GI4998@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org
+Cc: Sven Wegener <sven.wegener@stealer.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>
 
 
-	Use correctly the in_pkts packet counter also for SCTP
+	Hello,
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
+On Wed, 1 Sep 2010, Simon Horman wrote:
 
-	This patch is for net-next
+> On the kernel-side of things, internally it should be easy
+> enough to either expand flags or add a new element to the structure.
+> So it seems to me that the problem is the kernel/user-space interface.
+> And if that is the case, I think the best idea is to just use
+> the netlink interface for all new configuration options and have
+> new features unsupported through the old, legacy, ioctl interface.
 
---- v2.6.36-rc2/linux/net/netfilter/ipvs/ip_vs_core.c	2010-09-01 23:47:47.000000000 +0300
-+++ linux/net/netfilter/ipvs/ip_vs_core.c	2010-09-01 23:55:30.000000000 +0300
-@@ -1380,8 +1380,7 @@ ip_vs_in(unsigned int hooknum, struct sk
- 	if (af == AF_INET && (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
- 	    cp->protocol == IPPROTO_SCTP) {
- 		if ((cp->state == IP_VS_SCTP_S_ESTABLISHED &&
--			(atomic_read(&cp->in_pkts) %
--			 sysctl_ip_vs_sync_threshold[1]
-+			(pkts % sysctl_ip_vs_sync_threshold[1]
- 			 == sysctl_ip_vs_sync_threshold[0])) ||
- 				(cp->old_state != cp->state &&
- 				 ((cp->state == IP_VS_SCTP_S_CLOSED) ||
-@@ -1391,7 +1390,8 @@ ip_vs_in(unsigned int hooknum, struct sk
- 			goto out;
- 		}
- 	}
+	No, there should be no problem with the interface,
+it already uses 32 bits. We should change only cp->flags
+to 32 bits and new flags should go after bit 16 if they
+are not needed for sync. Some flags can be changed safely,
+for example, IP_VS_CONN_F_SYNC: it is not used by ipvsadm,
+it is set only in backup, so it can be moved after bit 16.
+May be another idea is to create 2nd version for the
+struct ip_vs_sync_conn to support more features.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
