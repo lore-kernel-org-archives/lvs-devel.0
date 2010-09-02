@@ -1,14 +1,14 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: avoid oops for passive FTP
-Date: Thu, 2 Sep 2010 17:12:54 +0900
-Message-ID: <20100902081254.GA28727@verge.net.au>
-References: <Pine.LNX.4.58.1009020226350.14271@u.domain.uli>
- <20100902015229.GO8174@verge.net.au>
- <Pine.LNX.4.58.1009021052030.2773@u.domain.uli>
+Subject: Re: [PATCH] ipvs: use pkts for SCTP too
+Date: Thu, 2 Sep 2010 17:13:26 +0900
+Message-ID: <20100902081325.GB28727@verge.net.au>
+References: <Pine.LNX.4.58.1009020242060.14271@u.domain.uli>
+ <20100902020331.GS8174@verge.net.au>
+ <Pine.LNX.4.58.1009021056210.2773@u.domain.uli>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.58.1009021052030.2773@u.domain.uli>
+In-Reply-To: <Pine.LNX.4.58.1009021056210.2773@u.domain.uli>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -16,57 +16,70 @@ Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
 Cc: lvs-devel@vger.kernel.org
 
-On Thu, Sep 02, 2010 at 10:56:05AM +0300, Julian Anastasov wrote:
+On Thu, Sep 02, 2010 at 10:58:24AM +0300, Julian Anastasov wrote:
 > 
 > 	Hello,
 > 
 > On Thu, 2 Sep 2010, Simon Horman wrote:
 > 
-> > On Thu, Sep 02, 2010 at 02:35:14AM +0300, Julian Anastasov wrote:
+> > On Thu, Sep 02, 2010 at 02:47:26AM +0300, Julian Anastasov wrote:
 > > > 
-> > > 	Fix Passive FTP problem in ip_vs_ftp:
-> > > 
-> > > - Do not oops in nf_nat_set_seq_adjust (adjust_tcp_sequence) when
-> > > iptable_nat module is not loaded
+> > > 	Use correctly the in_pkts packet counter also for SCTP
 > > > 
 > > > Signed-off-by: Julian Anastasov <ja@ssi.bg>
 > > > ---
 > > > 
-> > > 	This patch is for 2.6.36
+> > > 	This patch is for net-next
 > > 
-> > Thanks, looks good. Are you ready for me to send this to netdev and Dave Miller?
-> > Also, I know that you are working on the bigger picture for post 2.6.36,
-> > but I think it would be worth getting this change into net-next now.
-> > Likewise for the next patch.
+> > Thanks,
+> > 
+> > apart from the minor nit below, this looks good to me.
+> > Should I submit it to net-next ?
 > 
-> 	Yes, this patch should go both to 2.6.36 (stable) and
-> net-next, I think. I'm sending all my IPVS patches first to
-> you for comments and proper merging for net-next. Thanks!
+> 	Yes, please submit the fixed version. Sometimes
+> I forget that my style for 'else' does not match the kernel's
+> one.
 
-Understood. I wasn't quite sure how you wanted to handle things.
+No problem, will do.
 
-> > Signed-off-by: Simon Horman <horms@verge.net.au>
+> > > --- v2.6.36-rc2/linux/net/netfilter/ipvs/ip_vs_core.c	2010-09-01 23:47:47.000000000 +0300
+> > > +++ linux/net/netfilter/ipvs/ip_vs_core.c	2010-09-01 23:55:30.000000000 +0300
+> > > @@ -1380,8 +1380,7 @@ ip_vs_in(unsigned int hooknum, struct sk
+> > >  	if (af == AF_INET && (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
+> > >  	    cp->protocol == IPPROTO_SCTP) {
+> > >  		if ((cp->state == IP_VS_SCTP_S_ESTABLISHED &&
+> > > -			(atomic_read(&cp->in_pkts) %
+> > > -			 sysctl_ip_vs_sync_threshold[1]
+> > > +			(pkts % sysctl_ip_vs_sync_threshold[1]
+> > >  			 == sysctl_ip_vs_sync_threshold[0])) ||
+> > >  				(cp->old_state != cp->state &&
+> > >  				 ((cp->state == IP_VS_SCTP_S_CLOSED) ||
+> > > @@ -1391,7 +1390,8 @@ ip_vs_in(unsigned int hooknum, struct sk
+> > >  			goto out;
+> > >  		}
+> > >  	}
+> > > -
+> > > +	else
+> > > +	/* Keep this block last: TCP and others with pp->num_states <= 1 */
+> > >  	if (af == AF_INET &&
+> > >  	    (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
+> > >  	    (((cp->protocol != IPPROTO_TCP ||
 > > 
-> > > 
-> > > --- v2.6.36-rc2/linux/net/netfilter/ipvs/ip_vs_ftp.c	2010-09-02 00:45:54.000000000 +0300
-> > > +++ linux/net/netfilter/ipvs/ip_vs_ftp.c	2010-09-02 02:12:52.000000000 +0300
-> > > @@ -45,6 +45,7 @@
-> > >  #include <linux/netfilter.h>
-> > >  #include <net/netfilter/nf_conntrack.h>
-> > >  #include <net/netfilter/nf_conntrack_expect.h>
-> > > +#include <net/netfilter/nf_nat.h>
-> > >  #include <net/netfilter/nf_nat_helper.h>
-> > >  #include <linux/gfp.h>
-> > >  #include <net/protocol.h>
-> > > @@ -359,7 +360,7 @@ static int ip_vs_ftp_out(struct ip_vs_ap
-> > >  		buf_len = strlen(buf);
-> > >  
-> > >  		ct = nf_ct_get(skb, &ctinfo);
-> > > -		if (ct && !nf_ct_is_untracked(ct)) {
-> > > +		if (ct && !nf_ct_is_untracked(ct) && nfct_nat(ct)) {
-> > >  			/* If mangling fails this function will return 0
-> > >  			 * which will cause the packet to be dropped.
-> > >  			 * Mangling can only fail under memory pressure,
+> > The else and the if really ought to be on the same line:
+> 
+> 	Yes, thanks!
+> 
+> > 
+> > @@ -1395,7 +1394,8 @@ ip_vs_in(unsigned int hooknum, struct sk
+> >  		}
+> >  	}
+> >  
+> > -	if (af == AF_INET &&
+> > +	/* Keep this block last: TCP and others with pp->num_states <= 1 */
+> > +	else if (af == AF_INET &&
+> >  	    (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
+> >  	    (((cp->protocol != IPPROTO_TCP ||
+> >  	       cp->state == IP_VS_TCP_S_ESTABLISHED) &&
 > > 
 > 
 > Regards
