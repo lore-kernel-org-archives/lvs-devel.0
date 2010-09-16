@@ -1,35 +1,32 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [patch v1 00/12] IPVS: SIP Persistence Engine
-Date: Thu, 16 Sep 2010 10:12:07 +0200
-Message-ID: <4C91D157.1090804@trash.net>
-References: <20100822124457.339517323@vergenet.net>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCH 0/3] ipvs: nfct changes
+Date: Thu, 16 Sep 2010 23:38:31 +0300 (EEST)
+Message-ID: <Pine.LNX.4.58.1009162325250.6847@u.domain.uli>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20100822124457.339517323@vergenet.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Cc: Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-Am 22.08.2010 14:44, schrieb Simon Horman:
-> This patch series adds load-balancing of UDP SIP based on Call-ID to
-> IPVS as well as a frame-work for extending IPVS to handle alternate
-> persistence requirements.
-> 
-> REVISIONS
-> 
-> This is "patch v1" of this series, which addresses a few minor problems, as
-> annotated on a per-patch basis, since the initial "rfc" posting. Internally
-> there were 4 rfc versions, 0.1, 0.2, 0.3 and 0.4, some of the notes for
-> some of the patches reflect those versions.
 
-This looks fine to me as far as I can judge.
+	Hello,
 
-> CODE AVAILABILITY
-> 
-> The kernel patches (13) are available in git as the pe-0.4 branch of
-> git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git
+	The following patches extend the recent nfct changes
+to IPVS:
 
-Just to clarify, do you want me to merge this version?
+1. Extend connection flags to 32 bits:
+	- needed to add new flags after bit 16
+2. Add IP_VS_CONN_F_NFCT and some nfct changes
+3. Add snat_reroute flag to optimize CPU for unipath routes
+
+	The patches are against net-next-2.6-e548833 (2010-SEP-10)
+and are ready to be applied to net-next if there are no
+objections.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
