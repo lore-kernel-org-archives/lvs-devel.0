@@ -1,10 +1,10 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH 1/3] ipvs: extend connection flags to 32 bits
-Date: Thu, 16 Sep 2010 23:42:58 +0300 (EEST)
-Message-ID: <Pine.LNX.4.58.1009162339520.6976@u.domain.uli>
+Subject: [PATCH 2/3] ipvs: Netfilter connection tracking changes
+Date: Thu, 16 Sep 2010 23:46:50 +0300 (EEST)
+Message-ID: <Pine.LNX.4.58.1009162342590.6976@u.domain.uli>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,155 +12,1071 @@ To: Simon Horman <horms@verge.net.au>
 Cc: Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
 
-	Extend connection flags to 32 bits:
+	Add more code to IPVS to work with Netfilter connection
+tracking and fix some problems.
 
-- the sync protocol supports 16 bits only, so bits 0..15 should be
-used only for flags that should go to backup server, bits 16 and
-above should be allocated for flags not sent to backup.
+- Allow IPVS to be compiled without connection tracking as in
+2.6.35 and before. This can avoid keeping conntracks for all
+IPVS connections because this costs memory. ip_vs_ftp still
+depends on connection tracking and NAT as implemented for 2.6.36.
 
-- use IP_VS_CONN_F_DEST_MASK as mask of connection flags in
-destination that can be changed by user space
+- Add sysctl var "conntrack" to enable connection tracking for
+all IPVS connections. For loaded IPVS directors it needs
+tuning of nf_conntrack_max limit.
 
-- allow IP_VS_CONN_F_ONE_PACKET to be set in destination
+- Add IP_VS_CONN_F_NFCT connection flag to request the connection
+to use connection tracking. This allows user space to provide this
+flag, for example, in dest->conn_flags. This can be useful to
+request connection tracking per real server instead of forcing it
+for all connections with the "conntrack" sysctl. This flag is
+set currently only by ip_vs_ftp and of course by "conntrack" sysctl.
+
+- Add ip_vs_nfct.c file to hold all connection tracking code,
+by this way main code should not depend of netfilter conntrack
+support.
+
+- Return back the ip_vs_post_routing handler as in 2.6.35 and use
+skb->ipvs_property=1 to allow IPVS to work without connection
+tracking
+
+Connection tracking:
+
+- most of the code is already in 2.6.36-rc
+
+- alter conntrack reply tuple for LVS-NAT connections when first packet
+from client is forwarded and conntrack state is NEW or RELATED.
+Additionally, alter reply for RELATED connections from real server,
+again for packet in original direction.
+
+- add IP_VS_XMIT_TUNNEL to confirm conntrack (without altering
+reply) for LVS-TUN early because we want to call nf_reset. It is
+needed because we add IPIP header and the original conntrack
+should be preserved, not destroyed. The transmitted IPIP packets
+can reuse same conntrack, so we do not set skb->ipvs_property.
+
+- try to destroy conntrack when the IPVS connection is destroyed.
+It is not fatal if conntrack disappears before that, it depends
+on the used timers.
+
+Fix problems from long time:
+
+- add skb->ip_summed = CHECKSUM_NONE for the LVS-TUN transmitters
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
 
-diff -urp net-next-2.6-e548833/linux/include/linux/ip_vs.h linux/include/linux/ip_vs.h
---- net-next-2.6-e548833/linux/include/linux/ip_vs.h	2010-09-10 08:27:33.000000000 +0300
-+++ linux/include/linux/ip_vs.h	2010-09-15 10:41:22.000000000 +0300
-@@ -70,6 +70,7 @@
- 
- /*
-  *      IPVS Connection Flags
-+ *      Only flags 0..15 are sent to backup server
-  */
- #define IP_VS_CONN_F_FWD_MASK	0x0007		/* mask for the fwd methods */
- #define IP_VS_CONN_F_MASQ	0x0000		/* masquerading/NAT */
-@@ -88,6 +89,13 @@
- #define IP_VS_CONN_F_TEMPLATE	0x1000		/* template, not connection */
+diff -urNp net-next-2.6-e548833-flags32/linux/include/linux/ip_vs.h linux/include/linux/ip_vs.h
+--- net-next-2.6-e548833-flags32/linux/include/linux/ip_vs.h	2010-09-15 11:13:04.000000000 +0300
++++ linux/include/linux/ip_vs.h	2010-09-15 11:28:02.000000000 +0300
+@@ -90,10 +90,12 @@
  #define IP_VS_CONN_F_ONE_PACKET	0x2000		/* forward only one packet */
  
-+/* Flags that are not sent to backup server start from bit 16 */
-+
-+/* Connection flags from destination that can be changed by user space */
-+#define IP_VS_CONN_F_DEST_MASK (IP_VS_CONN_F_FWD_MASK | \
-+				IP_VS_CONN_F_ONE_PACKET | \
-+				0)
-+
+ /* Flags that are not sent to backup server start from bit 16 */
++#define IP_VS_CONN_F_NFCT	(1 << 16)	/* use netfilter conntrack */
+ 
+ /* Connection flags from destination that can be changed by user space */
+ #define IP_VS_CONN_F_DEST_MASK (IP_VS_CONN_F_FWD_MASK | \
+ 				IP_VS_CONN_F_ONE_PACKET | \
++				IP_VS_CONN_F_NFCT | \
+ 				0)
+ 
  #define IP_VS_SCHEDNAME_MAXLEN	16
- #define IP_VS_IFNAME_MAXLEN	16
+diff -urNp net-next-2.6-e548833-flags32/linux/include/net/ip_vs.h linux/include/net/ip_vs.h
+--- net-next-2.6-e548833-flags32/linux/include/net/ip_vs.h	2010-09-15 11:13:04.000000000 +0300
++++ linux/include/net/ip_vs.h	2010-09-16 08:53:04.000000000 +0300
+@@ -25,7 +25,9 @@
+ #include <linux/ip.h>
+ #include <linux/ipv6.h>			/* for struct ipv6hdr */
+ #include <net/ipv6.h>			/* for ipv6_addr_copy */
+-
++#ifdef CONFIG_IP_VS_NFCT
++#include <net/netfilter/nf_conntrack.h>
++#endif
  
-diff -urp net-next-2.6-e548833/linux/include/net/ip_vs.h linux/include/net/ip_vs.h
---- net-next-2.6-e548833/linux/include/net/ip_vs.h	2010-09-10 08:27:33.000000000 +0300
-+++ linux/include/net/ip_vs.h	2010-09-14 10:21:09.000000000 +0300
-@@ -366,6 +366,7 @@ struct ip_vs_conn {
- 	union nf_inet_addr       caddr;          /* client address */
- 	union nf_inet_addr       vaddr;          /* virtual address */
- 	union nf_inet_addr       daddr;          /* destination address */
-+	volatile __u32           flags;          /* status flags */
- 	__be16                   cport;
- 	__be16                   vport;
- 	__be16                   dport;
-@@ -378,7 +379,6 @@ struct ip_vs_conn {
+ /* Connections' size value needed by ip_vs_ctl.c */
+ extern int ip_vs_conn_tab_size;
+@@ -798,6 +800,7 @@ extern int sysctl_ip_vs_expire_nodest_co
+ extern int sysctl_ip_vs_expire_quiescent_template;
+ extern int sysctl_ip_vs_sync_threshold[2];
+ extern int sysctl_ip_vs_nat_icmp_send;
++extern int sysctl_ip_vs_conntrack;
+ extern struct ip_vs_stats ip_vs_stats;
+ extern const struct ctl_path net_vs_ctl_path[];
  
- 	/* Flags and state transition */
- 	spinlock_t              lock;           /* lock for state transition */
--	volatile __u16          flags;          /* status flags */
- 	volatile __u16          state;          /* state info */
- 	volatile __u16          old_state;      /* old state, to be used for
- 						 * state transition triggerd
-diff -urp net-next-2.6-e548833/linux/net/netfilter/ipvs/ip_vs_conn.c linux/net/netfilter/ipvs/ip_vs_conn.c
---- net-next-2.6-e548833/linux/net/netfilter/ipvs/ip_vs_conn.c	2010-09-10 08:27:33.000000000 +0300
-+++ linux/net/netfilter/ipvs/ip_vs_conn.c	2010-09-15 10:23:53.000000000 +0300
-@@ -505,6 +505,8 @@ static inline int ip_vs_dest_totalconns(
- static inline void
- ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
- {
-+	unsigned int conn_flags;
+@@ -955,8 +958,47 @@ static inline __wsum ip_vs_check_diff2(_
+ 	return csum_partial(diff, sizeof(diff), oldsum);
+ }
+ 
++#ifdef CONFIG_IP_VS_NFCT
++/*
++ *      Netfilter connection tracking
++ *      (from ip_vs_nfct.c)
++ */
++static inline int ip_vs_conntrack_enabled(void)
++{
++	return sysctl_ip_vs_conntrack;
++}
 +
- 	/* if dest is NULL, then return directly */
- 	if (!dest)
- 		return;
-@@ -512,16 +514,18 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, s
- 	/* Increase the refcnt counter of the dest */
- 	atomic_inc(&dest->refcnt);
+ extern void ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 				   int outin);
++extern int ip_vs_confirm_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp);
++extern void ip_vs_nfct_expect_related(struct sk_buff *skb, struct nf_conn *ct,
++				      struct ip_vs_conn *cp, u_int8_t proto,
++				      const __be16 port, int from_rs);
++extern void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp);
++
++#else
++
++static inline int ip_vs_conntrack_enabled(void)
++{
++	return 0;
++}
++
++static inline void ip_vs_update_conntrack(struct sk_buff *skb,
++					  struct ip_vs_conn *cp, int outin)
++{
++}
++
++static inline int ip_vs_confirm_conntrack(struct sk_buff *skb,
++					  struct ip_vs_conn *cp)
++{
++	return NF_ACCEPT;
++}
++
++static inline void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp)
++{
++}
++/* CONFIG_IP_VS_NFCT */
++#endif
  
-+	conn_flags = atomic_read(&dest->conn_flags);
-+	if (cp->protocol != IPPROTO_UDP)
-+		conn_flags &= ~IP_VS_CONN_F_ONE_PACKET;
- 	/* Bind with the destination and its corresponding transmitter */
--	if ((cp->flags & IP_VS_CONN_F_SYNC) &&
--	    (!(cp->flags & IP_VS_CONN_F_TEMPLATE)))
-+	if (cp->flags & IP_VS_CONN_F_SYNC) {
- 		/* if the connection is not template and is created
- 		 * by sync, preserve the activity flag.
- 		 */
--		cp->flags |= atomic_read(&dest->conn_flags) &
--			     (~IP_VS_CONN_F_INACTIVE);
--	else
--		cp->flags |= atomic_read(&dest->conn_flags);
-+		if (!(cp->flags & IP_VS_CONN_F_TEMPLATE))
-+			conn_flags &= ~IP_VS_CONN_F_INACTIVE;
-+	}
-+	cp->flags |= conn_flags;
- 	cp->dest = dest;
+ #endif /* __KERNEL__ */
  
- 	IP_VS_DBG_BUF(7, "Bind-dest %s c:%s:%d v:%s:%d "
-diff -urp net-next-2.6-e548833/linux/net/netfilter/ipvs/ip_vs_core.c linux/net/netfilter/ipvs/ip_vs_core.c
---- net-next-2.6-e548833/linux/net/netfilter/ipvs/ip_vs_core.c	2010-09-10 08:27:33.000000000 +0300
-+++ linux/net/netfilter/ipvs/ip_vs_core.c	2010-09-14 10:25:01.000000000 +0300
-@@ -194,7 +194,7 @@ ip_vs_sched_persist(struct ip_vs_service
- 	struct ip_vs_dest *dest;
- 	struct ip_vs_conn *ct;
- 	__be16  dport;			/* destination port to forward */
--	__be16  flags;
-+	unsigned int flags;
- 	union nf_inet_addr snet;	/* source network of the client,
- 					   after masking */
+diff -urNp net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/Kconfig linux/net/netfilter/ipvs/Kconfig
+--- net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/Kconfig	2010-09-10 08:27:33.000000000 +0300
++++ linux/net/netfilter/ipvs/Kconfig	2010-09-15 11:14:13.000000000 +0300
+@@ -3,7 +3,7 @@
+ #
+ menuconfig IP_VS
+ 	tristate "IP virtual server support"
+-	depends on NET && INET && NETFILTER && NF_CONNTRACK
++	depends on NET && INET && NETFILTER
+ 	---help---
+ 	  IP Virtual Server support will let you build a high-performance
+ 	  virtual server based on cluster of two or more real servers. This
+@@ -235,7 +235,8 @@ comment 'IPVS application helper'
  
-@@ -382,7 +382,8 @@ ip_vs_schedule(struct ip_vs_service *svc
- 	struct ip_vs_conn *cp = NULL;
- 	struct ip_vs_iphdr iph;
- 	struct ip_vs_dest *dest;
--	__be16 _ports[2], *pptr, flags;
-+	__be16 _ports[2], *pptr;
-+	unsigned int flags;
+ config	IP_VS_FTP
+   	tristate "FTP protocol helper"
+-        depends on IP_VS_PROTO_TCP && NF_NAT
++        depends on IP_VS_PROTO_TCP && NF_CONNTRACK && NF_NAT
++	select IP_VS_NFCT
+ 	---help---
+ 	  FTP is a protocol that transfers IP address and/or port number in
+ 	  the payload. In the virtual server via Network Address Translation,
+@@ -247,4 +248,12 @@ config	IP_VS_FTP
+ 	  If you want to compile it in kernel, say Y. To compile it as a
+ 	  module, choose M here. If unsure, say N.
  
- 	ip_vs_fill_iphdr(svc->af, skb_network_header(skb), &iph);
- 	pptr = skb_header_pointer(skb, iph.len, sizeof(_ports), _ports);
-@@ -473,9 +474,9 @@ int ip_vs_leave(struct ip_vs_service *sv
- 	if (sysctl_ip_vs_cache_bypass && svc->fwmark && unicast) {
- 		int ret, cs;
- 		struct ip_vs_conn *cp;
--		__u16 flags = (svc->flags & IP_VS_SVC_F_ONEPACKET &&
--				iph.protocol == IPPROTO_UDP)?
--				IP_VS_CONN_F_ONE_PACKET : 0;
-+		unsigned int flags = (svc->flags & IP_VS_SVC_F_ONEPACKET &&
-+				      iph.protocol == IPPROTO_UDP)?
-+				      IP_VS_CONN_F_ONE_PACKET : 0;
- 		union nf_inet_addr daddr =  { .all = { 0, 0, 0, 0 } };
++config	IP_VS_NFCT
++	bool "Netfilter connection tracking"
++	depends on NF_CONNTRACK
++	---help---
++	  The Netfilter connection tracking support allows the IPVS
++	  connection state to be exported to the Netfilter framework
++	  for filtering purposes.
++
+ endif # IP_VS
+diff -urNp net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/Makefile linux/net/netfilter/ipvs/Makefile
+--- net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/Makefile	2010-09-10 08:27:33.000000000 +0300
++++ linux/net/netfilter/ipvs/Makefile	2010-09-15 11:14:13.000000000 +0300
+@@ -9,10 +9,13 @@ ip_vs_proto-objs-$(CONFIG_IP_VS_PROTO_UD
+ ip_vs_proto-objs-$(CONFIG_IP_VS_PROTO_AH_ESP) += ip_vs_proto_ah_esp.o
+ ip_vs_proto-objs-$(CONFIG_IP_VS_PROTO_SCTP) += ip_vs_proto_sctp.o
  
- 		ip_vs_service_put(svc);
-diff -urp net-next-2.6-e548833/linux/net/netfilter/ipvs/ip_vs_ctl.c linux/net/netfilter/ipvs/ip_vs_ctl.c
---- net-next-2.6-e548833/linux/net/netfilter/ipvs/ip_vs_ctl.c	2010-09-10 08:27:33.000000000 +0300
-+++ linux/net/netfilter/ipvs/ip_vs_ctl.c	2010-09-15 10:31:00.000000000 +0300
-@@ -765,7 +765,8 @@ __ip_vs_update_dest(struct ip_vs_service
++ip_vs-extra_objs-y :=
++ip_vs-extra_objs-$(CONFIG_IP_VS_NFCT) += ip_vs_nfct.o
++
+ ip_vs-objs :=	ip_vs_conn.o ip_vs_core.o ip_vs_ctl.o ip_vs_sched.o	   \
+ 		ip_vs_xmit.o ip_vs_app.o ip_vs_sync.o	   		   \
+ 		ip_vs_est.o ip_vs_proto.o 				   \
+-		$(ip_vs_proto-objs-y)
++		$(ip_vs_proto-objs-y) $(ip_vs-extra_objs-y)
  
- 	/* set the weight and the flags */
- 	atomic_set(&dest->weight, udest->weight);
--	conn_flags = udest->conn_flags | IP_VS_CONN_F_INACTIVE;
-+	conn_flags = udest->conn_flags & IP_VS_CONN_F_DEST_MASK;
-+	conn_flags |= IP_VS_CONN_F_INACTIVE;
  
- 	/* check if local node and update the flags */
+ # IPVS core
+diff -urNp net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_conn.c linux/net/netfilter/ipvs/ip_vs_conn.c
+--- net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_conn.c	2010-09-15 11:13:04.000000000 +0300
++++ linux/net/netfilter/ipvs/ip_vs_conn.c	2010-09-15 11:14:13.000000000 +0300
+@@ -721,6 +721,9 @@ static void ip_vs_conn_expire(unsigned l
+ 		if (cp->control)
+ 			ip_vs_control_del(cp);
+ 
++		if (cp->flags & IP_VS_CONN_F_NFCT)
++			ip_vs_conn_drop_conntrack(cp);
++
+ 		if (unlikely(cp->app != NULL))
+ 			ip_vs_unbind_app(cp);
+ 		ip_vs_unbind_dest(cp);
+@@ -816,6 +819,16 @@ ip_vs_conn_new(int af, int proto, const 
+ 	if (unlikely(pp && atomic_read(&pp->appcnt)))
+ 		ip_vs_bind_app(cp, pp);
+ 
++	/*
++	 * Allow conntrack to be preserved. By default, conntrack
++	 * is created and destroyed for every packet.
++	 * Sometimes keeping conntrack can be useful for
++	 * IP_VS_CONN_F_ONE_PACKET too.
++	 */
++
++	if (ip_vs_conntrack_enabled())
++		cp->flags |= IP_VS_CONN_F_NFCT;
++
+ 	/* Hash it in the ip_vs_conn_tab finally */
+ 	ip_vs_conn_hash(cp);
+ 
+diff -urNp net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_core.c linux/net/netfilter/ipvs/ip_vs_core.c
+--- net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_core.c	2010-09-15 11:13:04.000000000 +0300
++++ linux/net/netfilter/ipvs/ip_vs_core.c	2010-09-16 08:56:03.000000000 +0300
+@@ -537,6 +537,23 @@ int ip_vs_leave(struct ip_vs_service *sv
+ 	return NF_DROP;
+ }
+ 
++/*
++ * It is hooked before NF_IP_PRI_NAT_SRC at the NF_INET_POST_ROUTING
++ * chain and is used to avoid double NAT and confirmation when we do
++ * not want to keep the conntrack structure
++ */
++static unsigned int ip_vs_post_routing(unsigned int hooknum,
++				       struct sk_buff *skb,
++				       const struct net_device *in,
++				       const struct net_device *out,
++				       int (*okfn)(struct sk_buff *))
++{
++	if (!skb->ipvs_property)
++		return NF_ACCEPT;
++	/* The packet was sent from IPVS, exit this chain */
++	return NF_STOP;
++}
++
+ __sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset)
+ {
+ 	return csum_fold(skb_checksum(skb, offset, skb->len - offset, 0));
+@@ -695,7 +712,10 @@ static int handle_response_icmp(int af, 
+ 	/* do the statistics and put it back */
+ 	ip_vs_out_stats(cp, skb);
+ 
+-	skb->ipvs_property = 1;
++	if (!(cp->flags & IP_VS_CONN_F_NFCT))
++		skb->ipvs_property = 1;
++	else
++		ip_vs_update_conntrack(skb, cp, 0);
+ 	verdict = NF_ACCEPT;
+ 
+ out:
+@@ -928,17 +948,19 @@ handle_response(int af, struct sk_buff *
+ 
+ 	ip_vs_out_stats(cp, skb);
+ 	ip_vs_set_state(cp, IP_VS_DIR_OUTPUT, skb, pp);
+-	ip_vs_update_conntrack(skb, cp, 0);
++	if (!(cp->flags & IP_VS_CONN_F_NFCT))
++		skb->ipvs_property = 1;
++	else
++		ip_vs_update_conntrack(skb, cp, 0);
+ 	ip_vs_conn_put(cp);
+ 
+-	skb->ipvs_property = 1;
+-
+ 	LeaveFunction(11);
+ 	return NF_ACCEPT;
+ 
+ drop:
+ 	ip_vs_conn_put(cp);
+ 	kfree_skb(skb);
++	LeaveFunction(11);
+ 	return NF_STOLEN;
+ }
+ 
+@@ -1483,6 +1505,14 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.hooknum        = NF_INET_FORWARD,
+ 		.priority       = 99,
+ 	},
++	/* Before the netfilter connection tracking, exit from POST_ROUTING */
++	{
++		.hook		= ip_vs_post_routing,
++		.owner		= THIS_MODULE,
++		.pf		= PF_INET,
++		.hooknum        = NF_INET_POST_ROUTING,
++		.priority       = NF_IP_PRI_NAT_SRC-1,
++	},
  #ifdef CONFIG_IP_VS_IPV6
-@@ -782,7 +783,7 @@ __ip_vs_update_dest(struct ip_vs_service
+ 	/* After packet filtering, forward packet through VS/DR, VS/TUN,
+ 	 * or VS/NAT(change destination), so that filtering rules can be
+@@ -1511,6 +1541,14 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.hooknum        = NF_INET_FORWARD,
+ 		.priority       = 99,
+ 	},
++	/* Before the netfilter connection tracking, exit from POST_ROUTING */
++	{
++		.hook		= ip_vs_post_routing,
++		.owner		= THIS_MODULE,
++		.pf		= PF_INET6,
++		.hooknum        = NF_INET_POST_ROUTING,
++		.priority       = NF_IP6_PRI_NAT_SRC-1,
++	},
+ #endif
+ };
+ 
+diff -urNp net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_ctl.c linux/net/netfilter/ipvs/ip_vs_ctl.c
+--- net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_ctl.c	2010-09-15 11:13:04.000000000 +0300
++++ linux/net/netfilter/ipvs/ip_vs_ctl.c	2010-09-16 08:56:34.000000000 +0300
+@@ -88,6 +88,9 @@ int sysctl_ip_vs_expire_nodest_conn = 0;
+ int sysctl_ip_vs_expire_quiescent_template = 0;
+ int sysctl_ip_vs_sync_threshold[2] = { 3, 50 };
+ int sysctl_ip_vs_nat_icmp_send = 0;
++#ifdef CONFIG_IP_VS_NFCT
++int sysctl_ip_vs_conntrack;
++#endif
+ 
+ 
+ #ifdef CONFIG_IP_VS_DEBUG
+@@ -1580,6 +1583,15 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_defense_mode,
+ 	},
++#ifdef CONFIG_IP_VS_NFCT
++	{
++		.procname	= "conntrack",
++		.data		= &sysctl_ip_vs_conntrack,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec,
++	},
++#endif
+ 	{
+ 		.procname	= "secure_tcp",
+ 		.data		= &sysctl_ip_vs_secure_tcp,
+diff -urNp net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_ftp.c linux/net/netfilter/ipvs/ip_vs_ftp.c
+--- net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_ftp.c	2010-09-10 08:27:33.000000000 +0300
++++ linux/net/netfilter/ipvs/ip_vs_ftp.c	2010-09-15 11:14:13.000000000 +0300
+@@ -20,17 +20,6 @@
+  *
+  * Author:	Wouter Gadeyne
+  *
+- *
+- * Code for ip_vs_expect_related and ip_vs_expect_callback is taken from
+- * http://www.ssi.bg/~ja/nfct/:
+- *
+- * ip_vs_nfct.c:	Netfilter connection tracking support for IPVS
+- *
+- * Portions Copyright (C) 2001-2002
+- * Antefacto Ltd, 181 Parnell St, Dublin 1, Ireland.
+- *
+- * Portions Copyright (C) 2003-2008
+- * Julian Anastasov
+  */
+ 
+ #define KMSG_COMPONENT "IPVS"
+@@ -58,16 +47,6 @@
+ #define SERVER_STRING "227 Entering Passive Mode ("
+ #define CLIENT_STRING "PORT "
+ 
+-#define FMT_TUPLE	"%pI4:%u->%pI4:%u/%u"
+-#define ARG_TUPLE(T)	&(T)->src.u3.ip, ntohs((T)->src.u.all), \
+-			&(T)->dst.u3.ip, ntohs((T)->dst.u.all), \
+-			(T)->dst.protonum
+-
+-#define FMT_CONN	"%pI4:%u->%pI4:%u->%pI4:%u/%u:%u"
+-#define ARG_CONN(C)	&((C)->caddr.ip), ntohs((C)->cport), \
+-			&((C)->vaddr.ip), ntohs((C)->vport), \
+-			&((C)->daddr.ip), ntohs((C)->dport), \
+-			(C)->protocol, (C)->state
+ 
+ /*
+  * List of ports (up to IP_VS_APP_MAX_PORTS) to be handled by helper
+@@ -85,6 +64,8 @@ static int ip_vs_ftp_pasv;
+ static int
+ ip_vs_ftp_init_conn(struct ip_vs_app *app, struct ip_vs_conn *cp)
+ {
++	/* We use connection tracking for the command connection */
++	cp->flags |= IP_VS_CONN_F_NFCT;
+ 	return 0;
+ }
+ 
+@@ -149,120 +130,6 @@ static int ip_vs_ftp_get_addrport(char *
+ }
+ 
+ /*
+- * Called from init_conntrack() as expectfn handler.
+- */
+-static void
+-ip_vs_expect_callback(struct nf_conn *ct,
+-		      struct nf_conntrack_expect *exp)
+-{
+-	struct nf_conntrack_tuple *orig, new_reply;
+-	struct ip_vs_conn *cp;
+-
+-	if (exp->tuple.src.l3num != PF_INET)
+-		return;
+-
+-	/*
+-	 * We assume that no NF locks are held before this callback.
+-	 * ip_vs_conn_out_get and ip_vs_conn_in_get should match their
+-	 * expectations even if they use wildcard values, now we provide the
+-	 * actual values from the newly created original conntrack direction.
+-	 * The conntrack is confirmed when packet reaches IPVS hooks.
+-	 */
+-
+-	/* RS->CLIENT */
+-	orig = &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple;
+-	cp = ip_vs_conn_out_get(exp->tuple.src.l3num, orig->dst.protonum,
+-				&orig->src.u3, orig->src.u.tcp.port,
+-				&orig->dst.u3, orig->dst.u.tcp.port);
+-	if (cp) {
+-		/* Change reply CLIENT->RS to CLIENT->VS */
+-		new_reply = ct->tuplehash[IP_CT_DIR_REPLY].tuple;
+-		IP_VS_DBG(7, "%s(): ct=%p, status=0x%lX, tuples=" FMT_TUPLE ", "
+-			  FMT_TUPLE ", found inout cp=" FMT_CONN "\n",
+-			  __func__, ct, ct->status,
+-			  ARG_TUPLE(orig), ARG_TUPLE(&new_reply),
+-			  ARG_CONN(cp));
+-		new_reply.dst.u3 = cp->vaddr;
+-		new_reply.dst.u.tcp.port = cp->vport;
+-		IP_VS_DBG(7, "%s(): ct=%p, new tuples=" FMT_TUPLE ", " FMT_TUPLE
+-			  ", inout cp=" FMT_CONN "\n",
+-			  __func__, ct,
+-			  ARG_TUPLE(orig), ARG_TUPLE(&new_reply),
+-			  ARG_CONN(cp));
+-		goto alter;
+-	}
+-
+-	/* CLIENT->VS */
+-	cp = ip_vs_conn_in_get(exp->tuple.src.l3num, orig->dst.protonum,
+-			       &orig->src.u3, orig->src.u.tcp.port,
+-			       &orig->dst.u3, orig->dst.u.tcp.port);
+-	if (cp) {
+-		/* Change reply VS->CLIENT to RS->CLIENT */
+-		new_reply = ct->tuplehash[IP_CT_DIR_REPLY].tuple;
+-		IP_VS_DBG(7, "%s(): ct=%p, status=0x%lX, tuples=" FMT_TUPLE ", "
+-			  FMT_TUPLE ", found outin cp=" FMT_CONN "\n",
+-			  __func__, ct, ct->status,
+-			  ARG_TUPLE(orig), ARG_TUPLE(&new_reply),
+-			  ARG_CONN(cp));
+-		new_reply.src.u3 = cp->daddr;
+-		new_reply.src.u.tcp.port = cp->dport;
+-		IP_VS_DBG(7, "%s(): ct=%p, new tuples=" FMT_TUPLE ", "
+-			  FMT_TUPLE ", outin cp=" FMT_CONN "\n",
+-			  __func__, ct,
+-			  ARG_TUPLE(orig), ARG_TUPLE(&new_reply),
+-			  ARG_CONN(cp));
+-		goto alter;
+-	}
+-
+-	IP_VS_DBG(7, "%s(): ct=%p, status=0x%lX, tuple=" FMT_TUPLE
+-		  " - unknown expect\n",
+-		  __func__, ct, ct->status, ARG_TUPLE(orig));
+-	return;
+-
+-alter:
+-	/* Never alter conntrack for non-NAT conns */
+-	if (IP_VS_FWD_METHOD(cp) == IP_VS_CONN_F_MASQ)
+-		nf_conntrack_alter_reply(ct, &new_reply);
+-	ip_vs_conn_put(cp);
+-	return;
+-}
+-
+-/*
+- * Create NF conntrack expectation with wildcard (optional) source port.
+- * Then the default callback function will alter the reply and will confirm
+- * the conntrack entry when the first packet comes.
+- */
+-static void
+-ip_vs_expect_related(struct sk_buff *skb, struct nf_conn *ct,
+-		     struct ip_vs_conn *cp, u_int8_t proto,
+-		     const __be16 *port, int from_rs)
+-{
+-	struct nf_conntrack_expect *exp;
+-
+-	BUG_ON(!ct || ct == &nf_conntrack_untracked);
+-
+-	exp = nf_ct_expect_alloc(ct);
+-	if (!exp)
+-		return;
+-
+-	if (from_rs)
+-		nf_ct_expect_init(exp, NF_CT_EXPECT_CLASS_DEFAULT,
+-				  nf_ct_l3num(ct), &cp->daddr, &cp->caddr,
+-				  proto, port, &cp->cport);
+-	else
+-		nf_ct_expect_init(exp, NF_CT_EXPECT_CLASS_DEFAULT,
+-				  nf_ct_l3num(ct), &cp->caddr, &cp->vaddr,
+-				  proto, port, &cp->vport);
+-
+-	exp->expectfn = ip_vs_expect_callback;
+-
+-	IP_VS_DBG(7, "%s(): ct=%p, expect tuple=" FMT_TUPLE "\n",
+-		  __func__, ct, ARG_TUPLE(&exp->tuple));
+-	nf_ct_expect_related(exp);
+-	nf_ct_expect_put(exp);
+-}
+-
+-/*
+  * Look at outgoing ftp packets to catch the response to a PASV command
+  * from the server (inside-to-outside).
+  * When we see one, we build a connection entry with the client address,
+@@ -335,7 +202,8 @@ static int ip_vs_ftp_out(struct ip_vs_ap
+ 					      &cp->caddr, 0,
+ 					      &cp->vaddr, port,
+ 					      &from, port,
+-					      IP_VS_CONN_F_NO_CPORT,
++					      IP_VS_CONN_F_NO_CPORT |
++					      IP_VS_CONN_F_NFCT,
+ 					      cp->dest);
+ 			if (!n_cp)
+ 				return 0;
+@@ -371,8 +239,8 @@ static int ip_vs_ftp_out(struct ip_vs_ap
+ 						       start-data, end-start,
+ 						       buf, buf_len);
+ 			if (ret)
+-				ip_vs_expect_related(skb, ct, n_cp,
+-						     IPPROTO_TCP, NULL, 0);
++				ip_vs_nfct_expect_related(skb, ct, n_cp,
++							  IPPROTO_TCP, 0, 0);
  		}
  
- 	/* set the IP_VS_CONN_F_NOOUTPUT flag if not masquerading/NAT */
--	if ((conn_flags & IP_VS_CONN_F_FWD_MASK) != 0) {
-+	if ((conn_flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ) {
- 		conn_flags |= IP_VS_CONN_F_NOOUTPUT;
- 	} else {
  		/*
+@@ -487,7 +355,7 @@ static int ip_vs_ftp_in(struct ip_vs_app
+ 				      &to, port,
+ 				      &cp->vaddr, htons(ntohs(cp->vport)-1),
+ 				      &cp->daddr, htons(ntohs(cp->dport)-1),
+-				      0,
++				      IP_VS_CONN_F_NFCT,
+ 				      cp->dest);
+ 		if (!n_cp)
+ 			return 0;
+diff -urNp net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_nfct.c linux/net/netfilter/ipvs/ip_vs_nfct.c
+--- net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_nfct.c	1970-01-01 02:00:00.000000000 +0200
++++ linux/net/netfilter/ipvs/ip_vs_nfct.c	2010-09-15 11:14:13.000000000 +0300
+@@ -0,0 +1,292 @@
++/*
++ * ip_vs_nfct.c:	Netfilter connection tracking support for IPVS
++ *
++ * Portions Copyright (C) 2001-2002
++ * Antefacto Ltd, 181 Parnell St, Dublin 1, Ireland.
++ *
++ * Portions Copyright (C) 2003-2010
++ * Julian Anastasov
++ *
++ *
++ * This code is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ *
++ *
++ * Authors:
++ * Ben North <ben@redfrontdoor.org>
++ * Julian Anastasov <ja@ssi.bg>		Reorganize and sync with latest kernels
++ * Hannes Eder <heder@google.com>	Extend NFCT support for FTP, ipvs match
++ *
++ *
++ * Current status:
++ *
++ * - provide conntrack confirmation for new and related connections, by
++ * this way we can see their proper conntrack state in all hooks
++ * - support for all forwarding methods, not only NAT
++ * - FTP support (NAT), ability to support other NAT apps with expectations
++ * - to correctly create expectations for related NAT connections the proper
++ * NF conntrack support must be already installed, eg. ip_vs_ftp requires
++ * nf_conntrack_ftp ... iptables_nat for the same ports (but no iptables
++ * NAT rules are needed)
++ * - alter reply for NAT when forwarding packet in original direction:
++ * conntrack from client in NEW or RELATED (Passive FTP DATA) state or
++ * when RELATED conntrack is created from real server (Active FTP DATA)
++ * - if iptables_nat is not loaded the Passive FTP will not work (the
++ * PASV response can not be NAT-ed) but Active FTP should work
++ *
++ */
++
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
++#include <linux/module.h>
++#include <linux/types.h>
++#include <linux/kernel.h>
++#include <linux/errno.h>
++#include <linux/compiler.h>
++#include <linux/vmalloc.h>
++#include <linux/skbuff.h>
++#include <net/ip.h>
++#include <linux/netfilter.h>
++#include <linux/netfilter_ipv4.h>
++#include <net/ip_vs.h>
++#include <net/netfilter/nf_conntrack_core.h>
++#include <net/netfilter/nf_conntrack_expect.h>
++#include <net/netfilter/nf_conntrack_helper.h>
++#include <net/netfilter/nf_conntrack_zones.h>
++
++
++#define FMT_TUPLE	"%pI4:%u->%pI4:%u/%u"
++#define ARG_TUPLE(T)	&(T)->src.u3.ip, ntohs((T)->src.u.all), \
++			&(T)->dst.u3.ip, ntohs((T)->dst.u.all), \
++			(T)->dst.protonum
++
++#define FMT_CONN	"%pI4:%u->%pI4:%u->%pI4:%u/%u:%u"
++#define ARG_CONN(C)	&((C)->caddr.ip), ntohs((C)->cport), \
++			&((C)->vaddr.ip), ntohs((C)->vport), \
++			&((C)->daddr.ip), ntohs((C)->dport), \
++			(C)->protocol, (C)->state
++
++void
++ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp, int outin)
++{
++	enum ip_conntrack_info ctinfo;
++	struct nf_conn *ct = ct = nf_ct_get(skb, &ctinfo);
++	struct nf_conntrack_tuple new_tuple;
++
++	if (ct == NULL || nf_ct_is_confirmed(ct) || nf_ct_is_untracked(ct) ||
++	    nf_ct_is_dying(ct))
++		return;
++
++	/* Never alter conntrack for non-NAT conns */
++	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
++		return;
++
++	/* Alter reply only in original direction */
++	if (CTINFO2DIR(ctinfo) != IP_CT_DIR_ORIGINAL)
++		return;
++
++	/*
++	 * The connection is not yet in the hashtable, so we update it.
++	 * CIP->VIP will remain the same, so leave the tuple in
++	 * IP_CT_DIR_ORIGINAL untouched.  When the reply comes back from the
++	 * real-server we will see RIP->DIP.
++	 */
++	new_tuple = ct->tuplehash[IP_CT_DIR_REPLY].tuple;
++	/*
++	 * This will also take care of UDP and other protocols.
++	 */
++	if (outin) {
++		new_tuple.src.u3 = cp->daddr;
++		if (new_tuple.dst.protonum != IPPROTO_ICMP &&
++		    new_tuple.dst.protonum != IPPROTO_ICMPV6)
++			new_tuple.src.u.tcp.port = cp->dport;
++	} else {
++		new_tuple.dst.u3 = cp->vaddr;
++		if (new_tuple.dst.protonum != IPPROTO_ICMP &&
++		    new_tuple.dst.protonum != IPPROTO_ICMPV6)
++			new_tuple.dst.u.tcp.port = cp->vport;
++	}
++	IP_VS_DBG(7, "%s: Updating conntrack ct=%p, status=0x%lX, "
++		  "ctinfo=%d, old reply=" FMT_TUPLE
++		  ", new reply=" FMT_TUPLE ", cp=" FMT_CONN "\n",
++		  __func__, ct, ct->status, ctinfo,
++		  ARG_TUPLE(&ct->tuplehash[IP_CT_DIR_REPLY].tuple),
++		  ARG_TUPLE(&new_tuple), ARG_CONN(cp));
++	nf_conntrack_alter_reply(ct, &new_tuple);
++}
++
++int ip_vs_confirm_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp)
++{
++	return nf_conntrack_confirm(skb);
++}
++
++/*
++ * Called from init_conntrack() as expectfn handler.
++ */
++static void ip_vs_nfct_expect_callback(struct nf_conn *ct,
++	struct nf_conntrack_expect *exp)
++{
++	struct nf_conntrack_tuple *orig, new_reply;
++	struct ip_vs_conn *cp;
++
++	if (exp->tuple.src.l3num != PF_INET)
++		return;
++
++	/*
++	 * We assume that no NF locks are held before this callback.
++	 * ip_vs_conn_out_get and ip_vs_conn_in_get should match their
++	 * expectations even if they use wildcard values, now we provide the
++	 * actual values from the newly created original conntrack direction.
++	 * The conntrack is confirmed when packet reaches IPVS hooks.
++	 */
++
++	/* RS->CLIENT */
++	orig = &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple;
++	cp = ip_vs_conn_out_get(exp->tuple.src.l3num, orig->dst.protonum,
++				&orig->src.u3, orig->src.u.tcp.port,
++				&orig->dst.u3, orig->dst.u.tcp.port);
++	if (cp) {
++		/* Change reply CLIENT->RS to CLIENT->VS */
++		new_reply = ct->tuplehash[IP_CT_DIR_REPLY].tuple;
++		IP_VS_DBG(7, "%s: ct=%p, status=0x%lX, tuples=" FMT_TUPLE ", "
++			  FMT_TUPLE ", found inout cp=" FMT_CONN "\n",
++			  __func__, ct, ct->status,
++			  ARG_TUPLE(orig), ARG_TUPLE(&new_reply),
++			  ARG_CONN(cp));
++		new_reply.dst.u3 = cp->vaddr;
++		new_reply.dst.u.tcp.port = cp->vport;
++		IP_VS_DBG(7, "%s: ct=%p, new tuples=" FMT_TUPLE ", " FMT_TUPLE
++			  ", inout cp=" FMT_CONN "\n",
++			  __func__, ct,
++			  ARG_TUPLE(orig), ARG_TUPLE(&new_reply),
++			  ARG_CONN(cp));
++		goto alter;
++	}
++
++	/* CLIENT->VS */
++	cp = ip_vs_conn_in_get(exp->tuple.src.l3num, orig->dst.protonum,
++			       &orig->src.u3, orig->src.u.tcp.port,
++			       &orig->dst.u3, orig->dst.u.tcp.port);
++	if (cp) {
++		/* Change reply VS->CLIENT to RS->CLIENT */
++		new_reply = ct->tuplehash[IP_CT_DIR_REPLY].tuple;
++		IP_VS_DBG(7, "%s: ct=%p, status=0x%lX, tuples=" FMT_TUPLE ", "
++			  FMT_TUPLE ", found outin cp=" FMT_CONN "\n",
++			  __func__, ct, ct->status,
++			  ARG_TUPLE(orig), ARG_TUPLE(&new_reply),
++			  ARG_CONN(cp));
++		new_reply.src.u3 = cp->daddr;
++		new_reply.src.u.tcp.port = cp->dport;
++		IP_VS_DBG(7, "%s: ct=%p, new tuples=" FMT_TUPLE ", "
++			  FMT_TUPLE ", outin cp=" FMT_CONN "\n",
++			  __func__, ct,
++			  ARG_TUPLE(orig), ARG_TUPLE(&new_reply),
++			  ARG_CONN(cp));
++		goto alter;
++	}
++
++	IP_VS_DBG(7, "%s: ct=%p, status=0x%lX, tuple=" FMT_TUPLE
++		  " - unknown expect\n",
++		  __func__, ct, ct->status, ARG_TUPLE(orig));
++	return;
++
++alter:
++	/* Never alter conntrack for non-NAT conns */
++	if (IP_VS_FWD_METHOD(cp) == IP_VS_CONN_F_MASQ)
++		nf_conntrack_alter_reply(ct, &new_reply);
++	ip_vs_conn_put(cp);
++	return;
++}
++
++/*
++ * Create NF conntrack expectation with wildcard (optional) source port.
++ * Then the default callback function will alter the reply and will confirm
++ * the conntrack entry when the first packet comes.
++ * Use port 0 to expect connection from any port.
++ */
++void ip_vs_nfct_expect_related(struct sk_buff *skb, struct nf_conn *ct,
++			       struct ip_vs_conn *cp, u_int8_t proto,
++			       const __be16 port, int from_rs)
++{
++	struct nf_conntrack_expect *exp;
++
++	if (ct == NULL || nf_ct_is_untracked(ct))
++		return;
++
++	exp = nf_ct_expect_alloc(ct);
++	if (!exp)
++		return;
++
++	nf_ct_expect_init(exp, NF_CT_EXPECT_CLASS_DEFAULT, nf_ct_l3num(ct),
++			from_rs ? &cp->daddr : &cp->caddr,
++			from_rs ? &cp->caddr : &cp->vaddr,
++			proto, port ? &port : NULL,
++			from_rs ? &cp->cport : &cp->vport);
++
++	exp->expectfn = ip_vs_nfct_expect_callback;
++
++	IP_VS_DBG(7, "%s: ct=%p, expect tuple=" FMT_TUPLE "\n",
++		__func__, ct, ARG_TUPLE(&exp->tuple));
++	nf_ct_expect_related(exp);
++	nf_ct_expect_put(exp);
++}
++EXPORT_SYMBOL(ip_vs_nfct_expect_related);
++
++/*
++ * Our connection was terminated, try to drop the conntrack immediately
++ */
++void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp)
++{
++	struct nf_conntrack_tuple_hash *h;
++	struct nf_conn *ct;
++	struct nf_conntrack_tuple tuple;
++
++	if (!cp->cport)
++		return;
++
++	tuple = (struct nf_conntrack_tuple) {
++		.dst = { .protonum = cp->protocol, .dir = IP_CT_DIR_ORIGINAL } };
++	tuple.src.u3 = cp->caddr;
++	tuple.src.u.all = cp->cport;
++	tuple.src.l3num = cp->af;
++	tuple.dst.u3 = cp->vaddr;
++	tuple.dst.u.all = cp->vport;
++
++	IP_VS_DBG(7, "%s: dropping conntrack with tuple=" FMT_TUPLE
++		" for conn " FMT_CONN "\n",
++		__func__, ARG_TUPLE(&tuple), ARG_CONN(cp));
++
++	h = nf_conntrack_find_get(&init_net, NF_CT_DEFAULT_ZONE, &tuple);
++	if (h) {
++		ct = nf_ct_tuplehash_to_ctrack(h);
++		/* Show what happens instead of calling nf_ct_kill() */
++		if (del_timer(&ct->timeout)) {
++			IP_VS_DBG(7, "%s: ct=%p, deleted conntrack timer for tuple="
++				FMT_TUPLE "\n",
++				__func__, ct, ARG_TUPLE(&tuple));
++			if (ct->timeout.function)
++				ct->timeout.function(ct->timeout.data);
++		} else {
++			IP_VS_DBG(7, "%s: ct=%p, no conntrack timer for tuple="
++				FMT_TUPLE "\n",
++				__func__, ct, ARG_TUPLE(&tuple));
++		}
++		nf_ct_put(ct);
++	} else {
++		IP_VS_DBG(7, "%s: no conntrack for tuple=" FMT_TUPLE "\n",
++			__func__, ARG_TUPLE(&tuple));
++	}
++}
++
+diff -urNp net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_xmit.c linux/net/netfilter/ipvs/ip_vs_xmit.c
+--- net-next-2.6-e548833-flags32/linux/net/netfilter/ipvs/ip_vs_xmit.c	2010-09-10 08:27:33.000000000 +0300
++++ linux/net/netfilter/ipvs/ip_vs_xmit.c	2010-09-15 11:30:41.000000000 +0300
+@@ -28,7 +28,6 @@
+ #include <net/ip6_route.h>
+ #include <linux/icmpv6.h>
+ #include <linux/netfilter.h>
+-#include <net/netfilter/nf_conntrack.h>
+ #include <linux/netfilter_ipv4.h>
+ 
+ #include <net/ip_vs.h>
+@@ -194,12 +193,37 @@ ip_vs_dst_reset(struct ip_vs_dest *dest)
+ 	dst_release(old_dst);
+ }
+ 
+-#define IP_VS_XMIT(pf, skb, rt)				\
++#define IP_VS_XMIT_TUNNEL(skb, cp)				\
++({								\
++	int __ret = NF_ACCEPT;					\
++								\
++	if (unlikely((cp)->flags & IP_VS_CONN_F_NFCT))		\
++		__ret = ip_vs_confirm_conntrack(skb, cp);	\
++	if (__ret == NF_ACCEPT) {				\
++		nf_reset(skb);					\
++		(skb)->ip_summed = CHECKSUM_NONE;		\
++	}							\
++	__ret;							\
++})
++
++#define IP_VS_XMIT_NAT(pf, skb, cp)				\
++do {							\
++	if (likely(!((cp)->flags & IP_VS_CONN_F_NFCT)))	\
++		(skb)->ipvs_property = 1;		\
++	else						\
++		ip_vs_update_conntrack(skb, cp, 1);	\
++	skb_forward_csum(skb);				\
++	NF_HOOK(pf, NF_INET_LOCAL_OUT, (skb), NULL,	\
++		skb_dst(skb)->dev, dst_output);		\
++} while (0)
++
++#define IP_VS_XMIT(pf, skb, cp)				\
+ do {							\
+-	(skb)->ipvs_property = 1;			\
++	if (likely(!((cp)->flags & IP_VS_CONN_F_NFCT)))	\
++		(skb)->ipvs_property = 1;		\
+ 	skb_forward_csum(skb);				\
+ 	NF_HOOK(pf, NF_INET_LOCAL_OUT, (skb), NULL,	\
+-		(rt)->dst.dev, dst_output);		\
++		skb_dst(skb)->dev, dst_output);		\
+ } while (0)
+ 
+ 
+@@ -271,7 +295,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, s
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV4, skb, rt);
++	IP_VS_XMIT(NFPROTO_IPV4, skb, cp);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -335,7 +359,7 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV6, skb, rt);
++	IP_VS_XMIT(NFPROTO_IPV6, skb, cp);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -349,36 +373,6 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb
+ }
+ #endif
+ 
+-void
+-ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp, int outin)
+-{
+-	struct nf_conn *ct = (struct nf_conn *)skb->nfct;
+-	struct nf_conntrack_tuple new_tuple;
+-
+-	if (ct == NULL || nf_ct_is_untracked(ct) || nf_ct_is_confirmed(ct))
+-		return;
+-
+-	/*
+-	 * The connection is not yet in the hashtable, so we update it.
+-	 * CIP->VIP will remain the same, so leave the tuple in
+-	 * IP_CT_DIR_ORIGINAL untouched.  When the reply comes back from the
+-	 * real-server we will see RIP->DIP.
+-	 */
+-	new_tuple = ct->tuplehash[IP_CT_DIR_REPLY].tuple;
+-	if (outin)
+-		new_tuple.src.u3 = cp->daddr;
+-	else
+-		new_tuple.dst.u3 = cp->vaddr;
+-	/*
+-	 * This will also take care of UDP and other protocols.
+-	 */
+-	if (outin)
+-		new_tuple.src.u.tcp.port = cp->dport;
+-	else
+-		new_tuple.dst.u.tcp.port = cp->vport;
+-	nf_conntrack_alter_reply(ct, &new_tuple);
+-}
+-
+ /*
+  *      NAT transmitter (only for outside-to-inside nat forwarding)
+  *      Not used for related ICMP
+@@ -434,8 +428,6 @@ ip_vs_nat_xmit(struct sk_buff *skb, stru
+ 
+ 	IP_VS_DBG_PKT(10, pp, skb, 0, "After DNAT");
+ 
+-	ip_vs_update_conntrack(skb, cp, 1);
+-
+ 	/* FIXME: when application helper enlarges the packet and the length
+ 	   is larger than the MTU of outgoing device, there will be still
+ 	   MTU problem. */
+@@ -443,7 +435,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, stru
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV4, skb, rt);
++	IP_VS_XMIT_NAT(NFPROTO_IPV4, skb, cp);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -451,8 +443,8 @@ ip_vs_nat_xmit(struct sk_buff *skb, stru
+   tx_error_icmp:
+ 	dst_link_failure(skb);
+   tx_error:
+-	LeaveFunction(10);
+ 	kfree_skb(skb);
++	LeaveFunction(10);
+ 	return NF_STOLEN;
+   tx_error_put:
+ 	ip_rt_put(rt);
+@@ -512,8 +504,6 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, s
+ 
+ 	IP_VS_DBG_PKT(10, pp, skb, 0, "After DNAT");
+ 
+-	ip_vs_update_conntrack(skb, cp, 1);
+-
+ 	/* FIXME: when application helper enlarges the packet and the length
+ 	   is larger than the MTU of outgoing device, there will be still
+ 	   MTU problem. */
+@@ -521,7 +511,7 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, s
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV6, skb, rt);
++	IP_VS_XMIT_NAT(NFPROTO_IPV6, skb, cp);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -571,6 +561,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, s
+ 	struct iphdr  *iph;			/* Our new IP header */
+ 	unsigned int max_headroom;		/* The extra header space needed */
+ 	int    mtu;
++	int ret;
+ 
+ 	EnterFunction(10);
+ 
+@@ -655,7 +646,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, s
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	ip_local_out(skb);
++	ret = IP_VS_XMIT_TUNNEL(skb, cp);
++	if (ret == NF_ACCEPT)
++		ip_local_out(skb);
++	else if (ret == NF_DROP)
++		kfree_skb(skb);
+ 
+ 	LeaveFunction(10);
+ 
+@@ -681,6 +676,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb
+ 	struct ipv6hdr  *iph;		/* Our new IP header */
+ 	unsigned int max_headroom;	/* The extra header space needed */
+ 	int    mtu;
++	int ret;
+ 
+ 	EnterFunction(10);
+ 
+@@ -761,7 +757,11 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	ip6_local_out(skb);
++	ret = IP_VS_XMIT_TUNNEL(skb, cp);
++	if (ret == NF_ACCEPT)
++		ip6_local_out(skb);
++	else if (ret == NF_DROP)
++		kfree_skb(skb);
+ 
+ 	LeaveFunction(10);
+ 
+@@ -820,7 +820,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struc
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV4, skb, rt);
++	IP_VS_XMIT(NFPROTO_IPV4, skb, cp);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -873,7 +873,7 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, st
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV6, skb, rt);
++	IP_VS_XMIT(NFPROTO_IPV6, skb, cp);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -947,7 +947,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, str
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV4, skb, rt);
++	IP_VS_XMIT(NFPROTO_IPV4, skb, cp);
+ 
+ 	rc = NF_STOLEN;
+ 	goto out;
+@@ -1022,7 +1022,7 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, 
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV6, skb, rt);
++	IP_VS_XMIT(NFPROTO_IPV6, skb, cp);
+ 
+ 	rc = NF_STOLEN;
+ 	goto out;
