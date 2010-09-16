@@ -1,50 +1,33 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch net] ipvs: fix active FTP
-Date: Thu, 9 Sep 2010 09:27:48 +0900
-Message-ID: <20100909002743.GA5783@verge.net.au>
-References: <20100906040228.GA21473@verge.net.au>
- <20100908.104033.39195899.davem@davemloft.net>
+From: Patrick McHardy <kaber@trash.net>
+Subject: Re: [PATCH 5/5] net/netfilter/ipvs: Eliminate memory leak
+Date: Thu, 16 Sep 2010 07:42:43 +0200
+Message-ID: <4C91AE53.2050901@trash.net>
+References: <Pine.LNX.4.64.1008241639300.15172@ask.diku.dk>	<20100825013443.GC7237@verge.net.au> <20100825.163812.242150096.davem@davemloft.net>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20100908.104033.39195899.davem@davemloft.net>
-Sender: lvs-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20100825.163812.242150096.davem@davemloft.net>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, kaber@trash.net, wensong@linux-vs.org, ja@ssi.bg
+Cc: horms@verge.net.au, julia@diku.dk, wensong@linux-vs.org, ja@ssi.bg, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
 
-On Wed, Sep 08, 2010 at 10:40:33AM -0700, David Miller wrote:
+On 26.08.2010 01:38, David Miller wrote:
 > From: Simon Horman <horms@verge.net.au>
-> Date: Mon, 6 Sep 2010 13:02:29 +0900
+> Date: Wed, 25 Aug 2010 10:34:43 +0900
 > 
-> > From: Julian Anastasov <ja@ssi.bg>
-> > 
-> > - Do not create expectation when forwarding the PORT
-> >   command to avoid blocking the connection. The problem is that
-> >   nf_conntrack_ftp.c:help() tries to create the same expectation later in
-> >   POST_ROUTING and drops the packet with "dropping packet" message after
-> >   failure in nf_ct_expect_related.
-> > 
-> > - Change ip_vs_update_conntrack to alter the conntrack
-> >   for related connections from real server. If we do not alter the reply in
-> >   this direction the next packet from client sent to vport 20 comes as NEW
-> >   connection. We alter it but may be some collision happens for both
-> >   conntracks and the second conntrack gets destroyed immediately. The
-> >   connection stucks too.
-> > 
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > Signed-off-by: Simon Horman <horms@verge.net.au>
+>> On Tue, Aug 24, 2010 at 04:39:49PM +0200, Julia Lawall wrote:
+>>> Signed-off-by: Julia Lawall <julia@diku.dk>
+>>
+>> Thanks Julia, that looks good to me.
+>>
+>> Signed-off-by: Simon Horman <horms@verge.net.au>
+>>
+>> Patrick, I guess that this should go through nf-next-2.6.
 > 
-> Applied, thanks.
-> 
-> > This change is also applicable to net-next, although there is some diff
-> > noise. Do you want me to resolve that and post a net-next version
-> > separately? (The same applies to "ipvs: avoid oops for passive FTP" which
-> > you merged into net last week.)
-> 
-> No need, the next time I merge net-2.6 into net-next-2.6 it will be
-> taken care of transparently.
+> Since Patrick appears to be offline, I'll apply this directly so
+> he has less to do when he comes back online :)
 
-Great, thanks.
+Thanks Dave. I should be done catching up by tonight and will start
+taking care of IPVS patches again.
