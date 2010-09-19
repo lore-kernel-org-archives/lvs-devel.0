@@ -1,58 +1,58 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: changes related to service usecnt
-Date: Sun, 19 Sep 2010 20:48:00 +0900
-Message-ID: <20100919114758.GA18134@verge.net.au>
-References: <Pine.LNX.4.58.1009181704560.8786@u.domain.uli>
+Subject: Re: [PATCH 2/3] ipvs: Netfilter connection tracking changes
+Date: Sun, 19 Sep 2010 21:00:11 +0900
+Message-ID: <20100919120010.GB18134@verge.net.au>
+References: <Pine.LNX.4.58.1009162342590.6976@u.domain.uli>
+ <4C935EE3.5070207@trash.net>
+ <Pine.LNX.4.58.1009172232520.2923@u.domain.uli>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.58.1009181704560.8786@u.domain.uli>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <Pine.LNX.4.58.1009172232520.2923@u.domain.uli>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
 Cc: Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-On Sat, Sep 18, 2010 at 05:18:46PM +0300, Julian Anastasov wrote:
+On Fri, Sep 17, 2010 at 10:38:14PM +0300, Julian Anastasov wrote:
 > 
-> 	Change the usage of svc usecnt during command execution:
+> 	Hello,
 > 
-> - we check if svc is registered but we do not need to hold usecnt
-> reference while under __ip_vs_mutex, only the packet handling needs
-> it during scheduling
+> On Fri, 17 Sep 2010, Patrick McHardy wrote:
 > 
-> - change __ip_vs_service_get to __ip_vs_service_find and
-> __ip_vs_svc_fwm_get to __ip_vs_svc_fwm_find because now caller
-> will increase svc->usecnt
+> > This one doesn't compile cleanly with CONFIG_IP_VS_NFCT=n:
+> > 
+> >   CC [M]  net/netfilter/ipvs/ip_vs_ftp.o
+> > net/netfilter/ipvs/ip_vs_ftp.c: In function 'ip_vs_ftp_out':
+> > net/netfilter/ipvs/ip_vs_ftp.c:242: error: implicit declaration of
+> > function 'ip_vs_nfct_expect_related'
 > 
-> - put common code that calls update_service in __ip_vs_update_dest
+> 	I'm able to reproduce it only by commenting
+> CONFIG_IP_VS_FTP and CONFIG_IP_VS_NFCT and then this command fails:
 > 
-> - put common code in ip_vs_unlink_service() and use it to unregister
-> the service
+> make net/netfilter/ipvs/ip_vs_ftp.o
 > 
-> - add comment that svc should not be accessed after ip_vs_del_service 
-> anymore
+> 	In all other cases if CONFIG_IP_VS_FTP is enabled
+> the 'select IP_VS_NFCT' does its job and enables
+> CONFIG_IP_VS_NFCT. Am I missing something?
 > 
-> - all IP_VS_WAIT_WHILE calls are now unified: usecnt > 0
-> 
-> - Properly log the app ports
-> 
-> 	As result, some problems are fixed:
-> 
-> - possible use-after-free of svc in ip_vs_genl_set_cmd after
-> ip_vs_del_service because our usecnt reference does not guarantee that
-> svc is not freed on refcnt==0, eg. when no dests are moved to trash
-> 
-> - possible usecnt leak in do_ip_vs_set_ctl after ip_vs_del_service
-> when the service is not freed now, for example, when some
-> destionations are moved into trash and svc->refcnt remains above 0.
-> It is harmless because svc is not in hash anymore.
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> > Please fix this and resend.
 
-Hi Julian,
+I saw the same problem as Patrick when I ran
 
-thats a pretty big patch to review, but it looks good to me.
+$ make oldconfig
+$ make M=net/netfilter/ipvs/
+
+However, it went away once I ran
+
+$ make
+
+Perhaps its just a build issue relating to a new .c file being added?
+
+
+FWIW, the patch itself is
 
 Acked-by: Simon Horman <horms@verge.net.au>
+
