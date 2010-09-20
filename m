@@ -1,107 +1,112 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [rfc] IPVS: Masq local real-servers
-Date: Mon, 20 Sep 2010 18:09:14 +0900
-Message-ID: <20100920090911.GA4646@verge.net.au>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Subject: [RFC][PATCH] ipvs: IPv6 tunnel mode
+Date: Mon, 20 Sep 2010 12:13:09 +0200
+Message-ID: <1284977589.25529.203.camel@seasc0214.dyn.rnd.as.sw.ericsson.se>
+References: <Pine.LNX.4.58.1009181704560.8786@u.domain.uli>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.58.1009181704560.8786@u.domain.uli>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org
-Cc: Patrick McHardy <kaber@trash.net>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
+Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
 
-IPVS has a special Local forwarding mechanism that is used if the
-real-server is a local IP address. Like the Route and Tunnel forwarding
-mechanism Local does not allow port mapping, and thus the port of the
-real-server is always set to be the same as the virtual service.
+Tunnel mode for IPv6 doesn't work.
 
-The Masq forwarding mechanism does allow port mapping, and this causes some
-confusion when the real-server happens to be local.
+IPv6 encapsulation uses a bad source address for the tunnel.
+i.e. VIP will be used as local-addr and encap. dst addr.
+Decapsulation will not accept this.
 
-This patch addresses this confusion by not using the Local forwarding
-mechanism if the masq forwarding mechanism is requested. That is, the masq
-forwarding mechanism will be used, and the real-servers may have a
-different port to the virtual service.
+Example
+LVS (eth1 2003::2:0:1/96, VIP 2003::2:0:100)
+    (eth0 2003::1:0:1/96)
+RS  (ethX 2003::1:0:5/96)     
 
-Signed-off-by: Simon Horman <horms@verge.net.au>
+tcpdump
+ 2003::2:0:100 > 2003::1:0:5: 
+ IP6 (hlim 63, next-header TCP (6) payload length: 40) 
+  2003::3:0:10.50991 > 2003::2:0:100.http: Flags [S], cksum 0x7312
+(correct), seq 3006460279, win 5760, options [mss 1440,sackOK,TS val
+1904932 ecr 0,nop,wscale 3], length 0
 
---- 
 
-I considered using Local for the case where the real-server and virtual
-service ports are the same. However, this would require updating the
-real-servers if the port of the virtual-service was changed, however
-editing the forwarding mechanism of a real-server currently isn't
-supported and the extra complexity for an unmeasured performance gain seems
-to be at best left for another patch.
+In Linux IPv6 impl. you can't have a tunnel with an any cast address
+receiving packets (I have not tried to interpret RFC 2473)
+To have receive capabilities the tunnel must have:
+  - Local address set as multicast addr or an unicast addr
+  - Remote address set as an unicast addr.
+  - Loop back addres or Link local address are not allowed.
 
-Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_core.c
-===================================================================
---- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2010-09-19 20:51:30.000000000 +0900
-+++ nf-next-2.6/net/netfilter/ipvs/ip_vs_core.c	2010-09-20 16:30:59.000000000 +0900
-@@ -1496,6 +1496,22 @@ static struct nf_hook_ops ip_vs_ops[] __
- 		.hooknum        = NF_INET_FORWARD,
- 		.priority       = 100,
- 	},
-+	/* change source only for local VS/NAT */
-+	{
-+	       .hook           = ip_vs_out,
-+	       .owner          = THIS_MODULE,
-+	       .pf             = PF_INET,
-+	       .hooknum        = NF_INET_LOCAL_OUT,
-+	       .priority       = 100,
-+	},
-+	/* change source only for local VS/NAT */
-+	{
-+	       .hook           = ip_vs_out,
-+	       .owner          = THIS_MODULE,
-+	       .pf             = PF_INET,
-+	       .hooknum        = NF_INET_LOCAL_OUT,
-+	       .priority       = 100,
-+	},
- 	/* After packet filtering (but before ip_vs_out_icmp), catch icmp
- 	 * destined for 0.0.0.0/0, which is for incoming IPVS connections */
- 	{
-Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c
-===================================================================
---- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_ctl.c	2010-09-20 15:07:27.000000000 +0900
-+++ nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c	2010-09-20 17:45:46.000000000 +0900
-@@ -766,7 +766,7 @@ ip_vs_zero_stats(struct ip_vs_stats *sta
-  *	Update a destination in the given service
-  */
- static void
--__ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
-+_ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 		    struct ip_vs_dest_user_kern *udest, int add)
- {
- 	int conn_flags;
-@@ -777,18 +777,22 @@ __ip_vs_update_dest(struct ip_vs_service
- 	conn_flags |= IP_VS_CONN_F_INACTIVE;
+This causes us to setup a tunnel in the Real Server with the
+LVS as the remote address, here you can't use the VIP address since it's
+used inside the tunnel.
+
+Solution
+Use outgoing interface IPv6 address (match against the destination).
+i.e. use ipv6_dev_get_saddr(...) to set the source address of the
+encapsulated package.
+
+However this lookup cost some cpu time to do, so there is some speed
+enhancements to this patch
  
- 	/* check if local node and update the flags */
-+	if ((conn_flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ ||
-+	    svc->fwmark) {
- #ifdef CONFIG_IP_VS_IPV6
--	if (svc->af == AF_INET6) {
--		if (__ip_vs_addr_is_local_v6(&udest->addr.in6)) {
--			conn_flags = (conn_flags & ~IP_VS_CONN_F_FWD_MASK)
--				| IP_VS_CONN_F_LOCALNODE;
--		}
--	} else
-+		if (svc->af == AF_INET6) {
-+			if (__ip_vs_addr_is_local_v6(&udest->addr.in6)) {
-+				conn_flags = (conn_flags &
-+					      ~IP_VS_CONN_F_FWD_MASK) |
-+					IP_VS_CONN_F_LOCALNODE;
-+			}
-+		} else
- #endif
- 		if (inet_addr_type(&init_net, udest->addr.ip) == RTN_LOCAL) {
- 			conn_flags = (conn_flags & ~IP_VS_CONN_F_FWD_MASK)
- 				| IP_VS_CONN_F_LOCALNODE;
- 		}
-+	}
- 
- 	/* set the IP_VS_CONN_F_NOOUTPUT flag if not masquerading/NAT */
- 	if ((conn_flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ) {
+a) Cache the result
+b) Static configuration i.e. used a static configured address
+   (since the tunnel in RS use a static address remote address)
+
+Here follows the patch without any enhancements mention above.
+
+Signed-off-by: hans.schillstrom@ericsson.com
+
+---
+
+--- linux-2.6.35.next/net/netfilter/ipvs/ip_vs_xmit.c       2010-08-13
+12:18:12.000000000 +0200
++++ linux-2.6.35.x/net/netfilter/ipvs/ip_vs_xmit.c  2010-09-20
+11:38:50.000000000 +0200
+
+@@ -688,10 +702,25 @@
+        rt = __ip_vs_get_out_rt_v6(cp);
+        if (!rt)
+                goto tx_error_icmp;
+
+        tdev = rt->dst.dev;
++       /* Lookup source address for the tunnel */
++        if (likely(ipv6_addr_any(&rt->rt6i_src.addr))) {
++                struct net *net = dev_net(skb->dev);
++                int err = ipv6_dev_get_saddr(net, tdev,
++                                         &rt->rt6i_dst.addr,
++                                         0,
++                                         &rt->rt6i_src.addr);
++                /* RFC 2473 Ch 8. IPv6 Tunnel Error Processing and
+Reporting
++                 *   Both tunnel header and tunnel packet problems are
+reported
++                 *   to the tunnel entry-point node.
++                 */
++                if (err) {
++                        goto tx_error_icmp;
++                }
++        }
+
+        mtu = dst_mtu(&rt->dst) - sizeof(struct ipv6hdr);
+        /* TODO IPv6: do we need this check in IPv6? */
+        if (mtu < 1280) {
+                dst_release(&rt->dst);
+@@ -747,11 +776,11 @@
+        iph->payload_len        =       old_iph->payload_len;
+        be16_add_cpu(&iph->payload_len, sizeof(*old_iph));
+        iph->priority           =       old_iph->priority;
+        memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
+        iph->daddr              =       rt->rt6i_dst.addr;
+-       iph->saddr              =       cp->vaddr.in6; /*
+rt->rt6i_src.addr; */
++       iph->saddr              =       rt->rt6i_src.addr;
+        iph->hop_limit          =       old_iph->hop_limit;
+
+        /* Another hack: avoid icmp_send in ip_fragment */
+        skb->local_df = 1;
+--
+
+
