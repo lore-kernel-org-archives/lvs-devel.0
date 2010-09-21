@@ -1,70 +1,61 @@
 From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH 2/3] ipvs: Netfilter connection tracking changes
-Date: Tue, 21 Sep 2010 17:36:55 +0200
-Message-ID: <4C98D117.3060807@trash.net>
-References: <Pine.LNX.4.58.1009162342590.6976@u.domain.uli>
+Subject: Re: [PATCH] ipvs: changes related to service usecnt
+Date: Tue, 21 Sep 2010 18:15:09 +0200
+Message-ID: <4C98DA0D.2000804@trash.net>
+References: <Pine.LNX.4.58.1009181704560.8786@u.domain.uli> <20100919114758.GA18134@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.58.1009162342590.6976@u.domain.uli>
+In-Reply-To: <20100919114758.GA18134@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-Am 16.09.2010 22:46, schrieb Julian Anastasov:
-> 	Add more code to IPVS to work with Netfilter connection
-> tracking and fix some problems.
+Am 19.09.2010 13:48, schrieb Simon Horman:
+> On Sat, Sep 18, 2010 at 05:18:46PM +0300, Julian Anastasov wrote:
+>> > 
+>> > 	Change the usage of svc usecnt during command execution:
+>> > 
+>> > - we check if svc is registered but we do not need to hold usecnt
+>> > reference while under __ip_vs_mutex, only the packet handling needs
+>> > it during scheduling
+>> > 
+>> > - change __ip_vs_service_get to __ip_vs_service_find and
+>> > __ip_vs_svc_fwm_get to __ip_vs_svc_fwm_find because now caller
+>> > will increase svc->usecnt
+>> > 
+>> > - put common code that calls update_service in __ip_vs_update_dest
+>> > 
+>> > - put common code in ip_vs_unlink_service() and use it to unregister
+>> > the service
+>> > 
+>> > - add comment that svc should not be accessed after ip_vs_del_service 
+>> > anymore
+>> > 
+>> > - all IP_VS_WAIT_WHILE calls are now unified: usecnt > 0
+>> > 
+>> > - Properly log the app ports
+>> > 
+>> > 	As result, some problems are fixed:
+>> > 
+>> > - possible use-after-free of svc in ip_vs_genl_set_cmd after
+>> > ip_vs_del_service because our usecnt reference does not guarantee that
+>> > svc is not freed on refcnt==0, eg. when no dests are moved to trash
+>> > 
+>> > - possible usecnt leak in do_ip_vs_set_ctl after ip_vs_del_service
+>> > when the service is not freed now, for example, when some
+>> > destionations are moved into trash and svc->refcnt remains above 0.
+>> > It is harmless because svc is not in hash anymore.
+>> > 
+>> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> Hi Julian,
 > 
-> - Allow IPVS to be compiled without connection tracking as in
-> 2.6.35 and before. This can avoid keeping conntracks for all
-> IPVS connections because this costs memory. ip_vs_ftp still
-> depends on connection tracking and NAT as implemented for 2.6.36.
-> 
-> - Add sysctl var "conntrack" to enable connection tracking for
-> all IPVS connections. For loaded IPVS directors it needs
-> tuning of nf_conntrack_max limit.
-> 
-> - Add IP_VS_CONN_F_NFCT connection flag to request the connection
-> to use connection tracking. This allows user space to provide this
-> flag, for example, in dest->conn_flags. This can be useful to
-> request connection tracking per real server instead of forcing it
-> for all connections with the "conntrack" sysctl. This flag is
-> set currently only by ip_vs_ftp and of course by "conntrack" sysctl.
-> 
-> - Add ip_vs_nfct.c file to hold all connection tracking code,
-> by this way main code should not depend of netfilter conntrack
-> support.
-> 
-> - Return back the ip_vs_post_routing handler as in 2.6.35 and use
-> skb->ipvs_property=1 to allow IPVS to work without connection
-> tracking
-> 
-> Connection tracking:
-> 
-> - most of the code is already in 2.6.36-rc
-> 
-> - alter conntrack reply tuple for LVS-NAT connections when first packet
-> from client is forwarded and conntrack state is NEW or RELATED.
-> Additionally, alter reply for RELATED connections from real server,
-> again for packet in original direction.
-> 
-> - add IP_VS_XMIT_TUNNEL to confirm conntrack (without altering
-> reply) for LVS-TUN early because we want to call nf_reset. It is
-> needed because we add IPIP header and the original conntrack
-> should be preserved, not destroyed. The transmitted IPIP packets
-> can reuse same conntrack, so we do not set skb->ipvs_property.
-> 
-> - try to destroy conntrack when the IPVS connection is destroyed.
-> It is not fatal if conntrack disappears before that, it depends
-> on the used timers.
-> 
-> Fix problems from long time:
-> 
-> - add skb->ip_summed = CHECKSUM_NONE for the LVS-TUN transmitters
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> thats a pretty big patch to review, but it looks good to me.
 
+Indeed, I'd prefer slightly smaller patches too.
+ 
+> Acked-by: Simon Horman <horms@verge.net.au>
 
 Applied, thanks.
