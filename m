@@ -1,147 +1,467 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [rfc] IPVS: Masq local real-servers
-Date: Sat, 25 Sep 2010 16:54:51 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1009251556410.6881@u.domain.uli>
-References: <20100920090911.GA4646@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [patch] ipvs: IPv6 tunnel mode
+Date: Sun, 26 Sep 2010 18:25:56 +0900
+Message-ID: <20100926092556.GA9949@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20100920090911.GA4646@verge.net.au>
+Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>, Wensong Zhang <wensong@linux-vs.org>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, Julius Volz <juliusv@google.com>
 
+From: Julian Anastasov <ja@ssi.bg>
 
- 	Hello,
+Tunnel mode for IPv6 doesn't work.
 
-On Mon, 20 Sep 2010, Simon Horman wrote:
+IPv6 encapsulation uses a bad source address for the tunnel.
+i.e. VIP will be used as local-addr and encap. dst addr.
+Decapsulation will not accept this.
 
-> IPVS has a special Local forwarding mechanism that is used if the
-> real-server is a local IP address. Like the Route and Tunnel forwarding
-> mechanism Local does not allow port mapping, and thus the port of the
-> real-server is always set to be the same as the virtual service.
->
-> The Masq forwarding mechanism does allow port mapping, and this causes some
-> confusion when the real-server happens to be local.
->
-> This patch addresses this confusion by not using the Local forwarding
-> mechanism if the masq forwarding mechanism is requested. That is, the masq
-> forwarding mechanism will be used, and the real-servers may have a
-> different port to the virtual service.
+Example
+LVS (eth1 2003::2:0:1/96, VIP 2003::2:0:100)
+   (eth0 2003::1:0:1/96)
+RS  (ethX 2003::1:0:5/96)
 
- 	Idea is good but there are some things to consider:
+tcpdump
+2003::2:0:100 > 2003::1:0:5:
+IP6 (hlim 63, next-header TCP (6) payload length: 40)
+ 2003::3:0:10.50991 > 2003::2:0:100.http: Flags [S], cksum 0x7312
+(correct), seq 3006460279, win 5760, options [mss 1440,sackOK,TS val
+1904932 ecr 0,nop,wscale 3], length 0
 
-- ip_vs_nat_xmit should check the route to real server IP
-but must return NF_ACCEPT instead of creating loops by
-sending the packets with IP_VS_XMIT. Checks for MTU,
-hard_header_len and replacing of skb_dst should be avoided
-for the 'rt->rt_flags & RTCF_LOCAL' case. As result,
-the packet will be DNAT-ed by IPVS and the conntrack
-will be altered to expect reply from the correct local port
-and then just like ip_vs_null_xmit the traffic will
-reach local stack. 127.0.0.1/8 should be rejected
-for the MASQ method because the output routing called
-by local stack will not want to send such saddr in replies.
+In Linux IPv6 impl. you can't have a tunnel with an any cast address
+receiving packets (I have not tried to interpret RFC 2473)
+To have receive capabilities the tunnel must have:
+ - Local address set as multicast addr or an unicast addr
+ - Remote address set as an unicast addr.
+ - Loop back addres or Link local address are not allowed.
 
-- We have to check if ip_vs_out is prepared to work in
-LOCAL_OUT: I hope icmp_send works from this hook.
+This causes us to setup a tunnel in the Real Server with the
+LVS as the remote address, here you can't use the VIP address since it's
+used inside the tunnel.
 
-> Signed-off-by: Simon Horman <horms@verge.net.au>
->
-> ---
->
-> I considered using Local for the case where the real-server and virtual
-> service ports are the same. However, this would require updating the
-> real-servers if the port of the virtual-service was changed, however
-> editing the forwarding mechanism of a real-server currently isn't
-> supported and the extra complexity for an unmeasured performance gain seems
-> to be at best left for another patch.
->
-> Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_core.c
-> ===================================================================
-> --- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2010-09-19 20:51:30.000000000 +0900
-> +++ nf-next-2.6/net/netfilter/ipvs/ip_vs_core.c	2010-09-20 16:30:59.000000000 +0900
-> @@ -1496,6 +1496,22 @@ static struct nf_hook_ops ip_vs_ops[] __
-> 		.hooknum        = NF_INET_FORWARD,
-> 		.priority       = 100,
-> 	},
+Solution
+Use outgoing interface IPv6 address (match against the destination).
+i.e. use ip6_route_output() to look up the route cache and
+then use ipv6_dev_get_saddr(...) to set the source address of the
+encapsulated packet.
 
- 	Double block?:
+Original patch by Hans Schillstrom.
+Version using ip6_route_output() by Julian Anastasov.
 
-> +	/* change source only for local VS/NAT */
-> +	{
-> +	       .hook           = ip_vs_out,
-> +	       .owner          = THIS_MODULE,
-> +	       .pf             = PF_INET,
-> +	       .hooknum        = NF_INET_LOCAL_OUT,
-> +	       .priority       = 100,
-> +	},
-> +	/* change source only for local VS/NAT */
-> +	{
-> +	       .hook           = ip_vs_out,
-> +	       .owner          = THIS_MODULE,
-> +	       .pf             = PF_INET,
-> +	       .hooknum        = NF_INET_LOCAL_OUT,
-> +	       .priority       = 100,
-> +	},
-> 	/* After packet filtering (but before ip_vs_out_icmp), catch icmp
-> 	 * destined for 0.0.0.0/0, which is for incoming IPVS connections */
-> 	{
-> Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c
-> ===================================================================
-> --- nf-next-2.6.orig/net/netfilter/ipvs/ip_vs_ctl.c	2010-09-20 15:07:27.000000000 +0900
-> +++ nf-next-2.6/net/netfilter/ipvs/ip_vs_ctl.c	2010-09-20 17:45:46.000000000 +0900
-> @@ -766,7 +766,7 @@ ip_vs_zero_stats(struct ip_vs_stats *sta
->  *	Update a destination in the given service
->  */
-> static void
+Tested-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
 
- 	'_' in __ip_vs_update_dest was lost?:
+--- 
 
-> -__ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
-> +_ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
-> 		    struct ip_vs_dest_user_kern *udest, int add)
-> {
-> 	int conn_flags;
-> @@ -777,18 +777,22 @@ __ip_vs_update_dest(struct ip_vs_service
-> 	conn_flags |= IP_VS_CONN_F_INACTIVE;
->
-> 	/* check if local node and update the flags */
+This is Julian's patch with a slightly edited version of the description
+from Hans's original patch.
 
- 	I think, it should work for svc->fwmark too, eg.
-consolidating traffic for many virtual IPs to single
-listening socket.
+Is everyone ok with pushing this?
 
-> +	if ((conn_flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ ||
-> +	    svc->fwmark) {
-> #ifdef CONFIG_IP_VS_IPV6
-> -	if (svc->af == AF_INET6) {
-> -		if (__ip_vs_addr_is_local_v6(&udest->addr.in6)) {
-> -			conn_flags = (conn_flags & ~IP_VS_CONN_F_FWD_MASK)
-> -				| IP_VS_CONN_F_LOCALNODE;
-> -		}
-> -	} else
-> +		if (svc->af == AF_INET6) {
-> +			if (__ip_vs_addr_is_local_v6(&udest->addr.in6)) {
-> +				conn_flags = (conn_flags &
-> +					      ~IP_VS_CONN_F_FWD_MASK) |
-> +					IP_VS_CONN_F_LOCALNODE;
-> +			}
-> +		} else
-> #endif
-> 		if (inet_addr_type(&init_net, udest->addr.ip) == RTN_LOCAL) {
-> 			conn_flags = (conn_flags & ~IP_VS_CONN_F_FWD_MASK)
-> 				| IP_VS_CONN_F_LOCALNODE;
-> 		}
-> +	}
->
-> 	/* set the IP_VS_CONN_F_NOOUTPUT flag if not masquerading/NAT */
-> 	if ((conn_flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ) {
->
+diff -urp net-next-2.6-e548833-nfct_snat_reroute/linux/include/net/ip_vs.h linux/include/net/ip_vs.h
+--- net-next-2.6-e548833-nfct_snat_reroute/linux/include/net/ip_vs.h	2010-09-16 09:03:48.000000000 +0300
++++ linux/include/net/ip_vs.h	2010-09-22 10:50:18.548963467 +0300
+@@ -509,6 +509,10 @@ struct ip_vs_dest {
+ 	spinlock_t		dst_lock;	/* lock of dst_cache */
+ 	struct dst_entry	*dst_cache;	/* destination cache entry */
+ 	u32			dst_rtos;	/* RT_TOS(tos) for dst */
++	u32			dst_cookie;
++#ifdef CONFIG_IP_VS_IPV6
++	struct in6_addr		dst_saddr;
++#endif
 
-Regards
+ 	/* for virtual service */
+ 	struct ip_vs_service	*svc;		/* service it belongs to */
+diff -urp net-next-2.6-e548833-nfct_snat_reroute/linux/net/netfilter/ipvs/ip_vs_xmit.c linux/net/netfilter/ipvs/ip_vs_xmit.c
+--- net-next-2.6-e548833-nfct_snat_reroute/linux/net/netfilter/ipvs/ip_vs_xmit.c	2010-09-16 09:02:25.000000000 +0300
++++ linux/net/netfilter/ipvs/ip_vs_xmit.c	2010-09-22 16:29:43.271964521 +0300
+@@ -26,6 +26,7 @@
+ #include <net/route.h>                  /* for ip_route_output */
+ #include <net/ipv6.h>
+ #include <net/ip6_route.h>
++#include <net/addrconf.h>
+ #include <linux/icmpv6.h>
+ #include <linux/netfilter.h>
+ #include <linux/netfilter_ipv4.h>
+@@ -37,26 +38,27 @@
+  *      Destination cache to speed up outgoing route lookup
+  */
+ static inline void
+-__ip_vs_dst_set(struct ip_vs_dest *dest, u32 rtos, struct dst_entry *dst)
++__ip_vs_dst_set(struct ip_vs_dest *dest, u32 rtos, struct dst_entry *dst,
++		u32 dst_cookie)
+ {
+ 	struct dst_entry *old_dst;
 
---
-Julian Anastasov <ja@ssi.bg>
+ 	old_dst = dest->dst_cache;
+ 	dest->dst_cache = dst;
+ 	dest->dst_rtos = rtos;
++	dest->dst_cookie = dst_cookie;
+ 	dst_release(old_dst);
+ }
+
+ static inline struct dst_entry *
+-__ip_vs_dst_check(struct ip_vs_dest *dest, u32 rtos, u32 cookie)
++__ip_vs_dst_check(struct ip_vs_dest *dest, u32 rtos)
+ {
+ 	struct dst_entry *dst = dest->dst_cache;
+
+ 	if (!dst)
+ 		return NULL;
+-	if ((dst->obsolete
+-	     || (dest->af == AF_INET && rtos != dest->dst_rtos)) &&
+-	    dst->ops->check(dst, cookie) == NULL) {
++	if ((dst->obsolete || rtos != dest->dst_rtos) &&
++	    dst->ops->check(dst, dest->dst_cookie) == NULL) {
+ 		dest->dst_cache = NULL;
+ 		dst_release(dst);
+ 		return NULL;
+@@ -66,15 +68,16 @@ __ip_vs_dst_check(struct ip_vs_dest *des
+ }
+
+ static struct rtable *
+-__ip_vs_get_out_rt(struct ip_vs_conn *cp, u32 rtos)
++__ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_conn *cp, u32 rtos)
+ {
++	struct net *net = dev_net(skb->dev);
+ 	struct rtable *rt;			/* Route to the other host */
+ 	struct ip_vs_dest *dest = cp->dest;
+
+ 	if (dest) {
+ 		spin_lock(&dest->dst_lock);
+ 		if (!(rt = (struct rtable *)
+-		      __ip_vs_dst_check(dest, rtos, 0))) {
++		      __ip_vs_dst_check(dest, rtos))) {
+ 			struct flowi fl = {
+ 				.oif = 0,
+ 				.nl_u = {
+@@ -84,13 +87,13 @@ __ip_vs_get_out_rt(struct ip_vs_conn *cp
+ 						.tos = rtos, } },
+ 			};
+
+-			if (ip_route_output_key(&init_net, &rt, &fl)) {
++			if (ip_route_output_key(net, &rt, &fl)) {
+ 				spin_unlock(&dest->dst_lock);
+ 				IP_VS_DBG_RL("ip_route_output error, dest: %pI4\n",
+ 					     &dest->addr.ip);
+ 				return NULL;
+ 			}
+-			__ip_vs_dst_set(dest, rtos, dst_clone(&rt->dst));
++			__ip_vs_dst_set(dest, rtos, dst_clone(&rt->dst), 0);
+ 			IP_VS_DBG(10, "new dst %pI4, refcnt=%d, rtos=%X\n",
+ 				  &dest->addr.ip,
+ 				  atomic_read(&rt->dst.__refcnt), rtos);
+@@ -106,7 +109,7 @@ __ip_vs_get_out_rt(struct ip_vs_conn *cp
+ 					.tos = rtos, } },
+ 		};
+
+-		if (ip_route_output_key(&init_net, &rt, &fl)) {
++		if (ip_route_output_key(net, &rt, &fl)) {
+ 			IP_VS_DBG_RL("ip_route_output error, dest: %pI4\n",
+ 				     &cp->daddr.ip);
+ 			return NULL;
+@@ -117,62 +120,79 @@ __ip_vs_get_out_rt(struct ip_vs_conn *cp
+ }
+
+ #ifdef CONFIG_IP_VS_IPV6
++
++static struct dst_entry *
++__ip_vs_route_output_v6(struct net *net, struct in6_addr *daddr,
++			struct in6_addr *ret_saddr, int do_xfrm)
++{
++	struct dst_entry *dst;
++	struct flowi fl = {
++		.oif = 0,
++		.nl_u = {
++			.ip6_u = {
++				.daddr = *daddr,
++			},
++		},
++	};
++
++	dst = ip6_route_output(net, NULL, &fl);
++	if (dst->error)
++		goto out_err;
++	if (!ret_saddr)
++		return dst;
++	if (ipv6_addr_any(&fl.fl6_src) &&
++	    ipv6_dev_get_saddr(net, ip6_dst_idev(dst)->dev,
++			       &fl.fl6_dst, 0, &fl.fl6_src) < 0)
++		goto out_err;
++	if (do_xfrm && xfrm_lookup(net, &dst, &fl, NULL, 0) < 0)
++		goto out_err;
++	ipv6_addr_copy(ret_saddr, &fl.fl6_src);
++	return dst;
++
++out_err:
++	dst_release(dst);
++	IP_VS_DBG_RL("ip6_route_output error, dest: %pI6\n", daddr);
++	return NULL;
++}
++
+ static struct rt6_info *
+-__ip_vs_get_out_rt_v6(struct ip_vs_conn *cp)
++__ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
++		      struct in6_addr *ret_saddr, int do_xfrm)
+ {
++	struct net *net = dev_net(skb->dev);
+ 	struct rt6_info *rt;			/* Route to the other host */
+ 	struct ip_vs_dest *dest = cp->dest;
++	struct dst_entry *dst;
+
+ 	if (dest) {
+ 		spin_lock(&dest->dst_lock);
+-		rt = (struct rt6_info *)__ip_vs_dst_check(dest, 0, 0);
++		rt = (struct rt6_info *)__ip_vs_dst_check(dest, 0);
+ 		if (!rt) {
+-			struct flowi fl = {
+-				.oif = 0,
+-				.nl_u = {
+-					.ip6_u = {
+-						.daddr = dest->addr.in6,
+-						.saddr = {
+-							.s6_addr32 =
+-								{ 0, 0, 0, 0 },
+-						},
+-					},
+-				},
+-			};
++			u32 cookie;
+
+-			rt = (struct rt6_info *)ip6_route_output(&init_net,
+-								 NULL, &fl);
+-			if (!rt) {
++			dst = __ip_vs_route_output_v6(net, &dest->addr.in6,
++						      &dest->dst_saddr,
++						      do_xfrm);
++			if (!dst) {
+ 				spin_unlock(&dest->dst_lock);
+-				IP_VS_DBG_RL("ip6_route_output error, dest: %pI6\n",
+-					     &dest->addr.in6);
+ 				return NULL;
+ 			}
+-			__ip_vs_dst_set(dest, 0, dst_clone(&rt->dst));
+-			IP_VS_DBG(10, "new dst %pI6, refcnt=%d\n",
+-				  &dest->addr.in6,
++			rt = (struct rt6_info *) dst;
++			cookie = rt->rt6i_node ? rt->rt6i_node->fn_sernum : 0;
++			__ip_vs_dst_set(dest, 0, dst_clone(&rt->dst), cookie);
++			IP_VS_DBG(10, "new dst %pI6, src %pI6, refcnt=%d\n",
++				  &dest->addr.in6, &dest->dst_saddr,
+ 				  atomic_read(&rt->dst.__refcnt));
+ 		}
++		if (ret_saddr)
++			ipv6_addr_copy(ret_saddr, &dest->dst_saddr);
+ 		spin_unlock(&dest->dst_lock);
+ 	} else {
+-		struct flowi fl = {
+-			.oif = 0,
+-			.nl_u = {
+-				.ip6_u = {
+-					.daddr = cp->daddr.in6,
+-					.saddr = {
+-						.s6_addr32 = { 0, 0, 0, 0 },
+-					},
+-				},
+-			},
+-		};
+-
+-		rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl);
+-		if (!rt) {
+-			IP_VS_DBG_RL("ip6_route_output error, dest: %pI6\n",
+-				     &cp->daddr.in6);
++		dst = __ip_vs_route_output_v6(net, &cp->daddr.in6, ret_saddr,
++					      do_xfrm);
++		if (!dst)
+ 			return NULL;
+-		}
++		rt = (struct rt6_info *) dst;
+ 	}
+
+ 	return rt;
+@@ -248,6 +268,7 @@ int
+ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  struct ip_vs_protocol *pp)
+ {
++	struct net *net = dev_net(skb->dev);
+ 	struct rtable *rt;			/* Route to the other host */
+ 	struct iphdr  *iph = ip_hdr(skb);
+ 	u8     tos = iph->tos;
+@@ -263,7 +284,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, s
+
+ 	EnterFunction(10);
+
+-	if (ip_route_output_key(&init_net, &rt, &fl)) {
++	if (ip_route_output_key(net, &rt, &fl)) {
+ 		IP_VS_DBG_RL("%s(): ip_route_output error, dest: %pI4\n",
+ 			     __func__, &iph->daddr);
+ 		goto tx_error_icmp;
+@@ -313,25 +334,18 @@ int
+ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		     struct ip_vs_protocol *pp)
+ {
++	struct net *net = dev_net(skb->dev);
++	struct dst_entry *dst;
+ 	struct rt6_info *rt;			/* Route to the other host */
+ 	struct ipv6hdr  *iph = ipv6_hdr(skb);
+ 	int    mtu;
+-	struct flowi fl = {
+-		.oif = 0,
+-		.nl_u = {
+-			.ip6_u = {
+-				.daddr = iph->daddr,
+-				.saddr = { .s6_addr32 = {0, 0, 0, 0} }, } },
+-	};
+
+ 	EnterFunction(10);
+
+-	rt = (struct rt6_info *)ip6_route_output(&init_net, NULL, &fl);
+-	if (!rt) {
+-		IP_VS_DBG_RL("%s(): ip6_route_output error, dest: %pI6\n",
+-			     __func__, &iph->daddr);
++	dst = __ip_vs_route_output_v6(net, &iph->daddr, NULL, 0);
++	if (!dst)
+ 		goto tx_error_icmp;
+-	}
++	rt = (struct rt6_info *) dst;
+
+ 	/* MTU checking */
+ 	mtu = dst_mtu(&rt->dst);
+@@ -397,7 +411,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, stru
+ 		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
+ 	}
+
+-	if (!(rt = __ip_vs_get_out_rt(cp, RT_TOS(iph->tos))))
++	if (!(rt = __ip_vs_get_out_rt(skb, cp, RT_TOS(iph->tos))))
+ 		goto tx_error_icmp;
+
+ 	/* MTU checking */
+@@ -472,7 +486,7 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, s
+ 		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
+ 	}
+
+-	rt = __ip_vs_get_out_rt_v6(cp);
++	rt = __ip_vs_get_out_rt_v6(skb, cp, NULL, 0);
+ 	if (!rt)
+ 		goto tx_error_icmp;
+
+@@ -557,7 +571,6 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, s
+ 	struct iphdr  *old_iph = ip_hdr(skb);
+ 	u8     tos = old_iph->tos;
+ 	__be16 df = old_iph->frag_off;
+-	sk_buff_data_t old_transport_header = skb->transport_header;
+ 	struct iphdr  *iph;			/* Our new IP header */
+ 	unsigned int max_headroom;		/* The extra header space needed */
+ 	int    mtu;
+@@ -572,7 +585,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, s
+ 		goto tx_error;
+ 	}
+
+-	if (!(rt = __ip_vs_get_out_rt(cp, RT_TOS(tos))))
++	if (!(rt = __ip_vs_get_out_rt(skb, cp, RT_TOS(tos))))
+ 		goto tx_error_icmp;
+
+ 	tdev = rt->dst.dev;
+@@ -616,7 +629,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, s
+ 		old_iph = ip_hdr(skb);
+ 	}
+
+-	skb->transport_header = old_transport_header;
++	skb->transport_header = skb->network_header;
+
+ 	/* fix old IP header checksum */
+ 	ip_send_check(old_iph);
+@@ -670,9 +683,9 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb
+ 		     struct ip_vs_protocol *pp)
+ {
+ 	struct rt6_info *rt;		/* Route to the other host */
++	struct in6_addr saddr;		/* Source for tunnel */
+ 	struct net_device *tdev;	/* Device to other host */
+ 	struct ipv6hdr  *old_iph = ipv6_hdr(skb);
+-	sk_buff_data_t old_transport_header = skb->transport_header;
+ 	struct ipv6hdr  *iph;		/* Our new IP header */
+ 	unsigned int max_headroom;	/* The extra header space needed */
+ 	int    mtu;
+@@ -687,17 +700,17 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb
+ 		goto tx_error;
+ 	}
+
+-	rt = __ip_vs_get_out_rt_v6(cp);
++	rt = __ip_vs_get_out_rt_v6(skb, cp, &saddr, 1);
+ 	if (!rt)
+ 		goto tx_error_icmp;
+
+ 	tdev = rt->dst.dev;
+
+ 	mtu = dst_mtu(&rt->dst) - sizeof(struct ipv6hdr);
+-	/* TODO IPv6: do we need this check in IPv6? */
+-	if (mtu < 1280) {
++	if (mtu < IPV6_MIN_MTU) {
+ 		dst_release(&rt->dst);
+-		IP_VS_DBG_RL("%s(): mtu less than 1280\n", __func__);
++		IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
++			     IPV6_MIN_MTU);
+ 		goto tx_error;
+ 	}
+ 	if (skb_dst(skb))
+@@ -730,7 +743,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb
+ 		old_iph = ipv6_hdr(skb);
+ 	}
+
+-	skb->transport_header = old_transport_header;
++	skb->transport_header = skb->network_header;
+
+ 	skb_push(skb, sizeof(struct ipv6hdr));
+ 	skb_reset_network_header(skb);
+@@ -750,8 +763,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb
+ 	be16_add_cpu(&iph->payload_len, sizeof(*old_iph));
+ 	iph->priority		=	old_iph->priority;
+ 	memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
+-	iph->daddr		=	rt->rt6i_dst.addr;
+-	iph->saddr		=	cp->vaddr.in6; /* rt->rt6i_src.addr; */
++	ipv6_addr_copy(&iph->daddr, &rt->rt6i_dst.addr);
++	ipv6_addr_copy(&iph->saddr, &saddr);
+ 	iph->hop_limit		=	old_iph->hop_limit;
+
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+@@ -791,7 +804,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struc
+
+ 	EnterFunction(10);
+
+-	if (!(rt = __ip_vs_get_out_rt(cp, RT_TOS(iph->tos))))
++	if (!(rt = __ip_vs_get_out_rt(skb, cp, RT_TOS(iph->tos))))
+ 		goto tx_error_icmp;
+
+ 	/* MTU checking */
+@@ -843,7 +856,7 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, st
+
+ 	EnterFunction(10);
+
+-	rt = __ip_vs_get_out_rt_v6(cp);
++	rt = __ip_vs_get_out_rt_v6(skb, cp, NULL, 0);
+ 	if (!rt)
+ 		goto tx_error_icmp;
+
+@@ -919,7 +932,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, str
+ 	 * mangle and send the packet here (only for VS/NAT)
+ 	 */
+
+-	if (!(rt = __ip_vs_get_out_rt(cp, RT_TOS(ip_hdr(skb)->tos))))
++	if (!(rt = __ip_vs_get_out_rt(skb, cp, RT_TOS(ip_hdr(skb)->tos))))
+ 		goto tx_error_icmp;
+
+ 	/* MTU checking */
+@@ -993,7 +1006,7 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb,
+ 	 * mangle and send the packet here (only for VS/NAT)
+ 	 */
+
+-	rt = __ip_vs_get_out_rt_v6(cp);
++	rt = __ip_vs_get_out_rt_v6(skb, cp, NULL, 0);
+ 	if (!rt)
+ 		goto tx_error_icmp;
+
