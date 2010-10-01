@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [patch v2 01/12] [PATCH 01/12] netfilter: nf_conntrack_sip: Allow ct_sip_get_header() to be called with a null ct argument
-Date: Fri, 01 Oct 2010 23:35:18 +0900
-Message-ID: <20101001143941.776153478@akiko.akashicho.tokyo.vergenet.net>
+Subject: [patch v2 02/12] [PATCH 02/12] netfilter: nf_conntrack_sip: Add callid parser
+Date: Fri, 01 Oct 2010 23:35:19 +0900
+Message-ID: <20101001143941.864576384@akiko.akashicho.tokyo.vergenet.net>
 References: <20101001143517.645421976@akiko.akashicho.tokyo.vergenet.net>
-Return-path: <netfilter-owner@vger.kernel.org>
-Content-Disposition: inline; filename=0001-netfilter-nf_conntrack_sip-Allow-ct_sip_get_header-t.patch
-Sender: netfilter-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline; filename=0002-netfilter-nf_conntrack_sip-Add-callid-parser.patch
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,20 +15,86 @@ Cc: Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.co
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 
+--- 
+
+The motivation for this is for it to be used by LVS as per
+subsequent patches.
+
+* Patrick McHardy suggested changing word_len to check for the
+  next newline or whitespace. But I believe this is incorrect.
+  For example '#' would be permitted but it is invalid
+  in a word according to RFC3261.
+
+
+diff --git a/include/linux/netfilter/nf_conntrack_sip.h b/include/linux/netfilter/nf_conntrack_sip.h
+index ff8cfbc..0ce91d5 100644
+--- a/include/linux/netfilter/nf_conntrack_sip.h
++++ b/include/linux/netfilter/nf_conntrack_sip.h
+@@ -89,6 +89,7 @@ enum sip_header_types {
+ 	SIP_HDR_VIA_TCP,
+ 	SIP_HDR_EXPIRES,
+ 	SIP_HDR_CONTENT_LENGTH,
++	SIP_HDR_CALL_ID,
+ };
+ 
+ enum sdp_header_types {
 diff --git a/net/netfilter/nf_conntrack_sip.c b/net/netfilter/nf_conntrack_sip.c
-index 53d8922..2fd1ea2 100644
+index 2fd1ea2..715ce54 100644
 --- a/net/netfilter/nf_conntrack_sip.c
 +++ b/net/netfilter/nf_conntrack_sip.c
-@@ -152,6 +152,9 @@ static int parse_addr(const struct nf_conn *ct, const char *cp,
- 	const char *end;
- 	int ret = 0;
+@@ -130,6 +130,44 @@ static int digits_len(const struct nf_conn *ct, const char *dptr,
+ 	return len;
+ }
  
-+	if (!ct)
-+		return 0;
++static int iswordc(const char c)
++{
++	if (isalnum(c) || c == '!' || c == '"' || c == '%' ||
++	    (c >= '(' && c <= '/') || c == ':' || c == '<' || c == '>' ||
++	    c == '?' || (c >= '[' && c <= ']') || c == '_' || c == '`' ||
++	    c == '{' || c == '}' || c == '~')
++		return 1;
++	return 0;
++}
 +
- 	memset(addr, 0, sizeof(*addr));
- 	switch (nf_ct_l3num(ct)) {
- 	case AF_INET:
++static int word_len(const char *dptr, const char *limit)
++{
++	int len = 0;
++	while (dptr < limit && iswordc(*dptr)) {
++		dptr++;
++		len++;
++	}
++	return len;
++}
++
++static int callid_len(const struct nf_conn *ct, const char *dptr,
++		      const char *limit, int *shift)
++{
++	int len, domain_len;
++
++	len = word_len(dptr, limit);
++	dptr += len;
++	if (!len || dptr == limit || *dptr != '@')
++		return len;
++	dptr++;
++	len++;
++
++	domain_len = word_len(dptr, limit);
++	if (!domain_len)
++		return 0;
++	return len + domain_len;
++}
++
+ /* get media type + port length */
+ static int media_len(const struct nf_conn *ct, const char *dptr,
+ 		     const char *limit, int *shift)
+@@ -299,6 +337,7 @@ static const struct sip_header ct_sip_hdrs[] = {
+ 	[SIP_HDR_VIA_TCP]		= SIP_HDR("Via", "v", "TCP ", epaddr_len),
+ 	[SIP_HDR_EXPIRES]		= SIP_HDR("Expires", NULL, NULL, digits_len),
+ 	[SIP_HDR_CONTENT_LENGTH]	= SIP_HDR("Content-Length", "l", NULL, digits_len),
++	[SIP_HDR_CALL_ID]		= SIP_HDR("Call-Id", "i", NULL, callid_len),
+ };
+ 
+ static const char *sip_follow_continuation(const char *dptr, const char *limit)
 -- 
 1.7.1
 
