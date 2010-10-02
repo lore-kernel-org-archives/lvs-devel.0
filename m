@@ -1,191 +1,195 @@
 From: Simon Horman <horms@verge.net.au>
 Subject: Re: [patch v2 04/12] [PATCH 04/12] IPVS: Add struct
  ip_vs_conn_param
-Date: Sat, 2 Oct 2010 10:13:50 +0900
-Message-ID: <20101002011350.GC2235@verge.net.au>
+Date: Sat, 2 Oct 2010 10:15:21 +0900
+Message-ID: <20101002011521.GD2235@verge.net.au>
 References: <20101001143517.645421976@akiko.akashicho.tokyo.vergenet.net>
  <20101001143942.035496196@akiko.akashicho.tokyo.vergenet.net>
  <alpine.LFD.2.00.1010012347290.2194@ja.ssi.bg>
+ <20101002011350.GC2235@verge.net.au>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1010012347290.2194@ja.ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <20101002011350.GC2235@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Patrick McHardy <kaber@trash.net>
 
-On Fri, Oct 01, 2010 at 11:58:04PM +0300, Julian Anastasov wrote:
+On Sat, Oct 02, 2010 at 10:13:50AM +0900, Simon Horman wrote:
+> On Fri, Oct 01, 2010 at 11:58:04PM +0300, Julian Anastasov wrote:
+> > 
+> > 	Hello,
+> > 
+> > On Fri, 1 Oct 2010, Simon Horman wrote:
+> > 
+> > >+static int
+> > >+ip_vs_conn_fill_param_proto(int af, const struct sk_buff *skb,
+> > >+			    const struct ip_vs_iphdr *iph,
+> > >+			    unsigned int proto_off, int inverse,
+> > >+			    struct ip_vs_conn_param *p)
+> > >+{
+> > >+	__be16 _ports[2], *pptr;
+> > >+
+> > >+	pptr = skb_header_pointer(skb, proto_off, sizeof(_ports), _ports);
+> > >+	if (pptr == NULL)
+> > >+		return 1;
+> > >+
+> > >+	if (likely(!inverse))
+> > >+		ip_vs_conn_fill_param(af, iph->protocol, &iph->saddr, pptr[0],
+> > >+				      &iph->daddr, pptr[1], p);
+> > >+	else
+> > 
+> > 	Next line is wrong for inverse=1, must be
+> > 	&iph->daddr, pptr[1], &iph->saddr, pptr[0]
 > 
-> 	Hello,
+> Thanks, fixed.
 > 
-> On Fri, 1 Oct 2010, Simon Horman wrote:
+> > >+		ip_vs_conn_fill_param(af, iph->protocol, &iph->saddr, pptr[0],
+> > >+				      &iph->daddr, pptr[1], p);
+> > >+	return 0;
+> > >+}
+> > >+
+> > 
+> > 	May be comments before ip_vs_conn_out_get should be
+> > changed:
+> > 
+> > >@@ -341,9 +351,7 @@ struct ip_vs_conn *ip_vs_ct_in_get
+> > > *	s_addr, s_port: pkt source address (inside host)
+> > > *	d_addr, d_port: pkt dest address (foreign host)
+> > > */
+> > >-struct ip_vs_conn *ip_vs_conn_out_get
+> > >-(int af, int protocol, const union nf_inet_addr *s_addr, __be16 s_port,
+> > >- const union nf_inet_addr *d_addr, __be16 d_port)
+> > >+struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
 > 
-> >+static int
-> >+ip_vs_conn_fill_param_proto(int af, const struct sk_buff *skb,
-> >+			    const struct ip_vs_iphdr *iph,
-> >+			    unsigned int proto_off, int inverse,
-> >+			    struct ip_vs_conn_param *p)
-> >+{
-> >+	__be16 _ports[2], *pptr;
-> >+
-> >+	pptr = skb_header_pointer(skb, proto_off, sizeof(_ports), _ports);
-> >+	if (pptr == NULL)
-> >+		return 1;
-> >+
-> >+	if (likely(!inverse))
-> >+		ip_vs_conn_fill_param(af, iph->protocol, &iph->saddr, pptr[0],
-> >+				      &iph->daddr, pptr[1], p);
-> >+	else
+> I have updated it to:
 > 
-> 	Next line is wrong for inverse=1, must be
-> 	&iph->daddr, pptr[1], &iph->saddr, pptr[0]
-
-Thanks, fixed.
-
-> >+		ip_vs_conn_fill_param(af, iph->protocol, &iph->saddr, pptr[0],
-> >+				      &iph->daddr, pptr[1], p);
-> >+	return 0;
-> >+}
-> >+
+> /* Gets ip_vs_conn associated with supplied parameters in the
+>  * ip_vs_conn_tab.
+>  * Called for pkts coming from inside-to-OUTside.
+>  *      p->caddr, p->cport: pkt source address (inside host)
+>  *      p->vaddr, p->vport: pkt dest address (foreign host) */
 > 
-> 	May be comments before ip_vs_conn_out_get should be
-> changed:
+> > >===================================================================
+> > >--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2010-10-01 22:06:23.000000000 +0900
+> > >+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c	2010-10-01 22:10:46.000000000 +0900
+> > >@@ -193,14 +193,11 @@ ip_vs_sched_persist(struct ip_vs_service
+> > >	struct ip_vs_iphdr iph;
+> > >	struct ip_vs_dest *dest;
+> > >	struct ip_vs_conn *ct;
+> > >-	int protocol = iph.protocol;
+> > >	__be16 dport = 0;		/* destination port to forward */
+> > >-	__be16 vport = 0;		/* virtual service port */
+> > >	unsigned int flags;
+> > >	union nf_inet_addr snet;	/* source network of the client,
+> > >					   after masking */
+> > >-	const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
+> > >-	const union nf_inet_addr *vaddr = &iph.daddr;
+> > >+	struct ip_vs_conn_param param;
+> > >
+> > >	ip_vs_fill_iphdr(svc->af, skb_network_header(skb), &iph);
+> > >
+> > >@@ -232,6 +229,11 @@ ip_vs_sched_persist(struct ip_vs_service
+> > >	 * is created for other persistent services.
+> > >	 */
+> > >	{
+> > >+		int protocol = iph.protocol;
+> > >+		const union nf_inet_addr *vaddr = &iph.daddr;
+> > >+		const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
+> > >+		__be16 vport = 0;
+> > >+
+> > >		if (ports[1] == svc->port) {
+> > >			/* non-FTP template:
+> > >			 * <protocol, caddr, 0, vaddr, vport, daddr, dport>
+> > >@@ -253,11 +255,12 @@ ip_vs_sched_persist(struct ip_vs_service
+> > >				vaddr = &fwmark;
+> > >			}
+> > >		}
+> > >+		ip_vs_conn_fill_param(svc->af, protocol, &snet, 0,
+> > >+				      vaddr, vport, &param);
+> > >	}
+> > >
+> > >	/* Check if a template already exists */
+> > >-	ct = ip_vs_ct_in_get(svc->af, protocol, &snet, 0, vaddr, vport);
+> > >-
+> > >+	ct = ip_vs_ct_in_get(&param);
+> > >	if (!ct || !ip_vs_check_template(ct)) {
+> > >		/* No template found or the dest of the connection
+> > >		 * template is not available.
+> > >@@ -272,8 +275,7 @@ ip_vs_sched_persist(struct ip_vs_service
+> > >			dport = dest->port;
+> > >
+> > >		/* Create a template */
+> > >-		ct = ip_vs_conn_new(svc->af, protocol, &snet, 0,vaddr, vport,
+> > >-				    &dest->addr, dport,
+> > >+		ct = ip_vs_conn_new(&param, &dest->addr, dport,
+> > >				    IP_VS_CONN_F_TEMPLATE, dest);
+> > >		if (ct == NULL)
+> > >			return NULL;
+> > >@@ -291,12 +293,7 @@ ip_vs_sched_persist(struct ip_vs_service
+> > >	/*
+> > >	 *    Create a new connection according to the template
+> > >	 */
+> > 
+> > 	Missing ip_vs_conn_fill_param here?
 > 
-> >@@ -341,9 +351,7 @@ struct ip_vs_conn *ip_vs_ct_in_get
-> > *	s_addr, s_port: pkt source address (inside host)
-> > *	d_addr, d_port: pkt dest address (foreign host)
-> > */
-> >-struct ip_vs_conn *ip_vs_conn_out_get
-> >-(int af, int protocol, const union nf_inet_addr *s_addr, __be16 s_port,
-> >- const union nf_inet_addr *d_addr, __be16 d_port)
-> >+struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
-
-I have updated it to:
-
-/* Gets ip_vs_conn associated with supplied parameters in the
- * ip_vs_conn_tab.
- * Called for pkts coming from inside-to-OUTside.
- *      p->caddr, p->cport: pkt source address (inside host)
- *      p->vaddr, p->vport: pkt dest address (foreign host) */
-
-> >===================================================================
-> >--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2010-10-01 22:06:23.000000000 +0900
-> >+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c	2010-10-01 22:10:46.000000000 +0900
-> >@@ -193,14 +193,11 @@ ip_vs_sched_persist(struct ip_vs_service
-> >	struct ip_vs_iphdr iph;
-> >	struct ip_vs_dest *dest;
-> >	struct ip_vs_conn *ct;
-> >-	int protocol = iph.protocol;
-> >	__be16 dport = 0;		/* destination port to forward */
-> >-	__be16 vport = 0;		/* virtual service port */
-> >	unsigned int flags;
-> >	union nf_inet_addr snet;	/* source network of the client,
-> >					   after masking */
-> >-	const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
-> >-	const union nf_inet_addr *vaddr = &iph.daddr;
-> >+	struct ip_vs_conn_param param;
-> >
-> >	ip_vs_fill_iphdr(svc->af, skb_network_header(skb), &iph);
-> >
-> >@@ -232,6 +229,11 @@ ip_vs_sched_persist(struct ip_vs_service
-> >	 * is created for other persistent services.
-> >	 */
-> >	{
-> >+		int protocol = iph.protocol;
-> >+		const union nf_inet_addr *vaddr = &iph.daddr;
-> >+		const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
-> >+		__be16 vport = 0;
-> >+
-> >		if (ports[1] == svc->port) {
-> >			/* non-FTP template:
-> >			 * <protocol, caddr, 0, vaddr, vport, daddr, dport>
-> >@@ -253,11 +255,12 @@ ip_vs_sched_persist(struct ip_vs_service
-> >				vaddr = &fwmark;
-> >			}
-> >		}
-> >+		ip_vs_conn_fill_param(svc->af, protocol, &snet, 0,
-> >+				      vaddr, vport, &param);
-> >	}
-> >
-> >	/* Check if a template already exists */
-> >-	ct = ip_vs_ct_in_get(svc->af, protocol, &snet, 0, vaddr, vport);
-> >-
-> >+	ct = ip_vs_ct_in_get(&param);
-> >	if (!ct || !ip_vs_check_template(ct)) {
-> >		/* No template found or the dest of the connection
-> >		 * template is not available.
-> >@@ -272,8 +275,7 @@ ip_vs_sched_persist(struct ip_vs_service
-> >			dport = dest->port;
-> >
-> >		/* Create a template */
-> >-		ct = ip_vs_conn_new(svc->af, protocol, &snet, 0,vaddr, vport,
-> >-				    &dest->addr, dport,
-> >+		ct = ip_vs_conn_new(&param, &dest->addr, dport,
-> >				    IP_VS_CONN_F_TEMPLATE, dest);
-> >		if (ct == NULL)
-> >			return NULL;
-> >@@ -291,12 +293,7 @@ ip_vs_sched_persist(struct ip_vs_service
-> >	/*
-> >	 *    Create a new connection according to the template
-> >	 */
+> Ooops, yes. I think that for some reason I thought it wasn't necessary.
+> I have added the following:
 > 
-> 	Missing ip_vs_conn_fill_param here?
-
-Ooops, yes. I think that for some reason I thought it wasn't necessary.
-I have added the following:
-
-        ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr, ports[0],
-                              &iph.daddr, ports[1], &param);
-
-> >-	cp = ip_vs_conn_new(svc->af, iph.protocol,
-> >-			    &iph.saddr, ports[0],
-> >-			    &iph.daddr, ports[1],
-> >-			    &dest->addr, dport,
-> >-			    flags,
-> >-			    dest);
-> >+	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest);
-> >	if (cp == NULL) {
-> >		ip_vs_conn_put(ct);
-> >		return NULL;
+>         ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr, ports[0],
+>                               &iph.daddr, ports[1], &param);
 > 
-> >===================================================================
-> >--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_proto_ah_esp.c	2010-10-01 21:55:19.000000000 +0900
-> >+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_proto_ah_esp.c	2010-10-01 22:23:33.000000000 +0900
-> >@@ -40,6 +40,19 @@ struct isakmp_hdr {
-> >
-> >#define PORT_ISAKMP	500
-> >
-> >+static void
-> >+ah_esp_conn_fill_param_proto(int af, const struct ip_vs_iphdr *iph,
-> >+			     int inverse, struct ip_vs_conn_param *p)
-> >+{
-> >+	if (likely(!inverse))
-> >+		ip_vs_conn_fill_param(af, IPPROTO_UDP,
-> >+				      &iph->saddr, htons(PORT_ISAKMP),
-> >+				      &iph->daddr, htons(PORT_ISAKMP), p);
-> >+	else
+> > >-	cp = ip_vs_conn_new(svc->af, iph.protocol,
+> > >-			    &iph.saddr, ports[0],
+> > >-			    &iph.daddr, ports[1],
+> > >-			    &dest->addr, dport,
+> > >-			    flags,
+> > >-			    dest);
+> > >+	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest);
+> > >	if (cp == NULL) {
+> > >		ip_vs_conn_put(ct);
+> > >		return NULL;
+> > 
+> > >===================================================================
+> > >--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_proto_ah_esp.c	2010-10-01 21:55:19.000000000 +0900
+> > >+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_proto_ah_esp.c	2010-10-01 22:23:33.000000000 +0900
+> > >@@ -40,6 +40,19 @@ struct isakmp_hdr {
+> > >
+> > >#define PORT_ISAKMP	500
+> > >
+> > >+static void
+> > >+ah_esp_conn_fill_param_proto(int af, const struct ip_vs_iphdr *iph,
+> > >+			     int inverse, struct ip_vs_conn_param *p)
+> > >+{
+> > >+	if (likely(!inverse))
+> > >+		ip_vs_conn_fill_param(af, IPPROTO_UDP,
+> > >+				      &iph->saddr, htons(PORT_ISAKMP),
+> > >+				      &iph->daddr, htons(PORT_ISAKMP), p);
+> > >+	else
+> > 
+> > 	For inverse=1 iph->protocol must be IPPROTO_UDP
+> > and &iph->daddr before &iph->saddr:
 > 
-> 	For inverse=1 iph->protocol must be IPPROTO_UDP
-> and &iph->daddr before &iph->saddr:
+> Thanks, fixed.
+> 
+> > >+		ip_vs_conn_fill_param(af, iph->protocol,
+> > >+				      &iph->saddr, htons(PORT_ISAKMP),
+> > >+				      &iph->daddr, htons(PORT_ISAKMP), p);
+> > >+}
+> 
+> I will repost the entire series after addressing the concerns
+> you raised with several of the other patches. But for reference
+> here is the revised version of this patch.
 
-Thanks, fixed.
-
-> >+		ip_vs_conn_fill_param(af, iph->protocol,
-> >+				      &iph->saddr, htons(PORT_ISAKMP),
-> >+				      &iph->daddr, htons(PORT_ISAKMP), p);
-> >+}
-
-I will repost the entire series after addressing the concerns
-you raised with several of the other patches. But for reference
-here is the revised version of this patch.
+Sorry, the previous post was not the new patch. Here it is:
 
 From 335c0ae2b64d8071762c50ea20b4f55bb12c2a5b Mon Sep 17 00:00:00 2001
 From: Simon Horman <horms@verge.net.au>
 Date: Sun, 22 Aug 2010 21:37:52 +0900
-Subject: [patch v2.1 04/12] IPVS: Add struct ip_vs_conn_param
+Subject: [patch v2.2 04/12] IPVS: Add struct ip_vs_conn_param
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
@@ -200,7 +204,7 @@ v2
 * make "union nf_inet_addr fwmark" const
 * Update for the recent addition of ip_vs_nfct.c
 
-v2.1
+v2.2
 * As suggested by Julian Anastasov
   - Correct logic for inverse case in ip_vs_conn_fill_param_proto()
     and ah_esp_conn_fill_param_proto()
@@ -210,8 +214,8 @@ v2.1
 
 Index: lvs-test-2.6/include/net/ip_vs.h
 ===================================================================
---- lvs-test-2.6.orig/include/net/ip_vs.h	2010-10-01 21:56:39.000000000 +0900
-+++ lvs-test-2.6/include/net/ip_vs.h	2010-10-01 22:07:22.000000000 +0900
+--- lvs-test-2.6.orig/include/net/ip_vs.h	2010-10-02 09:35:34.000000000 +0900
++++ lvs-test-2.6/include/net/ip_vs.h	2010-10-02 10:14:05.000000000 +0900
 @@ -357,6 +357,15 @@ struct ip_vs_protocol {
  
  extern struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto);
@@ -288,8 +292,8 @@ Index: lvs-test-2.6/include/net/ip_vs.h
  extern const char * ip_vs_state_name(__u16 proto, int state);
 Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
 ===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_conn.c	2010-10-01 21:56:39.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c	2010-10-01 22:07:22.000000000 +0900
+--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_conn.c	2010-10-02 09:35:34.000000000 +0900
++++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c	2010-10-02 10:14:05.000000000 +0900
 @@ -218,27 +218,26 @@ static inline int ip_vs_conn_unhash(stru
  /*
   *  Gets ip_vs_conn associated with supplied parameters in the ip_vs_conn_tab.
@@ -379,8 +383,8 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
 +		ip_vs_conn_fill_param(af, iph->protocol, &iph->saddr, pptr[0],
 +				      &iph->daddr, pptr[1], p);
 +	else
-+		ip_vs_conn_fill_param(af, iph->protocol, &iph->saddr, pptr[0],
-+				      &iph->daddr, pptr[1], p);
++		ip_vs_conn_fill_param(af, iph->protocol, &iph->daddr, pptr[1],
++				      &iph->saddr, pptr[0], p);
 +	return 0;
 +}
 +
@@ -444,7 +448,7 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
  			/* HIT */
  			atomic_inc(&cp->refcnt);
  			goto out;
-@@ -327,9 +337,9 @@ struct ip_vs_conn *ip_vs_ct_in_get
+@@ -327,23 +337,19 @@ struct ip_vs_conn *ip_vs_ct_in_get
  	ct_read_unlock(hash);
  
  	IP_VS_DBG_BUF(9, "template lookup/in %s %s:%d->%s:%d %s\n",
@@ -457,18 +461,26 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
  		      cp ? "hit" : "not hit");
  
  	return cp;
-@@ -341,9 +351,7 @@ struct ip_vs_conn *ip_vs_ct_in_get
-  *	s_addr, s_port: pkt source address (inside host)
-  *	d_addr, d_port: pkt dest address (foreign host)
-  */
+ }
+ 
+-/*
+- *  Gets ip_vs_conn associated with supplied parameters in the ip_vs_conn_tab.
+- *  Called for pkts coming from inside-to-OUTside.
+- *	s_addr, s_port: pkt source address (inside host)
+- *	d_addr, d_port: pkt dest address (foreign host)
+- */
 -struct ip_vs_conn *ip_vs_conn_out_get
 -(int af, int protocol, const union nf_inet_addr *s_addr, __be16 s_port,
 - const union nf_inet_addr *d_addr, __be16 d_port)
++/* Gets ip_vs_conn associated with supplied parameters in the ip_vs_conn_tab.
++ * Called for pkts coming from inside-to-OUTside.
++ *	p->caddr, p->cport: pkt source address (inside host)
++ *	p->vaddr, p->vport: pkt dest address (foreign host) */
 +struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
  {
  	unsigned hash;
  	struct ip_vs_conn *cp, *ret=NULL;
-@@ -351,16 +359,16 @@ struct ip_vs_conn *ip_vs_conn_out_get
+@@ -351,16 +357,16 @@ struct ip_vs_conn *ip_vs_conn_out_get
  	/*
  	 *	Check for "full" addressed entries
  	 */
@@ -491,7 +503,7 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
  			/* HIT */
  			atomic_inc(&cp->refcnt);
  			ret = cp;
-@@ -371,9 +379,9 @@ struct ip_vs_conn *ip_vs_conn_out_get
+@@ -371,9 +377,9 @@ struct ip_vs_conn *ip_vs_conn_out_get
  	ct_read_unlock(hash);
  
  	IP_VS_DBG_BUF(9, "lookup/out %s %s:%d->%s:%d %s\n",
@@ -504,7 +516,7 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
  		      ret ? "hit" : "not hit");
  
  	return ret;
-@@ -385,20 +393,12 @@ ip_vs_conn_out_get_proto(int af, const s
+@@ -385,20 +391,12 @@ ip_vs_conn_out_get_proto(int af, const s
  			 const struct ip_vs_iphdr *iph,
  			 unsigned int proto_off, int inverse)
  {
@@ -528,7 +540,7 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
  }
  EXPORT_SYMBOL_GPL(ip_vs_conn_out_get_proto);
  
-@@ -758,13 +758,12 @@ void ip_vs_conn_expire_now(struct ip_vs_
+@@ -758,13 +756,12 @@ void ip_vs_conn_expire_now(struct ip_vs_
   *	Create a new connection entry and hash it into the ip_vs_conn_tab
   */
  struct ip_vs_conn *
@@ -544,7 +556,7 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
  
  	cp = kmem_cache_zalloc(ip_vs_conn_cachep, GFP_ATOMIC);
  	if (cp == NULL) {
-@@ -774,14 +773,14 @@ ip_vs_conn_new(int af, int proto, const
+@@ -774,14 +771,14 @@ ip_vs_conn_new(int af, int proto, const
  
  	INIT_LIST_HEAD(&cp->c_list);
  	setup_timer(&cp->timer, ip_vs_conn_expire, (unsigned long)cp);
@@ -566,7 +578,7 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
  			&cp->daddr, daddr);
  	cp->dport          = dport;
  	cp->flags	   = flags;
-@@ -810,7 +809,7 @@ ip_vs_conn_new(int af, int proto, const
+@@ -810,7 +807,7 @@ ip_vs_conn_new(int af, int proto, const
  
  	/* Bind its packet transmitter */
  #ifdef CONFIG_IP_VS_IPV6
@@ -577,8 +589,8 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
  #endif
 Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c
 ===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2010-10-01 22:06:23.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c	2010-10-01 22:10:46.000000000 +0900
+--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_core.c	2010-10-02 09:35:51.000000000 +0900
++++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c	2010-10-02 10:14:05.000000000 +0900
 @@ -193,14 +193,11 @@ ip_vs_sched_persist(struct ip_vs_service
  	struct ip_vs_iphdr iph;
  	struct ip_vs_dest *dest;
@@ -587,11 +599,11 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c
  	__be16 dport = 0;		/* destination port to forward */
 -	__be16 vport = 0;		/* virtual service port */
  	unsigned int flags;
++	struct ip_vs_conn_param param;
  	union nf_inet_addr snet;	/* source network of the client,
  					   after masking */
 -	const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
 -	const union nf_inet_addr *vaddr = &iph.daddr;
-+	struct ip_vs_conn_param param;
  
  	ip_vs_fill_iphdr(svc->af, skb_network_header(skb), &iph);
  
@@ -632,7 +644,7 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c
  				    IP_VS_CONN_F_TEMPLATE, dest);
  		if (ct == NULL)
  			return NULL;
-@@ -291,12 +293,7 @@ ip_vs_sched_persist(struct ip_vs_service
+@@ -291,12 +293,9 @@ ip_vs_sched_persist(struct ip_vs_service
  	/*
  	 *    Create a new connection according to the template
  	 */
@@ -642,11 +654,13 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c
 -			    &dest->addr, dport,
 -			    flags,
 -			    dest);
++	ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr, ports[0],
++			      &iph.daddr, ports[1], &param);
 +	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest);
  	if (cp == NULL) {
  		ip_vs_conn_put(ct);
  		return NULL;
-@@ -363,14 +360,16 @@ ip_vs_schedule(struct ip_vs_service *svc
+@@ -363,14 +362,16 @@ ip_vs_schedule(struct ip_vs_service *svc
  	/*
  	 *    Create a connection entry.
  	 */
@@ -671,7 +685,7 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c
  
  	IP_VS_DBG_BUF(6, "Schedule fwd:%c c:%s:%u v:%s:%u "
  		      "d:%s:%u conn->flags:%X conn->refcnt:%d\n",
-@@ -426,14 +425,17 @@ int ip_vs_leave(struct ip_vs_service *sv
+@@ -426,14 +427,17 @@ int ip_vs_leave(struct ip_vs_service *sv
  
  		/* create a new connection entry */
  		IP_VS_DBG(6, "%s(): create a cache_bypass entry\n", __func__);
@@ -699,8 +713,8 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_core.c
  		ip_vs_in_stats(cp, skb);
 Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_ftp.c
 ===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_ftp.c	2010-10-01 22:14:10.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_ftp.c	2010-10-01 22:21:09.000000000 +0900
+--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_ftp.c	2010-10-02 09:35:34.000000000 +0900
++++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_ftp.c	2010-10-02 09:35:53.000000000 +0900
 @@ -195,13 +195,17 @@ static int ip_vs_ftp_out(struct ip_vs_ap
  		/*
  		 * Now update or create an connection entry for it
@@ -763,8 +777,8 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_ftp.c
  	/*
 Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_nfct.c
 ===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_nfct.c	2010-10-01 22:11:53.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_nfct.c	2010-10-01 22:24:29.000000000 +0900
+--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_nfct.c	2010-10-02 09:35:34.000000000 +0900
++++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_nfct.c	2010-10-02 09:35:53.000000000 +0900
 @@ -140,6 +140,7 @@ static void ip_vs_nfct_expect_callback(s
  {
  	struct nf_conntrack_tuple *orig, new_reply;
@@ -800,8 +814,8 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_nfct.c
  		new_reply = ct->tuplehash[IP_CT_DIR_REPLY].tuple;
 Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
 ===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_proto_ah_esp.c	2010-10-01 21:55:19.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_proto_ah_esp.c	2010-10-01 22:23:33.000000000 +0900
+--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_proto_ah_esp.c	2010-10-02 09:35:34.000000000 +0900
++++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_proto_ah_esp.c	2010-10-02 10:09:54.000000000 +0900
 @@ -40,6 +40,19 @@ struct isakmp_hdr {
  
  #define PORT_ISAKMP	500
@@ -815,9 +829,9 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
 +				      &iph->saddr, htons(PORT_ISAKMP),
 +				      &iph->daddr, htons(PORT_ISAKMP), p);
 +	else
-+		ip_vs_conn_fill_param(af, iph->protocol,
-+				      &iph->saddr, htons(PORT_ISAKMP),
-+				      &iph->daddr, htons(PORT_ISAKMP), p);
++		ip_vs_conn_fill_param(af, IPPROTO_UDP,
++				      &iph->daddr, htons(PORT_ISAKMP),
++				      &iph->saddr, htons(PORT_ISAKMP), p);
 +}
  
  static struct ip_vs_conn *
@@ -874,8 +888,8 @@ Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
  			      "%s%s %s->%s\n",
 Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_sync.c
 ===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_sync.c	2010-10-01 21:55:19.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_sync.c	2010-10-01 22:23:33.000000000 +0900
+--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_sync.c	2010-10-02 09:35:35.000000000 +0900
++++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_sync.c	2010-10-02 10:14:05.000000000 +0900
 @@ -301,6 +301,7 @@ static void ip_vs_process_message(const
  	struct ip_vs_conn *cp;
  	struct ip_vs_protocol *pp;
