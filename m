@@ -1,96 +1,101 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch v3 00/12] IPVS: SIP Persistence Engine
-Date: Mon, 4 Oct 2010 17:20:10 +0900
-Message-ID: <20101004082010.GD10230@verge.net.au>
-References: <20101002023056.536217499@akiko.akashicho.tokyo.vergenet.net>
- <alpine.LFD.2.00.1010021155520.2055@ja.ssi.bg>
- <20101003050725.GA5817@verge.net.au>
- <alpine.LFD.2.00.1010032356550.2597@ja.ssi.bg>
- <20101004080704.GA10230@verge.net.au>
-Mime-Version: 1.0
+Subject: [patch v4 00/12] IPVS: SIP Persistence Engine
+Date: Mon, 04 Oct 2010 18:03:52 +0900
+Message-ID: <20101004090352.966809749@akiko.akashicho.tokyo.vergenet.net>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20101004080704.GA10230@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
 
-On Mon, Oct 04, 2010 at 05:07:04PM +0900, Simon Horman wrote:
-> On Mon, Oct 04, 2010 at 12:08:32AM +0300, Julian Anastasov wrote:
-> > 
-> > 	Hello,
-> > 
-> > On Sun, 3 Oct 2010, Simon Horman wrote:
-> > 
-> > >>>REVISIONS
-> > >>>
-> > >>>This is v3 of the patch series with addresses serveral problems
-> > >>>raised by Julian Anastasov on the lvs-devel mailing list.
-> > >>
-> > >>	No other obvious problems in v3 1-12. So,
-> > >>Acked-by: Julian Anastasov <ja@ssi.bg>
-> > >
-> > >Thanks.
-> > >
-> > >
-> > >>	May be next days I'll test my changes on top of PE v3
-> > >
-> > >I think that could save a bit of porting work later
-> > >and perhaps you might notice some more bugs too :-)
-> > 
-> > 	Appending fixes from my tests:
-> > 
-> > - initialize compat structures to avoid crash in
-> > ip_vs_add_service for pe_name
-> > 
-> > - fix ip_vs_conn_out_get_proto to properly check the
-> > ip_vs_conn_fill_param_proto result
-> > 
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > ---
-> > 
-> > diff -urp net-next-2.6-e548833-test_pe3/linux/net/netfilter/ipvs/ip_vs_conn.c linux/net/netfilter/ipvs/ip_vs_conn.c
-> > --- net-next-2.6-e548833-test_pe3/linux/net/netfilter/ipvs/ip_vs_conn.c	2010-10-03 23:08:47.928356111 +0300
-> > +++ linux/net/netfilter/ipvs/ip_vs_conn.c	2010-10-03 23:32:47.309353117 +0300
-> > @@ -439,7 +439,7 @@ ip_vs_conn_out_get_proto(int af, const s
-> >  {
-> >  	struct ip_vs_conn_param p;
-> > 
-> > -	if (!ip_vs_conn_fill_param_proto(af, skb, iph, proto_off, inverse, &p))
-> > +	if (ip_vs_conn_fill_param_proto(af, skb, iph, proto_off, inverse, &p))
-> >  		return NULL;
-> > 
-> >  	return ip_vs_conn_out_get(&p);
-> 
-> Thanks, I'll roll that into "IPVS: Add struct ip_vs_conn_param" and repost.
-> 
-> > diff -urp net-next-2.6-e548833-test_pe3/linux/net/netfilter/ipvs/ip_vs_ctl.c linux/net/netfilter/ipvs/ip_vs_ctl.c
-> > --- net-next-2.6-e548833-test_pe3/linux/net/netfilter/ipvs/ip_vs_ctl.c	2010-10-03 22:33:53.881353731 +0300
-> > +++ linux/net/netfilter/ipvs/ip_vs_ctl.c	2010-10-03 22:49:48.279355927 +0300
-> > @@ -2057,6 +2057,7 @@ static const unsigned char set_arglen[SE
-> >  static void ip_vs_copy_usvc_compat(struct ip_vs_service_user_kern *usvc,
-> >  				  struct ip_vs_service_user *usvc_compat)
-> >  {
-> > +	memset(usvc, 0, sizeof(*usvc));
-> >  	usvc->af		= AF_INET;
-> >  	usvc->protocol		= usvc_compat->protocol;
-> >  	usvc->addr.ip		= usvc_compat->addr;
-> > @@ -2074,6 +2075,7 @@ static void ip_vs_copy_usvc_compat(struc
-> >  static void ip_vs_copy_udest_compat(struct ip_vs_dest_user_kern *udest,
-> >  				   struct ip_vs_dest_user *udest_compat)
-> >  {
-> > +	memset(udest, 0, sizeof(*udest));
-> >  	udest->addr.ip		= udest_compat->addr;
-> >  	udest->port		= udest_compat->port;
-> >  	udest->conn_flags	= udest_compat->conn_flags;
-> > 
-> 
-> Thanks, I'll add this as a new patch the persistence engine series,
-> though unless I'm mistaken its resolves existing concerns not new ones.
+This patch series adds load-balancing of UDP SIP based on Call-ID to
+IPVS as well as a frame-work for extending IPVS to handle alternate
+persistence requirements.
 
-Sorry, I see the problem that I introduced.
-I've rolled this into "IPVS: Allow configuration of persistence engines".
+REVISIONS
+
+This is v4 of the patch series which addresses the following concerns
+raised by Julian Anastasov:
+ - initialize compat structures to avoid crash in
+   ip_vs_add_service for pe_name
+ - fix ip_vs_conn_out_get_proto to properly check the
+   ip_vs_conn_fill_param_proto result
+
+These changes and changes from previous revisions of this patch series
+are noted on a per-patch basis.
+
+I have taken the liberty of including Acked-by: Julian Anastasov <ja@ssi.bg>
+although the ack was provided before the two problems above were discovered.
+
+OVERVIEW
+
+The approach that I have taken is what I call persistence engines.
+The basic idea being that you can provide a module to LVS that alters
+the way that it handles connection templates, which are at the core
+of persistence. In particular, an additional key can be added, and
+any of the normal IP address, port and protocol information can either
+be used or ignored.
+
+In the case of the SIP persistence engine, the only persistence engine, all
+the keys used by the default persistence behaviour are used and the callid
+is added as an extra key. I originally intended to ignore the cip, but this
+can optionally be done by setting the persistence mask (-M) to 0.0.0.0
+while allowing the flexibility of other mask values.
+
+It is envisaged that the SIP persistence engine will be used in conjunction
+with one-packet scheduling. I'm interested to hear if that doesn't fit your
+needs.
+
+
+CONFIGURATION
+
+A persistence engine is associated with a virtual service
+(as are schedulers). I have added the --pe option to the
+ivpsadm -A and -E commands to allow the persistence engine
+of a virtual service to be added, changed, or deleted.
+
+e.g. ipvsadm -A -u 10.4.3.192:5060 -p 60 -M 0.0.0.0 -o --pe sip
+
+There are no other configuration parameters at this time.
+
+
+RUNNING
+
+When a connection template is created, if its virtual service
+has a persistence engine, then the persistence engine can add
+an extra key to the connection template. For the SIP module this
+is the callid. More generically, it is known as "pe data". And
+both the name of the persistence engine, "pe name", and "pe data"
+can be viewed in /proc/net/ip_vs_conn and by passing the
+--persistent-conn option to ipvsadm -Lc.
+
+e.g.
+# ipvsadm -Lcn --persistent-conn
+UDP 00:38  UDP         10.4.3.0:0         10.4.3.192:5060    127.0.0.1:5060 sip 193373839
+
+Here we see a single persistence template (cport is 0), which has been
+handled by the sip persistence engine. The pe data (callid) is 193373839.
+
+In the case where the persistence engine can't match a packet for some
+reason, the connection will fall back to the normal persistence handling.
+This seems reasonable, as that if the packet ought to be dropped, iptables
+could be used.
+
+A limited amount of debugging information has been added which
+can be enabled using a value of 9 or greater in
+/proc/sys/net/ipv4/vs/debug_level
+
+CODE AVAILABILITY
+
+The kernel patches (12) are available in git as the pe-3 branch of
+git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git
+
+The ipvsadm patches (2) are available in git as the pe-3 branch of
+git://github.com/horms/ipvsadm-test.git
+
+There is no change to the ipvsadm patches since the v2 series
+so I will not repost them.
 
