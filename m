@@ -1,27 +1,78 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [patch v2] ipvs: IPv6 tunnel mode
-Date: Mon, 04 Oct 2010 21:06:44 +0200
-Message-ID: <4CAA25C4.1040301@trash.net>
-References: <20100927135913.GA21785@verge.net.au> <20100930012239.GA18392@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [patch v2 03/12] [PATCH 03/12] IPVS: compact
+ ip_vs_sched_persist()
+Date: Tue, 5 Oct 2010 01:36:53 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1010050010080.1856@ja.ssi.bg>
+References: <20101001143517.645421976@akiko.akashicho.tokyo.vergenet.net> <20101001143941.949669349@akiko.akashicho.tokyo.vergenet.net> <alpine.LFD.2.00.1010020129400.2462@ja.ssi.bg> <20101002022050.GA16593@verge.net.au> <alpine.LFD.2.00.1010021048260.1814@ja.ssi.bg>
+ <20101002080850.GC2248@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <20100930012239.GA18392@verge.net.au>
+In-Reply-To: <20101002080850.GC2248@verge.net.au>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Hans Schillstrom <hans.schillstrom@ericsson.com>, Julian Anastasov <ja@ssi.bg>, Julius Volz <juliusv@google.com>, Wensong Zhang <wensong@linux-vs.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Patrick McHardy <kaber@trash.net>
 
-Am 30.09.2010 03:22, schrieb Simon Horman:
-> On Mon, Sep 27, 2010 at 10:59:14PM +0900, Simon Horman wrote:
->> From: Julian Anastasov <ja@ssi.bg>
->>
->> Tunnel mode for IPv6 doesn't work.
-> 
-> Patrick, can you please drop this patch for now.
-> Hans has found some problems with it.
-> 
-> http://archive.linuxvirtualserver.org/html/lvs-devel/2010-09/msg00073.html
 
-Sure, just resend once you consider it ready for inclusion.
+ 	Hello,
+
+On Sat, 2 Oct 2010, Simon Horman wrote:
+
+>> 	I'm still wondering, may be it needs separate patch
+>> but we do not support NAT to different dest->port in the
+>> case for fwmark. May be the above logic can be changed to
+>> support it. By this way web to different VIPs and VPORTs
+>> in a single virtual service (fwmark) can use single NAT
+>> real server for name-based virtual hosting. But such change
+>> can create compatibility problems for setups that used
+>> different vports for the fwmark service and still expect
+>> it in that way (vport to same dport).
+>
+> Hi Julian,
+>
+> I think that this sounds line a new flavour of fwmark virtual services to me.
+> Perhaps yet another flag is in order?
+>
+> To be clear, what you have in mind is essentially to nat *:* (as matched by
+> a fwmark) to x:y, where as at this time *:y may be natted to x:y.
+
+ 	Yes, the difference is here, persistent services with fwmark 
+ignore dest->port while non-persistent services with fwmark prefer
+dest->port:
+
+ip_vs_sched_persist:
+         dport = ports[1];
+         if (dport == svc->port && dest->port)
+                 dport = dest->port;
+ 	- before the PE changes even dest->port=0 was selected
+ 	for non-fwmark
+
+ip_vs_schedule:
+ 	dport set as: dest->port ? dest->port : pptr[1]
+
+ 	It is inconsistent. If we add new option for dest
+it should have 3 states:
+
+0: default (current, compatible)
+1: prefer real server port
+2: keep dport in packet
+
+ 	But the same can be done with rport or that was the
+goal before:
+
+- rport=0 (zero port) - keep dport from packet
+- rport>0 - use this real server port
+
+ 	It works perfectly for ip_vs_schedule but not for
+ip_vs_sched_persist, rport>0 is ignored for persistent
+fwmark and this is wrong for NAT. Persistence should just
+select dest but now it changes the rport semantic. The
+right thing is ip_vs_sched_persist to work as ip_vs_schedule
+but it can break some setups with persistence and fwmark.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
