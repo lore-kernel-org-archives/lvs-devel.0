@@ -1,36 +1,23 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [patch v4 01/12] netfilter: nf_conntrack_sip: Allow ct_sip_get_header() to be called with a null ct argument
-Date: Mon, 04 Oct 2010 18:03:53 +0900
-Message-ID: <20101004090818.086505036@akiko.akashicho.tokyo.vergenet.net>
-References: <20101004090352.966809749@akiko.akashicho.tokyo.vergenet.net>
-Return-path: <netfilter-owner@vger.kernel.org>
-Content-Disposition: inline; filename=0001-netfilter-nf_conntrack_sip-Allow-ct_sip_get_header-t.patch
-Sender: netfilter-owner@vger.kernel.org
+Subject: Re: [PATCH RFC] ipvs: local routes, DNAT and other fixes
+Date: Mon, 4 Oct 2010 18:11:24 +0900
+Message-ID: <20101004091124.GB18749@verge.net.au>
+References: <alpine.LFD.2.00.1010040142580.2597@ja.ssi.bg>
+Mime-Version: 1.0
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1010040142580.2597@ja.ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org
 
-Signed-off-by: Simon Horman <horms@verge.net.au>
-Acked-by: Julian Anastasov <ja@ssi.bg>
+On Mon, Oct 04, 2010 at 01:57:50AM +0300, Julian Anastasov wrote:
+> 
+> 	This is a test patch with many changes that should be
+> separated later.
 
-diff --git a/net/netfilter/nf_conntrack_sip.c b/net/netfilter/nf_conntrack_sip.c
-index 53d8922..2fd1ea2 100644
---- a/net/netfilter/nf_conntrack_sip.c
-+++ b/net/netfilter/nf_conntrack_sip.c
-@@ -152,6 +152,9 @@ static int parse_addr(const struct nf_conn *ct, const char *cp,
- 	const char *end;
- 	int ret = 0;
- 
-+	if (!ct)
-+		return 0;
-+
- 	memset(addr, 0, sizeof(*addr));
- 	switch (nf_ct_l3num(ct)) {
- 	case AF_INET:
--- 
-1.7.1
-
-
+Is there any chance you could split it up earlier than later?
+Its rather a lot digest in one go.
