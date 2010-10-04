@@ -1,46 +1,103 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch v4 10/12] IPVS: Allow configuration of persistence
- engines
-Date: Mon, 4 Oct 2010 22:41:54 +0900
-Message-ID: <20101004134154.GA5469@verge.net.au>
-References: <20101004090352.966809749@akiko.akashicho.tokyo.vergenet.net>
- <20101004090818.882956490@akiko.akashicho.tokyo.vergenet.net>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20101004090818.882956490@akiko.akashicho.tokyo.vergenet.net>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [patch v5 00/12] IPVS: SIP Persistence Engine
+Date: Mon, 04 Oct 2010 22:46:24 +0900
+Message-ID: <20101004134624.963907470@akiko.akashicho.tokyo.vergenet.net>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
 
-On Mon, Oct 04, 2010 at 06:04:02PM +0900, Simon Horman wrote:
-> Allow the persistence engine of a virtual service to be set, edited
-> and unset.
-> 
-> This feature only works with the netlink user-space interface.
-> 
-> Signed-off-by: Simon Horman <horms@verge.net.au>
-> Acked-by: Julian Anastasov <ja@ssi.bg>
-> 
-> ---
-> 
-> v2
-> * Dereference persistence engine when a service is deleted.
->   This allows persistence modules to be removed from the kernel
->   once they are no longer used.
-> * Update for the recent "ipvs: changes related to service usecnt" change
-> * Trivial rediff
-> 
-> v4
-> * As suggested by  Julian Anastasov <ja@ssi.bg>
->   - Initialise ip_vs_service_user_kern to zero in ip_vs_copy_usvc_compat()
->     to avoid a crash caused by the pe_name element being uninitialised.
+This patch series adds load-balancing of UDP SIP based on Call-ID to
+IPVS as well as a frame-work for extending IPVS to handle alternate
+persistence requirements.
 
-*Red Face*
+REVISIONS
 
-I forgot to test this change and I had made a typo.
-I will repost.
+This is v5 of the patch series which fixes a typo introduced in v4.
+
+v4 of the patch series which addressed the following concerns
+raised by Julian Anastasov:
+ - initialize compat structures to avoid crash in
+   ip_vs_add_service for pe_name
+ - fix ip_vs_conn_out_get_proto to properly check the
+   ip_vs_conn_fill_param_proto result
+
+These changes and changes from previous revisions of this patch series
+are noted on a per-patch basis.
+
+I have taken the liberty of including Acked-by: Julian Anastasov <ja@ssi.bg>
+although the ack was provided before the v4 and v5 above were discovered.
+
+OVERVIEW
+
+The approach that I have taken is what I call persistence engines.
+The basic idea being that you can provide a module to LVS that alters
+the way that it handles connection templates, which are at the core
+of persistence. In particular, an additional key can be added, and
+any of the normal IP address, port and protocol information can either
+be used or ignored.
+
+In the case of the SIP persistence engine, the only persistence engine, all
+the keys used by the default persistence behaviour are used and the callid
+is added as an extra key. I originally intended to ignore the cip, but this
+can optionally be done by setting the persistence mask (-M) to 0.0.0.0
+while allowing the flexibility of other mask values.
+
+It is envisaged that the SIP persistence engine will be used in conjunction
+with one-packet scheduling. I'm interested to hear if that doesn't fit your
+needs.
+
+
+CONFIGURATION
+
+A persistence engine is associated with a virtual service
+(as are schedulers). I have added the --pe option to the
+ivpsadm -A and -E commands to allow the persistence engine
+of a virtual service to be added, changed, or deleted.
+
+e.g. ipvsadm -A -u 10.4.3.192:5060 -p 60 -M 0.0.0.0 -o --pe sip
+
+There are no other configuration parameters at this time.
+
+
+RUNNING
+
+When a connection template is created, if its virtual service
+has a persistence engine, then the persistence engine can add
+an extra key to the connection template. For the SIP module this
+is the callid. More generically, it is known as "pe data". And
+both the name of the persistence engine, "pe name", and "pe data"
+can be viewed in /proc/net/ip_vs_conn and by passing the
+--persistent-conn option to ipvsadm -Lc.
+
+e.g.
+# ipvsadm -Lcn --persistent-conn
+UDP 00:38  UDP         10.4.3.0:0         10.4.3.192:5060    127.0.0.1:5060 sip 193373839
+
+Here we see a single persistence template (cport is 0), which has been
+handled by the sip persistence engine. The pe data (callid) is 193373839.
+
+In the case where the persistence engine can't match a packet for some
+reason, the connection will fall back to the normal persistence handling.
+This seems reasonable, as that if the packet ought to be dropped, iptables
+could be used.
+
+A limited amount of debugging information has been added which
+can be enabled using a value of 9 or greater in
+/proc/sys/net/ipv4/vs/debug_level
+
+CODE AVAILABILITY
+
+The kernel patches (12) are available in git as the pe-5 branch of
+git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git
+
+The ipvsadm patches (2) are available in git as the pe-5 branch of
+git://github.com/horms/ipvsadm-test.git
+
+There is no change to the ipvsadm patches since the v2 series
+so I will not repost them.
 
