@@ -1,257 +1,166 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [patch v4 12/12] IPVS: sip persistence engine
-Date: Mon, 04 Oct 2010 18:04:04 +0900
-Message-ID: <20101004090819.063364329@akiko.akashicho.tokyo.vergenet.net>
-References: <20101004090352.966809749@akiko.akashicho.tokyo.vergenet.net>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline; filename=0012-IPVS-sip-persistence-engine.patch
-Sender: netfilter-devel-owner@vger.kernel.org
+Subject: Re: Forwarding method in backup server
+Date: Mon, 4 Oct 2010 18:44:18 +0900
+Message-ID: <20101004094417.GC18749@verge.net.au>
+References: <alpine.LFD.2.00.1009282343130.2049@ja.ssi.bg>
+ <20101002083026.GD2248@verge.net.au>
+ <1286174099.5670.171.camel@seasc0214>
+Mime-Version: 1.0
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1286174099.5670.171.camel@seasc0214>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: Julian Anastasov <ja@ssi.bg>, Wensong Zhang <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
 
-Add the SIP callid as a key for persistence.
+On Mon, Oct 04, 2010 at 08:34:59AM +0200, Hans Schillstrom wrote:
+> Hi 
+> 
+> On Sat, 2010-10-02 at 10:30 +0200, Simon Horman wrote:
+> > On Wed, Sep 29, 2010 at 01:01:37AM +0300, Julian Anastasov wrote:
+> > 
+> > Hi Julian, Hi all,
+> > 
+> > > 
+> > > 	Hello,
+> > > 
+> > > 	From the recent discussion about loaded backup server
+> > > it looks like we do not properly assign forwarding method
+> > > to connections in backup server. If backup is used in master
+> > > as real server, eg. DR, then backup should use LOCALNODE
+> > > for its IP. May be ip_vs_find_dest should allow real server
+> > > with port 0 to be used as default server? And if real server
+> > > is found its forwarding method should be used for the
+> > > connection? So, backup should have the same IP and Port but
+> > > it can choose to use different forwarding method? For example,
+> > > master uses DR but backup TUN for the same real server.
+> > > 
+> > > 	Because now when server is added its method can
+> > > be converted to LOCALNODE but when such connections
+> > > are created in backup server we should use DR or NAT
+> > > or whatever the method is configured there. The same is
+> > > when backup is added as DR server in master but the
+> > > connections should be LOCALNODE when created in backup.
+> > > 
+> > > 	If we still allow DR/NAT/TUN connections in backup
+> > > to work without real server then all such xmitters should
+> > > check RTCF_LOCAL and assume LOCALNODE if needed. This is
+> > > needed for the case when we do not know the fwmark used
+> > > by connection and we can not find the virtual service.
+> > > 
+> > > 	Then __ip_vs_update_dest should not replace the
+> > > configured forwarding method with IP_VS_CONN_F_LOCALNODE
+> > > to allow backup to see this method in fwmark connections.
+> > > If needed, we can remember that it is local in some
+> > > new dest flag, eg. IP_VS_DEST_F_LOCAL. But better to
+> > > show it as it was configured?
+> > > 
+> > > 	So, how to fix these problems? May be:
+> > > 
+> > > - ip_vs_find_dest to find svc and dest in more complex way
+> > > 
+> > > - if backup has dest it should assign its forwarding method
+> > > to the connection (ip_vs_bind_dest)
+> > > 
+> > > - allow some transmitters to deliver traffic locally to support
+> > > fwmark setups, eg. when no dest is assigned to connection
+> > 
+> > This seems rather tricky to say the least.
+> > I prefer the 2nd version of struct ip_vs_sync_conn option...
+> > 
+> > > 	There is also an option to create 2nd version
+> > > of struct ip_vs_sync_conn. For example, size in
+> > > struct ip_vs_sync_mesg can be moved after new field
+> > > version which will be in place of size. Old backups will
+> > > think the small version number as some short size and will
+> > > ignore the message. New backup servers can support both
+> > > formats. The new format can add new fields for fwmark,
+> > > IPv6 addresses, 1 byte af (AF_INET/AF_INET6), 1 byte len
+> > > for easy skipping of messages if af or protocol are not
+> > > supported.
+> 
+> >From my narrow view of the LVS:
+> If you use Network name spaces there is no need of LOCAL NODE since the
+> entire LVS could be placed in it's own netns....
+> (I know people will use what they always have been using.)
 
-This allows multiple connections from the same IP address to be
-differentiated on the basis of the callid.
+I'm not quite sure what you are getting at there.
 
-When used in conjunction with the persistence mask, it allows connections
-from different  IP addresses to be aggregated on the basis of the callid.
+LOCAL NODE is basically an optimisation in the transmit path for
+the case where the real-server is the local host. But I think
+that most of the problem with it relates to it being determined
+at the time that a real-server is added.
 
-It is envisaged that a persistence mask of 0.0.0.0 will be a useful
-setting.  That is, ignore the source IP address when checking for
-persistence.
+I'm unclear about how name spaces can help here,
+but I'm certainly very happy to learn.
 
-It is envisaged that this option will be used in conjunction with
-one-packet scheduling.
+> > It funny that you should mention that. I need to extend the synchronisation
+> > protocol to allow the synchronisation of persistence engine data. And I
+> > came up with more or less the same scheme for extending the protocol
+> > without breaking old implementations - set the current size field to 0 (or
+> > any other value that doesn't match the packet length), add a new size field
+> > and a version field.
+> 
+> Why not change port ?
 
-This only works with UDP and cannot be made to work with TCP
-within the current framework.
+I considered that too. But I think changing the protocol is easy enough.
+And in any case new kernels will need to understand both the new and
+old ways of doing things.
 
-Signed-off-by: Simon Horman <horms@verge.net.au>
-Acked-by: Julian Anastasov <ja@ssi.bg>
+> > Lets spend a bit of time thinking out a v2 of the protocol that solves the
+> > outstanding problems that we have.
+> > 
+> > * No version field
+> > * Only 16 bits of flags
+> > * No space for IPv6 addresses
+> > * No space fwmarks
+> > (* No space for persistence engine data)
+> > 
+> 
+> I have stared to implement IPv6 backup using IPv6 multicast
+> My Idea was to keep the IPv4 and IPv6 separated, i.e. send IPv4 over its
+> own socket and IPv6 over another just to keep IPv4 untouched.
+> If there is a need for changes I vote for - "keep them together".
+> 
+> I think a version 2 would be nice, where IPv6 is a part.
+> 
+> Needed new fields
+> * Version must be there
+> * next field  (offset to next filed, IPv4, fwmark, IPv6)
+> * flags/type field
+> 
+> 
+> Divide the messages into required no of fields ex.
+> IPv4
+> fwmark 
+> IPv6
 
----
+Perhaps we just need an addrlen field somewhere.
+Or if we wanted to save space, an addr type field.
 
-v1
-* Use buf[] instead of poiter arithmetic in ip_vs_dbg_callid()
-  As suggested by Jan Engelhardt
+If you have some firm ideas perhaps you could send
+them here, perhaps in the form of a C structure or a diagram?
 
-v2
-* Use GFP_ATOMIC for allocations inside of ip_vs_sip_fill_param()
-  which is called in an atomic context. This resolves the
-  "scheduling while atomic" problem.
-* As noted by Julian Anastasov RFC 3261 section 8.1.1.4 says
-  "Call-IDs are case-sensitive and are simply compared byte-by-byte",
-  so may be memcmp should be used instead of strnicmp() in
-  ip_vs_sip_ct_match().
-* Spelling fix in comment: persistance -> persistence
-* Trivial rediff
+> > Individually those problems don't seem to warrant a new protocol.
+> > But when combined it seems worthwhile to me.
+> > 
+> > > 	Simon, may be now ip_vs_nat_xmit should see
+> > > RTCF_LOCAL flag and we should check all NAT handlers
+> > > to support the LOCALNODE fallback where the port can
+> > > be changed too.
+> > 
+> > I'm not quite sure what you are describing there.
+> > 
+> > Is the idea that if the forwarding mechanism is NAT
+> > then packets will always go via ip_vs_nat_xmit, even if
+> > the IP is local (at config time). And that ip_vs_nat_xmit()
+> > will use local xmit if RTCF_LOCAL is set?
+> 
+> IPv6 also have a number of other issues not related to the backup
+> protocol like  Usage of IPv6 or IPv4 multicast address etc. 
 
-v3
-* Trivial whitespace fixes
-* Update for addition of inverse parameter to ip_vs_conn_hashkey_param()
-
-Index: lvs-test-2.6/net/netfilter/ipvs/Kconfig
-===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/Kconfig	2010-10-02 10:49:37.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/Kconfig	2010-10-02 10:50:16.000000000 +0900
-@@ -256,4 +256,11 @@ config	IP_VS_NFCT
- 	  connection state to be exported to the Netfilter framework
- 	  for filtering purposes.
- 
-+config	IP_VS_PE_SIP
-+	tristate "SIP persistence engine"
-+        depends on IP_VS_PROTO_UDP
-+	depends on NF_CONNTRACK_SIP
-+	---help---
-+	  Allow persistence based on the SIP Call-ID
-+
- endif # IP_VS
-Index: lvs-test-2.6/net/netfilter/ipvs/Makefile
-===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/Makefile	2010-10-02 10:50:16.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/Makefile	2010-10-02 10:50:16.000000000 +0900
-@@ -35,3 +35,6 @@ obj-$(CONFIG_IP_VS_NQ) += ip_vs_nq.o
- 
- # IPVS application helpers
- obj-$(CONFIG_IP_VS_FTP) += ip_vs_ftp.o
-+
-+# IPVS connection template retrievers
-+obj-$(CONFIG_IP_VS_PE_SIP) += ip_vs_pe_sip.o
-Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_pe_sip.c
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_pe_sip.c	2010-10-02 10:52:08.000000000 +0900
-@@ -0,0 +1,167 @@
-+#define KMSG_COMPONENT "IPVS"
-+#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
-+
-+#include <linux/module.h>
-+#include <linux/kernel.h>
-+
-+#include <net/ip_vs.h>
-+#include <net/netfilter/nf_conntrack.h>
-+#include <linux/netfilter/nf_conntrack_sip.h>
-+
-+static const char *ip_vs_dbg_callid(char *buf, size_t buf_len,
-+				    const char *callid, size_t callid_len,
-+				    int *idx)
-+{
-+	size_t len = min(min(callid_len, (size_t)64), buf_len - *idx - 1);
-+	memcpy(buf + *idx, callid, len);
-+	buf[*idx+len] = '\0';
-+	*idx += len + 1;
-+	return buf + *idx - len;
-+}
-+
-+#define IP_VS_DEBUG_CALLID(callid, len)					\
-+	ip_vs_dbg_callid(ip_vs_dbg_buf, sizeof(ip_vs_dbg_buf),		\
-+			 callid, len, &ip_vs_dbg_idx)
-+
-+static int get_callid(const char *dptr, unsigned int dataoff,
-+		      unsigned int datalen,
-+		      unsigned int *matchoff, unsigned int *matchlen)
-+{
-+	/* Find callid */
-+	while (1) {
-+		int ret = ct_sip_get_header(NULL, dptr, dataoff, datalen,
-+					    SIP_HDR_CALL_ID, matchoff,
-+					    matchlen);
-+		if (ret > 0)
-+			break;
-+		if (!ret)
-+			return 0;
-+		dataoff += *matchoff;
-+	}
-+
-+	/* Empty callid is useless */
-+	if (!*matchlen)
-+		return -EINVAL;
-+
-+	/* Too large is useless */
-+	if (*matchlen > IP_VS_PEDATA_MAXLEN)
-+		return -EINVAL;
-+
-+	/* SIP headers are always followed by a line terminator */
-+	if (*matchoff + *matchlen == datalen)
-+		return -EINVAL;
-+
-+	/* RFC 2543 allows lines to be terminated with CR, LF or CRLF,
-+	 * RFC 3261 allows only CRLF, we support both. */
-+	if (*(dptr + *matchoff + *matchlen) != '\r' &&
-+	    *(dptr + *matchoff + *matchlen) != '\n')
-+		return -EINVAL;
-+
-+	IP_VS_DBG_BUF(9, "SIP callid %s (%d bytes)\n",
-+		      IP_VS_DEBUG_CALLID(dptr + *matchoff, *matchlen),
-+		      *matchlen);
-+	return 0;
-+}
-+
-+static int
-+ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
-+{
-+	struct ip_vs_iphdr iph;
-+	unsigned int dataoff, datalen, matchoff, matchlen;
-+	const char *dptr;
-+
-+	ip_vs_fill_iphdr(p->af, skb_network_header(skb), &iph);
-+
-+	/* Only useful with UDP */
-+	if (iph.protocol != IPPROTO_UDP)
-+		return -EINVAL;
-+
-+	/* No Data ? */
-+	dataoff = iph.len + sizeof(struct udphdr);
-+	if (dataoff >= skb->len)
-+		return -EINVAL;
-+
-+	dptr = skb->data + dataoff;
-+	datalen = skb->len - dataoff;
-+
-+	if (get_callid(dptr, dataoff, datalen, &matchoff, &matchlen))
-+		return -EINVAL;
-+
-+	p->pe_data = kmalloc(matchlen, GFP_ATOMIC);
-+	if (!p->pe_data)
-+		return -ENOMEM;
-+
-+	/* N.B: pe_data is only set on success,
-+	 * this allows fallback to the default persistence logic on failure
-+	 */
-+	memcpy(p->pe_data, dptr + matchoff, matchlen);
-+	p->pe_data_len = matchlen;
-+
-+	return 0;
-+}
-+
-+static bool ip_vs_sip_ct_match(const struct ip_vs_conn_param *p,
-+				  struct ip_vs_conn *ct)
-+
-+{
-+	bool ret = 0;
-+
-+	if (ct->af == p->af &&
-+	    ip_vs_addr_equal(p->af, p->caddr, &ct->caddr) &&
-+	    /* protocol should only be IPPROTO_IP if
-+	     * d_addr is a fwmark */
-+	    ip_vs_addr_equal(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
-+			     p->vaddr, &ct->vaddr) &&
-+	    ct->vport == p->vport &&
-+	    ct->flags & IP_VS_CONN_F_TEMPLATE &&
-+	    ct->protocol == p->protocol &&
-+	    ct->pe_data && ct->pe_data_len == p->pe_data_len &&
-+	    !memcmp(ct->pe_data, p->pe_data, p->pe_data_len))
-+		ret = 1;
-+
-+	IP_VS_DBG_BUF(9, "SIP template match %s %s->%s:%d %s\n",
-+		      ip_vs_proto_name(p->protocol),
-+		      IP_VS_DEBUG_CALLID(p->pe_data, p->pe_data_len),
-+		      IP_VS_DBG_ADDR(p->af, p->vaddr), ntohs(p->vport),
-+		      ret ? "hit" : "not hit");
-+
-+	return ret;
-+}
-+
-+static u32 ip_vs_sip_hashkey_raw(const struct ip_vs_conn_param *p,
-+				 u32 initval, bool inverse)
-+{
-+	return jhash(p->pe_data, p->pe_data_len, initval);
-+}
-+
-+static int ip_vs_sip_show_pe_data(const struct ip_vs_conn *cp, char *buf)
-+{
-+	memcpy(buf, cp->pe_data, cp->pe_data_len);
-+	return cp->pe_data_len;
-+}
-+
-+static struct ip_vs_pe ip_vs_sip_pe =
-+{
-+	.name =			"sip",
-+	.refcnt =		ATOMIC_INIT(0),
-+	.module =		THIS_MODULE,
-+	.n_list =		LIST_HEAD_INIT(ip_vs_sip_pe.n_list),
-+	.fill_param =		ip_vs_sip_fill_param,
-+	.ct_match =		ip_vs_sip_ct_match,
-+	.hashkey_raw =		ip_vs_sip_hashkey_raw,
-+	.show_pe_data =		ip_vs_sip_show_pe_data,
-+};
-+
-+static int __init ip_vs_sip_init(void)
-+{
-+	return register_ip_vs_pe(&ip_vs_sip_pe);
-+}
-+
-+static void __exit ip_vs_sip_cleanup(void)
-+{
-+	unregister_ip_vs_pe(&ip_vs_sip_pe);
-+}
-+
-+module_init(ip_vs_sip_init);
-+module_exit(ip_vs_sip_cleanup);
-+MODULE_LICENSE("GPL");
+Could you elaborate?
 
