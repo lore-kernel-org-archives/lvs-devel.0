@@ -1,31 +1,39 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch v5 00/12] IPVS: SIP Persistence Engine
-Date: Tue, 5 Oct 2010 19:00:23 +0900
-Message-ID: <20101005100023.GC18737@verge.net.au>
-References: <20101004134624.963907470@akiko.akashicho.tokyo.vergenet.net>
- <4CAA215C.8040605@trash.net>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [patch v4] ipvs: IPv6 tunnel mode
+Date: Tue, 5 Oct 2010 22:52:36 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1010052249040.1822@ja.ssi.bg>
+References: <C8A6796DE7C66C4ABCBC18106CB6C1CC02D1B4D7@ESESSCMS0356.eemea.ericsson.se>
 Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="-1463811672-1666568781-1286308356=:1822"
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4CAA215C.8040605@trash.net>
+In-Reply-To: <C8A6796DE7C66C4ABCBC18106CB6C1CC02D1B4D7@ESESSCMS0356.eemea.ericsson.se>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Patrick McHardy <kaber@trash.net>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org, Jan Engelhardt <jengelh@medozas.de>, Stephen Hemminger <shemminger@vyatta.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: =?UTF-8?Q?Hans_Schillstr=C3=B6m?= <hans.schillstrom@ericsson.com>
+Cc: "horms@verge.net.au" <horms@verge.net.au>, Julius Volz <juliusv@google.com>, Wensong Zhang <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
 
-On Mon, Oct 04, 2010 at 08:47:56PM +0200, Patrick McHardy wrote:
-> Am 04.10.2010 15:46, schrieb Simon Horman:
-> > CODE AVAILABILITY
-> > 
-> > The kernel patches (12) are available in git as the pe-5 branch of
-> > git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git
-> 
-> Pulled, thanks Simon. I get a warning in ip_vs_pe_sip.c however,
-> please send a fix for this on top.
-> 
-> net/netfilter/ipvs/ip_vs_pe_sip.c:11: warning: 'ip_vs_dbg_callid'
-> defined but not used
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Sorry about that, I will investigate and send a fix.
+---1463811672-1666568781-1286308356=:1822
+Content-Type: TEXT/PLAIN; charset="utf-8"; format="flowed"
+Content-Transfer-Encoding: 8bit
+
+
+ 	Hello,
+
+On Tue, 5 Oct 2010, Hans Schillström wrote:
+
+> Hi
+> a new try with Julians comments included.
+> Dest changed, and a new mail client that doesn't wrap lines.
+
+ 	Yes, lines are not wrapped but all tabs are spaces.
+You can check by sending to your address and trying the
+patch from email.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+---1463811672-1666568781-1286308356=:1822--
