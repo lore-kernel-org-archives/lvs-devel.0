@@ -1,7 +1,7 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [RFC PATCH 6/9] ipvs network name space aware
-Date: Fri, 8 Oct 2010 13:17:06 +0200
-Message-ID: <201010081317.07175.hans.schillstrom@ericsson.com>
+Subject: [RFC PATCH 7/9] ipvs network name space aware
+Date: Fri, 8 Oct 2010 13:17:08 +0200
+Message-ID: <201010081317.09621.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,204 +12,184 @@ List-ID: <lvs-devel.vger.kernel.org>
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, daniel.lezcano@free.fr
 
-This patch just contains ip_vs_est.c
+This patch just contains ip_vs_ftp.c
 
-There is one estimator i.e not one per netns
-When est runs it loops all netns
-  for_each_net(net) { ... }
-
+minor changes.
 
 Signed-off-by:Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index ff28801..e8c185d 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -8,8 +8,13 @@
-  *              as published by the Free Software Foundation; either version
-  *              2 of the License, or (at your option) any later version.
-  *
-- * Changes:
-+ * Changes:     Hans Schillstrom <hans.schillstrom@ericsson.com>
-  *
-+ *              Network name space (netns) aware.
-+ *              Global data moved to netns i.e struct netns_ipvs
-+ *		Affected data: est_list and est_lock.
-+ *		estimation_timer() runs with a common timer, but
-+ *		do update every netns on timeout.
-  */
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 7e9af5b..9d54eb0 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -157,7 +157,8 @@ ip_vs_expect_callback(struct nf_conn *ct,
+ {
+ 	struct nf_conntrack_tuple *orig, new_reply;
+ 	struct ip_vs_conn *cp;
+-
++	struct net *net = nf_ct_net(ct);
++
+ 	if (exp->tuple.src.l3num != PF_INET)
+ 		return;
 
- #define KMSG_COMPONENT "IPVS"
-@@ -45,13 +50,13 @@
-     rate is ~2.15Gbits/s, average pps and cps are scaled by 2^10.
-
-   * A lot code is taken from net/sched/estimator.c
-+
-+  * netns: estimation_timer runs every netns
-  */
-
-
- static void estimation_timer(unsigned long arg);
-
--static LIST_HEAD(est_list);
--static DEFINE_SPINLOCK(est_lock);
- static DEFINE_TIMER(est_timer, estimation_timer, 0, 0);
-
- static void estimation_timer(unsigned long arg)
-@@ -62,50 +67,55 @@ static void estimation_timer(unsigned long arg)
- 	u32 n_inpkts, n_outpkts;
- 	u64 n_inbytes, n_outbytes;
- 	u32 rate;
+@@ -168,10 +169,10 @@ ip_vs_expect_callback(struct nf_conn *ct,
+ 	 * actual values from the newly created original conntrack direction.
+ 	 * The conntrack is confirmed when packet reaches IPVS hooks.
+ 	 */
 -
--	spin_lock(&est_lock);
--	list_for_each_entry(e, &est_list, list) {
--		s = container_of(e, struct ip_vs_stats, est);
--
--		spin_lock(&s->lock);
--		n_conns = s->ustats.conns;
--		n_inpkts = s->ustats.inpkts;
--		n_outpkts = s->ustats.outpkts;
--		n_inbytes = s->ustats.inbytes;
--		n_outbytes = s->ustats.outbytes;
--
--		/* scaled by 2^10, but divided 2 seconds */
--		rate = (n_conns - e->last_conns)<<9;
--		e->last_conns = n_conns;
--		e->cps += ((long)rate - (long)e->cps)>>2;
--		s->ustats.cps = (e->cps+0x1FF)>>10;
--
--		rate = (n_inpkts - e->last_inpkts)<<9;
--		e->last_inpkts = n_inpkts;
--		e->inpps += ((long)rate - (long)e->inpps)>>2;
--		s->ustats.inpps = (e->inpps+0x1FF)>>10;
--
--		rate = (n_outpkts - e->last_outpkts)<<9;
--		e->last_outpkts = n_outpkts;
--		e->outpps += ((long)rate - (long)e->outpps)>>2;
--		s->ustats.outpps = (e->outpps+0x1FF)>>10;
--
--		rate = (n_inbytes - e->last_inbytes)<<4;
--		e->last_inbytes = n_inbytes;
--		e->inbps += ((long)rate - (long)e->inbps)>>2;
--		s->ustats.inbps = (e->inbps+0xF)>>5;
--
--		rate = (n_outbytes - e->last_outbytes)<<4;
--		e->last_outbytes = n_outbytes;
--		e->outbps += ((long)rate - (long)e->outbps)>>2;
--		s->ustats.outbps = (e->outbps+0xF)>>5;
--		spin_unlock(&s->lock);
-+	struct net *net;
-+	struct netns_ipvs *ipvs;
-+
-+	for_each_net(net) {
-+		ipvs = net->ipvs;
-+		spin_lock(&ipvs->est_lock);
-+		list_for_each_entry(e, &ipvs->est_list, list) {
-+			s = container_of(e, struct ip_vs_stats, est);
-+
-+			spin_lock(&s->lock);
-+			n_conns = s->ustats.conns;
-+			n_inpkts = s->ustats.inpkts;
-+			n_outpkts = s->ustats.outpkts;
-+			n_inbytes = s->ustats.inbytes;
-+			n_outbytes = s->ustats.outbytes;
-+
-+			/* scaled by 2^10, but divided 2 seconds */
-+			rate = (n_conns - e->last_conns)<<9;
-+			e->last_conns = n_conns;
-+			e->cps += ((long)rate - (long)e->cps)>>2;
-+			s->ustats.cps = (e->cps+0x1FF)>>10;
-+
-+			rate = (n_inpkts - e->last_inpkts)<<9;
-+			e->last_inpkts = n_inpkts;
-+			e->inpps += ((long)rate - (long)e->inpps)>>2;
-+			s->ustats.inpps = (e->inpps+0x1FF)>>10;
-+
-+			rate = (n_outpkts - e->last_outpkts)<<9;
-+			e->last_outpkts = n_outpkts;
-+			e->outpps += ((long)rate - (long)e->outpps)>>2;
-+			s->ustats.outpps = (e->outpps+0x1FF)>>10;
-+
-+			rate = (n_inbytes - e->last_inbytes)<<4;
-+			e->last_inbytes = n_inbytes;
-+			e->inbps += ((long)rate - (long)e->inbps)>>2;
-+			s->ustats.inbps = (e->inbps+0xF)>>5;
-+
-+			rate = (n_outbytes - e->last_outbytes)<<4;
-+			e->last_outbytes = n_outbytes;
-+			e->outbps += ((long)rate - (long)e->outbps)>>2;
-+			s->ustats.outbps = (e->outbps+0xF)>>5;
-+			spin_unlock(&s->lock);
-+		}
-+		spin_unlock(&ipvs->est_lock);
++	BUG_ON(!net);
+ 	/* RS->CLIENT */
+ 	orig = &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple;
+-	cp = ip_vs_conn_out_get(exp->tuple.src.l3num, orig->dst.protonum,
++	cp = ip_vs_conn_out_get(net, exp->tuple.src.l3num, orig->dst.protonum,
+ 				&orig->src.u3, orig->src.u.tcp.port,
+ 				&orig->dst.u3, orig->dst.u.tcp.port);
+ 	if (cp) {
+@@ -193,7 +194,7 @@ ip_vs_expect_callback(struct nf_conn *ct,
  	}
--	spin_unlock(&est_lock);
- 	mod_timer(&est_timer, jiffies + 2*HZ);
- }
 
--void ip_vs_new_estimator(struct ip_vs_stats *stats)
-+void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats)
+ 	/* CLIENT->VS */
+-	cp = ip_vs_conn_in_get(exp->tuple.src.l3num, orig->dst.protonum,
++	cp = ip_vs_conn_in_get(net, exp->tuple.src.l3num, orig->dst.protonum,
+ 			       &orig->src.u3, orig->src.u.tcp.port,
+ 			       &orig->dst.u3, orig->dst.u.tcp.port);
+ 	if (cp) {
+@@ -290,7 +291,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	int ret = 0;
+ 	enum ip_conntrack_info ctinfo;
+ 	struct nf_conn *ct;
+-
++	struct net *net = dev_net(skb->dev);
++
+ #ifdef CONFIG_IP_VS_IPV6
+ 	/* This application helper doesn't work with IPv6 yet,
+ 	 * so turn this into a no-op for IPv6 packets
+@@ -328,10 +330,10 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		/*
+ 		 * Now update or create an connection entry for it
+ 		 */
+-		n_cp = ip_vs_conn_out_get(AF_INET, iph->protocol, &from, port,
+-					  &cp->caddr, 0);
++		n_cp = ip_vs_conn_out_get(net, AF_INET, iph->protocol,
++				          &from, port, &cp->caddr, 0);
+ 		if (!n_cp) {
+-			n_cp = ip_vs_conn_new(AF_INET, IPPROTO_TCP,
++			n_cp = ip_vs_conn_new(net, AF_INET, IPPROTO_TCP,
+ 					      &cp->caddr, 0,
+ 					      &cp->vaddr, port,
+ 					      &from, port,
+@@ -381,7 +383,7 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		 */
+
+ 		cp->app_data = NULL;
+-		ip_vs_tcp_conn_listen(n_cp);
++		ip_vs_tcp_conn_listen(net, n_cp);
+ 		ip_vs_conn_put(n_cp);
+ 		return ret;
+ 	}
+@@ -410,6 +412,8 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	union nf_inet_addr to;
+ 	__be16 port;
+ 	struct ip_vs_conn *n_cp;
++	struct nf_conn *ct;
++	struct net *net = dev_net(skb->dev);
+
+ #ifdef CONFIG_IP_VS_IPV6
+ 	/* This application helper doesn't work with IPv6 yet,
+@@ -479,11 +483,11 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		  ip_vs_proto_name(iph->protocol),
+ 		  &to.ip, ntohs(port), &cp->vaddr.ip, 0);
+
+-	n_cp = ip_vs_conn_in_get(AF_INET, iph->protocol,
++	n_cp = ip_vs_conn_in_get(net, AF_INET, iph->protocol,
+ 				 &to, port,
+ 				 &cp->vaddr, htons(ntohs(cp->vport)-1));
+ 	if (!n_cp) {
+-		n_cp = ip_vs_conn_new(AF_INET, IPPROTO_TCP,
++		n_cp = ip_vs_conn_new(net, AF_INET, IPPROTO_TCP,
+ 				      &to, port,
+ 				      &cp->vaddr, htons(ntohs(cp->vport)-1),
+ 				      &cp->daddr, htons(ntohs(cp->dport)-1),
+@@ -499,7 +503,7 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	/*
+ 	 *	Move tunnel to listen state
+ 	 */
+-	ip_vs_tcp_conn_listen(n_cp);
++	ip_vs_tcp_conn_listen(net, n_cp);
+ 	ip_vs_conn_put(n_cp);
+
+ 	return 1;
+@@ -520,23 +524,22 @@ static struct ip_vs_app ip_vs_ftp = {
+ 	.pkt_in =	ip_vs_ftp_in,
+ };
+
+-
+ /*
+- *	ip_vs_ftp initialization
++ *	per netns ip_vs_ftp initialization
+  */
+-static int __init ip_vs_ftp_init(void)
++static int __net_init __ip_vs_ftp_init(struct net *net)
  {
- 	struct ip_vs_estimator *est = &stats->est;
+ 	int i, ret;
+ 	struct ip_vs_app *app = &ip_vs_ftp;
+-
+-	ret = register_ip_vs_app(app);
++
++	ret = register_ip_vs_app(net, app);
+ 	if (ret)
+ 		return ret;
 
-@@ -126,18 +136,18 @@ void ip_vs_new_estimator(struct ip_vs_stats *stats)
- 	est->last_outbytes = stats->ustats.outbytes;
- 	est->outbps = stats->ustats.outbps<<5;
+ 	for (i=0; i<IP_VS_APP_MAX_PORTS; i++) {
+ 		if (!ports[i])
+ 			continue;
+-		ret = register_ip_vs_app_inc(app, app->protocol, ports[i]);
++		ret = register_ip_vs_app_inc(net, app, app->protocol, ports[i]);
+ 		if (ret)
+ 			break;
+ 		pr_info("%s: loaded support on port[%d] = %d\n",
+@@ -544,18 +547,39 @@ static int __init ip_vs_ftp_init(void)
+ 	}
 
--	spin_lock_bh(&est_lock);
--	list_add(&est->list, &est_list);
--	spin_unlock_bh(&est_lock);
-+	spin_lock_bh(&net->ipvs->est_lock);
-+	list_add(&est->list, &net->ipvs->est_list);
-+	spin_unlock_bh(&net->ipvs->est_lock);
+ 	if (ret)
+-		unregister_ip_vs_app(app);
++		unregister_ip_vs_app(net, app);
+
+ 	return ret;
  }
-
--void ip_vs_kill_estimator(struct ip_vs_stats *stats)
-+void ip_vs_kill_estimator(struct net *net, struct ip_vs_stats *stats)
- {
- 	struct ip_vs_estimator *est = &stats->est;
-
--	spin_lock_bh(&est_lock);
-+	spin_lock_bh(&net->ipvs->est_lock);
- 	list_del(&est->list);
--	spin_unlock_bh(&est_lock);
-+	spin_unlock_bh(&net->ipvs->est_lock);
- }
-
- void ip_vs_zero_estimator(struct ip_vs_stats *stats)
-@@ -156,14 +166,31 @@ void ip_vs_zero_estimator(struct ip_vs_stats *stats)
- 	est->inbps = 0;
- 	est->outbps = 0;
- }
-+static int __net_init __ip_vs_estimator_init(struct net *net)
++/*
++ * 	netns exit
++ */
++static void __ip_vs_ftp_exit(struct net *net)
 +{
-+	INIT_LIST_HEAD(&net->ipvs->est_list);
-+	spin_lock_init(&net->ipvs->est_lock);
-+	return 0;
++	struct ip_vs_app *app = &ip_vs_ftp;
++
++	unregister_ip_vs_app(net, app);
 +}
 +
-+static struct pernet_operations ip_vs_app_ops = {
-+	.init = __ip_vs_estimator_init,
-+//	.exit = __ip_vs_estimator_cleanup,
++static struct pernet_operations ip_vs_ftp_ops = {
++	.init = __ip_vs_ftp_init,
++	.exit = __ip_vs_ftp_exit,
 +};
-
- int __init ip_vs_estimator_init(void)
- {
-+	int rv;
 +
-+	rv = register_pernet_subsys(&ip_vs_app_ops);
-+	if(rv < 0)
-+		return rv;
- 	mod_timer(&est_timer, jiffies + 2 * HZ);
--	return 0;
++int __init ip_vs_ftp_init(void)
++{
++	int rv;
+
++	rv = register_pernet_subsys(&ip_vs_ftp_ops);
 +	return rv;
++}
+
+ /*
+  *	ip_vs_ftp finish.
+  */
+ static void __exit ip_vs_ftp_exit(void)
+ {
+-	unregister_ip_vs_app(&ip_vs_ftp);
++	unregister_pernet_subsys(&ip_vs_ftp_ops);
  }
 
- void ip_vs_estimator_cleanup(void)
- {
- 	del_timer_sync(&est_timer);
-+	unregister_pernet_subsys(&ip_vs_app_ops);
- }
+
 
 -- 
 Regards
