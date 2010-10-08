@@ -1,7 +1,7 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [RFC PATCH 1/9] ipvs network name space aware
-Date: Fri, 8 Oct 2010 13:16:45 +0200
-Message-ID: <201010081316.46690.hans.schillstrom@ericsson.com>
+Subject: [RFC PATCH 2/9] ipvs network name space aware
+Date: Fri, 8 Oct 2010 13:16:53 +0200
+Message-ID: <201010081316.54676.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -422,3 +422,7 @@ index 0000000..540ac90
 +};
 +
 +#endif /*__NETNS_IP_VS_H_*/
+
+-- 
+Regards
+Hans Schillstrom <hans.schillstrom@ericsson.com>
