@@ -1,7 +1,7 @@
-From: Hans =?utf-8?Q?Schillstr=C3=B6m?= <hans.schillstrom@ericsson.com>
+From: Simon Horman <horms@verge.net.au>
 Subject: [patch v4.1] ipvs: IPv6 tunnel mode
-Date: Fri, 8 Oct 2010 18:02:10 +0900
-Message-ID: <20101008090210.GA9205@verge.net.au>
+Date: Fri, 8 Oct 2010 19:17:30 +0900
+Message-ID: <20101008101728.GA1542@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
@@ -11,6 +11,9 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org
 Cc: Julian Anastasov <ja@ssi.bg>, Julius Volz <juliusv@google.com>, Wensong Zhang <wensong@linux-vs.org>, Hans =?utf-8?Q?Schillstr=C3=B6m?= <hans.schillstrom@ericsson.com>
+
+[ Reposting from me not Hans.
+  Hans, sorry for using your address by mistake ]
 
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
@@ -492,3 +495,8 @@ Index: nf-next-2.6/net/netfilter/ipvs/ip_vs_xmit.c
  	if (!rt)
  		goto tx_error_icmp;
  
+--
+To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
