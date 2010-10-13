@@ -1,34 +1,25 @@
 From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH] nf_nat: restrict ICMP translation for embedded header
-Date: Wed, 13 Oct 2010 21:21:19 +0200
-Message-ID: <4CB606AF.4040207@trash.net>
-References: <alpine.LFD.2.00.1010111103470.3743@ja.ssi.bg>
+Subject: Re: [patch] IPVS: ip_vs_dbg_callid() is only needed for debugging
+Date: Wed, 13 Oct 2010 21:23:22 +0200
+Message-ID: <4CB6072A.4000801@trash.net>
+References: <20101007012325.GA32392@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1010111103470.3743@ja.ssi.bg>
+In-Reply-To: <20101007012325.GA32392@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-Am 11.10.2010 10:23, schrieb Julian Anastasov:
+Am 07.10.2010 03:23, schrieb Simon Horman:
+> ip_vs_dbg_callid() and IP_VS_DEBUG_CALLID() are only needed
+> it CONFIG_IP_VS_DEBUG is defined.
 > 
->     Skip ICMP translation of embedded protocol header
-> if NAT bits are not set. Needed for IPVS to see the original
-> embedded addresses because for IPVS traffic the IPS_SRC_NAT_BIT
-> and IPS_DST_NAT_BIT bits are not set. It happens when IPVS performs
-> DNAT for client packets after using nf_conntrack_alter_reply
-> to expect replies from real server.
+> This resolves the following build warning when CONFIG_IP_VS_DEBUG is
+> not defined.
 > 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
-> 
->     I'm not very familiar with this code, so this change
-> must not be considered as trivial. May be there was a
-> reason the embedded header to be translated before the NAT
-> bits are set?
+> net/netfilter/ipvs/ip_vs_pe_sip.c:11: warning: 'ip_vs_dbg_callid' defined but not used
 
-This seems OK to me, but I need to think about it a bit more,
-this code is subtle.
+Applied, thanks Simon.
