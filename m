@@ -1,76 +1,184 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] Fixed race condition at ip_vs.ko module init.
-Date: Tue, 19 Oct 2010 17:23:11 +0200
-Message-ID: <20101019152311.GJ6193@verge.net.au>
-References: <AANLkTinVcSK0Dqx4Pkp1dZskR8YmkGYkkrSNgDqX6psW@mail.gmail.com>
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [RFC PATCH 1/9] ipvs network name space aware
+Date: Tue, 19 Oct 2010 11:44:36 -0700
+Message-ID: <20101019184436.GG2362@linux.vnet.ibm.com>
+References: <201010081316.46690.hans.schillstrom@ericsson.com>
+ <201010181154.35792.hans.schillstrom@ericsson.com>
+ <4CBC3182.80605@free.fr>
+ <201010181523.49568.hans.schillstrom@ericsson.com>
+Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <AANLkTinVcSK0Dqx4Pkp1dZskR8YmkGYkkrSNgDqX6psW@mail.gmail.com>
+In-Reply-To: <201010181523.49568.hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eduardo Blanco <ejblanco@google.com>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: Daniel Lezcano <daniel.lezcano@free.fr>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "horms@verge.net.au" <horms@verge.net.au>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>
 
-On Tue, Oct 19, 2010 at 10:26:47AM +0100, Eduardo Blanco wrote:
-> Lists were initialized after the module was registered.  Multiple ipvsadm
-> processes at module load triggered a race condition that resulted in a null
-> pointer dereference in do_ip_vs_get_ctl(). As a result, __ip_vs_mutex
-> was left locked preventing all further ipvsadm commands.
+On Mon, Oct 18, 2010 at 03:23:48PM +0200, Hans Schillstrom wrote:
+> On Monday 18 October 2010 13:37:38 Daniel Lezcano wrote:
+> > On 10/18/2010 11:54 AM, Hans Schillstrom wrote:
+> > > On Monday 18 October 2010 10:59:25 Daniel Lezcano wrote:
+> > >    
+> > >> On 10/08/2010 01:16 PM, Hans Schillstrom wrote:
+> > >>      
+> > >>> This part contains the include files
+> > >>> where include/net/netns/ip_vs.h is new and contains all moved vars.
+> > >>>
+> > >>> SUMMARY
+> > >>>
+> > >>>    include/net/ip_vs.h                     |  136 ++++---
+> > >>>    include/net/net_namespace.h             |    2 +
+> > >>>    include/net/netns/ip_vs.h               |  112 +++++
+> > >>>
+> > >>> Signed-off-by:Hans Schillstrom<hans.schillstrom@ericsson.com>
+> > >>> ---
+> > >>>
+> > >>>
+> > >>>        
+> > >> [ ... ]
+> > >>
+> > >>      
+> > >>>    #ifdef CONFIG_IP_VS_IPV6
+> > >>> diff --git a/include/net/net_namespace.h b/include/net/net_namespace.h
+> > >>> index bd10a79..b59cdc5 100644
+> > >>> --- a/include/net/net_namespace.h
+> > >>> +++ b/include/net/net_namespace.h
+> > >>> @@ -15,6 +15,7 @@
+> > >>>    #include<net/netns/ipv4.h>
+> > >>>    #include<net/netns/ipv6.h>
+> > >>>    #include<net/netns/dccp.h>
+> > >>> +#include<net/netns/ip_vs.h>
+> > >>>    #include<net/netns/x_tables.h>
+> > >>>    #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
+> > >>>    #include<net/netns/conntrack.h>
+> > >>> @@ -91,6 +92,7 @@ struct net {
+> > >>>    	struct sk_buff_head	wext_nlevents;
+> > >>>    #endif
+> > >>>    	struct net_generic	*gen;
+> > >>> +	struct netns_ipvs       *ipvs;
+> > >>>    };
+> > >>>
+> > >>>        
+> > >> IMHO, it would be better to use the net_generic infra-structure instead
+> > >> of adding a new field in the netns structure.
+> > >>
+> > >>
+> > >>      
+> > > I realized that to, but the performance penalty is quite high with net_generic :-(
+> > > But on the other hand if you are going to backport it, (without recompiling the kernel)
+> > > you gonna need it!
+> > >    
+> > 
+> > Hmm, yes. We don't want to have the init_net_ns performances to be impacted.
+> > 
+> > You use here a pointer which will be dereferenced like the net_generic, 
+> > I don't think there will be
+> > a big difference between using net_generic and using a pointer in the 
+> > net namespace structure.
+> > 
+> > The difference is the id usage, but this one is based on the idr which 
+> > is quite fast.
+> > 
 > 
-> Signed-off-by: Eduardo J. Blanco <ejblanco@google.com>
+> I'm not so sure about that, have a look at net_generic and rcu_read_lock
+> and compare   
+>  ipvs = net->ipvs;
+> vs.
+>  ipvs = net_generic(net, id)
+> 
+> static inline void *net_generic(struct net *net, int id)
+> {
+> 	struct net_generic *ng;
+> 	void *ptr;
+> 
+> 	rcu_read_lock();
+> 	ng = rcu_dereference(net->gen);
+> 	BUG_ON(id == 0 || id > ng->len);
+> 	ptr = ng->ptr[id - 1];
+> 	rcu_read_unlock();
+> 
+> 	return ptr;
+> }
+> ...
+> static inline void rcu_read_lock(void)
+> {
+>         __rcu_read_lock();
+>         __acquire(RCU);
+>         rcu_read_acquire();
+> }
+> 
+> Another way of doing it is to pass the ipvs ptr instead of the net ptr,
+> and add *net to the ipvs struct.
+> 
+> > We should experiment a bit here to compare both solutions.
+> Agre
+> > 
+> I single stepped through the rcu_read_lock() on a x86_64 
+> and it's quite many "stepi" that you need to enter :-(
 
-Thanks Eduardo.
+Was this by chance with lockdep enabled?  If not, could you please send
+your .config?
 
-Patrick, please consider pulling
+							Thanx, Paul
 
-git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git for-patrick
-
-to get this change.
-
-> ---
->  net/netfilter/ipvs/ip_vs_ctl.c |   19 ++++++++++---------
->  1 files changed, 10 insertions(+), 9 deletions(-)
+> > IMHO, we can (1) create a non-pointer netns_ipvs field in the net 
+> > namespace structure or (2) use a pointer [with net_generic].
+> > 
+> > (1) is the faster but with the drawback of having a bigger memory 
+> > footprint even if the ipvs module is not loaded.
+> > In this case we have to take care of what we store in the netns_ipvs 
+> > structure, that is reduce the per namespace table and so. At the first 
+> > glance, I think we can reduce this to the sysctls and a very few data, 
+> > for example using global tables tagged with the namespace and we don't 
+> > break the cacheline alignment optimization.
+> > 
+> > (2) is slower but as the memory is allocated and freed when the module 
+> > is loaded/unloaded. What I don't like with this approach is we add some 
+> > overhead even if the netns is not compiled in the kernel.
+> > 
+> or (3)
+>  Like (1) with data that needs to be cache aligned in "struct net" 
+>  and the rest in an ipvs struct.
+>  Global hash tables or not ? 
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index 0f0c079..68624dc 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -3385,6 +3385,16 @@ int __init ip_vs_control_init(void)
+> > > My sugestion, take both with a configuration switch like:
+> > > (i.e. avoid the rcu locking)
+> > >
+> > > --- net/ip_vs.h ---
+> > > ...
+> > > extern int ip_vs_net_id;		/* net id for ip_vs */
+> > >
+> > >
+> > > static inline struct netns_ipvs * net_ipvs(struct net* net, int id) {
+> > > #ifdef CONFIG_IP_VS_FAST_NETNS
+> > > 	return net->ipvs;
+> > > #else
+> > > 	return (struct netns_ipvs *)net_generic(net, id);
+> > > #endif
+> > > }
+> > > ...
+> > >
+> > > and where you need the netns_ipvs struct ptr,
+> > > [snip]
+> > > struct ip_vs_conn *ip_vs_conn_in_get(struct net *net, ....
+> > > {
+> > > 	struct netns_ipvs *ipvs = net_ipvs(net, ip_vs_net_id);
+> > > ...
+> > >    
+> > 
+> > It is a nice way to wrap both solutions but at this point I don't think 
+> > it is worth to add a 3rd option to compile ipvs.
+> > 
+> > 
 > 
->  	EnterFunction(2);
-> 
-> +	/* Initialize ip_vs_svc_table, ip_vs_svc_fwm_table, ip_vs_rtable */
-> +	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++)  {
-> +		INIT_LIST_HEAD(&ip_vs_svc_table[idx]);
-> +		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
-> +	}
-> +	for(idx = 0; idx < IP_VS_RTAB_SIZE; idx++)  {
-> +		INIT_LIST_HEAD(&ip_vs_rtable[idx]);
-> +	}
-> +	smp_wmb();
-> +
->  	ret = nf_register_sockopt(&ip_vs_sockopts);
->  	if (ret) {
->  		pr_err("cannot register sockopt.\n");
-> @@ -3403,15 +3413,6 @@ int __init ip_vs_control_init(void)
-> 
->  	sysctl_header = register_sysctl_paths(net_vs_ctl_path, vs_vars);
-> 
-> -	/* Initialize ip_vs_svc_table, ip_vs_svc_fwm_table, ip_vs_rtable */
-> -	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++)  {
-> -		INIT_LIST_HEAD(&ip_vs_svc_table[idx]);
-> -		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
-> -	}
-> -	for(idx = 0; idx < IP_VS_RTAB_SIZE; idx++)  {
-> -		INIT_LIST_HEAD(&ip_vs_rtable[idx]);
-> -	}
-> -
->  	ip_vs_new_estimator(&ip_vs_stats);
-> 
->  	/* Hook the defense timer */
 > -- 
-> 1.7.1
-> 
+> Regards
+> Hans Schillstrom <hans.schillstrom@ericsson.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe netdev" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
