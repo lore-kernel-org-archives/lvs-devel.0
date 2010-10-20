@@ -1,134 +1,121 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [RFC PATCH 1/9] ipvs network name space aware
-Date: Wed, 20 Oct 2010 10:25:19 +0200
-Message-ID: <201010201025.20950.hans.schillstrom@ericsson.com>
-References: <201010081316.46690.hans.schillstrom@ericsson.com> <201010181523.49568.hans.schillstrom@ericsson.com> <20101019184436.GG2362@linux.vnet.ibm.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [RFC PATCH 0/9] ipvs network name space (netns) aware
+Date: Wed, 20 Oct 2010 11:17:59 +0200
+Message-ID: <20101020091759.GC19121@verge.net.au>
+References: <201010081316.38317.hans.schillstrom@ericsson.com>
+ <20101017064731.GA8152@verge.net.au>
+ <201010181355.59763.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101019184436.GG2362@linux.vnet.ibm.com>
 Content-Disposition: inline
+In-Reply-To: <201010181355.59763.hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: "paulmck@linux.vnet.ibm.com" <paulmck@linux.vnet.ibm.com>
-Cc: Daniel Lezcano <daniel.lezcano@free.fr>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "horms@verge.net.au" <horms@verge.net.au>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>
+Content-Transfer-Encoding: 7bit
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
 
-On Tuesday 19 October 2010 20:44:36 Paul E. McKenney wrote:
-> On Mon, Oct 18, 2010 at 03:23:48PM +0200, Hans Schillstrom wrote:
-> > On Monday 18 October 2010 13:37:38 Daniel Lezcano wrote:
-> > > On 10/18/2010 11:54 AM, Hans Schillstrom wrote:
-> > > > On Monday 18 October 2010 10:59:25 Daniel Lezcano wrote:
-> > > >
-> > > >> On 10/08/2010 01:16 PM, Hans Schillstrom wrote:
-> > > >>
-> > > >>> This part contains the include files
-> > > >>> where include/net/netns/ip_vs.h is new and contains all moved vars.
-> > > >>>
-> > > >>> SUMMARY
-> > > >>>
-> > > >>>    include/net/ip_vs.h                     |  136 ++++---
-> > > >>>    include/net/net_namespace.h             |    2 +
-> > > >>>    include/net/netns/ip_vs.h               |  112 +++++
-> > > >>>
-> > > >>> Signed-off-by:Hans Schillstrom<hans.schillstrom@ericsson.com>
-> > > >>> ---
-> > > >>>
-> > > >>>
-> > > >>>
-> > > >> [ ... ]
-> > > >>
-> > > >>
-> > > >>>    #ifdef CONFIG_IP_VS_IPV6
-> > > >>> diff --git a/include/net/net_namespace.h b/include/net/net_namespace.h
-> > > >>> index bd10a79..b59cdc5 100644
-> > > >>> --- a/include/net/net_namespace.h
-> > > >>> +++ b/include/net/net_namespace.h
-> > > >>> @@ -15,6 +15,7 @@
-> > > >>>    #include<net/netns/ipv4.h>
-> > > >>>    #include<net/netns/ipv6.h>
-> > > >>>    #include<net/netns/dccp.h>
-> > > >>> +#include<net/netns/ip_vs.h>
-> > > >>>    #include<net/netns/x_tables.h>
-> > > >>>    #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
-> > > >>>    #include<net/netns/conntrack.h>
-> > > >>> @@ -91,6 +92,7 @@ struct net {
-> > > >>>    	struct sk_buff_head	wext_nlevents;
-> > > >>>    #endif
-> > > >>>    	struct net_generic	*gen;
-> > > >>> +	struct netns_ipvs       *ipvs;
-> > > >>>    };
-> > > >>>
-> > > >>>
-> > > >> IMHO, it would be better to use the net_generic infra-structure instead
-> > > >> of adding a new field in the netns structure.
-> > > >>
-> > > >>
-> > > >>
-> > > > I realized that to, but the performance penalty is quite high with net_generic :-(
-> > > > But on the other hand if you are going to backport it, (without recompiling the kernel)
-> > > > you gonna need it!
-> > > >
-> > >
-> > > Hmm, yes. We don't want to have the init_net_ns performances to be impacted.
-> > >
-> > > You use here a pointer which will be dereferenced like the net_generic,
-> > > I don't think there will be
-> > > a big difference between using net_generic and using a pointer in the
-> > > net namespace structure.
-> > >
-> > > The difference is the id usage, but this one is based on the idr which
-> > > is quite fast.
-> > >
-> >
-> > I'm not so sure about that, have a look at net_generic and rcu_read_lock
-> > and compare
-> >  ipvs = net->ipvs;
-> > vs.
-> >  ipvs = net_generic(net, id)
-> >
-> > static inline void *net_generic(struct net *net, int id)
-> > {
-> > 	struct net_generic *ng;
-> > 	void *ptr;
-> >
-> > 	rcu_read_lock();
-> > 	ng = rcu_dereference(net->gen);
-> > 	BUG_ON(id == 0 || id > ng->len);
-> > 	ptr = ng->ptr[id - 1];
-> > 	rcu_read_unlock();
-> >
-> > 	return ptr;
-> > }
-> > ...
-> > static inline void rcu_read_lock(void)
-> > {
-> >         __rcu_read_lock();
-> >         __acquire(RCU);
-> >         rcu_read_acquire();
-> > }
-> >
-> > Another way of doing it is to pass the ipvs ptr instead of the net ptr,
-> > and add *net to the ipvs struct.
-> >
-> > > We should experiment a bit here to compare both solutions.
-> > Agre
-> > >
-> > I single stepped through the rcu_read_lock() on a x86_64
-> > and it's quite many "stepi" that you need to enter :-(
->
-> Was this by chance with lockdep enabled?  If not, could you please send
-> your .config?
->
-> 							Thanx, Paul
+On Mon, Oct 18, 2010 at 01:55:58PM +0200, Hans Schillstrom wrote:
+> On Sunday 17 October 2010 08:47:31 Simon Horman wrote:
+> > On Fri, Oct 08, 2010 at 01:16:36PM +0200, Hans Schillstrom wrote:
+> > > This patch series adds network name space (netns) support to the LVS.
+> > > 
+> > > REVISION
+> > > 
+> > > This is version 1
+> > > 
+> > > OVERVIEW
+> > > 
+> > > The patch doesn't remove or add any functionality except for netns.
+> > > For users that don't use network name space (netns) this patch is
+> > > completely transparent.
+> > > 
+> > > No it's possible to run LVS in a Linux container (see lxc-tools)
+> > > i.e.  a light weight virtualization. For example it's possible to run
+> > > one or several lvs on a real server in their own network name spaces.
+> > > >From the LVS point of view it looks like it runs on it's own machine.
+> > > 
+> > > IMPLEMENTATION
+> > > Basic requirements for netns awareness
+> > >  - Global variables has to be moved to dyn. allocated memory.
+> > > 
+> > > Most global variables now resides in a struct ipvs { } in netns/ip_vs.h.
+> > > What is moved and what is not ?
+> > > 
+> > > Some cache aligned locks are still in global, module init params and some debug_level.
+> > > 
+> > > Algorithm files they are untouched.
+> > > 
+> > > QUESTIONS
+> > > Drop rate in ip_vs_ctl per netns or grand total ?
+> 
+> This is a tricky one (I think), 
+> if the interface is shared with root name-space and/or other name-spaces
+>  - use grand total
+> if it's an "own interface"  
+>  - drop rate can/should be in netns...
 
-No lockdep, but what I ment is that net_generic is not as fast as a plain ptr->xxx.
-IPVS has hooks in the netfilter chain, and gets a huge amount of packets .
+I hadn't thought about shared devices - yes that is tricky.
 
-I don't think IPVS is a candidate for net_generic, it should have its own part in "struct net"
-That was my point.
-( No critic to locking or net_generic)
+> > My gut-feeling is that per netns makes more sense.
+> > 
+> > > Should more lock variables be moved (or less) ?
+> > 
+> > I'm unsure what you are asking here but I will make a general statement
+> > about locking in IPVS: it needs work.
+> 
+> Some locks still resides as global variables, and others in netns_ipvs struct.
+> Since you have a lot of experience with IPVS locks, 
+> you might have ideas what to move and what to not move.
 
---
-Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
+My basic thought is that locks tend to either related to a connection
+or the configuration of a service. And it seems to me that if you
+have a per-namespace connection hash table then both of these categories
+of locks are good candidates to be made per-namespace.
+
+Do you have any particular locks that you are worried about?
+
+> > > PATCH SET
+> > > This patch set is based upon net-next-2.6 (2.6.36-rc3) from 4 oct 2010
+> > > and [patch v4] ipvs: IPv6 tunnel mode
+> > > 
+> > > Note: ip_vs_xmit.c will not work without "[patch v4] ipvs: IPv6 tunnel mode"
+> > 
+> > Unfortunately the patches don't apply with the persistence engine
+> > patches which were recently merged into nf-next-2.6 (although
+> > "[patch v4.1 ]ipvs: IPv6 tunnel mode" is still unmerged).
+> > 
+> I do have a patch based on the nf-next without the SIP/PE patch
+> 
+> > I'm happy to work with you to make the required changes there.
+> 
+> I would appreciate that.
+
+No problem. I am a bit busy this week as I am attending the Netfilter
+Workshop. But I will try to find some time to rebase your changes soon.
+
+> > (I realise those patches weren't merged when you made your post.
+> >  But regardless, either your or me will need to update the patches).
+> > 
+> > Another issue is that your patches seem to be split in a way
+> > where the build breaks along the way. E.g. after applying
+> > patch 1, the build breaks. Could you please split things up
+> > in a manner such that this doesn't happen. The reason being
+> > that it breaks bisection.
+> > 
+> Hmm, Daniel also pointed at this,
+> The Patch is quite large, and will become even larger with pe and sip.
+> My Idea was to review the patch in pieces and put it together in one or two large patches when submitting it.
+> I don't know that might be a stupid ?
+> It's hard to break it up, making the code reentrant causes changes every where.
+> 
+> Daniel L, had another approach break it into many many tiny patches.
+
+I would prefer the tiny patch approach.
+
+> > Lastly, could you provide a unique subject for each patch.
+> > I know its a bit tedious, but it does make a difference when
+> > browsing the changelog.
+> > 
+> Yepp, no problem
