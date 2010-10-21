@@ -1,43 +1,39 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 00/12] ipvs: changes for local server and local client
-Date: Thu, 21 Oct 2010 11:21:14 +0200
-Message-ID: <20101021092114.GA11154@verge.net.au>
-References: <alpine.LFD.2.00.1010171607550.20665@ja.ssi.bg>
- <201010181042.27654.hans.schillstrom@ericsson.com>
- <alpine.LFD.2.00.1010182259500.1763@ja.ssi.bg>
+From: Patrick McHardy <kaber@trash.net>
+Subject: Re: [PATCH] nf_nat: restrict ICMP translation for embedded header
+Date: Thu, 21 Oct 2010 13:15:15 +0200
+Message-ID: <4CC020C3.9090104@trash.net>
+References: <alpine.LFD.2.00.1010111103470.3743@ja.ssi.bg> <4CB606AF.4040207@trash.net>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1010182259500.1763@ja.ssi.bg>
-Sender: netfilter-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <4CB606AF.4040207@trash.net>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>
+Cc: netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Mon, Oct 18, 2010 at 11:08:00PM +0300, Julian Anastasov wrote:
+Am 13.10.2010 21:21, schrieb Patrick McHardy:
+> Am 11.10.2010 10:23, schrieb Julian Anastasov:
+>>
+>>     Skip ICMP translation of embedded protocol header
+>> if NAT bits are not set. Needed for IPVS to see the original
+>> embedded addresses because for IPVS traffic the IPS_SRC_NAT_BIT
+>> and IPS_DST_NAT_BIT bits are not set. It happens when IPVS performs
+>> DNAT for client packets after using nf_conntrack_alter_reply
+>> to expect replies from real server.
+>>
+>> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+>> ---
+>>
+>>     I'm not very familiar with this code, so this change
+>> must not be considered as trivial. May be there was a
+>> reason the embedded header to be translated before the NAT
+>> bits are set?
 > 
-> 	Hello,
-> 
-> On Mon, 18 Oct 2010, Hans Schillstrom wrote:
-> 
-> >>Not tested: IPv6. I'll need help here from people with IPv6 setups.
-> >>
-> >
-> >I can help you with some IPv6 testing this week.
-> 
-> 	Thanks in advance
-> 
-> >I would be nice to change the IPv6 address print format from %pI6 to %pI6c to get a more compact debug output.
-> 
-> 	Yes, may be in following cleanup patches because the
-> IPVS debugging needs improvement.
+> This seems OK to me, but I need to think about it a bit more,
+> this code is subtle.
 
-Hi,
-
-I am happy with this series.
-Do either of you have any objections in me sending
-it to Patrick for merging. The merge window is now open,
-but hopefully we can still get this into 2.6.37-rc1 if we move quickly.
-
+I think this change is fine, it does not apply to the current tree
+anymore however. Could you please send me an updated version
+against the nf-next-2.6.git tree? Thanks!
