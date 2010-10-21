@@ -1,52 +1,89 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 Subject: Re: [RFC PATCH 5/9] ipvs network name space aware
-Date: Thu, 21 Oct 2010 13:26:54 +0200
-Message-ID: <1287660414.6871.85.camel@edumazet-laptop>
-References: <201010081317.04167.hans.schillstrom@ericsson.com>
-	 <20101021111644.GA25555@verge.net.au>
+Date: Thu, 21 Oct 2010 13:42:41 +0200
+Message-ID: <201010211342.42833.hans.schillstrom@ericsson.com>
+References: <201010081317.04167.hans.schillstrom@ericsson.com> <20101021111644.GA25555@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Transfer-Encoding: 7bit
 Return-path: <netfilter-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=gamma;
-        h=domainkey-signature:received:received:subject:from:to:cc
-         :in-reply-to:references:content-type:date:message-id:mime-version
-         :x-mailer:content-transfer-encoding;
-        bh=FEz0+CVwpOkaVxLGXMM2qMdQ2eUF3v/Y/WJvkJUwH9Q=;
-        b=DzzjnKP8nW9jIuMryG/5ZvVoBy3A77Qs2nfbk3BcaLG6uAqPWkdLUbhvXZyRcikiSa
-         c05cmDEjAPGjvkrgA8UOZYxvLrZYgUvDlq6cby45yi3/dJYoLUde2K0YOKB536vJ8YNv
-         Rc/TdjoWpH6W7HKJqSegq47UY2Tz//Dmk0kz0=
 In-Reply-To: <20101021111644.GA25555@verge.net.au>
+Content-Disposition: inline
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, ja@ssi.bg, wensong@linux-vs.org, daniel.lezcano@free.fr
+Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
 
-Le jeudi 21 octobre 2010 =C3=A0 13:16 +0200, Simon Horman a =C3=A9crit =
-:
-
-> > @@ -2680,10 +2664,15 @@ static int ip_vs_genl_dump_services(struct =
-sk_buff *skb,
-> >  	int idx =3D 0, i;
-> >  	int start =3D cb->args[0];
+On Thursday 21 October 2010 13:16:47 Simon Horman wrote:
+> On Fri, Oct 08, 2010 at 01:17:02PM +0200, Hans Schillstrom wrote:
+> > This patch just contains ip_vs_ctl
+> >
+> > Signed-off-by:Hans Schillstrom <hans.schillstrom@ericsson.com>
+> >
+> > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> > index ca8ec8c..7e99cbc 100644
+> > --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+>
+> [ snip ]
+>
+> > @@ -2680,10 +2664,15 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
+> >  	int idx = 0, i;
+> >  	int start = cb->args[0];
 > >  	struct ip_vs_service *svc;
 > > -
-> > +	struct net *net =3D skb->sk->sk_net;
->=20
+> > +	struct net *net = skb->sk->sk_net;
+>
 > skb->sk->sk_net needs CONFIG_NS_NET.
 > Is your plan for IPVS to unconditionally depend on CONFIG_NS_NET?
+No.
 > It would be nice to avoid that, but I fear it will be too messy.
->=20
+
+Crap, I missed that.
+I think a couple of inlines in ip_vs.h can do the job like;
+
+static inline struct net * ipvs_sknet(struct sock *sk)
+{
+#ifdef CONFIG_NS_NET
+	return sk->sk_net;
+#else
+	return init_net;
+#endif
+}
+
+static inline struct net * ipvs_devnet(struct skb *skb)
+{
+#ifdef CONFIG_NS_NET
+	return dev_net(skb->dev);
+#else
+	return init_net;
+#endif
+}
+
+and use it like this
+	struct net *net = ipvs_sknet(skb->sk);
 
 
-struct net *net =3D sock_net(skb->sk);
+> > +	struct netns_ipvs *ipvs;
+> > +	if (!net)
+> > +		net = dev_net(dev_net(skb->dev););
 
-is your friend ;)
+		net = ipvs_devnet(skb->dev);
+
+> > +	BUG_ON(!net);
+> > +	ipvs = net->ipvs;
+> >  	mutex_lock(&__ip_vs_mutex);
+> >  	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
+> > -		list_for_each_entry(svc, &ip_vs_svc_table[i], s_list) {
+> > +		list_for_each_entry(svc, &ipvs->ctl_svc_table[i], s_list) {
+> >  			if (++idx <= start)
+> >  				continue;
+> >  			if (ip_vs_genl_dump_service(skb, svc, cb) < 0) {
+>
+> [ snip ]
+> --
 
 
 --
-To unsubscribe from this list: send the line "unsubscribe netfilter-dev=
-el" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Regards
+Hans Schillstrom <hans.schillstrom@ericsson.com>
