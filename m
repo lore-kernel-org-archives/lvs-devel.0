@@ -1,65 +1,53 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+From: Eric Dumazet <eric.dumazet@gmail.com>
 Subject: Re: [RFC PATCH 1/9] ipvs network name space aware
-Date: Thu, 21 Oct 2010 08:18:06 -0700
-Message-ID: <20101021151806.GC2363@linux.vnet.ibm.com>
+Date: Thu, 21 Oct 2010 17:24:56 +0200
+Message-ID: <1287674696.6871.109.camel@edumazet-laptop>
 References: <201010081316.46690.hans.schillstrom@ericsson.com>
- <201010201025.20950.hans.schillstrom@ericsson.com>
- <20101020160205.GB2386@linux.vnet.ibm.com>
- <201010210945.55252.hans.schillstrom@ericsson.com>
- <1287648072.6871.15.camel@edumazet-laptop>
-Reply-To: paulmck@linux.vnet.ibm.com
+	 <201010181523.49568.hans.schillstrom@ericsson.com>
+	 <20101019184436.GG2362@linux.vnet.ibm.com>
+	 <201010201025.20950.hans.schillstrom@ericsson.com>
+	 <20101020160205.GB2386@linux.vnet.ibm.com>
+	 <1287651504.6871.44.camel@edumazet-laptop>
+	 <20101021151613.GB2363@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1287648072.6871.15.camel@edumazet-laptop>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=gamma;
+        h=domainkey-signature:received:received:subject:from:to:cc
+         :in-reply-to:references:content-type:date:message-id:mime-version
+         :x-mailer:content-transfer-encoding;
+        bh=P73BGzbR61KvKbrzYIVNSXNSs+TA4/VVBfYgt8VKbWQ=;
+        b=F383U/GzPCWCIhpW/oVeB6uebKZ3OzO2p7vpkPhbphVJPxPUt+PDu8Fl++ESboEmzz
+         papGTsL5phqDkJGtm0PS0QBxZ3PTKLIYaf/wSTSxZfobX9Y5I7pBN6Z5POF2FftRrwFV
+         Hp5Wr9eOlJRwXrpFuWlr+3BG9HjzpBEt8TFlI=
+In-Reply-To: <20101021151613.GB2363@linux.vnet.ibm.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-To: Eric Dumazet <eric.dumazet@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+To: paulmck@linux.vnet.ibm.com
 Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, Daniel Lezcano <daniel.lezcano@free.fr>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "horms@verge.net.au" <horms@verge.net.au>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>
 
-On Thu, Oct 21, 2010 at 10:01:12AM +0200, Eric Dumazet wrote:
-> Le jeudi 21 octobre 2010 =E0 09:45 +0200, Hans Schillstrom a =E9crit =
-:
-> > I do have this (and some debuging)
-> > __rcu_read_lock()
-> > =3D> 0xffffffff8108bcf3 <+0>:	push   %rbp
-> >    0xffffffff8108bcf4 <+1>:	mov    %rsp,%rbp
-> >    0xffffffff8108bcf7 <+4>:	nopl   0x0(%rax,%rax,1)
-> >    0xffffffff8108bcfc <+9>:	mov    %gs:0xb540,%rax
-> >    0xffffffff8108bd05 <+18>:	mov    0x108(%rax),%edx
-> >    0xffffffff8108bd0b <+24>:	inc    %edx
-> >    0xffffffff8108bd0d <+26>:	mov    %edx,0x108(%rax)
-> >    0xffffffff8108bd13 <+32>:	leaveq
-> >    0xffffffff8108bd14 <+33>:	retq
-> >=20
-> > which is not that many, actually imprerssing few instructions :-)
->=20
-> nopl   0x0(%rax,%rax,1) is a filler because of extra instrumentation =
-in
-> your kernel.
->=20
-> Maybe you could find out why your compiler dont use
->=20
-> 	incl 0x108(%rax)
->=20
-> instead of
->=20
-> 	mov    0x108(%rax),%edx
-> 	inc    %edx
-> 	mov    %edx,0x108(%rax)
->=20
->=20
-> So rcu_read_lock() is really _two_ instructions.
->=20
-> I agree with Paul with the "few" qualification... :-)
+Le jeudi 21 octobre 2010 =C3=A0 08:16 -0700, Paul E. McKenney a =C3=A9c=
+rit :
 
-Thank you!  ;-)
+> Here is what it looks like in my -rcu tree:
+>=20
+> void __rcu_read_lock(void)
+> {
+> 	current->rcu_read_lock_nesting++;
+> 	barrier();  /* needed if we ever invoke rcu_read_lock in rcutree.c *=
+/
+> }
+>=20
+> So yes, I finally did convince myself that the ACCESS_ONCE was not
+> needed.  ;-)
+>=20
+> This is not yet in mainline, but Ingo sent the series containing this
+> commit (80dcf60e) to Linus earlier today, so there is hope!
+>=20
 
-And the reason for the three-instruction shuffle is that Hans's kernel
-does not yet contain commit 80dcf60e.  That commit is on its way upstre=
-am,
-and will hopefully make the current merge window.
+Excellent, thanks for taking time to clarify this Paul.
 
-							Thanx, Paul
+
+
