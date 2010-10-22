@@ -1,94 +1,120 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [rfc v2 00/10] ipvs network name space (netns) aware
-Date: Fri, 22 Oct 2010 22:09:34 +0200
-Message-ID: <20101022200934.822223308@joe.akashicho.tokyo.vergenet.net>
-Return-path: <netdev-owner@vger.kernel.org>
-Sender: netdev-owner@vger.kernel.org
+Subject: Re: [RFC PATCH 5/9] ipvs network name space aware
+Date: Fri, 22 Oct 2010 21:05:48 +0200
+Message-ID: <20101022190548.GA24978@verge.net.au>
+References: <201010081317.04167.hans.schillstrom@ericsson.com>
+Mime-Version: 1.0
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <201010081317.04167.hans.schillstrom@ericsson.com>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, Julian Anastasov <ja@ssi.bg>, Daniel Lezcano <daniel.lezcano@free.fr>, Wensong Zhang <wensong@linux-vs.org>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, ja@ssi.bg, wensong@linux-vs.org, daniel.lezcano@free.fr
+
+On Fri, Oct 08, 2010 at 01:17:02PM +0200, Hans Schillstrom wrote:
+> This patch just contains ip_vs_ctl
+> 
+> Signed-off-by:Hans Schillstrom <hans.schillstrom@ericsson.com>
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index ca8ec8c..7e99cbc 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+
+[ snip ]
+
+> @@ -1539,53 +1511,71 @@ proc_do_sync_threshold(ctl_table *table, int write,
+> 
+>  /*
+>   *	IPVS sysctl table (under the /proc/sys/net/ipv4/vs/)
+> + *	Do not change order or insert new entries without
+> + *	align with netns init in __ip_vs_control_init()
+>   */
+> 
+>  static struct ctl_table vs_vars[] = {
+>  	{
+>  		.procname	= "amemthresh",
+> -		.data		= &sysctl_ip_vs_amemthresh,
+> -		.maxlen		= sizeof(int),
+> -		.mode		= 0644,
+> -		.proc_handler	= proc_dointvec,
+> -	},
+> -#ifdef CONFIG_IP_VS_DEBUG
+> -	{
+> -		.procname	= "debug_level",
+> -		.data		= &sysctl_ip_vs_debug_level,
+>  		.maxlen		= sizeof(int),
+>  		.mode		= 0644,
+>  		.proc_handler	= proc_dointvec,
+>  	},
+> -#endif
+>  	{
+>  		.procname	= "am_droprate",
+> -		.data		= &sysctl_ip_vs_am_droprate,
+>  		.maxlen		= sizeof(int),
+>  		.mode		= 0644,
+>  		.proc_handler	= proc_dointvec,
+>  	},
+>  	{
+>  		.procname	= "drop_entry",
+> -		.data		= &sysctl_ip_vs_drop_entry,
+>  		.maxlen		= sizeof(int),
+>  		.mode		= 0644,
+>  		.proc_handler	= proc_do_defense_mode,
+>  	},
+>  	{
+>  		.procname	= "drop_packet",
+> -		.data		= &sysctl_ip_vs_drop_packet,
+>  		.maxlen		= sizeof(int),
+>  		.mode		= 0644,
+>  		.proc_handler	= proc_do_defense_mode,
+>  	},
+>  	{
+>  		.procname	= "secure_tcp",
+> -		.data		= &sysctl_ip_vs_secure_tcp,
+>  		.maxlen		= sizeof(int),
+>  		.mode		= 0644,
+>  		.proc_handler	= proc_do_defense_mode,
+>  	},
+> +	{
+> +		.procname	= "cache_bypass",
+> +		.maxlen		= sizeof(int),
+> +		.mode		= 0644,
+> +		.proc_handler	= proc_dointvec,
+> +	},
+> +	{
+> +		.procname	= "expire_nodest_conn",
+> +		.maxlen		= sizeof(int),
+> +		.mode		= 0644,
+> +		.proc_handler	= proc_dointvec,
+> +	},
+> +	{
+> +		.procname	= "expire_quiescent_template",
+> +		.maxlen		= sizeof(int),
+> +		.mode		= 0644,
+> +		.proc_handler	= proc_dointvec,
+> +	},
+> +	{
+> +		.procname	= "sync_threshold",
+> +		.maxlen		= sizeof(sysctl_ip_vs_sync_threshold),
+> +		.mode		= 0644,
+> +		.proc_handler	= proc_do_sync_threshold,
+> +	},
+> +	{
+> +		.procname	= "nat_icmp_send",
+> +		.maxlen		= sizeof(int),
+> +		.mode		= 0644,
+> +		.proc_handler	= proc_dointvec,
+> +	},
+>  #if 0
+>  	{
+>  		.procname	= "timeout_established",
 
 Hi Hans,
 
-this is a re-base of your patch-set against the current nf-next-2.6 tree,
-which includes all the changes currently queued for 2.6.37-rc1 and nothing
-else.
-
-I also removed the BUG_ON() statements and incorported various
-suggestions that were made in response to your original post.
-
-It is compile tested only (partly because I am in an areoplane).
-
-I have not re-split the patches into logical units.
-Having worked with these patches a bit, I really think
-that split needs to occur.
-
-For the benefit of others, your original cover email is below,
-updated as appropriate.
-
------
-
-This patch series adds network name space (netns) support to the LVS.
-
-REVISION
-
-This is version 2
-
-OVERVIEW
-
-The patch doesn't remove or add any functionality except for netns.
-For users that don't use network name space (netns) this patch is
-completely transparent.
-
-No it's possible to run LVS in a Linux container (see lxc-tools)
-i.e.  a light weight virtualization. For example it's possible to run
-one or several lvs on a real server in their own network name spaces.
-From the LVS point of view it looks like it runs on it's own machine.
-
-IMPLEMENTATION
-Basic requirements for netns awareness
- - Global variables has to be moved to dyn. allocated memory.
-
-Most global variables now resides in a struct ipvs { } in netns/ip_vs.h.
-What is moved and what is not ?
-
-Some cache aligned locks are still in global, module init params and some debug_level.
-
-Algorithm files they are untouched.
-
-QUESTIONS
-Drop rate in ip_vs_ctl per netns or grand total ?
-Should more lock variables be moved (or less) ?
-
-Include files,
-A new file added include/net/netns/ip_vs.h containg all netns specific data.
-include/net/net_namespce.h, pointer to "struct ipvs"  added.
-include/net/ip_vs.h a new struct added, and many prototypes changed.
-
-* ip_vs_core.c
-All netns init origins from this file - ip_vs_init()
-
-* ip_vs_conn.c
-Lock array for conn table is kept due to performance,
-(or am I wrong here ?).
-"static struct ip_vs_aligned_lock
-__ip_vs_conntbl_lock_array[CT_LOCKARRAY_SIZE] __cacheline_aligned;"
-
-* ip_vs_ctl.c
-drop_ rate is still global
-
-TESTING
-This patch have been running for a month now with three LVS/machine
-one in root name-space and two in other name-space.
-Both IPv4 & IPv6 have been tested in all three modes DR/TUN and NAT
-Only a limited set of algos have been used (read rr).
-
-Backup have been there all the time and a switch has been performed a couple of times.
-
-Not tested yet:
- Drop level, DOS,  schedulers, performance ....
- Netns exit after usage of LVS (due to a bug in netdev/ipip somewhere tunl0 and
+is there a reason that the order some of the entries in
+vs_vars has been switched around?
 
