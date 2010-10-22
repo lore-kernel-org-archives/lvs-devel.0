@@ -1,11 +1,9 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [rfc v2 07/10] ipvs network name space aware: est
-Date: Fri, 22 Oct 2010 22:09:41 +0200
-Message-ID: <20101022202400.245434594@joe.akashicho.tokyo.vergenet.net>
-References: <20101022200934.822223308@joe.akashicho.tokyo.vergenet.net>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline; filename=ipvs-netns-6.patch
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [rfc v2 00/10] ipvs network name space (netns) aware
+Date: Fri, 22 Oct 2010 22:09:34 +0200
+Message-ID: <20101022200934.822223308@joe.akashicho.tokyo.vergenet.net>
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,207 +11,84 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, Julian Anastasov <ja@ssi.bg>, Daniel Lezcano <daniel.lezcano@free.fr>, Wensong Zhang <wensong@linux-vs.org>
 
-This patch just contains ip_vs_est.c
+Hi Hans,
 
-There is one estimator i.e not one per netns
-When est runs it loops all netns
-  for_each_net(net) { ... }
+this is a re-base of your patch-set against the current nf-next-2.6 tree,
+which includes all the changes currently queued for 2.6.37-rc1 and nothing
+else.
 
+I also removed the BUG_ON() statements and incorported various
+suggestions that were made in response to your original post.
 
-Signed-off-by:Hans Schillstrom <hans.schillstrom@ericsson.com>
+It is compile tested only (partly because I am in an areoplane).
 
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index ff28801..e8c185d 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -8,8 +8,13 @@
-  *              as published by the Free Software Foundation; either version
-  *              2 of the License, or (at your option) any later version.
-  *
-- * Changes:
-+ * Changes:     Hans Schillstrom <hans.schillstrom@ericsson.com>
-  *
-+ *              Network name space (netns) aware.
-+ *              Global data moved to netns i.e struct netns_ipvs
-+ *		Affected data: est_list and est_lock.
-+ *		estimation_timer() runs with a common timer, but
-+ *		do update every netns on timeout.
-  */
+I have not re-split the patches into logical units.
+Having worked with these patches a bit, I really think
+that split needs to occur.
 
- #define KMSG_COMPONENT "IPVS"
-@@ -45,13 +50,13 @@
-     rate is ~2.15Gbits/s, average pps and cps are scaled by 2^10.
+For the benefit of others, your original cover email is below,
+updated as appropriate.
 
-   * A lot code is taken from net/sched/estimator.c
-+
-+  * netns: estimation_timer runs every netns
-  */
+-----
 
+This patch series adds network name space (netns) support to the LVS.
 
- static void estimation_timer(unsigned long arg);
+REVISION
 
--static LIST_HEAD(est_list);
--static DEFINE_SPINLOCK(est_lock);
- static DEFINE_TIMER(est_timer, estimation_timer, 0, 0);
+This is version 2
 
- static void estimation_timer(unsigned long arg)
-@@ -62,50 +67,55 @@ static void estimation_timer(unsigned long arg)
- 	u32 n_inpkts, n_outpkts;
- 	u64 n_inbytes, n_outbytes;
- 	u32 rate;
--
--	spin_lock(&est_lock);
--	list_for_each_entry(e, &est_list, list) {
--		s = container_of(e, struct ip_vs_stats, est);
--
--		spin_lock(&s->lock);
--		n_conns = s->ustats.conns;
--		n_inpkts = s->ustats.inpkts;
--		n_outpkts = s->ustats.outpkts;
--		n_inbytes = s->ustats.inbytes;
--		n_outbytes = s->ustats.outbytes;
--
--		/* scaled by 2^10, but divided 2 seconds */
--		rate = (n_conns - e->last_conns)<<9;
--		e->last_conns = n_conns;
--		e->cps += ((long)rate - (long)e->cps)>>2;
--		s->ustats.cps = (e->cps+0x1FF)>>10;
--
--		rate = (n_inpkts - e->last_inpkts)<<9;
--		e->last_inpkts = n_inpkts;
--		e->inpps += ((long)rate - (long)e->inpps)>>2;
--		s->ustats.inpps = (e->inpps+0x1FF)>>10;
--
--		rate = (n_outpkts - e->last_outpkts)<<9;
--		e->last_outpkts = n_outpkts;
--		e->outpps += ((long)rate - (long)e->outpps)>>2;
--		s->ustats.outpps = (e->outpps+0x1FF)>>10;
--
--		rate = (n_inbytes - e->last_inbytes)<<4;
--		e->last_inbytes = n_inbytes;
--		e->inbps += ((long)rate - (long)e->inbps)>>2;
--		s->ustats.inbps = (e->inbps+0xF)>>5;
--
--		rate = (n_outbytes - e->last_outbytes)<<4;
--		e->last_outbytes = n_outbytes;
--		e->outbps += ((long)rate - (long)e->outbps)>>2;
--		s->ustats.outbps = (e->outbps+0xF)>>5;
--		spin_unlock(&s->lock);
-+	struct net *net;
-+	struct netns_ipvs *ipvs;
-+
-+	for_each_net(net) {
-+		ipvs = net->ipvs;
-+		spin_lock(&ipvs->est_lock);
-+		list_for_each_entry(e, &ipvs->est_list, list) {
-+			s = container_of(e, struct ip_vs_stats, est);
-+
-+			spin_lock(&s->lock);
-+			n_conns = s->ustats.conns;
-+			n_inpkts = s->ustats.inpkts;
-+			n_outpkts = s->ustats.outpkts;
-+			n_inbytes = s->ustats.inbytes;
-+			n_outbytes = s->ustats.outbytes;
-+
-+			/* scaled by 2^10, but divided 2 seconds */
-+			rate = (n_conns - e->last_conns)<<9;
-+			e->last_conns = n_conns;
-+			e->cps += ((long)rate - (long)e->cps)>>2;
-+			s->ustats.cps = (e->cps+0x1FF)>>10;
-+
-+			rate = (n_inpkts - e->last_inpkts)<<9;
-+			e->last_inpkts = n_inpkts;
-+			e->inpps += ((long)rate - (long)e->inpps)>>2;
-+			s->ustats.inpps = (e->inpps+0x1FF)>>10;
-+
-+			rate = (n_outpkts - e->last_outpkts)<<9;
-+			e->last_outpkts = n_outpkts;
-+			e->outpps += ((long)rate - (long)e->outpps)>>2;
-+			s->ustats.outpps = (e->outpps+0x1FF)>>10;
-+
-+			rate = (n_inbytes - e->last_inbytes)<<4;
-+			e->last_inbytes = n_inbytes;
-+			e->inbps += ((long)rate - (long)e->inbps)>>2;
-+			s->ustats.inbps = (e->inbps+0xF)>>5;
-+
-+			rate = (n_outbytes - e->last_outbytes)<<4;
-+			e->last_outbytes = n_outbytes;
-+			e->outbps += ((long)rate - (long)e->outbps)>>2;
-+			s->ustats.outbps = (e->outbps+0xF)>>5;
-+			spin_unlock(&s->lock);
-+		}
-+		spin_unlock(&ipvs->est_lock);
- 	}
--	spin_unlock(&est_lock);
- 	mod_timer(&est_timer, jiffies + 2*HZ);
- }
+OVERVIEW
 
--void ip_vs_new_estimator(struct ip_vs_stats *stats)
-+void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats)
- {
- 	struct ip_vs_estimator *est = &stats->est;
+The patch doesn't remove or add any functionality except for netns.
+For users that don't use network name space (netns) this patch is
+completely transparent.
 
-@@ -126,18 +136,18 @@ void ip_vs_new_estimator(struct ip_vs_stats *stats)
- 	est->last_outbytes = stats->ustats.outbytes;
- 	est->outbps = stats->ustats.outbps<<5;
+No it's possible to run LVS in a Linux container (see lxc-tools)
+i.e.  a light weight virtualization. For example it's possible to run
+one or several lvs on a real server in their own network name spaces.
+From the LVS point of view it looks like it runs on it's own machine.
 
--	spin_lock_bh(&est_lock);
--	list_add(&est->list, &est_list);
--	spin_unlock_bh(&est_lock);
-+	spin_lock_bh(&net->ipvs->est_lock);
-+	list_add(&est->list, &net->ipvs->est_list);
-+	spin_unlock_bh(&net->ipvs->est_lock);
- }
+IMPLEMENTATION
+Basic requirements for netns awareness
+ - Global variables has to be moved to dyn. allocated memory.
 
--void ip_vs_kill_estimator(struct ip_vs_stats *stats)
-+void ip_vs_kill_estimator(struct net *net, struct ip_vs_stats *stats)
- {
- 	struct ip_vs_estimator *est = &stats->est;
+Most global variables now resides in a struct ipvs { } in netns/ip_vs.h.
+What is moved and what is not ?
 
--	spin_lock_bh(&est_lock);
-+	spin_lock_bh(&net->ipvs->est_lock);
- 	list_del(&est->list);
--	spin_unlock_bh(&est_lock);
-+	spin_unlock_bh(&net->ipvs->est_lock);
- }
+Some cache aligned locks are still in global, module init params and some debug_level.
 
- void ip_vs_zero_estimator(struct ip_vs_stats *stats)
-@@ -156,14 +166,31 @@ void ip_vs_zero_estimator(struct ip_vs_stats *stats)
- 	est->inbps = 0;
- 	est->outbps = 0;
- }
-+static int __net_init __ip_vs_estimator_init(struct net *net)
-+{
-+	INIT_LIST_HEAD(&net->ipvs->est_list);
-+	spin_lock_init(&net->ipvs->est_lock);
-+	return 0;
-+}
-+
-+static struct pernet_operations ip_vs_app_ops = {
-+	.init = __ip_vs_estimator_init,
-+//	.exit = __ip_vs_estimator_cleanup,
-+};
+Algorithm files they are untouched.
 
- int __init ip_vs_estimator_init(void)
- {
-+	int rv;
-+
-+	rv = register_pernet_subsys(&ip_vs_app_ops);
-+	if(rv < 0)
-+		return rv;
- 	mod_timer(&est_timer, jiffies + 2 * HZ);
--	return 0;
-+	return rv;
- }
+QUESTIONS
+Drop rate in ip_vs_ctl per netns or grand total ?
+Should more lock variables be moved (or less) ?
 
- void ip_vs_estimator_cleanup(void)
- {
- 	del_timer_sync(&est_timer);
-+	unregister_pernet_subsys(&ip_vs_app_ops);
- }
+Include files,
+A new file added include/net/netns/ip_vs.h containg all netns specific data.
+include/net/net_namespce.h, pointer to "struct ipvs"  added.
+include/net/ip_vs.h a new struct added, and many prototypes changed.
 
--- 
-Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
+* ip_vs_core.c
+All netns init origins from this file - ip_vs_init()
 
+* ip_vs_conn.c
+Lock array for conn table is kept due to performance,
+(or am I wrong here ?).
+"static struct ip_vs_aligned_lock
+__ip_vs_conntbl_lock_array[CT_LOCKARRAY_SIZE] __cacheline_aligned;"
+
+* ip_vs_ctl.c
+drop_ rate is still global
+
+TESTING
+This patch have been running for a month now with three LVS/machine
+one in root name-space and two in other name-space.
+Both IPv4 & IPv6 have been tested in all three modes DR/TUN and NAT
+Only a limited set of algos have been used (read rr).
+
+Backup have been there all the time and a switch has been performed a couple of times.
+
+Not tested yet:
+ Drop level, DOS,  schedulers, performance ....
+ Netns exit after usage of LVS (due to a bug in netdev/ipip somewhere tunl0 and
 
