@@ -1,10 +1,10 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [patch 4/9] IPVS: Add persistence engine to connection entry
-Date: Sun, 24 Oct 2010 00:26:30 +0900
-Message-ID: <20101023153020.447110221@joe.akashicho.tokyo.vergenet.net>
+Subject: [patch 5/9] IPVS: rename ip_vs_sync_mesg as ip_vs_sync_mesg_v1
+Date: Sun, 24 Oct 2010 00:26:31 +0900
+Message-ID: <20101023153020.993493822@joe.akashicho.tokyo.vergenet.net>
 References: <20101023152626.811097720@joe.akashicho.tokyo.vergenet.net>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline; filename=sync-conn-pe-2.patch
+Content-Disposition: inline; filename=sync-ip_vs_sync_mesg_v1.patch
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -13,167 +13,118 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org
 Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-The dest of a connection may not exist if it has been created as the result
-of connection synchronisation. But in order for connection entries for
-templates with persistence engine data created through connection
-synchronisation to be valid access to the persistence engine pointer is
-required.  So add the persistence engine to the connection itself.
+This is in preparation for adding a new version of the
+synchronisation protocol.
+
+* Change name of struct ip_vs_sync_mesg to struct ip_vs_sync_mesg_v1
+* Change the name of SYNC_MESG_HEADER_LEN to SYNC_MESG_V1_HEADER_LEN
+* Define SYNC_MESG_V1_HEADER_LEN as sizeof(struct ip_vs_sync_mesg_v1)
+  instead of 4
+* Always use SYNC_MESG_V1_HEADER_LEN instead of 4
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 
-Index: lvs-test-2.6/include/net/ip_vs.h
+Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_sync.c
 ===================================================================
---- lvs-test-2.6.orig/include/net/ip_vs.h	2010-10-15 08:12:46.000000000 +0900
-+++ lvs-test-2.6/include/net/ip_vs.h	2010-10-15 08:14:35.000000000 +0900
-@@ -421,6 +421,7 @@ struct ip_vs_conn {
- 	struct ip_vs_seq        in_seq;         /* incoming seq. struct */
- 	struct ip_vs_seq        out_seq;        /* outgoing seq. struct */
+--- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_sync.c	2010-10-15 07:50:16.000000000 +0900
++++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_sync.c	2010-10-15 07:50:24.000000000 +0900
+@@ -81,7 +81,8 @@ struct ip_vs_sync_thread_data {
+ (sizeof(struct ip_vs_sync_conn) + sizeof(struct ip_vs_sync_conn_options))
  
-+	const struct ip_vs_pe	*pe;
- 	char			*pe_data;
- 	__u8			pe_data_len;
+ 
+-/*
++/* IPVS Connection Synchronisation v1
++
+   The master mulitcasts messages to the backup load balancers in the
+   following format.
+ 
+@@ -102,10 +103,10 @@ struct ip_vs_sync_thread_data {
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+ 
+-#define SYNC_MESG_HEADER_LEN	4
++#define SYNC_MESG_V1_HEADER_LEN	sizeof(struct ip_vs_sync_mesg_v1)
+ #define MAX_CONNS_PER_SYNCBUFF	255 /* nr_conns in ip_vs_sync_mesg is 8 bit */
+ 
+-struct ip_vs_sync_mesg {
++struct ip_vs_sync_mesg_v1 {
+ 	__u8                    nr_conns;
+ 	__u8                    syncid;
+ 	__u16                   size;
+@@ -122,7 +123,7 @@ struct ip_vs_sync_buff {
+ 	unsigned long           firstuse;
+ 
+ 	/* pointers for the message data */
+-	struct ip_vs_sync_mesg  *mesg;
++	struct ip_vs_sync_mesg_v1 *mesg;
+ 	unsigned char           *head;
+ 	unsigned char           *end;
  };
-@@ -801,8 +802,19 @@ void ip_vs_bind_pe(struct ip_vs_service
- void ip_vs_unbind_pe(struct ip_vs_service *svc);
- int register_ip_vs_pe(struct ip_vs_pe *pe);
- int unregister_ip_vs_pe(struct ip_vs_pe *pe);
--extern struct ip_vs_pe *ip_vs_pe_get(const char *name);
--extern void ip_vs_pe_put(struct ip_vs_pe *pe);
-+struct ip_vs_pe *ip_vs_pe_getbyname(const char *name);
-+
-+static inline void ip_vs_pe_get(const struct ip_vs_pe *pe)
-+{
-+	if (pe && pe->module)
-+		__module_get(pe->module);
-+}
-+
-+static inline void ip_vs_pe_put(const struct ip_vs_pe *pe)
-+{
-+	if (pe && pe->module)
-+		module_put(pe->module);
-+}
- 
- /*
-  *	IPVS protocol functions (from ip_vs_proto.c)
-Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c
-===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_conn.c	2010-10-15 08:12:46.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_conn.c	2010-10-15 08:12:51.000000000 +0900
-@@ -176,8 +176,8 @@ static unsigned int ip_vs_conn_hashkey_c
- 	ip_vs_conn_fill_param(cp->af, cp->protocol, &cp->caddr, cp->cport,
- 			      NULL, 0, &p);
- 
--	if (cp->dest && cp->dest->svc->pe) {
--		p.pe = cp->dest->svc->pe;
-+	if (cp->pe) {
-+		p.pe = cp->pe;
- 		p.pe_data = cp->pe_data;
- 		p.pe_data_len = cp->pe_data_len;
+@@ -188,8 +189,8 @@ static inline struct ip_vs_sync_buff * i
  	}
-@@ -763,6 +763,7 @@ static void ip_vs_conn_expire(unsigned l
- 		if (cp->flags & IP_VS_CONN_F_NFCT)
- 			ip_vs_conn_drop_conntrack(cp);
- 
-+		ip_vs_pe_put(cp->pe);
- 		kfree(cp->pe_data);
- 		if (unlikely(cp->app != NULL))
- 			ip_vs_unbind_app(cp);
-@@ -824,7 +825,9 @@ ip_vs_conn_new(const struct ip_vs_conn_p
- 			&cp->daddr, daddr);
- 	cp->dport          = dport;
- 	cp->flags	   = flags;
--	if (flags & IP_VS_CONN_F_TEMPLATE && p->pe_data) {
-+	if (flags & IP_VS_CONN_F_TEMPLATE && p->pe) {
-+		ip_vs_pe_get(p->pe);
-+		cp->pe = p->pe;
- 		cp->pe_data = p->pe_data;
- 		cp->pe_data_len = p->pe_data_len;
- 	}
-@@ -956,15 +959,13 @@ static int ip_vs_conn_seq_show(struct se
- 		char pe_data[IP_VS_PENAME_MAXLEN + IP_VS_PEDATA_MAXLEN + 3];
- 		size_t len = 0;
- 
--		if (cp->dest && cp->pe_data &&
--		    cp->dest->svc->pe->show_pe_data) {
-+		if (cp->pe_data) {
- 			pe_data[0] = ' ';
--			len = strlen(cp->dest->svc->pe->name);
--			memcpy(pe_data + 1, cp->dest->svc->pe->name, len);
-+			len = strlen(cp->pe->name);
-+			memcpy(pe_data + 1, cp->pe->name, len);
- 			pe_data[len + 1] = ' ';
- 			len += 2;
--			len += cp->dest->svc->pe->show_pe_data(cp,
--							       pe_data + len);
-+			len += cp->pe->show_pe_data(cp, pe_data + len);
- 		}
- 		pe_data[len] = '\0';
- 
-Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_pe.c
-===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_pe.c	2010-10-15 08:12:46.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_pe.c	2010-10-15 08:12:51.000000000 +0900
-@@ -30,7 +30,7 @@ void ip_vs_unbind_pe(struct ip_vs_servic
- 
- /* Get pe in the pe list by name */
- static struct ip_vs_pe *
--ip_vs_pe_getbyname(const char *pe_name)
-+__ip_vs_pe_getbyname(const char *pe_name)
+ 	sb->mesg->nr_conns = 0;
+ 	sb->mesg->syncid = ip_vs_master_syncid;
+-	sb->mesg->size = 4;
+-	sb->head = (unsigned char *)sb->mesg + 4;
++	sb->mesg->size = SYNC_MESG_V1_HEADER_LEN;
++	sb->head = (unsigned char *)sb->mesg + SYNC_MESG_V1_HEADER_LEN;
+ 	sb->end = (unsigned char *)sb->mesg + sync_send_mesg_maxlen;
+ 	sb->firstuse = jiffies;
+ 	return sb;
+@@ -238,7 +239,7 @@ get_curr_sync_buff(unsigned long time)
+  */
+ void ip_vs_sync_conn(const struct ip_vs_conn *cp)
  {
- 	struct ip_vs_pe *pe;
+-	struct ip_vs_sync_mesg *m;
++	struct ip_vs_sync_mesg_v1 *m;
+ 	struct ip_vs_sync_conn *s;
+ 	int len;
  
-@@ -60,28 +60,22 @@ ip_vs_pe_getbyname(const char *pe_name)
+@@ -305,7 +306,7 @@ ip_vs_conn_fill_param_sync(int af, int p
+  */
+ static void ip_vs_process_message(char *buffer, const size_t buflen)
+ {
+-	struct ip_vs_sync_mesg *m = (struct ip_vs_sync_mesg *)buffer;
++	struct ip_vs_sync_mesg_v1 *m = (struct ip_vs_sync_mesg_v1 *)buffer;
+ 	struct ip_vs_sync_conn *s;
+ 	struct ip_vs_sync_conn_options *opt;
+ 	struct ip_vs_conn *cp;
+@@ -315,7 +316,7 @@ static void ip_vs_process_message(char *
+ 	char *p;
+ 	int i;
+ 
+-	if (buflen < sizeof(struct ip_vs_sync_mesg)) {
++	if (buflen < SYNC_MESG_V1_HEADER_LEN) {
+ 		IP_VS_ERR_RL("sync message header too short\n");
+ 		return;
+ 	}
+@@ -335,7 +336,7 @@ static void ip_vs_process_message(char *
+ 		return;
+ 	}
+ 
+-	p = (char *)buffer + sizeof(struct ip_vs_sync_mesg);
++	p = (char *)buffer + SYNC_MESG_V1_HEADER_LEN;
+ 	for (i=0; i<m->nr_conns; i++) {
+ 		unsigned flags, state;
+ 
+@@ -540,8 +541,8 @@ static int set_sync_mesg_maxlen(int sync
+ 
+ 		num = (dev->mtu - sizeof(struct iphdr) -
+ 		       sizeof(struct udphdr) -
+-		       SYNC_MESG_HEADER_LEN - 20) / SIMPLE_CONN_SIZE;
+-		sync_send_mesg_maxlen = SYNC_MESG_HEADER_LEN +
++		       SYNC_MESG_V1_HEADER_LEN - 20) / SIMPLE_CONN_SIZE;
++		sync_send_mesg_maxlen = SYNC_MESG_V1_HEADER_LEN +
+ 			SIMPLE_CONN_SIZE * min(num, MAX_CONNS_PER_SYNCBUFF);
+ 		IP_VS_DBG(7, "setting the maximum length of sync sending "
+ 			  "message %d.\n", sync_send_mesg_maxlen);
+@@ -719,7 +720,7 @@ ip_vs_send_async(struct socket *sock, co
  }
  
- /* Lookup pe and try to load it if it doesn't exist */
--struct ip_vs_pe *ip_vs_pe_get(const char *name)
-+struct ip_vs_pe *ip_vs_pe_getbyname(const char *name)
+ static void
+-ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg *msg)
++ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg_v1 *msg)
  {
- 	struct ip_vs_pe *pe;
+ 	int msize;
  
- 	/* Search for the pe by name */
--	pe = ip_vs_pe_getbyname(name);
-+	pe = __ip_vs_pe_getbyname(name);
- 
- 	/* If pe not found, load the module and search again */
- 	if (!pe) {
- 		request_module("ip_vs_pe_%s", name);
--		pe = ip_vs_pe_getbyname(name);
-+		pe = __ip_vs_pe_getbyname(name);
- 	}
- 
- 	return pe;
- }
- 
--void ip_vs_pe_put(struct ip_vs_pe *pe)
--{
--	if (pe && pe->module)
--		module_put(pe->module);
--}
--
- /* Register a pe in the pe list */
- int register_ip_vs_pe(struct ip_vs_pe *pe)
- {
-Index: lvs-test-2.6/net/netfilter/ipvs/ip_vs_ctl.c
-===================================================================
---- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_ctl.c	2010-10-15 08:12:46.000000000 +0900
-+++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_ctl.c	2010-10-15 08:12:51.000000000 +0900
-@@ -1149,7 +1149,7 @@ ip_vs_add_service(struct ip_vs_service_u
- 	}
- 
- 	if (u->pe_name && *u->pe_name) {
--		pe = ip_vs_pe_get(u->pe_name);
-+		pe = ip_vs_pe_getbyname(u->pe_name);
- 		if (pe == NULL) {
- 			pr_info("persistence engine module ip_vs_pe_%s "
- 				"not found\n", u->pe_name);
-@@ -1260,7 +1260,7 @@ ip_vs_edit_service(struct ip_vs_service
- 	old_sched = sched;
- 
- 	if (u->pe_name && *u->pe_name) {
--		pe = ip_vs_pe_get(u->pe_name);
-+		pe = ip_vs_pe_getbyname(u->pe_name);
- 		if (pe == NULL) {
- 			pr_info("persistence engine module ip_vs_pe_%s "
- 				"not found\n", u->pe_name);
 
