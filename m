@@ -1,45 +1,101 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [RFC PATCH 5/9] ipvs network name space aware
-Date: Wed, 27 Oct 2010 06:03:22 +0900
-Message-ID: <20101026210321.GE13167@verge.net.au>
-References: <201010081317.04167.hans.schillstrom@ericsson.com>
- <20101022190548.GA24978@verge.net.au>
- <201010261507.39734.hans.schillstrom@ericsson.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [RFC PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence
+ support
+Date: Wed, 27 Oct 2010 00:25:10 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1010262331200.1928@ja.ssi.bg>
+References: <201010261300.09827.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <201010261507.39734.hans.schillstrom@ericsson.com>
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <201010261300.09827.hans.schillstrom@ericsson.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
 To: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
+Cc: Simon Horman <horms@verge.net.au>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, Daniel Lezcano <daniel.lezcano@free.fr>
 
-On Tue, Oct 26, 2010 at 03:07:38PM +0200, Hans Schillstrom wrote:
-> On Friday 22 October 2010 21:05:48 Simon Horman wrote:
-> > On Fri, Oct 08, 2010 at 01:17:02PM +0200, Hans Schillstrom wrote:
-> > > This patch just contains ip_vs_ctl
-> > >
-> > > Signed-off-by:Hans Schillstrom <hans.schillstrom@ericsson.com>
-> > >
-> > > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> > > index ca8ec8c..7e99cbc 100644
-> > > --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> > > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> >
-> > [ snip ]
-> > Hi Hans,
-> >
-> > is there a reason that the order some of the entries in
-> > vs_vars has been switched around?
-> >
-> Yes there is, when vars will be copied to it's own NS it's a lot easier
-> when they are in sequence and without a potential insert in the middle
-> the #if 0 ...
-> 
-> have a look at __ip_vs_control_init(struct net *net)
 
-Ok, I suspected something like that.
-In that case I think there may be a problem with
-the way that I handled sysctl_ip_vs_conntrack.
+ 	Hello,
+
+On Tue, 26 Oct 2010, Hans Schillstrom wrote:
+
+> Type:  is one of this four
+> -IPv4
+> -IPv6
+> -IPv4 with PE data
+> -IPv6 with PE data
+
+ 	I'm thinking of different way to provide parameters. If before
+now ip_vs_sync_conn_options uses cp->flags & IP_VS_CONN_F_SEQ_MASK
+to check for present data now we can allow optional parameters
+in such form:
+
+- 1 octet length to next parameter: N
+- 1 octet type: IPv4_Addresses, IPv6_Addresses, PE_Data, TCP_Seqs
+- N-2 octets for data
+
+ 	The cost is 2 extra octets per parameter data and
+that alignment is 2 octets, we must use memcpy for the
+addresses.
+
+ 	By this way later we can add more parameters. If we
+want master to specify that some parameter is optional
+we can allocate 1 bit (bit 7) in 'type' for this. Most
+of the parameters must be supported by backup server.
+If backup does not recognize some type it will skip the
+connection entry if bit 7 is not set.
+
+ 	While parsing the parameters we can set some bits
+in local var to detect what params are received: only one of
+IPv4_Addresses and IPv6_Addresses, etc.
+
+ 	FWMARK can be added in this way but may be it
+is better to be in the mandatory structure.
+
+ 	The only problem is that it is difficult to
+predict the entry size in ip_vs_sync_conn().
+
+ 	Also, we should add new define that will mask
+all connection flags not supported by backup. Currently,
+only IP_VS_CONN_F_HASHED is ignored:
+
+#define IP_VS_CONN_F_BACKUP_MASK (IP_VS_CONN_F_FWD_MASK | \
+ 				IP_VS_CONN_F_NOOUTPUT | \
+ 				IP_VS_CONN_F_INACTIVE | \
+ 				IP_VS_CONN_F_SEQ_MASK | \
+ 				IP_VS_CONN_F_NO_CPORT | \
+ 				IP_VS_CONN_F_TEMPLATE | \
+ 				)
+
+ 	may be IP_VS_CONN_F_ONE_PACKET does not need to
+be used in backup and master does not need to sync it.
+
+> Ver.  Version of specified type right now it's 0
+>
+> fwmark:  Firewall mark from skb.
+
+ 	Is it really needed fwmark to be added in
+struct ip_vs_conn_param? May be adding new argument just
+to ip_vs_conn_new is enough?
+
+> timeout: from ip_vs_conn struct.
+
+ 	May be timeout must be in seconds, in case both
+boxes use different HZ.
+
+> PATCH STATUS:
+> - Persistence data is not tested.
+>
+> QUESTIONS:
+> In ip_vs_nfct.c
+> ip_vs_conn_fill_param()  fwmark is set to 0,
+> Do we need to digg for it there ?
+> (It is a callback from ct ..)
+
+ 	There is no ip_vs_conn_new in ip_vs_nfct.c, so it will
+be simpler if fwmark is not added to struct ip_vs_conn_param
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
