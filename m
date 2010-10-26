@@ -1,7 +1,7 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [RFC PATCH 1/4] IPVS: Prepare for transferring firewall marks (fwmark) to the backup daemon.
-Date: Tue, 26 Oct 2010 13:00:20 +0200
-Message-ID: <1288090823-31135-1-git-send-email-hans.schillstrom@ericsson.com>
+Subject: [RFC PATCH 4/4] IPVS: Change sending to Version 1 format
+Date: Tue, 26 Oct 2010 13:00:23 +0200
+Message-ID: <1288090823-31135-4-git-send-email-hans.schillstrom@ericsson.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -11,289 +11,257 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, daniel.lezcano@free.fr
 Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-Two structs will have fwmark added:
- * ip_vs_conn
- * ip_vs_conn_param
+This patch finalize this patch series with sending
+Affected functions,
 
-ip_vs_conn_fill_param will have an extra param - fwmark
-The effects of that is in this patch.
+ip_vs_sync_buff_create()
+ip_vs_sync_conn()
+
+ip_vs_core.c removal of IPv4 check.
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 ---
- include/net/ip_vs.h                     |    7 ++++++-
- net/netfilter/ipvs/ip_vs_conn.c         |    9 +++++----
- net/netfilter/ipvs/ip_vs_core.c         |   13 +++++++------
- net/netfilter/ipvs/ip_vs_ctl.c          |    4 ++--
- net/netfilter/ipvs/ip_vs_ftp.c          |    8 +++++---
- net/netfilter/ipvs/ip_vs_nfct.c         |    2 +-
- net/netfilter/ipvs/ip_vs_proto_ah_esp.c |   13 ++++++++-----
- net/netfilter/ipvs/ip_vs_sync.c         |    4 ++--
- 8 files changed, 36 insertions(+), 24 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c |    6 +-
+ net/netfilter/ipvs/ip_vs_sync.c |  139 +++++++++++++++++++++++++++++----------
+ 2 files changed, 108 insertions(+), 37 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b7bbd6c..128965c 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -360,6 +360,7 @@ extern struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto);
- struct ip_vs_conn_param {
- 	const union nf_inet_addr	*caddr;
- 	const union nf_inet_addr	*vaddr;
-+	__be32				fwmark;
- 	__be16				cport;
- 	__be16				vport;
- 	__u16				protocol;
-@@ -381,6 +382,7 @@ struct ip_vs_conn {
- 	union nf_inet_addr       caddr;          /* client address */
- 	union nf_inet_addr       vaddr;          /* virtual address */
- 	union nf_inet_addr       daddr;          /* destination address */
-+	__be32			 fwmark;	 /* fw mark for service */
- 	volatile __u32           flags;          /* status flags */
- 	__be16                   cport;
- 	__be16                   vport;
-@@ -679,6 +681,7 @@ static inline void ip_vs_conn_fill_param(int af, int protocol,
- 					 __be16 cport,
- 					 const union nf_inet_addr *vaddr,
- 					 __be16 vport,
-+					 __be32 fwmark,
- 					 struct ip_vs_conn_param *p)
- {
- 	p->af = af;
-@@ -687,6 +690,7 @@ static inline void ip_vs_conn_fill_param(int af, int protocol,
- 	p->cport = cport;
- 	p->vaddr = vaddr;
- 	p->vport = vport;
-+	p->fwmark = fwmark;
- 	p->pe = NULL;
- 	p->pe_data = NULL;
- }
-@@ -889,7 +893,8 @@ extern int ip_vs_control_init(void);
- extern void ip_vs_control_cleanup(void);
- extern struct ip_vs_dest *
- ip_vs_find_dest(int af, const union nf_inet_addr *daddr, __be16 dport,
--		const union nf_inet_addr *vaddr, __be16 vport, __u16 protocol);
-+		const union nf_inet_addr *vaddr, __be16 vport, __u16 protocol,
-+		__u32 fwmark);
- extern struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp);
- 
- 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index e9adecd..866165c 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -174,7 +174,7 @@ static unsigned int ip_vs_conn_hashkey_conn(const struct ip_vs_conn *cp)
- 	struct ip_vs_conn_param p;
- 
- 	ip_vs_conn_fill_param(cp->af, cp->protocol, &cp->caddr, cp->cport,
--			      NULL, 0, &p);
-+			      NULL, 0, 0, &p);
- 
- 	if (cp->dest && cp->dest->svc->pe) {
- 		p.pe = cp->dest->svc->pe;
-@@ -320,10 +320,10 @@ ip_vs_conn_fill_param_proto(int af, const struct sk_buff *skb,
- 
- 	if (likely(!inverse))
- 		ip_vs_conn_fill_param(af, iph->protocol, &iph->saddr, pptr[0],
--				      &iph->daddr, pptr[1], p);
-+				      &iph->daddr, pptr[1], skb->mark, p);
- 	else
- 		ip_vs_conn_fill_param(af, iph->protocol, &iph->daddr, pptr[1],
--				      &iph->saddr, pptr[0], p);
-+				      &iph->saddr, pptr[0], skb->mark, p);
- 	return 0;
- }
- 
-@@ -613,7 +613,7 @@ struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- 	if ((cp) && (!cp->dest)) {
- 		dest = ip_vs_find_dest(cp->af, &cp->daddr, cp->dport,
- 				       &cp->vaddr, cp->vport,
--				       cp->protocol);
-+				       cp->protocol, cp->fwmark);
- 		ip_vs_bind_dest(cp, dest);
- 		return dest;
- 	} else
-@@ -825,6 +825,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
- 	ip_vs_addr_copy(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
- 			&cp->daddr, daddr);
- 	cp->dport          = dport;
-+	cp->fwmark	   = p->fwmark;
- 	cp->flags	   = flags;
- 	if (flags & IP_VS_CONN_F_TEMPLATE && p->pe_data) {
- 		cp->pe_data = p->pe_data;
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index b4e51e9..61abf39 100644
+index 61abf39..8e37c5f 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -184,7 +184,8 @@ ip_vs_conn_fill_param_persist(const struct ip_vs_service *svc,
- 			      const union nf_inet_addr *vaddr, __be16 vport,
- 			      struct ip_vs_conn_param *p)
- {
--	ip_vs_conn_fill_param(svc->af, protocol, caddr, cport, vaddr, vport, p);
-+	ip_vs_conn_fill_param(svc->af, protocol, caddr, cport, vaddr, vport,
-+			      skb->mark, p);
- 	p->pe = svc->pe;
- 	if (p->pe && p->pe->fill_param)
- 		p->pe->fill_param(p, skb);
-@@ -318,7 +319,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	 *    Create a new connection according to the template
+@@ -1536,9 +1536,10 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	 *
+ 	 * Sync connection if it is about to close to
+ 	 * encorage the standby servers to update the connections timeout
++	 * IPv6 is supported now
  	 */
- 	ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr, ports[0],
--			      &iph.daddr, ports[1], &param);
-+			      &iph.daddr, ports[1], skb->mark, &param);
- 	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest);
- 	if (cp == NULL) {
- 		ip_vs_conn_put(ct);
-@@ -419,8 +420,8 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	 */
- 	{
- 		struct ip_vs_conn_param p;
--		ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr,
--				      pptr[0], &iph.daddr, pptr[1], &p);
-+		ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr, pptr[0],
-+				      &iph.daddr, pptr[1], skb->mark, &p);
- 		cp = ip_vs_conn_new(&p, &dest->addr,
- 				    dest->port ? dest->port : pptr[1],
- 				    flags, dest);
-@@ -485,8 +486,8 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		{
- 			struct ip_vs_conn_param p;
- 			ip_vs_conn_fill_param(svc->af, iph.protocol,
--					      &iph.saddr, pptr[0],
--					      &iph.daddr, pptr[1], &p);
-+					      &iph.saddr, pptr[0],&iph.daddr,
-+					      pptr[1], skb->mark, &p);
- 			cp = ip_vs_conn_new(&p, &daddr, 0,
- 					    IP_VS_CONN_F_BYPASS | flags,
- 					    NULL);
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 5f5daa3..0129b52 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -657,12 +657,12 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
- struct ip_vs_dest *ip_vs_find_dest(int af, const union nf_inet_addr *daddr,
- 				   __be16 dport,
- 				   const union nf_inet_addr *vaddr,
--				   __be16 vport, __u16 protocol)
-+				   __be16 vport, __u16 protocol, __u32 fwmark)
- {
- 	struct ip_vs_dest *dest;
- 	struct ip_vs_service *svc;
+ 	pkts = atomic_add_return(1, &cp->in_pkts);
+-	if (af == AF_INET && (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
++	if ((ip_vs_sync_state & IP_VS_STATE_MASTER) &&
+ 	    cp->protocol == IPPROTO_SCTP) {
+ 		if ((cp->state == IP_VS_SCTP_S_ESTABLISHED &&
+ 			(pkts % sysctl_ip_vs_sync_threshold[1]
+@@ -1553,8 +1554,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	}
  
--	svc = ip_vs_service_get(af, 0, protocol, vaddr, vport);
-+	svc = ip_vs_service_get(af, fwmark, protocol, vaddr, vport);
- 	if (!svc)
- 		return NULL;
- 	dest = ip_vs_lookup_dest(svc, daddr, dport);
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 7545500..84287c0 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -198,13 +198,15 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 		{
- 			struct ip_vs_conn_param p;
- 			ip_vs_conn_fill_param(AF_INET, iph->protocol,
--					      &from, port, &cp->caddr, 0, &p);
-+					      &from, port, &cp->caddr,
-+					      0, skb->mark, &p);
- 			n_cp = ip_vs_conn_out_get(&p);
- 		}
- 		if (!n_cp) {
- 			struct ip_vs_conn_param p;
- 			ip_vs_conn_fill_param(AF_INET, IPPROTO_TCP, &cp->caddr,
--					      0, &cp->vaddr, port, &p);
-+					      0, &cp->vaddr, port,
-+					      skb->mark, &p);
- 			n_cp = ip_vs_conn_new(&p, &from, port,
- 					      IP_VS_CONN_F_NO_CPORT |
- 					      IP_VS_CONN_F_NFCT,
-@@ -360,7 +362,7 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 		struct ip_vs_conn_param p;
- 		ip_vs_conn_fill_param(AF_INET, iph->protocol, &to, port,
- 				      &cp->vaddr, htons(ntohs(cp->vport)-1),
--				      &p);
-+				      skb->mark, &p);
- 		n_cp = ip_vs_conn_in_get(&p);
- 		if (!n_cp) {
- 			n_cp = ip_vs_conn_new(&p, &cp->daddr,
-diff --git a/net/netfilter/ipvs/ip_vs_nfct.c b/net/netfilter/ipvs/ip_vs_nfct.c
-index 4680647..21afc06 100644
---- a/net/netfilter/ipvs/ip_vs_nfct.c
-+++ b/net/netfilter/ipvs/ip_vs_nfct.c
-@@ -157,7 +157,7 @@ static void ip_vs_nfct_expect_callback(struct nf_conn *ct,
- 	orig = &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple;
- 	ip_vs_conn_fill_param(exp->tuple.src.l3num, orig->dst.protonum,
- 			      &orig->src.u3, orig->src.u.tcp.port,
--			      &orig->dst.u3, orig->dst.u.tcp.port, &p);
-+			      &orig->dst.u3, orig->dst.u.tcp.port, 0, &p);
- 	cp = ip_vs_conn_out_get(&p);
- 	if (cp) {
- 		/* Change reply CLIENT->RS to CLIENT->VS */
-diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-index 3a04611..6f62eba 100644
---- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-@@ -42,16 +42,19 @@ struct isakmp_hdr {
- 
- static void
- ah_esp_conn_fill_param_proto(int af, const struct ip_vs_iphdr *iph,
--			     int inverse, struct ip_vs_conn_param *p)
-+			     int inverse, const struct sk_buff *skb,
-+			     struct ip_vs_conn_param *p)
- {
- 	if (likely(!inverse))
- 		ip_vs_conn_fill_param(af, IPPROTO_UDP,
- 				      &iph->saddr, htons(PORT_ISAKMP),
--				      &iph->daddr, htons(PORT_ISAKMP), p);
-+				      &iph->daddr, htons(PORT_ISAKMP),
-+				      skb->mark, p);
- 	else
- 		ip_vs_conn_fill_param(af, IPPROTO_UDP,
- 				      &iph->daddr, htons(PORT_ISAKMP),
--				      &iph->saddr, htons(PORT_ISAKMP), p);
-+				      &iph->saddr, htons(PORT_ISAKMP),
-+				      skb->mark, p);
- }
- 
- static struct ip_vs_conn *
-@@ -62,7 +65,7 @@ ah_esp_conn_in_get(int af, const struct sk_buff *skb, struct ip_vs_protocol *pp,
- 	struct ip_vs_conn *cp;
- 	struct ip_vs_conn_param p;
- 
--	ah_esp_conn_fill_param_proto(af, iph, inverse, &p);
-+	ah_esp_conn_fill_param_proto(af, iph, inverse, skb, &p);
- 	cp = ip_vs_conn_in_get(&p);
- 	if (!cp) {
- 		/*
-@@ -91,7 +94,7 @@ ah_esp_conn_out_get(int af, const struct sk_buff *skb,
- 	struct ip_vs_conn *cp;
- 	struct ip_vs_conn_param p;
- 
--	ah_esp_conn_fill_param_proto(af, iph, inverse, &p);
-+	ah_esp_conn_fill_param_proto(af, iph, inverse, skb, &p);
- 	cp = ip_vs_conn_out_get(&p);
- 	if (!cp) {
- 		IP_VS_DBG_BUF(12, "Unknown ISAKMP entry for inout packet "
+ 	/* Keep this block last: TCP and others with pp->num_states <= 1 */
+-	else if (af == AF_INET &&
+-	    (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
++	else if ((ip_vs_sync_state & IP_VS_STATE_MASTER) &&
+ 	    (((cp->protocol != IPPROTO_TCP ||
+ 	       cp->state == IP_VS_TCP_S_ESTABLISHED) &&
+ 	      (pkts % sysctl_ip_vs_sync_threshold[1]
 diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index ab85aed..c74d47b 100644
+index 2d2d5c9..9fc2b45 100644
 --- a/net/netfilter/ipvs/ip_vs_sync.c
 +++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -295,7 +295,7 @@ ip_vs_conn_fill_param_sync(int af, int protocol,
- 			   struct ip_vs_conn_param *p)
- {
- 	/* XXX: Need to take into account persistence engine */
--	ip_vs_conn_fill_param(af, protocol, caddr, cport, vaddr, vport, p);
-+	ip_vs_conn_fill_param(af, protocol, caddr, cport, vaddr, vport, 0, p);
- 	return 0;
+@@ -249,9 +249,9 @@ struct ip_vs_sync_buff {
+ 	unsigned long           firstuse;
+ 
+ 	/* pointers for the message data */
+-	struct ip_vs_sync_mesg  *mesg;
+-	unsigned char           *head;
+-	unsigned char           *end;
++	struct ip_vs_sync_mesg_v2 *mesg;
++	unsigned char             *head;
++	unsigned char             *end;
+ };
+ 
+ 
+@@ -302,6 +302,9 @@ static inline struct ip_vs_sync_buff *sb_dequeue(void)
+ 	return sb;
  }
  
-@@ -406,7 +406,7 @@ static void ip_vs_process_message(const char *buffer, const size_t buflen)
- 					       s->dport,
- 					       (union nf_inet_addr *)&s->vaddr,
- 					       s->vport,
--					       s->protocol);
-+					       s->protocol, 0);
- 			/*  Set the approprite ativity flag */
- 			if (s->protocol == IPPROTO_TCP) {
- 				if (state != IP_VS_TCP_S_ESTABLISHED)
++/*
++ * Create a new sync buffer for Version 1 proto.
++ */
+ static inline struct ip_vs_sync_buff * ip_vs_sync_buff_create(void)
+ {
+ 	struct ip_vs_sync_buff *sb;
+@@ -313,11 +316,15 @@ static inline struct ip_vs_sync_buff * ip_vs_sync_buff_create(void)
+ 		kfree(sb);
+ 		return NULL;
+ 	}
+-	sb->mesg->nr_conns = 0;
++	sb->mesg->reserverd = 0; /* old nr_conns i.e. must be zeo now */
++	sb->mesg->version = SYNC_PROTO_VER;
+ 	sb->mesg->syncid = ip_vs_master_syncid;
+-	sb->mesg->size = 4;
+-	sb->head = (unsigned char *)sb->mesg + 4;
++	sb->mesg->size = sizeof(struct ip_vs_sync_mesg_v2);
++	sb->mesg->nr_conns = 0;
++	sb->mesg->spare = 0;
++	sb->head = (unsigned char *)sb->mesg + sizeof(struct ip_vs_sync_mesg_v2);
+ 	sb->end = (unsigned char *)sb->mesg + sync_send_mesg_maxlen;
++
+ 	sb->firstuse = jiffies;
+ 	return sb;
+ }
+@@ -362,14 +369,47 @@ get_curr_sync_buff(unsigned long time)
+ /*
+  *      Add an ip_vs_conn information into the current sync_buff.
+  *      Called by ip_vs_in.
++ *      Sending Version 1 messages
+  */
+ void ip_vs_sync_conn(struct ip_vs_conn *cp)
+ {
+-	struct ip_vs_sync_mesg *m;
+-	struct ip_vs_sync_conn_v0 *s;
+-	int len;
++	struct ip_vs_sync_mesg_v2 *m;
++	union ip_vs_sync_conn *s;
++	char *p;
++	int len, pe_name_len = 0;
++
++	/* Sanity checks */
++	if (cp->pe_data_len && (!cp->pe_data || !cp->dest)) {
++		IP_VS_ERR_RL("connection pe_data invalid\n");
++		return;
++	}
++	/* Add space for terminating \0 */
++	if (cp->pe_data_len && cp->dest->svc && cp->dest->svc->pe
++	     && cp->dest->svc->pe->name )
++		pe_name_len = strnlen(cp->dest->svc->pe->name,
++				      IP_VS_PENAME_MAXLEN) + 1;
+ 
+ 	spin_lock(&curr_sb_lock);
++#ifdef CONFIG_IP_VS_IPV6
++	/* Assumption,if not configured for IPv6 no packets should enter here */
++	if (cp->af == AF_INET6)
++		len = sizeof(struct ip_vs_sync_v6);
++	else
++#endif
++		len = sizeof(struct ip_vs_sync_v4);
++
++	if (cp->flags & IP_VS_CONN_F_SEQ_MASK)
++		len += sizeof(struct ip_vs_sync_conn_options);
++
++	/* 32 bit alignment */
++	len += (cp->pe_data_len + pe_name_len + 3) & 0xfc;
++
++	/* check if there is a space for this one */
++	if (curr_sb && (curr_sb->head+len > curr_sb->end) ) {
++		sb_queue_tail(curr_sb);
++		curr_sb = NULL;
++	}
++
+ 	if (!curr_sb) {
+ 		if (!(curr_sb=ip_vs_sync_buff_create())) {
+ 			spin_unlock(&curr_sb_lock);
+@@ -378,42 +418,72 @@ void ip_vs_sync_conn(struct ip_vs_conn *cp)
+ 		}
+ 	}
+ 
+-	len = (cp->flags & IP_VS_CONN_F_SEQ_MASK) ? FULL_CONN_SIZE :
+-		SIMPLE_CONN_SIZE;
++
+ 	m = curr_sb->mesg;
+-	s = (struct ip_vs_sync_conn_v0 *)curr_sb->head;
++	s = (union ip_vs_sync_conn *)curr_sb->head;
++	p = (char *)s;
+ 
++	/* Set message type */
++	if (cp->pe_data_len)
++		s->v4.type = (cp->af == AF_INET6 ? STYPE_PE_6 : STYPE_PE_4);
++	else
++		s->v4.type = (cp->af == AF_INET6 ? STYPE_INET6 : STYPE_INET4);
+ 	/* copy members */
+-	s->protocol = cp->protocol;
+-	s->cport = cp->cport;
+-	s->vport = cp->vport;
+-	s->dport = cp->dport;
+-	s->caddr = cp->caddr.ip;
+-	s->vaddr = cp->vaddr.ip;
+-	s->daddr = cp->daddr.ip;
+-	s->flags = htons(cp->flags & ~IP_VS_CONN_F_HASHED);
+-	s->state = htons(cp->state);
+-	if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
+-		struct ip_vs_sync_conn_options *opt =
+-			(struct ip_vs_sync_conn_options *)&s[1];
+-		memcpy(opt, &cp->in_seq, sizeof(*opt));
+-	}
+-
++	s->v4.ver_size = htons(len & SVER_MASK);	/* Version=0 */
++	s->v4.flags = htonl(cp->flags & ~IP_VS_CONN_F_HASHED);
++	s->v4.state = htons(cp->state);
++	s->v4.protocol = cp->protocol;
++	s->v4.cport = cp->cport;
++	s->v4.vport = cp->vport;
++	s->v4.dport = cp->dport;
++	s->v4.fwmark = htonl(cp->fwmark);
++	s->v4.timeout = htonl(cp->timeout);
+ 	m->nr_conns++;
+-	m->size += len;
+-	curr_sb->head += len;
+ 
+-	/* check if there is a space for next one */
+-	if (curr_sb->head+FULL_CONN_SIZE > curr_sb->end) {
+-		sb_queue_tail(curr_sb);
+-		curr_sb = NULL;
++#ifdef CONFIG_IP_VS_IPV6
++	if (cp->af == AF_INET6 ) {
++		p += sizeof(struct ip_vs_sync_v6);
++		ipv6_addr_copy(&s->v6.caddr, &cp->caddr.in6);
++		ipv6_addr_copy(&s->v6.vaddr, &cp->vaddr.in6);
++		ipv6_addr_copy(&s->v6.daddr, &cp->daddr.in6);
++		if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
++			memcpy(p, &cp->in_seq,
++			       sizeof(struct ip_vs_sync_conn_options));
++			p += sizeof(struct ip_vs_sync_conn_options);
++		}
++	} else
++#endif
++	{
++		p += sizeof(struct ip_vs_sync_v4);	/* options ptr */
++		s->v4.caddr = cp->caddr.ip;
++		s->v4.vaddr = cp->vaddr.ip;
++		s->v4.daddr = cp->daddr.ip;
++		if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
++			memcpy(p, &cp->in_seq,
++			       sizeof(struct ip_vs_sync_conn_options));
++			p += sizeof(struct ip_vs_sync_conn_options);
++		}
+ 	}
++	/* Handle pe data */
++	if (cp->pe_data_len && cp->pe_data) {
++		*(p++)=cp->pe_data_len;
++		*(p++)=pe_name_len;
++		memcpy(p, cp->pe_data,
++		       cp->pe_data_len);
++		p += cp->pe_data_len;
++		if (pe_name_len)
++			memcpy(p, cp->dest->svc->pe->name, pe_name_len);
++	}
++        m->size += len;
++        curr_sb->head += len;
++
+ 	spin_unlock(&curr_sb_lock);
+ 
+ 	/* synchronize its controller if it has */
+ 	if (cp->control)
+ 		ip_vs_sync_conn(cp->control);
+ }
++
+ /*
+  * fill_param used for proto version 0
+  */
+@@ -428,6 +498,7 @@ ip_vs_conn_fill_param_sync_v0(int af, struct ip_vs_sync_conn_v0 *sc,
+ 			   sc->vport, 0, p);
+ 	return 0;
+ }
++
+ /*
+  *  fill_param used by version 1
+  */
+@@ -1048,7 +1119,7 @@ ip_vs_send_async(struct socket *sock, const char *buffer, const size_t length)
+ }
+ 
+ static void
+-ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg *msg)
++ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg_v2 *msg)
+ {
+ 	int msize;
+ 
 -- 
 1.6.0.2
 
