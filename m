@@ -1,69 +1,49 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [RFC PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence support
-Date: Wed, 27 Oct 2010 14:33:06 +0200
-Message-ID: <201010271433.06982.hans.schillstrom@ericsson.com>
-References: <201010261300.09827.hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1010262331200.1928@ja.ssi.bg> <201010271119.21590.hans.schillstrom@ericsson.com>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Subject: [PATCH] IPVS: ip_vs_pe.c, use strncmp to be safe.
+Date: Wed, 27 Oct 2010 17:05:00 +0200
+Message-ID: <1288191900-24613-1-git-send-email-hans.schillstrom@ericsson.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <201010271119.21590.hans.schillstrom@ericsson.com>
-Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, Daniel Lezcano <daniel.lezcano@free.fr>
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org, horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-Hello
-Some small changes, ...
+With pe data traveling between master and backup,
+strcmp should not be used. 
+How knows what size it will have in future.
 
-On Wednesday 27 October 2010 11:19:20 Hans Schillstrom wrote:
-> Hello
->
-> On Tuesday 26 October 2010 23:25:10 Julian Anastasov wrote:
-> >
-> >  	Hello,
-[snip]
->
-> /* Option types */
-> #define IPVS_OPT_SEQ_DATA    1
-> #define IPVS_OPT_PE_DATA     2
-> #define IPVS_OPT_PE_NAME     3
->
->
-> >  	By this way later we can add more parameters. If we
-> > want master to specify that some parameter is optional
-> > we can allocate 1 bit (bit 7) in 'type' for this. Most
-> > of the parameters must be supported by backup server.
-> > If backup does not recognize some type it will skip the
-> > connection entry if bit 7 is not set.
-> >
-> A New Spec of Type field:
->
-> Bit    7        6        . . .      2         1           0
->   +----------+--------------------------+-------------+-------+
->   | Opt.Data |          Spare           | Packed IPv6 |  IPv6 |
->   +----------+--------------------------+-------------+-------+
+To be safe use strncmp.
 
-I can see a better usage of it in Option Type so Type will look like this
-    +-------------------------------------+-------------+-------+
-    |                     Spare           | Packed IPv6 |  IPv6 |
-    +-------------------------------------+-------------+-------+
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+---
+ net/netfilter/ipvs/ip_vs_pe.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-And "Option Type" in option field would look like this
+diff --git a/net/netfilter/ipvs/ip_vs_pe.c b/net/netfilter/ipvs/ip_vs_pe.c
+index 3414af7..baab44f 100644
+--- a/net/netfilter/ipvs/ip_vs_pe.c
++++ b/net/netfilter/ipvs/ip_vs_pe.c
+@@ -46,7 +46,7 @@ ip_vs_pe_getbyname(const char *pe_name)
+ 			/* This pe is just deleted */
+ 			continue;
+ 		}
+-		if (strcmp(pe_name, pe->name)==0) {
++		if (strncmp(pe_name, pe->name, IP_VS_PENAME_MAXLEN )==0) {
+ 			/* HIT */
+ 			spin_unlock_bh(&ip_vs_pe_lock);
+ 			return pe;
+@@ -104,7 +104,7 @@ int register_ip_vs_pe(struct ip_vs_pe *pe)
+ 	 * in the pe list.
+ 	 */
+ 	list_for_each_entry(tmp, &ip_vs_pe, n_list) {
+-		if (strcmp(tmp->name, pe->name) == 0) {
++		if (strncmp(tmp->name, pe->name, IP_VS_PENAME_MAXLEN) == 0) {
+ 			spin_unlock_bh(&ip_vs_pe_lock);
+ 			ip_vs_use_count_dec();
+ 			pr_err("%s(): [%s] pe already existed "
+-- 
+1.6.0.2
 
- Bit    7        6        . . .    0    7                      0
-   +----------+----------------------+---------------------------+
-   | Optional |      Option type     |    Option length          |
-   +----------+----------------------+---------------------------+
-
-We can have a better fine tuning of options in this way.
-
-I.e. as Julian wrote but transferd to Option Type:
-
-" If backup does not recognize some type it will skip the
-  connection entry if bit 7 is not set."
-
---
-Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
