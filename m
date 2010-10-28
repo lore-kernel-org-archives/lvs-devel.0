@@ -1,34 +1,70 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH] IPVS: ip_vs_pe.c, use strncmp to be safe.
-Date: Thu, 28 Oct 2010 12:33:27 +0200
-Message-ID: <4CC95177.1060008@trash.net>
-References: <1288191900-24613-1-git-send-email-hans.schillstrom@ericsson.com> <20101028075650.GC5305@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [RFC PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence
+ support
+Date: Thu, 28 Oct 2010 20:35:12 +0900
+Message-ID: <20101028113511.GA13986@verge.net.au>
+References: <201010261300.09827.hans.schillstrom@ericsson.com>
+ <alpine.LFD.2.00.1010262331200.1928@ja.ssi.bg>
+ <201010271119.21590.hans.schillstrom@ericsson.com>
+ <201010271433.06982.hans.schillstrom@ericsson.com>
+ <alpine.LFD.2.00.1010272249030.1643@ja.ssi.bg>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101028075650.GC5305@verge.net.au>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1010272249030.1643@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, lvs-devel@vger.kernel.org, ja@ssi.bg, wensong@linux-vs.org
+Content-Transfer-Encoding: 7bit
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, Daniel Lezcano <daniel.lezcano@free.fr>
 
-On 28.10.2010 09:56, Simon Horman wrote:
-> On Wed, Oct 27, 2010 at 05:05:00PM +0200, Hans Schillstrom wrote:
->> With pe data traveling between master and backup,
->> strcmp should not be used. 
->> How knows what size it will have in future.
->>
->> To be safe use strncmp.
+On Wed, Oct 27, 2010 at 10:58:31PM +0300, Julian Anastasov wrote:
 > 
-> Hi Hans,
+> 	Hello,
 > 
-> I'm not entirely convinced this is necessary, but
-> its better to be safe than sorry.
+> On Wed, 27 Oct 2010, Hans Schillstrom wrote:
 > 
->> Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
-> 
-> Patrick, I assume that nf-next-2.6 is currently closed.
-> I'll push this to you once it opens again.
+> >>A New Spec of Type field:
+> >>
+> >>Bit    7        6        . . .      2         1           0
+> >>  +----------+--------------------------+-------------+-------+
+> >>  | Opt.Data |          Spare           | Packed IPv6 |  IPv6 |
+> >>  +----------+--------------------------+-------------+-------+
+> >
+> >I can see a better usage of it in Option Type so Type will look like this
+> >   +-------------------------------------+-------------+-------+
+> >   |                     Spare           | Packed IPv6 |  IPv6 |
+> >   +-------------------------------------+-------------+-------+
+> >
+> >And "Option Type" in option field would look like this
+> >
+> >Bit    7        6        . . .    0    7                      0
+> >  +----------+----------------------+---------------------------+
+> >  | Optional |      Option type     |    Option length          |
+> >  +----------+----------------------+---------------------------+
 
-Thanks, I'll open up nf-next once Dave opens net-next.
+As it stands a little more than 256 bytes may be needed for
+pe_data (+ pe_name_length + pe_name). This could be resolved by
+shortening the maximum pe_data length. Or perhaps we could use 16 bytes for
+Option length, which should ensure its never too small.
+
+The 256 byte limit that I made for pe_data was arbitrarily chosen.
+
+> >We can have a better fine tuning of options in this way.
+> 
+> 	Yes, that is exactly my idea. I more like the name
+> "Parameter" instead of "Option", i.e. we have additional
+> parameters that can be mandatory (usually) but also can be
+> optional. For now I don't have idea for any optional
+> parameters but allocating 1 bit for this does not look
+> fatal.
+
+I'm not sure I understand the motivation for optional parameters.
+I think its important to allow for backwards compatibility. But
+I don't see that there will be multiple independent implementations
+of the synchronisation daemon in the near future. So the use-case
+isn't clear to me.
+
+That said, I agree that allocating 1 bit isn't a show-stopper.
+
