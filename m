@@ -1,29 +1,36 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [RFC PATCH 1/4] IPVS: Prepare for transferring firewall marks (fwmark) to the backup daemon.
-Date: Thu, 28 Oct 2010 14:58:50 +0200
-Message-ID: <201010281458.50533.hans.schillstrom@ericsson.com>
-References: <1288090823-31135-1-git-send-email-hans.schillstrom@ericsson.com> <20101028120847.GB16206@verge.net.au> <201010281451.55630.hans.schillstrom@ericsson.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: IPVS: sync_options needed (removal of some code...)?
+Date: Thu, 28 Oct 2010 23:29:14 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1010282319570.1744@ja.ssi.bg>
+References: <201010281118.56983.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <201010281451.55630.hans.schillstrom@ericsson.com>
-Content-Disposition: inline
+In-Reply-To: <201010281118.56983.hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: Simon Horman <horms@verge.net.au>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
 
-Hello again
-On Thursday 28 October 2010 14:51:55 Hans Schillstrom wrote:
-[snip]
+
+ 	Hello,
+
+On Thu, 28 Oct 2010, Hans Schillstrom wrote:
+
+> Hello
+> do we really need sync_options any more ?
+> (tcp seq re-calc)
 >
-> I will prepare and send a version 2 of the patch set today, with
-> the comments included from you and Julian.
->
-May I should wait, for the "sync_option" answer first,
-If it should be remove it will affect the patch ...
+> I might be blid, but I can't see anyone use it.
+> ip_vs_ftp_in() and ip_vs_ftp_out() do set diff=0 and never change them.
+
+ 	Yes, sync for FTP is not supported anymore
+starting from 2.6.36 :( But I'm not sure if any third party
+IPVS modules exists, it is possible other apps to use
+sync and sync_options.
+
+Regards
 
 --
-Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
+Julian Anastasov <ja@ssi.bg>
