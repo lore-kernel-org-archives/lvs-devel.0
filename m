@@ -1,7 +1,7 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [v2 PATCH 4/4] IPVS: Backup, Change sending to Version 1 format
-Date: Fri, 29 Oct 2010 14:16:39 +0200
-Message-ID: <1288354599-10919-4-git-send-email-hans.schillstrom@ericsson.com>
+Subject: [RFC PATCH] IPVS: Backup, Adding IPv6 address packing
+Date: Fri, 29 Oct 2010 14:22:00 +0200
+Message-ID: <1288354920-10994-1-git-send-email-hans.schillstrom@ericsson.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -11,241 +11,214 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, daniel.lezcano@free.fr
 Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-Enable sending and removal of version 0 sending
-Affected functions,
+Add pack/unpack of IPv6 address in sync message
+in binary form similar to the ASCII ::
 
-ip_vs_sync_buff_create()
-ip_vs_sync_conn()
+A packed IPv6 address constists of -
+first byte
+  high nibble first segment leng in bytes
+  low nibble  possition of last segment.
+then
+  First segemnt i.e. left side of ::
+  Last segment right side of ::
 
-ip_vs_core.c removal of IPv4 check.
+Examle  FC00::2
+unpacked FC00 0000 0000 0000 0000 0000 0000 0002
+packed   1F FC02
+Example 2 2003::2:100
+unpacked 2003 0000 0000 0000 0000 0000 0002 0100
+packed   2D 20 03 02 01 00
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c |    5 +-
- net/netfilter/ipvs/ip_vs_sync.c |  139 +++++++++++++++++++++++++++++----------
- 2 files changed, 107 insertions(+), 37 deletions(-)
+ net/netfilter/ipvs/ip_vs_sync.c |  128 +++++++++++++++++++++++++++++++++++---
+ 1 files changed, 117 insertions(+), 11 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index e2bb3cd..9c68045 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1537,7 +1537,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	 * encorage the standby servers to update the connections timeout
- 	 */
- 	pkts = atomic_add_return(1, &cp->in_pkts);
--	if (af == AF_INET && (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
-+	if ((ip_vs_sync_state & IP_VS_STATE_MASTER) &&
- 	    cp->protocol == IPPROTO_SCTP) {
- 		if ((cp->state == IP_VS_SCTP_S_ESTABLISHED &&
- 			(pkts % sysctl_ip_vs_sync_threshold[1]
-@@ -1552,8 +1552,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	}
- 
- 	/* Keep this block last: TCP and others with pp->num_states <= 1 */
--	else if (af == AF_INET &&
--	    (ip_vs_sync_state & IP_VS_STATE_MASTER) &&
-+	else if ((ip_vs_sync_state & IP_VS_STATE_MASTER) &&
- 	    (((cp->protocol != IPPROTO_TCP ||
- 	       cp->state == IP_VS_TCP_S_ESTABLISHED) &&
- 	      (pkts % sysctl_ip_vs_sync_threshold[1]
 diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 5aa8e04..00f0fd3 100644
+index 00f0fd3..6b4976c 100644
 --- a/net/netfilter/ipvs/ip_vs_sync.c
 +++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -247,9 +247,9 @@ struct ip_vs_sync_buff {
- 	unsigned long           firstuse;
- 
- 	/* pointers for the message data */
--	struct ip_vs_sync_mesg  *mesg;
--	unsigned char           *head;
--	unsigned char           *end;
-+	struct ip_vs_sync_mesg_v2 *mesg;
-+	unsigned char             *head;
-+	unsigned char             *end;
- };
- 
- 
-@@ -300,6 +300,9 @@ static inline struct ip_vs_sync_buff *sb_dequeue(void)
+@@ -363,6 +363,65 @@ get_curr_sync_buff(unsigned long time)
  	return sb;
  }
  
 +/*
-+ * Create a new sync buffer for Version 1 proto.
++ * Try to pack an IPv6 address
++ * Note that buffer must be at least 17 bytes
++ *
++ * Packing adds a byte before packed address
++ * m.s.nibble first segment size in bytes
++ * l.s.nibble last segment start offset in bytes (size = 16 - lastSeg)
++ *
++ * Return packed size, 0=no reduction
++ *        buffer contains first/lastSegemnt + (un)packed address
++ *
 + */
- static inline struct ip_vs_sync_buff * ip_vs_sync_buff_create(void)
- {
- 	struct ip_vs_sync_buff *sb;
-@@ -311,11 +314,15 @@ static inline struct ip_vs_sync_buff * ip_vs_sync_buff_create(void)
- 		kfree(sb);
- 		return NULL;
- 	}
--	sb->mesg->nr_conns = 0;
-+	sb->mesg->reserverd = 0; /* old nr_conns i.e. must be zeo now */
-+	sb->mesg->version = SYNC_PROTO_VER;
- 	sb->mesg->syncid = ip_vs_master_syncid;
--	sb->mesg->size = 4;
--	sb->head = (unsigned char *)sb->mesg + 4;
-+	sb->mesg->size = sizeof(struct ip_vs_sync_mesg_v2);
-+	sb->mesg->nr_conns = 0;
-+	sb->mesg->spare = 0;
-+	sb->head = (unsigned char *)sb->mesg + sizeof(struct ip_vs_sync_mesg_v2);
- 	sb->end = (unsigned char *)sb->mesg + sync_send_mesg_maxlen;
++static int ipv6addr_pack(struct in6_addr *in6, char *buffer)
++{
++	int i, pos=0, score=0;
++	int lmatch=0, firstSeg=0,lastSeg=0;
++	char *addr = in6->s6_addr;
++	char *buff = buffer;
 +
- 	sb->firstuse = jiffies;
- 	return sb;
- }
-@@ -360,14 +367,51 @@ get_curr_sync_buff(unsigned long time)
- /*
-  *      Add an ip_vs_conn information into the current sync_buff.
-  *      Called by ip_vs_in.
-+ *      Sending Version 1 messages
-  */
- void ip_vs_sync_conn(struct ip_vs_conn *cp)
- {
--	struct ip_vs_sync_mesg *m;
--	struct ip_vs_sync_conn_v0 *s;
--	int len;
-+	struct ip_vs_sync_mesg_v2 *m;
-+	union ip_vs_sync_conn *s;
-+	char *p;
-+	int len, pe_name_len = 0;
-+
-+	/* Sanity checks */
-+	if (cp->pe_data_len && (!cp->pe_data || !cp->dest)) {
-+		IP_VS_ERR_RL("connection pe_data invalid\n");
-+		return;
-+	}
-+	/* Add space for terminating \0 */
-+	if (cp->pe_data_len && cp->dest->svc && cp->dest->svc->pe
-+	     && cp->dest->svc->pe->name )
-+		pe_name_len = strnlen(cp->dest->svc->pe->name,
-+				      IP_VS_PENAME_MAXLEN) + 1;
- 
- 	spin_lock(&curr_sb_lock);
-+#ifdef CONFIG_IP_VS_IPV6
-+	/* Assumption,if not configured for IPv6 no packets should enter here */
-+	if (cp->af == AF_INET6)
-+		len = sizeof(struct ip_vs_sync_v6);
-+	else
-+#endif
-+		len = sizeof(struct ip_vs_sync_v4);
-+
-+	if (cp->flags & IP_VS_CONN_F_SEQ_MASK)
-+		len += sizeof(struct ip_vs_sync_conn_options) + 2;
-+
-+	/* 32 bit alignment */
-+	if (cp->pe_data_len)
-+		len += cp->pe_data_len + 2;	/* + Option field */
-+	if(pe_name_len)
-+		len += pe_name_len + 2;
-+	len = (len+3) & 0xffc;		/* Final 32 bit alignment */
-+
-+	/* check if there is a space for this one */
-+	if (curr_sb && (curr_sb->head+len > curr_sb->end) ) {
-+		sb_queue_tail(curr_sb);
-+		curr_sb = NULL;
-+	}
-+
- 	if (!curr_sb) {
- 		if (!(curr_sb=ip_vs_sync_buff_create())) {
- 			spin_unlock(&curr_sb_lock);
-@@ -376,36 +420,63 @@ void ip_vs_sync_conn(struct ip_vs_conn *cp)
- 		}
- 	}
- 
--	len = (cp->flags & IP_VS_CONN_F_SEQ_MASK) ? FULL_CONN_SIZE :
--		SIMPLE_CONN_SIZE;
-+
- 	m = curr_sb->mesg;
--	s = (struct ip_vs_sync_conn_v0 *)curr_sb->head;
-+	s = (union ip_vs_sync_conn *)curr_sb->head;
-+	p = (char *)s;
- 
-+	/* Set message type */
-+	s->v4.type = (cp->af == AF_INET6 ? STYPE_INET6 : 0 );
- 	/* copy members */
--	s->protocol = cp->protocol;
--	s->cport = cp->cport;
--	s->vport = cp->vport;
--	s->dport = cp->dport;
--	s->caddr = cp->caddr.ip;
--	s->vaddr = cp->vaddr.ip;
--	s->daddr = cp->daddr.ip;
--	s->flags = htons(cp->flags & ~IP_VS_CONN_F_HASHED);
--	s->state = htons(cp->state);
--	if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
--		struct ip_vs_sync_conn_options *opt =
--			(struct ip_vs_sync_conn_options *)&s[1];
--		memcpy(opt, &cp->in_seq, sizeof(*opt));
--	}
--
-+	s->v4.ver_size = htons(len & SVER_MASK);	/* Version=0 */
-+	s->v4.flags = htonl(cp->flags & ~IP_VS_CONN_F_HASHED);
-+	s->v4.state = htons(cp->state);
-+	s->v4.protocol = cp->protocol;
-+	s->v4.cport = cp->cport;
-+	s->v4.vport = cp->vport;
-+	s->v4.dport = cp->dport;
-+	s->v4.fwmark = htonl(cp->fwmark);
-+	s->v4.timeout = htonl(cp->timeout / HZ);
- 	m->nr_conns++;
--	m->size += len;
--	curr_sb->head += len;
- 
--	/* check if there is a space for next one */
--	if (curr_sb->head+FULL_CONN_SIZE > curr_sb->end) {
--		sb_queue_tail(curr_sb);
--		curr_sb = NULL;
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (cp->af == AF_INET6 ) {
-+		p += sizeof(struct ip_vs_sync_v6);
-+		ipv6_addr_copy(&s->v6.caddr, &cp->caddr.in6);
-+		ipv6_addr_copy(&s->v6.vaddr, &cp->vaddr.in6);
-+		ipv6_addr_copy(&s->v6.daddr, &cp->daddr.in6);
-+	} else
-+#endif
-+	{
-+		p += sizeof(struct ip_vs_sync_v4);	/* options ptr */
-+		s->v4.caddr = cp->caddr.ip;
-+		s->v4.vaddr = cp->vaddr.ip;
-+		s->v4.daddr = cp->daddr.ip;
-+	}
-+	if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
-+		*(p++) = IPVS_OPT_SEQ_DATA;
-+		*(p++) = sizeof(struct ip_vs_sync_conn_options);
-+		memcpy(p, &cp->in_seq,
-+			       sizeof(struct ip_vs_sync_conn_options));
-+			p += sizeof(struct ip_vs_sync_conn_options);
- 	}
-+	/* Handle pe data */
-+	if (cp->pe_data_len && cp->pe_data) {
-+		*(p++) = IPVS_OPT_PE_DATA;
-+		*(p++) = cp->pe_data_len;
-+		memcpy(p, cp->pe_data,cp->pe_data_len);
-+		p += cp->pe_data_len;
-+		if (pe_name_len) {
-+			/* Add PE_NAME */
-+			*(p++) = IPVS_OPT_PE_NAME;
-+			*(p++) = pe_name_len;
-+			memcpy(p, cp->dest->svc->pe->name, pe_name_len);
-+			p[pe_name_len-1] = 0; /* Make sure \0 is there */
++	/* Check for more than 3 bytes of zeroes */
++	for( i=0; i<16; i++) {
++		if ( *(addr++) ) {
++			score = 0;
++			continue;
++		}
++		if ( !score )
++			pos = i;
++		score++;
++		if (score > lmatch) {
++			lmatch = score;
++			firstSeg = pos;	/* Start of longest match */
 +		}
 +	}
-+        m->size += len;
-+        curr_sb->head += len;
++	lastSeg = firstSeg + lmatch;
++	addr = in6->s6_addr;
++	/* Store length of first seg then size of last seg */
++	*(buff++) = (firstSeg<<4 & 0xf0) | (lastSeg & 0xf);
++	memcpy(buff, addr, firstSeg);	/* Copy first segment */
++	buff += firstSeg;
++	memcpy(buff, addr+lastSeg, 16-lastSeg);
++	return 16 - lmatch;
++}
++/*
++ * unpack IPv6 address packed by above func.
++ */
++static int ipv6addr_unpack(char *buff, struct in6_addr *addr)
++{
++	int firstSeg, lastSeg;
 +
- 	spin_unlock(&curr_sb_lock);
++	firstSeg = (*buff >> 4) & 0xf;
++	lastSeg = *(buff++) & 0xf;
++	addr->s6_addr32[0] = 0;
++	addr->s6_addr32[1] = 0;
++	addr->s6_addr32[2] = 0;
++	addr->s6_addr32[3] = 0;
++	memcpy(addr->s6_addr, buff, firstSeg);
++	memcpy(addr->s6_addr+lastSeg, buff+firstSeg, 16-lastSeg);
++	return 0;
++}
  
- 	/* synchronize its controller if it has */
-@@ -1077,7 +1148,7 @@ ip_vs_send_async(struct socket *sock, const char *buffer, const size_t length)
- }
+ /*
+  *      Add an ip_vs_conn information into the current sync_buff.
+@@ -406,8 +465,8 @@ void ip_vs_sync_conn(struct ip_vs_conn *cp)
+ 		len += pe_name_len + 2;
+ 	len = (len+3) & 0xffc;		/* Final 32 bit alignment */
  
- static void
--ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg *msg)
-+ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg_v2 *msg)
+-	/* check if there is a space for this one */
+-	if (curr_sb && (curr_sb->head+len > curr_sb->end) ) {
++	/* check if there is a space for this one and offest for ipv6 pack*/
++	if (curr_sb && (curr_sb->head+len+4 > curr_sb->end) ) {
+ 		sb_queue_tail(curr_sb);
+ 		curr_sb = NULL;
+ 	}
+@@ -441,10 +500,26 @@ void ip_vs_sync_conn(struct ip_vs_conn *cp)
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (cp->af == AF_INET6 ) {
+-		p += sizeof(struct ip_vs_sync_v6);
+-		ipv6_addr_copy(&s->v6.caddr, &cp->caddr.in6);
+-		ipv6_addr_copy(&s->v6.vaddr, &cp->vaddr.in6);
+-		ipv6_addr_copy(&s->v6.daddr, &cp->daddr.in6);
++		int psz;
++		p = (char *)&s->v6.caddr;
++		psz = ipv6addr_pack(&cp->caddr.in6, p);
++		psz += ipv6addr_pack(&cp->vaddr.in6, p+psz+1);
++		psz += ipv6addr_pack(&cp->vaddr.in6, p+psz+2);
++		if( psz >= 6 ) {
++			psz += 3;
++			p += psz;
++			s->v6.type |= STYPE_INET6_PACK;
++			len -= ((sizeof(struct in6_addr) * 3) - psz);
++			psz = sizeof(struct ip_vs_sync_v6)
++			      - (sizeof(struct in6_addr) * 3) + psz;
++			s->v6.ver_size = htons(psz & SVER_MASK);
++		}
++		else {
++			p += sizeof(struct ip_vs_sync_v6);
++			ipv6_addr_copy(&s->v6.caddr, &cp->caddr.in6);
++			ipv6_addr_copy(&s->v6.vaddr, &cp->vaddr.in6);
++			ipv6_addr_copy(&s->v6.daddr, &cp->daddr.in6);
++		}
+ 	} else
+ #endif
+ 	{
+@@ -508,13 +583,14 @@ ip_vs_conn_fill_param_sync(int af, union ip_vs_sync_conn *sc,
+ 			   int pe_data_len, char *pe_name, int pe_name_len )
  {
- 	int msize;
- 
+ #ifdef CONFIG_IP_VS_IPV6
+-	if ( af == AF_INET6 )
+-		ip_vs_conn_fill_param(af, sc->v6.protocol,
++	if ( af == AF_INET6 ) {
++		if (!(sc->v6.type & STYPE_INET6_PACK))
++			ip_vs_conn_fill_param(af, sc->v6.protocol,
+ 				   (const union nf_inet_addr *)&sc->v6.caddr,
+ 				   sc->v6.cport,
+ 				   (const union nf_inet_addr *)&sc->v6.vaddr,
+ 				   sc->v6.vport, p);
+-	else
++	} else
+ #endif
+ 		ip_vs_conn_fill_param(af, sc->v4.protocol,
+ 				   (const union nf_inet_addr *)&sc->v4.caddr,
+@@ -780,7 +856,16 @@ static void ip_vs_process_message(const char *buffer, const size_t buflen)
+ 		if (s->v6.type & STYPE_INET6  ) {
+ #ifdef CONFIG_IP_VS_IPV6
+ 			af = AF_INET6;
+-			p += sizeof(struct ip_vs_sync_v6);
++			if (s->v6.type & STYPE_INET6_PACK  ) {
++				p = (char*) &s->v6.caddr;
++				p += 1 + ((*p >> 4) & 0xf) /* len + First seg */
++				   + (16 - (*p & 0xf ));   /* + Last seg */
++				p += 1 + ((*p >> 4) & 0xf) /* len + First seg */
++				   + (16 - (*p & 0xf ));   /* + Last seg */
++				p += 1 + ((*p >> 4) & 0xf) /* len + First seg */
++				   + (16 - (*p & 0xf ));   /* + Last seg */
++			} else
++				p += sizeof(struct ip_vs_sync_v6);
+ #else
+ 			IP_VS_DBG(2,"IPv6 sync message received, and IPVS is not compiled for IPv6\n");
+ 			p = (char *)s + size;		
+@@ -891,7 +976,27 @@ static void ip_vs_process_message(const char *buffer, const size_t buflen)
+ 				         ? &opt : NULL),
+ 				        pp);
+ #ifdef CONFIG_IP_VS_IPV6
+-		else
++		else {
++			/* Check if packed IPv6 */
++			if (s->v6.type & STYPE_INET6_PACK  ) {
++				union nf_inet_addr vaddr, daddr, caddr;
++				int ret;
++				p = (char*) &s->v6.caddr;
++				ret = ipv6addr_unpack(p, &caddr.in6);
++				p += 1 + ((*p >> 4) & 0xf) + (16 - (*p & 0xf ));
++				ret |= ipv6addr_unpack(p, &vaddr.in6);
++				p += 1 + ((*p >> 4) & 0xf) + (16 - (*p & 0xf ));
++				ret |= ipv6addr_unpack(p, &daddr.in6);
++				if (ret) {
++					IP_VS_ERR_RL("Invalid packed IPv6 add in sync msg\n");
++					return;
++				}
++				ip_vs_conn_fill_param(af, s->v6.protocol,
++						      &caddr, s->v6.cport,
++						      &vaddr, s->v6.vport,
++						      &param);
++
++			}
+ 			ip_vs_proc_conn(&param, flags, state, s->v6.protocol,
+ 					af,
+ 					(union nf_inet_addr *)&s->v6.daddr,
+@@ -900,6 +1005,7 @@ static void ip_vs_process_message(const char *buffer, const size_t buflen)
+ 				        (opt_flags & IPVS_OPT_F_SEQ_DATA
+ 				          ? &opt : NULL),
+ 				        pp);
++		}
+ #endif
+ 		p = (char *)s + size;
+ 	} /* End of for(...) */
 -- 
 1.7.0.1
 
