@@ -1,78 +1,168 @@
-From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [RFC PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence support
-Date: Thu, 28 Oct 2010 23:50:15 +0200
-Message-ID: <201010282350.15911.hans@schillstrom.com>
-References: <201010261300.09827.hans.schillstrom@ericsson.com> <20101028113511.GA13986@verge.net.au> <alpine.LFD.2.00.1010282349030.1744@ja.ssi.bg>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Subject: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence support
+Date: Fri, 29 Oct 2010 14:15:34 +0200
+Message-ID: <201010291415.35299.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1010282349030.1744@ja.ssi.bg>
+Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, Hans Schillstrom <hans.schillstrom@ericsson.com>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, Daniel Lezcano <daniel.lezcano@free.fr>
+To: LVS-Devel <lvs-devel@vger.kernel.org>
+Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
 
-Hello
+This patch series adds/(updates) the following functionality
+in the synchronization between master and backup daemons.
 
-On Thursday, October 28, 2010 23:07:30 Julian Anastasov wrote:
-> 
->  	Hello,
-> 
-> On Thu, 28 Oct 2010, Simon Horman wrote:
-> 
-> > As it stands a little more than 256 bytes may be needed for
-> > pe_data (+ pe_name_length + pe_name). This could be resolved by
-> > shortening the maximum pe_data length. Or perhaps we could use 16 bytes for
-> > Option length, which should ensure its never too small.
-> >
-> > The 256 byte limit that I made for pe_data was arbitrarily chosen.
-> 
->  	Yes, this is a problem.
-> 
-> >>> We can have a better fine tuning of options in this way.
-> >>
-> >> 	Yes, that is exactly my idea. I more like the name
-> >> "Parameter" instead of "Option", i.e. we have additional
-> >> parameters that can be mandatory (usually) but also can be
-> >> optional. For now I don't have idea for any optional
-> >> parameters but allocating 1 bit for this does not look
-> >> fatal.
-> >
-> > I'm not sure I understand the motivation for optional parameters.
-> > I think its important to allow for backwards compatibility. But
-> > I don't see that there will be multiple independent implementations
-> > of the synchronisation daemon in the near future. So the use-case
-> > isn't clear to me.
-> 
->  	If we want to support optional parameters they
-> must have some known length field, 16 bits if needed.
-> But if we don't want such optional parameters then
-> we can just use single octet for parameter type
-> which can imply the length of the following data. 
-> Types that have data with variable length should provide
-> 1 or 2 octets after the parameter type for their length.
-> So, the parsing should be per-type. If one day
-> we need optional parameters we can just add 1 octet for
-> type and 2 for length before data.
-> 
->  	For example, ip_vs_sync_conn_options if implemented
-> as parameter can be coded with 1 octet for type and the
-> following data structure. OTOH, PE params can use 1 octet
-> for type, 2 for length (read with get_unaligned_be16) and
-> then data.
+ - Ipv6
+ - Persistence Engine
+ - Firewall marks transfered
+ - Timeouts transfered.
+ - Flag field increased to 32 bits.
 
-OK, a minor change in length check only.
-For todays known types one byte is ok, since pe data willbe splitted.
+A new message format is also introduced, not understood by old backup daemons.
+For compatibility reasons receiving the old version (version 0) is still possible.
+Old (version 0) backups will just drop new (Version 1) messages.
 
-> 
-> > That said, I agree that allocating 1 bit isn't a show-stopper.
-> 
-> Regards
-> 
-> --
-> Julian Anastasov <ja@ssi.bg>
+Update scenario:
+ Update the Machine with Bakup daemon first.
 
-Regars 
-Hans Schillstrom <hans@schillstrom.com>
+Message structure:
+A new 32 bit word is added to the header,
+where the old count_Conns is set to 0 so old Backup daemons just will drop the packet.
+Added is version (1) and there is also a spare 16 bit field at the end.
+This is a reworked version based upon Simon Hormans work.
 
+ Version 1:
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |      0        |    Syncid     |            Size               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |  Count Conns  |   Version     | Spare set to Zero             |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      |                    IPVS Sync Connection (1)                   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                            .                                  |
+      ~                            .                                  ~
+      |                            .                                  |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      |                    IPVS Sync Connection (n)                   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+ Version 0 Header
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |  Count Conns  |    SyncID     |            Size               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                    IPVS Sync Connection (1)                   |
+
+
+The Sync. Conn. message format is also changed to allow future enhancements
+and versioning.
+
+     Connection Message format
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |    Type       |    Protocol   | Ver.  |        Size           |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                         Flags                                 |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |            State              |         cport                 |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |            vport              |         dport                 |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                             fwmark                            |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                             timeout                           |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                              ...                              |
+      |                        IP-Addresses  (IPv4 or IPv6)           |
+      |                              ...                              |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+Options
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      | Option Type   | Option Length |   Option data                 |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+      |                              ...                              |
+      |               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |               | Option Type   | Option Length | Option data   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               +
+      |                           Option data                         |
+      |                             ...                             - |
+      |          Last Opt. data should be padded for 32 bit alignment |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+New fields that might need some explanation,
+
+Type:
+  Bit    7        6        . . .      2         1           0
+    +-------------------------------------+-------------+-------+
+    |                     Spare           | Packed IPv6 |  IPv6 |
+    +-------------------------------------+-------------+-------+
+
+#define STYPE_INET6	 1
+#define STYPE_INET6_PACK 2
+
+Ver.  Version of specified type right now it's 0
+
+fwmark:  Firewall mark from skb.
+
+timeout: from ip_vs_conn struct, converted to sec.
+
+
+Optional Data will be added at the end without any kind of alignment
+each Param data will have a header of two bytes
+
+Option header
+ Bit    7        6        . . .    0    7                      0
+   +----------+----------------------+---------------------------+
+   | Optional |      Option type     |    Option length          |
+   +----------+----------------------+---------------------------+
+   |  Option data ...                                            |
+   |  ...                                                        |
+   +----------+----------------------+---------------------------+
+Bit 7 (msb) Optional Param, conn. entry could be keept
+Bit 6-0 Option Type defined below
+
+#define IPVS_OPT_SEQ_DATA 	1
+#define IPVS_OPT_PE_DATA	2
+#define IPVS_OPT_PE_NAME	3
+
+Option Length, 1-255 bytes 0 is an illegal value.
+
+PATCH STATUS:
+ - Persistence data is not tested.
+
+
+THANKS
+The Persistence part is based on Simon Hormans Backup RFC
+Julian for the comments and the Review of the RFC
+
+*v2
+ Simlified fwmark handling patch 1/4
+ New handling of optional data patch 2/4
+ Seconds in timeout
+ Basically all changes is based on Julians and Simons comments on the RFC
+ For details see individual patches.
+
+
+SUMMARY
+ include/linux/ip_vs.h           |    8 +
+ include/net/ip_vs.h             |    6 +-
+ net/netfilter/ipvs/ip_vs_conn.c |    5 +-
+ net/netfilter/ipvs/ip_vs_core.c |    8 +-
+ net/netfilter/ipvs/ip_vs_ctl.c  |    4 +-
+ net/netfilter/ipvs/ip_vs_ftp.c  |    5 +-
+ net/netfilter/ipvs/ip_vs_sync.c |  612 +++++++++++++++++++++++++++++++--------
+ 7 files changed, 508 insertions(+), 140 deletions(-)
+
+--
+Regards
+Hans Schillstrom <hans.schillstrom@ericsson.com>
