@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
 Subject: Re: [v2 PATCH 2/4] IPVS: Backup, Adding structs for new sync format
-Date: Sat, 30 Oct 2010 14:55:55 +0900
-Message-ID: <20101030055555.GI26727@verge.net.au>
+Date: Sat, 30 Oct 2010 15:03:15 +0900
+Message-ID: <20101030060315.GA19138@verge.net.au>
 References: <1288354599-10919-2-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
@@ -33,21 +33,9 @@ On Fri, Oct 29, 2010 at 02:16:37PM +0200, Hans Schillstrom wrote:
 > index 90ed9b3..f7f115d 100644
 > --- a/net/netfilter/ipvs/ip_vs_sync.c
 > +++ b/net/netfilter/ipvs/ip_vs_sync.c
-> @@ -43,11 +43,13 @@
->  #define IP_VS_SYNC_GROUP 0xe0000051    /* multicast addr - 224.0.0.81 */
->  #define IP_VS_SYNC_PORT  8848          /* multicast port */
->  
-> +#define SYNC_PROTO_VER  1		/* Protocol version in header */
->  
->  /*
->   *	IPVS sync connection entry
-> + *	Version 0, i.e. original version.
->   */
-> -struct ip_vs_sync_conn {
-> +struct ip_vs_sync_conn_v0 {
->  	__u8			reserved;
->  
->  	/* Protocol, addresses and port numbers */
+
+[ snip ]
+
 > @@ -71,40 +73,151 @@ struct ip_vs_sync_conn_options {
 >  	struct ip_vs_seq        out_seq;        /* outgoing seq. struct */
 >  };
@@ -128,6 +116,11 @@ On Fri, Oct 29, 2010 at 02:16:37PM +0200, Hans Schillstrom wrote:
 > +	struct in6_addr         daddr;          /* destination address */
 > +	/* The sequence options start here */
 > +	/* PE data padded to 32bit alignment after seq. options */
+
+There are mixed spaces and tabs in between the types and the member names
+in struct ip_vs_sync_v4 and ip_vs_sync_v6. And after info in
+the comment after the state member in each structure.
+
 > +};
 > +
 > +union ip_vs_sync_conn {
@@ -139,11 +132,17 @@ On Fri, Oct 29, 2010 at 02:16:37PM +0200, Hans Schillstrom wrote:
 > +#define STYPE_INET6	 1
 > +#define STYPE_INET6_PACK 2
 > +#define STYPE_OPT_DATA 	 7
+
+There is mixed tabs and spaces after DATA.
+
 > +
 > +#define SVER_SHIFT	12	/* Shift to get version */
 > +#define SVER_MASK	0x0fff	/* Mask to strip version */
 > +
 > +#define IPVS_OPT_SEQ_DATA 	1
+
+There is mixed tabs and spaces after DATA.
+
 > +#define IPVS_OPT_PE_DATA	2
 > +#define IPVS_OPT_PE_NAME	3
 > +
@@ -168,31 +167,13 @@ On Fri, Oct 29, 2010 at 02:16:37PM +0200, Hans Schillstrom wrote:
 >    following format.
 >  
 > + Versrion 1:
-
-Versrion -> Version
-
 >         0                   1                   2                   3
 >         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 >        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 > -      |  Count Conns  |    SyncID     |            Size               |
 > +      |      0        |    Syncid     |            Size               |
 > +      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-The capitialisation of SyncID is inconsistent with
-version 0 below.
-
 > +      |  Count Conns  |   Version     | Spare set to Zero             |
-
-I think that reserved is commonly used in these situations.
-So, perhaps "Reserved, set to zero.
-
-Also, if we use zero then it would be nice to do so for the first octet
-of the message. Or use 0 in both cases.
-
-It may also be worth noting that the first octet of the message,
-the old count cons field, is set to zero in so that old v0-only
-code will drop the message as being invalid.
-
 >        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 >        |                                                               |
 >        |                    IPVS Sync Connection (1)                   |
