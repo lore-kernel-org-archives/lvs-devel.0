@@ -1,39 +1,78 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [RFC PATCH 1/4] IPVS: Prepare for transferring firewall marks
- (fwmark) to the backup daemon.
-Date: Sat, 30 Oct 2010 11:40:20 +0900
-Message-ID: <20101030024020.GD12842@verge.net.au>
-References: <1288090823-31135-1-git-send-email-hans.schillstrom@ericsson.com>
- <20101028120847.GB16206@verge.net.au>
- <201010281451.55630.hans.schillstrom@ericsson.com>
- <201010281458.50533.hans.schillstrom@ericsson.com>
+Subject: Re: [RFC PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence
+ support
+Date: Sat, 30 Oct 2010 14:22:14 +0900
+Message-ID: <20101030052214.GH26727@verge.net.au>
+References: <201010261300.09827.hans.schillstrom@ericsson.com>
+ <alpine.LFD.2.00.1010262331200.1928@ja.ssi.bg>
+ <201010271119.21590.hans.schillstrom@ericsson.com>
+ <201010271433.06982.hans.schillstrom@ericsson.com>
+ <alpine.LFD.2.00.1010272249030.1643@ja.ssi.bg>
+ <20101028113511.GA13986@verge.net.au>
+ <alpine.LFD.2.00.1010282349030.1744@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <201010281458.50533.hans.schillstrom@ericsson.com>
+In-Reply-To: <alpine.LFD.2.00.1010282349030.1744@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, Daniel Lezcano <daniel.lezcano@free.fr>
 
-On Thu, Oct 28, 2010 at 02:58:50PM +0200, Hans Schillstrom wrote:
-> Hello again
-> On Thursday 28 October 2010 14:51:55 Hans Schillstrom wrote:
-> [snip]
+On Fri, Oct 29, 2010 at 12:07:30AM +0300, Julian Anastasov wrote:
+> 
+> 	Hello,
+> 
+> On Thu, 28 Oct 2010, Simon Horman wrote:
+> 
+> >As it stands a little more than 256 bytes may be needed for
+> >pe_data (+ pe_name_length + pe_name). This could be resolved by
+> >shortening the maximum pe_data length. Or perhaps we could use 16 bytes for
+> >Option length, which should ensure its never too small.
 > >
-> > I will prepare and send a version 2 of the patch set today, with
-> > the comments included from you and Julian.
+> >The 256 byte limit that I made for pe_data was arbitrarily chosen.
+> 
+> 	Yes, this is a problem.
+> 
+> >>>We can have a better fine tuning of options in this way.
+> >>
+> >>	Yes, that is exactly my idea. I more like the name
+> >>"Parameter" instead of "Option", i.e. we have additional
+> >>parameters that can be mandatory (usually) but also can be
+> >>optional. For now I don't have idea for any optional
+> >>parameters but allocating 1 bit for this does not look
+> >>fatal.
 > >
-> May I should wait, for the "sync_option" answer first,
-> If it should be remove it will affect the patch ...
+> >I'm not sure I understand the motivation for optional parameters.
+> >I think its important to allow for backwards compatibility. But
+> >I don't see that there will be multiple independent implementations
+> >of the synchronisation daemon in the near future. So the use-case
+> >isn't clear to me.
+> 
+> 	If we want to support optional parameters they
+> must have some known length field, 16 bits if needed.
 
-I think that you have already resent the patch series
-and it is somewhere further down my inbox.
+At this point I see no strong reason to support optional parameters.
 
-But in general I don't think there is any particular rush as
-its going to be a long time before the 2.6.38 merge window opens up
-and I'm not sure that anyone is doing significant LVS work outside
-of sync and netns at this time.
+> But if we don't want such optional parameters then
+> we can just use single octet for parameter type
+> which can imply the length of the following data. Types that have
+> data with variable length should provide
+> 1 or 2 octets after the parameter type for their length.
+>
+> So, the parsing should be per-type. If one day
+> we need optional parameters we can just add 1 octet for
+> type and 2 for length before data.
+> 
+> 	For example, ip_vs_sync_conn_options if implemented
+> as parameter can be coded with 1 octet for type and the
+> following data structure. OTOH, PE params can use 1 octet
+> for type, 2 for length (read with get_unaligned_be16) and
+> then data.
 
+Agreed.
+
+With such a scheme it would be possible to have pe_data and pe_name
+as a single type - but two types is also fine by me.
