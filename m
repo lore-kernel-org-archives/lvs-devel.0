@@ -1,58 +1,59 @@
-From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [RFC PATCH] IPVS: Backup, Adding IPv6 address packing
-Date: Sat, 30 Oct 2010 12:49:19 +0200
-Message-ID: <201010301249.20303.hans@schillstrom.com>
-References: <1288354920-10994-1-git-send-email-hans.schillstrom@ericsson.com> <20101030065303.GL26727@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [v2 PATCH 3/4] IPVS: Backup, Adding Version 1 receive
+ capability
+Date: Sat, 30 Oct 2010 13:59:34 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1010301338210.1610@ja.ssi.bg>
+References: <1288354599-10919-3-git-send-email-hans.schillstrom@ericsson.com> <20101030064710.GJ26727@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101030065303.GL26727@verge.net.au>
+In-Reply-To: <20101030064710.GJ26727@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, lvs-devel@vger.kernel.org, ja@ssi.bg, wensong@linux-vs.org, daniel.lezcano@free.fr
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, lvs-devel@vger.kernel.org, wensong@linux-vs.org, daniel.lezcano@free.fr
 
 
-On Saturday, October 30, 2010 08:53:03 Simon Horman wrote:
-> On Fri, Oct 29, 2010 at 02:22:00PM +0200, Hans Schillstrom wrote:
-> > Add pack/unpack of IPv6 address in sync message
-> > in binary form similar to the ASCII ::
-> > 
-> > A packed IPv6 address constists of -
-> > first byte
-> >   high nibble first segment leng in bytes
-> >   low nibble  possition of last segment.
-> > then
-> >   First segemnt i.e. left side of ::
-> >   Last segment right side of ::
-> > 
-> > Examle  FC00::2
-> > unpacked FC00 0000 0000 0000 0000 0000 0000 0002
-> > packed   1F FC02
-> > Example 2 2003::2:100
-> > unpacked 2003 0000 0000 0000 0000 0000 0002 0100
-> > packed   2D 20 03 02 01 00
-> 
-> Hi Hans,
-> 
-> are you sure the space saved is worth the additional complexity
-> that this patch introduces?
-> --
+ 	Hello,
 
-Hello Simon
-I can see that my first mail 0/1 is still in my outbox.....
-that mail contains just the question above and some calculations
+On Sat, 30 Oct 2010, Simon Horman wrote:
 
-My conclusion was that if you have 100M interface and a x64 CPU with a more optimized version
-than it might be worth to pack the IPv6 Address.
-On a 32bit CPU with 1G interfce the packing consume the same time that you might earn 
-The patch is just an example of how to do it,
+> I realise that the commenting syntax used throughout IPVS
+> is a) inconsistent and b) for the most part does not comply with
+> any variant of the style guidelines. However, for the record
+> I believe that the preferred commenting style for code in net/
+> and thus IPVS is:
+>
+> /* This is a one line comment */
+>
+> /* This is a
+> * multi-line comment
+> */
 
-Sorry for the confusion that I created without the [RFC PATCH 0/1]
+ 	Documentation/CodingStyle has rule for multi-line:
 
-The intension was to ask if anyone thinks that packing of IPv6 address should be there ?
-I would say, much pain for little gain 
+/*
+  * This is a
+  * multi-line comment
+  */
+
+>> +		ip_vs_conn_fill_param(af, sc->v6.protocol,
+>> +				   (const union nf_inet_addr *)&sc->v6.caddr,
+>> +				   sc->v6.cport,
+>> +				   (const union nf_inet_addr *)&sc->v6.vaddr,
+>> +				   sc->v6.vport, p);
+>
+> I'm ok with not aligning to the opening ( in order to avoid
+> going over 80 columns here. Though I suspect others would disagree.
+
+ 	Agreed, in such cases I prefer one tab after parent,
+especially, if there is no other code around and when not
+part of some complex 'if' expression.
+
+ 	I'm now sure Hans will read Documentation/CodingStyle again :)
 
 Regards
- Hans
+
+--
+Julian Anastasov <ja@ssi.bg>
