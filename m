@@ -1,33 +1,44 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence support -> option_param skip ?
-Date: Mon, 1 Nov 2010 13:16:37 +0100
-Message-ID: <201011011316.37416.hans.schillstrom@ericsson.com>
-References: <201010291415.35299.hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1010301741280.2294@ja.ssi.bg>
+Subject: Re: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence support
+Date: Mon, 1 Nov 2010 16:30:56 +0100
+Message-ID: <201011011630.57467.hans.schillstrom@ericsson.com>
+References: <201010291415.35299.hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1010301741280.2294@ja.ssi.bg> <20101030231601.GA5908@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1010301741280.2294@ja.ssi.bg>
+In-Reply-To: <20101030231601.GA5908@verge.net.au>
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: LVS-Devel <lvs-devel@vger.kernel.org>, Simon Horman <horms@verge.net.au>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
+Cc: LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
 
 
-On Saturday 30 October 2010 16:55:32 Julian Anastasov wrote:
+On Sunday 31 October 2010 01:16:02 Simon Horman wrote:
+> On Sat, Oct 30, 2010 at 05:55:32PM +0300, Julian Anastasov wrote:
+> >
+> > 	Hello,
+> >
+> > On Fri, 29 Oct 2010, Hans Schillstrom wrote:
 [ snip ]
+> >
+> > 	Simon should tell what happens if some PE updates
+> > 	ct->pe_data, may be we should replace it too for the
+> > 	case when ip_vs_proc_conn works with existing template?
 >
->  	- lets drop the optional parameters from ip_vs_process_message()?
->
-In case we receive optional_param from an old master,
- I can't see that we can handle it in a proper way with contrack mangling the packet.
+> 	At this stage there is no facility for updating PE data.
+> 	But I think replacing it should be fine, so long as
+> 	the appropriate locking is in place.
 
-In that case:
-  if we drop it in the receive path.
-  we should skip sending of it as well...
-  (since noboy will listen for it)
+Julian,
+I can't see where this could happen,
+ but I might be out of sync :-)
 
-
+IF this an issue that we must take care of,
+  (Then I'm a little bit lost)
+  could you please explain it for me or pass a code example of how to do it.
+ENDIF
+--
 Regards
 Hans Schillstrom <hans.schillstrom@ericsson.com>
