@@ -1,44 +1,81 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 Subject: Re: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence support
-Date: Tue, 2 Nov 2010 07:13:05 +0100
-Message-ID: <201011020713.06154.hans.schillstrom@ericsson.com>
-References: <201010291415.35299.hans.schillstrom@ericsson.com> <201011012347.07074.hans@schillstrom.com> <alpine.LFD.2.00.1011020209520.2485@ja.ssi.bg>
+Date: Wed, 3 Nov 2010 21:08:06 +0100
+Message-ID: <201011032108.07311.hans.schillstrom@ericsson.com>
+References: <201010291415.35299.hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1010301741280.2294@ja.ssi.bg> <20101030231601.GA5908@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1011020209520.2485@ja.ssi.bg>
+In-Reply-To: <20101030231601.GA5908@verge.net.au>
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Hans Schillstrom <hans@schillstrom.com>, LVS-Devel <lvs-devel@vger.kernel.org>, Simon Horman <horms@verge.net.au>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
+Cc: LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
 
-On Tuesday 02 November 2010 01:17:39 Julian Anastasov wrote:
->
->  	Hello,
->
-> On Mon, 1 Nov 2010, Hans Schillstrom wrote:
->
-> >> As for ip_vs_sync_conn_options
-> >> there is no app in mainline kernel 2.6.36+ that will trigger
-> >> this parameter. And we do not know (yet) how to sync SEQs with
-> >> Netfilter in the case for ip_vs_ftp.
+Hello again
+On Sunday 31 October 2010 01:16:02 Simon Horman wrote:
+> On Sat, Oct 30, 2010 at 05:55:32PM +0300, Julian Anastasov wrote:
+[ snip ]
 > >
-> > If we receive packets with ip_vs_sync_conn_options what shoud be done
-> > - dropt that single conn msg ? (My vote)
-> > or
-> > - ignore ip_vs_sync_conn_options and try to process the message ?
-> >
-> > I leave the "dead code"  in case it's needed later on.
-> > (except for Version 1 receive)
+> > 	- What is the right thing to do in ip_vs_conn_fill_param_sync
+> > 	when ip_vs_pe_get() does not find PE? May be to drop
+> > 	connection? May be in ip_vs_process_message() we should
+> > 	use one pointer for end of message (it was 'p' before now),
+> > 	so that we can skip connections, for example, when some
+> > 	mandatory parameter as PE is not supported. We should not
+> > 	drop the whole sync message. When message is invalid it
+> > 	should be dropped but lack of support should not hurt
+> > 	other connections. In the case for PE may be
+> > 	ip_vs_conn_fill_param_sync() should return 1 if
+> > 	PE is unknown (ip_vs_pe_get). Then caller will continue
+> > 	with next connection if result > 0 or will drop message
+> > 	if result < 0 as in current patch. May be the pe_name
+> > 	presence should be the first check in
+> > 	ip_vs_conn_fill_param_sync.
 >
->  	Why? Just copy data to cp->in_seq and cp->out_seq
-> as before but for version 1 make sure the values in
-> struct ip_vs_seq are sent in network order. If some APP
-> provides diff != 0 these SEQs will be sent.
+> 	Yes, I agree with this.
 >
-OK, I'll do that
+> >	Also note that p->pe is
+> > 	pointer without reference while called in ip_vs_sched_persist.
+> > 	In our case with ip_vs_conn_fill_param_sync we should
+> > 	put this reference after calling ip_vs_proc_conn().
+> > 	May be ip_vs_find_dest should check that p->pe matches
+> > 	svc->pe. ip_vs_try_bind_dest should provide p->pe too
+> > 	for this check. But we must somehow ignore new conns
+> > 	with PE if they don't have cp->dest (service) because
+> > 	it is risky to attach PE that is not held by svc.
+> > 	It is bad that the check for p->pe is before
+> > 	ip_vs_find_dest.
+>
+> 	I have a patch, "IPVS: Add persistence engine to connection entry"
+> 	that attaches the pe to the connection rather than the dest.
+> 	In this case, if pe is NULL, then the connection doesn't use
+> 	pe, which is fine. If its non-NULL, its there so there is no
+> 	problem in that case either.
+>
+> 	I think this resolves the issue that you raise.
+
+There is a little Ooops with this, a locking problem.
+We are in a local_bh_disable() when trying to load a module...
+
+in the sync_thread()
+ ...
+   local_bh_disable();
+   ip_vs_process_message(tinfo->buf, len);
+   local_bh_enable();
+
+When ip_vs_process_message() get pe_data it calls
+ -> ip_vs_conn_fill_param_sync() and it calls
+ --> ip_vs_pe_getbyname()  and it might call
+ ----> request_module(..)
+
+My suggestion is to avoid modul loading by calling "__ip_vs_pe_getbyname()" instead,
+and if it fails just drop that single sync_conn.
+
+Any other ideas ?
+
 --
 Regards
 Hans Schillstrom <hans.schillstrom@ericsson.com>
