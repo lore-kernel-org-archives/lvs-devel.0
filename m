@@ -1,47 +1,59 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence
- support
-Date: Sat, 6 Nov 2010 16:07:22 +0200 (EET)
-Message-ID: <alpine.LFD.2.00.1011061543130.4009@ja.ssi.bg>
-References: <201010291415.35299.hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1010301741280.2294@ja.ssi.bg> <20101030231601.GA5908@verge.net.au> <201011032108.07311.hans.schillstrom@ericsson.com> <20101106005614.GA11220@verge.net.au>
+Subject: Re: [RFC v2] ipvs: allow transmit of GRO aggregated skbs
+Date: Sat, 6 Nov 2010 16:18:21 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1011061608510.4009@ja.ssi.bg>
+References: <20101105135222.GA8714@verge.net.au> <20101105235411.GA2443@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101106005614.GA11220@verge.net.au>
+In-Reply-To: <20101105235411.GA2443@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
 
  	Hello,
 
 On Sat, 6 Nov 2010, Simon Horman wrote:
 
-> I wonder if we could just remove the modular aspect of persistence engines
-> as there is currently only one module and no plans on the drawing board
-> for any more at this time. That is, compile ip_vs_pe_sip directly
-> into ip_vs.ko
+> This is a first attempt at allowing LVS to transmit
+> skbs of greater than MTU length that have been aggregated by GRO.
+>
+> I have lightly tested the ip_vs_dr_xmit() portion of this patch and
+> although it seems to work I am unsure that netif_needs_gso() is the correct
+> test to use.
 
- 	May be it is better svc to hold module refcnt for
-PE as currently implemented. If in backup the svc and dest
-are not found when creating connection with PE data then just
-ignore the connection. The PE name must match the PE attached
-to svc (ip_vs_find_dest). This check must exist. The benefit
-comes from the fact that svc is freed after all its connections
-are freed, cp->dest->svc is always valid. Then there is no
-need for cp->pe. ip_vs_conn_hashkey_conn() has checks for
-cp->dest, so there is no point to try to create synced
-connections in backup with PE but without cp->dest.
+ 	ip_forward() uses !skb_is_gso(skb), so may be it is
+enough to check for GRO instead of using netif_needs_gso?
 
- 	The benefits:
+> Signed-off-by: Simon Horman <horms@verge.net.au>
+>
+> ---
+>
+> * LRO is still an outstanding issue, but as its deprecated in favour
+>  of GRO perhaps it doesn't need to be solved.
+>
+> * v1
+>  - Based on 2.6.35
+>
+> * v2
+>  - Rebase on current nf-next-2.6 tree (~2.6.37-rc1)
 
-- no cp->pe, it is not needed, the persistent scheduler
-gets PE from svc, i.e. PEs are needed only during
-scheduling, so svc, PE and dest are present
+> --- lvs-test-2.6.orig/net/netfilter/ipvs/ip_vs_xmit.c	2010-10-30 11:43:37.000000000 +0900
+> +++ lvs-test-2.6/net/netfilter/ipvs/ip_vs_xmit.c	2010-11-06 08:09:17.000000000 +0900
 
-- PEs can be modular
+> @@ -1008,7 +1012,8 @@ ip_vs_dr_xmit(struct sk_buff *skb, struc
+>
+> 	/* MTU checking */
+> 	mtu = dst_mtu(&rt->dst);
+> -	if ((iph->frag_off & htons(IP_DF)) && skb->len > mtu) {
+> +	if ((iph->frag_off & htons(IP_DF)) && skb->len > mtu &&
+> +	    !netif_needs_gso(rt->dst.dev, skb)) {
+> 		icmp_send(skb, ICMP_DEST_UNREACH,ICMP_FRAG_NEEDED, htonl(mtu));
+> 		ip_rt_put(rt);
+> 		IP_VS_DBG_RL("%s(): frag needed\n", __func__);
 
 Regards
 
