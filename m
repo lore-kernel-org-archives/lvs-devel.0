@@ -1,92 +1,62 @@
-From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [RFC PATCH]  ipvs: skb defrag for L7 helpers
-Date: Tue, 9 Nov 2010 00:04:44 +0100
-Message-ID: <201011090004.44965.hans@schillstrom.com>
-References: <201011081551.56681.hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1011082303050.1690@ja.ssi.bg> <20101108222354.GE6502@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence
+ support
+Date: Tue, 9 Nov 2010 01:19:54 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1011090105480.2588@ja.ssi.bg>
+References: <201010291415.35299.hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1011061959370.5280@ja.ssi.bg> <20101108062121.GA17685@verge.net.au> <201011081615.11335.hans.schillstrom@ericsson.com> <20101108220029.GD6502@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101108222354.GE6502@verge.net.au>
+In-Reply-To: <20101108220029.GD6502@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, LVS-Devel <lvs-devel@vger.kernel.org>
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
 
-On Monday, November 08, 2010 23:23:54 Simon Horman wrote:
-> On Mon, Nov 08, 2010 at 11:48:37PM +0200, Julian Anastasov wrote:
-> > 
-> > 	Hello,
-> > 
-> > On Mon, 8 Nov 2010, Hans Schillstrom wrote:
-> > 
-> > >Hello
-> > >I have been struggling with SIP for a while ....
-> > >L7 helpers like sip needs skb defrag
-> > >ex virtio only copies the first 128 byte into the skb (incl mac hdr)
-> > >in that case Call-Id will never be found.
-> > >
-> > >There is a skb_find_text() that might be used insead of this, but it requires some changes in ip_vs_pe_sip.c
-> > >
-> > >Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
-> > >
-> > >diff --git a/net/netfilter/ipvs/ip_vs_pe.c b/net/netfilter/ipvs/ip_vs_pe.c
-> > >index e99f920..c0ac69a 100644
-> > >--- a/net/netfilter/ipvs/ip_vs_pe.c
-> > >+++ b/net/netfilter/ipvs/ip_vs_pe.c
-> > >@@ -76,6 +72,24 @@ struct ip_vs_pe *ip_vs_pe_getbyname(const char *name)
-> > >	return pe;
-> > >}
-> > >
-> > >+/* skb defrag for L7 helpers */
-> > >+char *ip_vs_skb_defrag(struct sk_buff *skb, int offset, int len)
-> > >+{
-> > >+	char *p = kmalloc(skb->len, GFP_ATOMIC);
-> > >+	if (!p)
-> > >+		goto err;
-> > >+	if (skb_copy_bits(skb, offset, p, len))
-> > >+		goto err;
-> > 
-> > 	Such copy already exists: skb_linearize(). If you
-> > are lucky it does not copy data. But for your case the
-> > copy should happen. In ip_vs_ftp we even use skb_make_writable
-> > because we change the payload.
-> 
-> Good point.
-> 
-> > 	May be ip_vs_sip_fill_param() should deliver the status
-> > from skb_linearize (-ENOMEM) after the iph.protocol != IPPROTO_UDP
-> > check. ip_vs_conn_fill_param_persist should return this
-> > error to ip_vs_sched_persist. What we need is ip_vs_sched_persist
-> > to have new argument 'int *ignored' just like ip_vs_schedule, so
-> > that we can return *ignored = 1 for the case when
-> > ip_vs_conn_fill_param_persist returns any kind of error.
-> > Even on ip_vs_conn_new failure we should return *ignored = 1.
-> > *ignored = 0 remains only for the case when no dest is
-> > selected.
-> 
-> Agreed.
-> 
-> Somewhat off topic: the *ignored and *verdict parameters
-> seem to be a horrible way to pass this information around.
-> I think we can use ERR_PTR instead, though I'd have to
-> write the patch to see if that is true or not. If its
-> not perhaps we can have a small structure used as
-> the return value of ip_vs_schedule() and pp->conn_schedule().
-> 
-> 	struct ip_vs_scheduler_status {
-> 		ip_vs_conn *cp;
-> 		int flag;
-> 	}
-> 
-> However, I do wonder if the defrag change is stable material.
-> If so, I'll hold off on any re-working ideas.
 
-I have been runing it for two days now with SIP
-and that seems to work.
+ 	Hello,
 
-I can send an update version tomorrow.
- It's time for a power nap now.
+On Tue, 9 Nov 2010, Simon Horman wrote:
 
-Regards 
-Hans
+> I have added this and the other patches that I am completely happy with
+> to the staging branch of lvs-test-2.6.
+>
+> Specifically the patches in there are:
+>
+> * IPVS: Only match pe_data created by the same pe
+> * IPVS: Add persistence engine to connection entry
+> * IPVS: Backup, Adding structs for new sync format
+> * IPVS: Prepare for transferring firewall marks (fwmark) to the backup daemon.
+> * IPVS: ip_vs_pe.c, use strncmp to be safe.
+
+ 	Using if (strncmp(pe_name, pe->name, IP_VS_PENAME_MAXLEN )==0
+does not look useful. If the goal is to match data from
+sync message I expect to see the already discussed check
+for pe_name_len, for example:
+
+if (!strncmp(pe_name, pe->name, pe_name_len) &&
+     !pe->name[pe_name_len])
+
+ 	and somewhere check for pe_name_len > 0.
+
+> If you are unhappy with any of those changes let me know,
+> I'm happy to revert and rebase the staging branch
+> (its mainly for your benefit at this stage).
+>
+> I would also like to add the following clean-up changes,
+> could I get an Ack or Nack from you on each of them?
+
+ 	I don't see problem here:
+
+> * IPVS: Make the cp argument to ip_vs_sync_conn() static
+>  http://www.spinics.net/lists/lvs-devel/msg01375.html
+> * IPVS: Remove useless { } block from ip_vs_process_message()
+>  http://www.spinics.net/lists/lvs-devel/msg01369.html
+> * IPVS: buffer argument to ip_vs_process_message() should not be const
+>  http://www.spinics.net/lists/lvs-devel/msg01377.html
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
