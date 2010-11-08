@@ -1,75 +1,51 @@
-From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence support
-Date: Mon, 8 Nov 2010 23:23:25 +0100
-Message-ID: <201011082323.26313.hans@schillstrom.com>
-References: <201010291415.35299.hans.schillstrom@ericsson.com> <201011081615.11335.hans.schillstrom@ericsson.com> <20101108220029.GD6502@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence
+ support
+Date: Tue, 9 Nov 2010 01:01:46 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1011090056220.2588@ja.ssi.bg>
+References: <20101030231601.GA5908@verge.net.au> <201011032108.07311.hans.schillstrom@ericsson.com> <20101106005614.GA11220@verge.net.au> <alpine.LFD.2.00.1011061543130.4009@ja.ssi.bg> <20101106143405.GB27212@verge.net.au> <alpine.LFD.2.00.1011061959370.5280@ja.ssi.bg>
+ <20101108062121.GA17685@verge.net.au> <alpine.LFD.2.00.1011081027080.1504@ja.ssi.bg> <20101108111600.GA14454@verge.net.au> <alpine.LFD.2.00.1011082245360.1690@ja.ssi.bg> <20101108214943.GC6502@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101108220029.GD6502@verge.net.au>
+In-Reply-To: <20101108214943.GC6502@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, Julian Anastasov <ja@ssi.bg>, LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
 
 
-On Monday, November 08, 2010 23:00:29 Simon Horman wrote:
-> On Mon, Nov 08, 2010 at 04:15:10PM +0100, Hans Schillstrom wrote:
-> > On Monday 08 November 2010 07:21:23 Simon Horman wrote:
-> > [ snip ]
-> > 
-> > > How about this, which applies on top of
-> > > "IPVS: Add persistence engine to connection entry".
-> > >
-> > > From: Simon Horman <horms@verge.net.au>
-> > > Subject: IPVS: Only match pe_data created by the same pe
-> > >
-> > > Only match persistence engine data if it was
-> > > created by the same persistence engine.
-> > >
-> > > Reported-by: Julian Anastasov <ja@ssi.bg>
-> > > Signed-off-by: Simon Horman <horms@verge.net.au>
-> > 
-> > Thanks I'll will use that one,
-> > I think it's time to cook a new backup patch,
-> > or do any one have more patches in the pipe ?
-> 
-> I have added this and the other patches that I am completely happy with
-> to the staging branch of lvs-test-2.6.
-> 
-> Specifically the patches in there are:
-> 
-> * IPVS: Only match pe_data created by the same pe
-> * IPVS: Add persistence engine to connection entry
-> * IPVS: Backup, Adding structs for new sync format
-> * IPVS: Prepare for transferring firewall marks (fwmark) to the backup daemon.
-> * IPVS: ip_vs_pe.c, use strncmp to be safe.
-> 
-> If you are unhappy with any of those changes let me know,
-> I'm happy to revert and rebase the staging branch
-> (its mainly for your benefit at this stage).
+ 	Hello,
 
-Thanks a lot,
-I will start with the cooking tomorrow, with lvs-test-2.6 as my base
+On Tue, 9 Nov 2010, Simon Horman wrote:
 
-> 
-> I would also like to add the following clean-up changes,
-> could I get an Ack or Nack from you on each of them?
-> 
-> * IPVS: Make the cp argument to ip_vs_sync_conn() static
->   http://www.spinics.net/lists/lvs-devel/msg01375.html
-ACK,
-I'll do the same in the last patch for _v0/_v1 sending
+>> - backup creates template but there is no PE => cp->pe remains NULL if
+>> 	we want to keep conn entry. Option 2 is that we can ignore
+>> 	the conn entry if the PE module is not loaded before this step
+>
+> I think that is better to drop the entry as (at least the way PE SIP works)
+> its entirely likely that it could be used by the scheduler to use
+> the wont real server if the pe_data is missing. Or in other words,
+> it is no better than the entry being missing all together.
 
-> * IPVS: Remove useless { } block from ip_vs_process_message()
->   http://www.spinics.net/lists/lvs-devel/msg01369.html
-ACK,
+ 	Agreed.
 
-> * IPVS: buffer argument to ip_vs_process_message() should not be const
->   http://www.spinics.net/lists/lvs-devel/msg01377.html
-> 
-ACK
+> If later we have PE engines that behave differently, and creating
+> templates without pe_data makes sense, we can revisit this.
+>
+>> - svc is added => PE module is loaded (request_module)
+>>
+>> - next sync message comes and we bind cp->dest => if cp->pe
+>> is NULL we should set cp->pe to svc->pe. The problem here is
+>> that svc can be added without PE, then this template will not
+>> work as expected.
+>
+> I'm unsure what you mean by "svc can be added without PE"
 
-Thanks,
- Hans
+ 	-A without --pe [engine] option in backup.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
