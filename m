@@ -1,82 +1,145 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [v2 PATCH 0/4] IPVS: Backup Adding Ipv6 and Persistence support
-Date: Tue, 9 Nov 2010 06:49:43 +0900
-Message-ID: <20101108214943.GC6502@verge.net.au>
-References: <20101030231601.GA5908@verge.net.au>
- <201011032108.07311.hans.schillstrom@ericsson.com>
- <20101106005614.GA11220@verge.net.au>
- <alpine.LFD.2.00.1011061543130.4009@ja.ssi.bg>
- <20101106143405.GB27212@verge.net.au>
- <alpine.LFD.2.00.1011061959370.5280@ja.ssi.bg>
- <20101108062121.GA17685@verge.net.au>
- <alpine.LFD.2.00.1011081027080.1504@ja.ssi.bg>
- <20101108111600.GA14454@verge.net.au>
- <alpine.LFD.2.00.1011082245360.1690@ja.ssi.bg>
+From: Hans Schillstrom <hans@schillstrom.com>
+Subject: Re: [RFC PATCH]  ipvs: skb defrag for L7 helpers
+Date: Mon, 8 Nov 2010 22:56:03 +0100
+Message-ID: <201011082256.04343.hans@schillstrom.com>
+References: <201011081551.56681.hans.schillstrom@ericsson.com> <20101108214346.GA6502@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1011082245360.1690@ja.ssi.bg>
+In-Reply-To: <20101108214346.GA6502@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>
+Content-Type: Text/Plain; charset="us-ascii"
+To: Simon Horman <horms@verge.net.au>
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, Julian Anastasov <ja@ssi.bg>, LVS-Devel <lvs-devel@vger.kernel.org>
 
-On Mon, Nov 08, 2010 at 10:59:39PM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 8 Nov 2010, Simon Horman wrote:
-> 
-> >>today. May be if Hans uses ip_vs_pe_getbyname instead of
-> >>ip_vs_pe_get that should solve the request_module problem.
-> >
-> >I changed things around a bit in "IPVS: Add persistence engine to
-> >connection entry".
-> >
-> >	ip_vs_pe_getbyname() became __ip_vs_pe_getbyname()
-> >	ip_vs_pe_get() became ip_vs_pe_getbyname()
-> >	And ip_vs_pe_get() now just takes a reference on the module if its
-> >	loaded.
-> >
-> >So yes I agree, except that __ip_vs_pe_getbyname() is the name
-> >of the function that should be called, which needs to be made
-> >un-static and possibly renamed (again).
-> >
-> >Also, to __ip_vs_pe_getbyname() calls try_module_get().
-> >Is that safe from interrupt context?
-> 
-> 	Yes, we already use it for cp->app: ip_vs_bind_app ->
-> tcp_app_conn_bind -> ip_vs_app_inc_get -> ip_vs_app_get
-> 
-> >>	What should we do if PE module is not loaded
-> >>while we are creating connection in backup? We can not
-> >>load modules, may be when connection is bound to
-> >>dest+svc we should inherit the PE from svc->pe ?
-> >
-> >If the modules isn't loaded, then svc->pe can't be non-NULL, right?
-> 
-> 	Adding svc will load the PE module, for example:
-> 
-> - backup creates template but there is no PE => cp->pe remains NULL if
-> 	we want to keep conn entry. Option 2 is that we can ignore
-> 	the conn entry if the PE module is not loaded before this step
 
-I think that is better to drop the entry as (at least the way PE SIP works)
-its entirely likely that it could be used by the scheduler to use
-the wont real server if the pe_data is missing. Or in other words,
-it is no better than the entry being missing all together.
-
-If later we have PE engines that behave differently, and creating
-templates without pe_data makes sense, we can revisit this.
-
-> - svc is added => PE module is loaded (request_module)
+On Monday, November 08, 2010 22:43:46 Simon Horman wrote:
+> On Mon, Nov 08, 2010 at 03:51:56PM +0100, Hans Schillstrom wrote:
+> > Hello
+> > I have been struggling with SIP for a while ....
+> > L7 helpers like sip needs skb defrag
+> > ex virtio only copies the first 128 byte into the skb (incl mac hdr)
+> > in that case Call-Id will never be found.
+> > 
+> > There is a skb_find_text() that might be used insead of this, but it requires some changes in ip_vs_pe_sip.c
 > 
-> - next sync message comes and we bind cp->dest => if cp->pe
-> is NULL we should set cp->pe to svc->pe. The problem here is
-> that svc can be added without PE, then this template will not
-> work as expected.
+> Thanks for tracking that down!
+> 
+> > Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+> > 
+> > diff --git a/net/netfilter/ipvs/ip_vs_pe.c b/net/netfilter/ipvs/ip_vs_pe.c
+> > index e99f920..c0ac69a 100644
+> > --- a/net/netfilter/ipvs/ip_vs_pe.c
+> > +++ b/net/netfilter/ipvs/ip_vs_pe.c
+> > @@ -76,6 +72,24 @@ struct ip_vs_pe *ip_vs_pe_getbyname(const char *name)
+> >  	return pe;
+> >  }
+> > 
+> > +/* skb defrag for L7 helpers */
+> > +char *ip_vs_skb_defrag(struct sk_buff *skb, int offset, int len)
+> > +{
+> > +	char *p = kmalloc(skb->len, GFP_ATOMIC);
+> > +	if (!p)
+> > +		goto err;
+> > +	if (skb_copy_bits(skb, offset, p, len))
+> > +		goto err;
+> > +	IP_VS_DBG(10, "IPVS defrag: offs:%d len:%d\n", offset, len);
+> > +	return p;
+> > +
+> > +err:
+> > +	if (p)
+> > +		kfree(p);
+> > +	return NULL;
+> > +}
+> > +EXPORT_SYMBOL_GPL(ip_vs_skb_defrag);
+> > +
+> >  /* Register a pe in the pe list */
+> >  int register_ip_vs_pe(struct ip_vs_pe *pe)
+> >  {
+> > diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
+> > index b8b4e96..78caa83 100644
+> > --- a/net/netfilter/ipvs/ip_vs_pe_sip.c
+> > +++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+> > @@ -71,6 +71,7 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+> >  	struct ip_vs_iphdr iph;
+> >  	unsigned int dataoff, datalen, matchoff, matchlen;
+> >  	const char *dptr;
+> > +	int fr;
+> > 
+> >  	ip_vs_fill_iphdr(p->af, skb_network_header(skb), &iph);
+> > 
+> > @@ -85,21 +86,30 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+> > 
+> >  	dptr = skb->data + dataoff;
+> >  	datalen = skb->len - dataoff;
+> > -
+> > +	fr = 0;
+> > +	if(  skb_shinfo(skb)->nr_frags ) {
+> 
+> >From a style point of view the line above should probably be:
+> 
+> 	if (skb_shinfo(skb)->nr_frags) {
 
-I'm unsure what you mean by "svc can be added without PE"
+I have to remind my self all time about that, but some times ...
 
+> 
+> > +		dptr = ip_vs_skb_defrag(skb, dataoff, datalen);
+> > +		if (!dptr)
+> > +			return -EINVAL;
+> > +		fr = 1;
+> > +	}
+> 
+> But I wonder if this logic can be rolld into ip_vs_skb_defrag(),
+> perhaps using ERR_PTR() and friends. Then again, what you have
+> may already be at least as clean as that idea.
+
+I will have another look at it.
+
+> 
+> >  	if (get_callid(dptr, dataoff, datalen, &matchoff, &matchlen))
+> > -		return -EINVAL;
+> > +		goto err;
+> > 
+> >  	p->pe_data = kmalloc(matchlen, GFP_ATOMIC);
+> >  	if (!p->pe_data)
+> > -		return -ENOMEM;
+> > +		goto err;
+> > 
+> >  	/* N.B: pe_data is only set on success,
+> >  	 * this allows fallback to the default persistence logic on failure
+> >  	 */
+> >  	memcpy(p->pe_data, dptr + matchoff, matchlen);
+> >  	p->pe_data_len = matchlen;
+> > -
+> >  	return 0;
+> > +err:
+> > +	if (fr)
+> > +		kfree(dptr);
+> > +	return -EINVAL;
+> >  }
+> > 
+> >  static bool ip_vs_sip_ct_match(const struct ip_vs_conn_param *p,
+> > diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> > index a6421e6..08bd547 100644
+> > --- a/include/net/ip_vs.h
+> > +++ b/include/net/ip_vs.h
+> > @@ -817,6 +817,7 @@ void ip_vs_unbind_pe(struct ip_vs_service *svc);
+> >  int register_ip_vs_pe(struct ip_vs_pe *pe);
+> >  int unregister_ip_vs_pe(struct ip_vs_pe *pe);
+> >  struct ip_vs_pe *ip_vs_pe_getbyname(const char *name);
+> > +extern char *ip_vs_skb_defrag(struct sk_buff *skb, int offset, int len);
+> 
+> Personally I'm not a fan of the extern keyword.
+
+I am :-)
+I'll remove it
+
+> 
+> >  static inline void ip_vs_pe_get(const struct ip_vs_pe *pe)
+> >  {
+> > 
+> > --
+> > Regards
+> > Hans Schillstrom <hans.schillstrom@ericsson.com>
+> > 
