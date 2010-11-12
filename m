@@ -1,59 +1,53 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [*v2 PATCH 0/9] IPVS: staging head
-Date: Fri, 12 Nov 2010 10:41:25 +0100
-Message-ID: <201011121041.26767.hans.schillstrom@ericsson.com>
-References: <201011120834.56591.hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1011121028380.1686@ja.ssi.bg>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Subject: [*v4 PATCH 9/9] IPVS: skb defrag in L7 helpers
+Date: Fri, 12 Nov 2010 10:41:32 +0100
+Message-ID: <1289554892-4487-1-git-send-email-hans.schillstrom@ericsson.com>
+References: <Re: [*v2 PATCH 0/9] IPVS: staging head>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1011121028380.1686@ja.ssi.bg>
-Content-Disposition: inline
+In-Reply-To: <Re: [*v2 PATCH 0/9] IPVS: staging head>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>
+Content-Transfer-Encoding: 7bit
+To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
+Cc: wensong@linux-vs.org, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-On Friday 12 November 2010 09:30:00 Julian Anastasov wrote:
-> 
->  	Hello,
-> 
-> On Fri, 12 Nov 2010, Hans Schillstrom wrote:
-> 
-> > Hello Simon
-> >
-> > I had some probelms with the mailer and will resend this a gain...
-> >
-> > The first patch in the staging head was not the "current" so I switched them
-> > That effected the patch 2,3 and 4
-> > There was no changes in patch 5,6 and 7
-> >
-> > The changes is in the class - trivial.
-> >  Removed fwmark from ip_vs_conn_param,
-> >  and add fwmark to ip_vs_conn_new()
-> 
-> v2 PATCH 1-8/9
->  	OK
-> 
-> v2 PATCH 9/9
->  	OK but check for skb_shinfo(skb)->nr_frags is not needed,
->  	skb_linearize is inline func that has check if skb is nonlinear.
->  	So, just put skb_linearize with enough spaces in assignment.
+L7 helpers like sip needs skb defrag
+since L7 data can be fragmented.
 
-Thank,
-I'll resend the patch
+This patch requires "IPVS Break ports-2 into src_port and dst_port" patch
 
-> 
-> Regards
-> 
-> --
-> Julian Anastasov <ja@ssi.bg>
-> --
-> To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+*v3
+  Removed unneeded if (skb_shinfo(skb)->nr_frags)
+  from Julian.
 
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+---
+ net/netfilter/ipvs/ip_vs_pe_sip.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
+index b8b4e96..0d83bc0 100644
+--- a/net/netfilter/ipvs/ip_vs_pe_sip.c
++++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+@@ -71,6 +71,7 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+ 	struct ip_vs_iphdr iph;
+ 	unsigned int dataoff, datalen, matchoff, matchlen;
+ 	const char *dptr;
++	int retc;
+ 
+ 	ip_vs_fill_iphdr(p->af, skb_network_header(skb), &iph);
+ 
+@@ -83,6 +84,8 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+ 	if (dataoff >= skb->len)
+ 		return -EINVAL;
+ 
++	if ((retc=skb_linearize(skb)) < 0)
++		return retc;
+ 	dptr = skb->data + dataoff;
+ 	datalen = skb->len - dataoff;
+ 
 -- 
-Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
+1.7.2.3
+
