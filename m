@@ -1,7 +1,7 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [*v4 PATCH 9/9] IPVS: skb defrag in L7 helpers
-Date: Fri, 12 Nov 2010 10:41:32 +0100
-Message-ID: <1289554892-4487-1-git-send-email-hans.schillstrom@ericsson.com>
+Subject: [*v3 PATCH 9/9] IPVS: skb defrag in L7 helpers
+Date: Fri, 12 Nov 2010 10:44:15 +0100
+Message-ID: <1289555055-4534-1-git-send-email-hans.schillstrom@ericsson.com>
 References: <Re: [*v2 PATCH 0/9] IPVS: staging head>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <Re: [*v2 PATCH 0/9] IPVS: staging head>
