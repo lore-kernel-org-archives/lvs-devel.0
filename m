@@ -1,61 +1,172 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [*v4 PATCH 9/9] IPVS: skb defrag in L7 helpers BAD version
-Date: Fri, 12 Nov 2010 10:45:20 +0100
-Message-ID: <201011121045.21582.hans.schillstrom@ericsson.com>
-References: <Re: [*v2 PATCH 0/9] IPVS: staging head> <1289554892-4487-1-git-send-email-hans.schillstrom@ericsson.com>
+Subject: [v3 PATCH 0/3] IPVS: Backup Adding Ipv6 and Persistence support
+Date: Fri, 12 Nov 2010 13:42:40 +0100
+Message-ID: <201011121342.41418.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1289554892-4487-1-git-send-email-hans.schillstrom@ericsson.com>
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-To: "horms@verge.net.au" <horms@verge.net.au>
-Cc: "ja@ssi.bg" <ja@ssi.bg>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>
+To: Simon Horms <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, LVS-Devel <lvs-devel@vger.kernel.org>
+Cc: "wensong@linux-vs.org" <wensong@linux-vs.org>, Daniel Lezcano <daniel.lezcano@free.fr>
 
-On Friday 12 November 2010 10:41:32 Hans Schillstr=F6m wrote:
-> L7 helpers like sip needs skb defrag
-> since L7 data can be fragmented.
->=20
-> This patch requires "IPVS Break ports-2 into src_port and dst_port" p=
-atch
->=20
-> *v3
->   Removed unneeded if (skb_shinfo(skb)->nr_frags)
->   from Julian.
->=20
-> Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
-> ---
->  net/netfilter/ipvs/ip_vs_pe_sip.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
->=20
-> diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/i=
-p_vs_pe_sip.c
-> index b8b4e96..0d83bc0 100644
-> --- a/net/netfilter/ipvs/ip_vs_pe_sip.c
-> +++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
-> @@ -71,6 +71,7 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, st=
-ruct sk_buff *skb)
->  	struct ip_vs_iphdr iph;
->  	unsigned int dataoff, datalen, matchoff, matchlen;
->  	const char *dptr;
-> +	int retc;
-> =20
->  	ip_vs_fill_iphdr(p->af, skb_network_header(skb), &iph);
-> =20
-> @@ -83,6 +84,8 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, st=
-ruct sk_buff *skb)
->  	if (dataoff >=3D skb->len)
->  		return -EINVAL;
-> =20
-> +	if ((retc=3Dskb_linearize(skb)) < 0)
-> +		return retc;
->  	dptr =3D skb->data + dataoff;
->  	datalen =3D skb->len - dataoff;
-> =20
+This patch series adds/(updates) the following functionality
+in the synchronization between master and backup daemons.
 
-The correct version shoud be v3 (not v4)
---=20
+ - IPv6
+ - Persistence Engine
+ - Firewall marks transferred
+ - Time-outs transferred.
+ - Flag field increased to 32 bits.
+
+Note:
+This patches depends on Patch 1-9 in staging branch:
+"IPVS: Backup, Prepare for transferring firewall marks (fwmark) to the backup daemon."
+to ...
+"IPVS: skb defrag in L7 helpers"
+
+A new message format is also introduced, not understood by old backup daemons.
+For compatibility reasons receiving the old version (version 0) is still possible.
+Old (version 0) backups will just drop new (Version 1) messages.
+It's also possible to send sync msg in version 0 format, by sysctl
+#sysclt -w net.ipv4.vs.sync_version=0
+
+
+Update scenario:
+ Update the Machine with Bakup daemon first.
+
+Message structure:
+A new 32 bit word is added to the header,
+where the old count_Conns is set to 0 so old Backup daemons just will drop the packet.
+Added is version (1) and there is also a spare 16 bit field at the end.
+This is a reworked version based upon Simon Hormans work.
+
+
+Version 1:
+  Note, first byte should be Zero, so ver 0 receivers will drop the packet.
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |      0        |    SyncID     |            Size               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |  Count Conns  |    Version    |    Reserved, set to Zero      |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      |                    IPVS Sync Connection (1)                   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                            .                                  |
+      ~                            .                                  ~
+      |                            .                                  |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      |                    IPVS Sync Connection (n)                   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+ Version 0 Header
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |  Count Conns  |    SyncID     |            Size               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                    IPVS Sync Connection (1)                   |
+
+
+The Sync. Conn. message format is also changed to allow future enhancements
+and versions.
+
+     Sync Connection format (sync_conn)
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |    Type       |    Protocol   | Ver.  |        Size           |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                             Flags                             |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |            State              |         cport                 |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |            vport              |         dport                 |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                             fwmark                            |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                             timeout  (in sec.)                |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                              ...                              |
+      |                        IP-Addresses  (v4 or v6)               |
+      |                              ...                              |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  Optional Parameters.
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      | Param. Type    | Param. Length |   Param. data                |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+      |                              ...                              |
+      |                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                               | Param Type    | Param. Length |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                           Param  data                         |
+      |         Last Param data should be padded for 32 bit alignment |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+New fields that might need some explanation,
+
+Type:
+  Bit    7        6        . . .              1           0
+    +--------------------------------------------------+-------+
+    |                      Spare                       |  IPv6 |
+    +--------------------------------------------------+-------+
+
+Bit 0 = 1 This sync_conn contains IPv6 addresses.
+
+
+Ver.  Version of specified type right now it's 0
+
+fwmark:  Firewall mark from skb.
+
+timeout: from ip_vs_conn struct, converted to sec.
+
+
+Optional Parameters will be added at the end without any kind of alignment
+each Param will have a header of two bytes
+
+Param. header
+ Bit    7        6        . . .    0    7                      0
+   +----------+----------------------+---------------------------+
+   | Optional |  Parameter Type      |  Parameter length         |
+   +----------+----------------------+---------------------------+
+   |  Data ...                                                   |
+   |  ...                                                        |
+   +----------+----------------------+---------------------------+
+Bit 7 (msb) Optional Param, conn. entry could be keept, if not type
+            is unknown.
+Bit 6-0 Option Type defined below
+
+#define IPVS_OPT_SEQ_DATA       1
+#define IPVS_OPT_PE_DATA        2
+#define IPVS_OPT_PE_NAME        3
+
+Option Length, 1-255 bytes 0 is an illegal value.
+
+PATCH STATUS:
+ - Persistence data is not tested.
+
+
+THANKS
+To Julian and Simon for the review and alternative solutions.
+
+*v3
+ New: Ability to send ver. 0 sync messages.
+ Optional data, renamed to Optional parameter
+ Corrections, see comments in each patch,
+ 
+*v2
+ Simplified fwmark handling patch 1/4
+ New handling of optional data patch 2/4
+ Seconds in timeout
+ Basically all changes is based on Julians and Simons comments on the RFC
+ For details see individual patches.
+--
 Regards
 Hans Schillstrom <hans.schillstrom@ericsson.com>
