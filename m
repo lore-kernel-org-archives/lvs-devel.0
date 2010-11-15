@@ -1,182 +1,263 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [*v4 PATCH 0/3] IPVS: Backup Adding Ipv6 and Persistence support
-Date: Mon, 15 Nov 2010 19:31:26 +0100
-Message-ID: <201011151931.26789.hans.schillstrom@ericsson.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Subject: [*v4 PATCH 3/3] IPVS: Backup, adding version 0 sending capabilities
+Date: Mon, 15 Nov 2010 19:31:49 +0100
+Message-ID: <1289845909-13133-3-git-send-email-hans.schillstrom@ericsson.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: Simon Horms <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, LVS-Devel <lvs-devel@vger.kernel.org>
-Cc: Daniel Lezcano <daniel.lezcano@free.fr>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org, horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, daniel.lezcano@free.fr
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-This patch series adds/(updates) the following functionality
-in the synchronization between master and backup daemons.
+This patch adds a sysclt net.ipv4.vs.sync_version
+that can be used to send sync msg in version 0 or 1 format.
 
- - IPv6
- - Persistence Engine
- - Firewall marks transferred
- - Time-outs transferred.
- - Flag field increased to 32 bits.
+sync_version value is logical,
+     Value 1 (default) New version
+           0 Plain old version
 
-Note:
-It depends on Patch 1-9 in staging branch.
-"IPVS: Backup, Prepare for transferring firewall marks (fwmark) to the backup daemon."
-to ...
-"IPVS: skb defrag in L7 helpers"
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+---
+ include/net/ip_vs.h             |    2 +
+ net/netfilter/ipvs/ip_vs_ctl.c  |   28 ++++++++-
+ net/netfilter/ipvs/ip_vs_sync.c |  134 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 163 insertions(+), 1 deletions(-)
 
-A new message format is also introduced, not understood by old backup daemons.
-For compatibility reasons receiving the old version (version 0) is still possible.
-Old (version 0) backups will just drop new (Version 1) messages.
-It's also possible to send sync msg in version 0 format, by sysctl
-#sysclt -w net.ipv4.vs.sync_version=0
-
-
-Update scenario:
- Update the Machine with Bakup daemon first.
-
-Message structure:
-A new 32 bit word is added to the header,
-where the old count_Conns is set to 0 so old Backup daemons just will drop the packet.
-Added is version (1) and there is also a spare 16 bit field at the end.
-This is a reworked version based upon Simon Hormans work.
-
-
-Version 1:
-  Note, first byte should be Zero, so ver 0 receivers will drop the packet.
-
-       0                   1                   2                   3
-       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |      0        |    SyncID     |            Size               |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |  Count Conns  |    Version    |    Reserved, set to Zero      |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                                                               |
-      |                    IPVS Sync Connection (1)                   |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                            .                                  |
-      ~                            .                                  ~
-      |                            .                                  |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                                                               |
-      |                    IPVS Sync Connection (n)                   |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
- Version 0 Header
-       0                   1                   2                   3
-       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |  Count Conns  |    SyncID     |            Size               |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                    IPVS Sync Connection (1)                   |
-
-
-Note: Msg. Size is the real block size include padding
-
-The Sync. Conn. message format is also changed to allow future enhancements
-and versions.
-
-     Sync Connection format (sync_conn)
-
-       0                   1                   2                   3
-       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |    Type       |    Protocol   | Ver.  |        Size           |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                             Flags                             |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |            State              |         cport                 |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |            vport              |         dport                 |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                             fwmark                            |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                             timeout  (in sec.)                |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                              ...                              |
-      |                        IP-Addresses  (v4 or v6)               |
-      |                              ...                              |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  Optional Parameters.
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      | Param. Type    | Param. Length |   Param. data                |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
-      |                              ...                              |
-      |                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                               | Param Type    | Param. Length |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                           Param  data                         |
-      |         Last Param data should be padded for 32 bit alignment |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-New fields that might need some explanation,
-
-Type:
-  Bit    7        6        . . .              1           0
-    +--------------------------------------------------+-------+
-    |                      Spare                       |  IPv6 |
-    +--------------------------------------------------+-------+
-
-Bit 0 = 1 This sync_conn contains IPv6 addresses.
-
-
-Ver.  Version of specified type right now it's 0
-
-Size;    not including ev. padding
-
-fwmark:  Firewall mark from skb.
-
-timeout: from ip_vs_conn struct, converted to sec.
-
-
-Optional Parameters will be added at the end without any kind of alignment
-each Param will have a header of two bytes
-
-Param. header
- Bit    7        6        . . .    0    7                      0
-   +----------+----------------------+---------------------------+
-   | Optional |  Parameter Type      |  Parameter length         |
-   +----------+----------------------+---------------------------+
-   |  Data ...                                                   |
-   |  ...                                                        |
-   +----------+----------------------+---------------------------+
-Bit 7 (msb) Optional Param, conn. entry could be keept, if not type
-            is unknown.
-Bit 6-0 Option Type defined below
-
-#define IPVS_OPT_SEQ_DATA       1
-#define IPVS_OPT_PE_DATA        2
-#define IPVS_OPT_PE_NAME        3
-
-Option Length, 1-255 bytes 0 is an illegal value.
-
-PATCH STATUS:
- - Persistence data for IPv6 is not tested.
-
-
-THANKS
-To Julian and Simon for the review and alternative solutions.
-
-*v4
- Corrections and enhancements acording to Julians review
- See individual patches.
- Change of principle, length for individual sync_conn
- does not contain padding.
-
-*v3
- New: Ability to send ver. 0 sync messages.
- Optional data, renamed to Optional parameter
- Corrections, see comments in each patch,
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index a715f3d..d858264 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -883,7 +883,9 @@ extern int sysctl_ip_vs_conntrack;
+ extern int sysctl_ip_vs_snat_reroute;
+ extern struct ip_vs_stats ip_vs_stats;
+ extern const struct ctl_path net_vs_ctl_path[];
++extern int sysctl_ip_vs_sync_ver;
  
-*v2
- Simplified fwmark handling patch 1/4
- New handling of optional data patch 2/4
- Seconds in timeout
- Basically all changes is based on Julians and Simons comments on the RFC
- For details see individual patches.
---
-Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
++extern void ip_vs_sync_switch_mode(int mode);
+ extern struct ip_vs_service *
+ ip_vs_service_get(int af, __u32 fwmark, __u16 protocol,
+ 		  const union nf_inet_addr *vaddr, __be16 vport);
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index a5bd002..d12a13c 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -92,7 +92,7 @@ int sysctl_ip_vs_nat_icmp_send = 0;
+ int sysctl_ip_vs_conntrack;
+ #endif
+ int sysctl_ip_vs_snat_reroute = 1;
+-
++int sysctl_ip_vs_sync_ver = 1;		/* Default version of sync proto */
+ 
+ #ifdef CONFIG_IP_VS_DEBUG
+ static int sysctl_ip_vs_debug_level = 0;
+@@ -1536,6 +1536,25 @@ proc_do_sync_threshold(ctl_table *table, int write,
+ 	return rc;
+ }
+ 
++static int
++proc_do_sync_mode(ctl_table *table, int write,
++		     void __user *buffer, size_t *lenp, loff_t *ppos)
++{
++	int *valp = table->data;
++	int val = *valp;
++	int rc;
++
++	rc = proc_dointvec(table, write, buffer, lenp, ppos);
++	if (write && (*valp != val)) {
++		if ((*valp < 0) || (*valp > 1)) {
++			/* Restore the correct value */
++			*valp = val;
++		} else {
++			ip_vs_sync_switch_mode(val);
++		}
++	}
++	return rc;
++}
+ 
+ /*
+  *	IPVS sysctl table (under the /proc/sys/net/ipv4/vs/)
+@@ -1602,6 +1621,13 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= &proc_dointvec,
+ 	},
++	{
++		.procname	= "sync_version",
++		.data		= &sysctl_ip_vs_sync_ver,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= &proc_do_sync_mode,
++	},
+ #if 0
+ 	{
+ 		.procname	= "timeout_established",
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 083501b..c476ce4 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -5,6 +5,18 @@
+  *              high-performance and highly available server based on a
+  *              cluster of servers.
+  *
++ * Version 1,   is capable of handling both version 0 and 1 messages.
++ *              Version 0 is the plain old format.
++ *              Note Version 0 receivers will just drop Ver 1 messages.
++ *              Version 1 is capable of handle IPv6, Persistence data, timeouts,
++ *              and firewall marks.
++ *              In ver.1 "ip_vs_sync_conn_options" will be sent in netw. order.
++ *              Ver. 0 can be turned on by sysctl -w net.ipv4.vs.sync_version=0
++ *
++ * Definitions  Message: is a complete datagram
++ *              Sync_conn: is a part of a Message
++ *              Param Data is an option to a Sync_conn.
++ *
+  * Authors:     Wensong Zhang <wensong@linuxvirtualserver.org>
+  *
+  * ip_vs_sync:  sync connection info from master load balancer to backups
+@@ -15,6 +27,8 @@
+  *	Alexandre Cassen	:	Added SyncID support for incoming sync
+  *					messages filtering.
+  *	Justin Ossevoort	:	Fix endian problem on sync message size.
++ *	Hans Schillstrom	:	Added Version 1: i.e. IPv6,
++ *					Persistence support, fwmark and timeout.
+  */
+ 
+ #define KMSG_COMPONENT "IPVS"
+@@ -392,6 +406,121 @@ get_curr_sync_buff(unsigned long time)
+ }
+ 
+ /*
++ * Switch mode from sending version 0 or 1
++ *  - must handle sync_buf
++ */
++void ip_vs_sync_switch_mode(int mode) {
++
++	if (!ip_vs_sync_state & IP_VS_STATE_MASTER)
++		return;
++	if (mode == sysctl_ip_vs_sync_ver || !curr_sb)
++		return;
++
++	spin_lock_bh(&curr_sb_lock);
++	/* Buffer empty ? then let buf_create do the job  */
++	if ( curr_sb->mesg->size <=  sizeof(struct ip_vs_sync_mesg)) {
++		kfree(curr_sb);
++		curr_sb = NULL;
++	} else {
++		spin_lock_bh(&ip_vs_sync_lock);
++		if (ip_vs_sync_state & IP_VS_STATE_MASTER)
++			list_add_tail(&curr_sb->list, &ip_vs_sync_queue);
++		else
++			ip_vs_sync_buff_release(curr_sb);
++		spin_unlock_bh(&ip_vs_sync_lock);
++	}
++	spin_unlock_bh(&curr_sb_lock);
++}
++
++/*
++ * Create a new sync buffer for Version 0 proto.
++ */
++static inline struct ip_vs_sync_buff * ip_vs_sync_buff_create_v0(void)
++{
++	struct ip_vs_sync_buff *sb;
++	struct ip_vs_sync_mesg_v0 *mesg;
++
++	if (!(sb=kmalloc(sizeof(struct ip_vs_sync_buff), GFP_ATOMIC)))
++		return NULL;
++
++	if (!(sb->mesg=kmalloc(sync_send_mesg_maxlen, GFP_ATOMIC))) {
++		kfree(sb);
++		return NULL;
++	}
++	mesg = (struct ip_vs_sync_mesg_v0 *)sb->mesg;
++	mesg->nr_conns = 0;
++	mesg->syncid = ip_vs_master_syncid;
++	mesg->size = 4;
++	sb->head = (unsigned char *)mesg + 4;
++	sb->end = (unsigned char *)mesg + sync_send_mesg_maxlen;
++	sb->firstuse = jiffies;
++	return sb;
++}
++
++/*
++ *      Version 0 , could be switched in by sys_ctl.
++ *      Add an ip_vs_conn information into the current sync_buff.
++ */
++void ip_vs_sync_conn_v0(struct ip_vs_conn *cp)
++{
++	struct ip_vs_sync_mesg_v0 *m;
++	struct ip_vs_sync_conn_v0 *s;
++	int len;
++
++	if (unlikely(cp->af != AF_INET))
++		return;
++	/* Do not sync ONE PACKET */
++	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
++		return;
++
++	spin_lock(&curr_sb_lock);
++	if (!curr_sb) {
++		if (!(curr_sb=ip_vs_sync_buff_create_v0())) {
++			spin_unlock(&curr_sb_lock);
++			pr_err("ip_vs_sync_buff_create failed.\n");
++			return;
++		}
++	}
++
++	len = (cp->flags & IP_VS_CONN_F_SEQ_MASK) ? FULL_CONN_SIZE :
++		SIMPLE_CONN_SIZE;
++	m = (struct ip_vs_sync_mesg_v0 *)curr_sb->mesg;
++	s = (struct ip_vs_sync_conn_v0 *)curr_sb->head;
++
++	/* copy members */
++	s->reserved = 0;
++	s->protocol = cp->protocol;
++	s->cport = cp->cport;
++	s->vport = cp->vport;
++	s->dport = cp->dport;
++	s->caddr = cp->caddr.ip;
++	s->vaddr = cp->vaddr.ip;
++	s->daddr = cp->daddr.ip;
++	s->flags = htons(cp->flags & ~IP_VS_CONN_F_HASHED);
++	s->state = htons(cp->state);
++	if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
++		struct ip_vs_sync_conn_options *opt =
++			(struct ip_vs_sync_conn_options *)&s[1];
++		memcpy(opt, &cp->in_seq, sizeof(*opt));
++	}
++
++	m->nr_conns++;
++	m->size += len;
++	curr_sb->head += len;
++
++	/* check if there is a space for next one */
++	if (curr_sb->head+FULL_CONN_SIZE > curr_sb->end) {
++		sb_queue_tail(curr_sb);
++		curr_sb = NULL;
++	}
++	spin_unlock(&curr_sb_lock);
++
++	/* synchronize its controller if it has */
++	if (cp->control)
++		ip_vs_sync_conn(cp->control);
++}
++
++/*
+  *      Add an ip_vs_conn information into the current sync_buff.
+  *      Called by ip_vs_in.
+  *      Sending Version 1 messages
+@@ -403,6 +532,11 @@ void ip_vs_sync_conn(struct ip_vs_conn *cp)
+ 	__u8 *p;
+ 	unsigned int len, pe_name_len, pad;
+ 
++	/* Handle old version of the proto */
++	if (sysctl_ip_vs_sync_ver == 0) {
++		ip_vs_sync_conn_v0(cp);
++		return;
++	}
+ 	/* Do not sync ONE PACKET */
+ 	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
+ 		goto control;
+-- 
+1.7.2.3
+
