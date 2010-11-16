@@ -1,60 +1,60 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 3/6] IPVS: Remove useless { } block from ip_vs_process_message()
-Date: Tue, 16 Nov 2010 15:34:55 +0900
-Message-ID: <1289889298-17287-4-git-send-email-horms@verge.net.au>
-References: <1289889298-17287-1-git-send-email-horms@verge.net.au>
+Subject: Re: [*v4 PATCH 0/3] IPVS: Backup Adding Ipv6 and Persistence
+ support
+Date: Tue, 16 Nov 2010 15:44:39 +0900
+Message-ID: <20101116064436.GA19642@verge.net.au>
+References: <201011151931.26789.hans.schillstrom@ericsson.com>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1289889298-17287-1-git-send-email-horms@verge.net.au>
+Content-Disposition: inline
+In-Reply-To: <201011151931.26789.hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, n
-Cc: Simon Horman <horms@verge.net.au>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: Julian Anastasov <ja@ssi.bg>, LVS-Devel <lvs-devel@vger.kernel.org>, Daniel Lezcano <daniel.lezcano@free.fr>
 
-Acked-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_sync.c |   24 +++++++++++-------------
- 1 files changed, 11 insertions(+), 13 deletions(-)
+On Mon, Nov 15, 2010 at 07:31:26PM +0100, Hans Schillstrom wrote:
+> This patch series adds/(updates) the following functionality
+> in the synchronization between master and backup daemons.
+> 
+>  - IPv6
+>  - Persistence Engine
+>  - Firewall marks transferred
+>  - Time-outs transferred.
+>  - Flag field increased to 32 bits.
+> 
+> Note:
+> It depends on Patch 1-9 in staging branch.
+> "IPVS: Backup, Prepare for transferring firewall marks (fwmark) to the backup daemon."
+> to ...
+> "IPVS: skb defrag in L7 helpers"
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index a4dccbc..72b3d88 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -381,20 +381,18 @@ static void ip_vs_process_message(const char *buffer, const size_t buflen)
- 			}
- 		}
- 
--		{
--			if (ip_vs_conn_fill_param_sync(AF_INET, s->protocol,
--					      (union nf_inet_addr *)&s->caddr,
--					      s->cport,
--					      (union nf_inet_addr *)&s->vaddr,
--					      s->vport, &param)) {
--				pr_err("ip_vs_conn_fill_param_sync failed");
--				return;
--			}
--			if (!(flags & IP_VS_CONN_F_TEMPLATE))
--				cp = ip_vs_conn_in_get(&param);
--			else
--				cp = ip_vs_ct_in_get(&param);
-+		if (ip_vs_conn_fill_param_sync(AF_INET, s->protocol,
-+					       (union nf_inet_addr *)&s->caddr,
-+					       s->cport,
-+					       (union nf_inet_addr *)&s->vaddr,
-+					       s->vport, &param)) {
-+			pr_err("ip_vs_conn_fill_param_sync failed");
-+			return;
- 		}
-+		if (!(flags & IP_VS_CONN_F_TEMPLATE))
-+			cp = ip_vs_conn_in_get(&param);
-+		else
-+			cp = ip_vs_ct_in_get(&param);
- 		if (!cp) {
- 			/*
- 			 * Find the appropriate destination for the connection.
--- 
-1.7.2.3
+Hi Hans,
+
+unfortuantely I am a bit confused about which tree your patches apply to.
+
+I have sent a pull request to Patrick just now and as part of that
+I have updated the master, for-patrick, and stable branches such
+that they are currently all the same thing. This means stable has
+been purged and then re-added. In the process I dropped the following
+patches:
+
+* IPVS: ip_vs_pe.c, use strncmp to be safe.
+
+  Julian didn't seem very happy with this change.
+  He suggested using pe->name_len to be safe.
+
+* IPVS: Prepare for transferring firewall marks (fwmark) to the backup daemon.
+
+  I believe you have revised this idea
+
+* IPVS: Backup, Adding structs for new sync format
+
+  I believe this one has changed too.
+
+I notice that Julian made some comments too.  When you are ready could you
+please post a fresh patch series, that includes all required patches and
+applies cleanly on top of the master branch of lvs-next-2.6?
 
