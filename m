@@ -1,68 +1,51 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 5/6] ipvs: add static and read_mostly attributes
-Date: Tue, 16 Nov 2010 15:34:57 +0900
-Message-ID: <1289889298-17287-6-git-send-email-horms@verge.net.au>
+Subject: [PATCH 2/6] IPVS: Make the cp argument to ip_vs_sync_conn() static
+Date: Tue, 16 Nov 2010 15:34:54 +0900
+Message-ID: <1289889298-17287-3-git-send-email-horms@verge.net.au>
 References: <1289889298-17287-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1289889298-17287-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Eric Dumazet <eric.dumazet@gmail.com>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, n
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, Simon Horman <horms@verge.net.au>
+Cc: Simon Horman <horms@verge.net.au>
 
-From: Eric Dumazet <eric.dumazet@gmail.com>
-
-ip_vs_conn_tab_bits & ip_vs_conn_tab_mask are static to
-ipvs/ip_vs_conn.c
-
-ip_vs_conn_tab_size, ip_vs_conn_tab_mask, ip_vs_conn_tab [the pointer],
-ip_vs_conn_rnd are mostly read.
-
-Signed-off-by: Eric Dumazet <eric.dumazet@gmail.com>
+Acked-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+ include/net/ip_vs.h             |    2 +-
+ net/netfilter/ipvs/ip_vs_sync.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 261db1a..7615f9e 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -48,18 +48,18 @@
- /*
-  * Connection hash size. Default is what was selected at compile time.
- */
--int ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
-+static int ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
- module_param_named(conn_tab_bits, ip_vs_conn_tab_bits, int, 0444);
- MODULE_PARM_DESC(conn_tab_bits, "Set connections' hash size");
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index be2b569..d5a32e4 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -916,7 +916,7 @@ extern char ip_vs_master_mcast_ifn[IP_VS_IFNAME_MAXLEN];
+ extern char ip_vs_backup_mcast_ifn[IP_VS_IFNAME_MAXLEN];
+ extern int start_sync_thread(int state, char *mcast_ifn, __u8 syncid);
+ extern int stop_sync_thread(int state);
+-extern void ip_vs_sync_conn(struct ip_vs_conn *cp);
++extern void ip_vs_sync_conn(const struct ip_vs_conn *cp);
  
- /* size and mask values */
--int ip_vs_conn_tab_size;
--int ip_vs_conn_tab_mask;
-+int ip_vs_conn_tab_size __read_mostly;
-+static int ip_vs_conn_tab_mask __read_mostly;
  
  /*
-  *  Connection hash table: for input and output packets lookups of IPVS
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index ab85aed..a4dccbc 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -236,7 +236,7 @@ get_curr_sync_buff(unsigned long time)
+  *      Add an ip_vs_conn information into the current sync_buff.
+  *      Called by ip_vs_in.
   */
--static struct list_head *ip_vs_conn_tab;
-+static struct list_head *ip_vs_conn_tab __read_mostly;
- 
- /*  SLAB cache for IPVS connections */
- static struct kmem_cache *ip_vs_conn_cachep __read_mostly;
-@@ -71,7 +71,7 @@ static atomic_t ip_vs_conn_count = ATOMIC_INIT(0);
- static atomic_t ip_vs_conn_no_cport_cnt = ATOMIC_INIT(0);
- 
- /* random value for IPVS connection hash */
--static unsigned int ip_vs_conn_rnd;
-+static unsigned int ip_vs_conn_rnd __read_mostly;
- 
- /*
-  *  Fine locking granularity for big connection hash table
+-void ip_vs_sync_conn(struct ip_vs_conn *cp)
++void ip_vs_sync_conn(const struct ip_vs_conn *cp)
+ {
+ 	struct ip_vs_sync_mesg *m;
+ 	struct ip_vs_sync_conn *s;
 -- 
 1.7.2.3
 
