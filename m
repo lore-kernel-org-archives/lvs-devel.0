@@ -1,7 +1,7 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [*v6 PATCH 4/8] IPVS: Handle Scheduling errors.
-Date: Fri, 19 Nov 2010 14:25:10 +0100
-Message-ID: <1290173114-732-4-git-send-email-hans.schillstrom@ericsson.com>
+Subject: [*v6 PATCH 1/8] IPVS: Backup, Prepare for transferring firewall marks (fwmark) to the backup daemon.
+Date: Fri, 19 Nov 2010 14:25:07 +0100
+Message-ID: <1290173114-732-1-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
@@ -11,277 +11,202 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, daniel.lezcano@free.fr
 Cc: hans@schillstrom.com, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-If ip_vs_conn_fill_param_persist return an error to ip_vs_sched_persist,
-this error must propagate as ignored=-1 to ip_vs_schedule().
-Errors from ip_vs_conn_new() in ip_vs_sched_persist() and ip_vs_schedule()
-should also return *ignored=-1;
+One struct will have fwmark added:
+ * ip_vs_conn
 
-This patch just relies on the fact that ignored is 1 before calling
-ip_vs_sched_persist().
+ip_vs_conn_new() and ip_vs_find_dest()
+will have an extra param - fwmark
+The effects of that, is in this patch.
 
-Sent from Julian:
-  "The new case when ip_vs_conn_fill_param_persist fails
-   should set *ignored = -1, so that we can use NF_DROP,
-   see below. *ignored = -1 should be also used for ip_vs_conn_new
-   failure in ip_vs_sched_persist() and ip_vs_schedule().
-   The new negative value should be handled in tcp,udp,sctp"
+*v3
+ regeneration of patch due to adding Simons
+ "IPVS: Add persistence engine to connection entry"
 
-"To summarize:
+*v2
+  Simplified the patch according to Julians comments
+  Removed fwmark from ip_vs_conn_param,
+  and add fwmark to ip_vs_conn_new()
 
-- *ignored = 1:
-      protocol tried to schedule (eg. on SYN), found svc but the
-      svc/scheduler decides that this packet should be accepted with
-      NF_ACCEPT because it must not be scheduled.
-
-- *ignored = 0:
-      scheduler can not find destination, so try bypass or
-      return ICMP and then NF_DROP (ip_vs_leave).
-
-- *ignored = -1:
-      scheduler tried to schedule but fatal error occurred, eg.
-      ip_vs_conn_new failure (ENOMEM) or ip_vs_sip_fill_param
-      failure such as missing Call-ID, ENOMEM on skb_linearize
-      or pe_data. In this case we should return NF_DROP without
-      any attempts to send ICMP with ip_vs_leave."
-
-More or less all ideas and input to this patch is work from
-Julian Anastasov
+*v1
+Two structs will have fwmark added:
+ * ip_vs_conn
+ * ip_vs_conn_param
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c       |   56 +++++++++++++++++++++++---------
- net/netfilter/ipvs/ip_vs_proto_sctp.c |   11 +++++--
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |   10 +++++-
- net/netfilter/ipvs/ip_vs_proto_udp.c  |   10 +++++-
- 4 files changed, 64 insertions(+), 23 deletions(-)
+ include/net/ip_vs.h             |    6 ++++--
+ net/netfilter/ipvs/ip_vs_conn.c |    5 +++--
+ net/netfilter/ipvs/ip_vs_core.c |    8 ++++----
+ net/netfilter/ipvs/ip_vs_ctl.c  |    4 ++--
+ net/netfilter/ipvs/ip_vs_ftp.c  |    5 +++--
+ net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
+ 6 files changed, 18 insertions(+), 14 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index d5a32e4..890f01c 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -382,6 +382,7 @@ struct ip_vs_conn {
+ 	union nf_inet_addr       vaddr;          /* virtual address */
+ 	union nf_inet_addr       daddr;          /* destination address */
+ 	volatile __u32           flags;          /* status flags */
++	__u32                    fwmark;         /* Fire wall mark from skb */
+ 	__be16                   cport;
+ 	__be16                   vport;
+ 	__be16                   dport;
+@@ -720,7 +721,7 @@ extern void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport);
+ struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p,
+ 				  const union nf_inet_addr *daddr,
+ 				  __be16 dport, unsigned flags,
+-				  struct ip_vs_dest *dest);
++				  struct ip_vs_dest *dest, __u32 fwmark);
+ extern void ip_vs_conn_expire_now(struct ip_vs_conn *cp);
+ 
+ extern const char * ip_vs_state_name(__u16 proto, int state);
+@@ -901,7 +902,8 @@ extern int ip_vs_control_init(void);
+ extern void ip_vs_control_cleanup(void);
+ extern struct ip_vs_dest *
+ ip_vs_find_dest(int af, const union nf_inet_addr *daddr, __be16 dport,
+-		const union nf_inet_addr *vaddr, __be16 vport, __u16 protocol);
++		const union nf_inet_addr *vaddr, __be16 vport, __u16 protocol,
++		__u32 fwmark);
+ extern struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp);
+ 
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 7615f9e..66e4662 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -613,7 +613,7 @@ struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp)
+ 	if ((cp) && (!cp->dest)) {
+ 		dest = ip_vs_find_dest(cp->af, &cp->daddr, cp->dport,
+ 				       &cp->vaddr, cp->vport,
+-				       cp->protocol);
++				       cp->protocol, cp->fwmark);
+ 		ip_vs_bind_dest(cp, dest);
+ 		return dest;
+ 	} else
+@@ -803,7 +803,7 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp)
+ struct ip_vs_conn *
+ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+ 	       const union nf_inet_addr *daddr, __be16 dport, unsigned flags,
+-	       struct ip_vs_dest *dest)
++	       struct ip_vs_dest *dest, __u32 fwmark)
+ {
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_protocol *pp = ip_vs_proto_get(p->protocol);
+@@ -827,6 +827,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+ 			&cp->daddr, daddr);
+ 	cp->dport          = dport;
+ 	cp->flags	   = flags;
++	cp->fwmark         = fwmark;
+ 	if (flags & IP_VS_CONN_F_TEMPLATE && p->pe) {
+ 		ip_vs_pe_get(p->pe);
+ 		cp->pe = p->pe;
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 9acdd79..e483247 100644
+index b4e51e9..e2bb3cd 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -177,7 +177,7 @@ ip_vs_set_state(struct ip_vs_conn *cp, int direction,
- 	return pp->state_transition(cp, direction, skb, pp);
- }
- 
--static inline void
-+static inline int
- ip_vs_conn_fill_param_persist(const struct ip_vs_service *svc,
- 			      struct sk_buff *skb, int protocol,
- 			      const union nf_inet_addr *caddr, __be16 cport,
-@@ -187,7 +187,9 @@ ip_vs_conn_fill_param_persist(const struct ip_vs_service *svc,
- 	ip_vs_conn_fill_param(svc->af, protocol, caddr, cport, vaddr, vport, p);
- 	p->pe = svc->pe;
- 	if (p->pe && p->pe->fill_param)
--		p->pe->fill_param(p, skb);
-+		return p->pe->fill_param(p, skb);
-+
-+	return 0;
- }
- 
- /*
-@@ -200,7 +202,7 @@ ip_vs_conn_fill_param_persist(const struct ip_vs_service *svc,
- static struct ip_vs_conn *
- ip_vs_sched_persist(struct ip_vs_service *svc,
- 		    struct sk_buff *skb,
--		    __be16 src_port, __be16 dst_port)
-+		    __be16 src_port, __be16 dst_port, int *ignored)
- {
- 	struct ip_vs_conn *cp = NULL;
- 	struct ip_vs_iphdr iph;
-@@ -268,20 +270,27 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 				vaddr = &fwmark;
- 			}
- 		}
--		ip_vs_conn_fill_param_persist(svc, skb, protocol, &snet, 0,
--					      vaddr, vport, &param);
-+		/* return *ignored = -1 so NF_DROP can be used */
-+		if (ip_vs_conn_fill_param_persist(svc, skb, protocol, &snet, 0,
-+						  vaddr, vport, &param) < 0) {
-+			*ignored = -1;
-+			return NULL;
-+		}
- 	}
- 
- 	/* Check if a template already exists */
- 	ct = ip_vs_ct_in_get(&param);
- 	if (!ct || !ip_vs_check_template(ct)) {
--		/* No template found or the dest of the connection
-+		/*
-+		 * No template found or the dest of the connection
- 		 * template is not available.
-+		 * return *ignored=0 i.e. ICMP and NF_DROP
- 		 */
- 		dest = svc->scheduler->schedule(svc, skb);
- 		if (!dest) {
- 			IP_VS_DBG(1, "p-schedule: no dest found.\n");
- 			kfree(param.pe_data);
-+			*ignored = 0;
- 			return NULL;
- 		}
- 
-@@ -296,6 +305,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 				    IP_VS_CONN_F_TEMPLATE, dest, skb->mark);
+@@ -293,7 +293,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 		 * and thus param.pe_data will be destroyed
+ 		 * when the template expires */
+ 		ct = ip_vs_conn_new(&param, &dest->addr, dport,
+-				    IP_VS_CONN_F_TEMPLATE, dest);
++				    IP_VS_CONN_F_TEMPLATE, dest, skb->mark);
  		if (ct == NULL) {
  			kfree(param.pe_data);
-+			*ignored = -1;
  			return NULL;
- 		}
- 
-@@ -323,6 +333,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest, skb->mark);
+@@ -319,7 +319,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	 */
+ 	ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr, ports[0],
+ 			      &iph.daddr, ports[1], &param);
+-	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest);
++	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest, skb->mark);
  	if (cp == NULL) {
  		ip_vs_conn_put(ct);
-+		*ignored = -1;
  		return NULL;
- 	}
- 
-@@ -342,6 +353,21 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
-  *  It selects a server according to the virtual service, and
-  *  creates a connection entry.
-  *  Protocols supported: TCP, UDP
-+ *
-+ *  Usage of *ignored
-+ *
-+ * 1 :   protocol tried to schedule (eg. on SYN), found svc but the
-+ *       svc/scheduler decides that this packet should be accepted with
-+ *       NF_ACCEPT because it must not be scheduled.
-+ *
-+ * 0 :   scheduler can not find destination, so try bypass or
-+ *       return ICMP and then NF_DROP (ip_vs_leave).
-+ *
-+ * -1 :  scheduler tried to schedule but fatal error occurred, eg.
-+ *       ip_vs_conn_new failure (ENOMEM) or ip_vs_sip_fill_param
-+ *       failure such as missing Call-ID, ENOMEM on skb_linearize
-+ *       or pe_data. In this case we should return NF_DROP without
-+ *       any attempts to send ICMP with ip_vs_leave.
-  */
- struct ip_vs_conn *
- ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
-@@ -372,11 +398,9 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	}
- 
- 	/*
--	 * Do not schedule replies from local real server. It is risky
--	 * for fwmark services but mostly for persistent services.
-+	 *    Do not schedule replies from local real server.
- 	 */
- 	if ((!skb->dev || skb->dev->flags & IFF_LOOPBACK) &&
--	    (svc->flags & IP_VS_SVC_F_PERSISTENT || svc->fwmark) &&
- 	    (cp = pp->conn_in_get(svc->af, skb, pp, &iph, iph.len, 1))) {
- 		IP_VS_DBG_PKT(12, svc->af, pp, skb, 0,
- 			      "Not scheduling reply for existing connection");
-@@ -387,10 +411,10 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	/*
- 	 *    Persistent service
- 	 */
--	if (svc->flags & IP_VS_SVC_F_PERSISTENT) {
--		*ignored = 0;
--		return ip_vs_sched_persist(svc, skb, pptr[0], pptr[1]);
--	}
-+	if (svc->flags & IP_VS_SVC_F_PERSISTENT)
-+		return ip_vs_sched_persist(svc, skb, pptr[0], pptr[1], ignored);
-+
-+	*ignored = 0;
- 
- 	/*
- 	 *    Non-persistent service
-@@ -403,8 +427,6 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 		return NULL;
- 	}
- 
--	*ignored = 0;
--
- 	dest = svc->scheduler->schedule(svc, skb);
- 	if (dest == NULL) {
- 		IP_VS_DBG(1, "Schedule: no dest found.\n");
-@@ -425,8 +447,10 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+@@ -423,7 +423,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+ 				      pptr[0], &iph.daddr, pptr[1], &p);
  		cp = ip_vs_conn_new(&p, &dest->addr,
  				    dest->port ? dest->port : pptr[1],
- 				    flags, dest, skb->mark);
--		if (!cp)
-+		if (!cp) {
-+			*ignored = -1;
+-				    flags, dest);
++				    flags, dest, skb->mark);
+ 		if (!cp)
  			return NULL;
-+		}
  	}
- 
- 	IP_VS_DBG_BUF(6, "Schedule fwd:%c c:%s:%u v:%s:%u "
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index 1ea96bc..a315159 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -47,13 +47,18 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		 * incoming connection, and create a connection entry.
- 		 */
- 		*cpp = ip_vs_schedule(svc, skb, pp, &ignored);
--		if (!*cpp && !ignored) {
--			*verdict = ip_vs_leave(svc, skb, pp);
-+		if (!*cpp && ignored <= 0) {
-+			if (!ignored)
-+				*verdict = ip_vs_leave(svc, skb, pp);
-+			else {
-+				ip_vs_service_put(svc);
-+				*verdict = NF_DROP;
-+			}
- 			return 0;
+@@ -489,7 +489,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 					      &iph.daddr, pptr[1], &p);
+ 			cp = ip_vs_conn_new(&p, &daddr, 0,
+ 					    IP_VS_CONN_F_BYPASS | flags,
+-					    NULL);
++					    NULL, skb->mark);
+ 			if (!cp)
+ 				return NF_DROP;
  		}
- 		ip_vs_service_put(svc);
- 	}
--
-+	/* NF_ACCEPT */
- 	return 1;
- }
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 3e92558..a5bd002 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -657,12 +657,12 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+ struct ip_vs_dest *ip_vs_find_dest(int af, const union nf_inet_addr *daddr,
+ 				   __be16 dport,
+ 				   const union nf_inet_addr *vaddr,
+-				   __be16 vport, __u16 protocol)
++				   __be16 vport, __u16 protocol, __u32 fwmark)
+ {
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_service *svc;
  
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index f6c5200..1cdab12 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -64,12 +64,18 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		 * incoming connection, and create a connection entry.
- 		 */
- 		*cpp = ip_vs_schedule(svc, skb, pp, &ignored);
--		if (!*cpp && !ignored) {
--			*verdict = ip_vs_leave(svc, skb, pp);
-+		if (!*cpp && ignored <= 0) {
-+			if (!ignored)
-+				*verdict = ip_vs_leave(svc, skb, pp);
-+			else {
-+				ip_vs_service_put(svc);
-+				*verdict = NF_DROP;
-+			}
- 			return 0;
- 		}
- 		ip_vs_service_put(svc);
- 	}
-+	/* NF_ACCEPT */
- 	return 1;
- }
+-	svc = ip_vs_service_get(af, 0, protocol, vaddr, vport);
++	svc = ip_vs_service_get(af, fwmark, protocol, vaddr, vport);
+ 	if (!svc)
+ 		return NULL;
+ 	dest = ip_vs_lookup_dest(svc, daddr, dport);
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 7545500..84aef65 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -208,7 +208,7 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 			n_cp = ip_vs_conn_new(&p, &from, port,
+ 					      IP_VS_CONN_F_NO_CPORT |
+ 					      IP_VS_CONN_F_NFCT,
+-					      cp->dest);
++					      cp->dest, skb->mark);
+ 			if (!n_cp)
+ 				return 0;
  
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index 9d106a0..cd398de 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -63,12 +63,18 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		 * incoming connection, and create a connection entry.
- 		 */
- 		*cpp = ip_vs_schedule(svc, skb, pp, &ignored);
--		if (!*cpp && !ignored) {
--			*verdict = ip_vs_leave(svc, skb, pp);
-+		if (!*cpp && ignored <= 0) {
-+			if (!ignored)
-+				*verdict = ip_vs_leave(svc, skb, pp);
-+			else {
-+				ip_vs_service_put(svc);
-+				*verdict = NF_DROP;
-+			}
- 			return 0;
- 		}
- 		ip_vs_service_put(svc);
- 	}
-+	/* NF_ACCEPT */
- 	return 1;
- }
+@@ -365,7 +365,8 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		if (!n_cp) {
+ 			n_cp = ip_vs_conn_new(&p, &cp->daddr,
+ 					      htons(ntohs(cp->dport)-1),
+-					      IP_VS_CONN_F_NFCT, cp->dest);
++					      IP_VS_CONN_F_NFCT, cp->dest,
++					      skb->mark);
+ 			if (!n_cp)
+ 				return 0;
  
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 3897d6b..47eed67 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -404,7 +404,7 @@ static void ip_vs_process_message(char *buffer, const size_t buflen)
+ 					       s->dport,
+ 					       (union nf_inet_addr *)&s->vaddr,
+ 					       s->vport,
+-					       s->protocol);
++					       s->protocol, 0);
+ 			/*  Set the approprite ativity flag */
+ 			if (s->protocol == IPPROTO_TCP) {
+ 				if (state != IP_VS_TCP_S_ESTABLISHED)
+@@ -419,7 +419,7 @@ static void ip_vs_process_message(char *buffer, const size_t buflen)
+ 			}
+ 			cp = ip_vs_conn_new(&param,
+ 					    (union nf_inet_addr *)&s->daddr,
+-					    s->dport, flags, dest);
++					    s->dport, flags, dest, 0);
+ 			if (dest)
+ 				atomic_dec(&dest->refcnt);
+ 			if (!cp) {
 -- 
 1.7.2.3
 
