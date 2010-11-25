@@ -1,59 +1,113 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [*v6 PATCH 0/8] IPVS: Backup Adding Ipv6 and Persistence
- support
-Date: Sun, 21 Nov 2010 14:37:18 +0900
-Message-ID: <20101121053718.GA18580@verge.net.au>
-References: <201011191424.56351.hans.schillstrom@ericsson.com>
- <alpine.LFD.2.00.1011192220060.1670@ja.ssi.bg>
- <20101120220709.GN3914@verge.net.au>
- <alpine.LFD.2.00.1011210048330.5144@ja.ssi.bg>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1011210048330.5144@ja.ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [PATCH 2/8] IPVS: Split ports[2] into src_port and dst_port
+Date: Thu, 25 Nov 2010 10:46:52 +0900
+Message-ID: <1290649618-18955-3-git-send-email-horms@verge.net.au>
+References: <1290649618-18955-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1290649618-18955-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, LVS-Devel <lvs-devel@vger.kernel.org>, "wensong@linux-vs.org" <wensong@linux-vs.org>, Daniel Lezcano <daniel.lezcano@free.fr>, Hans Schillstrom <hans@schillstrom.com>, Patrick McHardy <kaber@trash.net>
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-On Sun, Nov 21, 2010 at 12:52:47AM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Sun, 21 Nov 2010, Simon Horman wrote:
-> 
-> >On Fri, Nov 19, 2010 at 10:22:40PM +0200, Julian Anastasov wrote:
-> >>
-> >>	Hello,
-> >>
-> >>On Fri, 19 Nov 2010, Hans Schillstrom wrote:
-> >>
-> >>>This patch series adds/(updates) the following functionality
-> >>>in the synchronization between master and backup daemons.
-> >>>
-> >>>- IPv6
-> >>>- Persistence Engine
-> >>>- Firewall marks transferred
-> >>>- Time-outs transferred.
-> >>>- Flag field increased to 32 bits.
-> >>
-> >>>*v6
-> >>>Patch 4 Handling scheduling errors, was forgotten it has also been rewritten.
-> >>>see comments in that patch
-> >>
-> >>	v6 looks ok to me, thanks!
-> >
-> >These look good to me too.
-> >Julian, can I add acked-by you?
-> 
-> 	Yes
-> 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-Thanks,
+Avoid sending invalid pointer due to skb_linearize() call.
+This patch prepares for next patch where skb_linearize is a part.
 
-I'll wait until the pull of my previous set of changes
-appears in nf-next-2.6 and then send these changes to Patrick.
+In ip_vs_sched_persist() params the ports ptr will be replaced by
+src and dst port.
+
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_core.c |   21 +++++++++++----------
+ 1 files changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index e2bb3cd..9acdd79 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -200,7 +200,7 @@ ip_vs_conn_fill_param_persist(const struct ip_vs_service *svc,
+ static struct ip_vs_conn *
+ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 		    struct sk_buff *skb,
+-		    __be16 ports[2])
++		    __be16 src_port, __be16 dst_port)
+ {
+ 	struct ip_vs_conn *cp = NULL;
+ 	struct ip_vs_iphdr iph;
+@@ -224,8 +224,8 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 
+ 	IP_VS_DBG_BUF(6, "p-schedule: src %s:%u dest %s:%u "
+ 		      "mnet %s\n",
+-		      IP_VS_DBG_ADDR(svc->af, &iph.saddr), ntohs(ports[0]),
+-		      IP_VS_DBG_ADDR(svc->af, &iph.daddr), ntohs(ports[1]),
++		      IP_VS_DBG_ADDR(svc->af, &iph.saddr), ntohs(src_port),
++		      IP_VS_DBG_ADDR(svc->af, &iph.daddr), ntohs(dst_port),
+ 		      IP_VS_DBG_ADDR(svc->af, &snet));
+ 
+ 	/*
+@@ -247,14 +247,14 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 		const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
+ 		__be16 vport = 0;
+ 
+-		if (ports[1] == svc->port) {
++		if (dst_port == svc->port) {
+ 			/* non-FTP template:
+ 			 * <protocol, caddr, 0, vaddr, vport, daddr, dport>
+ 			 * FTP template:
+ 			 * <protocol, caddr, 0, vaddr, 0, daddr, 0>
+ 			 */
+ 			if (svc->port != FTPPORT)
+-				vport = ports[1];
++				vport = dst_port;
+ 		} else {
+ 			/* Note: persistent fwmark-based services and
+ 			 * persistent port zero service are handled here.
+@@ -285,7 +285,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 			return NULL;
+ 		}
+ 
+-		if (ports[1] == svc->port && svc->port != FTPPORT)
++		if (dst_port == svc->port && svc->port != FTPPORT)
+ 			dport = dest->port;
+ 
+ 		/* Create a template
+@@ -306,7 +306,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 		kfree(param.pe_data);
+ 	}
+ 
+-	dport = ports[1];
++	dport = dst_port;
+ 	if (dport == svc->port && dest->port)
+ 		dport = dest->port;
+ 
+@@ -317,8 +317,9 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	/*
+ 	 *    Create a new connection according to the template
+ 	 */
+-	ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr, ports[0],
+-			      &iph.daddr, ports[1], &param);
++	ip_vs_conn_fill_param(svc->af, iph.protocol, &iph.saddr, src_port,
++			      &iph.daddr, dst_port, &param);
++
+ 	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest, skb->mark);
+ 	if (cp == NULL) {
+ 		ip_vs_conn_put(ct);
+@@ -388,7 +389,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	 */
+ 	if (svc->flags & IP_VS_SVC_F_PERSISTENT) {
+ 		*ignored = 0;
+-		return ip_vs_sched_persist(svc, skb, pptr);
++		return ip_vs_sched_persist(svc, skb, pptr[0], pptr[1]);
+ 	}
+ 
+ 	/*
+-- 
+1.7.2.3
 
