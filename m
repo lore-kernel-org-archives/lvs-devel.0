@@ -1,283 +1,182 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [*v2 PATCH 08/22] IPVS: netns preparation for proto_sctp
-Date: Mon, 13 Dec 2010 14:38:16 +0100
-Message-ID: <1292247510-753-9-git-send-email-hans.schillstrom@ericsson.com>
+Subject: [*v2 PATCH 05/22] IPVS: netns, prepare protocol
+Date: Mon, 13 Dec 2010 14:38:13 +0100
+Message-ID: <1292247510-753-6-git-send-email-hans.schillstrom@ericsson.com>
 References: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: hans@schillstrom.com, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-In this phase (one), all local vars will be moved to ipvs struct.
+Add support for protocol data per name-space.
+in struct ip_vs_protocol, appcnt will be removed when all protos
+are modified for network name-space.
 
-Remaining work, add param struct net *net to a couple of
-functions that is common for all protos and use ip_vs_proto_data
+This patch causes warnings of unused functions, they will be used
+when next patch will be applied.
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 ---
- include/net/netns/ip_vs.h             |   10 +++-
- net/netfilter/ipvs/ip_vs_proto.c      |    3 +
- net/netfilter/ipvs/ip_vs_proto_sctp.c |  117 +++++++++++++++++----------------
- 3 files changed, 73 insertions(+), 57 deletions(-)
+ include/net/ip_vs.h              |   20 +++++++++++-
+ include/net/netns/ip_vs.h        |    3 ++
+ net/netfilter/ipvs/ip_vs_proto.c |   66 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 88 insertions(+), 1 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 7532eef..528c5e8 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -353,6 +353,7 @@ struct iphdr;
+ struct ip_vs_conn;
+ struct ip_vs_app;
+ struct sk_buff;
++struct ip_vs_proto_data;
+ 
+ struct ip_vs_protocol {
+ 	struct ip_vs_protocol	*next;
+@@ -367,6 +368,10 @@ struct ip_vs_protocol {
+ 
+ 	void (*exit)(struct ip_vs_protocol *pp);
+ 
++	void (*init_netns)(struct net *net, struct ip_vs_proto_data *pd);
++
++	void (*exit_netns)(struct net *net, struct ip_vs_proto_data *pd);
++
+ 	int (*conn_schedule)(int af, struct sk_buff *skb,
+ 			     struct ip_vs_protocol *pp,
+ 			     int *verdict, struct ip_vs_conn **cpp);
+@@ -418,7 +423,20 @@ struct ip_vs_protocol {
+ 	int (*set_state_timeout)(struct ip_vs_protocol *pp, char *sname, int to);
+ };
+ 
+-extern struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto);
++/*
++ * protocol data per netns
++ */
++struct ip_vs_proto_data {
++	struct ip_vs_proto_data	*next;
++	struct ip_vs_protocol	*pp;
++	int			*timeout_table;	/* protocol timeout table */
++	atomic_t		appcnt;		/* counter of proto app incs. */
++	struct tcp_states_t 	*tcp_state_table;
++};
++
++extern struct ip_vs_protocol   * ip_vs_proto_get(unsigned short proto);
++extern struct ip_vs_proto_data * ip_vs_proto_data_get(struct net *net,
++						      unsigned short proto);
+ 
+ struct ip_vs_conn_param {
+ 	const union nf_inet_addr	*caddr;
 diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-index 4975026..fcb3c7c 100644
+index 4c8d751..b7d7815 100644
 --- a/include/net/netns/ip_vs.h
 +++ b/include/net/netns/ip_vs.h
-@@ -48,7 +48,15 @@ struct netns_ipvs {
- 	struct list_head 	udp_apps[UDP_APP_TAB_SIZE];
- 	spinlock_t		udp_app_lock;
- #endif
--
-+	/* ip_vs_proto_sctp */
-+#ifdef CONFIG_IP_VS_PROTO_SCTP
-+	#define SCTP_APP_TAB_BITS        4
-+	#define SCTP_APP_TAB_SIZE        (1 << SCTP_APP_TAB_BITS)
-+	#define SCTP_APP_TAB_MASK        (SCTP_APP_TAB_SIZE - 1)
-+	/* Hash table for SCTP application incarnations	 */
-+	struct list_head 	sctp_apps[SCTP_APP_TAB_SIZE];
-+	spinlock_t		sctp_app_lock;
-+#endif
+@@ -29,6 +29,9 @@ struct netns_ipvs {
+ 	#define IP_VS_RTAB_MASK (IP_VS_RTAB_SIZE - 1)
+ 
+ 	struct list_head 	rs_table[IP_VS_RTAB_SIZE];
++	/* ip_vs_proto */
++	#define IP_VS_PROTO_TAB_SIZE	32	/* must be power of 2 */
++	struct ip_vs_proto_data *proto_data_table[IP_VS_PROTO_TAB_SIZE];
+ 
  	/* ip_vs_lblc */
  	int 			sysctl_lblc_expiration;
- 	struct ctl_table_header	*lblc_ctl_header;
 diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-index ec71d47..fd3a7a8 100644
+index 27bf034..8caaf3e 100644
 --- a/net/netfilter/ipvs/ip_vs_proto.c
 +++ b/net/netfilter/ipvs/ip_vs_proto.c
-@@ -313,6 +313,9 @@ static int  __net_init  __ip_vs_protocol_init(struct net *net)
- #ifdef CONFIG_IP_VS_PROTO_UDP
- 	register_ip_vs_proto_netns(net, &ip_vs_protocol_udp);
- #endif
-+#ifdef CONFIG_IP_VS_PROTO_SCTP
-+	register_ip_vs_proto_netns(net, &ip_vs_protocol_sctp);
-+#endif
+@@ -60,6 +60,31 @@ static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
  	return 0;
  }
  
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index 521b827..108ae0c 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -862,7 +862,7 @@ static struct ipvs_sctp_nextstate
- /*
-  *      Timeout table[state]
-  */
--static int sctp_timeouts[IP_VS_SCTP_S_LAST + 1] = {
-+static const int sctp_timeouts[IP_VS_SCTP_S_LAST + 1] = {
- 	[IP_VS_SCTP_S_NONE]         =     2 * HZ,
- 	[IP_VS_SCTP_S_INIT_CLI]     =     1 * 60 * HZ,
- 	[IP_VS_SCTP_S_INIT_SER]     =     1 * 60 * HZ,
-@@ -906,17 +906,14 @@ static const char *sctp_state_name(int state)
- 	return "?";
- }
- 
--static void sctp_timeout_change(struct ip_vs_protocol *pp, int flags)
--{
--}
--
 +/*
- static int
- sctp_set_state_timeout(struct ip_vs_protocol *pp, char *sname, int to)
- {
- 
- return ip_vs_set_state_timeout(pp->timeout_table, IP_VS_SCTP_S_LAST,
- 				sctp_state_name_table, sname, to);
--}
-+} */
- 
- static inline int
- set_sctp_state(struct ip_vs_protocol *pp, struct ip_vs_conn *cp,
-@@ -926,6 +923,7 @@ set_sctp_state(struct ip_vs_protocol *pp, struct ip_vs_conn *cp,
- 	unsigned char chunk_type;
- 	int event, next_state;
- 	int ihl;
-+	struct ip_vs_proto_data *pd;
- 
- #ifdef CONFIG_IP_VS_IPV6
- 	ihl = cp->af == AF_INET ? ip_hdrlen(skb) : sizeof(struct ipv6hdr);
-@@ -1001,10 +999,13 @@ set_sctp_state(struct ip_vs_protocol *pp, struct ip_vs_conn *cp,
- 			}
- 		}
- 	}
-+	pd = ip_vs_proto_data_get(&init_net, pp->protocol); /* tmp fix */
-+	if (likely(pd))
-+		cp->timeout = pd->timeout_table[cp->state = next_state];
-+	else	/* What to do ? */
-+		cp->timeout = sctp_timeouts[cp->state = next_state];
- 
--	 cp->timeout = pp->timeout_table[cp->state = next_state];
--
--	 return 1;
-+	return 1;
- }
- 
- static int
-@@ -1020,16 +1021,6 @@ sctp_state_transition(struct ip_vs_conn *cp, int direction,
- 	return ret;
- }
- 
--/*
-- *      Hash table for SCTP application incarnations
-- */
--#define SCTP_APP_TAB_BITS        4
--#define SCTP_APP_TAB_SIZE        (1 << SCTP_APP_TAB_BITS)
--#define SCTP_APP_TAB_MASK        (SCTP_APP_TAB_SIZE - 1)
--
--static struct list_head sctp_apps[SCTP_APP_TAB_SIZE];
--static DEFINE_SPINLOCK(sctp_app_lock);
--
- static inline __u16 sctp_app_hashkey(__be16 port)
- {
- 	return (((__force u16)port >> SCTP_APP_TAB_BITS) ^ (__force u16)port)
-@@ -1042,34 +1033,40 @@ static int sctp_register_app(struct ip_vs_app *inc)
- 	__u16 hash;
- 	__be16 port = inc->port;
- 	int ret = 0;
-+	struct netns_ipvs *ipvs = net_ipvs(&init_net);
-+	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(&init_net, IPPROTO_SCTP);
- 
- 	hash = sctp_app_hashkey(port);
- 
--	spin_lock_bh(&sctp_app_lock);
--	list_for_each_entry(i, &sctp_apps[hash], p_list) {
-+	spin_lock_bh(&ipvs->sctp_app_lock);
-+	list_for_each_entry(i, &ipvs->sctp_apps[hash], p_list) {
- 		if (i->port == port) {
- 			ret = -EEXIST;
- 			goto out;
- 		}
- 	}
--	list_add(&inc->p_list, &sctp_apps[hash]);
--	atomic_inc(&ip_vs_protocol_sctp.appcnt);
-+	list_add(&inc->p_list, &ipvs->sctp_apps[hash]);
-+	atomic_inc(&pd->pp->appcnt);
- out:
--	spin_unlock_bh(&sctp_app_lock);
-+	spin_unlock_bh(&ipvs->sctp_app_lock);
- 
- 	return ret;
- }
- 
- static void sctp_unregister_app(struct ip_vs_app *inc)
- {
--	spin_lock_bh(&sctp_app_lock);
--	atomic_dec(&ip_vs_protocol_sctp.appcnt);
-+	struct netns_ipvs *ipvs = net_ipvs(&init_net);
-+	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(&init_net, IPPROTO_SCTP);
-+
-+	spin_lock_bh(&ipvs->sctp_app_lock);
-+	atomic_dec(&pd->pp->appcnt);
- 	list_del(&inc->p_list);
--	spin_unlock_bh(&sctp_app_lock);
-+	spin_unlock_bh(&ipvs->sctp_app_lock);
- }
- 
- static int sctp_app_conn_bind(struct ip_vs_conn *cp)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(&init_net);
- 	int hash;
- 	struct ip_vs_app *inc;
- 	int result = 0;
-@@ -1080,12 +1077,12 @@ static int sctp_app_conn_bind(struct ip_vs_conn *cp)
- 	/* Lookup application incarnations and bind the right one */
- 	hash = sctp_app_hashkey(cp->vport);
- 
--	spin_lock(&sctp_app_lock);
--	list_for_each_entry(inc, &sctp_apps[hash], p_list) {
-+	spin_lock(&ipvs->sctp_app_lock);
-+	list_for_each_entry(inc, &ipvs->sctp_apps[hash], p_list) {
- 		if (inc->port == cp->vport) {
- 			if (unlikely(!ip_vs_app_inc_get(inc)))
- 				break;
--			spin_unlock(&sctp_app_lock);
-+			spin_unlock(&ipvs->sctp_app_lock);
- 
- 			IP_VS_DBG_BUF(9, "%s: Binding conn %s:%u->"
- 					"%s:%u to app %s on port %u\n",
-@@ -1101,43 +1098,51 @@ static int sctp_app_conn_bind(struct ip_vs_conn *cp)
- 			goto out;
- 		}
- 	}
--	spin_unlock(&sctp_app_lock);
-+	spin_unlock(&ipvs->sctp_app_lock);
- out:
- 	return result;
- }
- 
--static void ip_vs_sctp_init(struct ip_vs_protocol *pp)
-+/* ---------------------------------------------
-+ *   timeouts is netns related now.
-+ * ---------------------------------------------
++ *	register an ipvs protocols netns related data
 + */
-+static void __ip_vs_sctp_init(struct net *net, struct ip_vs_proto_data *pd)
- {
--	IP_VS_INIT_HASH_TABLE(sctp_apps);
--	pp->timeout_table = sctp_timeouts;
--}
++static int
++register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
++{
 +	struct netns_ipvs *ipvs = net_ipvs(net);
- 
-+	ip_vs_init_hash_table(ipvs->sctp_apps, SCTP_APP_TAB_SIZE);
-+	spin_lock_init(&ipvs->tcp_app_lock);
-+	pd->timeout_table = ip_vs_create_timeout_table((int*)sctp_timeouts,
-+							sizeof(sctp_timeouts));
++	unsigned hash = IP_VS_PROTO_HASH(pp->protocol);
++	struct ip_vs_proto_data *pd =
++			kzalloc(sizeof(struct ip_vs_proto_data), GFP_ATOMIC);
++
++	if (!pd) {
++		pr_err("%s(): no memory.\n", __func__);
++		return -ENOMEM;
++	}
++	pd->pp = pp;	/* For speed issues */
++	pd->next = ipvs->proto_data_table[hash];
++	ipvs->proto_data_table[hash] = pd;
++	atomic_set(&pd->appcnt, 0);	/* Init app counter */
++
++	if (pp->init_netns != NULL)
++		pp->init_netns(net, pd);
++
++	return 0;
 +}
  
--static void ip_vs_sctp_exit(struct ip_vs_protocol *pp)
-+static void __ip_vs_sctp_exit(struct net *net, struct ip_vs_proto_data *pd)
- {
--
-+	kfree(pd->timeout_table);
+ /*
+  *	unregister an ipvs protocol
+@@ -82,6 +107,29 @@ static int unregister_ip_vs_protocol(struct ip_vs_protocol *pp)
+ 	return -ESRCH;
  }
  
- struct ip_vs_protocol ip_vs_protocol_sctp = {
--	.name = "SCTP",
--	.protocol = IPPROTO_SCTP,
--	.num_states = IP_VS_SCTP_S_LAST,
--	.dont_defrag = 0,
--	.appcnt = ATOMIC_INIT(0),
--	.init = ip_vs_sctp_init,
--	.exit = ip_vs_sctp_exit,
--	.register_app = sctp_register_app,
-+	.name		= "SCTP",
-+	.protocol	= IPPROTO_SCTP,
-+	.num_states	= IP_VS_SCTP_S_LAST,
-+	.dont_defrag	= 0,
-+	.init 		= NULL,
-+	.exit 		= NULL,
-+	.init_netns 	= __ip_vs_sctp_init,
-+	.exit_netns 	= __ip_vs_sctp_exit,
-+	.register_app	= sctp_register_app,
- 	.unregister_app = sctp_unregister_app,
--	.conn_schedule = sctp_conn_schedule,
--	.conn_in_get = ip_vs_conn_in_get_proto,
--	.conn_out_get = ip_vs_conn_out_get_proto,
--	.snat_handler = sctp_snat_handler,
--	.dnat_handler = sctp_dnat_handler,
--	.csum_check = sctp_csum_check,
--	.state_name = sctp_state_name,
-+	.conn_schedule	= sctp_conn_schedule,
-+	.conn_in_get	= ip_vs_conn_in_get_proto,
-+	.conn_out_get	= ip_vs_conn_out_get_proto,
-+	.snat_handler	= sctp_snat_handler,
-+	.dnat_handler	= sctp_dnat_handler,
-+	.csum_check	= sctp_csum_check,
-+	.state_name	= sctp_state_name,
- 	.state_transition = sctp_state_transition,
--	.app_conn_bind = sctp_app_conn_bind,
--	.debug_packet = ip_vs_tcpudp_debug_packet,
--	.timeout_change = sctp_timeout_change,
--	.set_state_timeout = sctp_set_state_timeout,
-+	.app_conn_bind	= sctp_app_conn_bind,
-+	.debug_packet	= ip_vs_tcpudp_debug_packet,
-+	.timeout_change	= NULL,
-+/*	.set_state_timeout = sctp_set_state_timeout, */
- };
++/*
++ *	unregister an ipvs protocols netns data
++ */
++static int
++unregister_ip_vs_proto_netns(struct net *net, struct ip_vs_proto_data *pd)
++{
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct ip_vs_proto_data **pd_p;
++	unsigned hash = IP_VS_PROTO_HASH(pd->pp->protocol);
++
++	pd_p = &ipvs->proto_data_table[hash];
++	for (; *pd_p; pd_p = &(*pd_p)->next) {
++		if (*pd_p == pd) {
++			*pd_p = pd->next;
++			if (pd->pp->exit_netns != NULL)
++				pd->pp->exit_netns(net, pd);
++			kfree(pd);
++			return 0;
++		}
++	}
++
++	return -ESRCH;
++}
+ 
+ /*
+  *	get ip_vs_protocol object by its proto.
+@@ -100,6 +148,24 @@ struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto)
+ }
+ EXPORT_SYMBOL(ip_vs_proto_get);
+ 
++/*
++ *	get ip_vs_protocol object data by netns and proto
++ */
++struct ip_vs_proto_data *
++ip_vs_proto_data_get(struct net *net, unsigned short proto)
++{
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct ip_vs_proto_data *pd;
++	unsigned hash = IP_VS_PROTO_HASH(proto);
++
++	for (pd = ipvs->proto_data_table[hash]; pd; pd = pd->next) {
++		if (pd->pp->protocol == proto)
++			return pd;
++	}
++
++	return NULL;
++}
++EXPORT_SYMBOL(ip_vs_proto_data_get);
+ 
+ /*
+  *	Propagate event for state change to all protocols
 -- 
 1.7.2.3
 
