@@ -1,182 +1,44 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [*v2 PATCH 05/22] IPVS: netns, prepare protocol
-Date: Mon, 13 Dec 2010 14:38:13 +0100
-Message-ID: <1292247510-753-6-git-send-email-hans.schillstrom@ericsson.com>
-References: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com>
+From: Jan Engelhardt <jengelh@medozas.de>
+Subject: Re: [*v2 PATCH 01/22] IPVS: netns, add basic init per netns.
+Date: Mon, 13 Dec 2010 15:08:54 +0100 (CET)
+Message-ID: <alpine.LNX.2.01.1012131503190.18216@obet.zrqbmnf.qr>
+References: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com> <1292247510-753-2-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1292247510-753-2-git-send-email-hans.schillstrom@ericsson.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au, ja@ssi.bg, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: hans@schillstrom.com, Hans Schillstrom <hans.schillstrom@ericsson.com>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: horms@verge.net.au, ja@ssi.bg, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans@schillstrom.com
 
-Add support for protocol data per name-space.
-in struct ip_vs_protocol, appcnt will be removed when all protos
-are modified for network name-space.
 
-This patch causes warnings of unused functions, they will be used
-when next patch will be applied.
+On Monday 2010-12-13 14:38, Hans Schillstrom wrote:
+>@@ -28,6 +28,18 @@
+> #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
+> #include <net/netfilter/nf_conntrack.h>
+> #endif
+>+#include <net/net_namespace.h>		/* Netw namespace */
+>+
+>+/*
+>+ * Generic access of ipvs struct
+>+ */
+>+static inline struct netns_ipvs * net_ipvs(struct net* net) {
+>+#ifdef CONFIG_NET_NS
+>+	return net->ipvs;
+>+#else
+>+	return init_net.ipvs;
+>+#endif
+>+}
 
-Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
----
- include/net/ip_vs.h              |   20 +++++++++++-
- include/net/netns/ip_vs.h        |    3 ++
- net/netfilter/ipvs/ip_vs_proto.c |   66 ++++++++++++++++++++++++++++++++++++++
- 3 files changed, 88 insertions(+), 1 deletions(-)
+This looks redundant, because even in the !CONFIG_NET_NS case,
+'net' is valid and already points to &init_net.
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 7532eef..528c5e8 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -353,6 +353,7 @@ struct iphdr;
- struct ip_vs_conn;
- struct ip_vs_app;
- struct sk_buff;
-+struct ip_vs_proto_data;
- 
- struct ip_vs_protocol {
- 	struct ip_vs_protocol	*next;
-@@ -367,6 +368,10 @@ struct ip_vs_protocol {
- 
- 	void (*exit)(struct ip_vs_protocol *pp);
- 
-+	void (*init_netns)(struct net *net, struct ip_vs_proto_data *pd);
-+
-+	void (*exit_netns)(struct net *net, struct ip_vs_proto_data *pd);
-+
- 	int (*conn_schedule)(int af, struct sk_buff *skb,
- 			     struct ip_vs_protocol *pp,
- 			     int *verdict, struct ip_vs_conn **cpp);
-@@ -418,7 +423,20 @@ struct ip_vs_protocol {
- 	int (*set_state_timeout)(struct ip_vs_protocol *pp, char *sname, int to);
- };
- 
--extern struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto);
-+/*
-+ * protocol data per netns
-+ */
-+struct ip_vs_proto_data {
-+	struct ip_vs_proto_data	*next;
-+	struct ip_vs_protocol	*pp;
-+	int			*timeout_table;	/* protocol timeout table */
-+	atomic_t		appcnt;		/* counter of proto app incs. */
-+	struct tcp_states_t 	*tcp_state_table;
-+};
-+
-+extern struct ip_vs_protocol   * ip_vs_proto_get(unsigned short proto);
-+extern struct ip_vs_proto_data * ip_vs_proto_data_get(struct net *net,
-+						      unsigned short proto);
- 
- struct ip_vs_conn_param {
- 	const union nf_inet_addr	*caddr;
-diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-index 4c8d751..b7d7815 100644
---- a/include/net/netns/ip_vs.h
-+++ b/include/net/netns/ip_vs.h
-@@ -29,6 +29,9 @@ struct netns_ipvs {
- 	#define IP_VS_RTAB_MASK (IP_VS_RTAB_SIZE - 1)
- 
- 	struct list_head 	rs_table[IP_VS_RTAB_SIZE];
-+	/* ip_vs_proto */
-+	#define IP_VS_PROTO_TAB_SIZE	32	/* must be power of 2 */
-+	struct ip_vs_proto_data *proto_data_table[IP_VS_PROTO_TAB_SIZE];
- 
- 	/* ip_vs_lblc */
- 	int 			sysctl_lblc_expiration;
-diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-index 27bf034..8caaf3e 100644
---- a/net/netfilter/ipvs/ip_vs_proto.c
-+++ b/net/netfilter/ipvs/ip_vs_proto.c
-@@ -60,6 +60,31 @@ static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
- 	return 0;
- }
- 
-+/*
-+ *	register an ipvs protocols netns related data
-+ */
-+static int
-+register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
-+{
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	unsigned hash = IP_VS_PROTO_HASH(pp->protocol);
-+	struct ip_vs_proto_data *pd =
-+			kzalloc(sizeof(struct ip_vs_proto_data), GFP_ATOMIC);
-+
-+	if (!pd) {
-+		pr_err("%s(): no memory.\n", __func__);
-+		return -ENOMEM;
-+	}
-+	pd->pp = pp;	/* For speed issues */
-+	pd->next = ipvs->proto_data_table[hash];
-+	ipvs->proto_data_table[hash] = pd;
-+	atomic_set(&pd->appcnt, 0);	/* Init app counter */
-+
-+	if (pp->init_netns != NULL)
-+		pp->init_netns(net, pd);
-+
-+	return 0;
-+}
- 
- /*
-  *	unregister an ipvs protocol
-@@ -82,6 +107,29 @@ static int unregister_ip_vs_protocol(struct ip_vs_protocol *pp)
- 	return -ESRCH;
- }
- 
-+/*
-+ *	unregister an ipvs protocols netns data
-+ */
-+static int
-+unregister_ip_vs_proto_netns(struct net *net, struct ip_vs_proto_data *pd)
-+{
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct ip_vs_proto_data **pd_p;
-+	unsigned hash = IP_VS_PROTO_HASH(pd->pp->protocol);
-+
-+	pd_p = &ipvs->proto_data_table[hash];
-+	for (; *pd_p; pd_p = &(*pd_p)->next) {
-+		if (*pd_p == pd) {
-+			*pd_p = pd->next;
-+			if (pd->pp->exit_netns != NULL)
-+				pd->pp->exit_netns(net, pd);
-+			kfree(pd);
-+			return 0;
-+		}
-+	}
-+
-+	return -ESRCH;
-+}
- 
- /*
-  *	get ip_vs_protocol object by its proto.
-@@ -100,6 +148,24 @@ struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto)
- }
- EXPORT_SYMBOL(ip_vs_proto_get);
- 
-+/*
-+ *	get ip_vs_protocol object data by netns and proto
-+ */
-+struct ip_vs_proto_data *
-+ip_vs_proto_data_get(struct net *net, unsigned short proto)
-+{
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct ip_vs_proto_data *pd;
-+	unsigned hash = IP_VS_PROTO_HASH(proto);
-+
-+	for (pd = ipvs->proto_data_table[hash]; pd; pd = pd->next) {
-+		if (pd->pp->protocol == proto)
-+			return pd;
-+	}
-+
-+	return NULL;
-+}
-+EXPORT_SYMBOL(ip_vs_proto_data_get);
- 
- /*
-  *	Propagate event for state change to all protocols
--- 
-1.7.2.3
-
+>+static void __net_exit __ip_vs_cleanup(struct net *net)
+>+{
+>+	struct netns_ipvs *ipvs = net_ipvs(net);
+>+
+>+	IP_VS_DBG(10, "ipvs netns %d released\n", ipvs->inc);
+>+}
+>+
