@@ -1,146 +1,98 @@
-From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [*v2 PATCH 06/22] IPVS: netns preparation for proto_tcp
-Date: Tue, 14 Dec 2010 07:42:33 +0100
-Message-ID: <201012140742.33715.hans@schillstrom.com>
-References: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com> <1292247510-753-7-git-send-email-hans.schillstrom@ericsson.com> <20101213221831.GI3221@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 3/3] ipvs: fix get_curr_sync_buff
+Date: Tue, 14 Dec 2010 10:28:04 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1012141018190.1527@ja.ssi.bg>
+References: <adb973b711975ac5a24c69818fd0439d88f4c68c.1292153764.git.wangtinggong@gmail.com> <3236859ec32d32324ce6e1f8a4456d2d1a84ed7b.1292153764.git.wangtinggong@gmail.com> <f190cc57967c7435bc405fd4a192d15605652461.1292153764.git.wangtinggong@gmail.com>
+ <alpine.LFD.2.00.1012140113140.2634@ja.ssi.bg> <20101214030026.GA3399@wangtg>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101213221831.GI3221@verge.net.au>
+In-Reply-To: <20101214030026.GA3399@wangtg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, ja@ssi.bg, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: Tinggong Wang <wangtinggong@gmail.com>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
 
--- 
 
-Mvh
-Hasse Schillstrom
-070-699 7150
+ 	Hello,
 
-On Monday, December 13, 2010 23:18:32 Simon Horman wrote:
-> Hi Hans,
-> 
-> I'm not all the way through yet but this series is looking good.
-> Some minor nits below.
-> 
-> On Mon, Dec 13, 2010 at 02:38:14PM +0100, Hans Schillstrom wrote:
-> > In this phase (one), all local vars will be moved to ipvs struct.
-> > 
-> > Remaining work, add param struct net *net to a couple of
-> > functions that is common for all protos and use all
-> > ip_vs_proto_data
-> > 
-> > Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
-> > ---
-> >  include/net/ip_vs.h                  |    7 ++-
-> >  include/net/netns/ip_vs.h            |    8 +++
-> >  net/netfilter/ipvs/ip_vs_ftp.c       |    9 ++-
-> >  net/netfilter/ipvs/ip_vs_proto.c     |   13 ++++-
-> >  net/netfilter/ipvs/ip_vs_proto_tcp.c |   99 +++++++++++++++++++--------------
-> >  5 files changed, 87 insertions(+), 49 deletions(-)
-> > 
-> > diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-> > index 528c5e8..3765add 100644
-> > --- a/include/net/ip_vs.h
-> > +++ b/include/net/ip_vs.h
-> > @@ -40,11 +40,12 @@ static inline struct netns_ipvs * net_ipvs(struct net* net) {
-> >  	return init_net.ipvs;
-> >  #endif
-> >  }
-> > +
-> 
-> This blank line change is spurious here.
-> There seem to be other cases of blank lines being
-> spuriously added and removed in this patch set.
-> They tend to just add noise.
-> 
+On Tue, 14 Dec 2010, Tinggong Wang wrote:
 
-Yes, but in this case it's a blank line that separate two blocks.
+>>> use time_after get the current buffer created more than the specified time.
+>>>
+>>> time_before in get_curr_sync_buff(2 * HZ) will get the buffer created newly.
+>>> if curr_sb has been created more than 2*HZ then it will still sit in master.
+>>> so use time_after instead.
+>>>
+>>> Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
+>>> ---
+>>> net/netfilter/ipvs/ip_vs_sync.c |    3 +--
+>>> 1 files changed, 1 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+>>> index 2b6b0cb..555b0dd 100644
+>>> --- a/net/netfilter/ipvs/ip_vs_sync.c
+>>> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+>>> @@ -221,8 +221,7 @@ get_curr_sync_buff(unsigned long time)
+>>> 	struct ip_vs_sync_buff *sb;
+>>>
+>>> 	spin_lock_bh(&curr_sb_lock);
+>>> -	if (curr_sb && (time == 0 ||
+>>> -			time_before(jiffies - curr_sb->firstuse, time))) {
+>>> +	if (curr_sb && time_after(jiffies - curr_sb->firstuse, time)) {
+>>
+>> 	This breaks the time=0 case when jiffies matches firstuse.
+>>
+>> 	May be the fix should be as follows?:
+>>
+>> 	if (curr_sb && time_after_eq(jiffies - curr_sb->firstuse, time)) {
+>>
+>> 	i.e. passed >= limit (2 or 0).
+>>
+>
+> Thanks!
+>
+> here is the improved patch:
+>
+>> From 68f30a4e8759dae7de4fb846db8ad264301c0bc6 Mon Sep 17 00:00:00 2001
+> From: Tinggong Wang <wangtinggong@gmail.com>
+> Date: Tue, 14 Dec 2010 10:53:24 +0800
+> Subject: [PATCH] ipvs: fix get_curr_sync_buff
+>
+> use time_after_eq get the current buffer created more than the specified time,
+> or equals it.
+>
+> Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
 
-> >  /*
-> >   * Get net ptr from skb in traffic cases
-> >   * use skb_sknet when call is from userland (ioctl or netlink)
-> >   */
-> > -static inline struct net *skb_net(struct sk_buff *skb) {
-> > +static inline struct net *skb_net(const struct sk_buff *skb) {
-> >  #ifdef CONFIG_NET_NS
-> >  #ifdef CONFIG_IP_VS_DEBUG
-> >  	/*
-> 
-> [ snip ]
-> 
-> > diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-> > index b7d7815..512cdd0 100644
-> > --- a/include/net/netns/ip_vs.h
-> > +++ b/include/net/netns/ip_vs.h
-> > @@ -32,6 +32,14 @@ struct netns_ipvs {
-> >  	/* ip_vs_proto */
-> >  	#define IP_VS_PROTO_TAB_SIZE	32	/* must be power of 2 */
-> >  	struct ip_vs_proto_data *proto_data_table[IP_VS_PROTO_TAB_SIZE];
-> > +	/* ip_vs_proto_tcp */
-> > +#ifdef CONFIG_IP_VS_PROTO_TCP
-> > +	#define	TCP_APP_TAB_BITS	4
-> > +	#define	TCP_APP_TAB_SIZE	(1 << TCP_APP_TAB_BITS)
-> > +	#define	TCP_APP_TAB_MASK	(TCP_APP_TAB_SIZE - 1)
-> > +	struct list_head 	tcp_apps[TCP_APP_TAB_SIZE];
-> 
-> There is a space (not tab) after head.
-> 
-> > +	spinlock_t		tcp_app_lock;
-> > +#endif
-> >  
-> >  	/* ip_vs_lblc */
-> >  	int 			sysctl_lblc_expiration;
-> > diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-> > index 5e4da60..8986b25 100644
-> > --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-> > +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-> 
-> [ snip ]
-> 
-> > @@ -459,13 +463,13 @@ static void tcp_timeout_change(struct ip_vs_protocol *pp, int flags)
-> >  	*/
-> >  	tcp_state_table = (on? tcp_states_dos : tcp_states);
-> >  }
-> > -
-> > +/* Remove dot used
-> >  static int
-> >  tcp_set_state_timeout(struct ip_vs_protocol *pp, char *sname, int to)
-> >  {
-> >  	return ip_vs_set_state_timeout(pp->timeout_table, IP_VS_TCP_S_LAST,
-> >  				       tcp_state_name_table, sname, to);
-> > -}
-> > +} */
-> 
-> Can we just remove tcp_set_state_timeout ?
+ 	Simon, this change looks ok, consider for
+applying, may be after the changes from Hans if there is
+collision.
 
-Sure, anyone that disagree ?
+Acked-by: Julian Anastasov <ja@ssi.bg>
 
-> 
-> [ snip ]
-> 
-> > @@ -699,8 +712,10 @@ struct ip_vs_protocol ip_vs_protocol_tcp = {
-> >  	.num_states =		IP_VS_TCP_S_LAST,
-> >  	.dont_defrag =		0,
-> >  	.appcnt =		ATOMIC_INIT(0),
-> > -	.init =			ip_vs_tcp_init,
-> > -	.exit =			ip_vs_tcp_exit,
-> > +	.init =			NULL,
-> > +	.exit =			NULL,
-> > +	.init_netns =		__ip_vs_tcp_init,
-> > +	.exit_netns =		__ip_vs_tcp_exit,
-> >  	.register_app =		tcp_register_app,
-> >  	.unregister_app =	tcp_unregister_app,
-> >  	.conn_schedule =	tcp_conn_schedule,
-> > @@ -714,5 +729,5 @@ struct ip_vs_protocol ip_vs_protocol_tcp = {
-> >  	.app_conn_bind =	tcp_app_conn_bind,
-> >  	.debug_packet =		ip_vs_tcpudp_debug_packet,
-> >  	.timeout_change =	tcp_timeout_change,
-> > -	.set_state_timeout =	tcp_set_state_timeout,
-> > +/*	.set_state_timeout =	tcp_set_state_timeout, */
-> >  };
-> 
-> Can this the commented-out line just be removed?
+> ---
+> net/netfilter/ipvs/ip_vs_sync.c |    3 +--
+> 1 files changed, 1 insertions(+), 2 deletions(-)
+>
+> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> index c1c167a..e9d2196 100644
+> --- a/net/netfilter/ipvs/ip_vs_sync.c
+> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> @@ -395,8 +395,7 @@ get_curr_sync_buff(unsigned long time)
+> 	struct ip_vs_sync_buff *sb;
+>
+> 	spin_lock_bh(&curr_sb_lock);
+> -	if (curr_sb && (time == 0 ||
+> -			time_before(jiffies - curr_sb->firstuse, time))) {
+> +	if (curr_sb && time_after_eq(jiffies - curr_sb->firstuse, time)) {
+> 		sb = curr_sb;
+> 		curr_sb = NULL;
+> 	} else
+> -- 
+> 1.7.2.3
 
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
