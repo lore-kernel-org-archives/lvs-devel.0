@@ -1,133 +1,146 @@
 From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [*v2 PATCH 08/22] IPVS: netns preparation for proto_sctp
-Date: Tue, 14 Dec 2010 07:27:03 +0100
-Message-ID: <201012140727.04411.hans@schillstrom.com>
-References: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com> <1292247510-753-9-git-send-email-hans.schillstrom@ericsson.com> <20101213222300.GK3221@verge.net.au>
+Subject: Re: [*v2 PATCH 06/22] IPVS: netns preparation for proto_tcp
+Date: Tue, 14 Dec 2010 07:42:33 +0100
+Message-ID: <201012140742.33715.hans@schillstrom.com>
+References: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com> <1292247510-753-7-git-send-email-hans.schillstrom@ericsson.com> <20101213221831.GI3221@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101213222300.GK3221@verge.net.au>
+In-Reply-To: <20101213221831.GI3221@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: Text/Plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>
 Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, ja@ssi.bg, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 
+-- 
 
-On Monday, December 13, 2010 23:23:01 Simon Horman wrote:
-> On Mon, Dec 13, 2010 at 02:38:16PM +0100, Hans Schillstrom wrote:
+Mvh
+Hasse Schillstrom
+070-699 7150
+
+On Monday, December 13, 2010 23:18:32 Simon Horman wrote:
+> Hi Hans,
+> 
+> I'm not all the way through yet but this series is looking good.
+> Some minor nits below.
+> 
+> On Mon, Dec 13, 2010 at 02:38:14PM +0100, Hans Schillstrom wrote:
 > > In this phase (one), all local vars will be moved to ipvs struct.
 > > 
 > > Remaining work, add param struct net *net to a couple of
-> > functions that is common for all protos and use ip_vs_proto_data
+> > functions that is common for all protos and use all
+> > ip_vs_proto_data
 > > 
 > > Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
-> 
-> [ snip ]
-> 
-> > diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> > index 521b827..108ae0c 100644
-> > --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> > +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> 
-> [ snip ]
-> 
-> > @@ -1101,43 +1098,51 @@ static int sctp_app_conn_bind(struct ip_vs_conn *cp)
-> >  			goto out;
-> >  		}
-> >  	}
-> > -	spin_unlock(&sctp_app_lock);
-> > +	spin_unlock(&ipvs->sctp_app_lock);
-> >  out:
-> >  	return result;
+> > ---
+> >  include/net/ip_vs.h                  |    7 ++-
+> >  include/net/netns/ip_vs.h            |    8 +++
+> >  net/netfilter/ipvs/ip_vs_ftp.c       |    9 ++-
+> >  net/netfilter/ipvs/ip_vs_proto.c     |   13 ++++-
+> >  net/netfilter/ipvs/ip_vs_proto_tcp.c |   99 +++++++++++++++++++--------------
+> >  5 files changed, 87 insertions(+), 49 deletions(-)
+> > 
+> > diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> > index 528c5e8..3765add 100644
+> > --- a/include/net/ip_vs.h
+> > +++ b/include/net/ip_vs.h
+> > @@ -40,11 +40,12 @@ static inline struct netns_ipvs * net_ipvs(struct net* net) {
+> >  	return init_net.ipvs;
+> >  #endif
 > >  }
+> > +
+> 
+> This blank line change is spurious here.
+> There seem to be other cases of blank lines being
+> spuriously added and removed in this patch set.
+> They tend to just add noise.
+> 
+
+Yes, but in this case it's a blank line that separate two blocks.
+
+> >  /*
+> >   * Get net ptr from skb in traffic cases
+> >   * use skb_sknet when call is from userland (ioctl or netlink)
+> >   */
+> > -static inline struct net *skb_net(struct sk_buff *skb) {
+> > +static inline struct net *skb_net(const struct sk_buff *skb) {
+> >  #ifdef CONFIG_NET_NS
+> >  #ifdef CONFIG_IP_VS_DEBUG
+> >  	/*
+> 
+> [ snip ]
+> 
+> > diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
+> > index b7d7815..512cdd0 100644
+> > --- a/include/net/netns/ip_vs.h
+> > +++ b/include/net/netns/ip_vs.h
+> > @@ -32,6 +32,14 @@ struct netns_ipvs {
+> >  	/* ip_vs_proto */
+> >  	#define IP_VS_PROTO_TAB_SIZE	32	/* must be power of 2 */
+> >  	struct ip_vs_proto_data *proto_data_table[IP_VS_PROTO_TAB_SIZE];
+> > +	/* ip_vs_proto_tcp */
+> > +#ifdef CONFIG_IP_VS_PROTO_TCP
+> > +	#define	TCP_APP_TAB_BITS	4
+> > +	#define	TCP_APP_TAB_SIZE	(1 << TCP_APP_TAB_BITS)
+> > +	#define	TCP_APP_TAB_MASK	(TCP_APP_TAB_SIZE - 1)
+> > +	struct list_head 	tcp_apps[TCP_APP_TAB_SIZE];
+> 
+> There is a space (not tab) after head.
+> 
+> > +	spinlock_t		tcp_app_lock;
+> > +#endif
 > >  
-> > -static void ip_vs_sctp_init(struct ip_vs_protocol *pp)
-> > +/* ---------------------------------------------
-> > + *   timeouts is netns related now.
-> > + * ---------------------------------------------
-> > + */
-> > +static void __ip_vs_sctp_init(struct net *net, struct ip_vs_proto_data *pd)
-> >  {
-> > -	IP_VS_INIT_HASH_TABLE(sctp_apps);
-> > -	pp->timeout_table = sctp_timeouts;
-> > -}
-> > +	struct netns_ipvs *ipvs = net_ipvs(net);
-> >  
-> > +	ip_vs_init_hash_table(ipvs->sctp_apps, SCTP_APP_TAB_SIZE);
-> > +	spin_lock_init(&ipvs->tcp_app_lock);
-> > +	pd->timeout_table = ip_vs_create_timeout_table((int*)sctp_timeouts,
-> > +							sizeof(sctp_timeouts));
-> > +}
-> >  
-> > -static void ip_vs_sctp_exit(struct ip_vs_protocol *pp)
-> > +static void __ip_vs_sctp_exit(struct net *net, struct ip_vs_proto_data *pd)
-> >  {
+> >  	/* ip_vs_lblc */
+> >  	int 			sysctl_lblc_expiration;
+> > diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> > index 5e4da60..8986b25 100644
+> > --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> > +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> 
+> [ snip ]
+> 
+> > @@ -459,13 +463,13 @@ static void tcp_timeout_change(struct ip_vs_protocol *pp, int flags)
+> >  	*/
+> >  	tcp_state_table = (on? tcp_states_dos : tcp_states);
+> >  }
 > > -
-> > +	kfree(pd->timeout_table);
-> >  }
-> >  
-> >  struct ip_vs_protocol ip_vs_protocol_sctp = {
-> > -	.name = "SCTP",
-> > -	.protocol = IPPROTO_SCTP,
-> > -	.num_states = IP_VS_SCTP_S_LAST,
-> > -	.dont_defrag = 0,
-> > -	.appcnt = ATOMIC_INIT(0),
-> > -	.init = ip_vs_sctp_init,
-> > -	.exit = ip_vs_sctp_exit,
+> > +/* Remove dot used
+> >  static int
+> >  tcp_set_state_timeout(struct ip_vs_protocol *pp, char *sname, int to)
+> >  {
+> >  	return ip_vs_set_state_timeout(pp->timeout_table, IP_VS_TCP_S_LAST,
+> >  				       tcp_state_name_table, sname, to);
+> > -}
+> > +} */
+> 
+> Can we just remove tcp_set_state_timeout ?
 
-init & exit changed to NULL
+Sure, anyone that disagree ?
 
-> > -	.register_app = sctp_register_app,
-> > +	.name		= "SCTP",
-> > +	.protocol	= IPPROTO_SCTP,
-> > +	.num_states	= IP_VS_SCTP_S_LAST,
-> > +	.dont_defrag	= 0,
-> > +	.init 		= NULL,
-> > +	.exit 		= NULL,
-> > +	.init_netns 	= __ip_vs_sctp_init,
-> > +	.exit_netns 	= __ip_vs_sctp_exit,
-
-init_netns and exit_netns added
-
-> > +	.register_app	= sctp_register_app,
-> >  	.unregister_app = sctp_unregister_app,
-> > -	.conn_schedule = sctp_conn_schedule,
-> > -	.conn_in_get = ip_vs_conn_in_get_proto,
-> > -	.conn_out_get = ip_vs_conn_out_get_proto,
-> > -	.snat_handler = sctp_snat_handler,
-> > -	.dnat_handler = sctp_dnat_handler,
-> > -	.csum_check = sctp_csum_check,
-> > -	.state_name = sctp_state_name,
-> > +	.conn_schedule	= sctp_conn_schedule,
-> > +	.conn_in_get	= ip_vs_conn_in_get_proto,
-> > +	.conn_out_get	= ip_vs_conn_out_get_proto,
-> > +	.snat_handler	= sctp_snat_handler,
-> > +	.dnat_handler	= sctp_dnat_handler,
-> > +	.csum_check	= sctp_csum_check,
-> > +	.state_name	= sctp_state_name,
-> >  	.state_transition = sctp_state_transition,
-> > -	.app_conn_bind = sctp_app_conn_bind,
-> > -	.debug_packet = ip_vs_tcpudp_debug_packet,
-> > -	.timeout_change = sctp_timeout_change,
-> > -	.set_state_timeout = sctp_set_state_timeout,
-> > +	.app_conn_bind	= sctp_app_conn_bind,
-> > +	.debug_packet	= ip_vs_tcpudp_debug_packet,
-> > +	.timeout_change	= NULL,
-> > +/*	.set_state_timeout = sctp_set_state_timeout, */
-
-set_state_timout removed or comment-out
-
+> 
+> [ snip ]
+> 
+> > @@ -699,8 +712,10 @@ struct ip_vs_protocol ip_vs_protocol_tcp = {
+> >  	.num_states =		IP_VS_TCP_S_LAST,
+> >  	.dont_defrag =		0,
+> >  	.appcnt =		ATOMIC_INIT(0),
+> > -	.init =			ip_vs_tcp_init,
+> > -	.exit =			ip_vs_tcp_exit,
+> > +	.init =			NULL,
+> > +	.exit =			NULL,
+> > +	.init_netns =		__ip_vs_tcp_init,
+> > +	.exit_netns =		__ip_vs_tcp_exit,
+> >  	.register_app =		tcp_register_app,
+> >  	.unregister_app =	tcp_unregister_app,
+> >  	.conn_schedule =	tcp_conn_schedule,
+> > @@ -714,5 +729,5 @@ struct ip_vs_protocol ip_vs_protocol_tcp = {
+> >  	.app_conn_bind =	tcp_app_conn_bind,
+> >  	.debug_packet =		ip_vs_tcpudp_debug_packet,
+> >  	.timeout_change =	tcp_timeout_change,
+> > -	.set_state_timeout =	tcp_set_state_timeout,
+> > +/*	.set_state_timeout =	tcp_set_state_timeout, */
 > >  };
 > 
-> While I'm not a big fan or the original formatting,
-> the whitespace changes above make it rather difficult to see
-> what is really being changed. Could you either drop
-> the whitespace changes or move them into a separate patch?
-
-I do agree that the changes is hard to see,
-It's the same changes that's in tcp and udp.
-I don't think it's worth the effort to make a new patch just for that,
-but if you still insists ...
-
+> Can this the commented-out line just be removed?
 
