@@ -1,96 +1,154 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 3/3] ipvs: fix get_curr_sync_buff
-Date: Tue, 14 Dec 2010 10:28:04 +0200 (EET)
-Message-ID: <alpine.LFD.2.00.1012141018190.1527@ja.ssi.bg>
-References: <adb973b711975ac5a24c69818fd0439d88f4c68c.1292153764.git.wangtinggong@gmail.com> <3236859ec32d32324ce6e1f8a4456d2d1a84ed7b.1292153764.git.wangtinggong@gmail.com> <f190cc57967c7435bc405fd4a192d15605652461.1292153764.git.wangtinggong@gmail.com>
- <alpine.LFD.2.00.1012140113140.2634@ja.ssi.bg> <20101214030026.GA3399@wangtg>
+Subject: Re: [*v2 PATCH 00/22] IPVS, Network Name Space aware
+Date: Wed, 15 Dec 2010 01:43:13 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1012150136410.2010@ja.ssi.bg>
+References: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20101214030026.GA3399@wangtg>
+In-Reply-To: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
-To: Tinggong Wang <wangtinggong@gmail.com>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: horms@verge.net.au, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans@schillstrom.com
 
 
  	Hello,
 
-On Tue, 14 Dec 2010, Tinggong Wang wrote:
+On Mon, 13 Dec 2010, Hans Schillstrom wrote:
 
->>> use time_after get the current buffer created more than the specified time.
->>>
->>> time_before in get_curr_sync_buff(2 * HZ) will get the buffer created newly.
->>> if curr_sb has been created more than 2*HZ then it will still sit in master.
->>> so use time_after instead.
->>>
->>> Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
->>> ---
->>> net/netfilter/ipvs/ip_vs_sync.c |    3 +--
->>> 1 files changed, 1 insertions(+), 2 deletions(-)
->>>
->>> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
->>> index 2b6b0cb..555b0dd 100644
->>> --- a/net/netfilter/ipvs/ip_vs_sync.c
->>> +++ b/net/netfilter/ipvs/ip_vs_sync.c
->>> @@ -221,8 +221,7 @@ get_curr_sync_buff(unsigned long time)
->>> 	struct ip_vs_sync_buff *sb;
->>>
->>> 	spin_lock_bh(&curr_sb_lock);
->>> -	if (curr_sb && (time == 0 ||
->>> -			time_before(jiffies - curr_sb->firstuse, time))) {
->>> +	if (curr_sb && time_after(jiffies - curr_sb->firstuse, time)) {
->>
->> 	This breaks the time=0 case when jiffies matches firstuse.
->>
->> 	May be the fix should be as follows?:
->>
->> 	if (curr_sb && time_after_eq(jiffies - curr_sb->firstuse, time)) {
->>
->> 	i.e. passed >= limit (2 or 0).
->>
+> This patch series adds network name space support to the LVS.
 >
-> Thanks!
+> REVISION
 >
-> here is the improved patch:
+> This is version 2
 >
->> From 68f30a4e8759dae7de4fb846db8ad264301c0bc6 Mon Sep 17 00:00:00 2001
-> From: Tinggong Wang <wangtinggong@gmail.com>
-> Date: Tue, 14 Dec 2010 10:53:24 +0800
-> Subject: [PATCH] ipvs: fix get_curr_sync_buff
+> OVERVIEW
 >
-> use time_after_eq get the current buffer created more than the specified time,
-> or equals it.
+> The patch doesn't remove or add any functionality except for netns.
+> For users that don't use network name space (netns) this patch is
+> completely transparent.
 >
-> Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
+> Now it's possible to run LVS in a Linux container (see lxc-tools)
+> i.e.  a light weight visualization. For example it's possible to run
+> one or several lvs on a real server in their own network name spaces.
+>> From the LVS point of view it looks like it runs on it's own machine.
+>
+> IMPLEMENTATION
+> Basic requirements for netns awareness
+> - Global variables has to be moved to dyn. allocated memory.
+> - No or very little performance loss
+>
+> Large hash tables connection hash and service hashes still resides in
+> global memory with net ptr added in hash key.
+> Most global variables now resides in a struct ipvs { } in netns/ip_vs.h.
+> The size of per name space is 2004 bytes (for x86_64) and a little bit less
+> for 32 bit archs.
+>
+> Statistics counters is now lock-free i.e. incremented per CPU,
+> The estimator does a sum when using it.
+>
+> Procfs ip_vs_stats is also changed to reflect the "per cpu"
+> ex.
+> # cat /proc/net/ip_vs_stats
+>       Total Incoming Outgoing         Incoming         Outgoing
+> CPU    Conns  Packets  Packets            Bytes            Bytes
+>  0        0        3        1               9D               34
+>  1        0        1        2               49               70
+>  2        0        1        2               34               76
+>  3        1        2        2               70               74
+>  ~        1        7        7              18A              18E
+>
+>     Conns/s   Pkts/s   Pkts/s          Bytes/s          Bytes/s
+>           0        0        0                0                0
+>
+> Algorithm files are untouched except for lblc and lblcr.
 
- 	Simon, this change looks ok, consider for
-applying, may be after the changes from Hans if there is
-collision.
+ 	Great! I have some small comments after first look:
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
+v2 PATCH 01/22 - basic init
+ 	- first change in ip_vs_conn.c adds existing code:
+ 	/* Compute size and mask */
 
-> ---
-> net/netfilter/ipvs/ip_vs_sync.c |    3 +--
-> 1 files changed, 1 insertions(+), 2 deletions(-)
->
-> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-> index c1c167a..e9d2196 100644
-> --- a/net/netfilter/ipvs/ip_vs_sync.c
-> +++ b/net/netfilter/ipvs/ip_vs_sync.c
-> @@ -395,8 +395,7 @@ get_curr_sync_buff(unsigned long time)
-> 	struct ip_vs_sync_buff *sb;
->
-> 	spin_lock_bh(&curr_sb_lock);
-> -	if (curr_sb && (time == 0 ||
-> -			time_before(jiffies - curr_sb->firstuse, time))) {
-> +	if (curr_sb && time_after_eq(jiffies - curr_sb->firstuse, time)) {
-> 		sb = curr_sb;
-> 		curr_sb = NULL;
-> 	} else
-> -- 
-> 1.7.2.3
+v2 PATCH 02/22 - services part 1
+ 	- net = skb_net(skb) in ip_vs_out must be after
+ 	check for skb_dst. The skb_dst checks are in ip_vs_in and
+ 	ip_vs_out, so skb_net() can be used only after these checks.
+
+ 	- __ip_vs_service_find and __ip_vs_svc_fwm_find are fast path,
+ 	may be net_eq(svc->net, net) check can be last, I assume
+ 	the different netns will use different VIPs and VPORTs?
+
+ 	- ip_vs_svc_table and ip_vs_svc_fwm_table are not per-ns,
+ 	so we can not use per-ns mutex in patch 17
+
+v2 PATCH 03/22 - lblcr
+
+v2 PATCH 04/22 - lblc
+
+v2 PATCH 05/22 - prepare protocol
+
+v2 PATCH 06/22 - tcp
+
+v2 PATCH 07/22 - udp
+
+v2 PATCH 08/22 - sctp
+
+v2 PATCH 09/22 - AH, ESP
+
+v2 PATCH 10/22 - use ip_vs_proto_data as param
+ 	- update_defense_level: are per-ns memory stats/limits possible?
+
+ 	- The pp -> pd conversion should start from functions like
+ 	ip_vs_out() that use pp = ip_vs_proto_get(iph.protocol),
+ 	now they should use
+ 	ip_vs_proto_data_get(net, iph.protocol). If
+ 	pp is needed, it is available from pd->pp. Many functions
+ 	that provide pp as argument should now provide pd.
+ 	Then 2nd lookups for proto like in ip_vs_set_state should
+ 	disappear.
+
+ 	- copy-and-paste bug in ip_vs_ctl.c:ip_vs_set_timeout():
+ 		pd = ip_vs_proto_data_get(net, IPPROTO_TCP)
+ 		should be IPPROTO_UDP
+
+ 	- may be ip_vs_protocol_timeout_change should propagate
+ 	event to all pd, not all pp?
+
+v2 PATCH 11/22 - appcnt
+
+v2 PATCH 12/22 - apps
+
+v2 PATCH 13/22 - ip_vs_est
+ 	- estimation_timer: what protection is needed for for_each_net?
+ 	It is rtnl for user context and RCU for softirq?
+ 	May be est_timer must be per NS? Now may be rcu_read_lock is
+ 	needed before for_each_net_rcu ? for_each_net can be called
+ 	only under rtnl_lock?
+
+v2 PATCH 14/22 - ip_vs_sync
+
+v2 PATCH 15/22 - ip_vs_stats
+ 	- This was one of the hurdles for IPVS RCU conversion, the others
+ 	being dest->svc->stats and scheduler state. But can this
+ 	change break some scripts that parse /proc/net/ip_vs_stats ?
+
+v2 PATCH 16/22 - connection hash
+
+v2 PATCH 17/22 - ip_vs_ctl local vars
+ 	- I hope it is not fatal if __ip_vs_mutex remains global
+ 	because svc lists are global in patch 2
+
+v2 PATCH 18/22 - defense work
+
+v2 PATCH 19/22 - trash
+
+v2 PATCH 20/22 - global svc counters
+
+v2 PATCH 21/22 - init_net removal
+
+v2 PATCH 22/22 - enable netns
 
 Regards
 
