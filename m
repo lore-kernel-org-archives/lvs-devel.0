@@ -1,79 +1,47 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 3/3] ipvs: fix get_curr_sync_buff
-Date: Wed, 15 Dec 2010 17:28:33 +0900
-Message-ID: <20101215082831.GA13118@verge.net.au>
-References: <adb973b711975ac5a24c69818fd0439d88f4c68c.1292153764.git.wangtinggong@gmail.com>
- <3236859ec32d32324ce6e1f8a4456d2d1a84ed7b.1292153764.git.wangtinggong@gmail.com>
- <f190cc57967c7435bc405fd4a192d15605652461.1292153764.git.wangtinggong@gmail.com>
- <alpine.LFD.2.00.1012140113140.2634@ja.ssi.bg>
- <20101214030026.GA3399@wangtg>
- <alpine.LFD.2.00.1012141018190.1527@ja.ssi.bg>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Subject: Re: [*v2 PATCH 00/22] IPVS, Network Name Space aware
+Date: Wed, 15 Dec 2010 11:32:27 +0100
+Message-ID: <1292409147.4983.298.camel@seasc0214>
+References: <1292247510-753-1-git-send-email-hans.schillstrom@ericsson.com>
+	 <alpine.LFD.2.00.1012150136410.2010@ja.ssi.bg>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1012141018190.1527@ja.ssi.bg>
+In-Reply-To: <alpine.LFD.2.00.1012150136410.2010@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
-Cc: Tinggong Wang <wangtinggong@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, lvs-devel@vger.kernel.org
+Cc: "horms@verge.net.au" <horms@verge.net.au>, "daniel.lezcano@free.fr" <daniel.lezcano@free.fr>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "hans@schillstrom.com" <hans@schillstrom.com>
 
-On Tue, Dec 14, 2010 at 10:28:04AM +0200, Julian Anastasov wrote:
-> 
+On Wed, 2010-12-15 at 00:43 +0100, Julian Anastasov wrote:
 > 	Hello,
 > 
-> On Tue, 14 Dec 2010, Tinggong Wang wrote:
+> On Mon, 13 Dec 2010, Hans Schillstrom wrote:
+[snip]
+> v2 PATCH 13/22 - ip_vs_est
+>  	- estimation_timer: what protection is needed for for_each_net?
+>  	It is rtnl for user context and RCU for softirq?
+>  	May be est_timer must be per NS? Now may be rcu_read_lock is
+>  	needed before for_each_net_rcu ? for_each_net can be called
+>  	only under rtnl_lock?
 > 
-> >>>use time_after get the current buffer created more than the specified time.
-> >>>
-> >>>time_before in get_curr_sync_buff(2 * HZ) will get the buffer created newly.
-> >>>if curr_sb has been created more than 2*HZ then it will still sit in master.
-> >>>so use time_after instead.
-> >>>
-> >>>Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
-> >>>---
-> >>>net/netfilter/ipvs/ip_vs_sync.c |    3 +--
-> >>>1 files changed, 1 insertions(+), 2 deletions(-)
-> >>>
-> >>>diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-> >>>index 2b6b0cb..555b0dd 100644
-> >>>--- a/net/netfilter/ipvs/ip_vs_sync.c
-> >>>+++ b/net/netfilter/ipvs/ip_vs_sync.c
-> >>>@@ -221,8 +221,7 @@ get_curr_sync_buff(unsigned long time)
-> >>>	struct ip_vs_sync_buff *sb;
-> >>>
-> >>>	spin_lock_bh(&curr_sb_lock);
-> >>>-	if (curr_sb && (time == 0 ||
-> >>>-			time_before(jiffies - curr_sb->firstuse, time))) {
-> >>>+	if (curr_sb && time_after(jiffies - curr_sb->firstuse, time)) {
-> >>
-> >>	This breaks the time=0 case when jiffies matches firstuse.
-> >>
-> >>	May be the fix should be as follows?:
-> >>
-> >>	if (curr_sb && time_after_eq(jiffies - curr_sb->firstuse, time)) {
-> >>
-> >>	i.e. passed >= limit (2 or 0).
-> >>
-> >
-> >Thanks!
-> >
-> >here is the improved patch:
-> >
-> >>From 68f30a4e8759dae7de4fb846db8ad264301c0bc6 Mon Sep 17 00:00:00 2001
-> >From: Tinggong Wang <wangtinggong@gmail.com>
-> >Date: Tue, 14 Dec 2010 10:53:24 +0800
-> >Subject: [PATCH] ipvs: fix get_curr_sync_buff
-> >
-> >use time_after_eq get the current buffer created more than the specified time,
-> >or equals it.
-> >
-> >Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
-> 
-> 	Simon, this change looks ok, consider for
-> applying, may be after the changes from Hans if there is
-> collision.
+[snip]
 
-Thanks, I'll put this change in after Hans's changes as you suggest.
+In case of a common timer for all ns:
+
+	rcu_read_lock();
+	for_each_net_rcu(net) {
+		...
+
+	}
+	rcu_read_unlock();
+
+I guess it's better with a timer per netns ?
+(then for_each_net() is not needed, and the locking can remain the same
+as before the netns change.)
+
+
+Regards
+Hans Schillstrom <hans.schillstrom@ericsson.com>
 
