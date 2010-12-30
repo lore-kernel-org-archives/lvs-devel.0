@@ -1,11 +1,11 @@
 From: hans@schillstrom.com
-Subject: [*v3 PATCH 06/22]  IPVS: netns preparation for proto_tcp
-Date: Thu, 30 Dec 2010 11:50:50 +0100
-Message-ID: <1293706266-27152-7-git-send-email-hans@schillstrom.com>
+Subject: [*v3 PATCH 15/22] IPVS: netns, ip_vs_stats and its procfs
+Date: Thu, 30 Dec 2010 11:50:59 +0100
+Message-ID: <1293706266-27152-16-git-send-email-hans@schillstrom.com>
 References: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,378 +15,430 @@ Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-In this phase (one), all local vars will be moved to ipvs struct.
+The statistic counter locks for every packet are now removed,
+and that statistic is now per CPU, i.e. no locks needed.
+However summing is made in ip_vs_est into ip_vs_stats struct
+which is moved to ipvs struc.
 
-Remaining work, add param struct net *net to a couple of
-functions that is common for all protos and use all
-ip_vs_proto_data
+procfs, ip_vs_stats now have a "per cpu" count and a grand total.
+A new function seq_file_single_net() in ip_vs.h created for handling of
+single_open_net() since it does not place net ptr in a struct, like others.
+
+/var/lib/lxc # cat /proc/net/ip_vs_stats_percpu
+       Total Incoming Outgoing         Incoming         Outgoing
+CPU    Conns  Packets  Packets            Bytes            Bytes
+  0        0        3        1               9D               34
+  1        0        1        2               49               70
+  2        0        1        2               34               76
+  3        1        2        2               70               74
+  ~        1        7        7              18A              18E
+
+     Conns/s   Pkts/s   Pkts/s          Bytes/s          Bytes/s
+           0        0        0                0                0
 
 *v3
-Removed unused function as sugested by Simon
+ip_vs_stats reamains as before, instead ip_vs_stats_percpu is added.
+u64 seq lock added
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 ---
- include/net/ip_vs.h                  |    6 +-
- include/net/netns/ip_vs.h            |    8 +++
- net/netfilter/ipvs/ip_vs_ftp.c       |    8 ++-
- net/netfilter/ipvs/ip_vs_proto.c     |   13 ++++-
- net/netfilter/ipvs/ip_vs_proto_tcp.c |  101 ++++++++++++++++++----------------
- 5 files changed, 83 insertions(+), 53 deletions(-)
+ include/net/ip_vs.h             |   25 +++++++++
+ include/net/netns/ip_vs.h       |    5 ++
+ net/netfilter/ipvs/ip_vs_core.c |   26 ++++-----
+ net/netfilter/ipvs/ip_vs_ctl.c  |  110 ++++++++++++++++++++++++++++++++-------
+ net/netfilter/ipvs/ip_vs_est.c  |   34 ++++++++++++
+ 5 files changed, 166 insertions(+), 34 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 4fc61bc..8e544be 100644
+index d7b1dcd..1076cfb 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -41,7 +41,7 @@ static inline struct netns_ipvs * net_ipvs(struct net* net)
-  * Get net ptr from skb in traffic cases
-  * use skb_sknet when call is from userland (ioctl or netlink)
-  */
--static inline struct net *skb_net(struct sk_buff *skb) {
-+static inline struct net *skb_net(const struct sk_buff *skb) {
- #ifdef CONFIG_NET_NS
- #ifdef CONFIG_IP_VS_DEBUG
- 	/*
-@@ -68,7 +68,7 @@ static inline struct net *skb_net(struct sk_buff *skb) {
+@@ -88,6 +88,18 @@ static inline struct net *skb_sknet(const struct sk_buff *skb) {
+ 	return &init_net;
  #endif
  }
++/*
++ * This one needed for single_open_net since net is stored directly in
++ * private not as a struct i.e. seq_file_net cant be used.
++ */
++static inline struct net *seq_file_single_net(struct seq_file *seq)
++{
++#ifdef CONFIG_NET_NS
++	return (struct net *)seq->private;
++#else
++	return &init_net;
++#endif
++}
  
--static inline struct net *skb_sknet(struct sk_buff *skb) {
-+static inline struct net *skb_sknet(const struct sk_buff *skb) {
- #ifdef CONFIG_NET_NS
- #ifdef CONFIG_IP_VS_DEBUG
- 	/* Start with the most likely hit */
-@@ -805,7 +805,7 @@ extern void ip_vs_conn_expire_now(struct ip_vs_conn *cp);
+ /* Connections' size value needed by ip_vs_ctl.c */
+ extern int ip_vs_conn_tab_size;
+@@ -344,6 +356,19 @@ struct ip_vs_stats {
  
- extern const char * ip_vs_state_name(__u16 proto, int state);
+ 	spinlock_t              lock;           /* spin lock */
+ };
++/*
++ * Helper Macros for per cpu
++ * ipvs->ctl_stats->ustats.count
++ */
++#define IPVS_STAT_INC(ipvs, count)	\
++	__this_cpu_inc((ipvs)->ustats->count)
++
++#define IPVS_STAT_ADD(ipvs, count, value)	\
++	write_seqcount_begin(per_cpu_ptr((ipvs)->ustats_seq, \
++		             raw_smp_processor_id())); \
++	__this_cpu_add((ipvs)->ustats->count, value); \
++	write_seqcount_end(per_cpu_ptr((ipvs)->ustats_seq, \
++			   raw_smp_processor_id()))
  
--extern void ip_vs_tcp_conn_listen(struct ip_vs_conn *cp);
-+extern void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp);
- extern int ip_vs_check_template(struct ip_vs_conn *ct);
- extern void ip_vs_random_dropentry(void);
- extern int ip_vs_conn_init(void);
+ struct dst_entry;
+ struct iphdr;
 diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-index b7d7815..512cdd0 100644
+index f6a6114..3b173b4 100644
 --- a/include/net/netns/ip_vs.h
 +++ b/include/net/netns/ip_vs.h
-@@ -32,6 +32,14 @@ struct netns_ipvs {
- 	/* ip_vs_proto */
- 	#define IP_VS_PROTO_TAB_SIZE	32	/* must be power of 2 */
- 	struct ip_vs_proto_data *proto_data_table[IP_VS_PROTO_TAB_SIZE];
-+	/* ip_vs_proto_tcp */
-+#ifdef CONFIG_IP_VS_PROTO_TCP
-+	#define	TCP_APP_TAB_BITS	4
-+	#define	TCP_APP_TAB_SIZE	(1 << TCP_APP_TAB_BITS)
-+	#define	TCP_APP_TAB_MASK	(TCP_APP_TAB_SIZE - 1)
-+	struct list_head 	tcp_apps[TCP_APP_TAB_SIZE];
-+	spinlock_t		tcp_app_lock;
-+#endif
- 
+@@ -62,6 +62,11 @@ struct netns_ipvs {
+ 	struct list_head 	sctp_apps[SCTP_APP_TAB_SIZE];
+ 	spinlock_t		sctp_app_lock;
+ #endif
++	/* ip_vs_ctl */
++	struct ip_vs_stats 		*ctl_stats;  /* Statistics & estimator */
++	struct ip_vs_stats_user __percpu *ustats;    /* Statistics */
++	seqcount_t			*ustats_seq; /* u64 read retry */
++
  	/* ip_vs_lblc */
  	int 			sysctl_lblc_expiration;
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 0e762f3..b38ae94 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -157,6 +157,7 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 	int ret = 0;
- 	enum ip_conntrack_info ctinfo;
- 	struct nf_conn *ct;
-+	struct net *net;
- 
- #ifdef CONFIG_IP_VS_IPV6
- 	/* This application helper doesn't work with IPv6 yet,
-@@ -257,8 +258,9 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 		 * would be adjusted twice.
- 		 */
- 
-+		net = skb_net(skb);
- 		cp->app_data = NULL;
--		ip_vs_tcp_conn_listen(n_cp);
-+		ip_vs_tcp_conn_listen(net, n_cp);
- 		ip_vs_conn_put(n_cp);
- 		return ret;
- 	}
-@@ -287,6 +289,7 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 	union nf_inet_addr to;
- 	__be16 port;
- 	struct ip_vs_conn *n_cp;
-+	struct net *net;
- 
- #ifdef CONFIG_IP_VS_IPV6
- 	/* This application helper doesn't work with IPv6 yet,
-@@ -378,7 +381,8 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 	/*
- 	 *	Move tunnel to listen state
- 	 */
--	ip_vs_tcp_conn_listen(n_cp);
-+	net = skb_net(skb);
-+	ip_vs_tcp_conn_listen(net, n_cp);
- 	ip_vs_conn_put(n_cp);
- 
- 	return 1;
-diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-index 8caaf3e..90d69c5 100644
---- a/net/netfilter/ipvs/ip_vs_proto.c
-+++ b/net/netfilter/ipvs/ip_vs_proto.c
-@@ -307,12 +307,23 @@ ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
-  */
- static int  __net_init  __ip_vs_protocol_init(struct net *net)
+ 	struct ctl_table_header	*lblc_ctl_header;
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 5d6e250..5e278e5 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -115,6 +115,8 @@ static inline void
+ ip_vs_in_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
  {
-+#ifdef CONFIG_IP_VS_PROTO_TCP
-+	register_ip_vs_proto_netns(net, &ip_vs_protocol_tcp);
-+#endif
+ 	struct ip_vs_dest *dest = cp->dest;
++	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
++
+ 	if (dest && (dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+ 		spin_lock(&dest->stats.lock);
+ 		dest->stats.ustats.inpkts++;
+@@ -126,10 +128,8 @@ ip_vs_in_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
+ 		dest->svc->stats.ustats.inbytes += skb->len;
+ 		spin_unlock(&dest->svc->stats.lock);
+ 
+-		spin_lock(&ip_vs_stats.lock);
+-		ip_vs_stats.ustats.inpkts++;
+-		ip_vs_stats.ustats.inbytes += skb->len;
+-		spin_unlock(&ip_vs_stats.lock);
++		IPVS_STAT_INC(ipvs, inpkts);
++		IPVS_STAT_ADD(ipvs, inbytes, skb->len);
+ 	}
+ }
+ 
+@@ -138,6 +138,8 @@ static inline void
+ ip_vs_out_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
+ {
+ 	struct ip_vs_dest *dest = cp->dest;
++	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
++
+ 	if (dest && (dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+ 		spin_lock(&dest->stats.lock);
+ 		dest->stats.ustats.outpkts++;
+@@ -149,10 +151,8 @@ ip_vs_out_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
+ 		dest->svc->stats.ustats.outbytes += skb->len;
+ 		spin_unlock(&dest->svc->stats.lock);
+ 
+-		spin_lock(&ip_vs_stats.lock);
+-		ip_vs_stats.ustats.outpkts++;
+-		ip_vs_stats.ustats.outbytes += skb->len;
+-		spin_unlock(&ip_vs_stats.lock);
++		IPVS_STAT_INC(ipvs, outpkts);
++		IPVS_STAT_ADD(ipvs, outbytes, skb->len);
+ 	}
+ }
+ 
+@@ -160,6 +160,8 @@ ip_vs_out_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
+ static inline void
+ ip_vs_conn_stats(struct ip_vs_conn *cp, struct ip_vs_service *svc)
+ {
++	struct netns_ipvs *ipvs = net_ipvs(svc->net);
++
+ 	spin_lock(&cp->dest->stats.lock);
+ 	cp->dest->stats.ustats.conns++;
+ 	spin_unlock(&cp->dest->stats.lock);
+@@ -168,9 +170,7 @@ ip_vs_conn_stats(struct ip_vs_conn *cp, struct ip_vs_service *svc)
+ 	svc->stats.ustats.conns++;
+ 	spin_unlock(&svc->stats.lock);
+ 
+-	spin_lock(&ip_vs_stats.lock);
+-	ip_vs_stats.ustats.conns++;
+-	spin_unlock(&ip_vs_stats.lock);
++	IPVS_STAT_INC(ipvs, conns);
+ }
+ 
+ 
+@@ -1471,13 +1471,12 @@ ip_vs_in_icmp_v6(struct sk_buff *skb, int *related, unsigned int hooknum)
+ static unsigned int
+ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ {
+-	struct net *net = NULL;
++	struct net *net;
+ 	struct ip_vs_iphdr iph;
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	struct ip_vs_conn *cp;
+ 	int ret, restart, pkts;
+-	struct net *net;
+ 	struct netns_ipvs *ipvs;
+ 
+ 	/* Already marked as IPVS request or reply? */
+@@ -1842,7 +1841,6 @@ static struct nf_hook_ops ip_vs_ops[] __read_mostly = {
+ 	},
+ #endif
+ };
+-
+ /*
+  *	Initialize IP Virtual Server netns mem.
+  */
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 105c05f..173fadc 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -258,8 +258,7 @@ static DECLARE_DELAYED_WORK(defense_work, defense_work_handler);
+ 
+ static void defense_work_handler(struct work_struct *work)
+ {
+-	struct net *net = &init_net;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct netns_ipvs *ipvs = net_ipvs(&init_net);
+ 
+ 	update_defense_level(ipvs);
+ 	if (atomic_read(&ip_vs_dropentry))
+@@ -1499,7 +1498,7 @@ static int ip_vs_zero_all(struct net *net)
+ 		}
+ 	}
+ 
+-	ip_vs_zero_stats(&ip_vs_stats);
++	ip_vs_zero_stats(net_ipvs(net)->ctl_stats);
  	return 0;
  }
  
- static void __net_exit __ip_vs_protocol_cleanup(struct net *net)
+@@ -1989,13 +1988,11 @@ static const struct file_operations ip_vs_info_fops = {
+ 
+ #endif
+ 
+-struct ip_vs_stats ip_vs_stats = {
+-	.lock = __SPIN_LOCK_UNLOCKED(ip_vs_stats.lock),
+-};
+-
+ #ifdef CONFIG_PROC_FS
+ static int ip_vs_stats_show(struct seq_file *seq, void *v)
  {
--	/* empty */
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct ip_vs_proto_data *pd;
++	struct net *net = seq_file_single_net(seq);
++	struct ip_vs_stats *ctl_stats = net_ipvs(net)->ctl_stats;
+ 
+ /*               01234567 01234567 01234567 0123456701234567 0123456701234567 */
+ 	seq_puts(seq,
+@@ -2003,22 +2000,22 @@ static int ip_vs_stats_show(struct seq_file *seq, void *v)
+ 	seq_printf(seq,
+ 		   "   Conns  Packets  Packets            Bytes            Bytes\n");
+ 
+-	spin_lock_bh(&ip_vs_stats.lock);
+-	seq_printf(seq, "%8X %8X %8X %16LX %16LX\n\n", ip_vs_stats.ustats.conns,
+-		   ip_vs_stats.ustats.inpkts, ip_vs_stats.ustats.outpkts,
+-		   (unsigned long long) ip_vs_stats.ustats.inbytes,
+-		   (unsigned long long) ip_vs_stats.ustats.outbytes);
++	spin_lock_bh(&ctl_stats->lock);
++	seq_printf(seq, "%8X %8X %8X %16LX %16LX\n\n", ctl_stats->ustats.conns,
++		   ctl_stats->ustats.inpkts, ctl_stats->ustats.outpkts,
++		   (unsigned long long) ctl_stats->ustats.inbytes,
++		   (unsigned long long) ctl_stats->ustats.outbytes);
+ 
+ /*                 01234567 01234567 01234567 0123456701234567 0123456701234567 */
+ 	seq_puts(seq,
+ 		   " Conns/s   Pkts/s   Pkts/s          Bytes/s          Bytes/s\n");
+ 	seq_printf(seq,"%8X %8X %8X %16X %16X\n",
+-			ip_vs_stats.ustats.cps,
+-			ip_vs_stats.ustats.inpps,
+-			ip_vs_stats.ustats.outpps,
+-			ip_vs_stats.ustats.inbps,
+-			ip_vs_stats.ustats.outbps);
+-	spin_unlock_bh(&ip_vs_stats.lock);
++			ctl_stats->ustats.cps,
++			ctl_stats->ustats.inpps,
++			ctl_stats->ustats.outpps,
++			ctl_stats->ustats.inbps,
++			ctl_stats->ustats.outbps);
++	spin_unlock_bh(&ctl_stats->lock);
+ 
+ 	return 0;
+ }
+@@ -2036,6 +2033,57 @@ static const struct file_operations ip_vs_stats_fops = {
+ 	.release = single_release,
+ };
+ 
++static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
++{
++	struct net *net = seq_file_single_net(seq);
++	struct ip_vs_stats *ctl_stats = net_ipvs(net)->ctl_stats;
 +	int i;
 +
-+	/* unregister all the ipvs proto data for this netns */
-+	for (i = 0; i < IP_VS_PROTO_TAB_SIZE; i++) {
-+		while ((pd = ipvs->proto_data_table[i]) != NULL)
-+			unregister_ip_vs_proto_netns(net, pd);
++/*               01234567 01234567 01234567 0123456701234567 0123456701234567 */
++	seq_puts(seq,
++		 "       Total Incoming Outgoing         Incoming         Outgoing\n");
++	seq_printf(seq,
++		   "CPU    Conns  Packets  Packets            Bytes            Bytes\n");
++
++	for_each_possible_cpu(i) {
++		struct ip_vs_stats_user *u = per_cpu_ptr(net->ipvs->ustats, i);
++		seq_printf(seq, "%3X %8X %8X %8X %16LX %16LX\n",
++			    i, u->conns, u->inpkts, u->outpkts,
++			    (__u64) u->inbytes, (__u64) u->outbytes);
 +	}
- }
- 
- static struct pernet_operations ipvs_proto_ops = {
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index 5e4da60..88f3a22 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -9,8 +9,12 @@
-  *              as published by the Free Software Foundation; either version
-  *              2 of the License, or (at your option) any later version.
-  *
-- * Changes:
-+ * Changes:     Hans Schillstrom <hans.schillstrom@ericsson.com>
-  *
-+ *              Network name space (netns) aware.
-+ *              Global data moved to netns i.e struct netns_ipvs
-+ *              tcp_timeouts table has copy per netns in a hash table per
-+ *              protocol ip_vs_proto_data and is handled by netns
-  */
- 
- #define KMSG_COMPONENT "IPVS"
-@@ -46,8 +50,8 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
- 	net = skb_net(skb);
- 	/* No !th->ack check to allow scheduling on SYN+ACK for Active FTP */
- 	if (th->syn &&
--	    (svc = ip_vs_service_get(net, af, skb->mark, iph.protocol, &iph.daddr,
--				     th->dest))) {
-+	    (svc = ip_vs_service_get(net, af, skb->mark, iph.protocol,
-+				     &iph.daddr, th->dest))) {
- 		int ignored;
- 
- 		if (ip_vs_todrop()) {
-@@ -345,7 +349,7 @@ static const int tcp_state_off[IP_VS_DIR_LAST] = {
- /*
-  *	Timeout table[state]
-  */
--static int tcp_timeouts[IP_VS_TCP_S_LAST+1] = {
-+static const int tcp_timeouts[IP_VS_TCP_S_LAST+1] = {
- 	[IP_VS_TCP_S_NONE]		=	2*HZ,
- 	[IP_VS_TCP_S_ESTABLISHED]	=	15*60*HZ,
- 	[IP_VS_TCP_S_SYN_SENT]		=	2*60*HZ,
-@@ -460,13 +464,6 @@ static void tcp_timeout_change(struct ip_vs_protocol *pp, int flags)
- 	tcp_state_table = (on? tcp_states_dos : tcp_states);
- }
- 
--static int
--tcp_set_state_timeout(struct ip_vs_protocol *pp, char *sname, int to)
--{
--	return ip_vs_set_state_timeout(pp->timeout_table, IP_VS_TCP_S_LAST,
--				       tcp_state_name_table, sname, to);
--}
--
- static inline int tcp_state_idx(struct tcphdr *th)
- {
- 	if (th->rst)
-@@ -487,6 +484,7 @@ set_tcp_state(struct ip_vs_protocol *pp, struct ip_vs_conn *cp,
- 	int state_idx;
- 	int new_state = IP_VS_TCP_S_CLOSE;
- 	int state_off = tcp_state_off[direction];
-+	struct ip_vs_proto_data *pd;  /* Temp fix */
- 
- 	/*
- 	 *    Update state offset to INPUT_ONLY if necessary
-@@ -542,10 +540,13 @@ set_tcp_state(struct ip_vs_protocol *pp, struct ip_vs_conn *cp,
- 		}
- 	}
- 
--	cp->timeout = pp->timeout_table[cp->state = new_state];
-+	pd = ip_vs_proto_data_get(&init_net, pp->protocol);
-+	if (likely(pd))
-+		cp->timeout = pd->timeout_table[cp->state = new_state];
-+	else	/* What to do ? */
-+		cp->timeout = tcp_timeouts[cp->state = new_state];
- }
- 
--
- /*
-  *	Handle state transitions
-  */
-@@ -573,17 +574,6 @@ tcp_state_transition(struct ip_vs_conn *cp, int direction,
- 	return 1;
- }
- 
--
--/*
-- *	Hash table for TCP application incarnations
-- */
--#define	TCP_APP_TAB_BITS	4
--#define	TCP_APP_TAB_SIZE	(1 << TCP_APP_TAB_BITS)
--#define	TCP_APP_TAB_MASK	(TCP_APP_TAB_SIZE - 1)
--
--static struct list_head tcp_apps[TCP_APP_TAB_SIZE];
--static DEFINE_SPINLOCK(tcp_app_lock);
--
- static inline __u16 tcp_app_hashkey(__be16 port)
- {
- 	return (((__force u16)port >> TCP_APP_TAB_BITS) ^ (__force u16)port)
-@@ -597,21 +587,23 @@ static int tcp_register_app(struct ip_vs_app *inc)
- 	__u16 hash;
- 	__be16 port = inc->port;
- 	int ret = 0;
-+	struct netns_ipvs *ipvs = net_ipvs(&init_net);
-+	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(&init_net, IPPROTO_TCP);
- 
- 	hash = tcp_app_hashkey(port);
- 
--	spin_lock_bh(&tcp_app_lock);
--	list_for_each_entry(i, &tcp_apps[hash], p_list) {
-+	spin_lock_bh(&ipvs->tcp_app_lock);
-+	list_for_each_entry(i, &ipvs->tcp_apps[hash], p_list) {
- 		if (i->port == port) {
- 			ret = -EEXIST;
- 			goto out;
- 		}
- 	}
--	list_add(&inc->p_list, &tcp_apps[hash]);
--	atomic_inc(&ip_vs_protocol_tcp.appcnt);
-+	list_add(&inc->p_list, &ipvs->tcp_apps[hash]);
-+	atomic_inc(&pd->pp->appcnt);
- 
-   out:
--	spin_unlock_bh(&tcp_app_lock);
-+	spin_unlock_bh(&ipvs->tcp_app_lock);
- 	return ret;
- }
- 
-@@ -619,16 +611,20 @@ static int tcp_register_app(struct ip_vs_app *inc)
- static void
- tcp_unregister_app(struct ip_vs_app *inc)
- {
--	spin_lock_bh(&tcp_app_lock);
--	atomic_dec(&ip_vs_protocol_tcp.appcnt);
-+	struct netns_ipvs *ipvs = net_ipvs(&init_net);
-+	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(&init_net, IPPROTO_TCP);
 +
-+	spin_lock_bh(&ipvs->tcp_app_lock);
-+	atomic_dec(&pd->pp->appcnt);
- 	list_del(&inc->p_list);
--	spin_unlock_bh(&tcp_app_lock);
-+	spin_unlock_bh(&ipvs->tcp_app_lock);
- }
- 
- 
- static int
- tcp_app_conn_bind(struct ip_vs_conn *cp)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(&init_net);
- 	int hash;
- 	struct ip_vs_app *inc;
- 	int result = 0;
-@@ -640,12 +636,12 @@ tcp_app_conn_bind(struct ip_vs_conn *cp)
- 	/* Lookup application incarnations and bind the right one */
- 	hash = tcp_app_hashkey(cp->vport);
- 
--	spin_lock(&tcp_app_lock);
--	list_for_each_entry(inc, &tcp_apps[hash], p_list) {
-+	spin_lock(&ipvs->tcp_app_lock);
-+	list_for_each_entry(inc, &ipvs->tcp_apps[hash], p_list) {
- 		if (inc->port == cp->vport) {
- 			if (unlikely(!ip_vs_app_inc_get(inc)))
- 				break;
--			spin_unlock(&tcp_app_lock);
-+			spin_unlock(&ipvs->tcp_app_lock);
- 
- 			IP_VS_DBG_BUF(9, "%s(): Binding conn %s:%u->"
- 				      "%s:%u to app %s on port %u\n",
-@@ -662,7 +658,7 @@ tcp_app_conn_bind(struct ip_vs_conn *cp)
- 			goto out;
- 		}
- 	}
--	spin_unlock(&tcp_app_lock);
-+	spin_unlock(&ipvs->tcp_app_lock);
- 
-   out:
- 	return result;
-@@ -672,24 +668,34 @@ tcp_app_conn_bind(struct ip_vs_conn *cp)
- /*
-  *	Set LISTEN timeout. (ip_vs_conn_put will setup timer)
-  */
--void ip_vs_tcp_conn_listen(struct ip_vs_conn *cp)
-+void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp)
- {
-+	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(net, IPPROTO_TCP);
++	spin_lock_bh(&ctl_stats->lock);
++	seq_printf(seq, "  ~ %8X %8X %8X %16LX %16LX\n\n", ctl_stats->ustats.conns,
++		   ctl_stats->ustats.inpkts, ctl_stats->ustats.outpkts,
++		   (unsigned long long) ctl_stats->ustats.inbytes,
++		   (unsigned long long) ctl_stats->ustats.outbytes);
 +
- 	spin_lock(&cp->lock);
- 	cp->state = IP_VS_TCP_S_LISTEN;
--	cp->timeout = ip_vs_protocol_tcp.timeout_table[IP_VS_TCP_S_LISTEN];
-+	cp->timeout = ( pd ? pd->timeout_table[IP_VS_TCP_S_LISTEN]
-+			   : tcp_timeouts[IP_VS_TCP_S_LISTEN]);
- 	spin_unlock(&cp->lock);
- }
- 
--
--static void ip_vs_tcp_init(struct ip_vs_protocol *pp)
-+/* ---------------------------------------------
-+ *   timeouts is netns related now.
-+ * ---------------------------------------------
-+ */
-+static void __ip_vs_tcp_init(struct net *net, struct ip_vs_proto_data *pd)
- {
--	IP_VS_INIT_HASH_TABLE(tcp_apps);
--	pp->timeout_table = tcp_timeouts;
--}
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 
-+	ip_vs_init_hash_table(ipvs->tcp_apps, TCP_APP_TAB_SIZE);
-+	spin_lock_init(&ipvs->tcp_app_lock);
-+	pd->timeout_table = ip_vs_create_timeout_table((int*)tcp_timeouts,
-+							sizeof(tcp_timeouts));
++/*                 01234567 01234567 01234567 0123456701234567 0123456701234567 */
++	seq_puts(seq,
++		   "     Conns/s   Pkts/s   Pkts/s          Bytes/s          Bytes/s\n");
++	seq_printf(seq,"    %8X %8X %8X %16X %16X\n",
++			ctl_stats->ustats.cps,
++			ctl_stats->ustats.inpps,
++			ctl_stats->ustats.outpps,
++			ctl_stats->ustats.inbps,
++			ctl_stats->ustats.outbps);
++	spin_unlock_bh(&ctl_stats->lock);
++
++	return 0;
 +}
++
++static int ip_vs_stats_percpu_seq_open(struct inode *inode, struct file *file)
++{
++	return single_open_net(inode, file, ip_vs_stats_percpu_show);
++}
++
++static const struct file_operations ip_vs_stats_percpu_fops = {
++	.owner = THIS_MODULE,
++	.open = ip_vs_stats_percpu_seq_open,
++	.read = seq_read,
++	.llseek = seq_lseek,
++	.release = single_release,
++};
+ #endif
  
--static void ip_vs_tcp_exit(struct ip_vs_protocol *pp)
-+static void __ip_vs_tcp_exit(struct net *net, struct ip_vs_proto_data *pd)
- {
-+	kfree(pd->timeout_table);
+ /*
+@@ -3460,6 +3508,18 @@ int __net_init __ip_vs_control_init(struct net *net)
+ 
+ 	if (!net_eq(net, &init_net))	/* netns not enabled yet */
+ 		return -EPERM;
++	/* procfs stats */
++	ipvs->ctl_stats = kzalloc(sizeof(struct ip_vs_stats), GFP_KERNEL);
++	if (ipvs->ctl_stats == NULL) {
++		pr_err("%s(): no memory.\n", __func__);
++		return -ENOMEM;
++	}
++	ipvs->ustats = alloc_percpu(struct ip_vs_stats_user);
++	if (!ipvs->ustats) {
++		pr_err("%s() alloc_percpu failed\n",__func__);
++		goto err_alloc;
++	}
++	spin_lock_init(&ipvs->ctl_stats->lock);
+ 
+ 	for(idx = 0; idx < IP_VS_RTAB_SIZE; idx++) {
+ 		INIT_LIST_HEAD(&ipvs->rs_table[idx]);
+@@ -3467,25 +3527,35 @@ int __net_init __ip_vs_control_init(struct net *net)
+ 
+ 	proc_net_fops_create(net, "ip_vs", 0, &ip_vs_info_fops);
+ 	proc_net_fops_create(net, "ip_vs_stats", 0, &ip_vs_stats_fops);
++	proc_net_fops_create(net, "ip_vs_stats_percpu", 0,
++			     &ip_vs_stats_percpu_fops);
+ 	sysctl_header = register_net_sysctl_table(net, net_vs_ctl_path, vs_vars);
+ 	if (sysctl_header == NULL)
+ 		goto err_reg;
+-	ip_vs_new_estimator(net, &ip_vs_stats);
++	ip_vs_new_estimator(net, ipvs->ctl_stats);
+ 	return 0;
+ 
+ err_reg:
++	free_percpu(ipvs->ustats);
++err_alloc:
++	kfree(ipvs->ctl_stats);
+ 	return -ENOMEM;
  }
  
+ static void __net_exit __ip_vs_control_cleanup(struct net *net)
+ {
++	struct netns_ipvs *ipvs = net_ipvs(net);
++
+ 	if (!net_eq(net, &init_net))	/* netns not enabled yet */
+ 		return;
  
-@@ -699,8 +705,10 @@ struct ip_vs_protocol ip_vs_protocol_tcp = {
- 	.num_states =		IP_VS_TCP_S_LAST,
- 	.dont_defrag =		0,
- 	.appcnt =		ATOMIC_INIT(0),
--	.init =			ip_vs_tcp_init,
--	.exit =			ip_vs_tcp_exit,
-+	.init =			NULL,
-+	.exit =			NULL,
-+	.init_netns =		__ip_vs_tcp_init,
-+	.exit_netns =		__ip_vs_tcp_exit,
- 	.register_app =		tcp_register_app,
- 	.unregister_app =	tcp_unregister_app,
- 	.conn_schedule =	tcp_conn_schedule,
-@@ -714,5 +722,4 @@ struct ip_vs_protocol ip_vs_protocol_tcp = {
- 	.app_conn_bind =	tcp_app_conn_bind,
- 	.debug_packet =		ip_vs_tcpudp_debug_packet,
- 	.timeout_change =	tcp_timeout_change,
--	.set_state_timeout =	tcp_set_state_timeout,
- };
+-	ip_vs_kill_estimator(net, &ip_vs_stats);
++	ip_vs_kill_estimator(net, ipvs->ctl_stats);
+ 	unregister_net_sysctl_table(sysctl_header);
++	proc_net_remove(net, "ip_vs_stats_percpu");
+ 	proc_net_remove(net, "ip_vs_stats");
+ 	proc_net_remove(net, "ip_vs");
++	free_percpu(ipvs->ustats);
++	kfree(ipvs->ctl_stats);
+ }
+ 
+ static struct pernet_operations ipvs_control_ops = {
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 4a82a8b..6d3d06c 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -52,6 +52,39 @@
+  */
+ 
+ 
++/*
++ * Make a summary from each cpu
++ */
++static inline void get_stats(struct netns_ipvs *ipvs)
++{
++	int i;
++
++	for_each_possible_cpu(i) {
++		struct ip_vs_stats_user *u = per_cpu_ptr(ipvs->ustats, i);
++		seqcount_t  *seq_count = per_cpu_ptr(ipvs->ustats_seq, i);
++		unsigned int start;
++		if (i) {
++			ipvs->ctl_stats->ustats.conns += u->conns;
++			ipvs->ctl_stats->ustats.inpkts += u->inpkts;
++			ipvs->ctl_stats->ustats.outpkts += u->outpkts;
++			do {
++				start = read_seqcount_begin(seq_count);
++				ipvs->ctl_stats->ustats.inbytes += u->inbytes;
++				ipvs->ctl_stats->ustats.outbytes += u->outbytes;
++			} while (read_seqcount_retry(seq_count, start));
++		} else {
++			ipvs->ctl_stats->ustats.conns = u->conns;
++			ipvs->ctl_stats->ustats.inpkts = u->inpkts;
++			ipvs->ctl_stats->ustats.outpkts = u->outpkts;
++			do {
++				start = read_seqcount_begin(seq_count);
++				ipvs->ctl_stats->ustats.inbytes = u->inbytes;
++				ipvs->ctl_stats->ustats.outbytes = u->outbytes;
++			} while (read_seqcount_retry(seq_count, start));
++		}
++	}
++}
++
+ static void estimation_timer(unsigned long arg)
+ {
+ 	struct ip_vs_estimator *e;
+@@ -64,6 +97,7 @@ static void estimation_timer(unsigned long arg)
+ 	struct netns_ipvs *ipvs;
+ 
+ 	ipvs = net_ipvs(net);
++	get_stats(ipvs);
+ 	spin_lock(&ipvs->est_lock);
+ 	list_for_each_entry(e, &ipvs->est_list, list) {
+ 		s = container_of(e, struct ip_vs_stats, est);
 -- 
 1.7.2.3
 
