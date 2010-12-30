@@ -1,7 +1,7 @@
 From: hans@schillstrom.com
-Subject: [*v3 PATCH 19/22] IPVS: netns, trash handling
-Date: Thu, 30 Dec 2010 11:51:03 +0100
-Message-ID: <1293706266-27152-20-git-send-email-hans@schillstrom.com>
+Subject: [*v3 PATCH 08/22] IPVS: netns preparation for proto_sctp
+Date: Thu, 30 Dec 2010 11:50:52 +0100
+Message-ID: <1293706266-27152-9-git-send-email-hans@schillstrom.com>
 References: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
@@ -15,149 +15,272 @@ Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-trash list per namspace,
-and reordering of some params in dst struct.
+In this phase (one), all local vars will be moved to ipvs struct.
+
+Remaining work, add param struct net *net to a couple of
+functions that is common for all protos and use ip_vs_proto_data
+
+*v3
+ Removed unuset function set_state_timeout()
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 ---
- include/net/ip_vs.h            |    4 ++--
- include/net/netns/ip_vs.h      |    3 +++
- net/netfilter/ipvs/ip_vs_ctl.c |   23 ++++++++++-------------
- 3 files changed, 15 insertions(+), 15 deletions(-)
+ include/net/netns/ip_vs.h             |   10 +++-
+ net/netfilter/ipvs/ip_vs_proto.c      |    3 +
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |  121 ++++++++++++++++-----------------
+ 3 files changed, 70 insertions(+), 64 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 918382a..2741285 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -640,8 +640,8 @@ struct ip_vs_dest {
- 	struct list_head	d_list;   /* for table with all the dests */
- 
- 	u16			af;		/* address family */
--	union nf_inet_addr	addr;		/* IP address of the server */
- 	__be16			port;		/* port number of the server */
-+	union nf_inet_addr	addr;		/* IP address of the server */
- 	volatile unsigned	flags;		/* dest status flags */
- 	atomic_t		conn_flags;	/* flags to copy to conn */
- 	atomic_t		weight;		/* server weight */
-@@ -668,8 +668,8 @@ struct ip_vs_dest {
- 	/* for virtual service */
- 	struct ip_vs_service	*svc;		/* service it belongs to */
- 	__u16			protocol;	/* which protocol (TCP/UDP) */
--	union nf_inet_addr	vaddr;		/* virtual IP address */
- 	__be16			vport;		/* virtual port number */
-+	union nf_inet_addr	vaddr;		/* virtual IP address */
- 	__u32			vfwmark;	/* firewall mark of service */
- };
- 
 diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-index 1c8c3c4..20cabd8 100644
+index 4975026..fcb3c7c 100644
 --- a/include/net/netns/ip_vs.h
 +++ b/include/net/netns/ip_vs.h
-@@ -83,6 +83,9 @@ struct netns_ipvs {
- 	rwlock_t		rs_lock;         /* real services table */
- 	/* semaphore for IPVS sockopts. And, [gs]etsockopt may sleep. */
- 	struct lock_class_key 	ctl_key;	/* ctl_mutex debuging */
-+	/* Trash for destinations */
-+	struct list_head	dest_trash;
-+
- 	/* sys-ctl struct */
- 	struct ctl_table_header	*sysctl_hdr;
- 	struct ctl_table	*sysctl_tbl;
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index f786f61..fc6d17e 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -256,11 +256,6 @@ static struct list_head ip_vs_svc_table[IP_VS_SVC_TAB_SIZE];
- static struct list_head ip_vs_svc_fwm_table[IP_VS_SVC_TAB_SIZE];
- 
- /*
-- *	Trash for destinations
-- */
--static LIST_HEAD(ip_vs_dest_trash);
+@@ -48,7 +48,15 @@ struct netns_ipvs {
+ 	struct list_head 	udp_apps[UDP_APP_TAB_SIZE];
+ 	spinlock_t		udp_app_lock;
+ #endif
 -
--/*
-  *	FTP & NULL virtual service counters
-  */
- static atomic_t ip_vs_ftpsvc_counter = ATOMIC_INIT(0);
-@@ -649,11 +644,12 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
- 		     __be16 dport)
- {
- 	struct ip_vs_dest *dest, *nxt;
-+	struct netns_ipvs *ipvs = net_ipvs(svc->net);
++	/* ip_vs_proto_sctp */
++#ifdef CONFIG_IP_VS_PROTO_SCTP
++	#define SCTP_APP_TAB_BITS        4
++	#define SCTP_APP_TAB_SIZE        (1 << SCTP_APP_TAB_BITS)
++	#define SCTP_APP_TAB_MASK        (SCTP_APP_TAB_SIZE - 1)
++	/* Hash table for SCTP application incarnations	 */
++	struct list_head 	sctp_apps[SCTP_APP_TAB_SIZE];
++	spinlock_t		sctp_app_lock;
++#endif
+ 	/* ip_vs_lblc */
+ 	int 			sysctl_lblc_expiration;
+ 	struct ctl_table_header	*lblc_ctl_header;
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index ec71d47..fd3a7a8 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -313,6 +313,9 @@ static int  __net_init  __ip_vs_protocol_init(struct net *net)
+ #ifdef CONFIG_IP_VS_PROTO_UDP
+ 	register_ip_vs_proto_netns(net, &ip_vs_protocol_udp);
+ #endif
++#ifdef CONFIG_IP_VS_PROTO_SCTP
++	register_ip_vs_proto_netns(net, &ip_vs_protocol_sctp);
++#endif
+ 	return 0;
+ }
  
- 	/*
- 	 * Find the destination in trash
- 	 */
--	list_for_each_entry_safe(dest, nxt, &ip_vs_dest_trash, n_list) {
-+	list_for_each_entry_safe(dest, nxt, &ipvs->dest_trash, n_list) {
- 		IP_VS_DBG_BUF(3, "Destination %u/%s:%u still in trash, "
- 			      "dest->refcnt=%d\n",
- 			      dest->vfwmark,
-@@ -701,11 +697,12 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
-  *  are expired, and the refcnt of each destination in the trash must
-  *  be 1, so we simply release them here.
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 521b827..49abf2b 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -862,7 +862,7 @@ static struct ipvs_sctp_nextstate
+ /*
+  *      Timeout table[state]
   */
--static void ip_vs_trash_cleanup(void)
-+static void ip_vs_trash_cleanup(struct net *net)
+-static int sctp_timeouts[IP_VS_SCTP_S_LAST + 1] = {
++static const int sctp_timeouts[IP_VS_SCTP_S_LAST + 1] = {
+ 	[IP_VS_SCTP_S_NONE]         =     2 * HZ,
+ 	[IP_VS_SCTP_S_INIT_CLI]     =     1 * 60 * HZ,
+ 	[IP_VS_SCTP_S_INIT_SER]     =     1 * 60 * HZ,
+@@ -906,18 +906,6 @@ static const char *sctp_state_name(int state)
+ 	return "?";
+ }
+ 
+-static void sctp_timeout_change(struct ip_vs_protocol *pp, int flags)
+-{
+-}
+-
+-static int
+-sctp_set_state_timeout(struct ip_vs_protocol *pp, char *sname, int to)
+-{
+-
+-return ip_vs_set_state_timeout(pp->timeout_table, IP_VS_SCTP_S_LAST,
+-				sctp_state_name_table, sname, to);
+-}
+-
+ static inline int
+ set_sctp_state(struct ip_vs_protocol *pp, struct ip_vs_conn *cp,
+ 		int direction, const struct sk_buff *skb)
+@@ -926,6 +914,7 @@ set_sctp_state(struct ip_vs_protocol *pp, struct ip_vs_conn *cp,
+ 	unsigned char chunk_type;
+ 	int event, next_state;
+ 	int ihl;
++	struct ip_vs_proto_data *pd;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	ihl = cp->af == AF_INET ? ip_hdrlen(skb) : sizeof(struct ipv6hdr);
+@@ -1001,10 +990,13 @@ set_sctp_state(struct ip_vs_protocol *pp, struct ip_vs_conn *cp,
+ 			}
+ 		}
+ 	}
++	pd = ip_vs_proto_data_get(&init_net, pp->protocol); /* tmp fix */
++	if (likely(pd))
++		cp->timeout = pd->timeout_table[cp->state = next_state];
++	else	/* What to do ? */
++		cp->timeout = sctp_timeouts[cp->state = next_state];
+ 
+-	 cp->timeout = pp->timeout_table[cp->state = next_state];
+-
+-	 return 1;
++	return 1;
+ }
+ 
+ static int
+@@ -1020,16 +1012,6 @@ sctp_state_transition(struct ip_vs_conn *cp, int direction,
+ 	return ret;
+ }
+ 
+-/*
+- *      Hash table for SCTP application incarnations
+- */
+-#define SCTP_APP_TAB_BITS        4
+-#define SCTP_APP_TAB_SIZE        (1 << SCTP_APP_TAB_BITS)
+-#define SCTP_APP_TAB_MASK        (SCTP_APP_TAB_SIZE - 1)
+-
+-static struct list_head sctp_apps[SCTP_APP_TAB_SIZE];
+-static DEFINE_SPINLOCK(sctp_app_lock);
+-
+ static inline __u16 sctp_app_hashkey(__be16 port)
  {
- 	struct ip_vs_dest *dest, *nxt;
+ 	return (((__force u16)port >> SCTP_APP_TAB_BITS) ^ (__force u16)port)
+@@ -1042,34 +1024,40 @@ static int sctp_register_app(struct ip_vs_app *inc)
+ 	__u16 hash;
+ 	__be16 port = inc->port;
+ 	int ret = 0;
++	struct netns_ipvs *ipvs = net_ipvs(&init_net);
++	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(&init_net, IPPROTO_SCTP);
+ 
+ 	hash = sctp_app_hashkey(port);
+ 
+-	spin_lock_bh(&sctp_app_lock);
+-	list_for_each_entry(i, &sctp_apps[hash], p_list) {
++	spin_lock_bh(&ipvs->sctp_app_lock);
++	list_for_each_entry(i, &ipvs->sctp_apps[hash], p_list) {
+ 		if (i->port == port) {
+ 			ret = -EEXIST;
+ 			goto out;
+ 		}
+ 	}
+-	list_add(&inc->p_list, &sctp_apps[hash]);
+-	atomic_inc(&ip_vs_protocol_sctp.appcnt);
++	list_add(&inc->p_list, &ipvs->sctp_apps[hash]);
++	atomic_inc(&pd->pp->appcnt);
+ out:
+-	spin_unlock_bh(&sctp_app_lock);
++	spin_unlock_bh(&ipvs->sctp_app_lock);
+ 
+ 	return ret;
+ }
+ 
+ static void sctp_unregister_app(struct ip_vs_app *inc)
+ {
+-	spin_lock_bh(&sctp_app_lock);
+-	atomic_dec(&ip_vs_protocol_sctp.appcnt);
++	struct netns_ipvs *ipvs = net_ipvs(&init_net);
++	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(&init_net, IPPROTO_SCTP);
++
++	spin_lock_bh(&ipvs->sctp_app_lock);
++	atomic_dec(&pd->pp->appcnt);
+ 	list_del(&inc->p_list);
+-	spin_unlock_bh(&sctp_app_lock);
++	spin_unlock_bh(&ipvs->sctp_app_lock);
+ }
+ 
+ static int sctp_app_conn_bind(struct ip_vs_conn *cp)
+ {
++	struct netns_ipvs *ipvs = net_ipvs(&init_net);
+ 	int hash;
+ 	struct ip_vs_app *inc;
+ 	int result = 0;
+@@ -1080,12 +1068,12 @@ static int sctp_app_conn_bind(struct ip_vs_conn *cp)
+ 	/* Lookup application incarnations and bind the right one */
+ 	hash = sctp_app_hashkey(cp->vport);
+ 
+-	spin_lock(&sctp_app_lock);
+-	list_for_each_entry(inc, &sctp_apps[hash], p_list) {
++	spin_lock(&ipvs->sctp_app_lock);
++	list_for_each_entry(inc, &ipvs->sctp_apps[hash], p_list) {
+ 		if (inc->port == cp->vport) {
+ 			if (unlikely(!ip_vs_app_inc_get(inc)))
+ 				break;
+-			spin_unlock(&sctp_app_lock);
++			spin_unlock(&ipvs->sctp_app_lock);
+ 
+ 			IP_VS_DBG_BUF(9, "%s: Binding conn %s:%u->"
+ 					"%s:%u to app %s on port %u\n",
+@@ -1101,43 +1089,50 @@ static int sctp_app_conn_bind(struct ip_vs_conn *cp)
+ 			goto out;
+ 		}
+ 	}
+-	spin_unlock(&sctp_app_lock);
++	spin_unlock(&ipvs->sctp_app_lock);
+ out:
+ 	return result;
+ }
+ 
+-static void ip_vs_sctp_init(struct ip_vs_protocol *pp)
++/* ---------------------------------------------
++ *   timeouts is netns related now.
++ * ---------------------------------------------
++ */
++static void __ip_vs_sctp_init(struct net *net, struct ip_vs_proto_data *pd)
+ {
+-	IP_VS_INIT_HASH_TABLE(sctp_apps);
+-	pp->timeout_table = sctp_timeouts;
+-}
 +	struct netns_ipvs *ipvs = net_ipvs(net);
  
--	list_for_each_entry_safe(dest, nxt, &ip_vs_dest_trash, n_list) {
-+	list_for_each_entry_safe(dest, nxt, &ipvs->dest_trash, n_list) {
- 		list_del(&dest->n_list);
- 		ip_vs_dst_reset(dest);
- 		__ip_vs_unbind_svc(dest);
-@@ -830,7 +827,6 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- 		pr_err("%s(): no memory.\n", __func__);
- 		return -ENOMEM;
- 	}
--
- 	dest->af = svc->af;
- 	dest->protocol = svc->protocol;
- 	dest->vaddr = svc->addr;
-@@ -1008,7 +1004,7 @@ static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest)
- 			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 			      ntohs(dest->port),
- 			      atomic_read(&dest->refcnt));
--		list_add(&dest->n_list, &ip_vs_dest_trash);
-+		list_add(&dest->n_list, &ipvs->dest_trash);
- 		atomic_inc(&dest->refcnt);
- 	}
- }
-@@ -3477,6 +3473,7 @@ int __net_init __ip_vs_control_init(struct net *net)
- 	for (idx = 0; idx < IP_VS_RTAB_SIZE; idx++)  {
- 		INIT_LIST_HEAD(&ipvs->rs_table[idx]);
- 	}
-+	INIT_LIST_HEAD(&ipvs->dest_trash);
++	ip_vs_init_hash_table(ipvs->sctp_apps, SCTP_APP_TAB_SIZE);
++	spin_lock_init(&ipvs->tcp_app_lock);
++	pd->timeout_table = ip_vs_create_timeout_table((int*)sctp_timeouts,
++							sizeof(sctp_timeouts));
++}
  
- 	/* procfs stats */
- 	ipvs->ctl_stats = kzalloc(sizeof(struct ip_vs_stats), GFP_KERNEL);
-@@ -3559,13 +3556,14 @@ static void __net_exit __ip_vs_control_cleanup(struct net *net)
- 	if (!net_eq(net, &init_net))	/* netns not enabled yet */
- 		return;
- 
-+	ip_vs_trash_cleanup(net);
- 	ip_vs_kill_estimator(net, ipvs->ctl_stats);
-+	cancel_rearming_delayed_work(&ipvs->defense_work);
-+	cancel_work_sync(&ipvs->defense_work.work);
- 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
- 	proc_net_remove(net, "ip_vs_stats_percpu");
- 	proc_net_remove(net, "ip_vs_stats");
- 	proc_net_remove(net, "ip_vs");
--	cancel_rearming_delayed_work(&ipvs->defense_work);
--	cancel_work_sync(&ipvs->defense_work.work);
- 	free_percpu(ipvs->ustats);
- 	kfree(ipvs->ctl_stats);
- }
-@@ -3622,7 +3620,6 @@ err:
- void ip_vs_control_cleanup(void)
+-static void ip_vs_sctp_exit(struct ip_vs_protocol *pp)
++static void __ip_vs_sctp_exit(struct net *net, struct ip_vs_proto_data *pd)
  {
- 	EnterFunction(2);
--	ip_vs_trash_cleanup();
- 	unregister_pernet_subsys(&ipvs_control_ops);
- 	ip_vs_genl_unregister();
- 	nf_unregister_sockopt(&ip_vs_sockopts);
+-
++	kfree(pd->timeout_table);
+ }
+ 
+ struct ip_vs_protocol ip_vs_protocol_sctp = {
+-	.name = "SCTP",
+-	.protocol = IPPROTO_SCTP,
+-	.num_states = IP_VS_SCTP_S_LAST,
+-	.dont_defrag = 0,
+-	.appcnt = ATOMIC_INIT(0),
+-	.init = ip_vs_sctp_init,
+-	.exit = ip_vs_sctp_exit,
+-	.register_app = sctp_register_app,
++	.name		= "SCTP",
++	.protocol	= IPPROTO_SCTP,
++	.num_states	= IP_VS_SCTP_S_LAST,
++	.dont_defrag	= 0,
++	.init 		= NULL,
++	.exit 		= NULL,
++	.init_netns 	= __ip_vs_sctp_init,
++	.exit_netns 	= __ip_vs_sctp_exit,
++	.register_app	= sctp_register_app,
+ 	.unregister_app = sctp_unregister_app,
+-	.conn_schedule = sctp_conn_schedule,
+-	.conn_in_get = ip_vs_conn_in_get_proto,
+-	.conn_out_get = ip_vs_conn_out_get_proto,
+-	.snat_handler = sctp_snat_handler,
+-	.dnat_handler = sctp_dnat_handler,
+-	.csum_check = sctp_csum_check,
+-	.state_name = sctp_state_name,
++	.conn_schedule	= sctp_conn_schedule,
++	.conn_in_get	= ip_vs_conn_in_get_proto,
++	.conn_out_get	= ip_vs_conn_out_get_proto,
++	.snat_handler	= sctp_snat_handler,
++	.dnat_handler	= sctp_dnat_handler,
++	.csum_check	= sctp_csum_check,
++	.state_name	= sctp_state_name,
+ 	.state_transition = sctp_state_transition,
+-	.app_conn_bind = sctp_app_conn_bind,
+-	.debug_packet = ip_vs_tcpudp_debug_packet,
+-	.timeout_change = sctp_timeout_change,
+-	.set_state_timeout = sctp_set_state_timeout,
++	.app_conn_bind	= sctp_app_conn_bind,
++	.debug_packet	= ip_vs_tcpudp_debug_packet,
++	.timeout_change	= NULL,
+ };
 -- 
 1.7.2.3
 
