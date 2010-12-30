@@ -1,11 +1,9 @@
 From: hans@schillstrom.com
-Subject: [*v3 PATCH 05/22] IPVS: netns, prepare protocol
-Date: Thu, 30 Dec 2010 11:50:49 +0100
-Message-ID: <1293706266-27152-6-git-send-email-hans@schillstrom.com>
-References: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
-Sender: netfilter-devel-owner@vger.kernel.org
+Subject: [*v3 PATCH 00/22] IPVS Network Name Space aware
+Date: Thu, 30 Dec 2010 11:50:44 +0100
+Message-ID: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,170 +13,113 @@ Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-Add support for protocol data per name-space.
-in struct ip_vs_protocol, appcnt will be removed when all protos
-are modified for network name-space.
+This patch series adds network name space support to the LVS.
 
-This patch causes warnings of unused functions, they will be used
-when next patch will be applied.
+REVISION
 
-Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
----
- include/net/ip_vs.h              |   20 +++++++++++-
- include/net/netns/ip_vs.h        |    3 ++
- net/netfilter/ipvs/ip_vs_proto.c |   66 ++++++++++++++++++++++++++++++++++++++
- 3 files changed, 88 insertions(+), 1 deletions(-)
+This is version 3
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 70c5462..4fc61bc 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -350,6 +350,7 @@ struct iphdr;
- struct ip_vs_conn;
- struct ip_vs_app;
- struct sk_buff;
-+struct ip_vs_proto_data;
- 
- struct ip_vs_protocol {
- 	struct ip_vs_protocol	*next;
-@@ -364,6 +365,10 @@ struct ip_vs_protocol {
- 
- 	void (*exit)(struct ip_vs_protocol *pp);
- 
-+	void (*init_netns)(struct net *net, struct ip_vs_proto_data *pd);
-+
-+	void (*exit_netns)(struct net *net, struct ip_vs_proto_data *pd);
-+
- 	int (*conn_schedule)(int af, struct sk_buff *skb,
- 			     struct ip_vs_protocol *pp,
- 			     int *verdict, struct ip_vs_conn **cpp);
-@@ -415,7 +420,20 @@ struct ip_vs_protocol {
- 	int (*set_state_timeout)(struct ip_vs_protocol *pp, char *sname, int to);
- };
- 
--extern struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto);
-+/*
-+ * protocol data per netns
-+ */
-+struct ip_vs_proto_data {
-+	struct ip_vs_proto_data	*next;
-+	struct ip_vs_protocol	*pp;
-+	int			*timeout_table;	/* protocol timeout table */
-+	atomic_t		appcnt;		/* counter of proto app incs. */
-+	struct tcp_states_t 	*tcp_state_table;
-+};
-+
-+extern struct ip_vs_protocol   * ip_vs_proto_get(unsigned short proto);
-+extern struct ip_vs_proto_data * ip_vs_proto_data_get(struct net *net,
-+						      unsigned short proto);
- 
- struct ip_vs_conn_param {
- 	const union nf_inet_addr	*caddr;
-diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-index 4c8d751..b7d7815 100644
---- a/include/net/netns/ip_vs.h
-+++ b/include/net/netns/ip_vs.h
-@@ -29,6 +29,9 @@ struct netns_ipvs {
- 	#define IP_VS_RTAB_MASK (IP_VS_RTAB_SIZE - 1)
- 
- 	struct list_head 	rs_table[IP_VS_RTAB_SIZE];
-+	/* ip_vs_proto */
-+	#define IP_VS_PROTO_TAB_SIZE	32	/* must be power of 2 */
-+	struct ip_vs_proto_data *proto_data_table[IP_VS_PROTO_TAB_SIZE];
- 
- 	/* ip_vs_lblc */
- 	int 			sysctl_lblc_expiration;
-diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-index 27bf034..8caaf3e 100644
---- a/net/netfilter/ipvs/ip_vs_proto.c
-+++ b/net/netfilter/ipvs/ip_vs_proto.c
-@@ -60,6 +60,31 @@ static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
- 	return 0;
- }
- 
-+/*
-+ *	register an ipvs protocols netns related data
-+ */
-+static int
-+register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
-+{
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	unsigned hash = IP_VS_PROTO_HASH(pp->protocol);
-+	struct ip_vs_proto_data *pd =
-+			kzalloc(sizeof(struct ip_vs_proto_data), GFP_ATOMIC);
-+
-+	if (!pd) {
-+		pr_err("%s(): no memory.\n", __func__);
-+		return -ENOMEM;
-+	}
-+	pd->pp = pp;	/* For speed issues */
-+	pd->next = ipvs->proto_data_table[hash];
-+	ipvs->proto_data_table[hash] = pd;
-+	atomic_set(&pd->appcnt, 0);	/* Init app counter */
-+
-+	if (pp->init_netns != NULL)
-+		pp->init_netns(net, pd);
-+
-+	return 0;
-+}
- 
- /*
-  *	unregister an ipvs protocol
-@@ -82,6 +107,29 @@ static int unregister_ip_vs_protocol(struct ip_vs_protocol *pp)
- 	return -ESRCH;
- }
- 
-+/*
-+ *	unregister an ipvs protocols netns data
-+ */
-+static int
-+unregister_ip_vs_proto_netns(struct net *net, struct ip_vs_proto_data *pd)
-+{
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct ip_vs_proto_data **pd_p;
-+	unsigned hash = IP_VS_PROTO_HASH(pd->pp->protocol);
-+
-+	pd_p = &ipvs->proto_data_table[hash];
-+	for (; *pd_p; pd_p = &(*pd_p)->next) {
-+		if (*pd_p == pd) {
-+			*pd_p = pd->next;
-+			if (pd->pp->exit_netns != NULL)
-+				pd->pp->exit_netns(net, pd);
-+			kfree(pd);
-+			return 0;
-+		}
-+	}
-+
-+	return -ESRCH;
-+}
- 
- /*
-  *	get ip_vs_protocol object by its proto.
-@@ -100,6 +148,24 @@ struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto)
- }
- EXPORT_SYMBOL(ip_vs_proto_get);
- 
-+/*
-+ *	get ip_vs_protocol object data by netns and proto
-+ */
-+struct ip_vs_proto_data *
-+ip_vs_proto_data_get(struct net *net, unsigned short proto)
-+{
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct ip_vs_proto_data *pd;
-+	unsigned hash = IP_VS_PROTO_HASH(proto);
-+
-+	for (pd = ipvs->proto_data_table[hash]; pd; pd = pd->next) {
-+		if (pd->pp->protocol == proto)
-+			return pd;
-+	}
-+
-+	return NULL;
-+}
-+EXPORT_SYMBOL(ip_vs_proto_data_get);
- 
- /*
-  *	Propagate event for state change to all protocols
--- 
-1.7.2.3
+OVERVIEW
 
+The patch doesn't remove or add any functionality except for netns.
+For users that don't use network name space (netns) this patch is
+completely transparent.
+
+Now it's possible to run LVS in a Linux container (see lxc-tools)
+i.e.  a light weight visualization. For example it's possible to run
+one or several lvs on a real server in their own network name spaces.
+From the LVS point of view it looks like it runs on it's own machine.
+
+IMPLEMENTATION
+Basic requirements for netns awareness
+ - Global variables has to be moved to dyn. allocated memory.
+ - No or very little performance loss
+
+Large hash tables connection hash and service hashes still resides in
+global memory with net ptr added in hash key.
+Most global variables now resides in a struct ipvs { } in netns/ip_vs.h.
+The size of per name space is 2096 bytes (for x86_64) and a little bit less
+for 32 bit arch's.
+
+Statistics counters is now lock-free i.e. incremented per CPU,
+The estimator does a sum when using it.
+
+Procfs: ip_vs_stats_percpu is added to reflect the "per cpu"
+ex.
+# cat /proc/net/ip_vs_stats
+       Total Incoming Outgoing         Incoming         Outgoing
+CPU    Conns  Packets  Packets            Bytes            Bytes
+  0        0        3        1               9D               34
+  1        0        1        2               49               70
+  2        0        1        2               34               76
+  3        1        2        2               70               74
+  ~        1        7        7              18A              18E
+
+     Conns/s   Pkts/s   Pkts/s          Bytes/s          Bytes/s
+           0        0        0                0                0
+
+Algorithm files are untouched except for lblc and lblcr.
+
+STEP BY STEP
+First patch creates network name space init for all files that need it.
+How ever if a new name space is created an error is returned.
+This will be removed in the last patch.
+
+When net ptr ain't available init_net will be used temporarily.
+
+CHANGES
+
+*v2
+The patches is totally reworked so each patch compile ...
+Depends on the IPv6 and Persistence Backup patch.
+Common hash-table per name-space for connections and services
+Stats per CPU
+smaller changes in lblc and lblcr
+Triggered by Julians comment:
+"tcp_timeout_change should work with the new struct ip_vs_proto_data
+        so that tcp_state_table will go to pd->state_table
+        and set_tcp_state will get pd instead of pp"
+
+*v3
+  Changes triggered by comment mostly, see individual patches for details.
+
+  procfs ip_vs_stats remains the same, ip_vs_stats_percpu added instead.
+  Unused functions removed.
+  The pp -> pd conversion should start from functions like ip_vs_out()....
+  Timer per ns instead of a common timer in estimator.
+  Moved net compare to the end in "fast path"
+  __ip_vs_mutex remains global
+
+
+
+PATCH SET
+This patch set is based upon lvs-test-2.6 / v2.6.37-rc1
+and depends upon IPVS sync patches
+
+STATUS
+untested protos
+ - sctp
+ - esp_ah
+and SIP for IPv6
+
+SUMMARY
+ include/net/ip_vs.h                     |  248 +++++++---
+ include/net/net_namespace.h             |    2 +
+ include/net/netns/ip_vs.h               |  146 ++++++
+ net/netfilter/ipvs/ip_vs_app.c          |  101 +++--
+ net/netfilter/ipvs/ip_vs_conn.c         |  159 ++++---
+ net/netfilter/ipvs/ip_vs_core.c         |  228 ++++++---
+ net/netfilter/ipvs/ip_vs_ctl.c          |  826 ++++++++++++++++++-------------
+ net/netfilter/ipvs/ip_vs_est.c          |  131 ++++--
+ net/netfilter/ipvs/ip_vs_ftp.c          |   56 ++-
+ net/netfilter/ipvs/ip_vs_lblc.c         |   66 +++-
+ net/netfilter/ipvs/ip_vs_lblcr.c        |   70 +++-
+ net/netfilter/ipvs/ip_vs_nfct.c         |    6 +-
+ net/netfilter/ipvs/ip_vs_proto.c        |  121 +++++-
+ net/netfilter/ipvs/ip_vs_proto_ah_esp.c |   45 +-
+ net/netfilter/ipvs/ip_vs_proto_sctp.c   |  144 +++---
+ net/netfilter/ipvs/ip_vs_proto_tcp.c    |  133 +++---
+ net/netfilter/ipvs/ip_vs_proto_udp.c    |  102 ++--
+ net/netfilter/ipvs/ip_vs_sync.c         |  422 +++++++++-------
+ net/netfilter/xt_ipvs.c                 |    2 +-
+ 19 files changed, 1960 insertions(+), 1048 deletions(-)
