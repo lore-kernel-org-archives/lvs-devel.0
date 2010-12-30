@@ -1,8 +1,10 @@
 From: hans@schillstrom.com
-Subject: [*v3 PATCH 00/22] IPVS Network Name Space aware
-Date: Thu, 30 Dec 2010 11:50:44 +0100
-Message-ID: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
+Subject: [*v3 PATCH 18/22] IPVS: netns, defense work timer.
+Date: Thu, 30 Dec 2010 11:51:02 +0100
+Message-ID: <1293706266-27152-19-git-send-email-hans@schillstrom.com>
+References: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -13,113 +15,137 @@ Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-This patch series adds network name space support to the LVS.
+This patch makes defense work timer per name-space,
+A net ptr had to be added to the ipvs struct,
+since it's needed by defense_work_handler.
 
-REVISION
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+---
+ include/net/ip_vs.h             |    2 +-
+ include/net/netns/ip_vs.h       |    3 +++
+ net/netfilter/ipvs/ip_vs_conn.c |    5 +++--
+ net/netfilter/ipvs/ip_vs_core.c |    1 +
+ net/netfilter/ipvs/ip_vs_ctl.c  |   20 +++++++++-----------
+ 5 files changed, 17 insertions(+), 14 deletions(-)
 
-This is version 3
-
-OVERVIEW
-
-The patch doesn't remove or add any functionality except for netns.
-For users that don't use network name space (netns) this patch is
-completely transparent.
-
-Now it's possible to run LVS in a Linux container (see lxc-tools)
-i.e.  a light weight visualization. For example it's possible to run
-one or several lvs on a real server in their own network name spaces.
-From the LVS point of view it looks like it runs on it's own machine.
-
-IMPLEMENTATION
-Basic requirements for netns awareness
- - Global variables has to be moved to dyn. allocated memory.
- - No or very little performance loss
-
-Large hash tables connection hash and service hashes still resides in
-global memory with net ptr added in hash key.
-Most global variables now resides in a struct ipvs { } in netns/ip_vs.h.
-The size of per name space is 2096 bytes (for x86_64) and a little bit less
-for 32 bit arch's.
-
-Statistics counters is now lock-free i.e. incremented per CPU,
-The estimator does a sum when using it.
-
-Procfs: ip_vs_stats_percpu is added to reflect the "per cpu"
-ex.
-# cat /proc/net/ip_vs_stats
-       Total Incoming Outgoing         Incoming         Outgoing
-CPU    Conns  Packets  Packets            Bytes            Bytes
-  0        0        3        1               9D               34
-  1        0        1        2               49               70
-  2        0        1        2               34               76
-  3        1        2        2               70               74
-  ~        1        7        7              18A              18E
-
-     Conns/s   Pkts/s   Pkts/s          Bytes/s          Bytes/s
-           0        0        0                0                0
-
-Algorithm files are untouched except for lblc and lblcr.
-
-STEP BY STEP
-First patch creates network name space init for all files that need it.
-How ever if a new name space is created an error is returned.
-This will be removed in the last patch.
-
-When net ptr ain't available init_net will be used temporarily.
-
-CHANGES
-
-*v2
-The patches is totally reworked so each patch compile ...
-Depends on the IPv6 and Persistence Backup patch.
-Common hash-table per name-space for connections and services
-Stats per CPU
-smaller changes in lblc and lblcr
-Triggered by Julians comment:
-"tcp_timeout_change should work with the new struct ip_vs_proto_data
-        so that tcp_state_table will go to pd->state_table
-        and set_tcp_state will get pd instead of pp"
-
-*v3
-  Changes triggered by comment mostly, see individual patches for details.
-
-  procfs ip_vs_stats remains the same, ip_vs_stats_percpu added instead.
-  Unused functions removed.
-  The pp -> pd conversion should start from functions like ip_vs_out()....
-  Timer per ns instead of a common timer in estimator.
-  Moved net compare to the end in "fast path"
-  __ip_vs_mutex remains global
-
-
-
-PATCH SET
-This patch set is based upon lvs-test-2.6 / v2.6.37-rc1
-and depends upon IPVS sync patches
-
-STATUS
-untested protos
- - sctp
- - esp_ah
-and SIP for IPv6
-
-SUMMARY
- include/net/ip_vs.h                     |  248 +++++++---
- include/net/net_namespace.h             |    2 +
- include/net/netns/ip_vs.h               |  146 ++++++
- net/netfilter/ipvs/ip_vs_app.c          |  101 +++--
- net/netfilter/ipvs/ip_vs_conn.c         |  159 ++++---
- net/netfilter/ipvs/ip_vs_core.c         |  228 ++++++---
- net/netfilter/ipvs/ip_vs_ctl.c          |  826 ++++++++++++++++++-------------
- net/netfilter/ipvs/ip_vs_est.c          |  131 ++++--
- net/netfilter/ipvs/ip_vs_ftp.c          |   56 ++-
- net/netfilter/ipvs/ip_vs_lblc.c         |   66 +++-
- net/netfilter/ipvs/ip_vs_lblcr.c        |   70 +++-
- net/netfilter/ipvs/ip_vs_nfct.c         |    6 +-
- net/netfilter/ipvs/ip_vs_proto.c        |  121 +++++-
- net/netfilter/ipvs/ip_vs_proto_ah_esp.c |   45 +-
- net/netfilter/ipvs/ip_vs_proto_sctp.c   |  144 +++---
- net/netfilter/ipvs/ip_vs_proto_tcp.c    |  133 +++---
- net/netfilter/ipvs/ip_vs_proto_udp.c    |  102 ++--
- net/netfilter/ipvs/ip_vs_sync.c         |  422 +++++++++-------
- net/netfilter/xt_ipvs.c                 |    2 +-
- 19 files changed, 1960 insertions(+), 1048 deletions(-)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 99828f0..918382a 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -855,7 +855,7 @@ extern const char * ip_vs_state_name(__u16 proto, int state);
+ 
+ extern void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp);
+ extern int ip_vs_check_template(struct ip_vs_conn *ct);
+-extern void ip_vs_random_dropentry(void);
++extern void ip_vs_random_dropentry(struct net *net);
+ extern int ip_vs_conn_init(void);
+ extern void ip_vs_conn_cleanup(void);
+ 
+diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
+index 2e9a1b3..1c8c3c4 100644
+--- a/include/net/netns/ip_vs.h
++++ b/include/net/netns/ip_vs.h
+@@ -72,6 +72,7 @@ struct netns_ipvs {
+ 
+ 	int 			num_services;    /* no of virtual services */
+ 	/* 1/rate drop and drop-entry variables */
++	struct delayed_work	defense_work;   /* Work handler */
+ 	int 			drop_rate;
+ 	int			drop_counter;
+ 	atomic_t 		dropentry;
+@@ -131,6 +132,8 @@ struct netns_ipvs {
+ 	/* multicast interface name */
+ 	char 			master_mcast_ifn[IP_VS_IFNAME_MAXLEN];
+ 	char 			backup_mcast_ifn[IP_VS_IFNAME_MAXLEN];
++	/* net name space ptr */
++	struct net 		*net;            /* Needed by timer routines */
+ };
+ 
+ #endif /* IP_VS_H_ */
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 5ba205a..28bdaf7 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1138,7 +1138,7 @@ static inline int todrop_entry(struct ip_vs_conn *cp)
+ }
+ 
+ /* Called from keventd and must protect itself from softirqs */
+-void ip_vs_random_dropentry(void)
++void ip_vs_random_dropentry(struct net *net)
+ {
+ 	int idx;
+ 	struct ip_vs_conn *cp;
+@@ -1158,7 +1158,8 @@ void ip_vs_random_dropentry(void)
+ 			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
+ 				/* connection template */
+ 				continue;
+-
++			if (!ip_vs_conn_net_eq(cp, net))
++				continue;
+ 			if (cp->protocol == IPPROTO_TCP) {
+ 				switch(cp->state) {
+ 				case IP_VS_TCP_S_SYN_RECV:
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index a25e51d..1bba3c7 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1870,6 +1870,7 @@ static int __net_init  __ip_vs_init(struct net *net)
+ 		pr_err("%s(): no memory.\n", __func__);
+ 		return -ENOMEM;
+ 	}
++	ipvs->net = net;
+ 	/* Incarnation counters used for creating unique names */
+ 	ipvs->inc = atomic_read(&ipvs_netns_cnt);
+ 	atomic_inc(&ipvs_netns_cnt);
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 778c5b3..f786f61 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -218,18 +218,16 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+  *	Timer for checking the defense
+  */
+ #define DEFENSE_TIMER_PERIOD	1*HZ
+-static void defense_work_handler(struct work_struct *work);
+-static DECLARE_DELAYED_WORK(defense_work, defense_work_handler);
+ 
+ static void defense_work_handler(struct work_struct *work)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(&init_net);
++	struct netns_ipvs *ipvs =
++		container_of(work, struct netns_ipvs, defense_work.work);
+ 
+ 	update_defense_level(ipvs);
+ 	if (atomic_read(&ipvs->dropentry))
+-		ip_vs_random_dropentry();
+-
+-	schedule_delayed_work(&defense_work, DEFENSE_TIMER_PERIOD);
++		ip_vs_random_dropentry(ipvs->net);
++	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+ }
+ 
+ int
+@@ -3539,6 +3537,9 @@ int __net_init __ip_vs_control_init(struct net *net)
+ 		goto err_reg;
+ 	ip_vs_new_estimator(net, ipvs->ctl_stats);
+ 	ipvs->sysctl_tbl = tbl;
++	/* Schedule defense work */
++	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
++	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+ 	return 0;
+ 
+ err_reg:
+@@ -3563,6 +3564,8 @@ static void __net_exit __ip_vs_control_cleanup(struct net *net)
+ 	proc_net_remove(net, "ip_vs_stats_percpu");
+ 	proc_net_remove(net, "ip_vs_stats");
+ 	proc_net_remove(net, "ip_vs");
++	cancel_rearming_delayed_work(&ipvs->defense_work);
++	cancel_work_sync(&ipvs->defense_work.work);
+ 	free_percpu(ipvs->ustats);
+ 	kfree(ipvs->ctl_stats);
+ }
+@@ -3606,9 +3609,6 @@ int __init ip_vs_control_init(void)
+ 		goto err_net;
+ 	}
+ 
+-	/* Hook the defense timer */
+-	schedule_delayed_work(&defense_work, DEFENSE_TIMER_PERIOD);
