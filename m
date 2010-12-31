@@ -1,40 +1,32 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [*v3 PATCH 14/22] IPVS: netns awareness to ip_vs_sync
-Date: Fri, 31 Dec 2010 09:44:33 +0900
-Message-ID: <20101231004433.GA14681@verge.net.au>
-References: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
- <1293706266-27152-15-git-send-email-hans@schillstrom.com>
+From: lijin liu <llj098@gmail.com>
+Subject: regarding the KTCPVS
+Date: Fri, 31 Dec 2010 22:08:25 +0800
+Message-ID: <AANLkTinHN0euXw=Z9M1h-teVievbdDGzKe_am9GBhYD4@mail.gmail.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1293706266-27152-15-git-send-email-hans@schillstrom.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=gamma;
+        h=domainkey-signature:received:mime-version:received:from:date
+         :message-id:subject:to:content-type;
+        bh=MgNbgBwRy0h/pIw+wSPNNa8BZ01MXxAKgISse2LH+1s=;
+        b=rkgkXbKLj68IwalV00/DxJt9RKfK5+0qOIbux3ggH7KPkTGOcQi8aauXv9W/zH9bBW
+         QDA1qwNiWWq96CvTqml/I4lHz8M1Aio8KMOeuZdFi6NtisGkaaXdAHYgkZBU04rNvVer
+         momf62L9ycFmXr2qLsU4KMDu/0+Y45VYG74gk=
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: hans@schillstrom.com
-Cc: ja@ssi.bg, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Hans Schillstrom <hans.schillstrom@ericsson.com>
+To: lvs-devel@vger.kernel.org
 
-On Thu, Dec 30, 2010 at 11:50:58AM +0100, hans@schillstrom.com wrote:
-> From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-> 
-> All global variables moved to struct ipvs,
-> most external changes fixed (i.e. init_net removed)
-> in sync_buf create  + 4 replaced by sizeof(struct..)
+Hello all!
 
-[ snip ]
+I am interested in the KTCPVS.
+http://www.linuxvirtualserver.org/software/ktcpvs/ktcpvs.html
 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 0454a11..5d6e250 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1477,6 +1477,8 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
->  	struct ip_vs_proto_data *pd;
->  	struct ip_vs_conn *cp;
->  	int ret, restart, pkts;
-> +	struct net *net;
+After reading its web page and the source from svn, I found that
+KTCPVS is for kernel 2.4,and there is no update from 2004.
 
-The line above adds a duplicate declaration of net as
-just before the diff-context starts there is
 
-	struct net *net = NULL;
+My question is :
+
+Are there any develop plans for KTCPVS?
