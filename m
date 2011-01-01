@@ -1,122 +1,228 @@
-From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [*v3 PATCH 01/22] IPVS: netns, add basic init per netns.
-Date: Fri, 31 Dec 2010 16:36:46 +0100
-Message-ID: <201012311636.46744.hans@schillstrom.com>
-References: <1293706266-27152-1-git-send-email-hans@schillstrom.com> <1293706266-27152-2-git-send-email-hans@schillstrom.com> <alpine.LNX.2.01.1012310055050.15397@obet.zrqbmnf.qr>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [*v3 PATCH 00/22] IPVS Network Name Space aware
+Date: Sat, 1 Jan 2011 14:27:00 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1101011421410.2559@ja.ssi.bg>
+References: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LNX.2.01.1012310055050.15397@obet.zrqbmnf.qr>
+In-Reply-To: <1293706266-27152-1-git-send-email-hans@schillstrom.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: Jan Engelhardt <jengelh@medozas.de>
-Cc: horms@verge.net.au, ja@ssi.bg, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Hans Schillstrom <hans.schillstrom@ericsson.com>
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
+To: hans@schillstrom.com
+Cc: horms@verge.net.au, daniel.lezcano@free.fr, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
 
-On Friday, December 31, 2010 00:58:35 Jan Engelhardt wrote:
-> 
-> On Thursday 2010-12-30 11:50, hans@schillstrom.com wrote:
-> >+++ b/include/net/ip_vs.h
-> >@@ -28,6 +28,15 @@
-> > #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
-> > #include <net/netfilter/nf_conntrack.h>
-> > #endif
-> >+#include <net/net_namespace.h>		/* Netw namespace */
-> >+
-> >+/*
-> >+ * Generic access of ipvs struct
-> >+ */
-> >+static inline struct netns_ipvs * net_ipvs(struct net* net)
-> 
-> Balancing the '*' between the ' ' would be nice... I know it's hard at this
-> time of the year ;-)
-> 
-I'll send a new patch set and run checkpatch,
-but that will be after new years eve :-)
+ 	Hello,
 
-> >diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-> >new file mode 100644
-> >index 0000000..9068d95
-> >--- /dev/null
-> >+++ b/include/net/netns/ip_vs.h
-> >@@ -0,0 +1,26 @@
-> >+/*
-> >+ * ip_vs.h
-> >+ *
-> >+ *  Created on: Nov 23, 2010
-> >+ *  Author: hans
-> >+ */
-> 
-> Filenames, creation dates, author names (when they don't serve a copyright
-> notice), CVS $Id$ tags, etc. don't belong into files. The git log exists for
-> that very purpose.
-> 
-Oops that's an eclipse feature, that should be removed.
+On Thu, 30 Dec 2010, hans@schillstrom.com wrote:
 
-> >+struct netns_ipvs {
-> >+	int			inc;		/* Incarnation */
-> >+};
-> 
-> Just my thoughts: Incarnation - haven't heard that in a while. ("inc"
-> is also used as an abbreviation for increment, so ~ ~). Other places
-> use "generation" as a term (such as the VFS on inode generation). [I
-> also get the feeling that (re)"incarnation" may require a death, so
-> it is different from "generation" after all -]
+> From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+>
+> This patch series adds network name space support to the LVS.
+>
+> REVISION
+>
+> This is version 3
+>
+> OVERVIEW
+>
+> The patch doesn't remove or add any functionality except for netns.
+> For users that don't use network name space (netns) this patch is
+> completely transparent.
+>
+> Now it's possible to run LVS in a Linux container (see lxc-tools)
+> i.e.  a light weight visualization. For example it's possible to run
+> one or several lvs on a real server in their own network name spaces.
+>> From the LVS point of view it looks like it runs on it's own machine.
 
-:-))
+ 	Only some comments for two of the patches:
 
-> 
-> >+++ b/net/netfilter/ipvs/ip_vs_core.c
-> >@@ -1813,6 +1820,44 @@ static struct nf_hook_ops ip_vs_ops[] __read_mostly = {
-> > #endif
-> > };
-> >
-> >+/*
-> >+ *	Initialize IP Virtual Server netns mem.
-> >+ */
-> >+static int __net_init  __ip_vs_init(struct net *net)
-> >+{
-> >+	struct netns_ipvs *ipvs;
-> >+
-> >+	if (!net_eq(net, &init_net)) {
-> >+		pr_err("The final patch for enabling netns is missing\n");
-> >+		return -EPERM;
-> >+	}
-> >+	ipvs = (struct netns_ipvs *)net_generic(net, ip_vs_net_id);
-> 
-> Pointless cast is pointless.
+v3 PATCH 10/22 use ip_vs_proto_data as param
 
-Well, that is a reminder from a backport...
+ 	- Can ip_vs_protocol_timeout_change() walk
+ 	proto_data_table instead of ip_vs_proto_table to avoid the
+ 	__ipvs_proto_data_get call?
 
-> 
-> >index c1c167a..ea390f8 100644
-> >--- a/net/netfilter/ipvs/ip_vs_sync.c
-> >+++ b/net/netfilter/ipvs/ip_vs_sync.c
-> >@@ -1639,3 +1639,31 @@ int stop_sync_thread(int state)
-> >
-> > 	return 0;
-> > }
-> >+
-> >+/*
-> >+ * Initialize data struct for each netns
-> >+ */
-> >+static int __net_init __ip_vs_sync_init(struct net *net)
-> >+{
-> >+	return 0;
-> >+}
-> >+
-> >+static void __ip_vs_sync_cleanup(struct net *net)
-> >+{
-> >+	return;
-> >+}
-> 
-> The trailing return; in functions returning nothing can be (and
-> generally, is) omitted.
-> 
-Oops
+v3 PATCH 15/22 ip_vs_stats
 
-Thanks alot 
+ 	- Is ustats_seq allocated with alloc_percpu?
 
-/Hans
+ 	Such reader sections should be changed to use tmp vars because
+ 	on retry we risk to add the values multiple times. For example:
 
+ 		do {
+ 			start = read_seqcount_begin(seq_count);
+ 			ipvs->ctl_stats->ustats.inbytes += u->inbytes;
+ 			ipvs->ctl_stats->ustats.outbytes += u->outbytes;
+ 		} while (read_seqcount_retry(seq_count, start));
+
+ 	should be changed as follows:
+
+ 		u64 inbytes, outbytes;
+
+ 		do {
+ 			start = read_seqcount_begin(seq_count);
+ 			inbytes = u->inbytes;
+ 			outbytes = u->outbytes;
+ 		} while (read_seqcount_retry(seq_count, start));
+ 		ipvs->ctl_stats->ustats.inbytes += inbytes;
+ 		ipvs->ctl_stats->ustats.outbytes += outbytes;
+
+ 	Or it is better to create new struct for percpu stats,
+ 	they will have their own syncp, because we can not
+ 	change struct ip_vs_stats_user. syncp should be percpu
+ 	because we remove locks.
+
+ 	For example:
+
+ 	struct ip_vs_cpu_stats {
+ 		struct ip_vs_stats_user	ustats;
+ 		struct u64_stats_sync	syncp;
+ 	};
+
+ 	Then we can add this in struct netns_ipvs:
+
+ 	struct ip_vs_cpu_stats __percpu *stats;	/* Statistics */
+
+ 	without the seqcount_t * ustats_seq;
+
+ 	Then syncp does not need any initialization, it seems
+ 	alloc_percpu returns zeroed area.
+
+ 	When we use percpu stats for all places (dest and svc) we
+ 	can create new struct struct ip_vs_counters, so that we
+ 	can reduce the memory usage from percpu data. Now stats
+ 	include counters and estimated values. The estimated
+ 	values should not be percpu. Then ip_vs_cpu_stats
+ 	will be shorter (it is not visible to user space):
+
+ 	struct ip_vs_cpu_stats {
+ 		struct ip_vs_counters	ustats;
+ 		struct u64_stats_sync	syncp;
+ 	};
+
+ 	For writer side in softirq context we should protect the whole
+ 	section with u64 counters, for example this code:
+
+ 	spin_lock(&ip_vs_stats.lock);
+ 	ip_vs_stats.ustats.outpkts++;
+ 	ip_vs_stats.ustats.outbytes += skb->len;
+ 	spin_unlock(&ip_vs_stats.lock);
+
+ 	should be changed to:
+
+ 	struct ip_vs_cpu_stats *s = this_cpu_ptr(ipvs->stats);
+
+ 	u64_stats_update_begin(&s->syncp);
+ 	s->ustats.outpkts++;
+ 	s->ustats.outbytes += skb->len;
+ 	u64_stats_update_end(&s->syncp);
+
+ 	Readers should look in similar way, only that _bh fetching
+ 	should be used only for the u64 counters because writer is in
+ 	softirq context:
+
+ 	u64 inbytes, outbytes;
+
+ 	for_each_possible_cpu(i) {
+ 		const struct ip_vs_cpu_stats *s = per_cpu_ptr(ipvs->stats, i);
+ 		unsigned int start;
+
+ 		...
+ 		do {
+ 			start = u64_stats_fetch_begin_bh(&s->syncp);
+ 			inbytes = s->ustats.inbytes;
+ 			outbytes = s->ustats.outbytes;
+ 		} while (u64_stats_fetch_retry_bh(&s->syncp, start));
+ 		ipvs->ctl_stats->ustats.inbytes += inbytes;
+ 		ipvs->ctl_stats->ustats.outbytes += outbytes;
+ 	}
+
+ 	Then IPVS_STAT_ADD and IPVS_STAT_INC can not access
+ 	the syncp. They do not look generic enough, in case we
+ 	decide to use struct ip_vs_cpu_stats for dest and svc stats.
+ 	I think, these macros are not needed.
+ 	It is possible to have other macros for write side,
+ 	for percpu stats:
+
+ 	#define IP_VS_STATS_UPDATE_BEGIN(stats)		\
+ 		{ struct ip_vs_cpu_stats *s = this_cpu_ptr(stats); \
+ 		u64_stats_update_begin(&s->syncp)
+
+ 	#define IP_VS_STATS_UPDATE_END()		\
+ 		u64_stats_update_end(&s->syncp);	\
+ 		}
+
+ 	Then usage can be:
+
+ 	IP_VS_STATS_UPDATE_BEGIN(ipvs->stats);
+ 	s->ustats.outpkts++;
+ 	s->ustats.outbytes += skb->len;
+ 	IP_VS_STATS_UPDATE_END();
+
+ 	Then we can rename ctl_stats to total_stats or full_stats.
+ 	get_stats() can be changed to ip_vs_read_cpu_stats(), it
+ 	will be used to read all percpu stats as sum in the
+ 	total_stats/full_stats structure or tmp space:
+
+ 	/* Get sum of percpu stats */
+ 	... ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
+ 		struct ip_vs_cpu_stats *stats)
+ 	{
+ 		...
+ 		for_each_possible_cpu(i) {
+ 			const struct ip_vs_cpu_stats *s = per_cpu_ptr(stats, i);
+ 			unsigned int start;
+
+ 			if (i) {...
+ 			...
+ 			do {
+ 				start = u64_stats_fetch_begin_bh(&s->syncp);
+ 				inbytes = s->ustats.inbytes;
+ 				outbytes = s->ustats.outbytes;
+ 			} while (u64_stats_fetch_retry_bh(&s->syncp, start));
+ 			sum->inbytes += inbytes;
+ 			sum->outbytes += outbytes;
+ 		}
+ 	}
+
+ 	As result, ip_vs_read_cpu_stats() will be used in
+ 	estimation_timer() instead of get_stats():
+
+ 	ip_vs_read_cpu_stats(&ipvs->total_stats->ustats, ipvs->stats);
+
+ 	but also in ip_vs_stats_show()
+ 	{
+ 		// I hope struct ip_vs_stats_user can fit in stack:
+ 		struct ip_vs_stats_user sum;
+
+ 		here we do not need to use spin_lock_bh(&ctl_stats->lock);
+ 		because now the stats are lockless, estimation_timer
+ 		does not use ctl_stats->lock, so we have to call
+ 		ip_vs_read_cpu_stats to avoid problems with
+ 		reading incorrect u64 values directly from
+ 		ipvs->total_stats->ustats.
+
+ 		ip_vs_read_cpu_stats(&sum, ipvs->stats);
+ 		seq_printf for sum
+ 	}
+
+ 	ip_vs_read_cpu_stats can be used also in ip_vs_copy_stats()
+ 	which copies values to user space and needs proper u64 reading.
+ 	But it is used only for svc and dest stats which are not
+ 	percpu yet.
+
+ 	Now this code does not look ok:
+
+ 	ip_vs_zero_stats(net_ipvs(net)->ctl_stats);
+
+ 	May be we need new func ip_vs_zero_percpu_stats that will
+ 	reset stats for all CPUs, i.e. ipvs->stats in our case?
+ 	Even if this operation is not very safe if done from
+ 	user space while the softirq can modify u64 counters
+ 	on another CPU.
+
+
+Happy New Year!
