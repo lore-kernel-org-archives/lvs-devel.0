@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 20/22] IPVS: netns, svc counters moved in ip_vs_ctl,c
-Date: Thu,  6 Jan 2011 15:16:16 +0900
-Message-ID: <1294294578-8601-21-git-send-email-horms@verge.net.au>
+Subject: [PATCH 18/22] IPVS: netns, defense work timer.
+Date: Thu,  6 Jan 2011 15:16:14 +0900
+Message-ID: <1294294578-8601-19-git-send-email-horms@verge.net.au>
 References: <1294294578-8601-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1294294578-8601-1-git-send-email-horms@verge.net.au>
@@ -15,114 +15,138 @@ Cc: Patrick McHardy <kaber@trash.net>, Julian Anastasov <ja@ssi.bg>, Hans Schill
 
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-Last two global vars to be moved,
-ip_vs_ftpsvc_counter and ip_vs_nullsvc_counter.
+This patch makes defense work timer per name-space,
+A net ptr had to be added to the ipvs struct,
+since it's needed by defense_work_handler.
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/netns/ip_vs.h      |    4 ++++
- net/netfilter/ipvs/ip_vs_ctl.c |   21 +++++++++------------
- 2 files changed, 13 insertions(+), 12 deletions(-)
+ include/net/ip_vs.h             |    2 +-
+ include/net/netns/ip_vs.h       |    3 +++
+ net/netfilter/ipvs/ip_vs_conn.c |    5 +++--
+ net/netfilter/ipvs/ip_vs_core.c |    1 +
+ net/netfilter/ipvs/ip_vs_ctl.c  |   20 +++++++++-----------
+ 5 files changed, 17 insertions(+), 14 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index af9acf4..fbe660f 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -877,7 +877,7 @@ extern const char * ip_vs_state_name(__u16 proto, int state);
+ 
+ extern void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp);
+ extern int ip_vs_check_template(struct ip_vs_conn *ct);
+-extern void ip_vs_random_dropentry(void);
++extern void ip_vs_random_dropentry(struct net *net);
+ extern int ip_vs_conn_init(void);
+ extern void ip_vs_conn_cleanup(void);
+ 
 diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-index 67ca1cf..48d7f54 100644
+index c4b1abf..4133261 100644
 --- a/include/net/netns/ip_vs.h
 +++ b/include/net/netns/ip_vs.h
-@@ -70,6 +70,7 @@ struct netns_ipvs {
- 	seqcount_t			*ustats_seq; /* u64 read retry */
+@@ -71,6 +71,7 @@ struct netns_ipvs {
  
  	int			num_services;    /* no of virtual services */
-+
  	/* 1/rate drop and drop-entry variables */
- 	struct delayed_work	defense_work;   /* Work handler */
++	struct delayed_work	defense_work;   /* Work handler */
  	int			drop_rate;
-@@ -84,6 +85,9 @@ struct netns_ipvs {
- 	struct lock_class_key	ctl_key;	/* ctl_mutex debuging */
- 	/* Trash for destinations */
- 	struct list_head	dest_trash;
-+	/* Service counters */
-+	atomic_t		ftpsvc_counter;
-+	atomic_t		nullsvc_counter;
+ 	int			drop_counter;
+ 	atomic_t		dropentry;
+@@ -129,6 +130,8 @@ struct netns_ipvs {
+ 	/* multicast interface name */
+ 	char			master_mcast_ifn[IP_VS_IFNAME_MAXLEN];
+ 	char			backup_mcast_ifn[IP_VS_IFNAME_MAXLEN];
++	/* net name space ptr */
++	struct net		*net;            /* Needed by timer routines */
+ };
  
- 	/* sys-ctl struct */
- 	struct ctl_table_header	*sysctl_hdr;
+ #endif /* IP_VS_H_ */
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 5ba205a..28bdaf7 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1138,7 +1138,7 @@ static inline int todrop_entry(struct ip_vs_conn *cp)
+ }
+ 
+ /* Called from keventd and must protect itself from softirqs */
+-void ip_vs_random_dropentry(void)
++void ip_vs_random_dropentry(struct net *net)
+ {
+ 	int idx;
+ 	struct ip_vs_conn *cp;
+@@ -1158,7 +1158,8 @@ void ip_vs_random_dropentry(void)
+ 			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
+ 				/* connection template */
+ 				continue;
+-
++			if (!ip_vs_conn_net_eq(cp, net))
++				continue;
+ 			if (cp->protocol == IPPROTO_TCP) {
+ 				switch(cp->state) {
+ 				case IP_VS_TCP_S_SYN_RECV:
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index a7c59a7..bdda346 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1884,6 +1884,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 		pr_err("%s(): no memory.\n", __func__);
+ 		return -ENOMEM;
+ 	}
++	ipvs->net = net;
+ 	/* Counters used for creating unique names */
+ 	ipvs->gen = atomic_read(&ipvs_netns_cnt);
+ 	atomic_inc(&ipvs_netns_cnt);
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index f99f075..090eba7 100644
+index de99119..5b167aa 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -256,12 +256,6 @@ static struct list_head ip_vs_svc_table[IP_VS_SVC_TAB_SIZE];
- /* the service table hashed by fwmark */
- static struct list_head ip_vs_svc_fwm_table[IP_VS_SVC_TAB_SIZE];
+@@ -219,18 +219,16 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+  *	Timer for checking the defense
+  */
+ #define DEFENSE_TIMER_PERIOD	1*HZ
+-static void defense_work_handler(struct work_struct *work);
+-static DECLARE_DELAYED_WORK(defense_work, defense_work_handler);
  
--/*
-- *	FTP & NULL virtual service counters
-- */
--static atomic_t ip_vs_ftpsvc_counter = ATOMIC_INIT(0);
--static atomic_t ip_vs_nullsvc_counter = ATOMIC_INIT(0);
--
- 
- /*
-  *	Returns hash value for virtual service
-@@ -411,6 +405,7 @@ ip_vs_service_get(struct net *net, int af, __u32 fwmark, __u16 protocol,
- 		  const union nf_inet_addr *vaddr, __be16 vport)
+ static void defense_work_handler(struct work_struct *work)
  {
- 	struct ip_vs_service *svc;
-+	struct netns_ipvs *ipvs = net_ipvs(net);
+-	struct netns_ipvs *ipvs = net_ipvs(&init_net);
++	struct netns_ipvs *ipvs =
++		container_of(work, struct netns_ipvs, defense_work.work);
  
- 	read_lock(&__ip_vs_svc_lock);
+ 	update_defense_level(ipvs);
+ 	if (atomic_read(&ipvs->dropentry))
+-		ip_vs_random_dropentry();
+-
+-	schedule_delayed_work(&defense_work, DEFENSE_TIMER_PERIOD);
++		ip_vs_random_dropentry(ipvs->net);
++	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+ }
  
-@@ -429,7 +424,7 @@ ip_vs_service_get(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ int
+@@ -3566,6 +3564,9 @@ int __net_init __ip_vs_control_init(struct net *net)
+ 		goto err_reg;
+ 	ip_vs_new_estimator(net, ipvs->tot_stats);
+ 	ipvs->sysctl_tbl = tbl;
++	/* Schedule defense work */
++	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
++	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+ 	return 0;
  
- 	if (svc == NULL
- 	    && protocol == IPPROTO_TCP
--	    && atomic_read(&ip_vs_ftpsvc_counter)
-+	    && atomic_read(&ipvs->ftpsvc_counter)
- 	    && (vport == FTPDATA || ntohs(vport) >= PROT_SOCK)) {
- 		/*
- 		 * Check if ftp service entry exists, the packet
-@@ -439,7 +434,7 @@ ip_vs_service_get(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ err_reg:
+@@ -3590,6 +3591,8 @@ static void __net_exit __ip_vs_control_cleanup(struct net *net)
+ 	proc_net_remove(net, "ip_vs_stats_percpu");
+ 	proc_net_remove(net, "ip_vs_stats");
+ 	proc_net_remove(net, "ip_vs");
++	cancel_rearming_delayed_work(&ipvs->defense_work);
++	cancel_work_sync(&ipvs->defense_work.work);
+ 	free_percpu(ipvs->cpustats);
+ 	kfree(ipvs->tot_stats);
+ }
+@@ -3633,9 +3636,6 @@ int __init ip_vs_control_init(void)
+ 		goto err_net;
  	}
  
- 	if (svc == NULL
--	    && atomic_read(&ip_vs_nullsvc_counter)) {
-+	    && atomic_read(&ipvs->nullsvc_counter)) {
- 		/*
- 		 * Check if the catch-all port (port zero) exists
- 		 */
-@@ -1175,9 +1170,9 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
- 
- 	/* Update the virtual service counters */
- 	if (svc->port == FTPPORT)
--		atomic_inc(&ip_vs_ftpsvc_counter);
-+		atomic_inc(&ipvs->ftpsvc_counter);
- 	else if (svc->port == 0)
--		atomic_inc(&ip_vs_nullsvc_counter);
-+		atomic_inc(&ipvs->nullsvc_counter);
- 
- 	ip_vs_new_estimator(net, &svc->stats);
- 
-@@ -1361,9 +1356,9 @@ static void __ip_vs_del_service(struct ip_vs_service *svc)
- 	 *    Update the virtual service counters
- 	 */
- 	if (svc->port == FTPPORT)
--		atomic_dec(&ip_vs_ftpsvc_counter);
-+		atomic_dec(&ipvs->ftpsvc_counter);
- 	else if (svc->port == 0)
--		atomic_dec(&ip_vs_nullsvc_counter);
-+		atomic_dec(&ipvs->nullsvc_counter);
- 
- 	/*
- 	 *    Free the service if nobody refers to it
-@@ -3503,6 +3498,8 @@ int __net_init __ip_vs_control_init(struct net *net)
- 		INIT_LIST_HEAD(&ipvs->rs_table[idx]);
- 
- 	INIT_LIST_HEAD(&ipvs->dest_trash);
-+	atomic_set(&ipvs->ftpsvc_counter, 0);
-+	atomic_set(&ipvs->nullsvc_counter, 0);
- 
- 	/* procfs stats */
- 	ipvs->tot_stats = kzalloc(sizeof(struct ip_vs_stats), GFP_KERNEL);
--- 
-1.7.2.3
-
+-	/* Hook the defense timer */
+-	schedule_delayed_work(&defense_work, DEFENSE_TIMER_PERIOD);
