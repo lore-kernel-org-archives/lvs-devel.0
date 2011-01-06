@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 03/22] IPVS: netns awarness to lblcr sheduler
-Date: Thu,  6 Jan 2011 15:15:59 +0900
-Message-ID: <1294294578-8601-4-git-send-email-horms@verge.net.au>
+Subject: [PATCH 05/22] IPVS: netns, prepare protocol
+Date: Thu,  6 Jan 2011 15:16:01 +0900
+Message-ID: <1294294578-8601-6-git-send-email-horms@verge.net.au>
 References: <1294294578-8601-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1294294578-8601-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,154 +15,171 @@ Cc: Patrick McHardy <kaber@trash.net>, Julian Anastasov <ja@ssi.bg>, Hans Schill
 
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-var sysctl_ip_vs_lblcr_expiration moved to ipvs struct as
-    sysctl_lblcr_expiration
+Add support for protocol data per name-space.
+in struct ip_vs_protocol, appcnt will be removed when all protos
+are modified for network name-space.
 
-procfs updated to handle this.
+This patch causes warnings of unused functions, they will be used
+when next patch will be applied.
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/netns/ip_vs.h        |    5 +++
- net/netfilter/ipvs/ip_vs_lblcr.c |   54 +++++++++++++++++++++++++------------
- 2 files changed, 41 insertions(+), 18 deletions(-)
+ include/net/ip_vs.h              |   20 +++++++++++-
+ include/net/netns/ip_vs.h        |    3 ++
+ net/netfilter/ipvs/ip_vs_proto.c |   66 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 88 insertions(+), 1 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index d551e0d..88d4e40 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -352,6 +352,7 @@ struct iphdr;
+ struct ip_vs_conn;
+ struct ip_vs_app;
+ struct sk_buff;
++struct ip_vs_proto_data;
+ 
+ struct ip_vs_protocol {
+ 	struct ip_vs_protocol	*next;
+@@ -366,6 +367,10 @@ struct ip_vs_protocol {
+ 
+ 	void (*exit)(struct ip_vs_protocol *pp);
+ 
++	void (*init_netns)(struct net *net, struct ip_vs_proto_data *pd);
++
++	void (*exit_netns)(struct net *net, struct ip_vs_proto_data *pd);
++
+ 	int (*conn_schedule)(int af, struct sk_buff *skb,
+ 			     struct ip_vs_protocol *pp,
+ 			     int *verdict, struct ip_vs_conn **cpp);
+@@ -417,7 +422,20 @@ struct ip_vs_protocol {
+ 	int (*set_state_timeout)(struct ip_vs_protocol *pp, char *sname, int to);
+ };
+ 
+-extern struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto);
++/*
++ * protocol data per netns
++ */
++struct ip_vs_proto_data {
++	struct ip_vs_proto_data	*next;
++	struct ip_vs_protocol	*pp;
++	int			*timeout_table;	/* protocol timeout table */
++	atomic_t		appcnt;		/* counter of proto app incs. */
++	struct tcp_states_t	*tcp_state_table;
++};
++
++extern struct ip_vs_protocol   *ip_vs_proto_get(unsigned short proto);
++extern struct ip_vs_proto_data *ip_vs_proto_data_get(struct net *net,
++						     unsigned short proto);
+ 
+ struct ip_vs_conn_param {
+ 	const union nf_inet_addr	*caddr;
 diff --git a/include/net/netns/ip_vs.h b/include/net/netns/ip_vs.h
-index 5b87d22..51a92ee 100644
+index d14581c..6f4e089 100644
 --- a/include/net/netns/ip_vs.h
 +++ b/include/net/netns/ip_vs.h
-@@ -28,6 +28,11 @@ struct netns_ipvs {
+@@ -28,6 +28,9 @@ struct netns_ipvs {
  	#define IP_VS_RTAB_MASK (IP_VS_RTAB_SIZE - 1)
  
  	struct list_head	rs_table[IP_VS_RTAB_SIZE];
-+
-+	/* ip_vs_lblcr */
-+	int			sysctl_lblcr_expiration;
-+	struct ctl_table_header	*lblcr_ctl_header;
-+	struct ctl_table	*lblcr_ctl_table;
- };
++	/* ip_vs_proto */
++	#define IP_VS_PROTO_TAB_SIZE	32	/* must be power of 2 */
++	struct ip_vs_proto_data *proto_data_table[IP_VS_PROTO_TAB_SIZE];
  
- #endif /* IP_VS_H_ */
-diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
-index 7c7396a..61ae8cf 100644
---- a/net/netfilter/ipvs/ip_vs_lblcr.c
-+++ b/net/netfilter/ipvs/ip_vs_lblcr.c
-@@ -70,8 +70,6 @@
-  *    entries that haven't been touched for a day.
-  */
- #define COUNT_FOR_FULL_EXPIRATION   30
--static int sysctl_ip_vs_lblcr_expiration = 24*60*60*HZ;
--
+ 	/* ip_vs_lblc */
+ 	int			sysctl_lblc_expiration;
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index 4539294..576e296 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -60,6 +60,31 @@ static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
+ 	return 0;
+ }
+ 
++/*
++ *	register an ipvs protocols netns related data
++ */
++static int
++register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
++{
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	unsigned hash = IP_VS_PROTO_HASH(pp->protocol);
++	struct ip_vs_proto_data *pd =
++			kzalloc(sizeof(struct ip_vs_proto_data), GFP_ATOMIC);
++
++	if (!pd) {
++		pr_err("%s(): no memory.\n", __func__);
++		return -ENOMEM;
++	}
++	pd->pp = pp;	/* For speed issues */
++	pd->next = ipvs->proto_data_table[hash];
++	ipvs->proto_data_table[hash] = pd;
++	atomic_set(&pd->appcnt, 0);	/* Init app counter */
++
++	if (pp->init_netns != NULL)
++		pp->init_netns(net, pd);
++
++	return 0;
++}
  
  /*
-  *     for IPVS lblcr entry hash table
-@@ -296,7 +294,7 @@ struct ip_vs_lblcr_table {
- static ctl_table vs_vars_table[] = {
- 	{
- 		.procname	= "lblcr_expiration",
--		.data		= &sysctl_ip_vs_lblcr_expiration,
-+		.data		= NULL,
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_jiffies,
-@@ -304,8 +302,6 @@ static ctl_table vs_vars_table[] = {
- 	{ }
- };
- 
--static struct ctl_table_header * sysctl_header;
--
- static inline void ip_vs_lblcr_free(struct ip_vs_lblcr_entry *en)
- {
- 	list_del(&en->list);
-@@ -425,14 +421,15 @@ static inline void ip_vs_lblcr_full_check(struct ip_vs_service *svc)
- 	unsigned long now = jiffies;
- 	int i, j;
- 	struct ip_vs_lblcr_entry *en, *nxt;
-+	struct netns_ipvs *ipvs = net_ipvs(svc->net);
- 
- 	for (i=0, j=tbl->rover; i<IP_VS_LBLCR_TAB_SIZE; i++) {
- 		j = (j + 1) & IP_VS_LBLCR_TAB_MASK;
- 
- 		write_lock(&svc->sched_lock);
- 		list_for_each_entry_safe(en, nxt, &tbl->bucket[j], list) {
--			if (time_after(en->lastuse+sysctl_ip_vs_lblcr_expiration,
--				       now))
-+			if (time_after(en->lastuse
-+					+ ipvs->sysctl_lblcr_expiration, now))
- 				continue;
- 
- 			ip_vs_lblcr_free(en);
-@@ -664,6 +661,7 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 	read_lock(&svc->sched_lock);
- 	en = ip_vs_lblcr_get(svc->af, tbl, &iph.daddr);
- 	if (en) {
-+		struct netns_ipvs *ipvs = net_ipvs(svc->net);
- 		/* We only hold a read lock, but this is atomic */
- 		en->lastuse = jiffies;
- 
-@@ -675,7 +673,7 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 		/* More than one destination + enough time passed by, cleanup */
- 		if (atomic_read(&en->set.size) > 1 &&
- 				time_after(jiffies, en->set.lastmod +
--				sysctl_ip_vs_lblcr_expiration)) {
-+				ipvs->sysctl_lblcr_expiration)) {
- 			struct ip_vs_dest *m;
- 
- 			write_lock(&en->set.lock);
-@@ -749,23 +747,43 @@ static struct ip_vs_scheduler ip_vs_lblcr_scheduler =
-  */
- static int __net_init __ip_vs_lblcr_init(struct net *net)
- {
--	if (!net_eq(net, &init_net))	/* netns not enabled yet */
--		return -EPERM;
--
--	sysctl_header = register_net_sysctl_table(net, net_vs_ctl_path,
--						  vs_vars_table);
--	if (!sysctl_header)
--		return -ENOMEM;
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+
-+	if (!net_eq(net, &init_net)) {
-+		ipvs->lblcr_ctl_table = kmemdup(vs_vars_table,
-+						sizeof(vs_vars_table),
-+						GFP_KERNEL);
-+		if (ipvs->lblcr_ctl_table == NULL)
-+			goto err_dup;
-+	} else
-+		ipvs->lblcr_ctl_table = vs_vars_table;
-+	ipvs->sysctl_lblcr_expiration = 24*60*60*HZ;
-+	ipvs->lblcr_ctl_table[0].data = &ipvs->sysctl_lblcr_expiration;
-+
-+	ipvs->lblcr_ctl_header =
-+		register_net_sysctl_table(net, net_vs_ctl_path,
-+					  ipvs->lblcr_ctl_table);
-+	if (!ipvs->lblcr_ctl_header)
-+		goto err_reg;
- 
- 	return 0;
-+
-+err_reg:
-+	if (!net_eq(net, &init_net))
-+		kfree(ipvs->lblcr_ctl_table);
-+
-+err_dup:
-+	return -ENOMEM;
+  *	unregister an ipvs protocol
+@@ -82,6 +107,29 @@ static int unregister_ip_vs_protocol(struct ip_vs_protocol *pp)
+ 	return -ESRCH;
  }
  
- static void __net_exit __ip_vs_lblcr_exit(struct net *net)
- {
--	if (!net_eq(net, &init_net))	/* netns not enabled yet */
--		return;
++/*
++ *	unregister an ipvs protocols netns data
++ */
++static int
++unregister_ip_vs_proto_netns(struct net *net, struct ip_vs_proto_data *pd)
++{
 +	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct ip_vs_proto_data **pd_p;
++	unsigned hash = IP_VS_PROTO_HASH(pd->pp->protocol);
 +
-+	unregister_net_sysctl_table(ipvs->lblcr_ctl_header);
++	pd_p = &ipvs->proto_data_table[hash];
++	for (; *pd_p; pd_p = &(*pd_p)->next) {
++		if (*pd_p == pd) {
++			*pd_p = pd->next;
++			if (pd->pp->exit_netns != NULL)
++				pd->pp->exit_netns(net, pd);
++			kfree(pd);
++			return 0;
++		}
++	}
++
++	return -ESRCH;
++}
  
--	unregister_net_sysctl_table(sysctl_header);
-+	if (!net_eq(net, &init_net))
-+		kfree(ipvs->lblcr_ctl_table);
+ /*
+  *	get ip_vs_protocol object by its proto.
+@@ -100,6 +148,24 @@ struct ip_vs_protocol * ip_vs_proto_get(unsigned short proto)
  }
+ EXPORT_SYMBOL(ip_vs_proto_get);
  
- static struct pernet_operations ip_vs_lblcr_ops = {
++/*
++ *	get ip_vs_protocol object data by netns and proto
++ */
++struct ip_vs_proto_data *
++ip_vs_proto_data_get(struct net *net, unsigned short proto)
++{
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct ip_vs_proto_data *pd;
++	unsigned hash = IP_VS_PROTO_HASH(proto);
++
++	for (pd = ipvs->proto_data_table[hash]; pd; pd = pd->next) {
++		if (pd->pp->protocol == proto)
++			return pd;
++	}
++
++	return NULL;
++}
++EXPORT_SYMBOL(ip_vs_proto_data_get);
+ 
+ /*
+  *	Propagate event for state change to all protocols
 -- 
 1.7.2.3
 
