@@ -1,47 +1,50 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [GIT PULL nf-next-2.6] ipvs namespaces
-Date: Thu, 13 Jan 2011 10:57:09 +0900
-Message-ID: <20110113015707.GA7082@verge.net.au>
-References: <1294294578-8601-1-git-send-email-horms@verge.net.au>
- <4D2E0F32.8020602@netfilter.org>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH 00/22] ipvs namespaces v3.3
+Date: Thu, 13 Jan 2011 12:11:12 +0100
+Message-ID: <4D2EDDD0.8060903@netfilter.org>
+References: <1294883588-5683-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4D2E0F32.8020602@netfilter.org>
+In-Reply-To: <1294883588-5683-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
+To: Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-On Wed, Jan 12, 2011 at 09:29:38PM +0100, Pablo Neira Ayuso wrote:
-> Hi Simon,
+On 13/01/11 02:52, Simon Horman wrote:
+> Hi Pablo,
 > 
-> On 06/01/11 07:15, Simon Horman wrote:
-> > Hi Patrick,
-> > 
-> > please consider pulling
-> > git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git master
-> > in order to get the netns changes to IPVS from Hans Schillstrom.
+> this changest includes the following changes since the v3.2 series
+> which was most recently posted as "[GIT PULL nf-next-2.6] ipvs namespaces".
 > 
-> I'm hitting some conflicts when pulling from your tree.
+> * Remove several hunks that only make whitespace changes
+
+Thanks a lot for doing this.
+
+> * Add Acked-by: Julian Anastasov <ja@ssi.bg>
+>   (It was an omission from v3.2)
+> * Fix merge conflicts
 > 
-> >From git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6
->  * branch            master     -> FETCH_HEAD
-> Auto-merging include/linux/netfilter.h
-> Auto-merging include/linux/skbuff.h
-> Auto-merging include/net/netfilter/nf_conntrack.h
-> Auto-merging net/core/skbuff.c
-> Auto-merging net/ipv4/netfilter/nf_conntrack_l3proto_ipv4_compat.c
-> Auto-merging net/ipv6/netfilter/nf_conntrack_reasm.c
-> Auto-merging net/netfilter/core.c
-> Auto-merging net/netfilter/ipvs/ip_vs_ctl.c
-> CONFLICT (content): Merge conflict in net/netfilter/ipvs/ip_vs_ctl.c
+> There are two changes that produce conflicts
+> * In the current net-next-2.6 tree but absent from the current nf-next-2.6 tree
+>   there is "workqueue: convert
+>   cancel_rearming_delayed_work[queue]() users to cancel_delayed_work_sync()"
+> * And in the current nf-next-2.6 tree  but absent from the current
+>   net-next-2.6 tree there is "net: use the macros defined for the members
+>   of flowi"
 
-Hi Pablo,
+nf-*-2.6 are Patrick's trees. My trees are here:
 
-I've sent a fresh series "[PATCH 00/22] ipvs namespaces v3.3" that should
-resolve the conficts (I think).  More details in the cover email for that
-series.
+http://1984.lsi.us.es/git/
 
+> In order to create this series I merged net-next-2.6 into nf-next-2.6.
+> The result is at
+> git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6 ipvs-netns3.3
+> 
+> However, I guess that you have already done your own merge and simply
+> pulling the branch above will create a bit of a mess. Please let me know
+> if you have a tree/branch that I should use as a base for a pull request.
+
+I have pulled it, everything was fine. Thanks Simon!
