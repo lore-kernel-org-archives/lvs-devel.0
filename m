@@ -1,36 +1,90 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH 00/22] ipvs namespaces v3.3
-Date: Fri, 14 Jan 2011 14:26:15 +0100
-Message-ID: <4D304EF7.5000604@trash.net>
-References: <1294883588-5683-1-git-send-email-horms@verge.net.au> <4D2EDDD0.8060903@netfilter.org> <4D2EE286.1040207@trash.net> <4D2EED37.6070108@netfilter.org>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+From: Changli Gao <xiaosuo@gmail.com>
+Subject: [PATCH] netfilter: ipvs: fix compiler warnings
+Date: Fri, 21 Jan 2011 18:02:13 +0800
+Message-ID: <1295604133-6869-1-git-send-email-xiaosuo@gmail.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <4D2EED37.6070108@netfilter.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=gamma;
+        h=domainkey-signature:from:to:cc:subject:date:message-id:x-mailer;
+        bh=Yo/+C21AkrxF45k6tqc5aaH1y2iYPp7N5z2kvbG44O4=;
+        b=fkxNsYw99p8cByo+TgLIHeQQbdYTiBjdoKyh4NenM07eSGxqoOoFUjQ8Y74naQr8xH
+         uGupT+8thp6+KAKunMWCwylZdneawi48JFWJxtCB4XhkScXK5KCC27ArecX3BmLYMSZA
+         R0i6FTiRIdP0eeXQMni2gsjJHV///2dXrhUxc=
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Simon Horman <horms@verge.net.au>, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>
 
-On 13.01.2011 13:16, Pablo Neira Ayuso wrote:
-> On 13/01/11 12:31, Patrick McHardy wrote:
->> On 13.01.2011 12:11, Pablo Neira Ayuso wrote:
->>> On 13/01/11 02:52, Simon Horman wrote:
->>>> In order to create this series I merged net-next-2.6 into nf-next-2.6.
->>>> The result is at
->>>> git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6 ipvs-netns3.3
->>>>
->>>> However, I guess that you have already done your own merge and simply
->>>> pulling the branch above will create a bit of a mess. Please let me know
->>>> if you have a tree/branch that I should use as a base for a pull request.
->>>
->>> I have pulled it, everything was fine. Thanks Simon!
->>>
->>
->> Thanks Pablo. I'm back up to speed, if you want, I can pull your tree
->> into mine.
-> 
-> Go ahead Patrick.
+Fix compiler warnings when no transport protocol load balancing support
+is configured.
 
-I've pulled your tree in and pushed everything out. Thanks Pablo!
+Signed-off-by: Changli Gao <xiaosuo@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_core.c  |    4 +---
+ net/netfilter/ipvs/ip_vs_ctl.c   |    4 ++++
+ net/netfilter/ipvs/ip_vs_proto.c |    4 ++++
+ 3 files changed, 9 insertions(+), 3 deletions(-)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index f36a84f..d889f4f 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1894,9 +1894,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 
+ static void __net_exit __ip_vs_cleanup(struct net *net)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+-
+-	IP_VS_DBG(10, "ipvs netns %d released\n", ipvs->gen);
++	IP_VS_DBG(10, "ipvs netns %d released\n", net_ipvs(net)->gen);
+ }
+ 
+ static struct pernet_operations ipvs_core_ops = {
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 09ca2ce..68b8033 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2062,7 +2062,9 @@ static const struct file_operations ip_vs_stats_percpu_fops = {
+  */
+ static int ip_vs_set_timeout(struct net *net, struct ip_vs_timeout_user *u)
+ {
++#if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
+ 	struct ip_vs_proto_data *pd;
++#endif
+ 
+ 	IP_VS_DBG(2, "Setting timeout tcp:%d tcpfin:%d udp:%d\n",
+ 		  u->tcp_timeout,
+@@ -2405,7 +2407,9 @@ __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
+ static inline void
+ __ip_vs_get_timeouts(struct net *net, struct ip_vs_timeout_user *u)
+ {
++#if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
+ 	struct ip_vs_proto_data *pd;
++#endif
+ 
+ #ifdef CONFIG_IP_VS_PROTO_TCP
+ 	pd = ip_vs_proto_data_get(net, IPPROTO_TCP);
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index 6ac986c..17484a4 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -60,6 +60,9 @@ static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
+ 	return 0;
+ }
+ 
++#if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP) || \
++    defined(CONFIG_IP_VS_PROTO_SCTP) || defined(CONFIG_IP_VS_PROTO_AH) || \
++    defined(CONFIG_IP_VS_PROTO_ESP)
+ /*
+  *	register an ipvs protocols netns related data
+  */
+@@ -85,6 +88,7 @@ register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
+ 
+ 	return 0;
+ }
++#endif
+ 
+ /*
+  *	unregister an ipvs protocol
