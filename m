@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 2/2] IPVS: Change sock_create_kernel() to __sock_create()
-Date: Sat, 22 Jan 2011 14:10:35 +1100
-Message-ID: <1295665835-8708-3-git-send-email-horms@verge.net.au>
+Subject: [PATCH 1/2] netfilter: ipvs: fix compiler warnings
+Date: Sat, 22 Jan 2011 14:10:34 +1100
+Message-ID: <1295665835-8708-2-git-send-email-horms@verge.net.au>
 References: <1295665835-8708-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1295665835-8708-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,41 +13,65 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org
 Cc: Changli Gao <xiaosuo@gmail.com>, Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-The recent netns changes omitted to change
-sock_create_kernel() to __sock_create() in ip_vs_sync.c
+From: Changli Gao <xiaosuo@gmail.com>
 
-The effect of this is that the interface will be selected in the
-root-namespace, from my point of view it's a major bug.
+Fix compiler warnings when no transport protocol load balancing support
+is configured.
 
-Reported-by: Hans Schillstrom <hans@schillstrom.com>
-Acked-by: Julian Anastasov <ja@ssi.bg>
+[horms@verge.net.au: removed suprious __ip_vs_cleanup() clean-up hunk]
+Signed-off-by: Changli Gao <xiaosuo@gmail.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c   |    4 ++++
+ net/netfilter/ipvs/ip_vs_proto.c |    4 ++++
+ 2 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index d1adf98..d5a6e64 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1305,7 +1305,7 @@ static struct socket *make_send_sock(struct net *net)
- 	int result;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 09ca2ce..68b8033 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2062,7 +2062,9 @@ static const struct file_operations ip_vs_stats_percpu_fops = {
+  */
+ static int ip_vs_set_timeout(struct net *net, struct ip_vs_timeout_user *u)
+ {
++#if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
+ 	struct ip_vs_proto_data *pd;
++#endif
  
- 	/* First create a socket */
--	result = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
-+	result = __sock_create(net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
- 	if (result < 0) {
- 		pr_err("Error during creation of socket; terminating\n");
- 		return ERR_PTR(result);
-@@ -1351,7 +1351,7 @@ static struct socket *make_receive_sock(struct net *net)
- 	int result;
+ 	IP_VS_DBG(2, "Setting timeout tcp:%d tcpfin:%d udp:%d\n",
+ 		  u->tcp_timeout,
+@@ -2405,7 +2407,9 @@ __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
+ static inline void
+ __ip_vs_get_timeouts(struct net *net, struct ip_vs_timeout_user *u)
+ {
++#if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
+ 	struct ip_vs_proto_data *pd;
++#endif
  
- 	/* First create a socket */
--	result = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
-+	result = __sock_create(net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
- 	if (result < 0) {
- 		pr_err("Error during creation of socket; terminating\n");
- 		return ERR_PTR(result);
+ #ifdef CONFIG_IP_VS_PROTO_TCP
+ 	pd = ip_vs_proto_data_get(net, IPPROTO_TCP);
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index 6ac986c..17484a4 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -60,6 +60,9 @@ static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
+ 	return 0;
+ }
+ 
++#if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP) || \
++    defined(CONFIG_IP_VS_PROTO_SCTP) || defined(CONFIG_IP_VS_PROTO_AH) || \
++    defined(CONFIG_IP_VS_PROTO_ESP)
+ /*
+  *	register an ipvs protocols netns related data
+  */
+@@ -85,6 +88,7 @@ register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
+ 
+ 	return 0;
+ }
++#endif
+ 
+ /*
+  *	unregister an ipvs protocol
 -- 
 1.7.2.3
 
