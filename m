@@ -1,28 +1,37 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [GIT PULL nf-next-2.6] IPVS updates for v2.6.38-rc1
-Date: Sat, 22 Jan 2011 18:04:24 +0100
-Message-ID: <4D3B0E18.7080501@trash.net>
-References: <1295665835-8708-1-git-send-email-horms@verge.net.au>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Subject: [PATCH 1/1] IPVS netns BUG, register sysctl for root ns
+Date: Mon, 24 Jan 2011 15:14:41 +0100
+Message-ID: <1295878481-13623-1-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <1295665835-8708-1-git-send-email-horms@verge.net.au>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>, Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>
+Content-Transfer-Encoding: 7bit
+To: horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: hans@schillstrom.com, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-On 22.01.2011 04:10, Simon Horman wrote:
-> Hi Patrick, please consider pulling
->   git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git for-patrick
-> 
-> This includes bugfixes by Changli Gao and Hans Schillstrom.
-> 
-> Changli Gao (1):
->       netfilter: ipvs: fix compiler warnings
-> 
-> Simon Horman (1):
->       IPVS: Change sock_create_kernel() to __sock_create()
+The newly created table was not used when register sysctl for a new namespace.
+I.e. sysctl doesn't work for other than root namespace (init_net)
 
-Pulled, thanks Simon.
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 68b8033..98df59a 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3556,7 +3556,7 @@ int __net_init __ip_vs_control_init(struct net *net)
+ 
+ 
+ 	ipvs->sysctl_hdr = register_net_sysctl_table(net, net_vs_ctl_path,
+-						  vs_vars);
++						     tbl);
+ 	if (ipvs->sysctl_hdr == NULL)
+ 		goto err_reg;
+ 	ip_vs_new_estimator(net, ipvs->tot_stats);
+-- 
+1.7.2.3
+
