@@ -1,36 +1,38 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next-2.6 v2] IPVS build fixes and clean-ups
-Date: Tue,  1 Feb 2011 21:07:43 +1100
-Message-ID: <1296554868-17002-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH 3/5] IPVS: Remove unused variables
+Date: Tue,  1 Feb 2011 21:07:46 +1100
+Message-ID: <1296554868-17002-4-git-send-email-horms@verge.net.au>
+References: <1296554868-17002-1-git-send-email-horms@verge.net.au>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1296554868-17002-1-git-send-email-horms@verge.net.au>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, linux-next@vger.kernel.org, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: Randy Dunlap <randy.dunlap@oracle.com>, Stephen Rothwell <sfr@canb.auug.org.au>, Hans Schillstrom <hans@schillstrom.com>, Patrick McHardy <kaber@trash.net>
+Cc: Randy Dunlap <randy.dunlap@oracle.com>, Stephen Rothwell <sfr@canb.auug.org.au>, Hans Schillstrom <hans@schillstrom.com>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-This short patch series addresses two linux-next build problems
-raised by Randy Dunlap:
+These variables are unused as a result of the recent netns work.
 
-* net/netfilter/ipvs/ip_vs_core.c:1891: warning: format '%lu' expects type 'long unsigned int', but argument 2 has type 'unsigned int'
-* ERROR: "unregister_net_sysctl_table" [net/netfilter/ipvs/ip_vs.ko]
-  ERROR: "register_net_sysctl_table" [net/netfilter/ipvs/ip_vs.ko] undefined!
-* WARNING: net/netfilter/ipvs/ip_vs.o(.init.text+0x161): Section mismatch in reference from the function init_module() to the function .exit.text:ip_vs_sync_cleanup()
+Cc: Hans Schillstrom <hans@schillstrom.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ include/net/ip_vs.h |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-The remainder of the changsets are cleanups that I noticed along the way.
-
-The changes are available at
-git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git master
-
-They are currently compile-tested only.
-
-
- include/net/ip_vs.h              |    2 --
- net/netfilter/ipvs/ip_vs_core.c  |    2 +-
- net/netfilter/ipvs/ip_vs_ctl.c   |   17 +++++++++--------
- net/netfilter/ipvs/ip_vs_lblc.c  |   20 ++++++++++----------
- net/netfilter/ipvs/ip_vs_lblcr.c |   20 ++++++++++----------
- net/netfilter/ipvs/ip_vs_sync.c  |    2 +-
- 6 files changed, 31 insertions(+), 32 deletions(-)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index b23bea6..5d75fea 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1109,8 +1109,6 @@ extern int ip_vs_icmp_xmit_v6
+  *	we are loaded. Just set ip_vs_drop_rate to 'n' and
+  *	we start to drop 1/rate of the packets
+  */
+-extern int ip_vs_drop_rate;
+-extern int ip_vs_drop_counter;
+ 
+ static inline int ip_vs_todrop(struct netns_ipvs *ipvs)
+ {
+-- 
+1.7.2.3
