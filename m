@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 3/4] IPVS: Remove unused variables
-Date: Tue,  1 Feb 2011 11:14:14 +1100
-Message-ID: <1296519255-10602-4-git-send-email-horms@verge.net.au>
+Subject: [PATCH 1/4] IPVS: use z modifier for sizeof() argument
+Date: Tue,  1 Feb 2011 11:14:12 +1100
+Message-ID: <1296519255-10602-2-git-send-email-horms@verge.net.au>
 References: <1296519255-10602-1-git-send-email-horms@verge.net.au>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1296519255-10602-1-git-send-email-horms@verge.net.au>
@@ -13,26 +13,25 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, linux-next@vger.kernel.org, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Randy Dunlap <randy.dunlap@oracle.com>, Stephen Rothwell <sfr@canb.auug.org.au>, Hans Schillstrom <hans@schillstrom.com>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-These variables are unused as a result of the recent netns work.
-
 Cc: Hans Schillstrom <hans@schillstrom.com>
+Reported-by: Randy Dunlap <randy.dunlap@oracle.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b23bea6..5d75fea 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1109,8 +1109,6 @@ extern int ip_vs_icmp_xmit_v6
-  *	we are loaded. Just set ip_vs_drop_rate to 'n' and
-  *	we start to drop 1/rate of the packets
-  */
--extern int ip_vs_drop_rate;
--extern int ip_vs_drop_counter;
- 
- static inline int ip_vs_todrop(struct netns_ipvs *ipvs)
- {
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index d889f4f..4d06617 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1887,7 +1887,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	ipvs->gen = atomic_read(&ipvs_netns_cnt);
+ 	atomic_inc(&ipvs_netns_cnt);
+ 	net->ipvs = ipvs;
+-	printk(KERN_INFO "IPVS: Creating netns size=%lu id=%d\n",
++	printk(KERN_INFO "IPVS: Creating netns size=%zu id=%d\n",
+ 			 sizeof(struct netns_ipvs), ipvs->gen);
+ 	return 0;
+ }
 -- 
 1.7.2.3
