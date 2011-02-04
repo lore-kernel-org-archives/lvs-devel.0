@@ -1,53 +1,119 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [rfc] IPVS: Remove conditionally include sysctl code
-Date: Fri,  4 Feb 2011 18:46:08 +0900
-Message-ID: <1296812782-14953-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH 01/14] IPVS: Add ip_vs_route_me_harder()
+Date: Fri,  4 Feb 2011 18:46:09 +0900
+Message-ID: <1296812782-14953-2-git-send-email-horms@verge.net.au>
+References: <1296812782-14953-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1296812782-14953-1-git-send-email-horms@verge.net.au>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>
+Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
-In the case where CONFIG_SYSCTL is undefined related
-control code in IPVS is unnecessary. This patch series
-attempts to make the inclusion of all such code
-conditional on CONFIG_SYSCTL.
+Add ip_vs_route_me_harder() to avoid repeating the same code twice.
 
-The changes are available in the git repository at:
-git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git config-sysctl
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_core.c |   48 +++++++++++++++++---------------------
+ 1 files changed, 22 insertions(+), 26 deletions(-)
 
-I consider these changes as an RFC at this stage and would
-appreciate review or other feedback.
-
-If this series is successful I will examine what if any similar
-changes are appropriate for the case where CONFIG_PROC_FS is undefined.
-
-Simon Horman (14):
-      IPVS: Add ip_vs_route_me_harder()
-      IPVS: Add sysctl_snat_reroute()
-      IPVS: Add sysctl_nat_icmp_send()
-      IPVS: Add {sysctl_sync_threshold,period}()
-      IPVS: Add sysctl_sync_ver()
-      IPVS: Add sysctl_expire_nodest_conn()
-      IPVS: Add expire_quiescent_template()
-      IPVS: Conditinally use sysctl_lblc{r}_expiration
-      IPVS: ip_vs_todrop() becomes a noop when CONFIG_SYSCTL is undefined
-      IPVS: Conditional ip_vs_conntrack_enabled()
-      IPVS: Minimise ip_vs_leave when CONFIG_SYSCTL is undefined
-      IPVS: Conditionally define and use ip_vs_lblc{r}_table
-      IPVS: Add __ip_vs_control_{init,cleanup}_sysctl()
-      IPVS: Conditionally include sysctl members of struct netns_ipvs
-
- include/net/ip_vs.h              |    8 +++
- include/net/netns/ip_vs.h        |   61 ++++++++++++++++++---
- net/netfilter/ipvs/ip_vs_conn.c  |   13 ++++-
- net/netfilter/ipvs/ip_vs_core.c  |   98 ++++++++++++++++++++------------
- net/netfilter/ipvs/ip_vs_ctl.c   |  114 +++++++++++++++++++++++--------------
- net/netfilter/ipvs/ip_vs_lblc.c  |   31 ++++++++---
- net/netfilter/ipvs/ip_vs_lblcr.c |   35 ++++++++---
- net/netfilter/ipvs/ip_vs_sync.c  |    8 +-
- 8 files changed, 256 insertions(+), 112 deletions(-)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 4d06617..c4c8199 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -631,6 +631,24 @@ static inline int ip_vs_gather_frags_v6(struct sk_buff *skb, u_int32_t user)
+ }
+ #endif
+ 
++static int ip_vs_route_me_harder(int af, struct sk_buff *skb)
++{
++	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
++
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6) {
++		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
++			return 1;
++	} else
++#endif
++		if ((ipvs->sysctl_snat_reroute ||
++		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
++		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
++			return 1;
++
++	return 0;
++}
++
+ /*
+  * Packet has been made sufficiently writable in caller
+  * - inout: 1=in->out, 0=out->in
+@@ -737,7 +755,6 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ 				struct ip_vs_protocol *pp,
+ 				unsigned int offset, unsigned int ihl)
+ {
+-	struct netns_ipvs *ipvs;
+ 	unsigned int verdict = NF_DROP;
+ 
+ 	if (IP_VS_FWD_METHOD(cp) != 0) {
+@@ -759,8 +776,6 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ 	if (!skb_make_writable(skb, offset))
+ 		goto out;
+ 
+-	ipvs = net_ipvs(skb_net(skb));
+-
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (af == AF_INET6)
+ 		ip_vs_nat_icmp_v6(skb, pp, cp, 1);
+@@ -768,16 +783,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ #endif
+ 		ip_vs_nat_icmp(skb, pp, cp, 1);
+ 
+-#ifdef CONFIG_IP_VS_IPV6
+-	if (af == AF_INET6) {
+-		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
+-			goto out;
+-	} else
+-#endif
+-		if ((ipvs->sysctl_snat_reroute ||
+-		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
+-		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
+-			goto out;
++	if (ip_vs_route_me_harder(af, skb))
++		goto out;
+ 
+ 	/* do the statistics and put it back */
+ 	ip_vs_out_stats(cp, skb);
+@@ -986,7 +993,6 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 		struct ip_vs_conn *cp, int ihl)
+ {
+ 	struct ip_vs_protocol *pp = pd->pp;
+-	struct netns_ipvs *ipvs;
+ 
+ 	IP_VS_DBG_PKT(11, af, pp, skb, 0, "Outgoing packet");
+ 
+@@ -1022,18 +1028,8 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	 * if it came from this machine itself.  So re-compute
+ 	 * the routing information.
+ 	 */
+-	ipvs = net_ipvs(skb_net(skb));
+-
+-#ifdef CONFIG_IP_VS_IPV6
+-	if (af == AF_INET6) {
+-		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
+-			goto drop;
+-	} else
+-#endif
+-		if ((ipvs->sysctl_snat_reroute ||
+-		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
+-		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
+-			goto drop;
++	if (ip_vs_route_me_harder(af, skb))
++		goto drop;
+ 
+ 	IP_VS_DBG_PKT(10, af, pp, skb, 0, "After SNAT");
+ 
+-- 
+1.7.2.3
 
