@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 07/14] IPVS: Add expire_quiescent_template()
-Date: Fri,  4 Feb 2011 18:46:15 +0900
-Message-ID: <1296812782-14953-8-git-send-email-horms@verge.net.au>
+Subject: [PATCH 09/14] IPVS: ip_vs_todrop() becomes a noop when CONFIG_SYSCTL is undefined
+Date: Fri,  4 Feb 2011 18:46:17 +0900
+Message-ID: <1296812782-14953-10-git-send-email-horms@verge.net.au>
 References: <1296812782-14953-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1296812782-14953-1-git-send-email-horms@verge.net.au>
@@ -13,45 +13,33 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
-In preparation for not including sysctl_expire_quiescent_template in
-struct netns_ipvs when CONFIG_SYCTL is not defined.
-
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
+ include/net/ip_vs.h |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 83233fe..cc3b45b 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -677,6 +677,16 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
- 	atomic_dec(&dest->refcnt);
- }
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 5d75fea..e046e8b 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1104,6 +1104,7 @@ extern int ip_vs_icmp_xmit_v6
+  int offset);
+ #endif
  
-+static int expire_quiescent_template(struct netns_ipvs *ipvs,
-+				     struct ip_vs_dest *dest)
-+{
 +#ifdef CONFIG_SYSCTL
-+	return ipvs->sysctl_expire_quiescent_template &&
-+		(atomic_read(&dest->weight) == 0);
+ /*
+  *	This is a simple mechanism to ignore packets when
+  *	we are loaded. Just set ip_vs_drop_rate to 'n' and
+@@ -1119,6 +1120,9 @@ static inline int ip_vs_todrop(struct netns_ipvs *ipvs)
+ 	ipvs->drop_counter = ipvs->drop_rate;
+ 	return 1;
+ }
 +#else
-+	return 0;
++static inline int ip_vs_todrop(struct netns_ipvs *ipvs) { return 0; }
 +#endif
-+}
  
  /*
-  *	Checking if the destination of a connection template is available.
-@@ -693,8 +703,7 @@ int ip_vs_check_template(struct ip_vs_conn *ct)
- 	 */
- 	if ((dest == NULL) ||
- 	    !(dest->flags & IP_VS_DEST_F_AVAILABLE) ||
--	    (ipvs->sysctl_expire_quiescent_template &&
--	     (atomic_read(&dest->weight) == 0))) {
-+	    expire_quiescent_template(ipvs, dest)) {
- 		IP_VS_DBG_BUF(9, "check_template: dest not available for "
- 			      "protocol %s s:%s:%d v:%s:%d "
- 			      "-> d:%s:%d\n",
+  *      ip_vs_fwd_tag returns the forwarding tag of the connection
 -- 
 1.7.2.3
 
