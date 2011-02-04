@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 01/14] IPVS: Add ip_vs_route_me_harder()
-Date: Fri,  4 Feb 2011 18:46:09 +0900
-Message-ID: <1296812782-14953-2-git-send-email-horms@verge.net.au>
+Subject: [PATCH 03/14] IPVS: Add sysctl_nat_icmp_send()
+Date: Fri,  4 Feb 2011 18:46:11 +0900
+Message-ID: <1296812782-14953-4-git-send-email-horms@verge.net.au>
 References: <1296812782-14953-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1296812782-14953-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,107 +13,56 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
-Add ip_vs_route_me_harder() to avoid repeating the same code twice.
+In preparation for not including sysctl_nat_icmp_send in
+struct netns_ipvs when CONFIG_SYCTL is not defined.
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_core.c |   48 +++++++++++++++++---------------------
- 1 files changed, 22 insertions(+), 26 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 4d06617..c4c8199 100644
+index 3abc009..66bb68b 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -631,6 +631,24 @@ static inline int ip_vs_gather_frags_v6(struct sk_buff *skb, u_int32_t user)
+@@ -607,9 +607,16 @@ static int sysctl_snat_reroute(struct sk_buff *skb)
+ 	return ipvs->sysctl_snat_reroute;
  }
- #endif
  
-+static int ip_vs_route_me_harder(int af, struct sk_buff *skb)
++static int sysctl_nat_icmp_send(struct net *net)
 +{
-+	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
-+
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (af == AF_INET6) {
-+		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
-+			return 1;
-+	} else
-+#endif
-+		if ((ipvs->sysctl_snat_reroute ||
-+		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
-+		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
-+			return 1;
-+
-+	return 0;
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	return ipvs->sysctl_nat_icmp_send;
 +}
 +
- /*
-  * Packet has been made sufficiently writable in caller
-  * - inout: 1=in->out, 0=out->in
-@@ -737,7 +755,6 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 				struct ip_vs_protocol *pp,
- 				unsigned int offset, unsigned int ihl)
- {
--	struct netns_ipvs *ipvs;
- 	unsigned int verdict = NF_DROP;
+ #else
  
- 	if (IP_VS_FWD_METHOD(cp) != 0) {
-@@ -759,8 +776,6 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 	if (!skb_make_writable(skb, offset))
- 		goto out;
+ static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
++static int sysctl_nat_icmp_send(struct net *net) { return 0; }
  
--	ipvs = net_ipvs(skb_net(skb));
--
- #ifdef CONFIG_IP_VS_IPV6
- 	if (af == AF_INET6)
- 		ip_vs_nat_icmp_v6(skb, pp, cp, 1);
-@@ -768,16 +783,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
  #endif
- 		ip_vs_nat_icmp(skb, pp, cp, 1);
  
--#ifdef CONFIG_IP_VS_IPV6
--	if (af == AF_INET6) {
--		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
--			goto out;
--	} else
--#endif
--		if ((ipvs->sysctl_snat_reroute ||
--		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
--		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
--			goto out;
-+	if (ip_vs_route_me_harder(af, skb))
-+		goto out;
- 
- 	/* do the statistics and put it back */
- 	ip_vs_out_stats(cp, skb);
-@@ -986,7 +993,6 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 		struct ip_vs_conn *cp, int ihl)
- {
- 	struct ip_vs_protocol *pp = pd->pp;
+@@ -1075,7 +1082,6 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	struct ip_vs_conn *cp;
 -	struct netns_ipvs *ipvs;
  
- 	IP_VS_DBG_PKT(11, af, pp, skb, 0, "Outgoing packet");
+ 	EnterFunction(11);
  
-@@ -1022,18 +1028,8 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	 * if it came from this machine itself.  So re-compute
- 	 * the routing information.
+@@ -1150,11 +1156,10 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	 * Check if the packet belongs to an existing entry
  	 */
--	ipvs = net_ipvs(skb_net(skb));
--
--#ifdef CONFIG_IP_VS_IPV6
--	if (af == AF_INET6) {
--		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
--			goto drop;
--	} else
--#endif
--		if ((ipvs->sysctl_snat_reroute ||
--		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
--		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
--			goto drop;
-+	if (ip_vs_route_me_harder(af, skb))
-+		goto drop;
+ 	cp = pp->conn_out_get(af, skb, &iph, iph.len, 0);
+-	ipvs = net_ipvs(net);
  
- 	IP_VS_DBG_PKT(10, af, pp, skb, 0, "After SNAT");
- 
+ 	if (likely(cp))
+ 		return handle_response(af, skb, pd, cp, iph.len);
+-	if (ipvs->sysctl_nat_icmp_send &&
++	if (sysctl_nat_icmp_send(net) &&
+ 	    (pp->protocol == IPPROTO_TCP ||
+ 	     pp->protocol == IPPROTO_UDP ||
+ 	     pp->protocol == IPPROTO_SCTP)) {
 -- 
 1.7.2.3
 
