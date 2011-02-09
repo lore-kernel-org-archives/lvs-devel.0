@@ -1,47 +1,40 @@
-From: "Hans Schillstrom" <hans@schillstrom.com>
-Subject: Re: [patch] IPVS: precedence bug in ip_vs_sync_switch_mode()
-Date: Mon, 7 Feb 2011 10:34:46 +0100 (CET)
-Message-ID: <div5b80.5723d88b3447e2cae7eaaffaea275f79@obelix.schillstrom.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCH] ipvs: fix timer in get_curr_sync_buff
+Date: Wed, 9 Feb 2011 02:21:59 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1102090214460.3494@ja.ssi.bg>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Dan Carpenter <error27@gmail.com>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, hans.schillstrom@ericsson.com, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, kernel-janitors@vger.kernel.org
-
->---- Original Message ----
->From: Dan Carpenter <error27@gmail.com>
->To: "Wensong Zhang" <wensong@linux-vs.org>
->Cc: "Simon Horman" <horms@verge.net.au>, "Julian Anastasov" <ja@ssi.bg>, hans.schillstrom@ericsson.com, "Patrick McHardy" <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, kernel-janitors@vger.kernel.org
->Sent: Mon, Feb 7, 2011, 9:39 AM
->Subject: [patch] IPVS: precedence bug in ip_vs_sync_switch_mode()
->
->'!' has higher precedence than '&'.  IP_VS_STATE_MASTER is 0x1 so
->the original code is equivelent to if (!ipvs->sync_state) ...
->
-Oops,
-Thanks
-Hans
-
->Signed-off-by: Dan Carpenter <error27@gmail.com>
-Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
-
->
->diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
->index 2a2a836..d1b7298 100644
->--- a/net/netfilter/ipvs/ip_vs_sync.c
->+++ b/net/netfilter/ipvs/ip_vs_sync.c
->@@ -392,7 +392,7 @@ void ip_vs_sync_switch_mode(struct net *net, int mode)
-> {
-> 	struct netns_ipvs *ipvs = net_ipvs(net);
-> 
->-	if (!ipvs->sync_state & IP_VS_STATE_MASTER)
->+	if (!(ipvs->sync_state & IP_VS_STATE_MASTER))
-> 		return;
-> 	if (mode == ipvs->sysctl_sync_ver || !ipvs->sync_buff)
-> 		return;
->--
+Content-Type: TEXT/PLAIN; format="flowed"; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Tinggong Wang <wangtinggong@gmail.com>
 
 
+From: Tinggong Wang <wangtinggong@gmail.com>
+
+ 	Fix get_curr_sync_buff to keep buffer for 2 seconds
+as intended, not just for the current jiffie. By this way
+we will sync more connection structures with single packet.
+
+Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+
+ 	Patch is against lvs-test-2.6 from 09-FEB-2011
+but should apply cleanly to net-next.
+
+--- lvs-test-2.6-7c9989a/net/netfilter/ipvs/ip_vs_sync.c	2011-02-07 13:40:00.000000000 +0200
++++ linux/net/netfilter/ipvs/ip_vs_sync.c	2011-02-09 01:59:46.771351460 +0200
+@@ -374,8 +374,8 @@ get_curr_sync_buff(struct netns_ipvs *ip
+  	struct ip_vs_sync_buff *sb;
+
+  	spin_lock_bh(&ipvs->sync_buff_lock);
+-	if (ipvs->sync_buff && (time == 0 ||
+-	    time_before(jiffies - ipvs->sync_buff->firstuse, time))) {
++	if (ipvs->sync_buff &&
++	    time_after_eq(jiffies - ipvs->sync_buff->firstuse, time)) {
+  		sb = ipvs->sync_buff;
+  		ipvs->sync_buff = NULL;
+  	} else
