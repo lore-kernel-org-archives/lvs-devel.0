@@ -1,28 +1,28 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: remove extra lookups for ICMP packets
-Date: Wed, 16 Feb 2011 07:32:57 +0900
-Message-ID: <20110215223257.GP8703@verge.net.au>
-References: <alpine.LFD.2.00.1102090222020.3494@ja.ssi.bg>
+Subject: Re: [PATCH] ipvs: fix timer in get_curr_sync_buff
+Date: Wed, 16 Feb 2011 07:33:38 +0900
+Message-ID: <20110215223338.GQ8703@verge.net.au>
+References: <alpine.LFD.2.00.1102090214460.3494@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1102090222020.3494@ja.ssi.bg>
+In-Reply-To: <alpine.LFD.2.00.1102090214460.3494@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Tinggong Wang <wangtinggong@gmail.com>
 
-On Wed, Feb 09, 2011 at 02:26:38AM +0200, Julian Anastasov wrote:
+On Wed, Feb 09, 2011 at 02:21:59AM +0200, Julian Anastasov wrote:
 > 
-> 	Remove code that should not be called anymore.
-> Now when ip_vs_out handles replies for local clients at
-> LOCAL_IN hook we do not need to call conn_out_get and
-> handle_response_icmp from ip_vs_in_icmp* because such
-> lookups were already performed for the ICMP packet and no
-> connection was found.
+> From: Tinggong Wang <wangtinggong@gmail.com>
 > 
+> 	Fix get_curr_sync_buff to keep buffer for 2 seconds
+> as intended, not just for the current jiffie. By this way
+> we will sync more connection structures with single packet.
+> 
+> Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
 > Signed-off-by: Julian Anastasov <ja@ssi.bg>
 > ---
 > 
