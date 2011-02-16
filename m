@@ -1,35 +1,30 @@
-From: Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
-Subject: Re: [patch] ldirectord: add a support of "netmask" directive for
- IPv6
-Date: Wed, 16 Feb 2011 16:06:04 +0900 (JST)
-Message-ID: <20110216.160604.229725378.sohgo@sohgo.dyndns.org>
-References: <20110212.195904.39163868.sohgo@sohgo.dyndns.org>
-	<20110215224722.GA29263@verge.net.au>
+From: Patrick McHardy <kaber@trash.net>
+Subject: Re: [GIT PULL nf-next-2.6] IPVS
+Date: Wed, 16 Feb 2011 14:19:58 +0100
+Message-ID: <4D5BCEFE.80106@trash.net>
+References: <1297836293-5942-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20110215224722.GA29263@verge.net.au>
+In-Reply-To: <1297836293-5942-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: horms@verge.net.au, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Patrick Schaaf <netdev@bof.de>
 
-
-From: Simon Horman <horms@verge.net.au>
-|
-> On Sat, Feb 12, 2011 at 07:59:04PM +0900, Sohgo Takeuchi wrote:
->> 
->> I have added a support of "netmask" directive for IPv6 to
->> ldirectord.
->> 
->> Any comments are appreciated.
+On 16.02.2011 07:04, Simon Horman wrote:
+> Hi Patrick,
 > 
-> Hi Takeuchi-san,
+> please consider pulling
+> git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git master
+> go get:
 > 
-> this looks good to me, I've applied it to the agents tree.
+> 	* Removal of unused ICMP code by Julian
+> 	* More informative "no destination available" messages
+> 	  by Patrick Schaaf
+> 	* Fix to buffering of synchronisation messages
+> 	  by Tinggong Wang and Julian
+> 
 
-Hi Simon,
-
-Thank you!
-
--- sohgo
+Pulled, thanks Simon.
