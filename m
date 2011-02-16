@@ -1,74 +1,295 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch] ldirectord: add a support of "netmask" directive for
- IPv6
-Date: Wed, 16 Feb 2011 07:47:22 +0900
-Message-ID: <20110215224722.GA29263@verge.net.au>
-References: <20110212.195904.39163868.sohgo@sohgo.dyndns.org>
+From: Patrick Schaaf <netdev@bof.de>
+Subject: Re: [PATCH] ipvs: make "no destination available" message more
+ informative
+Date: Wed, 16 Feb 2011 06:12:47 +0100
+Message-ID: <1297833167.4466.57.camel@lat1>
+References: <1297429272.8485.18.camel@lat1>
+	 <20110215220407.GN8703@verge.net.au>  <20110215223118.GO8703@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20110212.195904.39163868.sohgo@sohgo.dyndns.org>
+In-Reply-To: <20110215223118.GO8703@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
+To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org
 
-On Sat, Feb 12, 2011 at 07:59:04PM +0900, Sohgo Takeuchi wrote:
-> 
-> Hi
-> 
-> I have added a support of "netmask" directive for IPv6 to
-> ldirectord.
-> 
-> Any comments are appreciated.
+Hi Simon,
 
-Hi Takeuchi-san,
+On Wed, 2011-02-16 at 07:31 +0900, Simon Horman wrote: 
+> > Thanks, this looks good to me.
+> > I will apply it with the minor modification noted below.
+>
+> I have slightly modified the IPv4/IPv6 logic in ip_vs_scheduler_err()
+> and tested the code with both IPv4 and IPv6. It seems to work well :-)
+>
+> I also did some indentation reformatting of ip_vs_scheduler_err()
+> while I was there.
 
-this looks good to me, I've applied it to the agents tree.
+Thank you for taking your time and looking at it. I'm fine with your
+changes. Signoff follows.
 
-> # HG changeset patch
-> # User Sohgo Takeuchi <sohgo@sohgo.dyndns.org>
-> # Date 1297506755 -32400
-> # Node ID 8243bbc2ffa24847833c30248c5edf934f970cb2
-> # Parent  b52fa171ccaeb9565ea4d96ea583a0a67c7122a7
-> add a support of "netmask" directive for IPv6
+The first hunk of your patch deletes an empty line in ip_vs.h that is
+unrelated to the other changes. Fine with me too, just thought I'd note
+it.
+
+> From: Patrick Schaaf <netdev@bof.de>
 > 
-> diff --git a/ldirectord/ldirectord.in b/ldirectord/ldirectord.in
-> --- a/ldirectord/ldirectord.in
-> +++ b/ldirectord/ldirectord.in
-> @@ -659,9 +659,11 @@
+> ipvs: make "no destination available" message more informative
+> 
+> When IP_VS schedulers do not find a destination, they output a terse
+> "WLC: no destination available" message through kernel syslog, which I
+> can not only make sense of because syslog puts them in a logfile
+> together with keepalived checker results.
+> 
+> This patch makes the output a bit more informative, by telling you which
+> virtual service failed to find a destination.
+> 
+> Example output:
+> 
+> kernel: [1539214.552233] IPVS: wlc: TCP 192.168.8.30:22 - no destination available
+> kernel: [1539299.674418] IPVS: wlc: FWM 22 0x00000016 - no destination available
+> 
+> I have tested the code for IPv4 and FWM services, as you can see from
+> the example; I do not have an IPv6 setup to test the third code path
+> with.
+> 
+> To avoid code duplication, I put a new function ip_vs_scheduler_err()
+> into ip_vs_sched.c, and use that from the schedulers instead of calling
+> IP_VS_ERR_RL directly.
+> 
+> Signed-off-by: Simon Horman <horms@verge.net.au>
+
+Signed-off-by: Patrick Schaaf <netdev@bof.de>
+
+> ---
+> 
+> v2
+> * Minor correction to IPv6/IPv4 logic in ip_vs_scheduler_err()
+> * Reformatting of ip_vs_scheduler_err()
+> 
+> ---
+>  include/net/ip_vs.h              |    3 ++-
+>  net/netfilter/ipvs/ip_vs_lblc.c  |    2 +-
+>  net/netfilter/ipvs/ip_vs_lblcr.c |    2 +-
+>  net/netfilter/ipvs/ip_vs_lc.c    |    2 +-
+>  net/netfilter/ipvs/ip_vs_nq.c    |    2 +-
+>  net/netfilter/ipvs/ip_vs_rr.c    |    2 +-
+>  net/netfilter/ipvs/ip_vs_sched.c |   25 +++++++++++++++++++++++++
+>  net/netfilter/ipvs/ip_vs_sed.c   |    2 +-
+>  net/netfilter/ipvs/ip_vs_sh.c    |    2 +-
+>  net/netfilter/ipvs/ip_vs_wlc.c   |    2 +-
+>  net/netfilter/ipvs/ip_vs_wrr.c   |   14 ++++++++------
+>  11 files changed, 43 insertions(+), 15 deletions(-)
+> 
+> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> index 5d75fea..6e91713 100644
+> --- a/include/net/ip_vs.h
+> +++ b/include/net/ip_vs.h
+> @@ -772,7 +772,6 @@ struct ip_vs_app {
+>  	/* ip_vs_app finish */
+>  	int (*done_conn)(struct ip_vs_app *, struct ip_vs_conn *);
 >  
->  Number of seconds for persistent client connections.
+> -
+>  	/* not used now */
+>  	int (*bind_conn)(struct ip_vs_app *, struct ip_vs_conn *,
+>  			 struct ip_vs_protocol *);
+> @@ -1019,6 +1018,8 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+>  extern int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+>  			struct ip_vs_proto_data *pd);
 >  
-> -B<netmask => I<w.x.y.z>
-> +B<netmask => I<w.x.y.z> | I<prefixlen>
+> +extern void ip_vs_scheduler_err(struct ip_vs_service *svc, const char *msg);
+> +
 >  
->  Netmask to be used for granularity of persistent client connections.
-> +IPv4 netmask should be specified in dotted quad notation.
-> +IPv6 netmask should be specified as a prefix length between 1 and 128.
+>  /*
+>   *      IPVS control data and functions (from ip_vs_ctl.c)
+> diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+> index 00b5ffa..4a9c8cd 100644
+> --- a/net/netfilter/ipvs/ip_vs_lblc.c
+> +++ b/net/netfilter/ipvs/ip_vs_lblc.c
+> @@ -510,7 +510,7 @@ ip_vs_lblc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  	/* No cache entry or it is invalid, time to schedule */
+>  	dest = __ip_vs_lblc_schedule(svc);
+>  	if (!dest) {
+> -		IP_VS_ERR_RL("LBLC: no destination available\n");
+> +		ip_vs_scheduler_err(svc, "no destination available");
+>  		return NULL;
+>  	}
 >  
->  B<protocol = tcp> | B<udp> | B<fwm>
+> diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+> index bfa25f1..bd329b1 100644
+> --- a/net/netfilter/ipvs/ip_vs_lblcr.c
+> +++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+> @@ -692,7 +692,7 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  		/* The cache entry is invalid, time to schedule */
+>  		dest = __ip_vs_lblcr_schedule(svc);
+>  		if (!dest) {
+> -			IP_VS_ERR_RL("LBLCR: no destination available\n");
+> +			ip_vs_scheduler_err(svc, "no destination available");
+>  			read_unlock(&svc->sched_lock);
+>  			return NULL;
+>  		}
+> diff --git a/net/netfilter/ipvs/ip_vs_lc.c b/net/netfilter/ipvs/ip_vs_lc.c
+> index 4f69db1..6063800 100644
+> --- a/net/netfilter/ipvs/ip_vs_lc.c
+> +++ b/net/netfilter/ipvs/ip_vs_lc.c
+> @@ -70,7 +70,7 @@ ip_vs_lc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  	}
 >  
-> @@ -1456,8 +1458,17 @@
->  					$1 =~ /(\d+)/ or &config_error($line, "invalid persistent timeout");
->  					$vsrv{persistent} = $1;
->  				} elsif ($rcmd =~ /^netmask\s*=\s*(.*)/) {
-> -					$1 =~ /(\d+\.\d+\.\d+\.\d+)/ or &config_error($line, "invalid netmask");
-> -					$vsrv{netmask} = $1;
-> +					my $val = $1;
-> +					if ($vsrv{addressfamily} == AF_INET6) {
-> +						if ($val !~ /^\d+$/ or ($val < 1 || $val > 128)) {
-> +							&config_error($line, "invalid netmask: a prefix length between 1 and 128 is required");
-> +						}
-> +					} else {
-> +						if ($val !~ /^\d+\.\d+\.\d+\.\d+$/) {
-> +							&config_error($line, "invalid netmask: dotted quad notation is required");
-> +						}
-> +					}
-> +					$vsrv{netmask} = $val;
->  				} elsif ($rcmd =~ /^protocol\s*=\s*(.*)/) {
->  					if ( $1 =~ /(\w+)/ ) {
->  						if ( $vsrv{protocol} eq "fwm" ) {
+>  	if (!least)
+> -		IP_VS_ERR_RL("LC: no destination available\n");
+> +		ip_vs_scheduler_err(svc, "no destination available");
+>  	else
+>  		IP_VS_DBG_BUF(6, "LC: server %s:%u activeconns %d "
+>  			      "inactconns %d\n",
+> diff --git a/net/netfilter/ipvs/ip_vs_nq.c b/net/netfilter/ipvs/ip_vs_nq.c
+> index c413e18..984d9c1 100644
+> --- a/net/netfilter/ipvs/ip_vs_nq.c
+> +++ b/net/netfilter/ipvs/ip_vs_nq.c
+> @@ -99,7 +99,7 @@ ip_vs_nq_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  	}
+>  
+>  	if (!least) {
+> -		IP_VS_ERR_RL("NQ: no destination available\n");
+> +		ip_vs_scheduler_err(svc, "no destination available");
+>  		return NULL;
+>  	}
+>  
+> diff --git a/net/netfilter/ipvs/ip_vs_rr.c b/net/netfilter/ipvs/ip_vs_rr.c
+> index e210f37..c49b388 100644
+> --- a/net/netfilter/ipvs/ip_vs_rr.c
+> +++ b/net/netfilter/ipvs/ip_vs_rr.c
+> @@ -72,7 +72,7 @@ ip_vs_rr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  		q = q->next;
+>  	} while (q != p);
+>  	write_unlock(&svc->sched_lock);
+> -	IP_VS_ERR_RL("RR: no destination available\n");
+> +	ip_vs_scheduler_err(svc, "no destination available");
+>  	return NULL;
+>  
+>    out:
+> diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
+> index 076ebe0..08dbdd5 100644
+> --- a/net/netfilter/ipvs/ip_vs_sched.c
+> +++ b/net/netfilter/ipvs/ip_vs_sched.c
+> @@ -29,6 +29,7 @@
+>  
+>  #include <net/ip_vs.h>
+>  
+> +EXPORT_SYMBOL(ip_vs_scheduler_err);
+>  /*
+>   *  IPVS scheduler list
+>   */
+> @@ -146,6 +147,30 @@ void ip_vs_scheduler_put(struct ip_vs_scheduler *scheduler)
+>  		module_put(scheduler->module);
+>  }
+>  
+> +/*
+> + * Common error output helper for schedulers
+> + */
+> +
+> +void ip_vs_scheduler_err(struct ip_vs_service *svc, const char *msg)
+> +{
+> +	if (svc->fwmark) {
+> +		IP_VS_ERR_RL("%s: FWM %u 0x%08X - %s\n",
+> +			     svc->scheduler->name, svc->fwmark,
+> +			     svc->fwmark, msg);
+> +#ifdef CONFIG_IP_VS_IPV6
+> +	} else if (svc->af == AF_INET6) {
+> +		IP_VS_ERR_RL("%s: %s [%pI6]:%d - %s\n",
+> +			     svc->scheduler->name,
+> +			     ip_vs_proto_name(svc->protocol),
+> +			     &svc->addr.in6, ntohs(svc->port), msg);
+> +#endif
+> +	} else {
+> +		IP_VS_ERR_RL("%s: %s %pI4:%d - %s\n",
+> +			     svc->scheduler->name,
+> +			     ip_vs_proto_name(svc->protocol),
+> +			     &svc->addr.ip, ntohs(svc->port), msg);
+> +	}
+> +}
+>  
+>  /*
+>   *  Register a scheduler in the scheduler list
+> diff --git a/net/netfilter/ipvs/ip_vs_sed.c b/net/netfilter/ipvs/ip_vs_sed.c
+> index 1ab75a9..89ead24 100644
+> --- a/net/netfilter/ipvs/ip_vs_sed.c
+> +++ b/net/netfilter/ipvs/ip_vs_sed.c
+> @@ -87,7 +87,7 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  			goto nextstage;
+>  		}
+>  	}
+> -	IP_VS_ERR_RL("SED: no destination available\n");
+> +	ip_vs_scheduler_err(svc, "no destination available");
+>  	return NULL;
+>  
+>  	/*
+> diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+> index e6cc174..b5e2556 100644
+> --- a/net/netfilter/ipvs/ip_vs_sh.c
+> +++ b/net/netfilter/ipvs/ip_vs_sh.c
+> @@ -223,7 +223,7 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  	    || !(dest->flags & IP_VS_DEST_F_AVAILABLE)
+>  	    || atomic_read(&dest->weight) <= 0
+>  	    || is_overloaded(dest)) {
+> -		IP_VS_ERR_RL("SH: no destination available\n");
+> +		ip_vs_scheduler_err(svc, "no destination available");
+>  		return NULL;
+>  	}
+>  
+> diff --git a/net/netfilter/ipvs/ip_vs_wlc.c b/net/netfilter/ipvs/ip_vs_wlc.c
+> index bbddfdb..fdf0f58 100644
+> --- a/net/netfilter/ipvs/ip_vs_wlc.c
+> +++ b/net/netfilter/ipvs/ip_vs_wlc.c
+> @@ -75,7 +75,7 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  			goto nextstage;
+>  		}
+>  	}
+> -	IP_VS_ERR_RL("WLC: no destination available\n");
+> +	ip_vs_scheduler_err(svc, "no destination available");
+>  	return NULL;
+>  
+>  	/*
+> diff --git a/net/netfilter/ipvs/ip_vs_wrr.c b/net/netfilter/ipvs/ip_vs_wrr.c
+> index 30db633..1ef41f5 100644
+> --- a/net/netfilter/ipvs/ip_vs_wrr.c
+> +++ b/net/netfilter/ipvs/ip_vs_wrr.c
+> @@ -147,8 +147,9 @@ ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  
+>  			if (mark->cl == mark->cl->next) {
+>  				/* no dest entry */
+> -				IP_VS_ERR_RL("WRR: no destination available: "
+> -					     "no destinations present\n");
+> +				ip_vs_scheduler_err(svc,
+> +					"no destination available: "
+> +					"no destinations present");
+>  				dest = NULL;
+>  				goto out;
+>  			}
+> @@ -162,8 +163,8 @@ ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  				 */
+>  				if (mark->cw == 0) {
+>  					mark->cl = &svc->destinations;
+> -					IP_VS_ERR_RL("WRR: no destination "
+> -						     "available\n");
+> +					ip_vs_scheduler_err(svc,
+> +						"no destination available");
+>  					dest = NULL;
+>  					goto out;
+>  				}
+> @@ -185,8 +186,9 @@ ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  			/* back to the start, and no dest is found.
+>  			   It is only possible when all dests are OVERLOADED */
+>  			dest = NULL;
+> -			IP_VS_ERR_RL("WRR: no destination available: "
+> -				     "all destinations are overloaded\n");
+> +			ip_vs_scheduler_err(svc,
+> +				"no destination available: "
+> +				"all destinations are overloaded");
+>  			goto out;
+>  		}
+>  	}
+
+
 
