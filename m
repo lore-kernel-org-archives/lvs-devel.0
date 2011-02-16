@@ -1,43 +1,46 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: make "no destination available" message more
- informative
-Date: Wed, 16 Feb 2011 14:52:46 +0900
-Message-ID: <20110216055246.GC31955@verge.net.au>
-References: <1297429272.8485.18.camel@lat1>
- <20110215220407.GN8703@verge.net.au>
- <20110215223118.GO8703@verge.net.au>
- <1297833167.4466.57.camel@lat1>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1297833167.4466.57.camel@lat1>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [PATCH 1/3] ipvs: fix timer in get_curr_sync_buff
+Date: Wed, 16 Feb 2011 15:04:51 +0900
+Message-ID: <1297836293-5942-2-git-send-email-horms@verge.net.au>
+References: <1297836293-5942-1-git-send-email-horms@verge.net.au>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <1297836293-5942-1-git-send-email-horms@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Patrick Schaaf <netdev@bof.de>
-Cc: lvs-devel@vger.kernel.org
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
+Cc: Julian Anastasov <ja@ssi.bg>, Patrick Schaaf <netdev@bof.de>, Patrick McHardy <kaber@trash.net>, Tinggong Wang <wangtinggong@gmail.com>, Simon Horman <horms@verge.net.au>
 
-On Wed, Feb 16, 2011 at 06:12:47AM +0100, Patrick Schaaf wrote:
-> Hi Simon,
-> 
-> On Wed, 2011-02-16 at 07:31 +0900, Simon Horman wrote: 
-> > > Thanks, this looks good to me.
-> > > I will apply it with the minor modification noted below.
-> >
-> > I have slightly modified the IPv4/IPv6 logic in ip_vs_scheduler_err()
-> > and tested the code with both IPv4 and IPv6. It seems to work well :-)
-> >
-> > I also did some indentation reformatting of ip_vs_scheduler_err()
-> > while I was there.
-> 
-> Thank you for taking your time and looking at it. I'm fine with your
-> changes. Signoff follows.
+From: Tinggong Wang <wangtinggong@gmail.com>
 
-Thanks.
+ 	Fix get_curr_sync_buff to keep buffer for 2 seconds
+as intended, not just for the current jiffie. By this way
+we will sync more connection structures with single packet.
 
-> The first hunk of your patch deletes an empty line in ip_vs.h that is
-> unrelated to the other changes. Fine with me too, just thought I'd note
-> it.
+Signed-off-by: Tinggong Wang <wangtinggong@gmail.com>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-Ooops, I'll remove that hunk.
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index d1b7298..fecf24d 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -374,8 +374,8 @@ get_curr_sync_buff(struct netns_ipvs *ipvs, unsigned long time)
+ 	struct ip_vs_sync_buff *sb;
+ 
+ 	spin_lock_bh(&ipvs->sync_buff_lock);
+-	if (ipvs->sync_buff && (time == 0 ||
+-	    time_before(jiffies - ipvs->sync_buff->firstuse, time))) {
++	if (ipvs->sync_buff &&
++	    time_after_eq(jiffies - ipvs->sync_buff->firstuse, time)) {
+ 		sb = ipvs->sync_buff;
+ 		ipvs->sync_buff = NULL;
+ 	} else
+-- 
+1.7.2.3
+
