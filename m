@@ -1,30 +1,224 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [GIT PULL nf-next-2.6] IPVS
-Date: Wed, 16 Feb 2011 14:19:58 +0100
-Message-ID: <4D5BCEFE.80106@trash.net>
-References: <1297836293-5942-1-git-send-email-horms@verge.net.au>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+From: Changli Gao <xiaosuo@gmail.com>
+Subject: [PATCH] ipvs: unify the formula to estimate the overhead of processing connections
+Date: Sat, 19 Feb 2011 09:18:17 +0800
+Message-ID: <1298078297-25865-1-git-send-email-xiaosuo@gmail.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1297836293-5942-1-git-send-email-horms@verge.net.au>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=gamma;
+        h=domainkey-signature:from:to:cc:subject:date:message-id:x-mailer;
+        bh=hFnUNHl1KNX+wWCda/qUI1hE+h4f6I1Y2b+cHFg5pP0=;
+        b=OkPbcHIXO92KwjCJBtBdGhkP3h+T6F9ehOvDZkl9j7pBU5XXK6ZigtrTW0xZENjz9t
+         n/+gMlW55xy0mE1NHRA4VWqGElDm4vD7svAQvwzDHl/2oBKJF+kr+++qmiVHE83mbrT8
+         jz2syBhArahnIQxKPsJS+jucdAEiL4bLC+o68=
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Patrick Schaaf <netdev@bof.de>
+Cc: "David S. Miller" <davem@davemloft.net>, Patrick McHardy <kaber@trash.net>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>
 
-On 16.02.2011 07:04, Simon Horman wrote:
-> Hi Patrick,
-> 
-> please consider pulling
-> git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git master
-> go get:
-> 
-> 	* Removal of unused ICMP code by Julian
-> 	* More informative "no destination available" messages
-> 	  by Patrick Schaaf
-> 	* Fix to buffering of synchronisation messages
-> 	  by Tinggong Wang and Julian
-> 
+lc and wlc use the same formula, but lblc and lblcr use another one. There
+is no reason for using two different formulas for the lc variants.
 
-Pulled, thanks Simon.
+The formula used by lc is used by all the lc variants in this patch.
+
+Signed-off-by: Changli Gao <xiaosuo@gmail.com>
+---
+ include/net/ip_vs.h              |   14 ++++++++++++++
+ net/netfilter/ipvs/ip_vs_lblc.c  |   13 +++----------
+ net/netfilter/ipvs/ip_vs_lblcr.c |   25 +++++++------------------
+ net/netfilter/ipvs/ip_vs_lc.c    |   16 ----------------
+ net/netfilter/ipvs/ip_vs_wlc.c   |   20 ++------------------
+ 5 files changed, 26 insertions(+), 62 deletions(-)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 5d75fea..d9dac3b 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1241,6 +1241,20 @@ static inline void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp)
+ /* CONFIG_IP_VS_NFCT */
+ #endif
+ 
++static inline unsigned int
++ip_vs_lc_dest_overhead(struct ip_vs_dest *dest)
++{
++	/*
++	 * We think the overhead of processing active connections is 256
++	 * times higher than that of inactive connections in average. (This
++	 * 256 times might not be accurate, we will change it later) We
++	 * use the following formula to estimate the overhead now:
++	 *		  dest->activeconns*256 + dest->inactconns
++	 */
++	return (atomic_read(&dest->activeconns) << 8) +
++		atomic_read(&dest->inactconns);
++}
++
+ #endif /* __KERNEL__ */
+ 
+ #endif	/* _NET_IP_VS_H */
+diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+index 00b5ffa..bb6f7a7 100644
+--- a/net/netfilter/ipvs/ip_vs_lblc.c
++++ b/net/netfilter/ipvs/ip_vs_lblc.c
+@@ -389,12 +389,7 @@ __ip_vs_lblc_schedule(struct ip_vs_service *svc)
+ 	int loh, doh;
+ 
+ 	/*
+-	 * We think the overhead of processing active connections is fifty
+-	 * times higher than that of inactive connections in average. (This
+-	 * fifty times might not be accurate, we will change it later.) We
+-	 * use the following formula to estimate the overhead:
+-	 *                dest->activeconns*50 + dest->inactconns
+-	 * and the load:
++	 * We use the following formula to estimate the load:
+ 	 *                (dest overhead) / dest->weight
+ 	 *
+ 	 * Remember -- no floats in kernel mode!!!
+@@ -410,8 +405,7 @@ __ip_vs_lblc_schedule(struct ip_vs_service *svc)
+ 			continue;
+ 		if (atomic_read(&dest->weight) > 0) {
+ 			least = dest;
+-			loh = atomic_read(&least->activeconns) * 50
+-				+ atomic_read(&least->inactconns);
++			loh = ip_vs_lc_dest_overhead(least);
+ 			goto nextstage;
+ 		}
+ 	}
+@@ -425,8 +419,7 @@ __ip_vs_lblc_schedule(struct ip_vs_service *svc)
+ 		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
+ 			continue;
+ 
+-		doh = atomic_read(&dest->activeconns) * 50
+-			+ atomic_read(&dest->inactconns);
++		doh = ip_vs_lc_dest_overhead(dest);
+ 		if (loh * atomic_read(&dest->weight) >
+ 		    doh * atomic_read(&least->weight)) {
+ 			least = dest;
+diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+index bfa25f1..d5b57e2 100644
+--- a/net/netfilter/ipvs/ip_vs_lblcr.c
++++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+@@ -178,8 +178,7 @@ static inline struct ip_vs_dest *ip_vs_dest_set_min(struct ip_vs_dest_set *set)
+ 
+ 		if ((atomic_read(&least->weight) > 0)
+ 		    && (least->flags & IP_VS_DEST_F_AVAILABLE)) {
+-			loh = atomic_read(&least->activeconns) * 50
+-				+ atomic_read(&least->inactconns);
++			loh = ip_vs_lc_dest_overhead(least);
+ 			goto nextstage;
+ 		}
+ 	}
+@@ -192,8 +191,7 @@ static inline struct ip_vs_dest *ip_vs_dest_set_min(struct ip_vs_dest_set *set)
+ 		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
+ 			continue;
+ 
+-		doh = atomic_read(&dest->activeconns) * 50
+-			+ atomic_read(&dest->inactconns);
++		doh = ip_vs_lc_dest_overhead(dest);
+ 		if ((loh * atomic_read(&dest->weight) >
+ 		     doh * atomic_read(&least->weight))
+ 		    && (dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+@@ -228,8 +226,7 @@ static inline struct ip_vs_dest *ip_vs_dest_set_max(struct ip_vs_dest_set *set)
+ 	list_for_each_entry(e, &set->list, list) {
+ 		most = e->dest;
+ 		if (atomic_read(&most->weight) > 0) {
+-			moh = atomic_read(&most->activeconns) * 50
+-				+ atomic_read(&most->inactconns);
++			moh = ip_vs_lc_dest_overhead(most);
+ 			goto nextstage;
+ 		}
+ 	}
+@@ -239,8 +236,7 @@ static inline struct ip_vs_dest *ip_vs_dest_set_max(struct ip_vs_dest_set *set)
+   nextstage:
+ 	list_for_each_entry(e, &set->list, list) {
+ 		dest = e->dest;
+-		doh = atomic_read(&dest->activeconns) * 50
+-			+ atomic_read(&dest->inactconns);
++		doh = ip_vs_lc_dest_overhead(dest);
+ 		/* moh/mw < doh/dw ==> moh*dw < doh*mw, where mw,dw>0 */
+ 		if ((moh * atomic_read(&dest->weight) <
+ 		     doh * atomic_read(&most->weight))
+@@ -563,12 +559,7 @@ __ip_vs_lblcr_schedule(struct ip_vs_service *svc)
+ 	int loh, doh;
+ 
+ 	/*
+-	 * We think the overhead of processing active connections is fifty
+-	 * times higher than that of inactive connections in average. (This
+-	 * fifty times might not be accurate, we will change it later.) We
+-	 * use the following formula to estimate the overhead:
+-	 *                dest->activeconns*50 + dest->inactconns
+-	 * and the load:
++	 * We use the following formula to estimate the load:
+ 	 *                (dest overhead) / dest->weight
+ 	 *
+ 	 * Remember -- no floats in kernel mode!!!
+@@ -585,8 +576,7 @@ __ip_vs_lblcr_schedule(struct ip_vs_service *svc)
+ 
+ 		if (atomic_read(&dest->weight) > 0) {
+ 			least = dest;
+-			loh = atomic_read(&least->activeconns) * 50
+-				+ atomic_read(&least->inactconns);
++			loh = ip_vs_lc_dest_overhead(least);
+ 			goto nextstage;
+ 		}
+ 	}
+@@ -600,8 +590,7 @@ __ip_vs_lblcr_schedule(struct ip_vs_service *svc)
+ 		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
+ 			continue;
+ 
+-		doh = atomic_read(&dest->activeconns) * 50
+-			+ atomic_read(&dest->inactconns);
++		doh = ip_vs_lc_dest_overhead(dest);
+ 		if (loh * atomic_read(&dest->weight) >
+ 		    doh * atomic_read(&least->weight)) {
+ 			least = dest;
+diff --git a/net/netfilter/ipvs/ip_vs_lc.c b/net/netfilter/ipvs/ip_vs_lc.c
+index 4f69db1..d8e2975 100644
+--- a/net/netfilter/ipvs/ip_vs_lc.c
++++ b/net/netfilter/ipvs/ip_vs_lc.c
+@@ -22,22 +22,6 @@
+ 
+ #include <net/ip_vs.h>
+ 
+-
+-static inline unsigned int
+-ip_vs_lc_dest_overhead(struct ip_vs_dest *dest)
+-{
+-	/*
+-	 * We think the overhead of processing active connections is 256
+-	 * times higher than that of inactive connections in average. (This
+-	 * 256 times might not be accurate, we will change it later) We
+-	 * use the following formula to estimate the overhead now:
+-	 *		  dest->activeconns*256 + dest->inactconns
+-	 */
+-	return (atomic_read(&dest->activeconns) << 8) +
+-		atomic_read(&dest->inactconns);
+-}
+-
+-
+ /*
+  *	Least Connection scheduling
+  */
+diff --git a/net/netfilter/ipvs/ip_vs_wlc.c b/net/netfilter/ipvs/ip_vs_wlc.c
+index bbddfdb..45cbaaf 100644
+--- a/net/netfilter/ipvs/ip_vs_wlc.c
++++ b/net/netfilter/ipvs/ip_vs_wlc.c
+@@ -27,22 +27,6 @@
+ 
+ #include <net/ip_vs.h>
+ 
+-
+-static inline unsigned int
+-ip_vs_wlc_dest_overhead(struct ip_vs_dest *dest)
+-{
+-	/*
+-	 * We think the overhead of processing active connections is 256
+-	 * times higher than that of inactive connections in average. (This
+-	 * 256 times might not be accurate, we will change it later) We
+-	 * use the following formula to estimate the overhead now:
+-	 *		  dest->activeconns*256 + dest->inactconns
+-	 */
+-	return (atomic_read(&dest->activeconns) << 8) +
+-		atomic_read(&dest->inactconns);
+-}
+-
