@@ -1,61 +1,258 @@
-From: "Hans Schillstrom" <hans@schillstrom.com>
-Subject: Re: [PATCH] ipvs: fix dst_lock locking on dest update
-Date: Tue, 22 Feb 2011 10:11:46 +0100 (CET)
-Message-ID: <1bn469k.97a49f75bfb99096f095e3668978fd0f@obelix.schillstrom.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH v2] ipvs: unify the formula to estimate the overhead of
+ processing connections
+Date: Tue, 22 Feb 2011 14:56:36 +0900
+Message-ID: <20110222055553.GA4192@verge.net.au>
+References: <1298107948-9224-1-git-send-email-xiaosuo@gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1298107948-9224-1-git-send-email-xiaosuo@gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
+Content-Transfer-Encoding: 7bit
+To: Changli Gao <xiaosuo@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Patrick McHardy <kaber@trash.net>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
->---- Original Message ----
->From: Julian Anastasov <ja@ssi.bg>
->To: "David S. Miller" <davem@davemloft.net>
->Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, "Simon Horman" <horms@verge.net.au>
->Sent: Tue, Feb 22, 2011, 9:36 AM
->Subject: [PATCH] ipvs: fix dst_lock locking on dest update
->
->Fix dst_lock usage in __ip_vs_update_dest. We need
->_bh locking because destination is updated in user context.
->Can cause lockups on frequent destination updates.
->Problem reported by Simon Kirby. Bug was introduced
->in 2.6.37 from the "ipvs: changes for local real server"
->change.
->
->Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+On Sat, Feb 19, 2011 at 05:32:28PM +0800, Changli Gao wrote:
+> lc and wlc use the same formula, but lblc and lblcr use another one. There
+> is no reason for using two different formulas for the lc variants.
+> 
+> The formula used by lc is used by all the lc variants in this patch.
 
->---
->
-> 	Dave, please apply to net-2.6.
->Patch is for 2.6.37+ and applies to 2.6.38-rc6. There is
->little fuzz when applying to net-next, let me know if
->I should provide patch for other trees.
+Wensong, are you ok with this version of the patch?
 
-The patch seems to be OK in 2.6.38 expcept for line number.
-All my thest runs without any problems.
-
->
->--- linux-2.6.37/net/netfilter/ipvs/ip_vs_ctl.c	2011-01-06 00:01:23.600069161 +0200
->+++ linux/net/netfilter/ipvs/ip_vs_ctl.c	2011-02-19 23:14:44.463250743 +0200
->@@ -810,9 +810,9 @@ __ip_vs_update_dest(struct ip_vs_service
->  	dest->u_threshold = udest->u_threshold;
->  	dest->l_threshold = udest->l_threshold;
->
->-	spin_lock(&dest->dst_lock);
->+	spin_lock_bh(&dest->dst_lock);
->  	ip_vs_dst_reset(dest);
->-	spin_unlock(&dest->dst_lock);
->+	spin_unlock_bh(&dest->dst_lock);
->
->  	if (add)
->  		ip_vs_new_estimator(&dest->stats);
->--
-
-
-Hans Schillstrom <hans@schillstrom.com>
-
-
+> 
+> Signed-off-by: Changli Gao <xiaosuo@gmail.com>
+> ---
+> v2: use ip_vs_dest_conn_overhead() instead.
+>  include/net/ip_vs.h              |   14 ++++++++++++++
+>  net/netfilter/ipvs/ip_vs_lblc.c  |   13 +++----------
+>  net/netfilter/ipvs/ip_vs_lblcr.c |   25 +++++++------------------
+>  net/netfilter/ipvs/ip_vs_lc.c    |   18 +-----------------
+>  net/netfilter/ipvs/ip_vs_wlc.c   |   20 ++------------------
+>  5 files changed, 27 insertions(+), 63 deletions(-)
+> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> index 5d75fea..e80ffb7 100644
+> --- a/include/net/ip_vs.h
+> +++ b/include/net/ip_vs.h
+> @@ -1241,6 +1241,20 @@ static inline void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp)
+>  /* CONFIG_IP_VS_NFCT */
+>  #endif
+>  
+> +static inline unsigned int
+> +ip_vs_dest_conn_overhead(struct ip_vs_dest *dest)
+> +{
+> +	/*
+> +	 * We think the overhead of processing active connections is 256
+> +	 * times higher than that of inactive connections in average. (This
+> +	 * 256 times might not be accurate, we will change it later) We
+> +	 * use the following formula to estimate the overhead now:
+> +	 *		  dest->activeconns*256 + dest->inactconns
+> +	 */
+> +	return (atomic_read(&dest->activeconns) << 8) +
+> +		atomic_read(&dest->inactconns);
+> +}
+> +
+>  #endif /* __KERNEL__ */
+>  
+>  #endif	/* _NET_IP_VS_H */
+> diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+> index 00b5ffa..58ae403 100644
+> --- a/net/netfilter/ipvs/ip_vs_lblc.c
+> +++ b/net/netfilter/ipvs/ip_vs_lblc.c
+> @@ -389,12 +389,7 @@ __ip_vs_lblc_schedule(struct ip_vs_service *svc)
+>  	int loh, doh;
+>  
+>  	/*
+> -	 * We think the overhead of processing active connections is fifty
+> -	 * times higher than that of inactive connections in average. (This
+> -	 * fifty times might not be accurate, we will change it later.) We
+> -	 * use the following formula to estimate the overhead:
+> -	 *                dest->activeconns*50 + dest->inactconns
+> -	 * and the load:
+> +	 * We use the following formula to estimate the load:
+>  	 *                (dest overhead) / dest->weight
+>  	 *
+>  	 * Remember -- no floats in kernel mode!!!
+> @@ -410,8 +405,7 @@ __ip_vs_lblc_schedule(struct ip_vs_service *svc)
+>  			continue;
+>  		if (atomic_read(&dest->weight) > 0) {
+>  			least = dest;
+> -			loh = atomic_read(&least->activeconns) * 50
+> -				+ atomic_read(&least->inactconns);
+> +			loh = ip_vs_dest_conn_overhead(least);
+>  			goto nextstage;
+>  		}
+>  	}
+> @@ -425,8 +419,7 @@ __ip_vs_lblc_schedule(struct ip_vs_service *svc)
+>  		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
+>  			continue;
+>  
+> -		doh = atomic_read(&dest->activeconns) * 50
+> -			+ atomic_read(&dest->inactconns);
+> +		doh = ip_vs_dest_conn_overhead(dest);
+>  		if (loh * atomic_read(&dest->weight) >
+>  		    doh * atomic_read(&least->weight)) {
+>  			least = dest;
+> diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+> index bfa25f1..2ddefe8 100644
+> --- a/net/netfilter/ipvs/ip_vs_lblcr.c
+> +++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+> @@ -178,8 +178,7 @@ static inline struct ip_vs_dest *ip_vs_dest_set_min(struct ip_vs_dest_set *set)
+>  
+>  		if ((atomic_read(&least->weight) > 0)
+>  		    && (least->flags & IP_VS_DEST_F_AVAILABLE)) {
+> -			loh = atomic_read(&least->activeconns) * 50
+> -				+ atomic_read(&least->inactconns);
+> +			loh = ip_vs_dest_conn_overhead(least);
+>  			goto nextstage;
+>  		}
+>  	}
+> @@ -192,8 +191,7 @@ static inline struct ip_vs_dest *ip_vs_dest_set_min(struct ip_vs_dest_set *set)
+>  		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
+>  			continue;
+>  
+> -		doh = atomic_read(&dest->activeconns) * 50
+> -			+ atomic_read(&dest->inactconns);
+> +		doh = ip_vs_dest_conn_overhead(dest);
+>  		if ((loh * atomic_read(&dest->weight) >
+>  		     doh * atomic_read(&least->weight))
+>  		    && (dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+> @@ -228,8 +226,7 @@ static inline struct ip_vs_dest *ip_vs_dest_set_max(struct ip_vs_dest_set *set)
+>  	list_for_each_entry(e, &set->list, list) {
+>  		most = e->dest;
+>  		if (atomic_read(&most->weight) > 0) {
+> -			moh = atomic_read(&most->activeconns) * 50
+> -				+ atomic_read(&most->inactconns);
+> +			moh = ip_vs_dest_conn_overhead(most);
+>  			goto nextstage;
+>  		}
+>  	}
+> @@ -239,8 +236,7 @@ static inline struct ip_vs_dest *ip_vs_dest_set_max(struct ip_vs_dest_set *set)
+>    nextstage:
+>  	list_for_each_entry(e, &set->list, list) {
+>  		dest = e->dest;
+> -		doh = atomic_read(&dest->activeconns) * 50
+> -			+ atomic_read(&dest->inactconns);
+> +		doh = ip_vs_dest_conn_overhead(dest);
+>  		/* moh/mw < doh/dw ==> moh*dw < doh*mw, where mw,dw>0 */
+>  		if ((moh * atomic_read(&dest->weight) <
+>  		     doh * atomic_read(&most->weight))
+> @@ -563,12 +559,7 @@ __ip_vs_lblcr_schedule(struct ip_vs_service *svc)
+>  	int loh, doh;
+>  
+>  	/*
+> -	 * We think the overhead of processing active connections is fifty
+> -	 * times higher than that of inactive connections in average. (This
+> -	 * fifty times might not be accurate, we will change it later.) We
+> -	 * use the following formula to estimate the overhead:
+> -	 *                dest->activeconns*50 + dest->inactconns
+> -	 * and the load:
+> +	 * We use the following formula to estimate the load:
+>  	 *                (dest overhead) / dest->weight
+>  	 *
+>  	 * Remember -- no floats in kernel mode!!!
+> @@ -585,8 +576,7 @@ __ip_vs_lblcr_schedule(struct ip_vs_service *svc)
+>  
+>  		if (atomic_read(&dest->weight) > 0) {
+>  			least = dest;
+> -			loh = atomic_read(&least->activeconns) * 50
+> -				+ atomic_read(&least->inactconns);
+> +			loh = ip_vs_dest_conn_overhead(least);
+>  			goto nextstage;
+>  		}
+>  	}
+> @@ -600,8 +590,7 @@ __ip_vs_lblcr_schedule(struct ip_vs_service *svc)
+>  		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
+>  			continue;
+>  
+> -		doh = atomic_read(&dest->activeconns) * 50
+> -			+ atomic_read(&dest->inactconns);
+> +		doh = ip_vs_dest_conn_overhead(dest);
+>  		if (loh * atomic_read(&dest->weight) >
+>  		    doh * atomic_read(&least->weight)) {
+>  			least = dest;
+> diff --git a/net/netfilter/ipvs/ip_vs_lc.c b/net/netfilter/ipvs/ip_vs_lc.c
+> index 4f69db1..160cb80 100644
+> --- a/net/netfilter/ipvs/ip_vs_lc.c
+> +++ b/net/netfilter/ipvs/ip_vs_lc.c
+> @@ -22,22 +22,6 @@
+>  
+>  #include <net/ip_vs.h>
+>  
+> -
+> -static inline unsigned int
+> -ip_vs_lc_dest_overhead(struct ip_vs_dest *dest)
+> -{
+> -	/*
+> -	 * We think the overhead of processing active connections is 256
+> -	 * times higher than that of inactive connections in average. (This
+> -	 * 256 times might not be accurate, we will change it later) We
+> -	 * use the following formula to estimate the overhead now:
+> -	 *		  dest->activeconns*256 + dest->inactconns
+> -	 */
+> -	return (atomic_read(&dest->activeconns) << 8) +
+> -		atomic_read(&dest->inactconns);
+> -}
+> -
+> -
+>  /*
+>   *	Least Connection scheduling
+>   */
+> @@ -62,7 +46,7 @@ ip_vs_lc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  		if ((dest->flags & IP_VS_DEST_F_OVERLOAD) ||
+>  		    atomic_read(&dest->weight) == 0)
+>  			continue;
+> -		doh = ip_vs_lc_dest_overhead(dest);
+> +		doh = ip_vs_dest_conn_overhead(dest);
+>  		if (!least || doh < loh) {
+>  			least = dest;
+>  			loh = doh;
+> diff --git a/net/netfilter/ipvs/ip_vs_wlc.c b/net/netfilter/ipvs/ip_vs_wlc.c
+> index bbddfdb..db751f5 100644
+> --- a/net/netfilter/ipvs/ip_vs_wlc.c
+> +++ b/net/netfilter/ipvs/ip_vs_wlc.c
+> @@ -27,22 +27,6 @@
+>  
+>  #include <net/ip_vs.h>
+>  
+> -
+> -static inline unsigned int
+> -ip_vs_wlc_dest_overhead(struct ip_vs_dest *dest)
+> -{
+> -	/*
+> -	 * We think the overhead of processing active connections is 256
+> -	 * times higher than that of inactive connections in average. (This
+> -	 * 256 times might not be accurate, we will change it later) We
+> -	 * use the following formula to estimate the overhead now:
+> -	 *		  dest->activeconns*256 + dest->inactconns
+> -	 */
+> -	return (atomic_read(&dest->activeconns) << 8) +
+> -		atomic_read(&dest->inactconns);
+> -}
+> -
+> -
+>  /*
+>   *	Weighted Least Connection scheduling
+>   */
+> @@ -71,7 +55,7 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  		if (!(dest->flags & IP_VS_DEST_F_OVERLOAD) &&
+>  		    atomic_read(&dest->weight) > 0) {
+>  			least = dest;
+> -			loh = ip_vs_wlc_dest_overhead(least);
+> +			loh = ip_vs_dest_conn_overhead(least);
+>  			goto nextstage;
+>  		}
+>  	}
+> @@ -85,7 +69,7 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+>  	list_for_each_entry_continue(dest, &svc->destinations, n_list) {
+>  		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
+>  			continue;
+> -		doh = ip_vs_wlc_dest_overhead(dest);
+> +		doh = ip_vs_dest_conn_overhead(dest);
+>  		if (loh * atomic_read(&dest->weight) >
+>  		    doh * atomic_read(&least->weight)) {
+>  			least = dest;
+> 
