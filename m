@@ -1,23 +1,25 @@
 From: Simon Horman <horms@verge.net.au>
 Subject: Re: [PATCH v2] ipvs: unify the formula to estimate the overhead of
  processing connections
-Date: Thu, 24 Feb 2011 07:46:09 +0900
-Message-ID: <20110223224609.GK7361@verge.net.au>
+Date: Thu, 24 Feb 2011 08:09:00 +0900
+Message-ID: <20110223230859.GN7361@verge.net.au>
 References: <1298107948-9224-1-git-send-email-xiaosuo@gmail.com>
  <20110222055553.GA4192@verge.net.au>
  <AANLkTini6JkOQenO+bzF3AbzePPe1vMtMK_5pqfLifzz@mail.gmail.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <AANLkTini6JkOQenO+bzF3AbzePPe1vMtMK_5pqfLifzz@mail.gmail.com>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="utf-8"
 To: Wensong Zhang <wensong@linux-vs.org>
 Cc: Changli Gao <xiaosuo@gmail.com>, "David S. Miller" <davem@davemloft.net>, Patrick McHardy <kaber@trash.net>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-Thanks, I will send a pull request to Patrick.
+Hi Wensong,
+
+should I add an Acked-by?
 
 On Wed, Feb 23, 2011 at 09:56:54AM +0800, Wensong Zhang wrote:
 > Sure, I am ok with this patch. Thanks!
@@ -402,8 +404,3 @@ read(&dest->weight) >
 > >>
 > >
 >=20
---
-To unsubscribe from this list: send the line "unsubscribe netfilter-dev=
-el" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
