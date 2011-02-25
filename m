@@ -1,169 +1,247 @@
-From: Brian Carpio <bcarpio@broadhop.com>
-Subject: Re: UDP / DHCP / LDIRECTORD
-Date: Thu, 24 Feb 2011 14:46:48 -0800
-Message-ID: <131ECB70A13234449BBD551EC5022B686E3D87B9DF@VA3DIAXVS061.RED001.local>
-References: <20100412020447.GB10826@verge.net.au>
-	<20100413025551.GA25064@verge.net.au>
-	<0CABC52FBCB6564DA3F567CC933D1FF36854D03287@VA3DIAXVS061.RED001.local>
-Reply-To: General Linux-HA mailing list <linux-ha@lists.linux-ha.org>
-Mime-Version: 1.0
+From: Simon Horman <horms@verge.net.au>
+Subject: [PATCH 1/3] ipvs: use hlist instead of list
+Date: Fri, 25 Feb 2011 11:43:30 +0900
+Message-ID: <1298601812-8168-2-git-send-email-horms@verge.net.au>
+References: <1298601812-8168-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1298601812-8168-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Return-path: <linux-ha-bounces@lists.linux-ha.org>
-In-Reply-To: <0CABC52FBCB6564DA3F567CC933D1FF36854D03287@VA3DIAXVS061.RED001.local>
-Content-Language: en-US
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <http://lists.linux-ha.org/mailman/listinfo/linux-ha>,
-	<mailto:linux-ha-request@lists.linux-ha.org?subject=unsubscribe>
-List-Archive: <http://lists.linux-ha.org/pipermail/linux-ha>
-List-Post: <mailto:linux-ha@lists.linux-ha.org>
-List-Help: <mailto:linux-ha-request@lists.linux-ha.org?subject=help>
-List-Subscribe: <http://lists.linux-ha.org/mailman/listinfo/linux-ha>,
-	<mailto:linux-ha-request@lists.linux-ha.org?subject=subscribe>
-Sender: linux-ha-bounces@lists.linux-ha.org
-Errors-To: linux-ha-bounces@lists.linux-ha.org
-To: 'Simon Horman' <horms@verge.net.au>
-Cc: 'lvs-devel' <lvs-devel@vger.kernel.org>, 'Julian Anastasov' <ja@ssi.bg>, "'linux-ha@lists.linux-ha.org'" <linux-ha@lists.linux-ha.org>
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
+Cc: Changli Gao <xiaosuo@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-All,
+From: Changli Gao <xiaosuo@gmail.com>
 
-So this patch has been working for us flawlessly for the last 5 months or so. 
+Signed-off-by: Changli Gao <xiaosuo@gmail.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ include/net/ip_vs.h             |    2 +-
+ net/netfilter/ipvs/ip_vs_conn.c |   52 +++++++++++++++++++++-----------------
+ 2 files changed, 30 insertions(+), 24 deletions(-)
 
-Our infrastructure is 100% virtualized, the other day our loadbalacner01 had a memory leak and crashed, since we use ldirectord with heartbeat loadbalacner02 took over, however ever since then it seems like the single packet UDP scheduling has stopped working. Even if I fail back over the loadbalacner01 VM, I still see all the DHCP traffic going to only one backend server. 
-
-If I run ipvsadm -L -n I can see that ipvsadm thinks both of the backend servers are up since the weight is set to 1 for each server, if I reboot the second backend server the one which is not receiving any traffic then run ipvsadm -L -n I can see its weight go to 0 and in the ldirectord log I can see that its marked dead. 
-
-I have exported one of the loadblancers and one of the backend servers (using VMware) and imported them into another ESXi server, once I boot up the loadbalacner it works perfectly... I'm very stumped why this would happen, is there any additional logging you can think of that I might want to enable to see where the exact problem is?
-
-Here are my configs:
-
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 9399549..17b01b2 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -494,7 +494,7 @@ struct ip_vs_conn_param {
+  *	IP_VS structure allocated for each dynamically scheduled connection
+  */
+ struct ip_vs_conn {
+-	struct list_head        c_list;         /* hashed list heads */
++	struct hlist_node	c_list;         /* hashed list heads */
+ #ifdef CONFIG_NET_NS
+ 	struct net              *net;           /* Name space */
+ #endif
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 83233fe..9c2a517 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -59,7 +59,7 @@ static int ip_vs_conn_tab_mask __read_mostly;
+ /*
+  *  Connection hash table: for input and output packets lookups of IPVS
+  */
+-static struct list_head *ip_vs_conn_tab __read_mostly;
++static struct hlist_head *ip_vs_conn_tab __read_mostly;
  
-/etc/ha.d/ldirectord.conf
+ /*  SLAB cache for IPVS connections */
+ static struct kmem_cache *ip_vs_conn_cachep __read_mostly;
+@@ -201,7 +201,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ 	spin_lock(&cp->lock);
+ 
+ 	if (!(cp->flags & IP_VS_CONN_F_HASHED)) {
+-		list_add(&cp->c_list, &ip_vs_conn_tab[hash]);
++		hlist_add_head(&cp->c_list, &ip_vs_conn_tab[hash]);
+ 		cp->flags |= IP_VS_CONN_F_HASHED;
+ 		atomic_inc(&cp->refcnt);
+ 		ret = 1;
+@@ -234,7 +234,7 @@ static inline int ip_vs_conn_unhash(struct ip_vs_conn *cp)
+ 	spin_lock(&cp->lock);
+ 
+ 	if (cp->flags & IP_VS_CONN_F_HASHED) {
+-		list_del(&cp->c_list);
++		hlist_del(&cp->c_list);
+ 		cp->flags &= ~IP_VS_CONN_F_HASHED;
+ 		atomic_dec(&cp->refcnt);
+ 		ret = 1;
+@@ -259,12 +259,13 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
+ {
+ 	unsigned hash;
+ 	struct ip_vs_conn *cp;
++	struct hlist_node *n;
+ 
+ 	hash = ip_vs_conn_hashkey_param(p, false);
+ 
+ 	ct_read_lock(hash);
+ 
+-	list_for_each_entry(cp, &ip_vs_conn_tab[hash], c_list) {
++	hlist_for_each_entry(cp, n, &ip_vs_conn_tab[hash], c_list) {
+ 		if (cp->af == p->af &&
+ 		    p->cport == cp->cport && p->vport == cp->vport &&
+ 		    ip_vs_addr_equal(p->af, p->caddr, &cp->caddr) &&
+@@ -345,12 +346,13 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
+ {
+ 	unsigned hash;
+ 	struct ip_vs_conn *cp;
++	struct hlist_node *n;
+ 
+ 	hash = ip_vs_conn_hashkey_param(p, false);
+ 
+ 	ct_read_lock(hash);
+ 
+-	list_for_each_entry(cp, &ip_vs_conn_tab[hash], c_list) {
++	hlist_for_each_entry(cp, n, &ip_vs_conn_tab[hash], c_list) {
+ 		if (!ip_vs_conn_net_eq(cp, p->net))
+ 			continue;
+ 		if (p->pe_data && p->pe->ct_match) {
+@@ -394,6 +396,7 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
+ {
+ 	unsigned hash;
+ 	struct ip_vs_conn *cp, *ret=NULL;
++	struct hlist_node *n;
+ 
+ 	/*
+ 	 *	Check for "full" addressed entries
+@@ -402,7 +405,7 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
+ 
+ 	ct_read_lock(hash);
+ 
+-	list_for_each_entry(cp, &ip_vs_conn_tab[hash], c_list) {
++	hlist_for_each_entry(cp, n, &ip_vs_conn_tab[hash], c_list) {
+ 		if (cp->af == p->af &&
+ 		    p->vport == cp->cport && p->cport == cp->dport &&
+ 		    ip_vs_addr_equal(p->af, p->vaddr, &cp->caddr) &&
+@@ -818,7 +821,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+ 		return NULL;
+ 	}
+ 
+-	INIT_LIST_HEAD(&cp->c_list);
++	INIT_HLIST_NODE(&cp->c_list);
+ 	setup_timer(&cp->timer, ip_vs_conn_expire, (unsigned long)cp);
+ 	ip_vs_conn_net_set(cp, p->net);
+ 	cp->af		   = p->af;
+@@ -894,8 +897,8 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+  */
+ #ifdef CONFIG_PROC_FS
+ struct ip_vs_iter_state {
+-	struct seq_net_private p;
+-	struct list_head *l;
++	struct seq_net_private	p;
++	struct hlist_head	*l;
+ };
+ 
+ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
+@@ -903,13 +906,14 @@ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
+ 	int idx;
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_iter_state *iter = seq->private;
++	struct hlist_node *n;
+ 
+ 	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
+ 		ct_read_lock_bh(idx);
+-		list_for_each_entry(cp, &ip_vs_conn_tab[idx], c_list) {
++		hlist_for_each_entry(cp, n, &ip_vs_conn_tab[idx], c_list) {
+ 			if (pos-- == 0) {
+ 				iter->l = &ip_vs_conn_tab[idx];
+-			return cp;
++				return cp;
+ 			}
+ 		}
+ 		ct_read_unlock_bh(idx);
+@@ -930,7 +934,8 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ {
+ 	struct ip_vs_conn *cp = v;
+ 	struct ip_vs_iter_state *iter = seq->private;
+-	struct list_head *e, *l = iter->l;
++	struct hlist_node *e;
++	struct hlist_head *l = iter->l;
+ 	int idx;
+ 
+ 	++*pos;
+@@ -938,15 +943,15 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ 		return ip_vs_conn_array(seq, 0);
+ 
+ 	/* more on same hash chain? */
+-	if ((e = cp->c_list.next) != l)
+-		return list_entry(e, struct ip_vs_conn, c_list);
++	if ((e = cp->c_list.next))
++		return hlist_entry(e, struct ip_vs_conn, c_list);
+ 
+ 	idx = l - ip_vs_conn_tab;
+ 	ct_read_unlock_bh(idx);
+ 
+ 	while (++idx < ip_vs_conn_tab_size) {
+ 		ct_read_lock_bh(idx);
+-		list_for_each_entry(cp, &ip_vs_conn_tab[idx], c_list) {
++		hlist_for_each_entry(cp, e, &ip_vs_conn_tab[idx], c_list) {
+ 			iter->l = &ip_vs_conn_tab[idx];
+ 			return cp;
+ 		}
+@@ -959,7 +964,7 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ static void ip_vs_conn_seq_stop(struct seq_file *seq, void *v)
+ {
+ 	struct ip_vs_iter_state *iter = seq->private;
+-	struct list_head *l = iter->l;
++	struct hlist_head *l = iter->l;
+ 
+ 	if (l)
+ 		ct_read_unlock_bh(l - ip_vs_conn_tab);
+@@ -1148,13 +1153,14 @@ void ip_vs_random_dropentry(struct net *net)
+ 	 */
+ 	for (idx = 0; idx < (ip_vs_conn_tab_size>>5); idx++) {
+ 		unsigned hash = net_random() & ip_vs_conn_tab_mask;
++		struct hlist_node *n;
+ 
+ 		/*
+ 		 *  Lock is actually needed in this loop.
+ 		 */
+ 		ct_write_lock_bh(hash);
+ 
+-		list_for_each_entry(cp, &ip_vs_conn_tab[hash], c_list) {
++		hlist_for_each_entry(cp, n, &ip_vs_conn_tab[hash], c_list) {
+ 			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
+ 				/* connection template */
+ 				continue;
+@@ -1202,12 +1208,14 @@ static void ip_vs_conn_flush(struct net *net)
+ 
+ flush_again:
+ 	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
++		struct hlist_node *n;
++
+ 		/*
+ 		 *  Lock is actually needed in this loop.
+ 		 */
+ 		ct_write_lock_bh(idx);
+ 
+-		list_for_each_entry(cp, &ip_vs_conn_tab[idx], c_list) {
++		hlist_for_each_entry(cp, n, &ip_vs_conn_tab[idx], c_list) {
+ 			if (!ip_vs_conn_net_eq(cp, net))
+ 				continue;
+ 			IP_VS_DBG(4, "del connection\n");
+@@ -1265,8 +1273,7 @@ int __init ip_vs_conn_init(void)
+ 	/*
+ 	 * Allocate the connection hash table and initialize its list heads
+ 	 */
+-	ip_vs_conn_tab = vmalloc(ip_vs_conn_tab_size *
+-				 sizeof(struct list_head));
++	ip_vs_conn_tab = vmalloc(ip_vs_conn_tab_size * sizeof(*ip_vs_conn_tab));
+ 	if (!ip_vs_conn_tab)
+ 		return -ENOMEM;
+ 
+@@ -1286,9 +1293,8 @@ int __init ip_vs_conn_init(void)
+ 	IP_VS_DBG(0, "Each connection entry needs %Zd bytes at least\n",
+ 		  sizeof(struct ip_vs_conn));
+ 
+-	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
+-		INIT_LIST_HEAD(&ip_vs_conn_tab[idx]);
+-	}
++	for (idx = 0; idx < ip_vs_conn_tab_size; idx++)
++		INIT_HLIST_HEAD(&ip_vs_conn_tab[idx]);
+ 
+ 	for (idx = 0; idx < CT_LOCKARRAY_SIZE; idx++)  {
+ 		rwlock_init(&__ip_vs_conntbl_lock_array[idx].l);
+-- 
+1.7.2.3
 
-checktimeout=10
-checkinterval=2
-autoreload=yes
-logfile="/var/log/ldirectord.log"
-quiescent=yes
-virtual=10.10.10.10:67
-        real=backend_server01:67 masq
-        real=backend_server02:67 masq
-        protocol=udp
-        checktype=ping
-        scheduler=rr
-virtual=10.10.10.10:68
-        real=back_endserver01:68 masq
-        real=backend_server02:68 masq
-        protocol=udp
-        checktype=ping
-        scheduler=rr
-
-
-I had to rewrite the ldirectord start script and added the following lines in the start and restart sections:
-
-        ipvsadm -E -u 10.10.10.10:67 -o -s rr
-        ipvsadm -E -u 10.10.10.10:68 -o -s rr
-
-
-Here is the output of ipvsadm -L -n when both backend servers are up (working environment):
-
-
-IP Virtual Server version 1.2.1 (size=4096)
-Prot LocalAddress:Port Scheduler Flags
-  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-UDP  10.10.10.10:67 rr ops
-  -> backend_server01:67            Masq    1      0          16731     
-  -> backend_server02:67            Masq    1      0          17447     
-UDP  192.168.181.67:68 rr ops
-  -> backend_server01:68            Masq    1      0          0         
-  -> backend_server02:68            Masq    1      0          0         
-
-Here is the output of ipvsadm -L -n when both backend servers are up (non-working environment):
-
-[root@lb01 log]# ipvsadm -L -n
-IP Virtual Server version 1.2.1 (size=4096)
-Prot LocalAddress:Port Scheduler Flags
-  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-UDP  10.10.10.10:67 rr ops
-  -> backend_server01:67                 Masq    1      0          1         
-  -> backend_server02:67                 Masq    1      0          0         
-UDP  10.10.10.10:68 rr ops
-  -> backend_server01:68                 Masq    1      0          0         
-  -> backend_server02:68                 Masq    1      0          0         
-
-
-The only difference I see is that in my "Working" environment my InActConn number increases as I send load through it, in my "Non-Working" environment the InActConn stays at 1 the entire time.. Another difference is that in the "Working" environment I am using a DHCP load testing tool one of my developers wrote, whereas in the "NON-Working" environment we are actually getting DHCP traffic from another network device... 
-
-
-
-
-
-Brian Carpio 
-Senior Systems Engineer
-
-Office: +1.303.962.7242
-Mobile: +1.720.319.8617
-Email: bcarpio@broadhop.com
-
-
------Original Message-----
-From: Brian Carpio 
-Sent: Thursday, April 15, 2010 1:57 PM
-To: Simon Horman
-Cc: linux-ha@lists.linux-ha.org; lvs-devel; Julian Anastasov
-Subject: RE: [Linux-HA] UDP / DHCP / LDIRECTORD
-
-Simon,
-
-Thanks again for all of your hard work, I have sent over a million UDP DHCP packets at the new kernel/ipvsadm with the patches applied and currently the only issue (which you know about already) is that ldirectord doesn't know about the -o option which causes a slight issue with heartbeat (but I just put in a cheap fix in my ldirectord start script to edit the services created by ldirectord).. 
-
-So not only have I sent over 1,000,000 packets to this setup but I have also sent them as fast as 10 packets every 3 milliseconds, I plan to do a long term week long test but I don't foresee any issues.. 
-
-Let me know if there is any other testing you would like us to do.. or if you would like me to send out the kernel-2.6.18-128 with the patch and the ipvsadm-1.24-10 rpm with the patch.. 
-
-Thanks again Simon you are the man!!
-
-Brian Carpio
-
-
-
------Original Message-----
-From: Simon Horman [mailto:horms@verge.net.au] 
-Sent: Monday, April 12, 2010 8:56 PM
-To: Brian Carpio
-Cc: linux-ha@lists.linux-ha.org; lvs-devel; Julian Anastasov
-Subject: Re: [Linux-HA] UDP / DHCP / LDIRECTORD
-
-Hi Brian,
-
-here are some patches to test.
-I have only lightly tested them to the extent that they compile and appear to configure a valid service.
-
-You can enable one packet scheduling (OPS) by passing the -o option to ipvsadm when creating a virtual service.
-
-	e.g.
-
-	# ipvsadm -A -u 172.17.60.211:80 -o
-	# ipvsadm -L -n
-	IP Virtual Server version 1.2.1 (size=4096)
-	Prot LocalAddress:Port Scheduler Flags
-	  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-	UDP  172.17.60.211:80 wlc ops
-
-There are three patches:
-
-ops-kernel-2.6.18-128.el5.patch: Patch against CentOS-5.3's 2.6.18-128 kernel.
-ops-ipvsadm-1.24-10: Patch against CentOS-5.3's ipvsadm 1.24-10.
-ops-ipvsadm-1.24: Patch against upstream ipvsadm 1.24
-
-I have not up-ported the code to the 2.6.33 kernel and ipvsadm 1.25 yet.
-
-
-No virus found in this incoming message.
-Checked by AVG - www.avg.com
-Version: 9.0.801 / Virus Database: 271.1.1/2808 - Release Date: 04/13/10 00:32:00
-_______________________________________________
-Linux-HA mailing list
-Linux-HA@lists.linux-ha.org
-http://lists.linux-ha.org/mailman/listinfo/linux-ha
-See also: http://linux-ha.org/ReportingProblems
