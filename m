@@ -1,27 +1,50 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [GIT PULL nf-next-2.6] IPVS
-Date: Sun, 27 Feb 2011 16:25:21 +0100
-Message-ID: <4D6A6CE1.8080701@trash.net>
-References: <1298601812-8168-1-git-send-email-horms@verge.net.au>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+From: Simon Horman <horms@verge.net.au>
+Subject: [PATCH] ipvs: fix dst_lock locking on dest update
+Date: Wed,  2 Mar 2011 07:59:35 +0900
+Message-ID: <1299020375-11362-2-git-send-email-horms@verge.net.au>
+References: <1299020375-11362-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1298601812-8168-1-git-send-email-horms@verge.net.au>
+In-Reply-To: <1299020375-11362-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
+Cc: Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-On 25.02.2011 03:43, Simon Horman wrote:
-> Hi Patrick,
-> 
-> please consider pulling
-> git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git master
-> go get the following changes by Changli.
-> 
->       ipvs: use hlist instead of list
->       ipvs: use enum to instead of magic numbers
->       ipvs: unify the formula to estimate the overhead of processing connections
+From: Julian Anastasov <ja@ssi.bg>
 
-Pulled, thanks Simon.
+	Fix dst_lock usage in __ip_vs_update_dest. We need
+_bh locking because destination is updated in user context.
+Can cause lockups on frequent destination updates.
+Problem reported by Simon Kirby. Bug was introduced
+in 2.6.37 from the "ipvs: changes for local real server"
+change.
+
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 22f7ad5..ba98e13 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -808,9 +808,9 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+ 	dest->u_threshold = udest->u_threshold;
+ 	dest->l_threshold = udest->l_threshold;
+ 
+-	spin_lock(&dest->dst_lock);
++	spin_lock_bh(&dest->dst_lock);
+ 	ip_vs_dst_reset(dest);
+-	spin_unlock(&dest->dst_lock);
++	spin_unlock_bh(&dest->dst_lock);
+ 
+ 	if (add)
+ 		ip_vs_new_estimator(&dest->stats);
+-- 
+1.7.2.3
+
