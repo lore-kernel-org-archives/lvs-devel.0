@@ -1,27 +1,36 @@
-From: Patrick McHardy <kaber@trash.net>
+From: Simon Horman <horms@verge.net.au>
 Subject: Re: [GIT PULL nf-2.6] IPVS
-Date: Wed, 02 Mar 2011 11:58:18 +0100
-Message-ID: <4D6E22CA.2020305@trash.net>
+Date: Thu, 3 Mar 2011 07:06:37 +0900
+Message-ID: <20110302220637.GD8193@verge.net.au>
 References: <1299020375-11362-1-git-send-email-horms@verge.net.au>
+ <4D6E22CA.2020305@trash.net>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1299020375-11362-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4D6E22CA.2020305@trash.net>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
+Content-Transfer-Encoding: 7bit
+To: Patrick McHardy <kaber@trash.net>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>
 
-Am 01.03.2011 23:59, schrieb Simon Horman:
-> Hi Patrick,
+On Wed, Mar 02, 2011 at 11:58:18AM +0100, Patrick McHardy wrote:
+> Am 01.03.2011 23:59, schrieb Simon Horman:
+> > Hi Patrick,
+> > 
+> > please consider pulling
+> > git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git for-patrick
+> > to get the following change from Julian. Please note that it is an nf-2.6
+> > (that is 2.6.38-rc) change.
+> > 
+> > Julian Anastasov (1):
+> >       ipvs: fix dst_lock locking on dest update
 > 
-> please consider pulling
-> git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git for-patrick
-> to get the following change from Julian. Please note that it is an nf-2.6
-> (that is 2.6.38-rc) change.
-> 
-> Julian Anastasov (1):
->       ipvs: fix dst_lock locking on dest update
+> Pulled, thanks Simon.
 
-Pulled, thanks Simon.
+Thanks Patrick.
+
+This change is also needed in nf-next-2.6 but I assume that
+will automatically happen when nf-2.6 is merged into nf-next-2.6,
+possibly via a merge of net-2.6 into net-next-2.6.
