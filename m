@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 08/18] IPVS: Add {sysctl_sync_threshold,period}()
-Date: Sun,  6 Mar 2011 08:45:50 +0900
-Message-ID: <1299368760-14271-9-git-send-email-horms@verge.net.au>
+Subject: [PATCH 07/18] IPVS: Add sysctl_nat_icmp_send()
+Date: Sun,  6 Mar 2011 08:45:49 +0900
+Message-ID: <1299368760-14271-8-git-send-email-horms@verge.net.au>
 References: <1299368760-14271-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1299368760-14271-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,128 +13,56 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
-In preparation for not including sysctl_sync_threshold in
+In preparation for not including sysctl_nat_icmp_send in
 struct netns_ipvs when CONFIG_SYCTL is not defined.
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             |   29 +++++++++++++++++++++++++++++
- net/netfilter/ipvs/ip_vs_core.c |   10 +++++-----
- net/netfilter/ipvs/ip_vs_ctl.c  |    4 ++--
- net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
- 4 files changed, 38 insertions(+), 9 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index efd68dc..4975524 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -908,6 +908,35 @@ struct netns_ipvs {
- 	struct net		*net;            /* Needed by timer routines */
- };
- 
-+#define DEFAULT_SYNC_THRESHOLD	3
-+#define DEFAULT_SYNC_PERIOD	50
-+
-+#ifdef CONFIG_SYSCTL
-+
-+static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
-+{
-+	return ipvs->sysctl_sync_threshold[0];
-+}
-+
-+static inline int sysctl_sync_period(struct netns_ipvs *ipvs)
-+{
-+	return ipvs->sysctl_sync_threshold[1];
-+}
-+
-+#else
-+
-+static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
-+{
-+	return DEFAULT_SYNC_THRESHOLD;
-+}
-+
-+static inline int sysctl_sync_period(struct netns_ipvs *ipvs)
-+{
-+	return DEFAULT_SYNC_PERIOD;
-+}
-+
-+#endif
-+
- /*
-  *      IPVS core functions
-  *      (from ip_vs_core.c)
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index c9b8372..6a0053d 100644
+index 1d8a2a2..c9b8372 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1613,15 +1613,15 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+@@ -607,9 +607,16 @@ static int sysctl_snat_reroute(struct sk_buff *skb)
+ 	return ipvs->sysctl_snat_reroute;
+ }
+ 
++static int sysctl_nat_icmp_send(struct net *net)
++{
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	return ipvs->sysctl_nat_icmp_send;
++}
++
+ #else
+ 
+ static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
++static int sysctl_nat_icmp_send(struct net *net) { return 0; }
+ 
+ #endif
+ 
+@@ -1074,7 +1081,6 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	struct ip_vs_conn *cp;
+-	struct netns_ipvs *ipvs;
+ 
+ 	EnterFunction(11);
+ 
+@@ -1149,11 +1155,10 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	 * Check if the packet belongs to an existing entry
  	 */
+ 	cp = pp->conn_out_get(af, skb, &iph, iph.len, 0);
+-	ipvs = net_ipvs(net);
  
- 	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
--		pkts = ipvs->sysctl_sync_threshold[0];
-+		pkts = sysctl_sync_threshold(ipvs);
- 	else
- 		pkts = atomic_add_return(1, &cp->in_pkts);
- 
- 	if ((ipvs->sync_state & IP_VS_STATE_MASTER) &&
- 	    cp->protocol == IPPROTO_SCTP) {
- 		if ((cp->state == IP_VS_SCTP_S_ESTABLISHED &&
--			(pkts % ipvs->sysctl_sync_threshold[1]
--			 == ipvs->sysctl_sync_threshold[0])) ||
-+			(pkts % sysctl_sync_period(ipvs)
-+			 == sysctl_sync_threshold(ipvs))) ||
- 				(cp->old_state != cp->state &&
- 				 ((cp->state == IP_VS_SCTP_S_CLOSED) ||
- 				  (cp->state == IP_VS_SCTP_S_SHUT_ACK_CLI) ||
-@@ -1635,8 +1635,8 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	else if ((ipvs->sync_state & IP_VS_STATE_MASTER) &&
- 	    (((cp->protocol != IPPROTO_TCP ||
- 	       cp->state == IP_VS_TCP_S_ESTABLISHED) &&
--	      (pkts % ipvs->sysctl_sync_threshold[1]
--	       == ipvs->sysctl_sync_threshold[0])) ||
-+	      (pkts % sysctl_sync_period(ipvs)
-+	       == sysctl_sync_threshold(ipvs))) ||
- 	     ((cp->protocol == IPPROTO_TCP) && (cp->old_state != cp->state) &&
- 	      ((cp->state == IP_VS_TCP_S_FIN_WAIT) ||
- 	       (cp->state == IP_VS_TCP_S_CLOSE) ||
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index fd74527..8cdbf91 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3569,8 +3569,8 @@ int __net_init __ip_vs_control_init(struct net *net)
- 	tbl[idx++].data = &ipvs->sysctl_cache_bypass;
- 	tbl[idx++].data = &ipvs->sysctl_expire_nodest_conn;
- 	tbl[idx++].data = &ipvs->sysctl_expire_quiescent_template;
--	ipvs->sysctl_sync_threshold[0] = 3;
--	ipvs->sysctl_sync_threshold[1] = 50;
-+	ipvs->sysctl_sync_threshold[0] = DEFAULT_SYNC_THRESHOLD;
-+	ipvs->sysctl_sync_threshold[1] = DEFAULT_SYNC_PERIOD;
- 	tbl[idx].data = &ipvs->sysctl_sync_threshold;
- 	tbl[idx++].maxlen = sizeof(ipvs->sysctl_sync_threshold);
- 	tbl[idx++].data = &ipvs->sysctl_nat_icmp_send;
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index fecf24d..d037763 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -650,7 +650,7 @@ control:
- 	if (cp->flags & IP_VS_CONN_F_TEMPLATE) {
- 		int pkts = atomic_add_return(1, &cp->in_pkts);
- 
--		if (pkts % ipvs->sysctl_sync_threshold[1] != 1)
-+		if (pkts % sysctl_sync_period(ipvs) != 1)
- 			return;
- 	}
- 	goto sloop;
-@@ -795,7 +795,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 
- 	if (opt)
- 		memcpy(&cp->in_seq, opt, sizeof(*opt));
--	atomic_set(&cp->in_pkts, ipvs->sysctl_sync_threshold[0]);
-+	atomic_set(&cp->in_pkts, sysctl_sync_threshold(ipvs));
- 	cp->state = state;
- 	cp->old_state = cp->state;
- 	/*
+ 	if (likely(cp))
+ 		return handle_response(af, skb, pd, cp, iph.len);
+-	if (ipvs->sysctl_nat_icmp_send &&
++	if (sysctl_nat_icmp_send(net) &&
+ 	    (pp->protocol == IPPROTO_TCP ||
+ 	     pp->protocol == IPPROTO_UDP ||
+ 	     pp->protocol == IPPROTO_SCTP)) {
 -- 
 1.7.2.3
 
