@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 06/18] IPVS: Add sysctl_snat_reroute()
-Date: Sun,  6 Mar 2011 08:45:48 +0900
-Message-ID: <1299368760-14271-7-git-send-email-horms@verge.net.au>
+Subject: [PATCH 09/18] IPVS: Add sysctl_sync_ver()
+Date: Sun,  6 Mar 2011 08:45:51 +0900
+Message-ID: <1299368760-14271-10-git-send-email-horms@verge.net.au>
 References: <1299368760-14271-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-owner@vger.kernel.org>
 In-Reply-To: <1299368760-14271-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,57 +13,73 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
-In preparation for not including sysctl_snat_reroute in
+In preparation for not including sysctl_sync_ver in
 struct netns_ipvs when CONFIG_SYCTL is not defined.
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_core.c |   20 ++++++++++++++++----
- 1 files changed, 16 insertions(+), 4 deletions(-)
+ include/net/ip_vs.h             |   11 +++++++++++
+ net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
+ 2 files changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 299c7f3..1d8a2a2 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -599,6 +599,20 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 	return NF_DROP;
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 4975524..29cbe39 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -910,6 +910,7 @@ struct netns_ipvs {
+ 
+ #define DEFAULT_SYNC_THRESHOLD	3
+ #define DEFAULT_SYNC_PERIOD	50
++#define DEFAULT_SYNC_VER	1
+ 
+ #ifdef CONFIG_SYSCTL
+ 
+@@ -923,6 +924,11 @@ static inline int sysctl_sync_period(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_sync_threshold[1];
  }
  
-+#ifdef CONFIG_SYSCTL
-+
-+static int sysctl_snat_reroute(struct sk_buff *skb)
++static inline int sysctl_sync_ver(struct netns_ipvs *ipvs)
 +{
-+	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
-+	return ipvs->sysctl_snat_reroute;
++	return ipvs->sysctl_sync_ver;
 +}
 +
-+#else
-+
-+static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
-+
-+#endif
-+
- __sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset)
- {
- 	return csum_fold(skb_checksum(skb, offset, skb->len - offset, 0));
-@@ -633,15 +647,13 @@ static inline int ip_vs_gather_frags_v6(struct sk_buff *skb, u_int32_t user)
+ #else
  
- static int ip_vs_route_me_harder(int af, struct sk_buff *skb)
- {
--	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
--
- #ifdef CONFIG_IP_VS_IPV6
- 	if (af == AF_INET6) {
--		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
-+		if (sysctl_snat_reroute(skb) && ip6_route_me_harder(skb) != 0)
- 			return 1;
- 	} else
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -935,6 +941,11 @@ static inline int sysctl_sync_period(struct netns_ipvs *ipvs)
+ 	return DEFAULT_SYNC_PERIOD;
+ }
+ 
++static inline int sysctl_sync_ver(struct netns_ipvs *ipvs)
++{
++	return DEFAULT_SYNC_VER;
++}
++
  #endif
--		if ((ipvs->sysctl_snat_reroute ||
-+		if ((sysctl_snat_reroute(skb) ||
- 		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
- 		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
- 			return 1;
+ 
+ /*
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index d037763..175d8ee 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -394,7 +394,7 @@ void ip_vs_sync_switch_mode(struct net *net, int mode)
+ 
+ 	if (!(ipvs->sync_state & IP_VS_STATE_MASTER))
+ 		return;
+-	if (mode == ipvs->sysctl_sync_ver || !ipvs->sync_buff)
++	if (mode == sysctl_sync_ver(ipvs) || !ipvs->sync_buff)
+ 		return;
+ 
+ 	spin_lock_bh(&ipvs->sync_buff_lock);
+@@ -521,7 +521,7 @@ void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp)
+ 	unsigned int len, pe_name_len, pad;
+ 
+ 	/* Handle old version of the protocol */
+-	if (ipvs->sysctl_sync_ver == 0) {
++	if (sysctl_sync_ver(ipvs) == 0) {
+ 		ip_vs_sync_conn_v0(net, cp);
+ 		return;
+ 	}
 -- 
 1.7.2.3
 
