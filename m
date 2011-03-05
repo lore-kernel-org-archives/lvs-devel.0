@@ -1,64 +1,65 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 04/18] ipvs: remove unused seqcount stats
-Date: Sun,  6 Mar 2011 08:45:46 +0900
-Message-ID: <1299368760-14271-5-git-send-email-horms@verge.net.au>
-References: <1299368760-14271-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1299368760-14271-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Subject: [patch v2 ] IPVS: Conditionally include sysctl code
+Date: Sun,  6 Mar 2011 08:45:42 +0900
+Message-ID: <1299368760-14271-1-git-send-email-horms@verge.net.au>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>
 
-From: Julian Anastasov <ja@ssi.bg>
+In the case where CONFIG_SYSCTL is undefined related
+control code in IPVS is unnecessary. This patch series
+attempts to make the inclusion of all such code
+conditional on CONFIG_SYSCTL.
 
- 	Remove ustats_seq, IPVS_STAT_INC and IPVS_STAT_ADD
-because they are not used. They were replaced with u64_stats.
+The first 4 patches in this series is Julian's series
+"[PATCH 0/4] ipvs: changes for stats" which are required
+for many of the subsequent changes.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- include/net/ip_vs.h |   17 -----------------
- 1 files changed, 0 insertions(+), 17 deletions(-)
+The changes are available in the git repository at:
+git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git config-sysctl2
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index f17841d..efd68dc 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -376,22 +376,6 @@ struct ip_vs_stats {
- 	spinlock_t		lock;		/* spin lock */
- };
- 
--/*
-- * Helper Macros for per cpu
-- * ipvs->tot_stats->ustats.count
-- */
--#define IPVS_STAT_INC(ipvs, count)	\
--	__this_cpu_inc((ipvs)->ustats->count)
--
--#define IPVS_STAT_ADD(ipvs, count, value) \
--	do {\
--		write_seqcount_begin(per_cpu_ptr((ipvs)->ustats_seq, \
--				     raw_smp_processor_id())); \
--		__this_cpu_add((ipvs)->ustats->count, value); \
--		write_seqcount_end(per_cpu_ptr((ipvs)->ustats_seq, \
--				   raw_smp_processor_id())); \
--	} while (0)
--
- struct dst_entry;
- struct iphdr;
- struct ip_vs_conn;
-@@ -852,7 +836,6 @@ struct netns_ipvs {
- 
- 	/* ip_vs_ctl */
- 	struct ip_vs_stats		tot_stats;  /* Statistics & est. */
--	seqcount_t			*ustats_seq; /* u64 read retry */
- 
- 	int			num_services;    /* no of virtual services */
- 	/* 1/rate drop and drop-entry variables */
--- 
-1.7.2.3
+At this point I would like to merge both Julian's patches
+and my changes.
 
+If this series is successful I will examine what if any similar
+changes are appropriate for the case where CONFIG_PROC_FS is undefined.
+
+Julian Anastasov (4):
+      ipvs: move struct netns_ipvs
+      ipvs: reorganize tot_stats
+      ipvs: zero percpu stats
+      ipvs: remove unused seqcount stats
+
+Simon Horman (14):
+      IPVS: Add ip_vs_route_me_harder()
+      IPVS: Add sysctl_snat_reroute()
+      IPVS: Add sysctl_nat_icmp_send()
+      IPVS: Add {sysctl_sync_threshold,period}()
+      IPVS: Add sysctl_sync_ver()
+      IPVS: Add sysctl_expire_nodest_conn()
+      IPVS: Add expire_quiescent_template()
+      IPVS: Conditinally use sysctl_lblc{r}_expiration
+      IPVS: ip_vs_todrop() becomes a noop when CONFIG_SYSCTL is undefined
+      IPVS: Conditional ip_vs_conntrack_enabled()
+      IPVS: Minimise ip_vs_leave when CONFIG_SYSCTL is undefined
+      IPVS: Conditionally define and use ip_vs_lblc{r}_table
+      IPVS: Add __ip_vs_control_{init,cleanup}_sysctl()
+      IPVS: Conditionally include sysctl members of struct netns_ipvs
+
+ include/net/ip_vs.h              |  189 ++++++++++++++++++++++++++++++++++---
+ include/net/net_namespace.h      |    2 +-
+ include/net/netns/ip_vs.h        |  143 ----------------------------
+ net/netfilter/ipvs/ip_vs_conn.c  |   13 ++-
+ net/netfilter/ipvs/ip_vs_core.c  |  104 +++++++++++++--------
+ net/netfilter/ipvs/ip_vs_ctl.c   |  158 ++++++++++++++++++++-----------
+ net/netfilter/ipvs/ip_vs_est.c   |    3 +-
+ net/netfilter/ipvs/ip_vs_lblc.c  |   31 +++++--
+ net/netfilter/ipvs/ip_vs_lblcr.c |   35 +++++--
+ net/netfilter/ipvs/ip_vs_sync.c  |    8 +-
+ 10 files changed, 404 insertions(+), 282 deletions(-)
+ delete mode 100644 include/net/netns/ip_vs.h
