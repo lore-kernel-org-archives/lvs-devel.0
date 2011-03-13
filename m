@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 3/4] netfilter:ipvs: use kmemdup
-Date: Mon, 14 Mar 2011 07:44:20 +0900
-Message-ID: <1300056261-14709-4-git-send-email-horms@verge.net.au>
+Subject: [PATCH 1/4] ipvs: avoid lookup for fwmark 0
+Date: Mon, 14 Mar 2011 07:44:18 +0900
+Message-ID: <1300056261-14709-2-git-send-email-horms@verge.net.au>
 References: <1300056261-14709-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1300056261-14709-1-git-send-email-horms@verge.net.au>
@@ -11,65 +11,39 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
-Cc: Patrick McHardy <kaber@trash.net>, Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Shan Wei <shanwei@cn.fujitsu.com>
+Cc: Patrick McHardy <kaber@trash.net>, Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-From: Shan Wei <shanwei@cn.fujitsu.com>
+From: Julian Anastasov <ja@ssi.bg>
 
-The semantic patch that makes this output is available
-in scripts/coccinelle/api/memdup.cocci.
+ 	Restore the previous behaviour to lookup for fwmark
+service only when fwmark is non-null. This saves only CPU.
 
-More information about semantic patching is available at
-http://coccinelle.lip6.fr/
-
-Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_pe_sip.c |    9 ++++-----
- net/netfilter/ipvs/ip_vs_sync.c   |    3 +--
- 2 files changed, 5 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
-index 0d83bc0..13d607a 100644
---- a/net/netfilter/ipvs/ip_vs_pe_sip.c
-+++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
-@@ -92,14 +92,13 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
- 	if (get_callid(dptr, dataoff, datalen, &matchoff, &matchlen))
- 		return -EINVAL;
- 
--	p->pe_data = kmalloc(matchlen, GFP_ATOMIC);
--	if (!p->pe_data)
--		return -ENOMEM;
--
- 	/* N.B: pe_data is only set on success,
- 	 * this allows fallback to the default persistence logic on failure
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index c73b0c8..f0369d6 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -411,9 +411,11 @@ ip_vs_service_get(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ 	/*
+ 	 *	Check the table hashed by fwmark first
  	 */
--	memcpy(p->pe_data, dptr + matchoff, matchlen);
-+	p->pe_data = kmemdup(dptr + matchoff, matchlen, GFP_ATOMIC);
-+	if (!p->pe_data)
-+		return -ENOMEM;
-+
- 	p->pe_data_len = matchlen;
+-	svc = __ip_vs_svc_fwm_find(net, af, fwmark);
+-	if (fwmark && svc)
+-		goto out;
++	if (fwmark) {
++		svc = __ip_vs_svc_fwm_find(net, af, fwmark);
++		if (svc)
++			goto out;
++	}
  
- 	return 0;
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index fecf24d..c5d13b0 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -697,13 +697,12 @@ ip_vs_conn_fill_param_sync(struct net *net, int af, union ip_vs_sync_conn *sc,
- 			return 1;
- 		}
- 
--		p->pe_data = kmalloc(pe_data_len, GFP_ATOMIC);
-+		p->pe_data = kmemdup(pe_data, pe_data_len, GFP_ATOMIC);
- 		if (!p->pe_data) {
- 			if (p->pe->module)
- 				module_put(p->pe->module);
- 			return -ENOMEM;
- 		}
--		memcpy(p->pe_data, pe_data, pe_data_len);
- 		p->pe_data_len = pe_data_len;
- 	}
- 	return 0;
+ 	/*
+ 	 *	Check the table hashed by <protocol,addr,port>
 -- 
 1.7.2.3
 
