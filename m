@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 13/20] IPVS: Add expire_quiescent_template()
-Date: Mon, 14 Mar 2011 12:45:39 +0900
-Message-ID: <1300074346-13799-14-git-send-email-horms@verge.net.au>
+Subject: [PATCH 04/20] ipvs: remove unused seqcount stats
+Date: Mon, 14 Mar 2011 12:45:30 +0900
+Message-ID: <1300074346-13799-5-git-send-email-horms@verge.net.au>
 References: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,45 +13,37 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
-In preparation for not including sysctl_expire_quiescent_template in
-struct netns_ipvs when CONFIG_SYCTL is not defined.
+From: Julian Anastasov <ja@ssi.bg>
 
+ 	Remove ustats_seq, IPVS_STAT_INC and IPVS_STAT_ADD
+because they are not used. They were replaced with u64_stats.
+
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
+ include/net/ip_vs.h |   17 -----------------
+ 1 files changed, 0 insertions(+), 17 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 9c2a517..f289306 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -680,6 +680,16 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
- 	atomic_dec(&dest->refcnt);
- }
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 06f5af4..cf014ab 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -377,22 +377,6 @@ struct ip_vs_stats {
+ 	struct ip_vs_stats_user	ustats0;	/* reset values */
+ };
  
-+static int expire_quiescent_template(struct netns_ipvs *ipvs,
-+				     struct ip_vs_dest *dest)
-+{
-+#ifdef CONFIG_SYSCTL
-+	return ipvs->sysctl_expire_quiescent_template &&
-+		(atomic_read(&dest->weight) == 0);
-+#else
-+	return 0;
-+#endif
-+}
- 
- /*
-  *	Checking if the destination of a connection template is available.
-@@ -696,8 +706,7 @@ int ip_vs_check_template(struct ip_vs_conn *ct)
- 	 */
- 	if ((dest == NULL) ||
- 	    !(dest->flags & IP_VS_DEST_F_AVAILABLE) ||
--	    (ipvs->sysctl_expire_quiescent_template &&
--	     (atomic_read(&dest->weight) == 0))) {
-+	    expire_quiescent_template(ipvs, dest)) {
- 		IP_VS_DBG_BUF(9, "check_template: dest not available for "
- 			      "protocol %s s:%s:%d v:%s:%d "
- 			      "-> d:%s:%d\n",
--- 
-1.7.2.3
-
+-/*
+- * Helper Macros for per cpu
+- * ipvs->tot_stats->ustats.count
+- */
+-#define IPVS_STAT_INC(ipvs, count)	\
+-	__this_cpu_inc((ipvs)->ustats->count)
+-
+-#define IPVS_STAT_ADD(ipvs, count, value) \
+-	do {\
+-		write_seqcount_begin(per_cpu_ptr((ipvs)->ustats_seq, \
+-				     raw_smp_processor_id())); \
+-		__this_cpu_add((ipvs)->ustats->count, value); \
+-		write_seqcount_end(per_cpu_ptr((ipvs)->ustats_seq, \
+-				   raw_smp_processor_id())); \
+-	} while (0)
