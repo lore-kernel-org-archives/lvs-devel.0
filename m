@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 06/20] ipvs: rename estimator functions
-Date: Mon, 14 Mar 2011 12:45:32 +0900
-Message-ID: <1300074346-13799-7-git-send-email-horms@verge.net.au>
+Subject: [PATCH 05/20] ipvs: optimize rates reading
+Date: Mon, 14 Mar 2011 12:45:31 +0900
+Message-ID: <1300074346-13799-6-git-send-email-horms@verge.net.au>
 References: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,113 +15,197 @@ Cc: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hans Sc
 
 From: Julian Anastasov <ja@ssi.bg>
 
- 	Rename ip_vs_new_estimator to ip_vs_start_estimator
-and ip_vs_kill_estimator to ip_vs_stop_estimator to better
-match their logic.
+ 	Move the estimator reading from estimation_timer to user
+context. ip_vs_read_estimator() will be used to decode the rate
+values. As the decoded rates are not set by estimation timer
+there is no need to reset them in ip_vs_zero_stats.
+
+ 	There is no need ip_vs_new_estimator() to encode stats
+to rates, if the destination is in trash both the stats and the
+rates are inactive.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h            |    4 ++--
- net/netfilter/ipvs/ip_vs_ctl.c |   12 ++++++------
- net/netfilter/ipvs/ip_vs_est.c |    4 ++--
- 3 files changed, 10 insertions(+), 10 deletions(-)
+ include/net/ip_vs.h            |    2 ++
+ net/netfilter/ipvs/ip_vs_ctl.c |   31 ++++++++++++-------------------
+ net/netfilter/ipvs/ip_vs_est.c |   33 +++++++++++++--------------------
+ 3 files changed, 27 insertions(+), 39 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index e4a39c4..7ca5be2 100644
+index cf014ab..e4a39c4 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1176,8 +1176,8 @@ extern void ip_vs_sync_cleanup(void);
-  */
- extern int ip_vs_estimator_init(void);
- extern void ip_vs_estimator_cleanup(void);
--extern void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats);
--extern void ip_vs_kill_estimator(struct net *net, struct ip_vs_stats *stats);
-+extern void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats);
-+extern void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats);
+@@ -1179,6 +1179,8 @@ extern void ip_vs_estimator_cleanup(void);
+ extern void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats);
+ extern void ip_vs_kill_estimator(struct net *net, struct ip_vs_stats *stats);
  extern void ip_vs_zero_estimator(struct ip_vs_stats *stats);
- extern void ip_vs_read_estimator(struct ip_vs_stats_user *dst,
- 				 struct ip_vs_stats *stats);
++extern void ip_vs_read_estimator(struct ip_vs_stats_user *dst,
++				 struct ip_vs_stats *stats);
+ 
+ /*
+  *	Various IPVS packet transmitters (from ip_vs_xmit.c)
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index c93d806..c5b1234 100644
+index 804fee7..c93d806 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -802,7 +802,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	spin_unlock(&dest->dst_lock);
- 
- 	if (add)
--		ip_vs_new_estimator(svc->net, &dest->stats);
-+		ip_vs_start_estimator(svc->net, &dest->stats);
- 
- 	write_lock_bh(&__ip_vs_svc_lock);
- 
-@@ -1008,7 +1008,7 @@ static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest)
+@@ -715,7 +715,6 @@ static void
+ ip_vs_copy_stats(struct ip_vs_stats_user *dst, struct ip_vs_stats *src)
  {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
+ #define IP_VS_SHOW_STATS_COUNTER(c) dst->c = src->ustats.c - src->ustats0.c
+-#define IP_VS_SHOW_STATS_RATE(r) dst->r = src->ustats.r
  
--	ip_vs_kill_estimator(net, &dest->stats);
-+	ip_vs_stop_estimator(net, &dest->stats);
+ 	spin_lock_bh(&src->lock);
  
- 	/*
- 	 *  Remove it from the d-linked list with the real services.
-@@ -1201,7 +1201,7 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
- 	else if (svc->port == 0)
- 		atomic_inc(&ipvs->nullsvc_counter);
+@@ -725,11 +724,7 @@ ip_vs_copy_stats(struct ip_vs_stats_user *dst, struct ip_vs_stats *src)
+ 	IP_VS_SHOW_STATS_COUNTER(inbytes);
+ 	IP_VS_SHOW_STATS_COUNTER(outbytes);
  
--	ip_vs_new_estimator(net, &svc->stats);
-+	ip_vs_start_estimator(net, &svc->stats);
+-	IP_VS_SHOW_STATS_RATE(cps);
+-	IP_VS_SHOW_STATS_RATE(inpps);
+-	IP_VS_SHOW_STATS_RATE(outpps);
+-	IP_VS_SHOW_STATS_RATE(inbps);
+-	IP_VS_SHOW_STATS_RATE(outbps);
++	ip_vs_read_estimator(dst, src);
  
- 	/* Count only IPv4 services for old get/setsockopt interface */
- 	if (svc->af == AF_INET)
-@@ -1353,7 +1353,7 @@ static void __ip_vs_del_service(struct ip_vs_service *svc)
- 	if (svc->af == AF_INET)
- 		ipvs->num_services--;
+ 	spin_unlock_bh(&src->lock);
+ }
+@@ -742,7 +737,6 @@ ip_vs_zero_stats(struct ip_vs_stats *stats)
+ 	/* get current counters as zero point, rates are zeroed */
  
--	ip_vs_kill_estimator(svc->net, &svc->stats);
-+	ip_vs_stop_estimator(svc->net, &svc->stats);
+ #define IP_VS_ZERO_STATS_COUNTER(c) stats->ustats0.c = stats->ustats.c
+-#define IP_VS_ZERO_STATS_RATE(r) stats->ustats.r = 0
  
- 	/* Unbind scheduler */
- 	old_sched = svc->scheduler;
-@@ -3585,7 +3585,7 @@ int __net_init __ip_vs_control_init(struct net *net)
- 		goto err_dup;
+ 	IP_VS_ZERO_STATS_COUNTER(conns);
+ 	IP_VS_ZERO_STATS_COUNTER(inpkts);
+@@ -750,12 +744,6 @@ ip_vs_zero_stats(struct ip_vs_stats *stats)
+ 	IP_VS_ZERO_STATS_COUNTER(inbytes);
+ 	IP_VS_ZERO_STATS_COUNTER(outbytes);
+ 
+-	IP_VS_ZERO_STATS_RATE(cps);
+-	IP_VS_ZERO_STATS_RATE(inpps);
+-	IP_VS_ZERO_STATS_RATE(outpps);
+-	IP_VS_ZERO_STATS_RATE(inbps);
+-	IP_VS_ZERO_STATS_RATE(outbps);
+-
+ 	ip_vs_zero_estimator(stats);
+ 
+ 	spin_unlock_bh(&stats->lock);
+@@ -2043,6 +2031,7 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
+ 	struct net *net = seq_file_single_net(seq);
+ 	struct ip_vs_stats *tot_stats = &net_ipvs(net)->tot_stats;
+ 	struct ip_vs_cpu_stats *cpustats = tot_stats->cpustats;
++	struct ip_vs_stats_user rates;
+ 	int i;
+ 
+ /*               01234567 01234567 01234567 0123456701234567 0123456701234567 */
+@@ -2069,22 +2058,26 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
  	}
- #endif
--	ip_vs_new_estimator(net, &ipvs->tot_stats);
-+	ip_vs_start_estimator(net, &ipvs->tot_stats);
- 	ipvs->sysctl_tbl = tbl;
- 	/* Schedule defense work */
- 	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
-@@ -3603,7 +3603,7 @@ static void __net_exit __ip_vs_control_cleanup(struct net *net)
- 	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	ip_vs_trash_cleanup(net);
--	ip_vs_kill_estimator(net, &ipvs->tot_stats);
-+	ip_vs_stop_estimator(net, &ipvs->tot_stats);
- 	cancel_delayed_work_sync(&ipvs->defense_work);
- 	cancel_work_sync(&ipvs->defense_work.work);
- #ifdef CONFIG_SYSCTL
+ 	spin_lock_bh(&tot_stats->lock);
++
+ 	seq_printf(seq, "  ~ %8X %8X %8X %16LX %16LX\n\n",
+ 		   tot_stats->ustats.conns, tot_stats->ustats.inpkts,
+ 		   tot_stats->ustats.outpkts,
+ 		   (unsigned long long) tot_stats->ustats.inbytes,
+ 		   (unsigned long long) tot_stats->ustats.outbytes);
+ 
++	ip_vs_read_estimator(&rates, tot_stats);
++
++	spin_unlock_bh(&tot_stats->lock);
++
+ /*                 01234567 01234567 01234567 0123456701234567 0123456701234567 */
+ 	seq_puts(seq,
+ 		   "     Conns/s   Pkts/s   Pkts/s          Bytes/s          Bytes/s\n");
+ 	seq_printf(seq, "    %8X %8X %8X %16X %16X\n",
+-			tot_stats->ustats.cps,
+-			tot_stats->ustats.inpps,
+-			tot_stats->ustats.outpps,
+-			tot_stats->ustats.inbps,
+-			tot_stats->ustats.outbps);
+-	spin_unlock_bh(&tot_stats->lock);
++			rates.cps,
++			rates.inpps,
++			rates.outpps,
++			rates.inbps,
++			rates.outbps);
+ 
+ 	return 0;
+ }
 diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index fda75be..8c8766c 100644
+index a850087..fda75be 100644
 --- a/net/netfilter/ipvs/ip_vs_est.c
 +++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -139,7 +139,7 @@ static void estimation_timer(unsigned long arg)
- 	mod_timer(&ipvs->est_timer, jiffies + 2*HZ);
- }
+@@ -117,27 +117,22 @@ static void estimation_timer(unsigned long arg)
+ 		rate = (n_conns - e->last_conns) << 9;
+ 		e->last_conns = n_conns;
+ 		e->cps += ((long)rate - (long)e->cps) >> 2;
+-		s->ustats.cps = (e->cps + 0x1FF) >> 10;
  
--void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats)
-+void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats)
- {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_estimator *est = &stats->est;
-@@ -151,7 +151,7 @@ void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats)
+ 		rate = (n_inpkts - e->last_inpkts) << 9;
+ 		e->last_inpkts = n_inpkts;
+ 		e->inpps += ((long)rate - (long)e->inpps) >> 2;
+-		s->ustats.inpps = (e->inpps + 0x1FF) >> 10;
+ 
+ 		rate = (n_outpkts - e->last_outpkts) << 9;
+ 		e->last_outpkts = n_outpkts;
+ 		e->outpps += ((long)rate - (long)e->outpps) >> 2;
+-		s->ustats.outpps = (e->outpps + 0x1FF) >> 10;
+ 
+ 		rate = (n_inbytes - e->last_inbytes) << 4;
+ 		e->last_inbytes = n_inbytes;
+ 		e->inbps += ((long)rate - (long)e->inbps) >> 2;
+-		s->ustats.inbps = (e->inbps + 0xF) >> 5;
+ 
+ 		rate = (n_outbytes - e->last_outbytes) << 4;
+ 		e->last_outbytes = n_outbytes;
+ 		e->outbps += ((long)rate - (long)e->outbps) >> 2;
+-		s->ustats.outbps = (e->outbps + 0xF) >> 5;
+ 		spin_unlock(&s->lock);
+ 	}
+ 	spin_unlock(&ipvs->est_lock);
+@@ -151,21 +146,6 @@ void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats)
+ 
+ 	INIT_LIST_HEAD(&est->list);
+ 
+-	est->last_conns = stats->ustats.conns;
+-	est->cps = stats->ustats.cps<<10;
+-
+-	est->last_inpkts = stats->ustats.inpkts;
+-	est->inpps = stats->ustats.inpps<<10;
+-
+-	est->last_outpkts = stats->ustats.outpkts;
+-	est->outpps = stats->ustats.outpps<<10;
+-
+-	est->last_inbytes = stats->ustats.inbytes;
+-	est->inbps = stats->ustats.inbps<<5;
+-
+-	est->last_outbytes = stats->ustats.outbytes;
+-	est->outbps = stats->ustats.outbps<<5;
+-
+ 	spin_lock_bh(&ipvs->est_lock);
+ 	list_add(&est->list, &ipvs->est_list);
  	spin_unlock_bh(&ipvs->est_lock);
+@@ -199,6 +179,19 @@ void ip_vs_zero_estimator(struct ip_vs_stats *stats)
+ 	est->outbps = 0;
  }
  
--void ip_vs_kill_estimator(struct net *net, struct ip_vs_stats *stats)
-+void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats)
++/* Get decoded rates */
++void ip_vs_read_estimator(struct ip_vs_stats_user *dst,
++			  struct ip_vs_stats *stats)
++{
++	struct ip_vs_estimator *e = &stats->est;
++
++	dst->cps = (e->cps + 0x1FF) >> 10;
++	dst->inpps = (e->inpps + 0x1FF) >> 10;
++	dst->outpps = (e->outpps + 0x1FF) >> 10;
++	dst->inbps = (e->inbps + 0xF) >> 5;
++	dst->outbps = (e->outbps + 0xF) >> 5;
++}
++
+ static int __net_init __ip_vs_estimator_init(struct net *net)
  {
  	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_estimator *est = &stats->est;
 -- 
 1.7.2.3
 
