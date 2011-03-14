@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 07/24] ipvs: properly zero stats and rates
-Date: Mon, 14 Mar 2011 18:06:19 +0900
-Message-ID: <1300093596-3824-8-git-send-email-horms@verge.net.au>
+Subject: [PATCH 10/24] ipvs: rename estimator functions
+Date: Mon, 14 Mar 2011 18:06:22 +0900
+Message-ID: <1300093596-3824-11-git-send-email-horms@verge.net.au>
 References: <1300093596-3824-1-git-send-email-horms@verge.net.au>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1300093596-3824-1-git-send-email-horms@verge.net.au>
@@ -15,228 +15,113 @@ Cc: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hans Sc
 
 From: Julian Anastasov <ja@ssi.bg>
 
- 	Currently, the new percpu counters are not zeroed and
-the zero commands do not work as expected, we still show the old
-sum of percpu values. OTOH, we can not reset the percpu counters
-from user context without causing the incrementing to use old
-and bogus values.
-
- 	So, as Eric Dumazet suggested fix that by moving all overhead
-to stats reading in user context. Do not introduce overhead in
-timer context (estimator) and incrementing (packet handling in
-softirqs).
-
- 	The new ustats0 field holds the zero point for all
-counter values, the rates always use 0 as base value as before.
-When showing the values to user space just give the difference
-between counters and the base values. The only drawback is that
-percpu stats are not zeroed, they are accessible only from /proc
-and are new interface, so it should not be a compatibility problem
-as long as the sum stats are correct after zeroing.
+ 	Rename ip_vs_new_estimator to ip_vs_start_estimator
+and ip_vs_kill_estimator to ip_vs_stop_estimator to better
+match their logic.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Acked-by: Eric Dumazet <eric.dumazet@gmail.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h            |    1 +
- net/netfilter/ipvs/ip_vs_ctl.c |   96 +++++++++++++++++++++++++---------------
- net/netfilter/ipvs/ip_vs_est.c |   15 +++---
- 3 files changed, 69 insertions(+), 43 deletions(-)
+ include/net/ip_vs.h            |    4 ++--
+ net/netfilter/ipvs/ip_vs_ctl.c |   12 ++++++------
+ net/netfilter/ipvs/ip_vs_est.c |    4 ++--
+ 3 files changed, 10 insertions(+), 10 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 9db750d..06f5af4 100644
+index e4a39c4..7ca5be2 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -374,6 +374,7 @@ struct ip_vs_stats {
- 	struct ip_vs_estimator	est;		/* estimator */
- 	struct ip_vs_cpu_stats	*cpustats;	/* per cpu counters */
- 	spinlock_t		lock;		/* spin lock */
-+	struct ip_vs_stats_user	ustats0;	/* reset values */
- };
- 
- /*
+@@ -1176,8 +1176,8 @@ extern void ip_vs_sync_cleanup(void);
+  */
+ extern int ip_vs_estimator_init(void);
+ extern void ip_vs_estimator_cleanup(void);
+-extern void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats);
+-extern void ip_vs_kill_estimator(struct net *net, struct ip_vs_stats *stats);
++extern void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats);
++extern void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats);
+ extern void ip_vs_zero_estimator(struct ip_vs_stats *stats);
+ extern void ip_vs_read_estimator(struct ip_vs_stats_user *dst,
+ 				 struct ip_vs_stats *stats);
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index a2a67ad..804fee7 100644
+index c93d806..c5b1234 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -711,13 +711,51 @@ static void ip_vs_trash_cleanup(struct net *net)
+@@ -802,7 +802,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+ 	spin_unlock(&dest->dst_lock);
+ 
+ 	if (add)
+-		ip_vs_new_estimator(svc->net, &dest->stats);
++		ip_vs_start_estimator(svc->net, &dest->stats);
+ 
+ 	write_lock_bh(&__ip_vs_svc_lock);
+ 
+@@ -1008,7 +1008,7 @@ static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+-	ip_vs_kill_estimator(net, &dest->stats);
++	ip_vs_stop_estimator(net, &dest->stats);
+ 
+ 	/*
+ 	 *  Remove it from the d-linked list with the real services.
+@@ -1201,7 +1201,7 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+ 	else if (svc->port == 0)
+ 		atomic_inc(&ipvs->nullsvc_counter);
+ 
+-	ip_vs_new_estimator(net, &svc->stats);
++	ip_vs_start_estimator(net, &svc->stats);
+ 
+ 	/* Count only IPv4 services for old get/setsockopt interface */
+ 	if (svc->af == AF_INET)
+@@ -1353,7 +1353,7 @@ static void __ip_vs_del_service(struct ip_vs_service *svc)
+ 	if (svc->af == AF_INET)
+ 		ipvs->num_services--;
+ 
+-	ip_vs_kill_estimator(svc->net, &svc->stats);
++	ip_vs_stop_estimator(svc->net, &svc->stats);
+ 
+ 	/* Unbind scheduler */
+ 	old_sched = svc->scheduler;
+@@ -3585,7 +3585,7 @@ int __net_init __ip_vs_control_init(struct net *net)
+ 		goto err_dup;
  	}
- }
+ #endif
+-	ip_vs_new_estimator(net, &ipvs->tot_stats);
++	ip_vs_start_estimator(net, &ipvs->tot_stats);
+ 	ipvs->sysctl_tbl = tbl;
+ 	/* Schedule defense work */
+ 	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
+@@ -3603,7 +3603,7 @@ static void __net_exit __ip_vs_control_cleanup(struct net *net)
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
  
-+static void
-+ip_vs_copy_stats(struct ip_vs_stats_user *dst, struct ip_vs_stats *src)
-+{
-+#define IP_VS_SHOW_STATS_COUNTER(c) dst->c = src->ustats.c - src->ustats0.c
-+#define IP_VS_SHOW_STATS_RATE(r) dst->r = src->ustats.r
-+
-+	spin_lock_bh(&src->lock);
-+
-+	IP_VS_SHOW_STATS_COUNTER(conns);
-+	IP_VS_SHOW_STATS_COUNTER(inpkts);
-+	IP_VS_SHOW_STATS_COUNTER(outpkts);
-+	IP_VS_SHOW_STATS_COUNTER(inbytes);
-+	IP_VS_SHOW_STATS_COUNTER(outbytes);
-+
-+	IP_VS_SHOW_STATS_RATE(cps);
-+	IP_VS_SHOW_STATS_RATE(inpps);
-+	IP_VS_SHOW_STATS_RATE(outpps);
-+	IP_VS_SHOW_STATS_RATE(inbps);
-+	IP_VS_SHOW_STATS_RATE(outbps);
-+
-+	spin_unlock_bh(&src->lock);
-+}
- 
- static void
- ip_vs_zero_stats(struct ip_vs_stats *stats)
- {
- 	spin_lock_bh(&stats->lock);
- 
--	memset(&stats->ustats, 0, sizeof(stats->ustats));
-+	/* get current counters as zero point, rates are zeroed */
-+
-+#define IP_VS_ZERO_STATS_COUNTER(c) stats->ustats0.c = stats->ustats.c
-+#define IP_VS_ZERO_STATS_RATE(r) stats->ustats.r = 0
-+
-+	IP_VS_ZERO_STATS_COUNTER(conns);
-+	IP_VS_ZERO_STATS_COUNTER(inpkts);
-+	IP_VS_ZERO_STATS_COUNTER(outpkts);
-+	IP_VS_ZERO_STATS_COUNTER(inbytes);
-+	IP_VS_ZERO_STATS_COUNTER(outbytes);
-+
-+	IP_VS_ZERO_STATS_RATE(cps);
-+	IP_VS_ZERO_STATS_RATE(inpps);
-+	IP_VS_ZERO_STATS_RATE(outpps);
-+	IP_VS_ZERO_STATS_RATE(inbps);
-+	IP_VS_ZERO_STATS_RATE(outbps);
-+
- 	ip_vs_zero_estimator(stats);
- 
- 	spin_unlock_bh(&stats->lock);
-@@ -1963,7 +2001,7 @@ static const struct file_operations ip_vs_info_fops = {
- static int ip_vs_stats_show(struct seq_file *seq, void *v)
- {
- 	struct net *net = seq_file_single_net(seq);
--	struct ip_vs_stats *tot_stats = &net_ipvs(net)->tot_stats;
-+	struct ip_vs_stats_user show;
- 
- /*               01234567 01234567 01234567 0123456701234567 0123456701234567 */
- 	seq_puts(seq,
-@@ -1971,22 +2009,18 @@ static int ip_vs_stats_show(struct seq_file *seq, void *v)
- 	seq_printf(seq,
- 		   "   Conns  Packets  Packets            Bytes            Bytes\n");
- 
--	spin_lock_bh(&tot_stats->lock);
--	seq_printf(seq, "%8X %8X %8X %16LX %16LX\n\n", tot_stats->ustats.conns,
--		   tot_stats->ustats.inpkts, tot_stats->ustats.outpkts,
--		   (unsigned long long) tot_stats->ustats.inbytes,
--		   (unsigned long long) tot_stats->ustats.outbytes);
-+	ip_vs_copy_stats(&show, &net_ipvs(net)->tot_stats);
-+	seq_printf(seq, "%8X %8X %8X %16LX %16LX\n\n", show.conns,
-+		   show.inpkts, show.outpkts,
-+		   (unsigned long long) show.inbytes,
-+		   (unsigned long long) show.outbytes);
- 
- /*                 01234567 01234567 01234567 0123456701234567 0123456701234567 */
- 	seq_puts(seq,
- 		   " Conns/s   Pkts/s   Pkts/s          Bytes/s          Bytes/s\n");
--	seq_printf(seq,"%8X %8X %8X %16X %16X\n",
--			tot_stats->ustats.cps,
--			tot_stats->ustats.inpps,
--			tot_stats->ustats.outpps,
--			tot_stats->ustats.inbps,
--			tot_stats->ustats.outbps);
--	spin_unlock_bh(&tot_stats->lock);
-+	seq_printf(seq, "%8X %8X %8X %16X %16X\n",
-+			show.cps, show.inpps, show.outpps,
-+			show.inbps, show.outbps);
- 
- 	return 0;
- }
-@@ -2298,14 +2332,6 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 
- 
- static void
--ip_vs_copy_stats(struct ip_vs_stats_user *dst, struct ip_vs_stats *src)
--{
--	spin_lock_bh(&src->lock);
--	memcpy(dst, &src->ustats, sizeof(*dst));
--	spin_unlock_bh(&src->lock);
--}
--
--static void
- ip_vs_copy_service(struct ip_vs_service_entry *dst, struct ip_vs_service *src)
- {
- 	dst->protocol = src->protocol;
-@@ -2691,31 +2717,29 @@ static const struct nla_policy ip_vs_dest_policy[IPVS_DEST_ATTR_MAX + 1] = {
- static int ip_vs_genl_fill_stats(struct sk_buff *skb, int container_type,
- 				 struct ip_vs_stats *stats)
- {
-+	struct ip_vs_stats_user ustats;
- 	struct nlattr *nl_stats = nla_nest_start(skb, container_type);
- 	if (!nl_stats)
- 		return -EMSGSIZE;
- 
--	spin_lock_bh(&stats->lock);
--
--	NLA_PUT_U32(skb, IPVS_STATS_ATTR_CONNS, stats->ustats.conns);
--	NLA_PUT_U32(skb, IPVS_STATS_ATTR_INPKTS, stats->ustats.inpkts);
--	NLA_PUT_U32(skb, IPVS_STATS_ATTR_OUTPKTS, stats->ustats.outpkts);
--	NLA_PUT_U64(skb, IPVS_STATS_ATTR_INBYTES, stats->ustats.inbytes);
--	NLA_PUT_U64(skb, IPVS_STATS_ATTR_OUTBYTES, stats->ustats.outbytes);
--	NLA_PUT_U32(skb, IPVS_STATS_ATTR_CPS, stats->ustats.cps);
--	NLA_PUT_U32(skb, IPVS_STATS_ATTR_INPPS, stats->ustats.inpps);
--	NLA_PUT_U32(skb, IPVS_STATS_ATTR_OUTPPS, stats->ustats.outpps);
--	NLA_PUT_U32(skb, IPVS_STATS_ATTR_INBPS, stats->ustats.inbps);
--	NLA_PUT_U32(skb, IPVS_STATS_ATTR_OUTBPS, stats->ustats.outbps);
-+	ip_vs_copy_stats(&ustats, stats);
- 
--	spin_unlock_bh(&stats->lock);
-+	NLA_PUT_U32(skb, IPVS_STATS_ATTR_CONNS, ustats.conns);
-+	NLA_PUT_U32(skb, IPVS_STATS_ATTR_INPKTS, ustats.inpkts);
-+	NLA_PUT_U32(skb, IPVS_STATS_ATTR_OUTPKTS, ustats.outpkts);
-+	NLA_PUT_U64(skb, IPVS_STATS_ATTR_INBYTES, ustats.inbytes);
-+	NLA_PUT_U64(skb, IPVS_STATS_ATTR_OUTBYTES, ustats.outbytes);
-+	NLA_PUT_U32(skb, IPVS_STATS_ATTR_CPS, ustats.cps);
-+	NLA_PUT_U32(skb, IPVS_STATS_ATTR_INPPS, ustats.inpps);
-+	NLA_PUT_U32(skb, IPVS_STATS_ATTR_OUTPPS, ustats.outpps);
-+	NLA_PUT_U32(skb, IPVS_STATS_ATTR_INBPS, ustats.inbps);
-+	NLA_PUT_U32(skb, IPVS_STATS_ATTR_OUTBPS, ustats.outbps);
- 
- 	nla_nest_end(skb, nl_stats);
- 
- 	return 0;
- 
- nla_put_failure:
--	spin_unlock_bh(&stats->lock);
- 	nla_nest_cancel(skb, nl_stats);
- 	return -EMSGSIZE;
- }
+ 	ip_vs_trash_cleanup(net);
+-	ip_vs_kill_estimator(net, &ipvs->tot_stats);
++	ip_vs_stop_estimator(net, &ipvs->tot_stats);
+ 	cancel_delayed_work_sync(&ipvs->defense_work);
+ 	cancel_work_sync(&ipvs->defense_work.work);
+ #ifdef CONFIG_SYSCTL
 diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index b3751cf..a850087 100644
+index fda75be..8c8766c 100644
 --- a/net/netfilter/ipvs/ip_vs_est.c
 +++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -184,13 +184,14 @@ void ip_vs_kill_estimator(struct net *net, struct ip_vs_stats *stats)
- void ip_vs_zero_estimator(struct ip_vs_stats *stats)
+@@ -139,7 +139,7 @@ static void estimation_timer(unsigned long arg)
+ 	mod_timer(&ipvs->est_timer, jiffies + 2*HZ);
+ }
+ 
+-void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats)
++void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats)
  {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
  	struct ip_vs_estimator *est = &stats->est;
--
--	/* set counters zero, caller must hold the stats->lock lock */
--	est->last_inbytes = 0;
--	est->last_outbytes = 0;
--	est->last_conns = 0;
--	est->last_inpkts = 0;
--	est->last_outpkts = 0;
-+	struct ip_vs_stats_user *u = &stats->ustats;
-+
-+	/* reset counters, caller must hold the stats->lock lock */
-+	est->last_inbytes = u->inbytes;
-+	est->last_outbytes = u->outbytes;
-+	est->last_conns = u->conns;
-+	est->last_inpkts = u->inpkts;
-+	est->last_outpkts = u->outpkts;
- 	est->cps = 0;
- 	est->inpps = 0;
- 	est->outpps = 0;
+@@ -151,7 +151,7 @@ void ip_vs_new_estimator(struct net *net, struct ip_vs_stats *stats)
+ 	spin_unlock_bh(&ipvs->est_lock);
+ }
+ 
+-void ip_vs_kill_estimator(struct net *net, struct ip_vs_stats *stats)
++void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_estimator *est = &stats->est;
 -- 
 1.7.2.3
 
