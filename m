@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 15/20] IPVS: ip_vs_todrop() becomes a noop when CONFIG_SYSCTL is undefined
-Date: Mon, 14 Mar 2011 12:45:41 +0900
-Message-ID: <1300074346-13799-16-git-send-email-horms@verge.net.au>
+Subject: [PATCH 08/20] IPVS: Add sysctl_snat_reroute()
+Date: Mon, 14 Mar 2011 12:45:34 +0900
+Message-ID: <1300074346-13799-9-git-send-email-horms@verge.net.au>
 References: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,33 +13,41 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
+In preparation for not including sysctl_snat_reroute in
+struct netns_ipvs when CONFIG_SYCTL is not defined.
+
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c |   20 ++++++++++++++++----
+ 1 files changed, 16 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 687ef18..77ebece 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1253,6 +1253,7 @@ extern int ip_vs_icmp_xmit_v6
-  int offset);
- #endif
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 299c7f3..1d8a2a2 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -599,6 +599,20 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	return NF_DROP;
+ }
  
 +#ifdef CONFIG_SYSCTL
- /*
-  *	This is a simple mechanism to ignore packets when
-  *	we are loaded. Just set ip_vs_drop_rate to 'n' and
-@@ -1268,6 +1269,9 @@ static inline int ip_vs_todrop(struct netns_ipvs *ipvs)
- 	ipvs->drop_counter = ipvs->drop_rate;
- 	return 1;
- }
++
++static int sysctl_snat_reroute(struct sk_buff *skb)
++{
++	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
++	return ipvs->sysctl_snat_reroute;
++}
++
 +#else
-+static inline int ip_vs_todrop(struct netns_ipvs *ipvs) { return 0; }
++
++static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
++
 +#endif
++
+ __sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset)
+ {
+ 	return csum_fold(skb_checksum(skb, offset, skb->len - offset, 0));
+@@ -633,15 +647,13 @@ static inline int ip_vs_gather_frags_v6(struct sk_buff *skb, u_int32_t user)
  
- /*
-  *      ip_vs_fwd_tag returns the forwarding tag of the connection
--- 
-1.7.2.3
-
+ static int ip_vs_route_me_harder(int af, struct sk_buff *skb)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
