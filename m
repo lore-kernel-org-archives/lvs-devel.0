@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 14/20] IPVS: Conditinally use sysctl_lblc{r}_expiration
-Date: Mon, 14 Mar 2011 12:45:40 +0900
-Message-ID: <1300074346-13799-15-git-send-email-horms@verge.net.au>
+Subject: [PATCH 19/20] IPVS: Add __ip_vs_control_{init,cleanup}_sysctl()
+Date: Mon, 14 Mar 2011 12:45:45 +0900
+Message-ID: <1300074346-13799-20-git-send-email-horms@verge.net.au>
 References: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-owner@vger.kernel.org>
 In-Reply-To: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,143 +13,198 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
-In preparation for not including sysctl_lblc{r}_expiration in
-struct netns_ipvs when CONFIG_SYCTL is not defined.
+Break out the portions of __ip_vs_control_init() and
+__ip_vs_control_cleanup() where aren't necessary when
+CONFIG_SYSCTL is undefined.
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_lblc.c  |   16 +++++++++++++---
- net/netfilter/ipvs/ip_vs_lblcr.c |   21 +++++++++++++++------
- 2 files changed, 28 insertions(+), 9 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c |   98 +++++++++++++++++++++++++---------------
+ 1 files changed, 62 insertions(+), 36 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
-index 6bf7a80..51a27f5 100644
---- a/net/netfilter/ipvs/ip_vs_lblc.c
-+++ b/net/netfilter/ipvs/ip_vs_lblc.c
-@@ -63,6 +63,8 @@
- #define CHECK_EXPIRE_INTERVAL   (60*HZ)
- #define ENTRY_TIMEOUT           (6*60*HZ)
- 
-+#define DEFAULT_EXPIRATION	(24*60*60*HZ)
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 364520f..fa6d44c 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -88,6 +88,8 @@ static int __ip_vs_addr_is_local_v6(struct net *net,
+ 	return 0;
+ }
+ #endif
 +
++#ifdef CONFIG_SYSCTL
  /*
-  *    It is for full expiration check.
-  *    When there is no partial expiration check (garbage collection)
-@@ -238,6 +240,15 @@ static void ip_vs_lblc_flush(struct ip_vs_lblc_table *tbl)
- 	}
+  *	update_defense_level is called from keventd and from sysctl,
+  *	so it needs to protect itself from softirqs
+@@ -229,6 +231,7 @@ static void defense_work_handler(struct work_struct *work)
+ 		ip_vs_random_dropentry(ipvs->net);
+ 	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+ }
++#endif
+ 
+ int
+ ip_vs_use_count_inc(void)
+@@ -1511,7 +1514,7 @@ static int ip_vs_zero_all(struct net *net)
+ 	return 0;
  }
  
-+static int sysctl_lblc_expiration(struct ip_vs_service *svc)
-+{
+-
 +#ifdef CONFIG_SYSCTL
-+	struct netns_ipvs *ipvs = net_ipvs(svc->net);
-+	return ipvs->sysctl_lblc_expiration;
-+#else
-+	return DEFAULT_EXPIRATION;
-+#endif
-+}
- 
- static inline void ip_vs_lblc_full_check(struct ip_vs_service *svc)
- {
-@@ -245,7 +256,6 @@ static inline void ip_vs_lblc_full_check(struct ip_vs_service *svc)
- 	struct ip_vs_lblc_entry *en, *nxt;
- 	unsigned long now = jiffies;
- 	int i, j;
--	struct netns_ipvs *ipvs = net_ipvs(svc->net);
- 
- 	for (i=0, j=tbl->rover; i<IP_VS_LBLC_TAB_SIZE; i++) {
- 		j = (j + 1) & IP_VS_LBLC_TAB_MASK;
-@@ -254,7 +264,7 @@ static inline void ip_vs_lblc_full_check(struct ip_vs_service *svc)
- 		list_for_each_entry_safe(en, nxt, &tbl->bucket[j], list) {
- 			if (time_before(now,
- 					en->lastuse +
--					ipvs->sysctl_lblc_expiration))
-+					sysctl_lblc_expiration(svc)))
- 				continue;
- 
- 			ip_vs_lblc_free(en);
-@@ -550,7 +560,7 @@ static int __net_init __ip_vs_lblc_init(struct net *net)
- 			return -ENOMEM;
- 	} else
- 		ipvs->lblc_ctl_table = vs_vars_table;
--	ipvs->sysctl_lblc_expiration = 24*60*60*HZ;
-+	ipvs->sysctl_lblc_expiration = DEFAULT_EXPIRATION;
- 	ipvs->lblc_ctl_table[0].data = &ipvs->sysctl_lblc_expiration;
- 
- #ifdef CONFIG_SYSCTL
-diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
-index 0063176..7fb9190 100644
---- a/net/netfilter/ipvs/ip_vs_lblcr.c
-+++ b/net/netfilter/ipvs/ip_vs_lblcr.c
-@@ -63,6 +63,8 @@
- #define CHECK_EXPIRE_INTERVAL   (60*HZ)
- #define ENTRY_TIMEOUT           (6*60*HZ)
- 
-+#define DEFAULT_EXPIRATION	(24*60*60*HZ)
-+
- /*
-  *    It is for full expiration check.
-  *    When there is no partial expiration check (garbage collection)
-@@ -410,6 +412,15 @@ static void ip_vs_lblcr_flush(struct ip_vs_lblcr_table *tbl)
- 	}
+ static int
+ proc_do_defense_mode(ctl_table *table, int write,
+ 		     void __user *buffer, size_t *lenp, loff_t *ppos)
+@@ -1533,7 +1536,6 @@ proc_do_defense_mode(ctl_table *table, int write,
+ 	return rc;
  }
  
-+static int sysctl_lblcr_expiration(struct ip_vs_service *svc)
-+{
-+#ifdef CONFIG_SYSCTL
-+	struct netns_ipvs *ipvs = net_ipvs(svc->net);
-+	return ipvs->sysctl_lblcr_expiration;
-+#else
-+	return DEFAULT_EXPIRATION;
+-
+ static int
+ proc_do_sync_threshold(ctl_table *table, int write,
+ 		       void __user *buffer, size_t *lenp, loff_t *ppos)
+@@ -1767,6 +1769,7 @@ const struct ctl_path net_vs_ctl_path[] = {
+ 	{ }
+ };
+ EXPORT_SYMBOL_GPL(net_vs_ctl_path);
 +#endif
+ 
+ #ifdef CONFIG_PROC_FS
+ 
+@@ -3511,7 +3514,8 @@ static void ip_vs_genl_unregister(void)
+ /*
+  * per netns intit/exit func.
+  */
+-int __net_init __ip_vs_control_init(struct net *net)
++#ifdef CONFIG_SYSCTL
++int __net_init __ip_vs_control_init_sysctl(struct net *net)
+ {
+ 	int idx;
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+@@ -3521,33 +3525,11 @@ int __net_init __ip_vs_control_init(struct net *net)
+ 	spin_lock_init(&ipvs->dropentry_lock);
+ 	spin_lock_init(&ipvs->droppacket_lock);
+ 	spin_lock_init(&ipvs->securetcp_lock);
+-	ipvs->rs_lock = __RW_LOCK_UNLOCKED(ipvs->rs_lock);
+-
+-	/* Initialize rs_table */
+-	for (idx = 0; idx < IP_VS_RTAB_SIZE; idx++)
+-		INIT_LIST_HEAD(&ipvs->rs_table[idx]);
+-
+-	INIT_LIST_HEAD(&ipvs->dest_trash);
+-	atomic_set(&ipvs->ftpsvc_counter, 0);
+-	atomic_set(&ipvs->nullsvc_counter, 0);
+-
+-	/* procfs stats */
+-	ipvs->tot_stats.cpustats = alloc_percpu(struct ip_vs_cpu_stats);
+-	if (!ipvs->tot_stats.cpustats) {
+-		pr_err("%s() alloc_percpu failed\n", __func__);
+-		goto err_alloc;
+-	}
+-	spin_lock_init(&ipvs->tot_stats.lock);
+-
+-	proc_net_fops_create(net, "ip_vs", 0, &ip_vs_info_fops);
+-	proc_net_fops_create(net, "ip_vs_stats", 0, &ip_vs_stats_fops);
+-	proc_net_fops_create(net, "ip_vs_stats_percpu", 0,
+-			     &ip_vs_stats_percpu_fops);
+ 
+ 	if (!net_eq(net, &init_net)) {
+ 		tbl = kmemdup(vs_vars, sizeof(vs_vars), GFP_KERNEL);
+ 		if (tbl == NULL)
+-			goto err_dup;
++			return -ENOMEM;
+ 	} else
+ 		tbl = vs_vars;
+ 	/* Initialize sysctl defaults */
+@@ -3576,25 +3558,73 @@ int __net_init __ip_vs_control_init(struct net *net)
+ 	tbl[idx++].data = &ipvs->sysctl_nat_icmp_send;
+ 
+ 
+-#ifdef CONFIG_SYSCTL
+ 	ipvs->sysctl_hdr = register_net_sysctl_table(net, net_vs_ctl_path,
+ 						     tbl);
+ 	if (ipvs->sysctl_hdr == NULL) {
+ 		if (!net_eq(net, &init_net))
+ 			kfree(tbl);
+-		goto err_dup;
++		return -ENOMEM;
+ 	}
+-#endif
+ 	ip_vs_start_estimator(net, &ipvs->tot_stats);
+ 	ipvs->sysctl_tbl = tbl;
+ 	/* Schedule defense work */
+ 	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
+ 	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
++
+ 	return 0;
++}
++
++void __net_init __ip_vs_control_cleanup_sysctl(struct net *net)
++{
++	struct netns_ipvs *ipvs = net_ipvs(net);
++
++	cancel_delayed_work_sync(&ipvs->defense_work);
++	cancel_work_sync(&ipvs->defense_work.work);
++	unregister_net_sysctl_table(ipvs->sysctl_hdr);
 +}
  
- static inline void ip_vs_lblcr_full_check(struct ip_vs_service *svc)
- {
-@@ -417,15 +428,14 @@ static inline void ip_vs_lblcr_full_check(struct ip_vs_service *svc)
- 	unsigned long now = jiffies;
- 	int i, j;
- 	struct ip_vs_lblcr_entry *en, *nxt;
--	struct netns_ipvs *ipvs = net_ipvs(svc->net);
+-err_dup:
++#else
++
++int __net_init __ip_vs_control_init_sysctl(struct net *net) { return 0; }
++void __net_init __ip_vs_control_cleanup_sysctl(struct net *net) { }
++
++#endif
++
++int __net_init __ip_vs_control_init(struct net *net)
++{
++	int idx;
++	struct netns_ipvs *ipvs = net_ipvs(net);
++
++	ipvs->rs_lock = __RW_LOCK_UNLOCKED(ipvs->rs_lock);
++
++	/* Initialize rs_table */
++	for (idx = 0; idx < IP_VS_RTAB_SIZE; idx++)
++		INIT_LIST_HEAD(&ipvs->rs_table[idx]);
++
++	INIT_LIST_HEAD(&ipvs->dest_trash);
++	atomic_set(&ipvs->ftpsvc_counter, 0);
++	atomic_set(&ipvs->nullsvc_counter, 0);
++
++	/* procfs stats */
++	ipvs->tot_stats.cpustats = alloc_percpu(struct ip_vs_cpu_stats);
++	if (ipvs->tot_stats.cpustats) {
++		pr_err("%s(): alloc_percpu.\n", __func__);
++		return -ENOMEM;
++	}
++	spin_lock_init(&ipvs->tot_stats.lock);
++
++	proc_net_fops_create(net, "ip_vs", 0, &ip_vs_info_fops);
++	proc_net_fops_create(net, "ip_vs_stats", 0, &ip_vs_stats_fops);
++	proc_net_fops_create(net, "ip_vs_stats_percpu", 0,
++			     &ip_vs_stats_percpu_fops);
++
++	if (__ip_vs_control_init_sysctl(net))
++		goto err;
++
++	return 0;
++
++err:
+ 	free_percpu(ipvs->tot_stats.cpustats);
+-err_alloc:
+ 	return -ENOMEM;
+ }
  
- 	for (i=0, j=tbl->rover; i<IP_VS_LBLCR_TAB_SIZE; i++) {
- 		j = (j + 1) & IP_VS_LBLCR_TAB_MASK;
+@@ -3604,11 +3634,7 @@ static void __net_exit __ip_vs_control_cleanup(struct net *net)
  
- 		write_lock(&svc->sched_lock);
- 		list_for_each_entry_safe(en, nxt, &tbl->bucket[j], list) {
--			if (time_after(en->lastuse
--					+ ipvs->sysctl_lblcr_expiration, now))
-+			if (time_after(en->lastuse +
-+				       sysctl_lblcr_expiration(svc), now))
- 				continue;
- 
- 			ip_vs_lblcr_free(en);
-@@ -650,7 +660,6 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 	read_lock(&svc->sched_lock);
- 	en = ip_vs_lblcr_get(svc->af, tbl, &iph.daddr);
- 	if (en) {
--		struct netns_ipvs *ipvs = net_ipvs(svc->net);
- 		/* We only hold a read lock, but this is atomic */
- 		en->lastuse = jiffies;
- 
-@@ -662,7 +671,7 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- 		/* More than one destination + enough time passed by, cleanup */
- 		if (atomic_read(&en->set.size) > 1 &&
- 				time_after(jiffies, en->set.lastmod +
--				ipvs->sysctl_lblcr_expiration)) {
-+				sysctl_lblcr_expiration(svc))) {
- 			struct ip_vs_dest *m;
- 
- 			write_lock(&en->set.lock);
-@@ -746,7 +755,7 @@ static int __net_init __ip_vs_lblcr_init(struct net *net)
- 			return -ENOMEM;
- 	} else
- 		ipvs->lblcr_ctl_table = vs_vars_table;
--	ipvs->sysctl_lblcr_expiration = 24*60*60*HZ;
-+	ipvs->sysctl_lblcr_expiration = DEFAULT_EXPIRATION;
- 	ipvs->lblcr_ctl_table[0].data = &ipvs->sysctl_lblcr_expiration;
- 
- #ifdef CONFIG_SYSCTL
+ 	ip_vs_trash_cleanup(net);
+ 	ip_vs_stop_estimator(net, &ipvs->tot_stats);
+-	cancel_delayed_work_sync(&ipvs->defense_work);
+-	cancel_work_sync(&ipvs->defense_work.work);
+-#ifdef CONFIG_SYSCTL
+-	unregister_net_sysctl_table(ipvs->sysctl_hdr);
+-#endif
++	__ip_vs_control_cleanup_sysctl(net);
+ 	proc_net_remove(net, "ip_vs_stats_percpu");
+ 	proc_net_remove(net, "ip_vs_stats");
+ 	proc_net_remove(net, "ip_vs");
 -- 
 1.7.2.3
 
