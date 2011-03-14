@@ -1,53 +1,48 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: [PATCH 02/20] ipvs: reorganize tot_stats
-Date: Mon, 14 Mar 2011 05:28:23 +0100
-Message-ID: <1300076903.2761.64.camel@edumazet-laptop>
-References: <1300074346-13799-1-git-send-email-horms@verge.net.au>
-	 <1300074346-13799-3-git-send-email-horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 0/4] ipvs: changes for stats
+Date: Mon, 14 Mar 2011 10:39:27 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1103141036080.1736@ja.ssi.bg>
+References: <alpine.LFD.2.00.1103041209480.1452@ja.ssi.bg> <alpine.LFD.2.00.1103140132470.25062@ja.ssi.bg> <20110313235715.GC15317@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=gamma;
-        h=domainkey-signature:subject:from:to:cc:in-reply-to:references
-         :content-type:date:message-id:mime-version:x-mailer
-         :content-transfer-encoding;
-        bh=oqLinNCkU20ZhSqSUxq6otnWNZbcVUEket/hFCUvBgo=;
-        b=ClTsuvh7EU95XZOYfs1Xze7HsHFPSdClItlqupk+CiUCFRtD07SswYZCuzZ7SwoxCc
-         mQxOVFh11bF9XZtHQA/WvlM3ZwqohB+w3CYeNxChKgegZ35EVTeRtsn6093xR7MAMHi3
-         MwJhM0SJYUdQZuRxpeIliM4QxuhfkyvHR/nwE=
-In-Reply-To: <1300074346-13799-3-git-send-email-horms@verge.net.au>
+In-Reply-To: <20110313235715.GC15317@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
+Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>
-
-Le lundi 14 mars 2011 =C3=A0 12:45 +0900, Simon Horman a =C3=A9crit :
-> From: Julian Anastasov <ja@ssi.bg>
->=20
->  	The global tot_stats contains cpustats field just like the
-> stats for dest and svc, so better use it to simplify the usage
-> in estimation_timer. As tot_stats is registered as estimator
-> we can remove the special ip_vs_read_cpu_stats call for
-> tot_stats. Fix ip_vs_read_cpu_stats to be called under
-> stats lock because it is still used as synchronization between
-> estimation timer and user context (the stats readers).
->=20
->  	Also, make sure ip_vs_stats_percpu_show reads properly
-> the u64 stats from user context.
->=20
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> Signed-off-by: Simon Horman <horms@verge.net.au>
-
-Reviewed-by: Eric Dumazet <eric.dumazet@gmail.com>
-
-One comment : per cpu stats are really good to avoid cache misses, but =
-I
-see tot_stats is included in struct netns_ipvs right after "conn_count"=
-,
-possibly sharing a hot cache line ?
-
-Thanks
+Cc: lvs-devel@vger.kernel.org, =?UTF-8?Q?Hans_Schillstr=C3=B6m?= <hans.schillstrom@ericsson.com>
 
 
+ 	Hello,
+
+On Mon, 14 Mar 2011, Simon Horman wrote:
+
+> On Mon, Mar 14, 2011 at 01:35:36AM +0200, Julian Anastasov wrote:
+>>
+>> 	Hello,
+>>
+>> On Fri, 4 Mar 2011, Julian Anastasov wrote:
+>>
+>>> 	Hello,
+>>>
+>>> 	The following are some fixes for the stats. Patches
+>>> are for lvs-test-2.6-8a80c79 from yesterday.
+>>
+>> 	Simon, I'm sending new versions for patches 3 and 4
+>> and adding two new patches 5 and 6. If needed I can send
+>> full series 1..6 after review.
+>
+> Thanks.
+>
+> Let me know if there are any changes that I should push into master now.
+> Or if you would rather wait until the review process is complete for
+> the entire series.
+
+ 	Yes, we can push them. Any next changes will be on top
+of all 20 patches.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
