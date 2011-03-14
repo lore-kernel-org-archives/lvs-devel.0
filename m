@@ -1,119 +1,47 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 11/24] IPVS: Add ip_vs_route_me_harder()
-Date: Mon, 14 Mar 2011 18:06:23 +0900
-Message-ID: <1300093596-3824-12-git-send-email-horms@verge.net.au>
-References: <1300093596-3824-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-owner@vger.kernel.org>
-In-Reply-To: <1300093596-3824-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-owner@vger.kernel.org
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 02/20] ipvs: reorganize tot_stats
+Date: Mon, 14 Mar 2011 11:21:21 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1103141104070.1736@ja.ssi.bg>
+References: <1300074346-13799-1-git-send-email-horms@verge.net.au>  <1300074346-13799-3-git-send-email-horms@verge.net.au> <1300076903.2761.64.camel@edumazet-laptop>
+Mime-Version: 1.0
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1300076903.2761.64.camel@edumazet-laptop>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
+To: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org, Hans Schillstrom <hans@schillstrom.com>
 
-Add ip_vs_route_me_harder() to avoid repeating the same code twice.
 
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_core.c |   48 +++++++++++++++++---------------------
- 1 files changed, 22 insertions(+), 26 deletions(-)
+ 	Hello,
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 6f4940e..299c7f3 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -631,6 +631,24 @@ static inline int ip_vs_gather_frags_v6(struct sk_buff *skb, u_int32_t user)
- }
- #endif
- 
-+static int ip_vs_route_me_harder(int af, struct sk_buff *skb)
-+{
-+	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
-+
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (af == AF_INET6) {
-+		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
-+			return 1;
-+	} else
-+#endif
-+		if ((ipvs->sysctl_snat_reroute ||
-+		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
-+		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
-+			return 1;
-+
-+	return 0;
-+}
-+
- /*
-  * Packet has been made sufficiently writable in caller
-  * - inout: 1=in->out, 0=out->in
-@@ -737,7 +755,6 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 				struct ip_vs_protocol *pp,
- 				unsigned int offset, unsigned int ihl)
- {
--	struct netns_ipvs *ipvs;
- 	unsigned int verdict = NF_DROP;
- 
- 	if (IP_VS_FWD_METHOD(cp) != 0) {
-@@ -759,8 +776,6 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 	if (!skb_make_writable(skb, offset))
- 		goto out;
- 
--	ipvs = net_ipvs(skb_net(skb));
--
- #ifdef CONFIG_IP_VS_IPV6
- 	if (af == AF_INET6)
- 		ip_vs_nat_icmp_v6(skb, pp, cp, 1);
-@@ -768,16 +783,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- #endif
- 		ip_vs_nat_icmp(skb, pp, cp, 1);
- 
--#ifdef CONFIG_IP_VS_IPV6
--	if (af == AF_INET6) {
--		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
--			goto out;
--	} else
--#endif
--		if ((ipvs->sysctl_snat_reroute ||
--		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
--		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
--			goto out;
-+	if (ip_vs_route_me_harder(af, skb))
-+		goto out;
- 
- 	/* do the statistics and put it back */
- 	ip_vs_out_stats(cp, skb);
-@@ -985,7 +992,6 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 		struct ip_vs_conn *cp, int ihl)
- {
- 	struct ip_vs_protocol *pp = pd->pp;
--	struct netns_ipvs *ipvs;
- 
- 	IP_VS_DBG_PKT(11, af, pp, skb, 0, "Outgoing packet");
- 
-@@ -1021,18 +1027,8 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	 * if it came from this machine itself.  So re-compute
- 	 * the routing information.
- 	 */
--	ipvs = net_ipvs(skb_net(skb));
--
--#ifdef CONFIG_IP_VS_IPV6
--	if (af == AF_INET6) {
--		if (ipvs->sysctl_snat_reroute && ip6_route_me_harder(skb) != 0)
--			goto drop;
--	} else
--#endif
--		if ((ipvs->sysctl_snat_reroute ||
--		     skb_rtable(skb)->rt_flags & RTCF_LOCAL) &&
--		    ip_route_me_harder(skb, RTN_LOCAL) != 0)
--			goto drop;
-+	if (ip_vs_route_me_harder(af, skb))
-+		goto drop;
- 
- 	IP_VS_DBG_PKT(10, af, pp, skb, 0, "After SNAT");
- 
--- 
-1.7.2.3
+On Mon, 14 Mar 2011, Eric Dumazet wrote:
 
+>>  	Also, make sure ip_vs_stats_percpu_show reads properly
+>> the u64 stats from user context.
+>>
+>> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+>> Signed-off-by: Simon Horman <horms@verge.net.au>
+>
+> Reviewed-by: Eric Dumazet <eric.dumazet@gmail.com>
+>
+> One comment : per cpu stats are really good to avoid cache misses, but I
+> see tot_stats is included in struct netns_ipvs right after "conn_count",
+> possibly sharing a hot cache line ?
+
+ 	conn_count and tcp_app_lock, udp_app_lock, sctp_app_lock
+are used when packet creates new connection, probably on the
+same time depending on the protocol in packet. May be conn_count
+better to be before tcp_apps, far away from some sysctl vars
+that are mostly read?
+
+ 	For tot_stats: cpustats ptr is always read,
+other fields in tot_stats are updated from the 2-second
+timer. May be it is better just to move tot_stats before
+est_list, it is written at the same time?
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
