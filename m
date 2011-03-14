@@ -1,47 +1,77 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 02/20] ipvs: reorganize tot_stats
-Date: Mon, 14 Mar 2011 11:21:21 +0200 (EET)
-Message-ID: <alpine.LFD.2.00.1103141104070.1736@ja.ssi.bg>
-References: <1300074346-13799-1-git-send-email-horms@verge.net.au>  <1300074346-13799-3-git-send-email-horms@verge.net.au> <1300076903.2761.64.camel@edumazet-laptop>
+From: Patrick McHardy <kaber@trash.net>
+Subject: Re: [GIT PULL nf-next-2.6] IPVS
+Date: Mon, 14 Mar 2011 19:17:34 +0100
+Message-ID: <4D7E5BBE.7060702@trash.net>
+References: <1300056261-14709-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1300076903.2761.64.camel@edumazet-laptop>
-Sender: lvs-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org, Hans Schillstrom <hans@schillstrom.com>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <1300056261-14709-1-git-send-email-horms@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>
 
+On 13.03.2011 23:44, Simon Horman wrote:
+> Hi Patrick,
+> 
+> please consider pulling
+> git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git master
+> to get the following changes.
+> 
+> Jesper Juhl (1):
+>       Fix variable assignment in ip_vs_notrack
+> 
+> Julian Anastasov (2):
+>       ipvs: avoid lookup for fwmark 0
+>       ipvs: remove _bh from percpu stats reading
+> 
+> Shan Wei (1):
+>       netfilter:ipvs: use kmemdup
+> 
+>  include/net/ip_vs.h               |    2 +-
+>  net/netfilter/ipvs/ip_vs_ctl.c    |    8 +++++---
+>  net/netfilter/ipvs/ip_vs_est.c    |    8 ++++----
+>  net/netfilter/ipvs/ip_vs_pe_sip.c |    9 ++++-----
+>  net/netfilter/ipvs/ip_vs_sync.c   |    3 +--
+>  5 files changed, 15 insertions(+), 15 deletions(-)
 
- 	Hello,
+The pull contained quite a lot of other changes. I'm undoing the
+pull for now, please resubmit the patches you actually want me to
+pull. Thanks!
 
-On Mon, 14 Mar 2011, Eric Dumazet wrote:
+Jesper Juhl (1):
+      Fix variable assignment in ip_vs_notrack
 
->>  	Also, make sure ip_vs_stats_percpu_show reads properly
->> the u64 stats from user context.
->>
->> Signed-off-by: Julian Anastasov <ja@ssi.bg>
->> Signed-off-by: Simon Horman <horms@verge.net.au>
->
-> Reviewed-by: Eric Dumazet <eric.dumazet@gmail.com>
->
-> One comment : per cpu stats are really good to avoid cache misses, but I
-> see tot_stats is included in struct netns_ipvs right after "conn_count",
-> possibly sharing a hot cache line ?
+Julian Anastasov (8):
+      ipvs: avoid lookup for fwmark 0
+      ipvs: remove _bh from percpu stats reading
+      ipvs: move struct netns_ipvs
+      ipvs: reorganize tot_stats
+      ipvs: properly zero stats and rates
+      ipvs: remove unused seqcount stats
+      ipvs: optimize rates reading
+      ipvs: rename estimator functions
 
- 	conn_count and tcp_app_lock, udp_app_lock, sctp_app_lock
-are used when packet creates new connection, probably on the
-same time depending on the protocol in packet. May be conn_count
-better to be before tcp_apps, far away from some sysctl vars
-that are mostly read?
+Patrick McHardy (1):
+      Merge branch 'master' of git://git.kernel.org/.../horms/lvs-test-2.6
 
- 	For tot_stats: cpustats ptr is always read,
-other fields in tot_stats are updated from the 2-second
-timer. May be it is better just to move tot_stats before
-est_list, it is written at the same time?
+Shan Wei (1):
+      netfilter:ipvs: use kmemdup
 
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Simon Horman (14):
+      IPVS: Add ip_vs_route_me_harder()
+      IPVS: Add sysctl_snat_reroute()
+      IPVS: Add sysctl_nat_icmp_send()
+      IPVS: Add {sysctl_sync_threshold,period}()
+      IPVS: Add sysctl_sync_ver()
+      IPVS: Add sysctl_expire_nodest_conn()
+      IPVS: Add expire_quiescent_template()
+      IPVS: Conditinally use sysctl_lblc{r}_expiration
+      IPVS: ip_vs_todrop() becomes a noop when CONFIG_SYSCTL is undefined
+      IPVS: Conditional ip_vs_conntrack_enabled()
+      IPVS: Minimise ip_vs_leave when CONFIG_SYSCTL is undefined
+      IPVS: Conditionally define and use ip_vs_lblc{r}_table
+      IPVS: Add __ip_vs_control_{init,cleanup}_sysctl()
+      IPVS: Conditionally include sysctl members of struct netns_ipvs
