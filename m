@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 17/24] IPVS: Add expire_quiescent_template()
-Date: Tue, 15 Mar 2011 14:27:25 +0900
-Message-ID: <1300166852-725-18-git-send-email-horms@verge.net.au>
+Subject: [PATCH 16/24] IPVS: Add sysctl_expire_nodest_conn()
+Date: Tue, 15 Mar 2011 14:27:24 +0900
+Message-ID: <1300166852-725-17-git-send-email-horms@verge.net.au>
 References: <1300166852-725-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1300166852-725-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,45 +13,44 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-In preparation for not including sysctl_expire_quiescent_template in
+In preparation for not including sysctl_expire_nodest_conn in
 struct netns_ipvs when CONFIG_SYCTL is not defined.
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 9c2a517..f289306 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -680,6 +680,16 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
- 	atomic_dec(&dest->refcnt);
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 6a0053d..d418bc6 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -613,10 +613,16 @@ static int sysctl_nat_icmp_send(struct net *net)
+ 	return ipvs->sysctl_nat_icmp_send;
  }
  
-+static int expire_quiescent_template(struct netns_ipvs *ipvs,
-+				     struct ip_vs_dest *dest)
++static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs)
 +{
-+#ifdef CONFIG_SYSCTL
-+	return ipvs->sysctl_expire_quiescent_template &&
-+		(atomic_read(&dest->weight) == 0);
-+#else
-+	return 0;
-+#endif
++	return ipvs->sysctl_expire_nodest_conn;
 +}
++
+ #else
  
- /*
-  *	Checking if the destination of a connection template is available.
-@@ -696,8 +706,7 @@ int ip_vs_check_template(struct ip_vs_conn *ct)
- 	 */
- 	if ((dest == NULL) ||
- 	    !(dest->flags & IP_VS_DEST_F_AVAILABLE) ||
--	    (ipvs->sysctl_expire_quiescent_template &&
--	     (atomic_read(&dest->weight) == 0))) {
-+	    expire_quiescent_template(ipvs, dest)) {
- 		IP_VS_DBG_BUF(9, "check_template: dest not available for "
- 			      "protocol %s s:%s:%d v:%s:%d "
- 			      "-> d:%s:%d\n",
+ static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
+ static int sysctl_nat_icmp_send(struct net *net) { return 0; }
++static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs) { return 0; }
+ 
+ #endif
+ 
+@@ -1583,7 +1589,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+ 		/* the destination server is not available */
+ 
+-		if (ipvs->sysctl_expire_nodest_conn) {
++		if (sysctl_expire_nodest_conn(ipvs)) {
+ 			/* try to expire the connection immediately */
+ 			ip_vs_conn_expire_now(cp);
+ 		}
 -- 
 1.7.2.3
 
