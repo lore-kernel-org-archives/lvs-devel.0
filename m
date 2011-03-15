@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 20/24] IPVS: Conditional ip_vs_conntrack_enabled()
-Date: Tue, 15 Mar 2011 14:27:28 +0900
-Message-ID: <1300166852-725-21-git-send-email-horms@verge.net.au>
+Subject: [PATCH 24/24] IPVS: Conditionally include sysctl members of struct netns_ipvs
+Date: Tue, 15 Mar 2011 14:27:32 +0900
+Message-ID: <1300166852-725-25-git-send-email-horms@verge.net.au>
 References: <1300166852-725-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1300166852-725-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,32 +13,57 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, lvs-devel@vger.kernel.org
 Cc: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-ip_vs_conntrack_enabled() becomes a noop when CONFIG_SYSCTL is undefined.
-
-In preparation for not including sysctl_conntrack in
-struct netns_ipvs when CONFIG_SYCTL is not defined.
+There is now no need to include sysctl members of struct netns_ipvs
+unless CONFIG_SYSCTL is defined.
 
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ include/net/ip_vs.h |   21 +++++++++++++--------
+ 1 files changed, 13 insertions(+), 8 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 77ebece..299aeb5 100644
+index 299aeb5..272f593 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1359,7 +1359,11 @@ static inline void ip_vs_notrack(struct sk_buff *skb)
-  */
- static inline int ip_vs_conntrack_enabled(struct netns_ipvs *ipvs)
- {
-+#ifdef CONFIG_SYSCTL
- 	return ipvs->sysctl_conntrack;
-+#else
-+	return 0;
-+#endif
- }
+@@ -839,6 +839,17 @@ struct netns_ipvs {
+ 	struct ip_vs_stats		tot_stats;  /* Statistics & est. */
  
- extern void ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	int			num_services;    /* no of virtual services */
++
++	rwlock_t		rs_lock;         /* real services table */
++	/* semaphore for IPVS sockopts. And, [gs]etsockopt may sleep. */
++	struct lock_class_key	ctl_key;	/* ctl_mutex debuging */
++	/* Trash for destinations */
++	struct list_head	dest_trash;
++	/* Service counters */
++	atomic_t		ftpsvc_counter;
++	atomic_t		nullsvc_counter;
++
++#ifdef CONFIG_SYSCTL
+ 	/* 1/rate drop and drop-entry variables */
+ 	struct delayed_work	defense_work;   /* Work handler */
+ 	int			drop_rate;
+@@ -848,18 +859,12 @@ struct netns_ipvs {
+ 	spinlock_t		dropentry_lock;  /* drop entry handling */
+ 	spinlock_t		droppacket_lock; /* drop packet handling */
+ 	spinlock_t		securetcp_lock;  /* state and timeout tables */
+-	rwlock_t		rs_lock;         /* real services table */
+-	/* semaphore for IPVS sockopts. And, [gs]etsockopt may sleep. */
+-	struct lock_class_key	ctl_key;	/* ctl_mutex debuging */
+-	/* Trash for destinations */
+-	struct list_head	dest_trash;
+-	/* Service counters */
+-	atomic_t		ftpsvc_counter;
+-	atomic_t		nullsvc_counter;
+ 
+ 	/* sys-ctl struct */
+ 	struct ctl_table_header	*sysctl_hdr;
+ 	struct ctl_table	*sysctl_tbl;
++#endif
++
+ 	/* sysctl variables */
+ 	int			sysctl_amemthresh;
+ 	int			sysctl_am_droprate;
 -- 
 1.7.2.3
 
