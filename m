@@ -1,29 +1,30 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] IPVS Bug, Null ptr in ip_vs_ctl.c
- ip_vs_genl_dump_daemons().
-Date: Thu, 31 Mar 2011 10:24:37 +0900
-Message-ID: <20110331012436.GA2822@verge.net.au>
-References: <1301495797-7546-1-git-send-email-hans.schillstrom@ericsson.com>
-Mime-Version: 1.0
+Subject: [GIT PULL nf-2.6] IPVS
+Date: Thu, 31 Mar 2011 10:32:14 +0900
+Message-ID: <1301535135-4288-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1301495797-7546-1-git-send-email-hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Cc: ja@ssi.bg, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans@schillstrom.com
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
+Cc: Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>
 
-On Wed, Mar 30, 2011 at 04:36:37PM +0200, Hans Schillstrom wrote:
-> ipvsadm -ln --daemon will trigger a Null pointer exception because
-> ip_vs_genl_dump_daemons() uses skb_net() instead of skb_sknet().
-> 
-> To prevent others from NULL ptr a check is made in ip_vs.h skb_net().
-> 
-> This patches is based on net-2.6
+Hi Patrick,
 
-Thanks Hans,
+please consider pulling
+git://git.kernel.org/pub/scm/linux/kernel/git/horms/lvs-test-2.6.git for-patrick
+to get the following fix from Hans.
 
-I will prepare a pull request for Patrick this afternoon.
+I have based this patch on net-2.6/master as nf-2.6/master seems a little
+out of date (i.e. pre 2.6.39-rc1). Please let me know if you would
+prefer me to use a different base. Alternatively, feel free to apply
+the single patch by hand.
 
+Hans Schillstrom (1):
+      IPVS Bug, Null ptr in ip_vs_ctl.c ip_vs_genl_dump_daemons().
+
+ include/net/ip_vs.h            |    2 +-
+ net/netfilter/ipvs/ip_vs_ctl.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
