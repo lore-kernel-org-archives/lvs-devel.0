@@ -1,8 +1,10 @@
 From: Hans Schillstrom <hans@schillstrom.com>
-Subject: [v2 PATCH 0/6] IPVS: init and cleanup.
-Date: Wed, 20 Apr 2011 20:33:48 +0200
-Message-ID: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
+Subject: [PATCH 1/6] IPVS: Change of socket usage to enable name space exit.
+Date: Wed, 20 Apr 2011 20:33:49 +0200
+Message-ID: <1303324434-14024-2-git-send-email-hans@schillstrom.com>
+References: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
 Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -11,78 +13,211 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: hans.schillstrom@ericsson.com, Hans Schillstrom <hans@schillstrom.com>
 
-This patch series handles exit from a network name space.
+To work this patch also needs the other patches in this series.
 
-REVISION
+VERSION: 2
 
-This is version 2
+DESCRIPTION
 
-OVERVIEW
-Basically there was three faults in the netns implementation.
-- Kernel threads hold devices and preventing an exit.
-- dst cache holds references to devices.
-- Services was not always released.
+If the sync daemons run in a name space while it crashes
+or get killed, there is no way to stop them except for a reboot.
+When all patches are there, ip_vs_core will handle register_pernet_(),
+i.e. ip_vs_sync_init() and ip_vs_sync_cleanup() will be removed.
 
-Patch 1 & 3 contains the functionality
-      4 renames funcctions
-      5 removes empty functions
-      6 Debuging.
+Kernel threads should not increment the use count of a socket.
+By calling sk_change_net() after creating a socket this is avoided.
+sock_release cant be used intead sk_release_kernel() should be used.
 
-IMPLEMENTATION
-- Avoid to increment the usage counter for kernel threads.
-  this is done in the first patch.
-- Patch 3 tries to restore the cleanup order.
-  Add NETDEV_UNREGISTER notification for dst_reset
+Thanks Eric W Biederman for your advices.
 
-From Julian -
-"For __ip_vs_service_cleanup: it still has to use mutex.
-Or we can avoid it by introducing ip_vs_unlink_service_nolock:
-ip_vs_flush will look like your __ip_vs_service_cleanup and
-will call ip_vs_unlink_service_nolock. ip_vs_unlink_service_nolock
-will be called by ip_vs_flush and by ip_vs_unlink_service."
+This patch is based on net-next-2.6  ver 2.6.39-rc2
 
-I will give above another try later on see if I can get it to work.
-Right now ip_vs_service_net_cleanup() seems to work.
+CHANGES
+ Rev 2
+   sock_create_kern() used instead of __sock_create()
+   return codes of kthread_stop() used.
 
+Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+---
+ net/netfilter/ipvs/ip_vs_core.c |    2 +-
+ net/netfilter/ipvs/ip_vs_sync.c |   58 +++++++++++++++++++++++++--------------
+ 2 files changed, 38 insertions(+), 22 deletions(-)
 
-An netns exit could look like this
-IPVS: Enter: __ip_vs_dev_cleanup, net/netfilter/ipvs/ip_vs_core.c
-IPVS: stopping master sync thread 1286 ...
-IPVS: stopping backup sync thread 1294 ...
-IPVS: Leave: __ip_vs_dev_cleanup, net/netfilter/ipvs/ip_vs_core.c
-IPVS: Enter: ip_vs_dst_event, net/netfilter/ipvs/ip_vs_ctl.c line
-IPVS: Leave: ip_vs_dst_event, net/netfilter/ipvs/ip_vs_ctl.c line
-...
-IPVS: Enter: ip_vs_dst_event, net/netfilter/ipvs/ip_vs_ctl.c line
-IPVS: Leave: ip_vs_dst_event, net/netfilter/ipvs/ip_vs_ctl.c line
-IPVS: Enter: ip_vs_service_net_cleanup, net/netfilter/ipvs/ip_vs_ctl.c
-IPVS: __ip_vs_del_service: enter
-IPVS: Moving dest 192.168.1.6:0 into trash, dest->refcnt=43450
-...
-IPVS: Moving dest 192.168.1.3:0 into trash, dest->refcnt=43449
-IPVS: __ip_vs_del_service: enter
-IPVS: Removing destination 0/[2003:0000:0000:0000:0000:0002:0000:0006]:80
-...
-IPVS: Removing destination 0/[2003:0000:0000:0000:0000:0002:0000:0003]:80
-IPVS: Removing service 0/[2003:0000:0000:0000:0000:0002:0004:0100]:80 usecnt=0
-IPVS: Leave: ip_vs_service_net_cleanup, net/netfilter/ipvs/ip_vs_ctl.c
-IPVS: Enter: ip_vs_control_net_cleanup, net/netfilter/ipvs/ip_vs_ctl.c
-IPVS: Removing service 80/0.0.0.0:0 usecnt=0
-IPVS: Leave: ip_vs_control_net_cleanup, net/netfilter/ipvs/ip_vs_ctl.c
-IPVS: ipvs netns 8 released
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 07accf6..a0791dc 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1896,7 +1896,7 @@ static int __net_init __ip_vs_init(struct net *net)
 
-PATCH SET
-This patch set is based upon net-next-2.6 (2.6.39-rc2)
+ static void __net_exit __ip_vs_cleanup(struct net *net)
+ {
+-	IP_VS_DBG(10, "ipvs netns %d released\n", net_ipvs(net)->gen);
++	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
+ }
 
-SUMMARY
+ static struct pernet_operations ipvs_core_ops = {
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 3e7961e..c187823 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1303,13 +1303,18 @@ static struct socket *make_send_sock(struct net *net)
+ 	struct socket *sock;
+ 	int result;
 
- include/net/ip_vs.h              |   23 ++++--
- net/netfilter/ipvs/ip_vs_app.c   |   23 +-----
- net/netfilter/ipvs/ip_vs_conn.c  |   14 +---
- net/netfilter/ipvs/ip_vs_core.c  |  118 +++++++++++++++++++--------
- net/netfilter/ipvs/ip_vs_ctl.c   |  168 +++++++++++++++++++++++++++++++-------
- net/netfilter/ipvs/ip_vs_est.c   |   21 +----
- net/netfilter/ipvs/ip_vs_proto.c |   11 +--
- net/netfilter/ipvs/ip_vs_sync.c  |   70 ++++++++--------
- 8 files changed, 281 insertions(+), 167 deletions(-)
+-	/* First create a socket */
+-	result = __sock_create(net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
++	/* First create a socket move it to right name space later */
++	result = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
+ 	if (result < 0) {
+ 		pr_err("Error during creation of socket; terminating\n");
+ 		return ERR_PTR(result);
+ 	}
+-
++	/*
++	 * Kernel sockets that are a part of a namespace, should not
++	 * hold a reference to a namespace in order to allow to stop it.
++	 * After sk_change_net should be released using sk_release_kernel.
++	 */
++	sk_change_net(sock->sk, net);
+ 	result = set_mcast_if(sock->sk, ipvs->master_mcast_ifn);
+ 	if (result < 0) {
+ 		pr_err("Error setting outbound mcast interface\n");
+@@ -1334,8 +1339,8 @@ static struct socket *make_send_sock(struct net *net)
+
+ 	return sock;
+
+-  error:
+-	sock_release(sock);
++error:
++	sk_release_kernel(sock->sk);
+ 	return ERR_PTR(result);
+ }
+
+@@ -1350,12 +1355,17 @@ static struct socket *make_receive_sock(struct net *net)
+ 	int result;
+
+ 	/* First create a socket */
+-	result = __sock_create(net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
++	result = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
+ 	if (result < 0) {
+ 		pr_err("Error during creation of socket; terminating\n");
+ 		return ERR_PTR(result);
+ 	}
+-
++	/*
++	 * Kernel sockets that are a part of a namespace, should not
++	 * hold a reference to a namespace in order to allow to stop it.
++	 * After sk_change_net should be released using sk_release_kernel.
++	 */
++	sk_change_net(sock->sk, net);
+ 	/* it is equivalent to the REUSEADDR option in user-space */
+ 	sock->sk->sk_reuse = 1;
+
+@@ -1377,8 +1387,8 @@ static struct socket *make_receive_sock(struct net *net)
+
+ 	return sock;
+
+-  error:
+-	sock_release(sock);
++error:
++	sk_release_kernel(sock->sk);
+ 	return ERR_PTR(result);
+ }
+
+@@ -1473,7 +1483,7 @@ static int sync_thread_master(void *data)
+ 		ip_vs_sync_buff_release(sb);
+
+ 	/* release the sending multicast socket */
+-	sock_release(tinfo->sock);
++	sk_release_kernel(tinfo->sock->sk);
+ 	kfree(tinfo);
+
+ 	return 0;
+@@ -1513,7 +1523,7 @@ static int sync_thread_backup(void *data)
+ 	}
+
+ 	/* release the sending multicast socket */
+-	sock_release(tinfo->sock);
++	sk_release_kernel(tinfo->sock->sk);
+ 	kfree(tinfo->buf);
+ 	kfree(tinfo);
+
+@@ -1601,7 +1611,7 @@ outtinfo:
+ outbuf:
+ 	kfree(buf);
+ outsocket:
+-	sock_release(sock);
++	sk_release_kernel(sock->sk);
+ out:
+ 	return result;
+ }
+@@ -1610,6 +1620,7 @@ out:
+ int stop_sync_thread(struct net *net, int state)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
++	int retc = -EINVAL;
+
+ 	IP_VS_DBG(7, "%s(): pid %d\n", __func__, task_pid_nr(current));
+
+@@ -1629,7 +1640,7 @@ int stop_sync_thread(struct net *net, int state)
+ 		spin_lock_bh(&ipvs->sync_lock);
+ 		ipvs->sync_state &= ~IP_VS_STATE_MASTER;
+ 		spin_unlock_bh(&ipvs->sync_lock);
+-		kthread_stop(ipvs->master_thread);
++		retc = kthread_stop(ipvs->master_thread);
+ 		ipvs->master_thread = NULL;
+ 	} else if (state == IP_VS_STATE_BACKUP) {
+ 		if (!ipvs->backup_thread)
+@@ -1639,16 +1650,14 @@ int stop_sync_thread(struct net *net, int state)
+ 			task_pid_nr(ipvs->backup_thread));
+
+ 		ipvs->sync_state &= ~IP_VS_STATE_BACKUP;
+-		kthread_stop(ipvs->backup_thread);
++		retc = kthread_stop(ipvs->backup_thread);
+ 		ipvs->backup_thread = NULL;
+-	} else {
+-		return -EINVAL;
+ 	}
+
+ 	/* decrease the module use count */
+ 	ip_vs_use_count_dec();
+
+-	return 0;
++	return retc;
+ }
+
+ /*
+@@ -1670,8 +1679,15 @@ static int __net_init __ip_vs_sync_init(struct net *net)
+
+ static void __ip_vs_sync_cleanup(struct net *net)
+ {
+-	stop_sync_thread(net, IP_VS_STATE_MASTER);
+-	stop_sync_thread(net, IP_VS_STATE_BACKUP);
++	int retc;
++
++	retc = stop_sync_thread(net, IP_VS_STATE_MASTER);
++	if (retc && retc != -EINVAL)
++		pr_err("Failed to stop Master Daemon\n");
++
++	retc = stop_sync_thread(net, IP_VS_STATE_BACKUP);
++	if (retc && retc != -EINVAL)
++		pr_err("Failed to stop Backup Daemon\n");
+ }
+
+ static struct pernet_operations ipvs_sync_ops = {
+@@ -1682,10 +1698,10 @@ static struct pernet_operations ipvs_sync_ops = {
+
+ int __init ip_vs_sync_init(void)
+ {
+-	return register_pernet_subsys(&ipvs_sync_ops);
++	return register_pernet_device(&ipvs_sync_ops);
+ }
+
+ void ip_vs_sync_cleanup(void)
+ {
+-	unregister_pernet_subsys(&ipvs_sync_ops);
++	unregister_pernet_device(&ipvs_sync_ops);
+ }
+--
+1.7.2.3
 
