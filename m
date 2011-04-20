@@ -1,68 +1,93 @@
 From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [PATCH 3/3] IPVS: init and cleanup restructuring.
-Date: Wed, 20 Apr 2011 14:00:09 +0200
-Message-ID: <201104201400.10175.hans@schillstrom.com>
-References: <1303226705-29178-1-git-send-email-hans@schillstrom.com> <1303226705-29178-3-git-send-email-hans@schillstrom.com> <20110419231234.GE6418@verge.net.au>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20110419231234.GE6418@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Subject: [PATCH 2/6] IPVS: labels at pos 0
+Date: Wed, 20 Apr 2011 20:33:50 +0200
+Message-ID: <1303324434-14024-3-git-send-email-hans@schillstrom.com>
+References: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: ja@ssi.bg, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans.schillstrom@ericsson.com
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: horms@verge.net.au, ja@ssi.bg, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: hans.schillstrom@ericsson.com, Hans Schillstrom <hans@schillstrom.com>
 
-On Wednesday, April 20, 2011 01:12:34 Simon Horman wrote:
-> On Tue, Apr 19, 2011 at 05:25:05PM +0200, Hans Schillstrom wrote:
-> > This patch tries to restore the initial init and cleanup
-> > sequences that was before name space patch.
-[snip]
-> perhaps enable or active would be names that fits better with the
-> schemantics used.  Using a bool might also make things more obvious.
+Put goto labels at the beginig of row
+acording to coding style example.
 
-I'll use enable
-> 
-[snip]
-> 
-> Can we just remove ip_vs_app_init() and ip_vs_app_cleanup() as
-> they no longer do anything? Likewise with other init and cleanup
-> functions below.
+Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+---
+ net/netfilter/ipvs/ip_vs_core.c |   10 +++++-----
+ net/netfilter/ipvs/ip_vs_ctl.c  |    8 ++++----
+ 2 files changed, 9 insertions(+), 9 deletions(-)
 
-I will add a "final" patch that removes empty functions,
-(They are nice to have during the review, to keep track of the order in different contexts)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index a0791dc..d536b51 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1388,7 +1388,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 		verdict = NF_DROP;
+ 	}
+ 
+-  out:
++out:
+ 	__ip_vs_conn_put(cp);
+ 
+ 	return verdict;
+@@ -1955,14 +1955,14 @@ static int __init ip_vs_init(void)
+ 
+ cleanup_sync:
+ 	ip_vs_sync_cleanup();
+-  cleanup_conn:
++cleanup_conn:
+ 	ip_vs_conn_cleanup();
+-  cleanup_app:
++cleanup_app:
+ 	ip_vs_app_cleanup();
+-  cleanup_protocol:
++cleanup_protocol:
+ 	ip_vs_protocol_cleanup();
+ 	ip_vs_control_cleanup();
+-  cleanup_estimator:
++cleanup_estimator:
+ 	ip_vs_estimator_cleanup();
+ 	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+ 	return ret;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index ae47090..a31a70c 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1327,9 +1327,9 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
+ 		ip_vs_bind_pe(svc, pe);
+ 	}
+ 
+-  out_unlock:
++out_unlock:
+ 	write_unlock_bh(&__ip_vs_svc_lock);
+-  out:
++out:
+ 	ip_vs_scheduler_put(old_sched);
+ 	ip_vs_pe_put(old_pe);
+ 	return ret;
+@@ -2387,7 +2387,7 @@ __ip_vs_get_service_entries(struct net *net,
+ 			count++;
+ 		}
+ 	}
+-  out:
++out:
+ 	return ret;
+ }
+ 
+@@ -2625,7 +2625,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 		ret = -EINVAL;
+ 	}
+ 
+-  out:
++out:
+ 	mutex_unlock(&__ip_vs_mutex);
+ 	return ret;
+ }
+-- 
+1.7.2.3
 
-> 
-> > diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> > index 36cd5ea..f8d6702 100644
-> > --- a/net/netfilter/ipvs/ip_vs_conn.c
-> > +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> > @@ -1251,30 +1251,30 @@ int __net_init __ip_vs_conn_init(struct net *net)
-> >  {
-> >  	struct netns_ipvs *ipvs = net_ipvs(net);
-> > 
-> > +	EnterFunction(2);
-> >  	atomic_set(&ipvs->conn_count, 0);
-> > 
-> >  	proc_net_fops_create(net, "ip_vs_conn", 0, &ip_vs_conn_fops);
-> >  	proc_net_fops_create(net, "ip_vs_conn_sync", 0, &ip_vs_conn_sync_fops);
-> > +	LeaveFunction(2);
-> >  	return 0;
-> >  }
-> 
-> Does adding these EnterFunction() and LeaveFunction() calls
-> restore some previous behaviour? If not, I think they should at the very
-> least be in a separate patch. Likewise for similar changes below.
-> 
-
-I can remove them if you want, (but they are nice for debugging)
-
-[snip]
-> 
-> While I do prefer labels to be in column 0, putting those changes
-> here is rather a lot of noise. Could you put them in a separate patch?
-
-OK it will be patch no 1 later on
-
-Regards
-Hans
