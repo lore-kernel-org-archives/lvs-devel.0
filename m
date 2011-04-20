@@ -1,112 +1,134 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 3/3] IPVS: init and cleanup restructuring.
-Date: Wed, 20 Apr 2011 02:19:38 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1104200207340.1724@ja.ssi.bg>
-References: <1303226705-29178-1-git-send-email-hans@schillstrom.com> <1303226705-29178-3-git-send-email-hans@schillstrom.com>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Subject: Re: [PATCH 1/3] IPVS: Change of socket usage to enable name space exit.
+Date: Wed, 20 Apr 2011 02:40:09 -0700
+Message-ID: <m1aafluupy.fsf@fess.ebiederm.org>
+References: <1303226705-29178-1-git-send-email-hans@schillstrom.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1303226705-29178-3-git-send-email-hans@schillstrom.com>
+In-Reply-To: <1303226705-29178-1-git-send-email-hans@schillstrom.com> (Hans
+	Schillstrom's message of "Tue, 19 Apr 2011 17:25:03 +0200")
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Hans Schillstrom <hans@schillstrom.com>
-Cc: horms@verge.net.au, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans.schillstrom@ericsson.com
+Cc: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans.schillstrom@ericsson.com
 
+Hans Schillstrom <hans@schillstrom.com> writes:
 
-	Hello,
+> This is the first patch in a series of three.
+> The cleanup doesn't work when not exit in a clean way by using ipvsadm.
+> Killing of a namespace causes a hanging ipvs, this series will cure that.
+>
+> If the sync daemons run in a namespace while it crashes
+> or get killed, there is no way to stop them except for a reboot.
+>
+> Kernel threads should not increment the use count of a socket.
+> By calling sk_change_net() after creating a socket this is avoided.
+> sock_release cant be used, instead sk_release_kernel() should be used.
+>
+> Thanks to Eric W Biederman.
+>
+> This patch is based on net-next-2.6  ver 2.6.39-rc2
 
-On Tue, 19 Apr 2011, Hans Schillstrom wrote:
+I am not comfortable with this patch on it's own.  What kills the
+daemons on network namespace exit?
 
-> This patch tries to restore the initial init and cleanup
-> sequences that was before name space patch.
-> 
-> The number of calls to register_pernet_device have been
-> reduced to one for the ip_vs.ko
-> Schedulers still have their own calls.
-> 
-> This patch adds a function __ip_vs_service_cleanup()
-> and a throttle or actually on/off switch for
-> the netfilter hooks.
-> 
-> The nf hooks will be enabled when the first service is loaded
-> and disabled when the last service is removed or when a
-> name space exit starts.
+I would be a little happier if the code also used sock_create_kern
+instead of __sock_create. Now that it uses sk_change_net.  Just to make
+the code more idiomatic.
 
-	For me using _net suffix is more clear compared
-to __ prefix for the pernet methods.
+But not actually guaranteeing that the namespace exit kills the threads
+at this point seems pretty badly broken, as this idiom is not safe
+unless we have a hard guarantee that the threads are dead.
 
-	For ip_vs_in: may be we can move the check here:
+Eric
 
-+	net = skb_net(skb);
-+	if (net->ipvs->throttle)
-+		return NF_ACCEPT;
- 	ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
- 
- 	/* Bad... Do not break raw sockets */
-
-	It will save such checks later in ICMP funcs. But this
-throttle idea looks dangerous for cleanup. It does not use RCU.
-The readers can cache the 0 in throttle for long time.
-May be by using register_pernet_device we are in list with other
-devices and it is still possible some device used by
-our dst_cache to be unregistered before IPVS or we to be
-unregistered before such device and some race with throttle
-to happen. throttle is good when enabling traffic with
-the first virtual service, later it can slowly stop the traffic
-but we can not rely on it during netns cleanup.
-
-	So, there are 2 problems with the devices:
-
-- if we use _device pernet registration we can see packets
-in our netns during cleanup. I assume this is possible
-when IPVS is unregistered before such devices.
-
-- dests can cache dst and to hold the device after it is
-unregistered in netns, obviously for very short time until
-IPVS is later unregistered from netns. And for long time
-if device is unregistered but netns remains.
-
-	Also, in most of the cases svc->refcnt is above 0 because
-dests can be in trash list. You should be lucky to delete the
-service without any connections, only then ip_vs_svc_unhash can
-see refcnt == 0.
-
-	So, may be we have to use register_pernet_subsys (not
-_device). We need just to register notifier with
-register_netdevice_notifier and to catch NETDEV_UNREGISTER,
-so that if any dest uses this device we have to release the dst:
-
-	- lock mutex
-	- for every dest (also in trash):
-	spin_lock_bh(&dest->dst_lock);
-	if (dest->dst_cache && dest->dst_cache->dev == unregistered_dev)
-		ip_vs_dst_reset(dest);
-	spin_unlock_bh(&dest->dst_lock);
-
-	There are many examples for this, eg. net/core/fib_rules.c
-Then we are sure on cleanup we can not see traffic for our net
-because all devices are unregistered before us. We don't have
-to rely on throttle to stop the traffic during cleanup. And
-we do not hold devices after NETDEV_UNREGISTER.
-
-	I can prepare such patch but in next days. We need such
-code anyways because the dests can hold such dsts when no
-traffic is present and we can see again this "waiting for %s" ...
-message.
-
-	throttle still can be used but now it can not stop
-the traffic if connections exist.
-
-	For __ip_vs_service_cleanup: it still has to use mutex.
-Or we can avoid it by introducing ip_vs_unlink_service_nolock:
-ip_vs_flush will look like your __ip_vs_service_cleanup and
-will call ip_vs_unlink_service_nolock. ip_vs_unlink_service_nolock
-will be called by ip_vs_flush and by ip_vs_unlink_service.
-You can try such changes, if not, I'll prepare some patches
-after 2-3 days.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+> Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_sync.c |   28 +++++++++++++++++++---------
+>  1 files changed, 19 insertions(+), 9 deletions(-)
+>
+> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> index 3e7961e..3f87555 100644
+> --- a/net/netfilter/ipvs/ip_vs_sync.c
+> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> @@ -1309,7 +1309,12 @@ static struct socket *make_send_sock(struct net *net)
+>  		pr_err("Error during creation of socket; terminating\n");
+>  		return ERR_PTR(result);
+>  	}
+> -
+> +	/*
+> +	 * Kernel sockets that are a part of a namespace, should not
+> +	 * hold a reference to a namespace in order to allow to stop it.
+> +	 * After sk_change_net should be released using sk_release_kernel.
+> +	 */
+> +	sk_change_net(sock->sk, net);
+>  	result = set_mcast_if(sock->sk, ipvs->master_mcast_ifn);
+>  	if (result < 0) {
+>  		pr_err("Error setting outbound mcast interface\n");
+> @@ -1334,8 +1339,8 @@ static struct socket *make_send_sock(struct net *net)
+>
+>  	return sock;
+>
+> -  error:
+> -	sock_release(sock);
+> +error:
+> +	sk_release_kernel(sock->sk);
+>  	return ERR_PTR(result);
+>  }
+>
+> @@ -1355,7 +1360,12 @@ static struct socket *make_receive_sock(struct net *net)
+>  		pr_err("Error during creation of socket; terminating\n");
+>  		return ERR_PTR(result);
+>  	}
+> -
+> +	/*
+> +	 * Kernel sockets that are a part of a namespace, should not
+> +	 * hold a reference to a namespace in order to allow to stop it.
+> +	 * After sk_change_net should be released using sk_release_kernel.
+> +	 */
+> +	sk_change_net(sock->sk, net);
+>  	/* it is equivalent to the REUSEADDR option in user-space */
+>  	sock->sk->sk_reuse = 1;
+>
+> @@ -1377,8 +1387,8 @@ static struct socket *make_receive_sock(struct net *net)
+>
+>  	return sock;
+>
+> -  error:
+> -	sock_release(sock);
+> +error:
+> +	sk_release_kernel(sock->sk);
+>  	return ERR_PTR(result);
+>  }
+>
+> @@ -1473,7 +1483,7 @@ static int sync_thread_master(void *data)
+>  		ip_vs_sync_buff_release(sb);
+>
+>  	/* release the sending multicast socket */
+> -	sock_release(tinfo->sock);
+> +	sk_release_kernel(tinfo->sock->sk);
+>  	kfree(tinfo);
+>
+>  	return 0;
+> @@ -1513,7 +1523,7 @@ static int sync_thread_backup(void *data)
+>  	}
+>
+>  	/* release the sending multicast socket */
+> -	sock_release(tinfo->sock);
+> +	sk_release_kernel(tinfo->sock->sk);
+>  	kfree(tinfo->buf);
+>  	kfree(tinfo);
+>
+> @@ -1601,7 +1611,7 @@ outtinfo:
+>  outbuf:
+>  	kfree(buf);
+>  outsocket:
+> -	sock_release(sock);
+> +	sk_release_kernel(sock->sk);
+>  out:
+>  	return result;
+>  }
+> --
+> 1.7.2.3
