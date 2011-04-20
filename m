@@ -1,10 +1,8 @@
 From: Hans Schillstrom <hans@schillstrom.com>
-Subject: [PATCH 6/6] IPVS: add debug functions
-Date: Wed, 20 Apr 2011 20:33:54 +0200
-Message-ID: <1303324434-14024-7-git-send-email-hans@schillstrom.com>
-References: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
+Subject: [v2 PATCH 0/6] IPVS: init and cleanup.
+Date: Wed, 20 Apr 2011 20:33:48 +0200
+Message-ID: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
 Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -13,73 +11,78 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: hans.schillstrom@ericsson.com, Hans Schillstrom <hans@schillstrom.com>
 
-Optional patch, but it is nice to have.
+This patch series handles exit from a network name space.
 
-Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
----
- net/netfilter/ipvs/ip_vs_ctl.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+REVISION
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 34f05db..3b6c411 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -351,8 +351,11 @@ static int ip_vs_svc_unhash(struct ip_vs_service *svc)
- 	svc->flags &= ~IP_VS_SVC_F_HASHED;
- 	atomic_dec(&svc->refcnt);
- 	/* No more services then no need for input */
--	if (atomic_read(&svc->refcnt) == 0)
-+	if (!atomic_read(&svc->refcnt)) {
- 		atomic_set(&net_ipvs(svc->net)->enable, 0);
-+		IP_VS_DBG(2, "Last service removed in net(%d) input disabled\n",
-+			     net_ipvs(svc->net)->gen);
-+	}
- 	return 1;
- }
+This is version 2
 
-@@ -1222,6 +1225,10 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
- 	write_unlock_bh(&__ip_vs_svc_lock);
+OVERVIEW
+Basically there was three faults in the netns implementation.
+- Kernel threads hold devices and preventing an exit.
+- dst cache holds references to devices.
+- Services was not always released.
 
- 	*svc_p = svc;
-+	if (atomic_read(&ipvs->enable) == 0)
-+		pr_info("netns(%d) enabled first service added\n",
-+			 ipvs->gen);
-+
- 	/* Now there is a service - full throttle */
- 	atomic_set(&ipvs->enable, 1);
- 	return 0;
-@@ -3695,6 +3702,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
- 	int idx;
- 	struct netns_ipvs *ipvs = net_ipvs(net);
+Patch 1 & 3 contains the functionality
+      4 renames funcctions
+      5 removes empty functions
+      6 Debuging.
 
-+	EnterFunction(2);
- 	ipvs->rs_lock = __RW_LOCK_UNLOCKED(ipvs->rs_lock);
+IMPLEMENTATION
+- Avoid to increment the usage counter for kernel threads.
+  this is done in the first patch.
+- Patch 3 tries to restore the cleanup order.
+  Add NETDEV_UNREGISTER notification for dst_reset
 
- 	/* Initialize rs_table */
-@@ -3721,6 +3729,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
- 	if (ip_vs_control_net_init_sysctl(net))
- 		goto err;
+From Julian -
+"For __ip_vs_service_cleanup: it still has to use mutex.
+Or we can avoid it by introducing ip_vs_unlink_service_nolock:
+ip_vs_flush will look like your __ip_vs_service_cleanup and
+will call ip_vs_unlink_service_nolock. ip_vs_unlink_service_nolock
+will be called by ip_vs_flush and by ip_vs_unlink_service."
 
-+	LeaveFunction(2);
- 	return 0;
+I will give above another try later on see if I can get it to work.
+Right now ip_vs_service_net_cleanup() seems to work.
 
- err:
-@@ -3732,6 +3741,7 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
- {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
 
-+	EnterFunction(2);
- 	ip_vs_trash_cleanup(net);
- 	ip_vs_stop_estimator(net, &ipvs->tot_stats);
- 	ip_vs_control_net_cleanup_sysctl(net);
-@@ -3739,6 +3749,7 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
- 	proc_net_remove(net, "ip_vs_stats");
- 	proc_net_remove(net, "ip_vs");
- 	free_percpu(ipvs->tot_stats.cpustats);
-+	LeaveFunction(2);
- }
+An netns exit could look like this
+IPVS: Enter: __ip_vs_dev_cleanup, net/netfilter/ipvs/ip_vs_core.c
+IPVS: stopping master sync thread 1286 ...
+IPVS: stopping backup sync thread 1294 ...
+IPVS: Leave: __ip_vs_dev_cleanup, net/netfilter/ipvs/ip_vs_core.c
+IPVS: Enter: ip_vs_dst_event, net/netfilter/ipvs/ip_vs_ctl.c line
+IPVS: Leave: ip_vs_dst_event, net/netfilter/ipvs/ip_vs_ctl.c line
+...
+IPVS: Enter: ip_vs_dst_event, net/netfilter/ipvs/ip_vs_ctl.c line
+IPVS: Leave: ip_vs_dst_event, net/netfilter/ipvs/ip_vs_ctl.c line
+IPVS: Enter: ip_vs_service_net_cleanup, net/netfilter/ipvs/ip_vs_ctl.c
+IPVS: __ip_vs_del_service: enter
+IPVS: Moving dest 192.168.1.6:0 into trash, dest->refcnt=43450
+...
+IPVS: Moving dest 192.168.1.3:0 into trash, dest->refcnt=43449
+IPVS: __ip_vs_del_service: enter
+IPVS: Removing destination 0/[2003:0000:0000:0000:0000:0002:0000:0006]:80
+...
+IPVS: Removing destination 0/[2003:0000:0000:0000:0000:0002:0000:0003]:80
+IPVS: Removing service 0/[2003:0000:0000:0000:0000:0002:0004:0100]:80 usecnt=0
+IPVS: Leave: ip_vs_service_net_cleanup, net/netfilter/ipvs/ip_vs_ctl.c
+IPVS: Enter: ip_vs_control_net_cleanup, net/netfilter/ipvs/ip_vs_ctl.c
+IPVS: Removing service 80/0.0.0.0:0 usecnt=0
+IPVS: Leave: ip_vs_control_net_cleanup, net/netfilter/ipvs/ip_vs_ctl.c
+IPVS: ipvs netns 8 released
 
- int __init ip_vs_control_init(void)
---
-1.7.2.3
+PATCH SET
+This patch set is based upon net-next-2.6 (2.6.39-rc2)
+
+SUMMARY
+
+ include/net/ip_vs.h              |   23 ++++--
+ net/netfilter/ipvs/ip_vs_app.c   |   23 +-----
+ net/netfilter/ipvs/ip_vs_conn.c  |   14 +---
+ net/netfilter/ipvs/ip_vs_core.c  |  118 +++++++++++++++++++--------
+ net/netfilter/ipvs/ip_vs_ctl.c   |  168 +++++++++++++++++++++++++++++++-------
+ net/netfilter/ipvs/ip_vs_est.c   |   21 +----
+ net/netfilter/ipvs/ip_vs_proto.c |   11 +--
+ net/netfilter/ipvs/ip_vs_sync.c  |   70 ++++++++--------
+ 8 files changed, 281 insertions(+), 167 deletions(-)
 
