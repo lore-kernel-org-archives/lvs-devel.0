@@ -1,11 +1,11 @@
 From: Hans Schillstrom <hans@schillstrom.com>
-Subject: [PATCH 1/6] IPVS: Change of socket usage to enable name space exit.
-Date: Wed, 20 Apr 2011 20:33:49 +0200
-Message-ID: <1303324434-14024-2-git-send-email-hans@schillstrom.com>
+Subject: [PATCH 3/6] IPVS: init and cleanup restructuring.
+Date: Wed, 20 Apr 2011 20:33:51 +0200
+Message-ID: <1303324434-14024-4-git-send-email-hans@schillstrom.com>
 References: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1303324434-14024-1-git-send-email-hans@schillstrom.com>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,211 +13,688 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: hans.schillstrom@ericsson.com, Hans Schillstrom <hans@schillstrom.com>
 
-To work this patch also needs the other patches in this series.
-
-VERSION: 2
+REVISION 2
 
 DESCRIPTION
+This patch tries to restore the initial init and cleanup
+sequences that was before namspace patch.
 
-If the sync daemons run in a name space while it crashes
-or get killed, there is no way to stop them except for a reboot.
-When all patches are there, ip_vs_core will handle register_pernet_(),
-i.e. ip_vs_sync_init() and ip_vs_sync_cleanup() will be removed.
+The number of calls to register_pernet_device have been
+reduced to one for the ip_vs.ko
+Schedulers still have their own calls.
 
-Kernel threads should not increment the use count of a socket.
-By calling sk_change_net() after creating a socket this is avoided.
-sock_release cant be used intead sk_release_kernel() should be used.
+This patch adds a function __ip_vs_service_cleanup()
+and a throttle or actually on/off switch for
+the netfilter hooks.
 
-Thanks Eric W Biederman for your advices.
+The nf hooks will be enabled when the first service is loaded
+and disabled when the last service is removed or when a
+namespace exit starts.
 
-This patch is based on net-next-2.6  ver 2.6.39-rc2
-
-CHANGES
- Rev 2
-   sock_create_kern() used instead of __sock_create()
-   return codes of kthread_stop() used.
+CHANGES R2
+	receivening av device events, suggested by Julian.
+	This change add 3 new functions ip_vs_dst_event()
+	ip_vs_svc_reset() and __ip_vs_dev_reset().
 
 Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c |    2 +-
- net/netfilter/ipvs/ip_vs_sync.c |   58 +++++++++++++++++++++++++--------------
- 2 files changed, 38 insertions(+), 22 deletions(-)
+ include/net/ip_vs.h              |   17 +++++
+ net/netfilter/ipvs/ip_vs_app.c   |   15 +----
+ net/netfilter/ipvs/ip_vs_conn.c  |   12 +---
+ net/netfilter/ipvs/ip_vs_core.c  |   87 ++++++++++++++++++++++---
+ net/netfilter/ipvs/ip_vs_ctl.c   |  133 ++++++++++++++++++++++++++++++++------
+ net/netfilter/ipvs/ip_vs_est.c   |   14 +---
+ net/netfilter/ipvs/ip_vs_proto.c |   11 +---
+ net/netfilter/ipvs/ip_vs_sync.c  |   13 +---
+ 8 files changed, 222 insertions(+), 80 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index d516f00..83fa9e8 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -830,6 +830,7 @@ struct netns_ipvs {
+ 	struct list_head	sctp_apps[SCTP_APP_TAB_SIZE];
+ 	spinlock_t		sctp_app_lock;
+ #endif
++	atomic_t		enable;          /* enable like nf_hooks do */
+ 	/* ip_vs_conn */
+ 	atomic_t		conn_count;      /*  connection counter */
+
+@@ -1089,6 +1090,22 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
+ 	atomic_inc(&ctl_cp->n_control);
+ }
+
++/*
++ * IPVS netns init & cleanup functions
++ */
++extern int __ip_vs_estimator_init(struct net *net);
++extern int __ip_vs_control_init(struct net *net);
++extern int __ip_vs_protocol_init(struct net *net);
++extern int __ip_vs_app_init(struct net *net);
++extern int __ip_vs_conn_init(struct net *net);
++extern int __ip_vs_sync_init(struct net *net);
++extern void __ip_vs_conn_cleanup(struct net *net);
++extern void __ip_vs_app_cleanup(struct net *net);
++extern void __ip_vs_protocol_cleanup(struct net *net);
++extern void __ip_vs_control_cleanup(struct net *net);
++extern void __ip_vs_estimator_cleanup(struct net *net);
++extern void __ip_vs_sync_cleanup(struct net *net);
++extern void __ip_vs_service_cleanup(struct net *net);
+
+ /*
+  *      IPVS application functions
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index 2dc6de1..51f3af7 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -576,7 +576,7 @@ static const struct file_operations ip_vs_app_fops = {
+ };
+ #endif
+
+-static int __net_init __ip_vs_app_init(struct net *net)
++int __net_init __ip_vs_app_init(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+
+@@ -585,26 +585,17 @@ static int __net_init __ip_vs_app_init(struct net *net)
+ 	return 0;
+ }
+
+-static void __net_exit __ip_vs_app_cleanup(struct net *net)
++void __net_exit __ip_vs_app_cleanup(struct net *net)
+ {
+ 	proc_net_remove(net, "ip_vs_app");
+ }
+
+-static struct pernet_operations ip_vs_app_ops = {
+-	.init = __ip_vs_app_init,
+-	.exit = __ip_vs_app_cleanup,
+-};
+-
+ int __init ip_vs_app_init(void)
+ {
+-	int rv;
+-
+-	rv = register_pernet_subsys(&ip_vs_app_ops);
+-	return rv;
++	return 0;
+ }
+
+
+ void ip_vs_app_cleanup(void)
+ {
+-	unregister_pernet_subsys(&ip_vs_app_ops);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index c97bd45..d3fd91b 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1258,22 +1258,17 @@ int __net_init __ip_vs_conn_init(struct net *net)
+ 	return 0;
+ }
+
+-static void __net_exit __ip_vs_conn_cleanup(struct net *net)
++void __net_exit __ip_vs_conn_cleanup(struct net *net)
+ {
+ 	/* flush all the connection entries first */
+ 	ip_vs_conn_flush(net);
+ 	proc_net_remove(net, "ip_vs_conn");
+ 	proc_net_remove(net, "ip_vs_conn_sync");
+ }
+-static struct pernet_operations ipvs_conn_ops = {
+-	.init = __ip_vs_conn_init,
+-	.exit = __ip_vs_conn_cleanup,
+-};
+
+ int __init ip_vs_conn_init(void)
+ {
+ 	int idx;
+-	int retc;
+
+ 	/* Compute size and mask */
+ 	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
+@@ -1309,17 +1304,14 @@ int __init ip_vs_conn_init(void)
+ 		rwlock_init(&__ip_vs_conntbl_lock_array[idx].l);
+ 	}
+
+-	retc = register_pernet_subsys(&ipvs_conn_ops);
+-
+ 	/* calculate the random value for connection hash */
+ 	get_random_bytes(&ip_vs_conn_rnd, sizeof(ip_vs_conn_rnd));
+
+-	return retc;
++	return 0;
+ }
+
+ void ip_vs_conn_cleanup(void)
+ {
+-	unregister_pernet_subsys(&ipvs_conn_ops);
+ 	/* Release the empty cache */
+ 	kmem_cache_destroy(ip_vs_conn_cachep);
+ 	vfree(ip_vs_conn_tab);
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 07accf6..a0791dc 100644
+index d536b51..77377a8 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1896,7 +1896,7 @@ static int __net_init __ip_vs_init(struct net *net)
+@@ -1343,6 +1343,10 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 		return NF_ACCEPT; /* The packet looks wrong, ignore */
+
+ 	net = skb_net(skb);
++	/* ipvs enabled in this Network Name Space ? */
++	if (!atomic_read(&net_ipvs(net)->enable))
++		return NF_ACCEPT;
++
+ 	pd = ip_vs_proto_data_get(net, cih->protocol);
+ 	if (!pd)
+ 		return NF_ACCEPT;
+@@ -1531,6 +1535,9 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	}
+ 	ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
+
++	net = skb_net(skb);
++	if (!atomic_read(&net_ipvs(net)->enable))
++		return NF_ACCEPT;
+ 	/* Bad... Do not break raw sockets */
+ 	if (unlikely(skb->sk != NULL && hooknum == NF_INET_LOCAL_OUT &&
+ 		     af == AF_INET)) {
+@@ -1562,7 +1569,6 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 			ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
+ 		}
+
+-	net = skb_net(skb);
+ 	/* Protocol supported? */
+ 	pd = ip_vs_proto_data_get(net, iph.protocol);
+ 	if (unlikely(!pd))
+@@ -1588,7 +1594,6 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	}
+
+ 	IP_VS_DBG_PKT(11, af, pp, skb, 0, "Incoming packet");
+-	net = skb_net(skb);
+ 	ipvs = net_ipvs(net);
+ 	/* Check the server status */
+ 	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+@@ -1884,21 +1889,72 @@ static int __net_init __ip_vs_init(struct net *net)
+ 		pr_err("%s(): no memory.\n", __func__);
+ 		return -ENOMEM;
+ 	}
++	/* Hold the beast until a service is registerd */
++	atomic_set(&ipvs->enable, 0);
+ 	ipvs->net = net;
+ 	/* Counters used for creating unique names */
+ 	ipvs->gen = atomic_read(&ipvs_netns_cnt);
+ 	atomic_inc(&ipvs_netns_cnt);
+ 	net->ipvs = ipvs;
++
++	if (__ip_vs_estimator_init(net) < 0)
++		goto estimator_fail;
++
++	if (__ip_vs_control_init(net) < 0)
++		goto control_fail;
++
++	if (__ip_vs_protocol_init(net) < 0)
++		goto protocol_fail;
++
++	if (__ip_vs_app_init(net) < 0)
++		goto app_fail;
++
++	if (__ip_vs_conn_init(net) < 0)
++		goto conn_fail;
++
++	if (__ip_vs_sync_init(net) < 0)
++		goto sync_fail;
++
+ 	printk(KERN_INFO "IPVS: Creating netns size=%zu id=%d\n",
+ 			 sizeof(struct netns_ipvs), ipvs->gen);
+ 	return 0;
++/*
++ * Error handling
++ */
++
++sync_fail:
++	__ip_vs_conn_cleanup(net);
++conn_fail:
++	__ip_vs_app_cleanup(net);
++app_fail:
++	__ip_vs_protocol_cleanup(net);
++protocol_fail:
++	__ip_vs_control_cleanup(net);
++control_fail:
++	__ip_vs_estimator_cleanup(net);
++estimator_fail:
++	return -ENOMEM;
+ }
 
  static void __net_exit __ip_vs_cleanup(struct net *net)
  {
--	IP_VS_DBG(10, "ipvs netns %d released\n", net_ipvs(net)->gen);
-+	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
++	__ip_vs_service_cleanup(net);	/* ip_vs_flush() with locks */
++	__ip_vs_conn_cleanup(net);
++	__ip_vs_app_cleanup(net);
++	__ip_vs_protocol_cleanup(net);
++	__ip_vs_control_cleanup(net);
++	__ip_vs_estimator_cleanup(net);
+ 	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
  }
 
++static void __net_exit __ip_vs_dev_cleanup(struct net *net)
++{
++	EnterFunction(2);
++	atomic_set(&net_ipvs(net)->enable, 0); /* Disable packet reception */
++	__ip_vs_sync_cleanup(net);
++	LeaveFunction(2);
++}
++
  static struct pernet_operations ipvs_core_ops = {
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 3e7961e..c187823 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1303,13 +1303,18 @@ static struct socket *make_send_sock(struct net *net)
- 	struct socket *sock;
- 	int result;
+ 	.init = __ip_vs_init,
+ 	.exit = __ip_vs_cleanup,
+@@ -1906,6 +1962,10 @@ static struct pernet_operations ipvs_core_ops = {
+ 	.size = sizeof(struct netns_ipvs),
+ };
 
--	/* First create a socket */
--	result = __sock_create(net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
-+	/* First create a socket move it to right name space later */
-+	result = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
- 	if (result < 0) {
- 		pr_err("Error during creation of socket; terminating\n");
- 		return ERR_PTR(result);
- 	}
++static struct pernet_operations ipvs_core_dev_ops = {
++	.exit = __ip_vs_dev_cleanup,
++};
++
+ /*
+  *	Initialize IP Virtual Server
+  */
+@@ -1913,10 +1973,6 @@ static int __init ip_vs_init(void)
+ {
+ 	int ret;
+
+-	ret = register_pernet_subsys(&ipvs_core_ops);	/* Alloc ip_vs struct */
+-	if (ret < 0)
+-		return ret;
 -
-+	/*
-+	 * Kernel sockets that are a part of a namespace, should not
-+	 * hold a reference to a namespace in order to allow to stop it.
-+	 * After sk_change_net should be released using sk_release_kernel.
-+	 */
-+	sk_change_net(sock->sk, net);
- 	result = set_mcast_if(sock->sk, ipvs->master_mcast_ifn);
- 	if (result < 0) {
- 		pr_err("Error setting outbound mcast interface\n");
-@@ -1334,8 +1339,8 @@ static struct socket *make_send_sock(struct net *net)
+ 	ip_vs_estimator_init();
+ 	ret = ip_vs_control_init();
+ 	if (ret < 0) {
+@@ -1944,15 +2000,28 @@ static int __init ip_vs_init(void)
+ 		goto cleanup_conn;
+ 	}
 
- 	return sock;
++	ret = register_pernet_subsys(&ipvs_core_ops);	/* Alloc ip_vs struct */
++	if (ret < 0)
++		goto cleanup_sync;
++
++	ret = register_pernet_device(&ipvs_core_dev_ops);
++	if (ret < 0)
++		goto cleanup_sub;
++
+ 	ret = nf_register_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ 	if (ret < 0) {
+ 		pr_err("can't register hooks.\n");
+-		goto cleanup_sync;
++		goto cleanup_dev;
+ 	}
 
--  error:
--	sock_release(sock);
-+error:
-+	sk_release_kernel(sock->sk);
- 	return ERR_PTR(result);
+ 	pr_info("ipvs loaded.\n");
++
+ 	return ret;
+
++cleanup_dev:
++	unregister_pernet_device(&ipvs_core_dev_ops);
++cleanup_sub:
++	unregister_pernet_subsys(&ipvs_core_ops);
+ cleanup_sync:
+ 	ip_vs_sync_cleanup();
+ cleanup_conn:
+@@ -1964,20 +2033,20 @@ cleanup_protocol:
+ 	ip_vs_control_cleanup();
+ cleanup_estimator:
+ 	ip_vs_estimator_cleanup();
+-	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+ 	return ret;
  }
 
-@@ -1350,12 +1355,17 @@ static struct socket *make_receive_sock(struct net *net)
- 	int result;
-
- 	/* First create a socket */
--	result = __sock_create(net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
-+	result = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
- 	if (result < 0) {
- 		pr_err("Error during creation of socket; terminating\n");
- 		return ERR_PTR(result);
- 	}
--
-+	/*
-+	 * Kernel sockets that are a part of a namespace, should not
-+	 * hold a reference to a namespace in order to allow to stop it.
-+	 * After sk_change_net should be released using sk_release_kernel.
-+	 */
-+	sk_change_net(sock->sk, net);
- 	/* it is equivalent to the REUSEADDR option in user-space */
- 	sock->sk->sk_reuse = 1;
-
-@@ -1377,8 +1387,8 @@ static struct socket *make_receive_sock(struct net *net)
-
- 	return sock;
-
--  error:
--	sock_release(sock);
-+error:
-+	sk_release_kernel(sock->sk);
- 	return ERR_PTR(result);
+ static void __exit ip_vs_cleanup(void)
+ {
+ 	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
++	unregister_pernet_device(&ipvs_core_dev_ops);
++	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+ 	ip_vs_sync_cleanup();
+ 	ip_vs_conn_cleanup();
+ 	ip_vs_app_cleanup();
+ 	ip_vs_protocol_cleanup();
+ 	ip_vs_control_cleanup();
+ 	ip_vs_estimator_cleanup();
+-	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+ 	pr_info("ipvs unloaded.\n");
  }
 
-@@ -1473,7 +1483,7 @@ static int sync_thread_master(void *data)
- 		ip_vs_sync_buff_release(sb);
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index a31a70c..70e7a5e 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -69,6 +69,11 @@ int ip_vs_get_debug_level(void)
+ }
+ #endif
 
- 	/* release the sending multicast socket */
--	sock_release(tinfo->sock);
-+	sk_release_kernel(tinfo->sock->sk);
- 	kfree(tinfo);
++
++/*  Protos */
++static void __ip_vs_del_service(struct ip_vs_service *svc);
++
++
+ #ifdef CONFIG_IP_VS_IPV6
+ /* Taken from rt6_fill_node() in net/ipv6/route.c, is there a better way? */
+ static int __ip_vs_addr_is_local_v6(struct net *net,
+@@ -345,6 +350,9 @@ static int ip_vs_svc_unhash(struct ip_vs_service *svc)
 
+ 	svc->flags &= ~IP_VS_SVC_F_HASHED;
+ 	atomic_dec(&svc->refcnt);
++	/* No more services then no need for input */
++	if (atomic_read(&svc->refcnt) == 0)
++		atomic_set(&net_ipvs(svc->net)->enable, 0);
+ 	return 1;
+ }
+
+@@ -1214,6 +1222,8 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+ 	write_unlock_bh(&__ip_vs_svc_lock);
+
+ 	*svc_p = svc;
++	/* Now there is a service - full throttle */
++	atomic_set(&ipvs->enable, 1);
  	return 0;
-@@ -1513,7 +1523,7 @@ static int sync_thread_backup(void *data)
- 	}
 
- 	/* release the sending multicast socket */
--	sock_release(tinfo->sock);
-+	sk_release_kernel(tinfo->sock->sk);
- 	kfree(tinfo->buf);
- 	kfree(tinfo);
 
-@@ -1601,7 +1611,7 @@ outtinfo:
- outbuf:
- 	kfree(buf);
- outsocket:
--	sock_release(sock);
-+	sk_release_kernel(sock->sk);
- out:
- 	return result;
+@@ -1472,7 +1482,95 @@ static int ip_vs_flush(struct net *net)
+ 	return 0;
  }
-@@ -1610,6 +1620,7 @@ out:
- int stop_sync_thread(struct net *net, int state)
+
++/*
++ *	Delete service by {netns} in the service table.
++ *	Called by __ip_vs_cleanup()
++ */
++void __ip_vs_service_cleanup(struct net *net)
++{
++	unsigned hash;
++	struct ip_vs_service *svc, *tmp;
++
++	EnterFunction(2);
++	/* Check for "full" addressed entries */
++	mutex_lock(&__ip_vs_mutex);
++	for (hash = 0; hash < IP_VS_SVC_TAB_SIZE; hash++) {
++		write_lock_bh(&__ip_vs_svc_lock);
++		list_for_each_entry_safe(svc, tmp, &ip_vs_svc_table[hash],
++					 s_list) {
++			if (net_eq(svc->net, net)) {
++				ip_vs_svc_unhash(svc);
++				/*  Wait until all the svc users go away. */
++				IP_VS_WAIT_WHILE(atomic_read(&svc->usecnt) > 0);
++				__ip_vs_del_service(svc);
++			}
++		}
++		list_for_each_entry_safe(svc, tmp, &ip_vs_svc_fwm_table[hash],
++					 f_list) {
++			if (net_eq(svc->net, net)) {
++				ip_vs_svc_unhash(svc);
++				/*  Wait until all the svc users go away. */
++				IP_VS_WAIT_WHILE(atomic_read(&svc->usecnt) > 0);
++				__ip_vs_del_service(svc);
++			}
++		}
++		write_unlock_bh(&__ip_vs_svc_lock);
++	}
++	mutex_unlock(&__ip_vs_mutex);
++	LeaveFunction(2);
++}
++static inline void
++__ip_vs_dev_reset(struct ip_vs_dest *dest, struct net_device *dev)
++{
++	spin_lock_bh(&dest->dst_lock);
++	if (dest->dst_cache && dest->dst_cache->dev == dev)
++		ip_vs_dst_reset(dest);
++	spin_unlock_bh(&dest->dst_lock);
++}
++
++static void ip_vs_svc_reset(struct ip_vs_service *svc, struct net_device *dev)
++{
++	struct ip_vs_dest *dest;
++
++	list_for_each_entry(dest, &svc->destinations, n_list) {
++		__ip_vs_dev_reset(dest, dev);
++	}
++}
+
++static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
++			    void *ptr)
++{
++	struct net_device *dev = ptr;
++	struct net *net = dev_net(dev);
++	struct ip_vs_service *svc;
++	struct ip_vs_dest *dest;
++	unsigned int idx;
++
++	if (event != NETDEV_UNREGISTER)
++		return NOTIFY_DONE;
++
++	EnterFunction(2);
++	mutex_lock(&__ip_vs_mutex);
++	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
++		write_lock_bh(&__ip_vs_svc_lock);
++		list_for_each_entry(svc, &ip_vs_svc_table[idx], s_list) {
++			if (net_eq(svc->net, net))
++				ip_vs_svc_reset(svc, dev);
++		}
++		list_for_each_entry(svc, &ip_vs_svc_fwm_table[idx], f_list) {
++			if (net_eq(svc->net, net))
++				ip_vs_svc_reset(svc, dev);
++		}
++		write_unlock_bh(&__ip_vs_svc_lock);
++	}
++
++	list_for_each_entry(dest, &net_ipvs(net)->dest_trash, n_list) {
++		__ip_vs_dev_reset(dest, dev);
++	}
++	mutex_unlock(&__ip_vs_mutex);
++	LeaveFunction(2);
++	return NOTIFY_DONE;
++}
+ /*
+  *	Zero counters in a service or all services
+  */
+@@ -3588,6 +3686,10 @@ void __net_init __ip_vs_control_cleanup_sysctl(struct net *net) { }
+
+ #endif
+
++static struct notifier_block ip_vs_dst_notifier = {
++	.notifier_call = ip_vs_dst_event,
++};
++
+ int __net_init __ip_vs_control_init(struct net *net)
+ {
+ 	int idx;
+@@ -3626,7 +3728,7 @@ err:
+ 	return -ENOMEM;
+ }
+
+-static void __net_exit __ip_vs_control_cleanup(struct net *net)
++void __net_exit __ip_vs_control_cleanup(struct net *net)
  {
  	struct netns_ipvs *ipvs = net_ipvs(net);
-+	int retc = -EINVAL;
 
- 	IP_VS_DBG(7, "%s(): pid %d\n", __func__, task_pid_nr(current));
+@@ -3639,11 +3741,6 @@ static void __net_exit __ip_vs_control_cleanup(struct net *net)
+ 	free_percpu(ipvs->tot_stats.cpustats);
+ }
 
-@@ -1629,7 +1640,7 @@ int stop_sync_thread(struct net *net, int state)
- 		spin_lock_bh(&ipvs->sync_lock);
- 		ipvs->sync_state &= ~IP_VS_STATE_MASTER;
- 		spin_unlock_bh(&ipvs->sync_lock);
--		kthread_stop(ipvs->master_thread);
-+		retc = kthread_stop(ipvs->master_thread);
- 		ipvs->master_thread = NULL;
- 	} else if (state == IP_VS_STATE_BACKUP) {
- 		if (!ipvs->backup_thread)
-@@ -1639,16 +1650,14 @@ int stop_sync_thread(struct net *net, int state)
- 			task_pid_nr(ipvs->backup_thread));
-
- 		ipvs->sync_state &= ~IP_VS_STATE_BACKUP;
--		kthread_stop(ipvs->backup_thread);
-+		retc = kthread_stop(ipvs->backup_thread);
- 		ipvs->backup_thread = NULL;
--	} else {
--		return -EINVAL;
+-static struct pernet_operations ipvs_control_ops = {
+-	.init = __ip_vs_control_init,
+-	.exit = __ip_vs_control_cleanup,
+-};
+-
+ int __init ip_vs_control_init(void)
+ {
+ 	int idx;
+@@ -3657,33 +3754,32 @@ int __init ip_vs_control_init(void)
+ 		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
  	}
 
- 	/* decrease the module use count */
- 	ip_vs_use_count_dec();
+-	ret = register_pernet_subsys(&ipvs_control_ops);
+-	if (ret) {
+-		pr_err("cannot register namespace.\n");
+-		goto err;
+-	}
+-
+ 	smp_wmb();	/* Do we really need it now ? */
 
--	return 0;
-+	return retc;
+ 	ret = nf_register_sockopt(&ip_vs_sockopts);
+ 	if (ret) {
+ 		pr_err("cannot register sockopt.\n");
+-		goto err_net;
++		goto err_sock;
+ 	}
+
+ 	ret = ip_vs_genl_register();
+ 	if (ret) {
+ 		pr_err("cannot register Generic Netlink interface.\n");
+-		nf_unregister_sockopt(&ip_vs_sockopts);
+-		goto err_net;
++		goto err_genl;
+ 	}
+
++	ret = register_netdevice_notifier(&ip_vs_dst_notifier);
++	if (ret < 0)
++		goto err_notf;
++
+ 	LeaveFunction(2);
+ 	return 0;
+
+-err_net:
+-	unregister_pernet_subsys(&ipvs_control_ops);
+-err:
++err_notf:
++	ip_vs_genl_unregister();
++err_genl:
++	nf_unregister_sockopt(&ip_vs_sockopts);
++err_sock:
+ 	return ret;
  }
 
+@@ -3691,7 +3787,6 @@ err:
+ void ip_vs_control_cleanup(void)
+ {
+ 	EnterFunction(2);
+-	unregister_pernet_subsys(&ipvs_control_ops);
+ 	ip_vs_genl_unregister();
+ 	nf_unregister_sockopt(&ip_vs_sockopts);
+ 	LeaveFunction(2);
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 8c8766c..508cce9 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -192,7 +192,7 @@ void ip_vs_read_estimator(struct ip_vs_stats_user *dst,
+ 	dst->outbps = (e->outbps + 0xF) >> 5;
+ }
+
+-static int __net_init __ip_vs_estimator_init(struct net *net)
++int __net_init __ip_vs_estimator_init(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+
+@@ -203,24 +203,16 @@ static int __net_init __ip_vs_estimator_init(struct net *net)
+ 	return 0;
+ }
+
+-static void __net_exit __ip_vs_estimator_exit(struct net *net)
++void __net_exit __ip_vs_estimator_cleanup(struct net *net)
+ {
+ 	del_timer_sync(&net_ipvs(net)->est_timer);
+ }
+-static struct pernet_operations ip_vs_app_ops = {
+-	.init = __ip_vs_estimator_init,
+-	.exit = __ip_vs_estimator_exit,
+-};
+
+ int __init ip_vs_estimator_init(void)
+ {
+-	int rv;
+-
+-	rv = register_pernet_subsys(&ip_vs_app_ops);
+-	return rv;
++	return 0;
+ }
+
+ void ip_vs_estimator_cleanup(void)
+ {
+-	unregister_pernet_subsys(&ip_vs_app_ops);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index 17484a4..eb86028 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -316,7 +316,7 @@ ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
  /*
-@@ -1670,8 +1679,15 @@ static int __net_init __ip_vs_sync_init(struct net *net)
-
- static void __ip_vs_sync_cleanup(struct net *net)
+  * per network name-space init
+  */
+-static int __net_init __ip_vs_protocol_init(struct net *net)
++int __net_init __ip_vs_protocol_init(struct net *net)
  {
--	stop_sync_thread(net, IP_VS_STATE_MASTER);
--	stop_sync_thread(net, IP_VS_STATE_BACKUP);
-+	int retc;
-+
-+	retc = stop_sync_thread(net, IP_VS_STATE_MASTER);
-+	if (retc && retc != -EINVAL)
-+		pr_err("Failed to stop Master Daemon\n");
-+
-+	retc = stop_sync_thread(net, IP_VS_STATE_BACKUP);
-+	if (retc && retc != -EINVAL)
-+		pr_err("Failed to stop Backup Daemon\n");
+ #ifdef CONFIG_IP_VS_PROTO_TCP
+ 	register_ip_vs_proto_netns(net, &ip_vs_protocol_tcp);
+@@ -336,7 +336,7 @@ static int __net_init __ip_vs_protocol_init(struct net *net)
+ 	return 0;
  }
 
- static struct pernet_operations ipvs_sync_ops = {
-@@ -1682,10 +1698,10 @@ static struct pernet_operations ipvs_sync_ops = {
-
- int __init ip_vs_sync_init(void)
+-static void __net_exit __ip_vs_protocol_cleanup(struct net *net)
++void __net_exit __ip_vs_protocol_cleanup(struct net *net)
  {
--	return register_pernet_subsys(&ipvs_sync_ops);
-+	return register_pernet_device(&ipvs_sync_ops);
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_proto_data *pd;
+@@ -349,11 +349,6 @@ static void __net_exit __ip_vs_protocol_cleanup(struct net *net)
+ 	}
  }
 
- void ip_vs_sync_cleanup(void)
+-static struct pernet_operations ipvs_proto_ops = {
+-	.init = __ip_vs_protocol_init,
+-	.exit = __ip_vs_protocol_cleanup,
+-};
+-
+ int __init ip_vs_protocol_init(void)
  {
--	unregister_pernet_subsys(&ipvs_sync_ops);
-+	unregister_pernet_device(&ipvs_sync_ops);
- }
---
-1.7.2.3
+ 	char protocols[64];
+@@ -382,7 +377,6 @@ int __init ip_vs_protocol_init(void)
+ 	REGISTER_PROTOCOL(&ip_vs_protocol_esp);
+ #endif
+ 	pr_info("Registered protocols (%s)\n", &protocols[2]);
+-	return register_pernet_subsys(&ipvs_proto_ops);
 
+ 	return 0;
+ }
+@@ -393,7 +387,6 @@ void ip_vs_protocol_cleanup(void)
+ 	struct ip_vs_protocol *pp;
+ 	int i;
+
+-	unregister_pernet_subsys(&ipvs_proto_ops);
+ 	/* unregister all the ipvs protocols */
+ 	for (i = 0; i < IP_VS_PROTO_TAB_SIZE; i++) {
+ 		while ((pp = ip_vs_proto_table[i]) != NULL)
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index c187823..f31ef18 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1663,7 +1663,7 @@ int stop_sync_thread(struct net *net, int state)
+ /*
+  * Initialize data struct for each netns
+  */
+-static int __net_init __ip_vs_sync_init(struct net *net)
++int __net_init __ip_vs_sync_init(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+
+@@ -1677,7 +1677,7 @@ static int __net_init __ip_vs_sync_init(struct net *net)
+ 	return 0;
+ }
+
+-static void __ip_vs_sync_cleanup(struct net *net)
++void __ip_vs_sync_cleanup(struct net *net)
+ {
+ 	int retc;
+
+@@ -1690,18 +1690,11 @@ static void __ip_vs_sync_cleanup(struct net *net)
+ 		pr_err("Failed to stop Backup Daemon\n");
+ }
+
+-static struct pernet_operations ipvs_sync_ops = {
+-	.init = __ip_vs_sync_init,
+-	.exit = __ip_vs_sync_cleanup,
+-};
+-
