@@ -1,185 +1,180 @@
-From: Brian Carpio <bcarpio@broadhop.com>
-Subject: RE: [Linux-HA] UDP / DHCP / LDIRECTORD
-Date: Tue, 26 Apr 2011 09:15:07 -0700
-Message-ID: <131ECB70A13234449BBD551EC5022B686E3E1AC8F5@VA3DIAXVS061.RED001.local>
-References: <20100412020447.GB10826@verge.net.au>
-	<20100413025551.GA25064@verge.net.au>
-	<0CABC52FBCB6564DA3F567CC933D1FF36854D03287@VA3DIAXVS061.RED001.local>
-	<131ECB70A13234449BBD551EC5022B686E3D87B9DF@VA3DIAXVS061.RED001.local>
-	<131ECB70A13234449BBD551EC5022B686E3D87BDFA@VA3DIAXVS061.RED001.local>
- <131ECB70A13234449BBD551EC5022B686E3E12B65D@VA3DIAXVS061.RED001.local>
-Mime-Version: 1.0
-Content-Transfer-Encoding: base64
+From: Hans Schillstrom <hans@schillstrom.com>
+Subject: [v3 PATCH 5/6] IPVS: remove unused init and cleanup functions.
+Date: Fri, 29 Apr 2011 08:25:33 +0200
+Message-ID: <1304058334-17594-6-git-send-email-hans@schillstrom.com>
+References: <1304058334-17594-1-git-send-email-hans@schillstrom.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <131ECB70A13234449BBD551EC5022B686E3E12B65D@VA3DIAXVS061.RED001.local>
-Content-Language: en-US
+In-Reply-To: <1304058334-17594-1-git-send-email-hans@schillstrom.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="windows-1254"
-To: General Linux-HA mailing list <linux-ha@lists.linux-ha.org>, 'Simon Horman' <horms@verge.net.au>
-Cc: 'lvs-devel' <lvs-devel@vger.kernel.org>, 'Julian Anastasov' <ja@ssi.bg>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: ja@ssi.bg, horms@verge.net.au, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: hans.schillstrom@ericsson.com, Hans Schillstrom <hans@schillstrom.com>
 
-SGkgU2ltb24sDQoNCklzIHRoZXJlIGFueSB3YXkgd2UgY2FuIGNvZXJjZSB5b3UgdG8gb2ZmZXIg
-dXMgc29tZSBhc3Npc3RhbmNlIHdpdGggdGhpcyBhZ2Fpbj8gSSdtIHN1cmUgeW91IGFyZSBhIHZl
-cnkgYnVzeSBwZXJzb24gYnV0IGFueSBoZWxwIHlvdSBjYW4gb2ZmZXIgd291bGQgYmUgYXBwcmVj
-aWF0ZWQsIGFsc28gaWYgeW91IG5lZWQgYW55IGZ1cnRoZXIgaW5mb3JtYXRpb24gZnJvbSBtZSB0
-aGF0IHdvdWxkIGJlIGdyZWF0bHkgYXBwcmVjaWF0ZWQuIA0KDQpCcmlhbiBDYXJwaW8gDQpTZW5p
-b3IgU3lzdGVtcyBFbmdpbmVlcg0KDQpPZmZpY2U6ICsxLjMwMy45NjIuNzI0Mg0KTW9iaWxlOiAr
-MS43MjAuMzE5Ljg2MTcNCkVtYWlsOiBiY2FycGlvQGJyb2FkaG9wLmNvbQ0KDQoNCi0tLS0tT3Jp
-Z2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBsaW51eC1oYS1ib3VuY2VzQGxpc3RzLmxpbnV4LWhh
-Lm9yZyBbbWFpbHRvOmxpbnV4LWhhLWJvdW5jZXNAbGlzdHMubGludXgtaGEub3JnXSBPbiBCZWhh
-bGYgT2YgQnJpYW4gQ2FycGlvDQpTZW50OiBNb25kYXksIEFwcmlsIDI1LCAyMDExIDQ6MzAgQU0N
-ClRvOiBHZW5lcmFsIExpbnV4LUhBIG1haWxpbmcgbGlzdDsgJ1NpbW9uIEhvcm1hbicNCkNjOiAn
-bHZzLWRldmVsJzsgJ0p1bGlhbiBBbmFzdGFzb3YnDQpTdWJqZWN0OiBSZTogW0xpbnV4LUhBXSBV
-RFAgLyBESENQIC8gTERJUkVDVE9SRA0KDQpIaSwNCg0KSXQgbG9va3MgbGlrZSB0aGVyZSBhbHNv
-IG1pZ2h0IGJlIGEgbWVtb3J5IGxlYWsgaW4gdGhpcyBwYXRjaC4uIG92ZXIgdGhlIGxhc3QgZmV3
-IG1vbnRocyB3ZSBoYXZlIHNlZW4gbWVtb3J5IGdyb3cgc2xvd2x5IGJ1dCBsYXRlbHkgdGhlIHRy
-YWZmaWMgaGFzIGluY3JlYXNlZCBhbmQgdGhlIG1lbW9yeSB1dGlsaXphdGlvbiBvZiB0aGUgTGlu
-dXggYm94IGlzIG5vdyBncm93aW5nIGZhc3Rlci4gSSBwdXQgaW4gYSBmZXcgc2NyaXB0cyB0byB0
-cnkgYW5kIGRldGVjdCB3aGVyZSB0aGlzIG1lbW9yeSBsZWFrIHdhcyBjb21pbmcgZnJvbSBhbmQg
-d2hlbiB3YXRjaGluZyAvcHJvYy9tZW1pbmZvIG92ZXIgdGhlIGxhc3QgZmV3IGRheXMgSSBzYXcg
-dGhhdCBzbGFiIHdhcyBncm93aW5nLiANCg0KU28gSSBwdXQgaW4gYSBuZXcgc2NyaXB0IHRvIHdh
-dGNoIHNsYWJ0b3AgYW5kIEkgY2FuIHNlZSB0aGF0IGlwX3ZzX2Nvbm4gaXMgZ3Jvd2luZy4gVGhl
-IG51bWJlciBvZiBTTEFCUyBqdXN0IGdyb3dzIGFuZCBncm93cywgYW5kIHNvIGRvZXMgdGhlIENB
-Q0hFX1NJWkUuICBJcyB0aGVyZSBhbnkgd2F5IHlvdSBoYXZlIGEgY2hhbmNlIHRvIGxvb2sgaW50
-byB0aGlzIGZvciB1cz8gQW55IGFkZGl0aW9uYWwgaW5mb3JtYXRpb24gSSBjYW4gZ2l2ZSB0byB5
-b3UgYWJvdXQgdGhpcyBwcm9ibGVtPw0KDQpUaGFua3MgYSBsb3QsDQpCcmlhbiBDYXJwaW8NCg0K
-LS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IGxpbnV4LWhhLWJvdW5jZXNAbGlzdHMu
-bGludXgtaGEub3JnIFttYWlsdG86bGludXgtaGEtYm91bmNlc0BsaXN0cy5saW51eC1oYS5vcmdd
-IE9uIEJlaGFsZiBPZiBCcmlhbiBDYXJwaW8NClNlbnQ6IEZyaWRheSwgRmVicnVhcnkgMjUsIDIw
-MTEgMTI6MTQgUE0NClRvOiBHZW5lcmFsIExpbnV4LUhBIG1haWxpbmcgbGlzdDsgJ1NpbW9uIEhv
-cm1hbicNCkNjOiAnbHZzLWRldmVsJzsgJ0p1bGlhbiBBbmFzdGFzb3YnDQpTdWJqZWN0OiBSZTog
-W0xpbnV4LUhBXSBVRFAgLyBESENQIC8gTERJUkVDVE9SRA0KDQpBcHBhcmVudGx5IHRoaXMgaXMg
-cmVsYXRlZCB0byBzb21lIHNvcnQgb2YgcmFjZSBjb25kaXRpb24gKHBvc3NpYmx5IGEgcHJvYmxl
-bSB3aXRoIG15IGxkaXJlY3RvcmQgc3RhcnQgc2NyaXB0IHdoaWNoIGRvZXMgYW4gZWRpdCBvbiB0
-aGUgaXB2c2FkbSBjb25maWcgYWZ0ZXIgbGRpcmVjdG9yZCBoYXMgc3RhcnRlZCkgaWYgbGRpcmVj
-dG9yZCBzdGFydHMgdG8gcmVjZWl2ZSB0cmFmZmljIG9uIHBvcnQgNjcvNjggYmVmb3JlIHRoZSBm
-b2xsb3dpbmcgY29tbWFuZHMgYXJlIHJ1bjoNCg0KICAgICAgICBpcHZzYWRtIC1FIC11IDEwLjEw
-LjEwLjEwOjY3IC1vIC1zIHJyDQogICAgICAgIGlwdnNhZG0gLUUgLXUgMTAuMTAuMTAuMTA6Njgg
-LW8gLXMgcnINCg0KVGhlbiBpdCB3aWxsIGJlIHN0dWNrIHNlbmRpbmcgdHJhZmZpYyB0byB0aGUg
-ZmlzdCBzZXJ2ZXIgaW4gdGhlIGxpc3QuIA0KDQoNCg0KQnJpYW4gQ2FycGlvIA0KU2VuaW9yIFN5
-c3RlbXMgRW5naW5lZXINCg0KT2ZmaWNlOiArMS4zMDMuOTYyLjcyNDINCk1vYmlsZTogKzEuNzIw
-LjMxOS44NjE3DQpFbWFpbDogYmNhcnBpb0Bicm9hZGhvcC5jb20NCg0KDQotLS0tLU9yaWdpbmFs
-IE1lc3NhZ2UtLS0tLQ0KRnJvbTogbGludXgtaGEtYm91bmNlc0BsaXN0cy5saW51eC1oYS5vcmcg
-W21haWx0bzpsaW51eC1oYS1ib3VuY2VzQGxpc3RzLmxpbnV4LWhhLm9yZ10gT24gQmVoYWxmIE9m
-IEJyaWFuIENhcnBpbw0KU2VudDogVGh1cnNkYXksIEZlYnJ1YXJ5IDI0LCAyMDExIDM6NDcgUE0N
-ClRvOiAnU2ltb24gSG9ybWFuJw0KQ2M6ICdsdnMtZGV2ZWwnOyAnSnVsaWFuIEFuYXN0YXNvdic7
-ICdsaW51eC1oYUBsaXN0cy5saW51eC1oYS5vcmcnDQpTdWJqZWN0OiBSZTogW0xpbnV4LUhBXSBV
-RFAgLyBESENQIC8gTERJUkVDVE9SRA0KDQpBbGwsDQoNClNvIHRoaXMgcGF0Y2ggaGFzIGJlZW4g
-d29ya2luZyBmb3IgdXMgZmxhd2xlc3NseSBmb3IgdGhlIGxhc3QgNSBtb250aHMgb3Igc28uIA0K
-DQpPdXIgaW5mcmFzdHJ1Y3R1cmUgaXMgMTAwJSB2aXJ0dWFsaXplZCwgdGhlIG90aGVyIGRheSBv
-dXIgbG9hZGJhbGFjbmVyMDEgaGFkIGEgbWVtb3J5IGxlYWsgYW5kIGNyYXNoZWQsIHNpbmNlIHdl
-IHVzZSBsZGlyZWN0b3JkIHdpdGggaGVhcnRiZWF0IGxvYWRiYWxhY25lcjAyIHRvb2sgb3Zlciwg
-aG93ZXZlciBldmVyIHNpbmNlIHRoZW4gaXQgc2VlbXMgbGlrZSB0aGUgc2luZ2xlIHBhY2tldCBV
-RFAgc2NoZWR1bGluZyBoYXMgc3RvcHBlZCB3b3JraW5nLiBFdmVuIGlmIEkgZmFpbCBiYWNrIG92
-ZXIgdGhlIGxvYWRiYWxhY25lcjAxIFZNLCBJIHN0aWxsIHNlZSBhbGwgdGhlIERIQ1AgdHJhZmZp
-YyBnb2luZyB0byBvbmx5IG9uZSBiYWNrZW5kIHNlcnZlci4gDQoNCklmIEkgcnVuIGlwdnNhZG0g
-LUwgLW4gSSBjYW4gc2VlIHRoYXQgaXB2c2FkbSB0aGlua3MgYm90aCBvZiB0aGUgYmFja2VuZCBz
-ZXJ2ZXJzIGFyZSB1cCBzaW5jZSB0aGUgd2VpZ2h0IGlzIHNldCB0byAxIGZvciBlYWNoIHNlcnZl
-ciwgaWYgSSByZWJvb3QgdGhlIHNlY29uZCBiYWNrZW5kIHNlcnZlciB0aGUgb25lIHdoaWNoIGlz
-IG5vdCByZWNlaXZpbmcgYW55IHRyYWZmaWMgdGhlbiBydW4gaXB2c2FkbSAtTCAtbiBJIGNhbiBz
-ZWUgaXRzIHdlaWdodCBnbyB0byAwIGFuZCBpbiB0aGUgbGRpcmVjdG9yZCBsb2cgSSBjYW4gc2Vl
-IHRoYXQgaXRzIG1hcmtlZCBkZWFkLiANCg0KSSBoYXZlIGV4cG9ydGVkIG9uZSBvZiB0aGUgbG9h
-ZGJsYW5jZXJzIGFuZCBvbmUgb2YgdGhlIGJhY2tlbmQgc2VydmVycyAodXNpbmcgVk13YXJlKSBh
-bmQgaW1wb3J0ZWQgdGhlbSBpbnRvIGFub3RoZXIgRVNYaSBzZXJ2ZXIsIG9uY2UgSSBib290IHVw
-IHRoZSBsb2FkYmFsYWNuZXIgaXQgd29ya3MgcGVyZmVjdGx5Li4uIEknbSB2ZXJ5IHN0dW1wZWQg
-d2h5IHRoaXMgd291bGQgaGFwcGVuLCBpcyB0aGVyZSBhbnkgYWRkaXRpb25hbCBsb2dnaW5nIHlv
-dSBjYW4gdGhpbmsgb2YgdGhhdCBJIG1pZ2h0IHdhbnQgdG8gZW5hYmxlIHRvIHNlZSB3aGVyZSB0
-aGUgZXhhY3QgcHJvYmxlbSBpcz8NCg0KSGVyZSBhcmUgbXkgY29uZmlnczoNCg0KIA0KL2V0Yy9o
-YS5kL2xkaXJlY3RvcmQuY29uZg0KDQpjaGVja3RpbWVvdXQ9MTANCmNoZWNraW50ZXJ2YWw9Mg0K
-YXV0b3JlbG9hZD15ZXMNCmxvZ2ZpbGU9Ii92YXIvbG9nL2xkaXJlY3RvcmQubG9nIg0KcXVpZXNj
-ZW50PXllcw0KdmlydHVhbD0xMC4xMC4xMC4xMDo2Nw0KICAgICAgICByZWFsPWJhY2tlbmRfc2Vy
-dmVyMDE6NjcgbWFzcQ0KICAgICAgICByZWFsPWJhY2tlbmRfc2VydmVyMDI6NjcgbWFzcQ0KICAg
-ICAgICBwcm90b2NvbD11ZHANCiAgICAgICAgY2hlY2t0eXBlPXBpbmcNCiAgICAgICAgc2NoZWR1
-bGVyPXJyDQp2aXJ0dWFsPTEwLjEwLjEwLjEwOjY4DQogICAgICAgIHJlYWw9YmFja19lbmRzZXJ2
-ZXIwMTo2OCBtYXNxDQogICAgICAgIHJlYWw9YmFja2VuZF9zZXJ2ZXIwMjo2OCBtYXNxDQogICAg
-ICAgIHByb3RvY29sPXVkcA0KICAgICAgICBjaGVja3R5cGU9cGluZw0KICAgICAgICBzY2hlZHVs
-ZXI9cnINCg0KDQpJIGhhZCB0byByZXdyaXRlIHRoZSBsZGlyZWN0b3JkIHN0YXJ0IHNjcmlwdCBh
-bmQgYWRkZWQgdGhlIGZvbGxvd2luZyBsaW5lcyBpbiB0aGUgc3RhcnQgYW5kIHJlc3RhcnQgc2Vj
-dGlvbnM6DQoNCiAgICAgICAgaXB2c2FkbSAtRSAtdSAxMC4xMC4xMC4xMDo2NyAtbyAtcyBycg0K
-ICAgICAgICBpcHZzYWRtIC1FIC11IDEwLjEwLjEwLjEwOjY4IC1vIC1zIHJyDQoNCg0KSGVyZSBp
-cyB0aGUgb3V0cHV0IG9mIGlwdnNhZG0gLUwgLW4gd2hlbiBib3RoIGJhY2tlbmQgc2VydmVycyBh
-cmUgdXAgKHdvcmtpbmcgZW52aXJvbm1lbnQpOg0KDQoNCklQIFZpcnR1YWwgU2VydmVyIHZlcnNp
-b24gMS4yLjEgKHNpemU9NDA5NikgUHJvdCBMb2NhbEFkZHJlc3M6UG9ydCBTY2hlZHVsZXIgRmxh
-Z3MNCiAgLT4gUmVtb3RlQWRkcmVzczpQb3J0ICAgICAgICAgICBGb3J3YXJkIFdlaWdodCBBY3Rp
-dmVDb25uIEluQWN0Q29ubg0KVURQICAxMC4xMC4xMC4xMDo2NyByciBvcHMNCiAgLT4gYmFja2Vu
-ZF9zZXJ2ZXIwMTo2NyAgICAgICAgICAgIE1hc3EgICAgMSAgICAgIDAgICAgICAgICAgMTY3MzEg
-ICAgIA0KICAtPiBiYWNrZW5kX3NlcnZlcjAyOjY3ICAgICAgICAgICAgTWFzcSAgICAxICAgICAg
-MCAgICAgICAgICAxNzQ0NyAgICAgDQpVRFAgIDE5Mi4xNjguMTgxLjY3OjY4IHJyIG9wcw0KICAt
-PiBiYWNrZW5kX3NlcnZlcjAxOjY4ICAgICAgICAgICAgTWFzcSAgICAxICAgICAgMCAgICAgICAg
-ICAwICAgICAgICAgDQogIC0+IGJhY2tlbmRfc2VydmVyMDI6NjggICAgICAgICAgICBNYXNxICAg
-IDEgICAgICAwICAgICAgICAgIDAgICAgICAgICANCg0KSGVyZSBpcyB0aGUgb3V0cHV0IG9mIGlw
-dnNhZG0gLUwgLW4gd2hlbiBib3RoIGJhY2tlbmQgc2VydmVycyBhcmUgdXAgKG5vbi13b3JraW5n
-IGVudmlyb25tZW50KToNCg0KW3Jvb3RAbGIwMSBsb2ddIyBpcHZzYWRtIC1MIC1uDQpJUCBWaXJ0
-dWFsIFNlcnZlciB2ZXJzaW9uIDEuMi4xIChzaXplPTQwOTYpIFByb3QgTG9jYWxBZGRyZXNzOlBv
-cnQgU2NoZWR1bGVyIEZsYWdzDQogIC0+IFJlbW90ZUFkZHJlc3M6UG9ydCAgICAgICAgICAgRm9y
-d2FyZCBXZWlnaHQgQWN0aXZlQ29ubiBJbkFjdENvbm4NClVEUCAgMTAuMTAuMTAuMTA6NjcgcnIg
-b3BzDQogIC0+IGJhY2tlbmRfc2VydmVyMDE6NjcgICAgICAgICAgICAgICAgIE1hc3EgICAgMSAg
-ICAgIDAgICAgICAgICAgMSAgICAgICAgIA0KICAtPiBiYWNrZW5kX3NlcnZlcjAyOjY3ICAgICAg
-ICAgICAgICAgICBNYXNxICAgIDEgICAgICAwICAgICAgICAgIDAgICAgICAgICANClVEUCAgMTAu
-MTAuMTAuMTA6NjggcnIgb3BzDQogIC0+IGJhY2tlbmRfc2VydmVyMDE6NjggICAgICAgICAgICAg
-ICAgIE1hc3EgICAgMSAgICAgIDAgICAgICAgICAgMCAgICAgICAgIA0KICAtPiBiYWNrZW5kX3Nl
-cnZlcjAyOjY4ICAgICAgICAgICAgICAgICBNYXNxICAgIDEgICAgICAwICAgICAgICAgIDAgICAg
-ICAgICANCg0KDQpUaGUgb25seSBkaWZmZXJlbmNlIEkgc2VlIGlzIHRoYXQgaW4gbXkgIldvcmtp
-bmciIGVudmlyb25tZW50IG15IEluQWN0Q29ubiBudW1iZXIgaW5jcmVhc2VzIGFzIEkgc2VuZCBs
-b2FkIHRocm91Z2ggaXQsIGluIG15ICJOb24tV29ya2luZyIgZW52aXJvbm1lbnQgdGhlIEluQWN0
-Q29ubiBzdGF5cyBhdCAxIHRoZSBlbnRpcmUgdGltZS4uIEFub3RoZXIgZGlmZmVyZW5jZSBpcyB0
-aGF0IGluIHRoZSAiV29ya2luZyIgZW52aXJvbm1lbnQgSSBhbSB1c2luZyBhIERIQ1AgbG9hZCB0
-ZXN0aW5nIHRvb2wgb25lIG9mIG15IGRldmVsb3BlcnMgd3JvdGUsIHdoZXJlYXMgaW4gdGhlICJO
-T04tV29ya2luZyIgZW52aXJvbm1lbnQgd2UgYXJlIGFjdHVhbGx5IGdldHRpbmcgREhDUCB0cmFm
-ZmljIGZyb20gYW5vdGhlciBuZXR3b3JrIGRldmljZS4uLiANCg0KDQoNCg0KDQpCcmlhbiBDYXJw
-aW8NClNlbmlvciBTeXN0ZW1zIEVuZ2luZWVyDQoNCk9mZmljZTogKzEuMzAzLjk2Mi43MjQyDQpN
-b2JpbGU6ICsxLjcyMC4zMTkuODYxNw0KRW1haWw6IGJjYXJwaW9AYnJvYWRob3AuY29tDQoNCg0K
-LS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IEJyaWFuIENhcnBpbw0KU2VudDogVGh1
-cnNkYXksIEFwcmlsIDE1LCAyMDEwIDE6NTcgUE0NClRvOiBTaW1vbiBIb3JtYW4NCkNjOiBsaW51
-eC1oYUBsaXN0cy5saW51eC1oYS5vcmc7IGx2cy1kZXZlbDsgSnVsaWFuIEFuYXN0YXNvdg0KU3Vi
-amVjdDogUkU6IFtMaW51eC1IQV0gVURQIC8gREhDUCAvIExESVJFQ1RPUkQNCg0KU2ltb24sDQoN
-ClRoYW5rcyBhZ2FpbiBmb3IgYWxsIG9mIHlvdXIgaGFyZCB3b3JrLCBJIGhhdmUgc2VudCBvdmVy
-IGEgbWlsbGlvbiBVRFAgREhDUCBwYWNrZXRzIGF0IHRoZSBuZXcga2VybmVsL2lwdnNhZG0gd2l0
-aCB0aGUgcGF0Y2hlcyBhcHBsaWVkIGFuZCBjdXJyZW50bHkgdGhlIG9ubHkgaXNzdWUgKHdoaWNo
-IHlvdSBrbm93IGFib3V0IGFscmVhZHkpIGlzIHRoYXQgbGRpcmVjdG9yZCBkb2Vzbid0IGtub3cg
-YWJvdXQgdGhlIC1vIG9wdGlvbiB3aGljaCBjYXVzZXMgYSBzbGlnaHQgaXNzdWUgd2l0aCBoZWFy
-dGJlYXQgKGJ1dCBJIGp1c3QgcHV0IGluIGEgY2hlYXAgZml4IGluIG15IGxkaXJlY3RvcmQgc3Rh
-cnQgc2NyaXB0IHRvIGVkaXQgdGhlIHNlcnZpY2VzIGNyZWF0ZWQgYnkgbGRpcmVjdG9yZCkuLiAN
-Cg0KU28gbm90IG9ubHkgaGF2ZSBJIHNlbnQgb3ZlciAxLDAwMCwwMDAgcGFja2V0cyB0byB0aGlz
-IHNldHVwIGJ1dCBJIGhhdmUgYWxzbyBzZW50IHRoZW0gYXMgZmFzdCBhcyAxMCBwYWNrZXRzIGV2
-ZXJ5IDMgbWlsbGlzZWNvbmRzLCBJIHBsYW4gdG8gZG8gYSBsb25nIHRlcm0gd2VlayBsb25nIHRl
-c3QgYnV0IEkgZG9uJ3QgZm9yZXNlZSBhbnkgaXNzdWVzLi4gDQoNCkxldCBtZSBrbm93IGlmIHRo
-ZXJlIGlzIGFueSBvdGhlciB0ZXN0aW5nIHlvdSB3b3VsZCBsaWtlIHVzIHRvIGRvLi4gb3IgaWYg
-eW91IHdvdWxkIGxpa2UgbWUgdG8gc2VuZCBvdXQgdGhlIGtlcm5lbC0yLjYuMTgtMTI4IHdpdGgg
-dGhlIHBhdGNoIGFuZCB0aGUgaXB2c2FkbS0xLjI0LTEwIHJwbSB3aXRoIHRoZSBwYXRjaC4uIA0K
-DQpUaGFua3MgYWdhaW4gU2ltb24geW91IGFyZSB0aGUgbWFuISENCg0KQnJpYW4gQ2FycGlvDQoN
-Cg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogU2ltb24gSG9ybWFuIFttYWls
-dG86aG9ybXNAdmVyZ2UubmV0LmF1XQ0KU2VudDogTW9uZGF5LCBBcHJpbCAxMiwgMjAxMCA4OjU2
-IFBNDQpUbzogQnJpYW4gQ2FycGlvDQpDYzogbGludXgtaGFAbGlzdHMubGludXgtaGEub3JnOyBs
-dnMtZGV2ZWw7IEp1bGlhbiBBbmFzdGFzb3YNClN1YmplY3Q6IFJlOiBbTGludXgtSEFdIFVEUCAv
-IERIQ1AgLyBMRElSRUNUT1JEDQoNCkhpIEJyaWFuLA0KDQpoZXJlIGFyZSBzb21lIHBhdGNoZXMg
-dG8gdGVzdC4NCkkgaGF2ZSBvbmx5IGxpZ2h0bHkgdGVzdGVkIHRoZW0gdG8gdGhlIGV4dGVudCB0
-aGF0IHRoZXkgY29tcGlsZSBhbmQgYXBwZWFyIHRvIGNvbmZpZ3VyZSBhIHZhbGlkIHNlcnZpY2Uu
-DQoNCllvdSBjYW4gZW5hYmxlIG9uZSBwYWNrZXQgc2NoZWR1bGluZyAoT1BTKSBieSBwYXNzaW5n
-IHRoZSAtbyBvcHRpb24gdG8gaXB2c2FkbSB3aGVuIGNyZWF0aW5nIGEgdmlydHVhbCBzZXJ2aWNl
-Lg0KDQoJZS5nLg0KDQoJIyBpcHZzYWRtIC1BIC11IDE3Mi4xNy42MC4yMTE6ODAgLW8NCgkjIGlw
-dnNhZG0gLUwgLW4NCglJUCBWaXJ0dWFsIFNlcnZlciB2ZXJzaW9uIDEuMi4xIChzaXplPTQwOTYp
-DQoJUHJvdCBMb2NhbEFkZHJlc3M6UG9ydCBTY2hlZHVsZXIgRmxhZ3MNCgkgIC0+IFJlbW90ZUFk
-ZHJlc3M6UG9ydCAgICAgICAgICAgRm9yd2FyZCBXZWlnaHQgQWN0aXZlQ29ubiBJbkFjdENvbm4N
-CglVRFAgIDE3Mi4xNy42MC4yMTE6ODAgd2xjIG9wcw0KDQpUaGVyZSBhcmUgdGhyZWUgcGF0Y2hl
-czoNCg0Kb3BzLWtlcm5lbC0yLjYuMTgtMTI4LmVsNS5wYXRjaDogUGF0Y2ggYWdhaW5zdCBDZW50
-T1MtNS4zJ3MgMi42LjE4LTEyOCBrZXJuZWwuDQpvcHMtaXB2c2FkbS0xLjI0LTEwOiBQYXRjaCBh
-Z2FpbnN0IENlbnRPUy01LjMncyBpcHZzYWRtIDEuMjQtMTAuDQpvcHMtaXB2c2FkbS0xLjI0OiBQ
-YXRjaCBhZ2FpbnN0IHVwc3RyZWFtIGlwdnNhZG0gMS4yNA0KDQpJIGhhdmUgbm90IHVwLXBvcnRl
-ZCB0aGUgY29kZSB0byB0aGUgMi42LjMzIGtlcm5lbCBhbmQgaXB2c2FkbSAxLjI1IHlldC4NCg0K
-DQpObyB2aXJ1cyBmb3VuZCBpbiB0aGlzIGluY29taW5nIG1lc3NhZ2UuDQpDaGVja2VkIGJ5IEFW
-RyAtIHd3dy5hdmcuY29tDQpWZXJzaW9uOiA5LjAuODAxIC8gVmlydXMgRGF0YWJhc2U6IDI3MS4x
-LjEvMjgwOCAtIFJlbGVhc2UgRGF0ZTogMDQvMTMvMTAgMDA6MzI6MDAgX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18NCkxpbnV4LUhBIG1haWxpbmcgbGlzdA0K
-TGludXgtSEFAbGlzdHMubGludXgtaGEub3JnDQpodHRwOi8vbGlzdHMubGludXgtaGEub3JnL21h
-aWxtYW4vbGlzdGluZm8vbGludXgtaGENClNlZSBhbHNvOiBodHRwOi8vbGludXgtaGEub3JnL1Jl
-cG9ydGluZ1Byb2JsZW1zDQoNCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fDQpMaW51eC1IQSBtYWlsaW5nIGxpc3QNCkxpbnV4LUhBQGxpc3RzLmxpbnV4LWhh
-Lm9yZw0KaHR0cDovL2xpc3RzLmxpbnV4LWhhLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2xpbnV4LWhh
-DQpTZWUgYWxzbzogaHR0cDovL2xpbnV4LWhhLm9yZy9SZXBvcnRpbmdQcm9ibGVtcw0KDQpfX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXw0KTGludXgtSEEgbWFp
-bGluZyBsaXN0DQpMaW51eC1IQUBsaXN0cy5saW51eC1oYS5vcmcNCmh0dHA6Ly9saXN0cy5saW51
-eC1oYS5vcmcvbWFpbG1hbi9saXN0aW5mby9saW51eC1oYQ0KU2VlIGFsc286IGh0dHA6Ly9saW51
-eC1oYS5vcmcvUmVwb3J0aW5nUHJvYmxlbXMNCg0K
+After restructuring, there is some unused or empty functions
+left to be removed.
 
+Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+---
+ include/net/ip_vs.h             |    6 ------
+ net/netfilter/ipvs/ip_vs_app.c  |   10 ----------
+ net/netfilter/ipvs/ip_vs_core.c |   29 ++++-------------------------
+ net/netfilter/ipvs/ip_vs_est.c  |    9 ---------
+ net/netfilter/ipvs/ip_vs_sync.c |    9 ---------
+ 5 files changed, 4 insertions(+), 59 deletions(-)
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index da2aea9..10417ab 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1123,8 +1123,6 @@ extern void ip_vs_app_inc_put(struct ip_vs_app *inc);
+ 
+ extern int ip_vs_app_pkt_out(struct ip_vs_conn *, struct sk_buff *skb);
+ extern int ip_vs_app_pkt_in(struct ip_vs_conn *, struct sk_buff *skb);
+-extern int ip_vs_app_init(void);
+-extern void ip_vs_app_cleanup(void);
+ 
+ void ip_vs_bind_pe(struct ip_vs_service *svc, struct ip_vs_pe *pe);
+ void ip_vs_unbind_pe(struct ip_vs_service *svc);
+@@ -1227,15 +1225,11 @@ extern int start_sync_thread(struct net *net, int state, char *mcast_ifn,
+ 			     __u8 syncid);
+ extern int stop_sync_thread(struct net *net, int state);
+ extern void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp);
+-extern int ip_vs_sync_init(void);
+-extern void ip_vs_sync_cleanup(void);
+ 
+ 
+ /*
+  *      IPVS rate estimator prototypes (from ip_vs_est.c)
+  */
+-extern int ip_vs_estimator_init(void);
+-extern void ip_vs_estimator_cleanup(void);
+ extern void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats);
+ extern void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats);
+ extern void ip_vs_zero_estimator(struct ip_vs_stats *stats);
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index 81b299d..5f34cf4 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -589,13 +589,3 @@ void __net_exit ip_vs_app_net_cleanup(struct net *net)
+ {
+ 	proc_net_remove(net, "ip_vs_app");
+ }
+-
+-int __init ip_vs_app_init(void)
+-{
+-	return 0;
+-}
+-
+-
+-void ip_vs_app_cleanup(void)
+-{
+-}
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 4582716..de92ca2 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1987,36 +1987,23 @@ static int __init ip_vs_init(void)
+ {
+ 	int ret;
+ 
+-	ip_vs_estimator_init();
+ 	ret = ip_vs_control_init();
+ 	if (ret < 0) {
+ 		pr_err("can't setup control.\n");
+-		goto cleanup_estimator;
++		goto exit;
+ 	}
+ 
+ 	ip_vs_protocol_init();
+ 
+-	ret = ip_vs_app_init();
+-	if (ret < 0) {
+-		pr_err("can't setup application helper.\n");
+-		goto cleanup_protocol;
+-	}
+-
+ 	ret = ip_vs_conn_init();
+ 	if (ret < 0) {
+ 		pr_err("can't setup connection table.\n");
+-		goto cleanup_app;
+-	}
+-
+-	ret = ip_vs_sync_init();
+-	if (ret < 0) {
+-		pr_err("can't setup sync data.\n");
+-		goto cleanup_conn;
++		goto cleanup_protocol;
+ 	}
+ 
+ 	ret = register_pernet_subsys(&ipvs_core_ops);	/* Alloc ip_vs struct */
+ 	if (ret < 0)
+-		goto cleanup_sync;
++		goto cleanup_conn;
+ 
+ 	ret = register_pernet_device(&ipvs_core_dev_ops);
+ 	if (ret < 0)
+@@ -2036,17 +2023,12 @@ cleanup_dev:
+ 	unregister_pernet_device(&ipvs_core_dev_ops);
+ cleanup_sub:
+ 	unregister_pernet_subsys(&ipvs_core_ops);
+-cleanup_sync:
+-	ip_vs_sync_cleanup();
+ cleanup_conn:
+ 	ip_vs_conn_cleanup();
+-cleanup_app:
+-	ip_vs_app_cleanup();
+ cleanup_protocol:
+ 	ip_vs_protocol_cleanup();
+ 	ip_vs_control_cleanup();
+-cleanup_estimator:
+-	ip_vs_estimator_cleanup();
++exit:
+ 	return ret;
+ }
+ 
+@@ -2055,12 +2037,9 @@ static void __exit ip_vs_cleanup(void)
+ 	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ 	unregister_pernet_device(&ipvs_core_dev_ops);
+ 	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+-	ip_vs_sync_cleanup();
+ 	ip_vs_conn_cleanup();
+-	ip_vs_app_cleanup();
+ 	ip_vs_protocol_cleanup();
+ 	ip_vs_control_cleanup();
+-	ip_vs_estimator_cleanup();
+ 	pr_info("ipvs unloaded.\n");
+ }
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index f5d2a01..0fac601 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -207,12 +207,3 @@ void __net_exit ip_vs_estimator_net_cleanup(struct net *net)
+ {
+ 	del_timer_sync(&net_ipvs(net)->est_timer);
+ }
+-
+-int __init ip_vs_estimator_init(void)
+-{
+-	return 0;
+-}
+-
+-void ip_vs_estimator_cleanup(void)
+-{
+-}
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 1036b34..ef09afb 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1689,12 +1689,3 @@ void ip_vs_sync_net_cleanup(struct net *net)
+ 	if (retc && retc != -EINVAL)
+ 		pr_err("Failed to stop Backup Daemon\n");
+ }
+-
+-int __init ip_vs_sync_init(void)
+-{
+-	return 0;
+-}
