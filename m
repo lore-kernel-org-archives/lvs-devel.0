@@ -1,11 +1,11 @@
 From: Hans Schillstrom <hans@schillstrom.com>
-Subject: [v4 PATCH 2/6] IPVS: labels at pos 0
-Date: Sun,  1 May 2011 18:50:14 +0200
-Message-ID: <1304268618-18103-3-git-send-email-hans@schillstrom.com>
+Subject: [v4 PATCH 6/6] IPVS: add debug functions
+Date: Sun,  1 May 2011 18:50:18 +0200
+Message-ID: <1304268618-18103-7-git-send-email-hans@schillstrom.com>
 References: <1304268618-18103-1-git-send-email-hans@schillstrom.com>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1304268618-18103-1-git-send-email-hans@schillstrom.com>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,82 +13,74 @@ Content-Transfer-Encoding: 7bit
 To: ja@ssi.bg, horms@verge.net.au, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: hans.schillstrom@ericsson.com, Hans Schillstrom <hans@schillstrom.com>
 
-Put goto labels at the beginig of row
-acording to coding style example.
+Optional patch, but it is nice to have.
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c |   10 +++++-----
- net/netfilter/ipvs/ip_vs_ctl.c  |    8 ++++----
- 2 files changed, 9 insertions(+), 9 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c |   13 ++++++++++++-
+ 1 files changed, 12 insertions(+), 1 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index a0791dc..d536b51 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1388,7 +1388,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 		verdict = NF_DROP;
- 	}
- 
--  out:
-+out:
- 	__ip_vs_conn_put(cp);
- 
- 	return verdict;
-@@ -1955,14 +1955,14 @@ static int __init ip_vs_init(void)
- 
- cleanup_sync:
- 	ip_vs_sync_cleanup();
--  cleanup_conn:
-+cleanup_conn:
- 	ip_vs_conn_cleanup();
--  cleanup_app:
-+cleanup_app:
- 	ip_vs_app_cleanup();
--  cleanup_protocol:
-+cleanup_protocol:
- 	ip_vs_protocol_cleanup();
- 	ip_vs_control_cleanup();
--  cleanup_estimator:
-+cleanup_estimator:
- 	ip_vs_estimator_cleanup();
- 	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
- 	return ret;
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index ae47090..a31a70c 100644
+index 9074c5d..a1fab5b 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1327,9 +1327,9 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
- 		ip_vs_bind_pe(svc, pe);
- 	}
+@@ -351,8 +351,11 @@ static int ip_vs_svc_unhash(struct ip_vs_service *svc)
+ 	svc->flags &= ~IP_VS_SVC_F_HASHED;
+ 	atomic_dec(&svc->refcnt);
+ 	/* No more services, no need for input */
+-	if (atomic_read(&svc->refcnt) == 0)
++	if (atomic_read(&svc->refcnt) == 0) {
+ 		net_ipvs(svc->net)->enable = 0;
++		IP_VS_DBG(2, "Last service removed in net(%d) input disabled\n",
++			     net_ipvs(svc->net)->gen);
++	}
+ 	return 1;
+ }
  
--  out_unlock:
-+out_unlock:
+@@ -1222,6 +1225,10 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
  	write_unlock_bh(&__ip_vs_svc_lock);
--  out:
-+out:
- 	ip_vs_scheduler_put(old_sched);
- 	ip_vs_pe_put(old_pe);
- 	return ret;
-@@ -2387,7 +2387,7 @@ __ip_vs_get_service_entries(struct net *net,
- 			count++;
- 		}
- 	}
--  out:
-+out:
- 	return ret;
+ 
+ 	*svc_p = svc;
++	if (!ipvs->enable)
++		pr_info("netns(%d) enabled, first service added\n",
++			 ipvs->gen);
++
+ 	/* Now there is a service - full throttle */
+ 	ipvs->enable = 1;
+ 	return 0;
+@@ -3685,6 +3692,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
+ 	int idx;
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
++	EnterFunction(2);
+ 	ipvs->rs_lock = __RW_LOCK_UNLOCKED(ipvs->rs_lock);
+ 
+ 	/* Initialize rs_table */
+@@ -3711,6 +3719,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
+ 	if (ip_vs_control_net_init_sysctl(net))
+ 		goto err;
+ 
++	LeaveFunction(2);
+ 	return 0;
+ 
+ err:
+@@ -3722,6 +3731,7 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
++	EnterFunction(2);
+ 	ip_vs_trash_cleanup(net);
+ 	ip_vs_stop_estimator(net, &ipvs->tot_stats);
+ 	ip_vs_control_net_cleanup_sysctl(net);
+@@ -3729,6 +3739,7 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
+ 	proc_net_remove(net, "ip_vs_stats");
+ 	proc_net_remove(net, "ip_vs");
+ 	free_percpu(ipvs->tot_stats.cpustats);
++	LeaveFunction(2);
  }
  
-@@ -2625,7 +2625,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
- 		ret = -EINVAL;
- 	}
- 
--  out:
-+out:
- 	mutex_unlock(&__ip_vs_mutex);
- 	return ret;
- }
+ int __init ip_vs_control_init(void)
 -- 
 1.7.2.3
 
