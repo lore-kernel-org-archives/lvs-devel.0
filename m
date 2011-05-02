@@ -1,41 +1,36 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: Re: [v4 PATCH 1/6] IPVS: Change of socket usage to enable name
- space exit.
-Date: Mon, 2 May 2011 21:26:27 +0900
-Message-ID: <20110502122627.GA19710@verge.net.au>
-References: <kqgtk9j.d83e4dced2edb2820c7e6329f634bb3f@obelix.schillstrom.com>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <kqgtk9j.d83e4dced2edb2820c7e6329f634bb3f@obelix.schillstrom.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [GIT PULL nf-2.6] IPVS
+Date: Mon,  2 May 2011 21:47:25 +0900
+Message-ID: <1304340447-21857-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: ja@ssi.bg, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans.schillstrom@ericsson.com
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Hans Schillstrom <hans@schillstrom.com>, Hans Schillstrom <hans.schillstrom@ericsson.com>, "Eric W. Biederman" <ebiederm@xmission.com>
 
-On Mon, May 02, 2011 at 01:40:04PM +0200, Hans Schillstrom wrote:
-> >Sent: Mon, May 2, 2011, 13:03 PM
-> >Subject: Re: [v4 PATCH 1/6] IPVS: Change of socket usage to enable name space exit.
-> >
-> >On Sun, May 01, 2011 at 06:50:13PM +0200, Hans Schillstrom wrote:
-> >> To work this patch also needs the other patches in this series.
-> >
-> >Hi Hans,
-> >
-> >could you explain the implications statement above?
-> >What kind of behaviour might I expect if only this patch is applied?
-> 
-> Oops, left there by misstake.
-> Can you remove that line before pushing it ?
 
-Will do.
+Hi Patrick,
 
-> >I'm planning to push this and 2/6 for 2.6.39, and as we have
-> >discussed (offline) that combination works. But from a bisection
-> >point of view, this patch needs to not "blow up" if used by itself.
-> 
-> It should not be any bisect. problems from what I can see.
+please consider pulling
+git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-2.6.git master
+to get the following fix from Hans. They resolve some problems related
+to his netns for IPVS work which was incorporated into 2.6.39-rc1.
 
-Thanks
+The pull request is based on nf-2.6/master.
+
+There are other less-pressing changes from Hans which
+I plan to get you to pull into nf-next-2.6 once these
+changes make it there (presumably via net-2.6 and then net-next-2.6).
+
+Hans Schillstrom (2):
+      IPVS: Change of socket usage to enable name space exit.
+      IPVS: labels at pos 0
+
+ net/netfilter/ipvs/ip_vs_core.c |   12 ++++----
+ net/netfilter/ipvs/ip_vs_ctl.c  |    8 +++---
+ net/netfilter/ipvs/ip_vs_sync.c |   58 +++++++++++++++++++++++++--------------
+ 3 files changed, 47 insertions(+), 31 deletions(-)
+
