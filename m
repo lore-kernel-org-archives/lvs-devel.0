@@ -1,36 +1,98 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-2.6] IPVS
-Date: Mon,  2 May 2011 21:47:25 +0900
-Message-ID: <1304340447-21857-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-Sender: netdev-owner@vger.kernel.org
+Subject: [PATCH 2/2] IPVS: labels at pos 0
+Date: Mon,  2 May 2011 21:47:27 +0900
+Message-ID: <1304340447-21857-3-git-send-email-horms@verge.net.au>
+References: <1304340447-21857-1-git-send-email-horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1304340447-21857-1-git-send-email-horms@verge.net.au>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
-Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Hans Schillstrom <hans@schillstrom.com>, Hans Schillstrom <hans.schillstrom@ericsson.com>, "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Hans Schillstrom <hans@schillstrom.com>, Hans Schillstrom <hans.schillstrom@ericsson.com>, "Eric W. Biederman" <ebiederm@xmission.com>, Simon Horman <horms@verge.net.au>
 
+From: Hans Schillstrom <hans@schillstrom.com>
 
-Hi Patrick,
+Put goto labels at the beginig of row
+acording to coding style example.
 
-please consider pulling
-git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-2.6.git master
-to get the following fix from Hans. They resolve some problems related
-to his netns for IPVS work which was incorporated into 2.6.39-rc1.
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_core.c |   10 +++++-----
+ net/netfilter/ipvs/ip_vs_ctl.c  |    8 ++++----
+ 2 files changed, 9 insertions(+), 9 deletions(-)
 
-The pull request is based on nf-2.6/master.
-
-There are other less-pressing changes from Hans which
-I plan to get you to pull into nf-next-2.6 once these
-changes make it there (presumably via net-2.6 and then net-next-2.6).
-
-Hans Schillstrom (2):
-      IPVS: Change of socket usage to enable name space exit.
-      IPVS: labels at pos 0
-
- net/netfilter/ipvs/ip_vs_core.c |   12 ++++----
- net/netfilter/ipvs/ip_vs_ctl.c  |    8 +++---
- net/netfilter/ipvs/ip_vs_sync.c |   58 +++++++++++++++++++++++++--------------
- 3 files changed, 47 insertions(+), 31 deletions(-)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index a0791dc..d536b51 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1388,7 +1388,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 		verdict = NF_DROP;
+ 	}
+ 
+-  out:
++out:
+ 	__ip_vs_conn_put(cp);
+ 
+ 	return verdict;
+@@ -1955,14 +1955,14 @@ static int __init ip_vs_init(void)
+ 
+ cleanup_sync:
+ 	ip_vs_sync_cleanup();
+-  cleanup_conn:
++cleanup_conn:
+ 	ip_vs_conn_cleanup();
+-  cleanup_app:
++cleanup_app:
+ 	ip_vs_app_cleanup();
+-  cleanup_protocol:
++cleanup_protocol:
+ 	ip_vs_protocol_cleanup();
+ 	ip_vs_control_cleanup();
+-  cleanup_estimator:
++cleanup_estimator:
+ 	ip_vs_estimator_cleanup();
+ 	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+ 	return ret;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index ae47090..a31a70c 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1327,9 +1327,9 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
+ 		ip_vs_bind_pe(svc, pe);
+ 	}
+ 
+-  out_unlock:
++out_unlock:
+ 	write_unlock_bh(&__ip_vs_svc_lock);
+-  out:
++out:
+ 	ip_vs_scheduler_put(old_sched);
+ 	ip_vs_pe_put(old_pe);
+ 	return ret;
+@@ -2387,7 +2387,7 @@ __ip_vs_get_service_entries(struct net *net,
+ 			count++;
+ 		}
+ 	}
+-  out:
++out:
+ 	return ret;
+ }
+ 
+@@ -2625,7 +2625,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 		ret = -EINVAL;
+ 	}
+ 
+-  out:
++out:
+ 	mutex_unlock(&__ip_vs_mutex);
+ 	return ret;
+ }
+-- 
+1.7.4.1
 
