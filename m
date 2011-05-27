@@ -1,34 +1,41 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [PATCH 1/1] IPVS : bug in ip_vs_ftp, same list heaad used in all netns.
-Date: Fri, 27 May 2011 07:24:22 +0200
-Message-ID: <201105270724.24129.hans.schillstrom@ericsson.com>
-References: <1306239065-17271-1-git-send-email-hans.schillstrom@ericsson.com> <4DDE8B3E.30009@netfilter.org> <20110526233744.GD2815@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH 1/1] IPVS : bug in ip_vs_ftp, same list heaad used in all
+ netns.
+Date: Fri, 27 May 2011 15:04:10 +0900
+Message-ID: <20110527060409.GB24641@verge.net.au>
+References: <1306239065-17271-1-git-send-email-hans.schillstrom@ericsson.com>
+ <4DDE8B3E.30009@netfilter.org>
+ <20110526233744.GD2815@verge.net.au>
+ <201105270724.24129.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20110526233744.GD2815@verge.net.au>
 Content-Disposition: inline
+In-Reply-To: <201105270724.24129.hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "hans@schillstrom.com" <hans@schillstrom.com>
+Content-Transfer-Encoding: 7bit
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "hans@schillstrom.com" <hans@schillstrom.com>, David Miller <davem@davemloft.net>
 
-On Friday 27 May 2011 01:37:45 Simon Horman wrote:
-> On Thu, May 26, 2011 at 07:17:50PM +0200, Pablo Neira Ayuso wrote:
-> > On 24/05/11 14:11, Hans Schillstrom wrote:
-> > > When ip_vs was adapted to netns the ftp application was not adapted
-> > > in a correct way.
-> > > However this is a fix to avoid kernel errors. In the long term another solution
-> > > might be chosen.  I.e the ports that the ftp appl, uses should be per netns.
+On Fri, May 27, 2011 at 07:24:22AM +0200, Hans Schillstrom wrote:
+> On Friday 27 May 2011 01:37:45 Simon Horman wrote:
+> > On Thu, May 26, 2011 at 07:17:50PM +0200, Pablo Neira Ayuso wrote:
+> > > On 24/05/11 14:11, Hans Schillstrom wrote:
+> > > > When ip_vs was adapted to netns the ftp application was not adapted
+> > > > in a correct way.
+> > > > However this is a fix to avoid kernel errors. In the long term another solution
+> > > > might be chosen.  I.e the ports that the ftp appl, uses should be per netns.
+> > > 
+> > > applied, thanks.
 > > 
-> > applied, thanks.
+> > Thanks Pablo.
+> > 
+> > Hans, is this appropriate for -stable (i.e. 2.6.39.x) ?
 > 
-> Thanks Pablo.
-> 
-> Hans, is this appropriate for -stable (i.e. 2.6.39.x) ?
+> Yes it is.
 
-Yes it is.
--- 
-Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
+Thanks.
+
+Dave, can you handle that once this change makes
+it into your tree?
