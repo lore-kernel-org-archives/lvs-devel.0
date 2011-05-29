@@ -1,97 +1,134 @@
-From: Jesper Juhl <jj@chaosbits.net>
-Subject: [PATCH] netfilter, ipvs: Avoid undefined order of evaluation in
- assignments to struct nf_conn *
-Date: Sun, 29 May 2011 20:22:56 +0200 (CEST)
-Message-ID: <alpine.LNX.2.00.1105292011450.4411@swampdragon.chaosbits.net>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCH] ipvs: support more FTP PASV responses
+Date: Mon, 30 May 2011 00:02:23 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1105292354390.1429@ja.ssi.bg>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org
-Cc: netfilter@vger.kernel.org, coreteam@netfilter.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Patrick McHardy <kaber@trash.net>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org
 
-In net/netfilter/ipvs/ip_vs_nfct.c::ip_vs_update_conntrack(),
-net/netfilter/ipvs/ip_vs_xmit.c::ip_vs_nat_xmit(), 
-net/netfilter/ipvs/ip_vs_xmit.c::ip_vs_nat_xmit_v6(), 
-net/netfilter/ipvs/ip_vs_xmit.c::ip_vs_icmp_xmit)() 
-net/netfilter/ipvs/ip_vs_xmit.c::and ip_vs_icmp_xmit_v6() we do this:
-	...
-	struct nf_conn *ct = ct = nf_ct_get(skb, &ctinfo);
-	...
 
-Since '=' is not a sequence point the order of these assignments happening 
-is undefined. Luckily it's easy to avoid by just doing what is obviously 
-the intended thing:
-	struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
+	Change the parsing of FTP commands and responses to
+support skip character. It allows to detect variations in
+the 227 PASV response.
 
-Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- ip_vs_nfct.c |    2 +-
- ip_vs_xmit.c |    8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
 
- Compile tested only.
- Patch is against Linus' tree as of a few minutes ago.
+	As this is not exactly a fix, it can be applied to
+ipvs-next-2.6 after the merge window.
 
-diff --git a/net/netfilter/ipvs/ip_vs_nfct.c b/net/netfilter/ipvs/ip_vs_nfct.c
-index f454c80..a3d86c2 100644
---- a/net/netfilter/ipvs/ip_vs_nfct.c
-+++ b/net/netfilter/ipvs/ip_vs_nfct.c
-@@ -82,7 +82,7 @@ void
- ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp, int outin)
+diff -urp v2.6.39/linux/net/netfilter/ipvs/ip_vs_ftp.c linux/net/netfilter/ipvs/ip_vs_ftp.c
+--- v2.6.39/linux/net/netfilter/ipvs/ip_vs_ftp.c	2011-05-20 10:38:08.000000000 +0300
++++ linux/net/netfilter/ipvs/ip_vs_ftp.c	2011-05-29 11:51:50.630247073 +0300
+@@ -44,8 +44,8 @@
+ #include <net/ip_vs.h>
+ 
+ 
+-#define SERVER_STRING "227 Entering Passive Mode ("
+-#define CLIENT_STRING "PORT "
++#define SERVER_STRING "227 "
++#define CLIENT_STRING "PORT"
+ 
+ 
+ /*
+@@ -79,14 +79,17 @@ ip_vs_ftp_done_conn(struct ip_vs_app *ap
+ 
+ /*
+  * Get <addr,port> from the string "xxx.xxx.xxx.xxx,ppp,ppp", started
+- * with the "pattern" and terminated with the "term" character.
++ * with the "pattern", ignoring before "skip" and terminated with
++ * the "term" character.
+  * <addr,port> is in network order.
+  */
+ static int ip_vs_ftp_get_addrport(char *data, char *data_limit,
+-				  const char *pattern, size_t plen, char term,
++				  const char *pattern, size_t plen,
++				  char skip, char term,
+ 				  __be32 *addr, __be16 *port,
+ 				  char **start, char **end)
  {
- 	enum ip_conntrack_info ctinfo;
--	struct nf_conn *ct = ct = nf_ct_get(skb, &ctinfo);
-+	struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
- 	struct nf_conntrack_tuple new_tuple;
++	char *s, c;
+ 	unsigned char p[6];
+ 	int i = 0;
  
- 	if (ct == NULL || nf_ct_is_confirmed(ct) || nf_ct_is_untracked(ct) ||
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index ee319a4..16d129e 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -544,7 +544,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
- 	if (cp->flags & IP_VS_CONN_F_SYNC && local) {
- 		enum ip_conntrack_info ctinfo;
--		struct nf_conn *ct = ct = nf_ct_get(skb, &ctinfo);
-+		struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
+@@ -101,19 +104,38 @@ static int ip_vs_ftp_get_addrport(char *
+ 	if (strnicmp(data, pattern, plen) != 0) {
+ 		return 0;
+ 	}
+-	*start = data + plen;
++	s = data + plen;
++	if (skip) {
++		int found = 0;
++
++		for (;; s++) {
++			if (s == data_limit)
++				return -1;
++			if (!found) {
++				if (*s == skip)
++					found = 1;
++			} else if (*s != skip) {
++				break;
++			}
++		}
++	}
  
- 		if (ct && !nf_ct_is_untracked(ct)) {
- 			IP_VS_DBG_RL_PKT(10, AF_INET, pp, skb, 0,
-@@ -661,7 +661,7 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
- 	if (cp->flags & IP_VS_CONN_F_SYNC && local) {
- 		enum ip_conntrack_info ctinfo;
--		struct nf_conn *ct = ct = nf_ct_get(skb, &ctinfo);
-+		struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
+-	for (data = *start; *data != term; data++) {
++	for (data = s; ; data++) {
+ 		if (data == data_limit)
+ 			return -1;
++		if (*data == term)
++			break;
+ 	}
+ 	*end = data;
  
- 		if (ct && !nf_ct_is_untracked(ct)) {
- 			IP_VS_DBG_RL_PKT(10, AF_INET6, pp, skb, 0,
-@@ -1176,7 +1176,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
- 	if (cp->flags & IP_VS_CONN_F_SYNC && local) {
- 		enum ip_conntrack_info ctinfo;
--		struct nf_conn *ct = ct = nf_ct_get(skb, &ctinfo);
-+		struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
+ 	memset(p, 0, sizeof(p));
+-	for (data = *start; data != *end; data++) {
+-		if (*data >= '0' && *data <= '9') {
+-			p[i] = p[i]*10 + *data - '0';
+-		} else if (*data == ',' && i < 5) {
++	for (data = s; ; data++) {
++		c = *data;
++		if (c == term)
++			break;
++		if (c >= '0' && c <= '9') {
++			p[i] = p[i]*10 + c - '0';
++		} else if (c == ',' && i < 5) {
+ 			i++;
+ 		} else {
+ 			/* unexpected character */
+@@ -124,8 +146,9 @@ static int ip_vs_ftp_get_addrport(char *
+ 	if (i != 5)
+ 		return -1;
  
- 		if (ct && !nf_ct_is_untracked(ct)) {
- 			IP_VS_DBG(10, "%s(): "
-@@ -1296,7 +1296,7 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
- 	if (cp->flags & IP_VS_CONN_F_SYNC && local) {
- 		enum ip_conntrack_info ctinfo;
--		struct nf_conn *ct = ct = nf_ct_get(skb, &ctinfo);
-+		struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
+-	*addr = get_unaligned((__be32 *)p);
+-	*port = get_unaligned((__be16 *)(p + 4));
++	*start = s;
++	*addr = get_unaligned((__be32 *) p);
++	*port = get_unaligned((__be16 *) (p + 4));
+ 	return 1;
+ }
  
- 		if (ct && !nf_ct_is_untracked(ct)) {
- 			IP_VS_DBG(10, "%s(): "
-
-
--- 
-Jesper Juhl <jj@chaosbits.net>       http://www.chaosbits.net/
-Don't top-post http://www.catb.org/jargon/html/T/top-post.html
-Plain text mails only, please.
-
+@@ -185,7 +208,8 @@ static int ip_vs_ftp_out(struct ip_vs_ap
+ 
+ 		if (ip_vs_ftp_get_addrport(data, data_limit,
+ 					   SERVER_STRING,
+-					   sizeof(SERVER_STRING)-1, ')',
++					   sizeof(SERVER_STRING)-1,
++					   '(', ')',
+ 					   &from.ip, &port,
+ 					   &start, &end) != 1)
+ 			return 1;
+@@ -345,7 +369,7 @@ static int ip_vs_ftp_in(struct ip_vs_app
+ 	 */
+ 	if (ip_vs_ftp_get_addrport(data_start, data_limit,
+ 				   CLIENT_STRING, sizeof(CLIENT_STRING)-1,
+-				   '\r', &to.ip, &port,
++				   ' ', '\r', &to.ip, &port,
+ 				   &start, &end) != 1)
+ 		return 1;
+ 
