@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH] ipvs: support more FTP PASV responses
-Date: Mon, 30 May 2011 00:02:23 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1105292354390.1429@ja.ssi.bg>
+Subject: [PATCH] ipvs: restore support for iptables SNAT
+Date: Mon, 30 May 2011 01:01:37 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1105300025090.1429@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
@@ -12,123 +12,113 @@ To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org
 
 
-	Change the parsing of FTP commands and responses to
-support skip character. It allows to detect variations in
-the 227 PASV response.
+	Fix the IPVS priority in LOCAL_IN hook,
+so that SNAT target in POSTROUTING is supported for IPVS
+traffic as in 2.6.36 where it worked depending on
+module load order.
+
+	Before 2.6.37 we used priority 100 in LOCAL_IN to
+process remote requests. We used the same priority as
+iptables SNAT and if IPVS handlers are installed before
+SNAT handlers we supported SNAT in POSTROUTING for the IPVS
+traffic. If SNAT is installed before IPVS, the netfilter
+handlers are before IPVS and netfilter checks the NAT
+table twice for the IPVS requests: once in LOCAL_IN where
+IPS_SRC_NAT_DONE is set and second time in POSTROUTING
+where the SNAT rules are ignored because IPS_SRC_NAT_DONE
+was already set in LOCAL_IN.
+
+	But in 2.6.37 we changed the IPVS priority for
+LOCAL_IN with the goal to be unique (101) forgetting the
+fact that for IPVS traffic we should not walk both
+LOCAL_IN and POSTROUTING nat tables.
+
+	So, change the priority for processing remote
+IPVS requests from 101 to 99, i.e. before NAT_SRC (100)
+because we prefer to support SNAT in POSTROUTING
+instead of LOCAL_IN. It also moves the priority for
+IPVS replies from 99 to 98. Use constants instead of
+magic numbers at these places.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
 
-	As this is not exactly a fix, it can be applied to
-ipvs-next-2.6 after the merge window.
+	Patch is against 2.6.39 but it applies also to
+ipvs-next-2.6-e3f6a65. It is a regression and the fix
+can go to the -rc kernels.
 
-diff -urp v2.6.39/linux/net/netfilter/ipvs/ip_vs_ftp.c linux/net/netfilter/ipvs/ip_vs_ftp.c
---- v2.6.39/linux/net/netfilter/ipvs/ip_vs_ftp.c	2011-05-20 10:38:08.000000000 +0300
-+++ linux/net/netfilter/ipvs/ip_vs_ftp.c	2011-05-29 11:51:50.630247073 +0300
-@@ -44,8 +44,8 @@
- #include <net/ip_vs.h>
- 
- 
--#define SERVER_STRING "227 Entering Passive Mode ("
--#define CLIENT_STRING "PORT "
-+#define SERVER_STRING "227 "
-+#define CLIENT_STRING "PORT"
- 
- 
- /*
-@@ -79,14 +79,17 @@ ip_vs_ftp_done_conn(struct ip_vs_app *ap
- 
- /*
-  * Get <addr,port> from the string "xxx.xxx.xxx.xxx,ppp,ppp", started
-- * with the "pattern" and terminated with the "term" character.
-+ * with the "pattern", ignoring before "skip" and terminated with
-+ * the "term" character.
-  * <addr,port> is in network order.
-  */
- static int ip_vs_ftp_get_addrport(char *data, char *data_limit,
--				  const char *pattern, size_t plen, char term,
-+				  const char *pattern, size_t plen,
-+				  char skip, char term,
- 				  __be32 *addr, __be16 *port,
- 				  char **start, char **end)
- {
-+	char *s, c;
- 	unsigned char p[6];
- 	int i = 0;
- 
-@@ -101,19 +104,38 @@ static int ip_vs_ftp_get_addrport(char *
- 	if (strnicmp(data, pattern, plen) != 0) {
- 		return 0;
- 	}
--	*start = data + plen;
-+	s = data + plen;
-+	if (skip) {
-+		int found = 0;
-+
-+		for (;; s++) {
-+			if (s == data_limit)
-+				return -1;
-+			if (!found) {
-+				if (*s == skip)
-+					found = 1;
-+			} else if (*s != skip) {
-+				break;
-+			}
-+		}
-+	}
- 
--	for (data = *start; *data != term; data++) {
-+	for (data = s; ; data++) {
- 		if (data == data_limit)
- 			return -1;
-+		if (*data == term)
-+			break;
- 	}
- 	*end = data;
- 
- 	memset(p, 0, sizeof(p));
--	for (data = *start; data != *end; data++) {
--		if (*data >= '0' && *data <= '9') {
--			p[i] = p[i]*10 + *data - '0';
--		} else if (*data == ',' && i < 5) {
-+	for (data = s; ; data++) {
-+		c = *data;
-+		if (c == term)
-+			break;
-+		if (c >= '0' && c <= '9') {
-+			p[i] = p[i]*10 + c - '0';
-+		} else if (c == ',' && i < 5) {
- 			i++;
- 		} else {
- 			/* unexpected character */
-@@ -124,8 +146,9 @@ static int ip_vs_ftp_get_addrport(char *
- 	if (i != 5)
- 		return -1;
- 
--	*addr = get_unaligned((__be32 *)p);
--	*port = get_unaligned((__be16 *)(p + 4));
-+	*start = s;
-+	*addr = get_unaligned((__be32 *) p);
-+	*port = get_unaligned((__be16 *) (p + 4));
- 	return 1;
- }
- 
-@@ -185,7 +208,8 @@ static int ip_vs_ftp_out(struct ip_vs_ap
- 
- 		if (ip_vs_ftp_get_addrport(data, data_limit,
- 					   SERVER_STRING,
--					   sizeof(SERVER_STRING)-1, ')',
-+					   sizeof(SERVER_STRING)-1,
-+					   '(', ')',
- 					   &from.ip, &port,
- 					   &start, &end) != 1)
- 			return 1;
-@@ -345,7 +369,7 @@ static int ip_vs_ftp_in(struct ip_vs_app
- 	 */
- 	if (ip_vs_ftp_get_addrport(data_start, data_limit,
- 				   CLIENT_STRING, sizeof(CLIENT_STRING)-1,
--				   '\r', &to.ip, &port,
-+				   ' ', '\r', &to.ip, &port,
- 				   &start, &end) != 1)
- 		return 1;
- 
+diff -urp v2.6.39/linux/net/netfilter/ipvs/ip_vs_core.c linux/net/netfilter/ipvs/ip_vs_core.c
+--- v2.6.39/linux/net/netfilter/ipvs/ip_vs_core.c	2011-05-30 00:04:52.000000000 +0300
++++ linux/net/netfilter/ipvs/ip_vs_core.c	2011-05-30 00:09:02.879248364 +0300
+@@ -1792,7 +1792,7 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET,
+ 		.hooknum	= NF_INET_LOCAL_IN,
+-		.priority	= 99,
++		.priority	= NF_IP_PRI_NAT_SRC - 2,
+ 	},
+ 	/* After packet filtering, forward packet through VS/DR, VS/TUN,
+ 	 * or VS/NAT(change destination), so that filtering rules can be
+@@ -1802,7 +1802,7 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET,
+ 		.hooknum	= NF_INET_LOCAL_IN,
+-		.priority	= 101,
++		.priority	= NF_IP_PRI_NAT_SRC - 1,
+ 	},
+ 	/* Before ip_vs_in, change source only for VS/NAT */
+ 	{
+@@ -1810,7 +1810,7 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET,
+ 		.hooknum	= NF_INET_LOCAL_OUT,
+-		.priority	= -99,
++		.priority	= NF_IP_PRI_NAT_DST + 1,
+ 	},
+ 	/* After mangle, schedule and forward local requests */
+ 	{
+@@ -1818,7 +1818,7 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET,
+ 		.hooknum	= NF_INET_LOCAL_OUT,
+-		.priority	= -98,
++		.priority	= NF_IP_PRI_NAT_DST + 2,
+ 	},
+ 	/* After packet filtering (but before ip_vs_out_icmp), catch icmp
+ 	 * destined for 0.0.0.0/0, which is for incoming IPVS connections */
+@@ -1844,7 +1844,7 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET6,
+ 		.hooknum	= NF_INET_LOCAL_IN,
+-		.priority	= 99,
++		.priority	= NF_IP6_PRI_NAT_SRC - 2,
+ 	},
+ 	/* After packet filtering, forward packet through VS/DR, VS/TUN,
+ 	 * or VS/NAT(change destination), so that filtering rules can be
+@@ -1854,7 +1854,7 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET6,
+ 		.hooknum	= NF_INET_LOCAL_IN,
+-		.priority	= 101,
++		.priority	= NF_IP6_PRI_NAT_SRC - 1,
+ 	},
+ 	/* Before ip_vs_in, change source only for VS/NAT */
+ 	{
+@@ -1862,7 +1862,7 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET,
+ 		.hooknum	= NF_INET_LOCAL_OUT,
+-		.priority	= -99,
++		.priority	= NF_IP6_PRI_NAT_DST + 1,
+ 	},
+ 	/* After mangle, schedule and forward local requests */
+ 	{
+@@ -1870,7 +1870,7 @@ static struct nf_hook_ops ip_vs_ops[] __
+ 		.owner		= THIS_MODULE,
+ 		.pf		= PF_INET6,
+ 		.hooknum	= NF_INET_LOCAL_OUT,
+-		.priority	= -98,
++		.priority	= NF_IP6_PRI_NAT_DST + 2,
+ 	},
+ 	/* After packet filtering (but before ip_vs_out_icmp), catch icmp
+ 	 * destined for 0.0.0.0/0, which is for incoming IPVS connections */
