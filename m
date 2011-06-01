@@ -1,141 +1,143 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: support more FTP PASV responses
-Date: Tue, 31 May 2011 22:27:23 +0900
-Message-ID: <20110531132722.GI22140@verge.net.au>
-References: <alpine.LFD.2.00.1105292354390.1429@ja.ssi.bg>
+Subject: LVS changes in 2.6.39
+Date: Thu, 2 Jun 2011 08:33:53 +0900
+Message-ID: <20110601233351.GA16256@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1105292354390.1429@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org
+To: lvs-users@linuxvirtualserver.org, lvs-devel@vger.kernel.org, Joseph Mack NA3T <jmack@wm7d.net>
 
-On Mon, May 30, 2011 at 12:02:23AM +0300, Julian Anastasov wrote:
-> 
-> 	Change the parsing of FTP commands and responses to
-> support skip character. It allows to detect variations in
-> the 227 PASV response.
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
-> 
-> 	As this is not exactly a fix, it can be applied to
-> ipvs-next-2.6 after the merge window.
+Hi,
 
-Thanks, will do.
+in an effort to keep more people up to date on recent developments
+to LVS I post a report of changes for each kernel release. This
+report looks at the changes to LVS in the 2.6.39 kernel.
 
-> diff -urp v2.6.39/linux/net/netfilter/ipvs/ip_vs_ftp.c linux/net/netfilter/ipvs/ip_vs_ftp.c
-> --- v2.6.39/linux/net/netfilter/ipvs/ip_vs_ftp.c	2011-05-20 10:38:08.000000000 +0300
-> +++ linux/net/netfilter/ipvs/ip_vs_ftp.c	2011-05-29 11:51:50.630247073 +0300
-> @@ -44,8 +44,8 @@
->  #include <net/ip_vs.h>
->  
->  
-> -#define SERVER_STRING "227 Entering Passive Mode ("
-> -#define CLIENT_STRING "PORT "
-> +#define SERVER_STRING "227 "
-> +#define CLIENT_STRING "PORT"
->  
->  
->  /*
-> @@ -79,14 +79,17 @@ ip_vs_ftp_done_conn(struct ip_vs_app *ap
->  
->  /*
->   * Get <addr,port> from the string "xxx.xxx.xxx.xxx,ppp,ppp", started
-> - * with the "pattern" and terminated with the "term" character.
-> + * with the "pattern", ignoring before "skip" and terminated with
-> + * the "term" character.
->   * <addr,port> is in network order.
->   */
->  static int ip_vs_ftp_get_addrport(char *data, char *data_limit,
-> -				  const char *pattern, size_t plen, char term,
-> +				  const char *pattern, size_t plen,
-> +				  char skip, char term,
->  				  __be32 *addr, __be16 *port,
->  				  char **start, char **end)
->  {
-> +	char *s, c;
->  	unsigned char p[6];
->  	int i = 0;
->  
-> @@ -101,19 +104,38 @@ static int ip_vs_ftp_get_addrport(char *
->  	if (strnicmp(data, pattern, plen) != 0) {
->  		return 0;
->  	}
-> -	*start = data + plen;
-> +	s = data + plen;
-> +	if (skip) {
-> +		int found = 0;
-> +
-> +		for (;; s++) {
-> +			if (s == data_limit)
-> +				return -1;
-> +			if (!found) {
-> +				if (*s == skip)
-> +					found = 1;
-> +			} else if (*s != skip) {
-> +				break;
-> +			}
-> +		}
-> +	}
->  
-> -	for (data = *start; *data != term; data++) {
-> +	for (data = s; ; data++) {
->  		if (data == data_limit)
->  			return -1;
-> +		if (*data == term)
-> +			break;
->  	}
->  	*end = data;
->  
->  	memset(p, 0, sizeof(p));
-> -	for (data = *start; data != *end; data++) {
-> -		if (*data >= '0' && *data <= '9') {
-> -			p[i] = p[i]*10 + *data - '0';
-> -		} else if (*data == ',' && i < 5) {
-> +	for (data = s; ; data++) {
-> +		c = *data;
-> +		if (c == term)
-> +			break;
-> +		if (c >= '0' && c <= '9') {
-> +			p[i] = p[i]*10 + c - '0';
-> +		} else if (c == ',' && i < 5) {
->  			i++;
->  		} else {
->  			/* unexpected character */
-> @@ -124,8 +146,9 @@ static int ip_vs_ftp_get_addrport(char *
->  	if (i != 5)
->  		return -1;
->  
-> -	*addr = get_unaligned((__be32 *)p);
-> -	*port = get_unaligned((__be16 *)(p + 4));
-> +	*start = s;
-> +	*addr = get_unaligned((__be32 *) p);
-> +	*port = get_unaligned((__be16 *) (p + 4));
->  	return 1;
->  }
->  
-> @@ -185,7 +208,8 @@ static int ip_vs_ftp_out(struct ip_vs_ap
->  
->  		if (ip_vs_ftp_get_addrport(data, data_limit,
->  					   SERVER_STRING,
-> -					   sizeof(SERVER_STRING)-1, ')',
-> +					   sizeof(SERVER_STRING)-1,
-> +					   '(', ')',
->  					   &from.ip, &port,
->  					   &start, &end) != 1)
->  			return 1;
-> @@ -345,7 +369,7 @@ static int ip_vs_ftp_in(struct ip_vs_app
->  	 */
->  	if (ip_vs_ftp_get_addrport(data_start, data_limit,
->  				   CLIENT_STRING, sizeof(CLIENT_STRING)-1,
-> -				   '\r', &to.ip, &port,
-> +				   ' ', '\r', &to.ip, &port,
->  				   &start, &end) != 1)
->  		return 1;
->  
-> 
+In all 2.6.39 was a rather busy release for LVS with a total of 92 patches.
+Some highlights are:
+
+Features
+* Network namespace support
+* New synchronisation protocol
+* Optimised statistics reading
+
+Bug Fixes
+* Allow transmit of GRO aggregated skbs
+* Allow fragmented packets to be handled by SIP persistence engine
+* Correct zeroing of statistics
+
+Clean-Ups
+* Reduce code suse when compiled without CONFIG_SYSCTL
+
+There are no new LVS features queued up for inclusion in Linux 3.0,
+it looks like it will be a bug-fix release from an LVS point of view.
+
+This report was generated with the help of the following git log:
+
+# git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+# cd linux-2.6
+# git log --no-merges v2.6.38..v2.6.39 -- \
+	net/netfilter/ipvs/ include/net/ip_vs.h include/linux/ip_vs.h
+
+Which is rather long, an abridged version is:
+
+# git log --oneline --no-merges v2.6.38..v2.6.39 -- \
+	net/netfilter/ipvs/ include/net/ip_vs.h include/linux/ip_vs.h
+
+
+0f08190 IPVS: fix netns if reading ip_vs_* procfs entries
+7a4f076 IPVS: init and cleanup restructuring
+1ae132b IPVS: Change of socket usage to enable name space exit.
+a09d197 IPVS: fix NULL ptr dereference in ip_vs_ctl.c ip_vs_genl_dump_daemons()
+25985ed Fix common misspellings
+736561a IPVS: Use global mutex in ip_vs_app.c
+f40f94f ipvs: fix a typo in __ip_vs_control_init()
+f2247fb IPVS: Conditionally include sysctl members of struct netns_ipvs
+14e4054 IPVS: Add __ip_vs_control_{init,cleanup}_sysctl()
+fb1de43 IPVS: Conditionally define and use ip_vs_lblc{r}_table
+a7a86b8 IPVS: Minimise ip_vs_leave when CONFIG_SYSCTL is undefined
+a4e2f5a IPVS: Conditional ip_vs_conntrack_enabled()
+3a1bbf1 IPVS: ip_vs_todrop() becomes a noop when CONFIG_SYSCTL is undefined
+b27d777 IPVS: Conditinally use sysctl_lblc{r}_expiration
+8e1b0b1 IPVS: Add expire_quiescent_template()
+71a8ab6 IPVS: Add sysctl_expire_nodest_conn()
+7532e8d IPVS: Add sysctl_sync_ver()
+59e0350 IPVS: Add {sysctl_sync_threshold,period}()
+0cfa558 IPVS: Add sysctl_nat_icmp_send()
+84b3cee IPVS: Add sysctl_snat_reroute()
+ba4fd7e IPVS: Add ip_vs_route_me_harder()
+6ef757f ipvs: rename estimator functions
+ea9f22c ipvs: optimize rates reading
+87d68a1 ipvs: remove unused seqcount stats
+55a3d4e ipvs: properly zero stats and rates
+2a0751a ipvs: reorganize tot_stats
+2553d06 ipvs: move struct netns_ipvs
+06b6939 IPVS: Fix variable assignment in ip_vs_notrack
+6060c74 netfilter:ipvs: use kmemdup
+4a569c0 ipvs: remove _bh from percpu stats reading
+097fc76 ipvs: avoid lookup for fwmark 0
+4c9483b ipv6: Convert to use flowi6 where applicable.
+9d6ec93 ipv4: Use flowi4 in public route lookup interfaces.
+1d28f42 net: Put flowi_* prefix on AF independent members of struct flowi
+78fbfd8 ipv4: Create and use route lookup helpers.
+b23dd4f ipv4: Make output route lookup return rtable directly.
+452edd5 xfrm: Return dst directly from xfrm_lookup()
+b552f7e ipvs: unify the formula to estimate the overhead of processing connections
+17a8f8e ipvs: use enum to instead of magic numbers
+731109e ipvs: use hlist instead of list
+41ac51e ipvs: make "no destination available" message more informative
+6cb90db ipvs: remove extra lookups for ICMP packets
+16a7fd3 ipvs: fix timer in get_curr_sync_buff
+7c9989a IPVS: precedence bug in ip_vs_sync_switch_mode()
+8525d6f IPVS: Use correct lock in SCTP module
+ed3d1e7 IPVS: Remove ip_vs_sync_cleanup from section __exit
+0443929 IPVS: Allow compilation with CONFIG_SYSCTL disabled
+a136764 IPVS: Remove unused variables
+258e958 IPVS: remove duplicate initialisation or rs_table
+a870c8c IPVS: use z modifier for sizeof() argument
+9f4e1cc netfilter: ipvs: fix compiler warnings
+0792470 IPVS netns BUG, register sysctl for root ns
+4b3fd57 IPVS: Change sock_create_kernel() to __sock_create()
+091bb34 netfilter: ipvs: fix compiler warnings
+c6d2d44 IPVS: netns, final patch enabling network name space.
+4a98480 IPVS: netns, misc init_net removal in core.
+763f8d0 IPVS: netns, svc counters moved in ip_vs_ctl,c
+f2431e6 IPVS: netns, trash handling
+f6340ee IPVS: netns, defense work timer.
+a0840e2 IPVS: netns, ip_vs_ctl local vars moved to ipvs struct.
+6e67e58 IPVS: netns, connection hash got net as param.
+b17fc99 IPVS: netns, ip_vs_stats and its procfs
+f131315 IPVS: netns awareness to ip_vs_sync
+29c2026 IPVS: netns awareness to ip_vs_est
+ab8a5e8 IPVS: netns awareness to ip_vs_app
+9bbac6a IPVS: netns, common protocol changes and use of appcnt.
+9330419 IPVS: netns, use ip_vs_proto_data as param.
+88fe2d3 IPVS: netns preparation for proto_ah_esp
+9d93487 IPVS: netns preparation for proto_sctp
+78b16bd IPVS: netns preparation for proto_udp
+4a85b96 IPVS: netns preparation for proto_tcp
+252c641 IPVS: netns, prepare protocol
+b6e885d IPVS: netns awarness to lblc sheduler
+d0a1eef IPVS: netns awarness to lblcr sheduler
+fc72325 IPVS: netns to services part 1
+61b1ab4 IPVS: netns, add basic init per netns.
+b880c1f IPVS: Backup, adding version 0 sending capabilities
+986a075 IPVS: Backup, Change sending to Version 1 format
+fe5e7a1 IPVS: Backup, Adding Version 1 receive capability
+2981bc9 IPVS: Backup, Adding structs for new sync format
+a5959d5 IPVS: Handle Scheduling errors.
+3716522 IPVS: skb defrag in L7 helpers
+ce144f2 IPVS: Split ports[2] into src_port and dst_port
+0e051e6 IPVS: Backup, Prepare for transferring firewall marks (fwmark) to the backup daemon.
+8f1b03a ipvs: allow transmit of GRO aggregated skbs
+a333e2e ipvs: remove shadow rt variable
+4ecd294 ipvs: add static and read_mostly attributes
+8aadf93 IPVS: buffer argument to ip_vs_process_message() should not be const
+7ae246a IPVS: Remove useless { } block from ip_vs_process_message()
+d494262 IPVS: Make the cp argument to ip_vs_sync_conn() static
+ea2c73a IPVS: Only match pe_data created by the same pe
+e9e5eee IPVS: Add persistence engine to connection entry
