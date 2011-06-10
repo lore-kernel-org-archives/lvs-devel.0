@@ -1,73 +1,91 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: ipvs netns exit causes crash in conntrack.
-Date: Fri, 10 Jun 2011 11:38:05 +0200
-Message-ID: <201106101138.05940.hans.schillstrom@ericsson.com>
-References: <201106091457.29205.hans@schillstrom.com> <4DF0C67B.8040300@trash.net> <201106092146.35494.hans@schillstrom.com>
+Date: Sat, 11 Jun 2011 02:10:09 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1106102302320.1771@ja.ssi.bg>
+References: <201106091457.29205.hans@schillstrom.com> <201106092146.35494.hans@schillstrom.com> <alpine.LFD.2.00.1106092325350.1472@ja.ssi.bg> <201106101102.41234.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <201106092146.35494.hans@schillstrom.com>
-Content-Disposition: inline
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <201106101102.41234.hans.schillstrom@ericsson.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Hans Schillstrom <hans@schillstrom.com>, Julian Anastasov <ja@ssi.bg>
-Cc: Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: Hans Schillstrom <hans@schillstrom.com>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>
 
-On Thursday 09 June 2011 21:46:34 Hans Schillstrom wrote:
-> On Thursday, June 09, 2011 15:11:23 Patrick McHardy wrote:
-> > On 09.06.2011 14:57, Hans Schillstrom wrote:
-> > > Hello 
-> > > I have a problem with ip_vs_conn_flush() and expiring timers ...
-> > > After a couple of hours checking locks,  I'm still not closer to a solution
-> > > Conntrack differs a bit between 2.6.32 vs .2.6.39 but I don't think that's the reason in this case.
-> > > 
-> > > I think the netns cleanup cased this, but I'm not a conntrack expert :)
-> > > 
-> > > The dump below is from a back-ported ipvs to 2.6.32.27 
-> > > The extra patches that renamed the cleanup patches is there that I sent to Simon i.e
-> > > __ip_vs_conn_cleanup renamed to ip_vs_conn_net_cleanup  etc.
-> > > 
-> > 
-> > This looks like nfnetlink.c excited and destroyed the nfnl socket, but
-> > ip_vs was still holding a reference to a conntrack. When the conntrack
-> > got destroyed it created a ctnetlink event, causing an oops in
-> > netlink_has_listeners when trying to use the destroyed nfnetlink
-> > socket.
-> > 
-> > Usually this shouldn't happen since network namespace cleanup
-> > happens in reverse order from registration. In this case the
-> > reason might be that IPVS has no dependencies on conntrack
-> > or ctnetlink and therefore can get loaded first, meaning it
-> > will get cleaned up afterwards.
-> > 
-> > Does that make any sense?
-> > 
-> Yes,  
-> From what I can see is ip_vs have a dependency on nf_conntrack but not on nf_conntrack_netlink
-> i.e. nf_conntrack is loded first and then ip_vs and last nf_conntrack_netlink
 
-Tested,
-with nf_conntrack_netlink loaded before ip_vs there is no problem.
+	Hello,
 
+On Fri, 10 Jun 2011, Hans Schillstrom wrote:
+
+> > 	In IPVS we can add checks to exit ip_vs_conn_drop_conntrack()
+> > early if net cleanup is in progress because conntrack can be
+> > loaded after IPVS and its cleanup called before IPVS.
+> > We do not need to delete conntrack while in IPVS cleanup.
 > 
-> It's hard to tell exactly what was going on in user-space when the lxc container get killed....
-> Basically there is a lot of traffic (and connections) through the container with ipvs inside,
-> - ipvs conntrack support is turned on
-> - iptables with conntrack 
-> - conntrackd is running 
-> - ~50 iptables rules
-> I'm not sure if it's only IPv4 traffic ...
-> 
-> Hmmm... I think I know,  the culprit is conntrackd !! (i.e. it causes loading of ct_netlink)
-> conntrackd will definitely get killed before the namespace exit starts 
-> I think it is like you describe, I will make some test tomorrow.
-> How to solve this is another question....
-> 
-> Thanks a lot Patrick.
-> 
+> This is a quite simple patch ... 
+> The enable flag is set to 0 already when an exit begins 
+
+	Correct, this should work because we clear the
+flag during device cleanup.
+
+> So it's just to check it
+> maybe it should be atomic, but for my quick test "volatile" will do.
+
+	Yes, may be this check will need smp_rmb, not
+atomic operations, sort of:
+
+	if (cp->flags & IP_VS_CONN_F_NFCT) {
+		smp_rmb():
+		if (ipvs->enable)
+			ip_vs_conn_drop_conntrack(cp);
+	}
+
+	And corresponding smp_wmb:
+
+static void __net_exit __ip_vs_dev_cleanup(struct net *net)
+{
+	EnterFunction(2);
+	net_ipvs(net)->enable = 0;	/* Disable packet reception */
+--->>>	smp_wmb();
+	__ip_vs_sync_cleanup(net);
+	LeaveFunction(2);
+}
 
 
--- 
+	All other places do not need smp_rmb, it is not fatal
+there.
+
+	Also, we can put some comments that we should not access
+conntracks during subsys cleanup because nf_conntrack_find_get
+can not be used after conntrack cleanup for the net.
+
+	One option to avoid such checks is the netfilter
+framework to provide priority based list of netns init/exit
+handlers, so that all modules are ordered by known
+priority based on their dependency. For example,
+nf_register_netns_subsys_hooks function can be created
+in a similar way like nf_register_hooks. By this way,
+IPVS should be one of the first to be called for cleanup
+and such checks for enable flag will not be needed.
+
+> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+> index bf28ac2..ae5e9e2 100644
+> --- a/net/netfilter/ipvs/ip_vs_conn.c
+> +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> @@ -775,8 +775,8 @@ static void ip_vs_conn_expire(unsigned long data)
+>                 /* does anybody control me? */
+>                 if (cp->control)
+>                         ip_vs_control_del(cp);
+> -
+> -               if (cp->flags & IP_VS_CONN_F_NFCT)
+> +               /* Do not try do drop ct when netns is dying */
+> +               if (cp->flags & IP_VS_CONN_F_NFCT && ipvs->enable)
+>                         ip_vs_conn_drop_conntrack(cp);
+> 
+>                 ip_vs_pe_put(cp->pe);
+
 Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
+
+--
+Julian Anastasov <ja@ssi.bg>
