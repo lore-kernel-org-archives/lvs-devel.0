@@ -1,33 +1,42 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [v2 PATCH 0/6] IPVS: init and cleanup.
-Date: Mon, 13 Jun 2011 17:18:34 +0900
-Message-ID: <20110613081834.GE2536@verge.net.au>
-References: <1304268618-18103-1-git-send-email-hans@schillstrom.com>
-Mime-Version: 1.0
+Subject: [PATCH 2/3] IPVS remove unused var from migration to netns
+Date: Mon, 13 Jun 2011 17:26:08 +0900
+Message-ID: <1307953569-15429-3-git-send-email-horms@verge.net.au>
+References: <1307953569-15429-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1304268618-18103-1-git-send-email-hans@schillstrom.com>
+In-Reply-To: <1307953569-15429-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: ja@ssi.bg, ebiederm@xmission.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans.schillstrom@ericsson.com
+To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Simon Horman <horms@verge.net.au>
 
-Hi Hans,
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-this series consisted of the following patches:
+Remove variable ctl_key from struct netns_ipvs,
+it's a leftover from early netns work.
 
-[v4 PATCH 1/6] IPVS: Change of socket usage to enable name space exit.
-[v4 PATCH 2/6] IPVS: labels at pos 0
-[v4 PATCH 3/6] IPVS: init and cleanup restructuring.
-[v4 PATCH 4/6] IPVS: rename of netns init and cleanup functions.
-[v4 PATCH 5/6] IPVS: remove unused init and cleanup functions.
-[v4 PATCH 6/6] IPVS: add debug functions
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ include/net/ip_vs.h |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-Variants of 1/6 and 3/6 were included in 2.6.39.
-I have applied 4/6 to ipvs-next-2.6 [1]
-The remaining patches no longer apply cleanly,
-could you send fresh versions?
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 481f856..34a6fa8 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -836,8 +836,6 @@ struct netns_ipvs {
+ 	int			num_services;    /* no of virtual services */
+ 
+ 	rwlock_t		rs_lock;         /* real services table */
+-	/* semaphore for IPVS sockopts. And, [gs]etsockopt may sleep. */
+-	struct lock_class_key	ctl_key;	/* ctl_mutex debuging */
+ 	/* Trash for destinations */
+ 	struct list_head	dest_trash;
+ 	/* Service counters */
+-- 
+1.7.4.4
 
-[1] git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next-2.6.git
