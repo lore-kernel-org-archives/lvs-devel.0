@@ -1,93 +1,78 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [PATCH 1/2] IPVS: labels at pos 0
-Date: Mon, 13 Jun 2011 12:19:26 +0200
-Message-ID: <1307960367-15318-2-git-send-email-hans.schillstrom@ericsson.com>
-References: <1307960367-15318-1-git-send-email-hans.schillstrom@ericsson.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [RFC PATCH 1/1] IPVS netns shutdown/startup dead-lock
+Date: Mon, 13 Jun 2011 20:11:29 +0900
+Message-ID: <20110613111126.GA1502@verge.net.au>
+References: <1307957530-12732-1-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1307960367-15318-1-git-send-email-hans.schillstrom@ericsson.com>
+Content-Disposition: inline
+In-Reply-To: <1307957530-12732-1-git-send-email-hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: hans@schillstrom.com, Hans Schillstrom <hans.schillstrom@ericsson.com>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: ja@ssi.bg, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans@schillstrom.com
 
-Put goto labels at the beginig of row
-acording to coding style example.
+On Mon, Jun 13, 2011 at 11:32:10AM +0200, Hans Schillstrom wrote:
+> ip_vs_mutext is used by both netns shutdown code and startup
+> and both implicit uses sk_lock-AF_INET mutex.
+> 
+> cleanup CPU-1         startup CPU-2
+> ip_vs_dst_event()     ip_vs_genl_set_cmd()
+>  sk_lock-AF_INET     __ip_vs_mutex
+>                      sk_lock-AF_INET
+> __ip_vs_mutex
+> * DEAD LOCK *
+> 
+> This can be solved by have the ip_vs_mutex per netns
+> or avid locking when starting/stoping sync-threads.
+> i.e. just add a starting/stoping flag.
+> 
+> ip_vs_mutex per name-space seems to be a more future proof solution.
+> 
+> Which one should be used ?
 
-Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
----
- net/netfilter/ipvs/ip_vs_core.c |   10 +++++-----
- net/netfilter/ipvs/ip_vs_ctl.c  |    8 ++++----
- 2 files changed, 9 insertions(+), 9 deletions(-)
+I don't feel strongly either way.
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index f54719a..673504e 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1384,7 +1384,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 		offset += 2 * sizeof(__u16);
- 	verdict = ip_vs_icmp_xmit(skb, cp, pp, offset, hooknum);
- 
--  out:
-+out:
- 	__ip_vs_conn_put(cp);
- 
- 	return verdict;
-@@ -2019,14 +2019,14 @@ cleanup_sub:
- 	unregister_pernet_subsys(&ipvs_core_ops);
- cleanup_sync:
- 	ip_vs_sync_cleanup();
--  cleanup_conn:
-+cleanup_conn:
- 	ip_vs_conn_cleanup();
--  cleanup_app:
-+cleanup_app:
- 	ip_vs_app_cleanup();
--  cleanup_protocol:
-+cleanup_protocol:
- 	ip_vs_protocol_cleanup();
- 	ip_vs_control_cleanup();
--  cleanup_estimator:
-+cleanup_estimator:
- 	ip_vs_estimator_cleanup();
- 	return ret;
- }
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 6bedea1..be43fd8 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1334,9 +1334,9 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
- 		ip_vs_bind_pe(svc, pe);
- 	}
- 
--  out_unlock:
-+out_unlock:
- 	write_unlock_bh(&__ip_vs_svc_lock);
--  out:
-+out:
- 	ip_vs_scheduler_put(old_sched);
- 	ip_vs_pe_put(old_pe);
- 	return ret;
-@@ -2469,7 +2469,7 @@ __ip_vs_get_service_entries(struct net *net,
- 			count++;
- 		}
- 	}
--  out:
-+out:
- 	return ret;
- }
- 
-@@ -2707,7 +2707,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
- 		ret = -EINVAL;
- 	}
- 
--  out:
-+out:
- 	mutex_unlock(&__ip_vs_mutex);
- 	return ret;
- }
--- 
-1.7.2.3
+> Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+> ---
+>  include/net/ip_vs.h             |    2 ++
+>  net/netfilter/ipvs/ip_vs_ctl.c  |   15 ++++++++++-----
+>  net/netfilter/ipvs/ip_vs_sync.c |   30 +++++++++++++++++++++++++-----
+>  3 files changed, 37 insertions(+), 10 deletions(-)
+> 
 
+[snip]
+
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index 699c79a..21c541f 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+
+[snip]
+
+> @@ -3305,12 +3309,13 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+>  			ret = -EINVAL;
+>  			goto out;
+>  		}
+> -
+> +		/* Unlock since a global socket lock will be taken later */
+> +		mutex_unlock(&__ip_vs_mutex);
+>  		if (cmd == IPVS_CMD_NEW_DAEMON)
+>  			ret = ip_vs_genl_new_daemon(net, daemon_attrs);
+>  		else
+>  			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
+> -		goto out;
+> +		goto out_nounlock;
+
+I'm not a huge fan of labels that only return.
+So I think it would be slightly easier on the eyes
+to just return here, not add out_nounlock,
+and possibly rename out as out_unlock.
+
+>  	} else if (cmd == IPVS_CMD_ZERO &&
+>  		   !info->attrs[IPVS_CMD_ATTR_SERVICE]) {
+>  		ret = ip_vs_zero_all(net);
+
+[snip]
