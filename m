@@ -1,9 +1,11 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [RFC PATCH 1/1] IPVS netns shutdown/startup dead-lock
-Date: Mon, 13 Jun 2011 11:32:10 +0200
-Message-ID: <1307957530-12732-1-git-send-email-hans.schillstrom@ericsson.com>
+Subject: [PATCH 2/2] IPVS: remove unused init and cleanup functions.
+Date: Mon, 13 Jun 2011 12:19:27 +0200
+Message-ID: <1307960367-15318-3-git-send-email-hans.schillstrom@ericsson.com>
+References: <1307960367-15318-1-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
 Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <1307960367-15318-1-git-send-email-hans.schillstrom@ericsson.com>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -11,203 +13,175 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
 Cc: hans@schillstrom.com, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-ip_vs_mutext is used by both netns shutdown code and startup
-and both implicit uses sk_lock-AF_INET mutex.
-
-cleanup CPU-1         startup CPU-2
-ip_vs_dst_event()     ip_vs_genl_set_cmd()
- sk_lock-AF_INET     __ip_vs_mutex
-                     sk_lock-AF_INET
-__ip_vs_mutex
-* DEAD LOCK *
-
-This can be solved by have the ip_vs_mutex per netns
-or avid locking when starting/stoping sync-threads.
-i.e. just add a starting/stoping flag.
-
-ip_vs_mutex per name-space seems to be a more future proof solution.
-
-Which one should be used ?
+After restructuring, there is some unused or empty functions
+left to be removed.
 
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 ---
- include/net/ip_vs.h             |    2 ++
- net/netfilter/ipvs/ip_vs_ctl.c  |   15 ++++++++++-----
- net/netfilter/ipvs/ip_vs_sync.c |   30 +++++++++++++++++++++++++-----
- 3 files changed, 37 insertions(+), 10 deletions(-)
+ include/net/ip_vs.h             |    6 ------
+ net/netfilter/ipvs/ip_vs_app.c  |   10 ----------
+ net/netfilter/ipvs/ip_vs_core.c |   29 ++++-------------------------
+ net/netfilter/ipvs/ip_vs_est.c  |    9 ---------
+ net/netfilter/ipvs/ip_vs_sync.c |    9 ---------
+ 5 files changed, 4 insertions(+), 59 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 34a6fa8..e82fa8d 100644
+index 1b0985f..b1370c4 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -895,6 +895,8 @@ struct netns_ipvs {
- 	struct sockaddr_in	sync_mcast_addr;
- 	struct task_struct	*master_thread;
- 	struct task_struct	*backup_thread;
-+	atomic_t		master_flg;	/* Start-up flag*/
-+	atomic_t		backup_flg;
- 	int			send_mesg_maxlen;
- 	int			recv_mesg_maxlen;
- 	volatile int		sync_state;
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 699c79a..21c541f 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2318,13 +2318,17 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		goto out_unlock;
- 	} else if (cmd == IP_VS_SO_SET_STARTDAEMON) {
- 		struct ip_vs_daemon_user *dm = (struct ip_vs_daemon_user *)arg;
-+		/* Unlock since a global socket lock will be taken later */
-+		mutex_unlock(&__ip_vs_mutex);
- 		ret = start_sync_thread(net, dm->state, dm->mcast_ifn,
- 					dm->syncid);
--		goto out_unlock;
-+		goto out_dec;
- 	} else if (cmd == IP_VS_SO_SET_STOPDAEMON) {
- 		struct ip_vs_daemon_user *dm = (struct ip_vs_daemon_user *)arg;
-+		/* Unlock since a global socket lock will be taken later */
-+		mutex_unlock(&__ip_vs_mutex);
- 		ret = stop_sync_thread(net, dm->state);
--		goto out_unlock;
-+		goto out_dec;
+@@ -1117,8 +1117,6 @@ extern void ip_vs_app_inc_put(struct ip_vs_app *inc);
+ 
+ extern int ip_vs_app_pkt_out(struct ip_vs_conn *, struct sk_buff *skb);
+ extern int ip_vs_app_pkt_in(struct ip_vs_conn *, struct sk_buff *skb);
+-extern int ip_vs_app_init(void);
+-extern void ip_vs_app_cleanup(void);
+ 
+ void ip_vs_bind_pe(struct ip_vs_service *svc, struct ip_vs_pe *pe);
+ void ip_vs_unbind_pe(struct ip_vs_service *svc);
+@@ -1221,15 +1219,11 @@ extern int start_sync_thread(struct net *net, int state, char *mcast_ifn,
+ 			     __u8 syncid);
+ extern int stop_sync_thread(struct net *net, int state);
+ extern void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp);
+-extern int ip_vs_sync_init(void);
+-extern void ip_vs_sync_cleanup(void);
+ 
+ 
+ /*
+  *      IPVS rate estimator prototypes (from ip_vs_est.c)
+  */
+-extern int ip_vs_estimator_init(void);
+-extern void ip_vs_estimator_cleanup(void);
+ extern void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats);
+ extern void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats);
+ extern void ip_vs_zero_estimator(struct ip_vs_stats *stats);
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index e223fb7..fe6cb43 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -589,13 +589,3 @@ void __net_exit ip_vs_app_net_cleanup(struct net *net)
+ {
+ 	proc_net_remove(net, "ip_vs_app");
+ }
+-
+-int __init ip_vs_app_init(void)
+-{
+-	return 0;
+-}
+-
+-
+-void ip_vs_app_cleanup(void)
+-{
+-}
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 673504e..267529b 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1968,36 +1968,23 @@ static int __init ip_vs_init(void)
+ {
+ 	int ret;
+ 
+-	ip_vs_estimator_init();
+ 	ret = ip_vs_control_init();
+ 	if (ret < 0) {
+ 		pr_err("can't setup control.\n");
+-		goto cleanup_estimator;
++		goto exit;
  	}
  
- 	usvc_compat = (struct ip_vs_service_user *)arg;
-@@ -3305,12 +3309,13 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 			ret = -EINVAL;
- 			goto out;
- 		}
--
-+		/* Unlock since a global socket lock will be taken later */
-+		mutex_unlock(&__ip_vs_mutex);
- 		if (cmd == IPVS_CMD_NEW_DAEMON)
- 			ret = ip_vs_genl_new_daemon(net, daemon_attrs);
- 		else
- 			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
--		goto out;
-+		goto out_nounlock;
- 	} else if (cmd == IPVS_CMD_ZERO &&
- 		   !info->attrs[IPVS_CMD_ATTR_SERVICE]) {
- 		ret = ip_vs_zero_all(net);
-@@ -3382,7 +3387,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	ip_vs_protocol_init();
  
- out:
- 	mutex_unlock(&__ip_vs_mutex);
+-	ret = ip_vs_app_init();
+-	if (ret < 0) {
+-		pr_err("can't setup application helper.\n");
+-		goto cleanup_protocol;
+-	}
 -
-+out_nounlock:
+ 	ret = ip_vs_conn_init();
+ 	if (ret < 0) {
+ 		pr_err("can't setup connection table.\n");
+-		goto cleanup_app;
+-	}
+-
+-	ret = ip_vs_sync_init();
+-	if (ret < 0) {
+-		pr_err("can't setup sync data.\n");
+-		goto cleanup_conn;
++		goto cleanup_protocol;
+ 	}
+ 
+ 	ret = register_pernet_subsys(&ipvs_core_ops);	/* Alloc ip_vs struct */
+ 	if (ret < 0)
+-		goto cleanup_sync;
++		goto cleanup_conn;
+ 
+ 	ret = register_pernet_device(&ipvs_core_dev_ops);
+ 	if (ret < 0)
+@@ -2017,17 +2004,12 @@ cleanup_dev:
+ 	unregister_pernet_device(&ipvs_core_dev_ops);
+ cleanup_sub:
+ 	unregister_pernet_subsys(&ipvs_core_ops);
+-cleanup_sync:
+-	ip_vs_sync_cleanup();
+ cleanup_conn:
+ 	ip_vs_conn_cleanup();
+-cleanup_app:
+-	ip_vs_app_cleanup();
+ cleanup_protocol:
+ 	ip_vs_protocol_cleanup();
+ 	ip_vs_control_cleanup();
+-cleanup_estimator:
+-	ip_vs_estimator_cleanup();
++exit:
  	return ret;
  }
  
+@@ -2036,12 +2018,9 @@ static void __exit ip_vs_cleanup(void)
+ 	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ 	unregister_pernet_device(&ipvs_core_dev_ops);
+ 	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+-	ip_vs_sync_cleanup();
+ 	ip_vs_conn_cleanup();
+-	ip_vs_app_cleanup();
+ 	ip_vs_protocol_cleanup();
+ 	ip_vs_control_cleanup();
+-	ip_vs_estimator_cleanup();
+ 	pr_info("ipvs unloaded.\n");
+ }
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index f5d2a01..0fac601 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -207,12 +207,3 @@ void __net_exit ip_vs_estimator_net_cleanup(struct net *net)
+ {
+ 	del_timer_sync(&net_ipvs(net)->est_timer);
+ }
+-
+-int __init ip_vs_estimator_init(void)
+-{
+-	return 0;
+-}
+-
+-void ip_vs_estimator_cleanup(void)
+-{
+-}
 diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index e292e5b..7a996dc 100644
+index 58bfabb..7ee7215 100644
 --- a/net/netfilter/ipvs/ip_vs_sync.c
 +++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1540,30 +1540,37 @@ int start_sync_thread(struct net *net, int state, char *mcast_ifn, __u8 syncid)
- 	char *name, *buf = NULL;
- 	int (*threadfn)(void *data);
- 	int result = -ENOMEM;
-+	atomic_t *run_flg;
- 
- 	IP_VS_DBG(7, "%s(): pid %d\n", __func__, task_pid_nr(current));
- 	IP_VS_DBG(7, "Each ip_vs_sync_conn entry needs %Zd bytes\n",
- 		  sizeof(struct ip_vs_sync_conn_v0));
- 
-+	/* master/backup_flag is used to protect for multiple starts
-+	 * the ip_vs_mutex can't be used here due to deadlock problems.*/
- 	if (state == IP_VS_STATE_MASTER) {
--		if (ipvs->master_thread)
-+		if (ipvs->master_thread ||
-+		    !atomic_dec_and_test(&ipvs->master_flg))
- 			return -EEXIST;
- 
- 		strlcpy(ipvs->master_mcast_ifn, mcast_ifn,
- 			sizeof(ipvs->master_mcast_ifn));
- 		ipvs->master_syncid = syncid;
- 		realtask = &ipvs->master_thread;
-+		run_flg = &ipvs->master_flg;
- 		name = "ipvs_master:%d";
- 		threadfn = sync_thread_master;
- 		sock = make_send_sock(net);
- 	} else if (state == IP_VS_STATE_BACKUP) {
--		if (ipvs->backup_thread)
-+		if (ipvs->backup_thread ||
-+		    !atomic_dec_and_test(&ipvs->backup_flg))
- 			return -EEXIST;
- 
- 		strlcpy(ipvs->backup_mcast_ifn, mcast_ifn,
- 			sizeof(ipvs->backup_mcast_ifn));
- 		ipvs->backup_syncid = syncid;
- 		realtask = &ipvs->backup_thread;
-+		run_flg = &ipvs->backup_flg;
- 		name = "ipvs_backup:%d";
- 		threadfn = sync_thread_backup;
- 		sock = make_receive_sock(net);
-@@ -1600,7 +1607,8 @@ int start_sync_thread(struct net *net, int state, char *mcast_ifn, __u8 syncid)
- 	/* mark as active */
- 	*realtask = task;
- 	ipvs->sync_state |= state;
+@@ -1689,12 +1689,3 @@ void ip_vs_sync_net_cleanup(struct net *net)
+ 	if (retc && retc != -ESRCH)
+ 		pr_err("Failed to stop Backup Daemon\n");
+ }
 -
-+	/* Free to use again */
-+	atomic_set(run_flg, 1);
- 	/* increase the module use count */
- 	ip_vs_use_count_inc();
- 
-@@ -1613,6 +1621,7 @@ outbuf:
- outsocket:
- 	sk_release_kernel(sock->sk);
- out:
-+	atomic_set(run_flg, -1);
- 	return result;
- }
- 
-@@ -1621,11 +1630,15 @@ int stop_sync_thread(struct net *net, int state)
- {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	int retc = -EINVAL;
-+	atomic_t *run_flg;
- 
- 	IP_VS_DBG(7, "%s(): pid %d\n", __func__, task_pid_nr(current));
- 
-+	/* master/backup_flag is used to protect for multiple shutdowns
-+	 * the ip_vs_mutex can't be used here due to deadlock problems.*/
- 	if (state == IP_VS_STATE_MASTER) {
--		if (!ipvs->master_thread)
-+		if (!ipvs->master_thread ||
-+		    !atomic_dec_and_test(&ipvs->master_flg))
- 			return -ESRCH;
- 
- 		pr_info("stopping master sync thread %d ...\n",
-@@ -1642,8 +1655,11 @@ int stop_sync_thread(struct net *net, int state)
- 		spin_unlock_bh(&ipvs->sync_lock);
- 		retc = kthread_stop(ipvs->master_thread);
- 		ipvs->master_thread = NULL;
-+		/* Free to use again */
-+		atomic_set(&ipvs->master_flg, 1);
- 	} else if (state == IP_VS_STATE_BACKUP) {
--		if (!ipvs->backup_thread)
-+		if (!ipvs->backup_thread ||
-+		    !atomic_dec_and_test(&ipvs->backup_flg))
- 			return -ESRCH;
- 
- 		pr_info("stopping backup sync thread %d ...\n",
-@@ -1652,6 +1668,8 @@ int stop_sync_thread(struct net *net, int state)
- 		ipvs->sync_state &= ~IP_VS_STATE_BACKUP;
- 		retc = kthread_stop(ipvs->backup_thread);
- 		ipvs->backup_thread = NULL;
-+		/* Free to use again */
-+		atomic_set(&ipvs->backup_flg, 1);
- 	}
- 
- 	/* decrease the module use count */
-@@ -1674,6 +1692,8 @@ int __net_init __ip_vs_sync_init(struct net *net)
- 	ipvs->sync_mcast_addr.sin_family = AF_INET;
- 	ipvs->sync_mcast_addr.sin_port = cpu_to_be16(IP_VS_SYNC_PORT);
- 	ipvs->sync_mcast_addr.sin_addr.s_addr = cpu_to_be32(IP_VS_SYNC_GROUP);
-+	atomic_set(&ipvs->master_flg, 1);
-+	atomic_set(&ipvs->backup_flg, 1);
- 	return 0;
- }
- 
+-int __init ip_vs_sync_init(void)
+-{
+-	return 0;
+-}
+-
+-void ip_vs_sync_cleanup(void)
+-{
+-}
 -- 
 1.7.2.3
 
