@@ -1,183 +1,141 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 5/5] IPVS: remove unused init and cleanup functions.
-Date: Wed, 15 Jun 2011 08:43:21 +0900
-Message-ID: <1308095001-21002-6-git-send-email-horms@verge.net.au>
+Subject: [PATCH 1/5] ipvs: support more FTP PASV responses
+Date: Wed, 15 Jun 2011 08:43:17 +0900
+Message-ID: <1308095001-21002-2-git-send-email-horms@verge.net.au>
 References: <1308095001-21002-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1308095001-21002-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
-Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Simon Horman <horms@verge.net.au>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>
 
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+From: Julian Anastasov <ja@ssi.bg>
 
-After restructuring, there is some unused or empty functions
-left to be removed.
+	Change the parsing of FTP commands and responses to
+support skip character. It allows to detect variations in
+the 227 PASV response.
 
-Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             |    6 ------
- net/netfilter/ipvs/ip_vs_app.c  |   10 ----------
- net/netfilter/ipvs/ip_vs_core.c |   29 ++++-------------------------
- net/netfilter/ipvs/ip_vs_est.c  |    9 ---------
- net/netfilter/ipvs/ip_vs_sync.c |    9 ---------
- 5 files changed, 4 insertions(+), 59 deletions(-)
+ net/netfilter/ipvs/ip_vs_ftp.c |   52 +++++++++++++++++++++++++++++----------
+ 1 files changed, 38 insertions(+), 14 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 1b0985f..b1370c4 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1117,8 +1117,6 @@ extern void ip_vs_app_inc_put(struct ip_vs_app *inc);
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index af63553..4490a32 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -44,8 +44,8 @@
+ #include <net/ip_vs.h>
  
- extern int ip_vs_app_pkt_out(struct ip_vs_conn *, struct sk_buff *skb);
- extern int ip_vs_app_pkt_in(struct ip_vs_conn *, struct sk_buff *skb);
--extern int ip_vs_app_init(void);
--extern void ip_vs_app_cleanup(void);
  
- void ip_vs_bind_pe(struct ip_vs_service *svc, struct ip_vs_pe *pe);
- void ip_vs_unbind_pe(struct ip_vs_service *svc);
-@@ -1221,15 +1219,11 @@ extern int start_sync_thread(struct net *net, int state, char *mcast_ifn,
- 			     __u8 syncid);
- extern int stop_sync_thread(struct net *net, int state);
- extern void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp);
--extern int ip_vs_sync_init(void);
--extern void ip_vs_sync_cleanup(void);
+-#define SERVER_STRING "227 Entering Passive Mode ("
+-#define CLIENT_STRING "PORT "
++#define SERVER_STRING "227 "
++#define CLIENT_STRING "PORT"
  
  
  /*
-  *      IPVS rate estimator prototypes (from ip_vs_est.c)
+@@ -79,14 +79,17 @@ ip_vs_ftp_done_conn(struct ip_vs_app *app, struct ip_vs_conn *cp)
+ 
+ /*
+  * Get <addr,port> from the string "xxx.xxx.xxx.xxx,ppp,ppp", started
+- * with the "pattern" and terminated with the "term" character.
++ * with the "pattern", ignoring before "skip" and terminated with
++ * the "term" character.
+  * <addr,port> is in network order.
   */
--extern int ip_vs_estimator_init(void);
--extern void ip_vs_estimator_cleanup(void);
- extern void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats);
- extern void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats);
- extern void ip_vs_zero_estimator(struct ip_vs_stats *stats);
-diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
-index e223fb7..fe6cb43 100644
---- a/net/netfilter/ipvs/ip_vs_app.c
-+++ b/net/netfilter/ipvs/ip_vs_app.c
-@@ -589,13 +589,3 @@ void __net_exit ip_vs_app_net_cleanup(struct net *net)
+ static int ip_vs_ftp_get_addrport(char *data, char *data_limit,
+-				  const char *pattern, size_t plen, char term,
++				  const char *pattern, size_t plen,
++				  char skip, char term,
+ 				  __be32 *addr, __be16 *port,
+ 				  char **start, char **end)
  {
- 	proc_net_remove(net, "ip_vs_app");
- }
--
--int __init ip_vs_app_init(void)
--{
--	return 0;
--}
--
--
--void ip_vs_app_cleanup(void)
--{
--}
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 6cefe32..2200bae 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1967,36 +1967,23 @@ static int __init ip_vs_init(void)
- {
- 	int ret;
++	char *s, c;
+ 	unsigned char p[6];
+ 	int i = 0;
  
--	ip_vs_estimator_init();
- 	ret = ip_vs_control_init();
- 	if (ret < 0) {
- 		pr_err("can't setup control.\n");
--		goto cleanup_estimator;
-+		goto exit;
+@@ -101,19 +104,38 @@ static int ip_vs_ftp_get_addrport(char *data, char *data_limit,
+ 	if (strnicmp(data, pattern, plen) != 0) {
+ 		return 0;
  	}
+-	*start = data + plen;
++	s = data + plen;
++	if (skip) {
++		int found = 0;
++
++		for (;; s++) {
++			if (s == data_limit)
++				return -1;
++			if (!found) {
++				if (*s == skip)
++					found = 1;
++			} else if (*s != skip) {
++				break;
++			}
++		}
++	}
  
- 	ip_vs_protocol_init();
- 
--	ret = ip_vs_app_init();
--	if (ret < 0) {
--		pr_err("can't setup application helper.\n");
--		goto cleanup_protocol;
--	}
--
- 	ret = ip_vs_conn_init();
- 	if (ret < 0) {
- 		pr_err("can't setup connection table.\n");
--		goto cleanup_app;
--	}
--
--	ret = ip_vs_sync_init();
--	if (ret < 0) {
--		pr_err("can't setup sync data.\n");
--		goto cleanup_conn;
-+		goto cleanup_protocol;
+-	for (data = *start; *data != term; data++) {
++	for (data = s; ; data++) {
+ 		if (data == data_limit)
+ 			return -1;
++		if (*data == term)
++			break;
  	}
+ 	*end = data;
  
- 	ret = register_pernet_subsys(&ipvs_core_ops);	/* Alloc ip_vs struct */
- 	if (ret < 0)
--		goto cleanup_sync;
-+		goto cleanup_conn;
+ 	memset(p, 0, sizeof(p));
+-	for (data = *start; data != *end; data++) {
+-		if (*data >= '0' && *data <= '9') {
+-			p[i] = p[i]*10 + *data - '0';
+-		} else if (*data == ',' && i < 5) {
++	for (data = s; ; data++) {
++		c = *data;
++		if (c == term)
++			break;
++		if (c >= '0' && c <= '9') {
++			p[i] = p[i]*10 + c - '0';
++		} else if (c == ',' && i < 5) {
+ 			i++;
+ 		} else {
+ 			/* unexpected character */
+@@ -124,8 +146,9 @@ static int ip_vs_ftp_get_addrport(char *data, char *data_limit,
+ 	if (i != 5)
+ 		return -1;
  
- 	ret = register_pernet_device(&ipvs_core_dev_ops);
- 	if (ret < 0)
-@@ -2016,17 +2003,12 @@ cleanup_dev:
- 	unregister_pernet_device(&ipvs_core_dev_ops);
- cleanup_sub:
- 	unregister_pernet_subsys(&ipvs_core_ops);
--cleanup_sync:
--	ip_vs_sync_cleanup();
- cleanup_conn:
- 	ip_vs_conn_cleanup();
--cleanup_app:
--	ip_vs_app_cleanup();
- cleanup_protocol:
- 	ip_vs_protocol_cleanup();
- 	ip_vs_control_cleanup();
--cleanup_estimator:
--	ip_vs_estimator_cleanup();
-+exit:
- 	return ret;
+-	*addr = get_unaligned((__be32 *)p);
+-	*port = get_unaligned((__be16 *)(p + 4));
++	*start = s;
++	*addr = get_unaligned((__be32 *) p);
++	*port = get_unaligned((__be16 *) (p + 4));
+ 	return 1;
  }
  
-@@ -2035,12 +2017,9 @@ static void __exit ip_vs_cleanup(void)
- 	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
- 	unregister_pernet_device(&ipvs_core_dev_ops);
- 	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
--	ip_vs_sync_cleanup();
- 	ip_vs_conn_cleanup();
--	ip_vs_app_cleanup();
- 	ip_vs_protocol_cleanup();
- 	ip_vs_control_cleanup();
--	ip_vs_estimator_cleanup();
- 	pr_info("ipvs unloaded.\n");
- }
+@@ -185,7 +208,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
  
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index f5d2a01..0fac601 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -207,12 +207,3 @@ void __net_exit ip_vs_estimator_net_cleanup(struct net *net)
- {
- 	del_timer_sync(&net_ipvs(net)->est_timer);
- }
--
--int __init ip_vs_estimator_init(void)
--{
--	return 0;
--}
--
--void ip_vs_estimator_cleanup(void)
--{
--}
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 58bfabb..7ee7215 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1689,12 +1689,3 @@ void ip_vs_sync_net_cleanup(struct net *net)
- 	if (retc && retc != -ESRCH)
- 		pr_err("Failed to stop Backup Daemon\n");
- }
--
--int __init ip_vs_sync_init(void)
--{
--	return 0;
--}
+ 		if (ip_vs_ftp_get_addrport(data, data_limit,
+ 					   SERVER_STRING,
+-					   sizeof(SERVER_STRING)-1, ')',
++					   sizeof(SERVER_STRING)-1,
++					   '(', ')',
+ 					   &from.ip, &port,
+ 					   &start, &end) != 1)
+ 			return 1;
+@@ -345,7 +369,7 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	 */
+ 	if (ip_vs_ftp_get_addrport(data_start, data_limit,
+ 				   CLIENT_STRING, sizeof(CLIENT_STRING)-1,
+-				   '\r', &to.ip, &port,
++				   ' ', '\r', &to.ip, &port,
+ 				   &start, &end) != 1)
+ 		return 1;
+ 
+-- 
+1.7.4.4
+
