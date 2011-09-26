@@ -1,194 +1,28 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 4/5] IPVS: Remove unused return value of protocol state transitions
-Date: Mon, 26 Sep 2011 18:05:37 +0900
-Message-ID: <1317027938-22053-5-git-send-email-horms@verge.net.au>
-References: <1317027938-22053-1-git-send-email-horms@verge.net.au>
+Subject: [ANNOUNCE] ipvs and ipvs-next trees on github
+Date: Mon, 26 Sep 2011 18:10:58 +0900
+Message-ID: <20110926091056.GA22569@verge.net.au>
+Mime-Version: 1.0
 Return-path: <netfilter-owner@vger.kernel.org>
-In-Reply-To: <1317027938-22053-1-git-send-email-horms@verge.net.au>
+Content-Disposition: inline
 Sender: netfilter-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
-Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
-Acked-by Hans Schillstrom <hans@schillstrom.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- include/net/ip_vs.h                   |    6 +++---
- net/netfilter/ipvs/ip_vs_core.c       |   13 ++++++-------
- net/netfilter/ipvs/ip_vs_proto_sctp.c |   14 ++++----------
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |    6 ++----
- net/netfilter/ipvs/ip_vs_proto_udp.c  |    5 ++---
- 5 files changed, 17 insertions(+), 27 deletions(-)
+Hi,
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index a5f0f6b..139784e 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -425,9 +425,9 @@ struct ip_vs_protocol {
- 
- 	const char *(*state_name)(int state);
- 
--	int (*state_transition)(struct ip_vs_conn *cp, int direction,
--				const struct sk_buff *skb,
--				struct ip_vs_proto_data *pd);
-+	void (*state_transition)(struct ip_vs_conn *cp, int direction,
-+				 const struct sk_buff *skb,
-+				 struct ip_vs_proto_data *pd);
- 
- 	int (*register_app)(struct net *net, struct ip_vs_app *inc);
- 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 4f77bb1..00ea1ad 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -188,14 +188,13 @@ ip_vs_conn_stats(struct ip_vs_conn *cp, struct ip_vs_service *svc)
- }
- 
- 
--static inline int
-+static inline void
- ip_vs_set_state(struct ip_vs_conn *cp, int direction,
- 		const struct sk_buff *skb,
- 		struct ip_vs_proto_data *pd)
- {
--	if (unlikely(!pd->pp->state_transition))
--		return 0;
--	return pd->pp->state_transition(cp, direction, skb, pd);
-+	if (likely(pd->pp->state_transition))
-+		pd->pp->state_transition(cp, direction, skb, pd);
- }
- 
- static inline int
-@@ -557,7 +556,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		ip_vs_in_stats(cp, skb);
- 
- 		/* set state */
--		cs = ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd);
-+		ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd);
- 
- 		/* transmit the first SYN packet */
- 		ret = cp->packet_xmit(skb, cp, pd->pp);
-@@ -1490,7 +1489,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	struct ip_vs_protocol *pp;
- 	struct ip_vs_proto_data *pd;
- 	struct ip_vs_conn *cp;
--	int ret, restart, pkts;
-+	int ret, pkts;
- 	struct netns_ipvs *ipvs;
- 
- 	/* Already marked as IPVS request or reply? */
-@@ -1591,7 +1590,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	}
- 
- 	ip_vs_in_stats(cp, skb);
--	restart = ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd);
-+	ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd);
- 	if (cp->packet_xmit)
- 		ret = cp->packet_xmit(skb, cp, pp);
- 		/* do not touch skb anymore */
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index d12ed53..1fbf7a2 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -906,7 +906,7 @@ static const char *sctp_state_name(int state)
- 	return "?";
- }
- 
--static inline int
-+static inline void
- set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 		int direction, const struct sk_buff *skb)
- {
-@@ -924,7 +924,7 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 	sch = skb_header_pointer(skb, ihl + sizeof(sctp_sctphdr_t),
- 				sizeof(_sctpch), &_sctpch);
- 	if (sch == NULL)
--		return 0;
-+		return;
- 
- 	chunk_type = sch->type;
- 	/*
-@@ -993,21 +993,15 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 		cp->timeout = pd->timeout_table[cp->state = next_state];
- 	else	/* What to do ? */
- 		cp->timeout = sctp_timeouts[cp->state = next_state];
--
--	return 1;
- }
- 
--static int
-+static void
- sctp_state_transition(struct ip_vs_conn *cp, int direction,
- 		const struct sk_buff *skb, struct ip_vs_proto_data *pd)
- {
--	int ret = 0;
--
- 	spin_lock(&cp->lock);
--	ret = set_sctp_state(pd, cp, direction, skb);
-+	set_sctp_state(pd, cp, direction, skb);
- 	spin_unlock(&cp->lock);
--
--	return ret;
- }
- 
- static inline __u16 sctp_app_hashkey(__be16 port)
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index c0cc341..ef8641f 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -546,7 +546,7 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- /*
-  *	Handle state transitions
-  */
--static int
-+static void
- tcp_state_transition(struct ip_vs_conn *cp, int direction,
- 		     const struct sk_buff *skb,
- 		     struct ip_vs_proto_data *pd)
-@@ -561,13 +561,11 @@ tcp_state_transition(struct ip_vs_conn *cp, int direction,
- 
- 	th = skb_header_pointer(skb, ihl, sizeof(_tcph), &_tcph);
- 	if (th == NULL)
--		return 0;
-+		return;
- 
- 	spin_lock(&cp->lock);
- 	set_tcp_state(pd, cp, direction, th);
- 	spin_unlock(&cp->lock);
--
--	return 1;
- }
- 
- static inline __u16 tcp_app_hashkey(__be16 port)
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index f1282cb..f4b7262 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -454,18 +454,17 @@ static const char * udp_state_name(int state)
- 	return udp_state_name_table[state] ? udp_state_name_table[state] : "?";
- }
- 
--static int
-+static void
- udp_state_transition(struct ip_vs_conn *cp, int direction,
- 		     const struct sk_buff *skb,
- 		     struct ip_vs_proto_data *pd)
- {
- 	if (unlikely(!pd)) {
- 		pr_err("UDP no ns data\n");
--		return 0;
-+		return;
- 	}
- 
- 	cp->timeout = pd->timeout_table[IP_VS_UDP_S_NORMAL];
--	return 1;
- }
- 
- static void __udp_init(struct net *net, struct ip_vs_proto_data *pd)
--- 
-1.7.5.4
+Like many others I have put some trees up on github to see me
+through until kernel.org becomes operation again.
+
+Please base any critical bug fixes for the current rc kernel on
+git://github.com/horms/ipvs.git
+
+Please base any other changes on
+git://github.com/horms/ipvs-next.git
+
+These trees are currently based on David Miller's net and net-next
+trees respectively and follow the same rules for accepting changes
+as those trees.
 
