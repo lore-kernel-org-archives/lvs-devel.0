@@ -1,20 +1,20 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
 Subject: Re: [GIT PULL net-next] IPVS
-Date: Wed, 28 Sep 2011 21:13:52 +0200
-Message-ID: <20110928191352.GC2209@1984>
+Date: Wed, 28 Sep 2011 23:45:16 +0200
+Message-ID: <20110928214516.GE2761@1984>
 References: <1317027938-22053-1-git-send-email-horms@verge.net.au>
  <20110927081618.GA22655@1984>
  <20110928132802.GC7661@verge.net.au>
 Mime-Version: 1.0
-Return-path: <netfilter-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <20110928132802.GC7661@verge.net.au>
-Sender: netfilter-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>
 
 On Wed, Sep 28, 2011 at 10:28:03PM +0900, Simon Horman wrote:
 > On Tue, Sep 27, 2011 at 10:16:18AM +0200, Pablo Neira Ayuso wrote:
@@ -31,7 +31,8 @@ On Wed, Sep 28, 2011 at 10:28:03PM +0900, Simon Horman wrote:
 > 
 > Thanks. Would you like me to rebase my tree on yours?
 
-http://1984.lsi.us.es/git/?p=net-next/.git;a=shortlog;h=refs/heads/nf-next
+Thinking it well, and given that you'll have to send me more patches,
+I think it's a good idea if you rebase.
 
-I have added these five patches to the nf-next branch of our temporary
-tree.
+BTW, please no need to Cc netfilter@vger.kernel.org, that list is for
+netfilter users, not for developers.
