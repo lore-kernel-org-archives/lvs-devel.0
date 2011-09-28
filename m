@@ -1,7 +1,7 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
 Subject: Re: [GIT PULL net-next] IPVS
-Date: Wed, 28 Sep 2011 17:45:40 +0200
-Message-ID: <20110928154540.GA1158@1984>
+Date: Wed, 28 Sep 2011 21:13:52 +0200
+Message-ID: <20110928191352.GC2209@1984>
 References: <1317027938-22053-1-git-send-email-horms@verge.net.au>
  <20110927081618.GA22655@1984>
  <20110928132802.GC7661@verge.net.au>
@@ -31,12 +31,7 @@ On Wed, Sep 28, 2011 at 10:28:03PM +0900, Simon Horman wrote:
 > 
 > Thanks. Would you like me to rebase my tree on yours?
 
-For your patches, I put them in one branch and will cherrypick them
-into master.
+http://1984.lsi.us.es/git/?p=net-next/.git;a=shortlog;h=refs/heads/nf-next
 
-BTW, the trees are here:
-
-http://1984.lsi.us.es/git/?p=net/.git;a=summary
-http://1984.lsi.us.es/git/?p=net-next/.git;a=summary
-
-I'll start iterating over the list collecting patches along today.
+I have added these five patches to the nf-next branch of our temporary
+tree.
