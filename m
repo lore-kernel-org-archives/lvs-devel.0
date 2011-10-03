@@ -1,46 +1,29 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 2/2] IPVS: Enhance grammar used to refer to Kconfig options
-Date: Sat,  1 Oct 2011 12:34:19 +0900
-Message-ID: <1317440059-31112-3-git-send-email-horms@verge.net.au>
-References: <1317440059-31112-1-git-send-email-horms@verge.net.au>
+From: =?iso-8859-1?Q?Hans_Schillstr=F6m?= <hans.schillstrom@ericsson.com>
+Subject: [PATCH 0/2] IPVS netns shutdown/startup dead-lock Take II
+Date: Mon, 3 Oct 2011 12:55:51 +0200
+Message-ID: <C8A6796DE7C66C4ABCBC18106CB6C1CC106D903144@ESESSCMS0356.eemea.ericsson.se>
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7BIT
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1317440059-31112-1-git-send-email-horms@verge.net.au>
+Content-Language: en-US
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: "horms@verge.net.au" <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Wensong Zhang <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, netdev@vger.k
 
-Reported-by: Randy Dunlap <rdunlap@xenotime.net>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- Documentation/networking/ipvs-sysctl.txt |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Hello,
+This two patches are for the current kernel, i.e. based on ipvs.git
 
-diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
-index 13610e3..f2a2488 100644
---- a/Documentation/networking/ipvs-sysctl.txt
-+++ b/Documentation/networking/ipvs-sysctl.txt
-@@ -30,7 +30,7 @@ conntrack - BOOLEAN
- 	Connections handled by the IPVS FTP application module
- 	will have connection tracking entries regardless of this setting.
- 
--	Only available when IPVS is compiled with the CONFIG_IP_VS_NFCT
-+	Only available when IPVS is compiled with CONFIG_IP_VS_NFCT enabled.
- 
- cache_bypass - BOOLEAN
-         0 - disabled (default)
-@@ -56,7 +56,7 @@ debug_level - INTEGER
- 	11         - IPVS packet handling (ip_vs_in/ip_vs_out)
- 	12 or more - packet traversal
- 
--	Only available when IPVS is compiled with the CONFIG_IP_VS_DEBUG
-+	Only available when IPVS is compiled with CONFIG_IP_VS_DEBUG enabled.
- 
- 	Higher debugging levels include the messages for lower debugging
- 	levels, so setting debug level 2, includes level 0, 1 and 2
--- 
-1.7.5.4
+The first one is a trivial fix for lockdep warnings,
+and the second is to solve a Deadlock.
+
+We have observed one more Deadlock case in our lab during startup of multiple containers i.e. netns.
+The back trace indicates some more issues with "sk_lock-AF_INET"
+However it has only been seen once during almost 4 month of testing.
+I can't reproduce it and not find any possibly scenario where it could occur.
+
+This patch fix the case when a name-space dies while another is created.
+
+Regards
+Hans Schillstrom <hans.schillstrom@ericsson.com>
 
