@@ -1,42 +1,44 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: [PATCH 1/2] fix lockdep warning
-Date: Mon, 3 Oct 2011 12:56:38 +0200
-Message-ID: <1317639399-4522-1-git-send-email-hans.schillstrom@ericsson.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 2/2] IPVS netns shutdown/startup dead-lock (Take II)
+Date: Mon, 3 Oct 2011 23:55:02 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1110032350500.1868@ja.ssi.bg>
+References: <1317639399-4522-1-git-send-email-hans.schillstrom@ericsson.com> <1317639399-4522-2-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <1317639399-4522-2-git-send-email-hans.schillstrom@ericsson.com>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: hans@schillstrom.com, Hans Schillstrom <hans.schillstrom@ericsson.com>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: horms@verge.net.au, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans@schillstrom.com
 
-From: Hans Schillstrom <hans@schillstrom.com>
 
-rs_lock needs a key to make lock dep happy.
+	Hello,
 
-Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+On Mon, 3 Oct 2011, Hans Schillstrom wrote:
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 2b771dc..a1af72f 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -57,6 +57,7 @@ static DEFINE_MUTEX(__ip_vs_mutex);
- 
- /* lock for service table */
- static DEFINE_RWLOCK(__ip_vs_svc_lock);
-+static struct lock_class_key ip_vs_rs_key;
- 
- /* sysctl variables */
- 
-@@ -3680,6 +3681,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	ipvs->rs_lock = __RW_LOCK_UNLOCKED(ipvs->rs_lock);
-+	__rwlock_init(&ipvs->rs_lock, "ipvs->rs_lock", &ip_vs_rs_key);
- 
- 	/* Initialize rs_table */
- 	for (idx = 0; idx < IP_VS_RTAB_SIZE; idx++)
--- 
-1.7.4.4
+> From: Hans Schillstrom <hans@schillstrom.com>
+> 
+> ip_vs_mutext is used by both netns shutdown code and startup
+> and both implicit uses sk_lock-AF_INET mutex.
+> 
+> cleanup CPU-1         startup CPU-2
+> ip_vs_dst_event()     ip_vs_genl_set_cmd()
+>  sk_lock-AF_INET     __ip_vs_mutex
+>                      sk_lock-AF_INET
+> __ip_vs_mutex
+> * DEAD LOCK *
+> 
+> A new mutex placed in ip_vs netns struct called sync_mutex is added.
+> 
+> Comments from Julian and Simon added.
+> This patch has been running for more than 3 month now and it seems to work.
 
+	May be IP_VS_SO_GET_DAEMON in do_ip_vs_get_ctl
+must be protected by sync_mutex in a similar way.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
