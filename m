@@ -1,34 +1,38 @@
-From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [PATCH 1/2] fix lockdep warning
-Date: Wed, 5 Oct 2011 08:31:26 +0200
-Message-ID: <201110050831.26652.hans@schillstrom.com>
-References: <1317639399-4522-1-git-send-email-hans.schillstrom@ericsson.com> <alpine.LFD.2.00.1110050133290.2388@ja.ssi.bg>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [GIT PULL nf-next] IPVS
+Date: Tue, 11 Oct 2011 01:42:56 +0200
+Message-ID: <20111010234255.GA30117@1984>
+References: <1317440059-31112-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1110050133290.2388@ja.ssi.bg>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1317440059-31112-1-git-send-email-horms@verge.net.au>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, horms@verge.net.au, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>
+Cc: Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-On Wednesday, October 05, 2011 00:51:31 Julian Anastasov wrote:
+On Sat, Oct 01, 2011 at 12:34:17PM +0900, Simon Horman wrote:
+> Hi Pablo,
 > 
-> 	Hello,
+> please consider pulling the following to get some
+> documentation changes from myself.
 > 
-> On Mon, 3 Oct 2011, Hans Schillstrom wrote:
+> The following changes since commit 6fa4dec85e199f31774faf29be26a53329d02e9e:
 > 
-[snip]
+>   ipvs: Removed unused variables (2011-09-28 21:09:24 +0200)
 > 
-> 	ip_vs_rs_key remains unused without debugging. I don't
-> remember the reason why IPVS is the only place that calls
-> __rwlock_init instead of rwlock_init. Can we use rwlock_init?
+> are available in the git repository at:
+>   git@github.com:horms/ipvs-next.git master
+> 
+> Simon Horman (2):
+>       IPVS: secure_tcp does provide alternate state timeouts
+>       IPVS: Enhance grammar used to refer to Kconfig options
+> 
+>  Documentation/networking/ipvs-sysctl.txt |   14 ++++++--------
 
-I'm Sorry, this was not meant to go to the list :-(
-It should be rwlock_init() as you say 
-I'll send a new one row patch...
+Pulled, thanks Simon.
 
-
-Thanks
-Hans
+http://1984.lsi.us.es/git/?p=net-next/.git;a=shortlog;h=refs/heads/nf-next
