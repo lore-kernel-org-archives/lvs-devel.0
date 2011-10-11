@@ -1,38 +1,50 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf-next] IPVS
-Date: Tue, 11 Oct 2011 01:42:56 +0200
-Message-ID: <20111010234255.GA30117@1984>
-References: <1317440059-31112-1-git-send-email-horms@verge.net.au>
+Subject: Re: [PATCH 06/24] netfilter: Remove unnecessary OOM logging
+ messages
+Date: Tue, 11 Oct 2011 02:15:05 +0200
+Message-ID: <20111011001505.GB30117@1984>
+References: <cover.1314650069.git.joe@perches.com>
+ <13c1c12486cae409dfa5254b1435e660f2b17e05.1314650069.git.joe@perches.com>
+ <4E5CDBAA.6040001@trash.net>
+ <20110830.135502.179848097213434762.davem@davemloft.net>
+ <4E5E092E.80507@trash.net>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1317440059-31112-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <4E5E092E.80507@trash.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: Patrick McHardy <kaber@trash.net>
+Cc: David Miller <davem@davemloft.net>, joe@perches.com, bart.de.schuymer@pandora.be, wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, shemminger@linux-foundation.org, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, bridge@lists.linux-foundation.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Sat, Oct 01, 2011 at 12:34:17PM +0900, Simon Horman wrote:
-> Hi Pablo,
+On Wed, Aug 31, 2011 at 12:13:02PM +0200, Patrick McHardy wrote:
+> On 30.08.2011 19:55, David Miller wrote:
+> > From: Patrick McHardy <kaber@trash.net>
+> > Date: Tue, 30 Aug 2011 14:46:34 +0200
+> > 
+> >> On 29.08.2011 23:17, Joe Perches wrote:
+> >>> Removing unnecessary messages saves code and text.
+> >>>
+> >>> Site specific OOM messages are duplications of a generic MM
+> >>> out of memory message and aren't really useful, so just
+> >>> delete them.
+> >>
+> >> Looks good to me. Do you want me to apply this patch or are you
+> >> intending to have the entire series go through Dave?
+> > 
+> > I'm happy with subsystem folks taking things in if they want, the
+> > B.A.T.M.A.N. guys did this earlier today for example.
 > 
-> please consider pulling the following to get some
-> documentation changes from myself.
+> OK, thanks.
 > 
-> The following changes since commit 6fa4dec85e199f31774faf29be26a53329d02e9e:
-> 
->   ipvs: Removed unused variables (2011-09-28 21:09:24 +0200)
-> 
-> are available in the git repository at:
->   git@github.com:horms/ipvs-next.git master
-> 
-> Simon Horman (2):
->       IPVS: secure_tcp does provide alternate state timeouts
->       IPVS: Enhance grammar used to refer to Kconfig options
-> 
->  Documentation/networking/ipvs-sysctl.txt |   14 ++++++--------
+> Applied after fixing up some minor rejects in nf_nat_snmp_basic.c,
+> thanks Joe.
 
-Pulled, thanks Simon.
+I have rescued this patch and put into this tree:
 
 http://1984.lsi.us.es/git/?p=net-next/.git;a=shortlog;h=refs/heads/nf-next
+
+At that time (kernel.org problems), we had no public tree and Patrick
+temporarily stored in his internal tree.
