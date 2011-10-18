@@ -1,42 +1,64 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH] IPVS netns shutdown/startup dead-lock
-Date: Wed, 12 Oct 2011 18:33:42 +0200
-Message-ID: <20111012163342.GB14338@1984>
-References: <1318298075-23501-1-git-send-email-horms@verge.net.au>
- <1318298075-23501-2-git-send-email-horms@verge.net.au>
+From: Tomasz Chmielewski <mangoo@wpkg.org>
+Subject: how does LVS persistence work?
+Date: Tue, 18 Oct 2011 23:26:43 +0200
+Message-ID: <4E9DEF13.3040106@wpkg.org>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1318298075-23501-2-git-send-email-horms@verge.net.au>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed; d=wpkg.org; h=message-id
+	:date:from:mime-version:to:subject:content-type
+	:content-transfer-encoding; s=default; bh=mRVKSYPaIqHE8eYUhsuDoQ
+	RWWVU=; b=jcV0iYfFrzQA/zDxOig04UNYwLGumua2texN+LoeUi2iqYU1eb+UUt
+	QfPuZ4Ej2GDI8w7fsJEOhrtChGCVAt3K8bsq+BCfz7ZbN3uFvU2WPeJlwpj4kP3H
+	WdvwFWJcSmJE9Lrsk1AYMiDNli3hs17o1PiwC3OlEncHBtezHmj9Q=
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, David Miller <davem@davemloft.net>, Hans Schillstrom <hans@schillstrom.com>
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: lvs-devel@vger.kernel.org
 
-On Tue, Oct 11, 2011 at 10:54:35AM +0900, Simon Horman wrote:
-> From: Hans Schillstrom <hans@schillstrom.com>
-> 
-> ip_vs_mutext is used by both netns shutdown code and startup
-> and both implicit uses sk_lock-AF_INET mutex.
-> 
-> cleanup CPU-1         startup CPU-2
-> ip_vs_dst_event()     ip_vs_genl_set_cmd()
->  sk_lock-AF_INET     __ip_vs_mutex
->                      sk_lock-AF_INET
-> __ip_vs_mutex
-> * DEAD LOCK *
-> 
-> A new mutex placed in ip_vs netns struct called sync_mutex is added.
-> 
-> Comments from Julian and Simon added.
-> This patch has been running for more than 3 month now and it seems to work.
-> 
-> Ver. 3
->     IP_VS_SO_GET_DAEMON in do_ip_vs_get_ctl protected by sync_mutex
->     instead of __ip_vs_mutex as sugested by Julian.
+According to http://www.linuxvirtualserver.org/docs/persistence.html:
 
-Applied, thanks Simon.
+	In the persistent port, when a client first accesses the
+	service, LinuxDirector will create a connection template
+	between the given client and the selected server, then create
+	an entry for the connection in the hash table. The template
+	expires in a configurable time, and the template won't expire
+	until all its connections expire.
 
-http://1984.lsi.us.es/git/?p=net/.git;a=shortlog;h=refs/heads/nf
+
+Suppose I have two real servers and persistence set to 30 minutes.
+
+
+How will LVS persistence behave for a client which first connects at 01:00?
+
+1) persistence is always "first connected + 30 minutes".
+
+When the client connects at 01:00, LVS sets persistence to 30 minutes.
+All connections from this client, between 01:00-01:30 will be directed 
+to one server.
+At ~01:31, persistence will expire and will be set again; it's possible 
+that the client will hit the other server, even though the last 
+connection was made at 01:29.
+
+Meaning - if the client makes one short connection every 25 minutes and 
+persistence is set to 30 minutes, the chances are it will hit a 
+different server (almost) every time.
+
+lvs-devel@vger.kernel.org
+2) persistence is always extended and is "last connection + 30 minutes".
+
+In other words - if the client makes one short connection every 25 
+minutes and persistence is set to 30 minutes, it is practically 
+guaranteed the client will always hit the same server.
+
+
+Which one is true, 1) or 2)?
+
+
+
+PS. http://lists.graemef.net/mailman/listinfo/lvs-users seems dead?
+
+
+-- 
+Tomasz Chmielewski
+http://wpkg.org
