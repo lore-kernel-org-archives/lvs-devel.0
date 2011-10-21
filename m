@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 2/2] ipvs: Fix compilation error in ip_vs.h for ip_vs_confirm_conntrack function.
-Date: Fri, 21 Oct 2011 10:33:03 +0900
-Message-ID: <1319160783-28422-3-git-send-email-horms@verge.net.au>
+Subject: [PATCH 1/2] ipvs: Remove unused variable "cs" from ip_vs_leave function.
+Date: Fri, 21 Oct 2011 10:33:02 +0900
+Message-ID: <1319160783-28422-2-git-send-email-horms@verge.net.au>
 References: <1319160783-28422-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
@@ -15,37 +15,36 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 =46rom: Krzysztof Wilczynski <krzysztof.wilczynski@linux.com>
 
-This is to address the following error during the compilation:
+This is to address the following warning during compilation time:
 
-  In file included from kernel/sysctl_binary.c:6:
-  include/net/ip_vs.h:1406: error: expected identifier or =E2=80=98(=E2=
-=80=99 before =E2=80=98{=E2=80=99 token
-  make[1]: *** [kernel/sysctl_binary.o] Error 1
-  make[1]: *** Waiting for unfinished jobs....
+  net/netfilter/ipvs/ip_vs_core.c: In function =E2=80=98ip_vs_leave=E2=80=
+=99:
+  net/netfilter/ipvs/ip_vs_core.c:532: warning: unused variable =E2=80=98=
+cs=E2=80=99
 
-That manifests itself when CONFIG_IP_VS_NFCT is undefined in .config fi=
-le.
+This variable is indeed no longer in use.
 
 Signed-off-by: Krzysztof Wilczynski <krzysztof.wilczynski@linux.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h |    2 +-
+ net/netfilter/ipvs/ip_vs_core.c |    2 +-
  1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 139784e..de527d1 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1395,7 +1395,7 @@ static inline void ip_vs_update_conntrack(struct =
-sk_buff *skb,
- {
- }
-=20
--static inline int ip_vs_confirm_conntrack(struct sk_buff *skb);
-+static inline int ip_vs_confirm_conntrack(struct sk_buff *skb)
- {
- 	return NF_ACCEPT;
- }
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs=
+_core.c
+index 46a8130..093cc32 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -529,7 +529,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct s=
+k_buff *skb,
+ 	   a cache_bypass connection entry */
+ 	ipvs =3D net_ipvs(net);
+ 	if (ipvs->sysctl_cache_bypass && svc->fwmark && unicast) {
+-		int ret, cs;
++		int ret;
+ 		struct ip_vs_conn *cp;
+ 		unsigned int flags =3D (svc->flags & IP_VS_SVC_F_ONEPACKET &&
+ 				      iph.protocol =3D=3D IPPROTO_UDP)?
 --=20
 1.7.6.3
 
