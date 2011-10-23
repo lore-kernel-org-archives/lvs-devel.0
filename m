@@ -1,38 +1,31 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf-next] IPVS
-Date: Fri, 21 Oct 2011 09:27:15 +0200
-Message-ID: <20111021072715.GA842@1984>
-References: <1319160783-28422-1-git-send-email-horms@verge.net.au>
+From: Tomasz Chmielewski <mangoo@wpkg.org>
+Subject: lvs-users mailing list and archive dead?
+Date: Sun, 23 Oct 2011 19:19:27 +0200
+Message-ID: <4EA44C9F.4030104@wpkg.org>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1319160783-28422-1-git-send-email-horms@verge.net.au>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed; d=wpkg.org; h=message-id
+	:date:from:mime-version:to:subject:content-type
+	:content-transfer-encoding; s=default; bh=hq1rbluqG1hQhn1L/iHur0
+	2j4cg=; b=r2Tih8MQjCsIUIl9wySTIu+0GUPd3DoGhwv3zO6hnyqB5XbG+38BAX
+	FKF6/xsj8xcZkiMkD5tt+wRJtZEmdlL7x/+JxL3dsTB5ze3dt3ZC5S60pctu4LW9
+	Y/7bZCslncumiSOFqrLbE/IGOXr2yBDu6OpuYpKvBH+ojr72HsSvw=
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Krzysztof Wilczynski <krzysztof.wilczynski@linux.com>
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: lvs-devel@vger.kernel.org
 
-On Fri, Oct 21, 2011 at 10:33:01AM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider pulling the following to get compile fix
-> and cleanup patches from Krzysztof Wilczynski.
-> 
-> The following changes since commit 2ca5b853f1dd81c605ddc8a55e06bdad85636597:
-> 
->   netfilter: export NAT definitions through linux/netfilter_ipv4/nf_nat.h (2011-10-11 03:32:34 +0200)
-> 
-> are available in the git repository at:
->   git://github.com/horms/ipvs-next.git master
+Hi,
 
-Pulled, thanks.
+does anyone know what happened to lvs-users mailing list?
 
-http://1984.lsi.us.es/git/?p=net-next/.git;a=shortlog;h=refs/heads/nf-next
+It used to be hosted on 
+http://lists.graemef.net/mailman/listinfo/lvs-users (as pointed on 
+http://www.linuxvirtualserver.org/mailing.html).
 
-> Krzysztof Wilczynski (2):
->       ipvs: Remove unused variable "cs" from ip_vs_leave function.
->       ipvs: Fix compilation error in ip_vs.h for ip_vs_confirm_conntrack function.
 
-Strange, I have all IPVS configs enabled here and I didn't hit this error.
+-- 
+Tomasz Chmielewski
+http://wpkg.org
+
