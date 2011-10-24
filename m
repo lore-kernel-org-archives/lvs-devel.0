@@ -1,60 +1,29 @@
-From: Tomasz Chmielewski <mangoo@wpkg.org>
+From: Graeme Fowler <graeme@graemef.net>
 Subject: Re: lvs-users mailing list and archive dead?
-Date: Sun, 23 Oct 2011 21:52:58 +0200
-Message-ID: <4EA4709A.1050501@wpkg.org>
-References: <4EA44C9F.4030104@wpkg.org> <e6ed933e-c1dc-4931-b97e-89dec46d8617@email.android.com>
+Date: Mon, 24 Oct 2011 09:32:17 +0100
+Message-ID: <1319445137.12559.0.camel@localhost>
+References: <4EA44C9F.4030104@wpkg.org>
+	 <e6ed933e-c1dc-4931-b97e-89dec46d8617@email.android.com>
+	 <4EA4709A.1050501@wpkg.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed; d=wpkg.org; h=message-id
-	:date:from:mime-version:to:cc:subject:references:in-reply-to
-	:content-type:content-transfer-encoding; s=default; bh=XCPKbMn9E
-	OW8C74v/ch4RNteOag=; b=aK2xT5Uo551g06UZfP9okFe9gu4b61kAtJ7MVg9CB
-	aKZ1vsc+E4rTWQxYEoH7td7ap9fuWrauTLDHP+qz2rlJg1yzfPBIwihRdiZOvJzO
-	nQ43DB7z6dLbx1s/BLK+bujXyjYoLnuqSLJzvEwhRHQ0X/dhdx7OfM9eI5CVR3xF
-	xc=
-In-Reply-To: <e6ed933e-c1dc-4931-b97e-89dec46d8617@email.android.com>
+In-Reply-To: <4EA4709A.1050501@wpkg.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Graeme Fowler <graeme@graemef.net>
+Content-Type: text/plain; charset="us-ascii"
+To: Tomasz Chmielewski <mangoo@wpkg.org>
 Cc: lvs-devel@vger.kernel.org
 
-On 23.10.2011 20:13, Graeme Fowler wrote:
+On Sun, 2011-10-23 at 21:52 +0200, Tomasz Chmielewski wrote:
+> I'm not able to resolve names from it from a largish German hosting 
+> provider, Hetzner.
 
-> It still is, it's still live and is active.
->
-> Can you not access it? Does the name resolve?
+Can you please tell me which IP netblock these queries are originating
+from? I smell a previously unallocated (to an RIR) block which is in my
+bogons list.
 
-Ah, indeed it's alive.
+Thanks!
 
-I'm not able to resolve names from it from a largish German hosting 
-provider, Hetzner.
+Graeme
 
-The (IPv4) nameservers for graemef.net are:
-
-ex.graemef.net has address 89.238.178.25
-boom.graemef.net has address 82.113.154.29
-
-
-# dig graemef.net @89.238.178.25
-
-; <<>> DiG 9.7.3 <<>> graemef.net @89.238.178.25
-;; global options: +cmd
-;; connection timed out; no servers could be reached
-
-
-# dig graemef.net @82.113.154.29
-
-; <<>> DiG 9.7.3 <<>> graemef.net @82.113.154.29
-;; global options: +cmd
-;; connection timed out; no servers could be reached
-
-
-On the other hand, ping works fine, so (some) connectivity works...
-
-
-
-
--- 
-Tomasz Chmielewski
