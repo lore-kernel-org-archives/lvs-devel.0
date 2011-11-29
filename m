@@ -1,62 +1,100 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [GIT PULL nf-next] IPVS
-Date: Thu, 10 Nov 2011 10:22:24 +0900
-Message-ID: <20111110012222.GE9202@verge.net.au>
-References: <1319160783-28422-1-git-send-email-horms@verge.net.au>
- <20111021072715.GA842@1984>
- <20111107030659.GA24405@verge.net.au>
- <20111107082956.GA32329@1984>
- <20111109005805.GA26937@verge.net.au>
- <20111109143641.GA24174@1984>
-Mime-Version: 1.0
+From: Michael Maxim <mike@okcupid.com>
+Subject: [PATCH 1/1] IPVS: Modify the SH scheduler to use weights
+Date: Tue, 29 Nov 2011 17:02:22 -0500
+Message-ID: <1322604142-15514-1-git-send-email-mike@okcupid.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20111109143641.GA24174@1984>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Krzysztof Wilczynski <krzysztof.wilczynski@linux.com>
+To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Cc: Mike Maxim <mike@okcupid.com>
 
-On Wed, Nov 09, 2011 at 03:36:41PM +0100, Pablo Neira Ayuso wrote:
-> On Wed, Nov 09, 2011 at 09:58:07AM +0900, Simon Horman wrote:
-> > Hi Pablo,
-> > 
-> > On Mon, Nov 07, 2011 at 09:29:56AM +0100, Pablo Neira Ayuso wrote:
-> > > Hi Simon,
-> > > 
-> > > On Mon, Nov 07, 2011 at 12:07:01PM +0900, Simon Horman wrote:
-> > > > Hi Pablo,
-> > > > 
-> > > > I am a little confused. The nf-next branch seems to have disappeared.
-> > > > 
-> > > > Could you consider pulling git://github.com/horms/ipvs-next.git master
-> > > > to get the following changes that were in your nf-next branch.
-> > > 
-> > > I was late to get it into net-next. Since net-next became net after
-> > > the 3.1 release, my moved those changes to net to get it into 3.2
-> > > once Linus announced that the merge window was opened again.
-> > > 
-> > > > Or would
-> > > > you like me to rebase the ipvs patches (9 or the 11 changes below) on
-> > > > top of git://1984.lsi.us.es/net-next/.git master ?
-> > > 
-> > > They are already in net davem's tree, they will be included in the
-> > > upcoming 3.2 release.
-> > > 
-> > > http://git.kernel.org/?p=linux%2Fkernel%2Fgit%2Fdavem%2Fnet.git&a=search&h=HEAD&st=commit&s=Neira
-> > 
-> > Thanks, and sorry for missing that when I checked yesterday.
-> > 
-> > Could you suggest which tree and branch I should base the master branch of my
-> > ipvs and ipvs-next trees on? Their purposes are to provide a reference for
-> > people wishing to fix or enhance IPVS and a mechanism to send pull requests to
-> > you. As of now I am using the master branch of your net tree for both.
-> 
-> The 1984.lsi.us.es trees are fine.
-> 
-> There are no branch yet because I have no patches queued for upstream
-> so far. You can use master if you don't see any nf branch, OK?
+Modify the algorithm to build the source hashing hash table to add
+extra slots for destinations with higher weight. This has the effect
+of allowing an IPVS SH user to give more connections to hosts that
+have been configured to have a higher weight.
 
-Ok :)
+Signed-off-by: Michael Maxim <mike@okcupid.com>
+---
+ net/netfilter/ipvs/Kconfig    |   15 +++++++++++++++
+ net/netfilter/ipvs/ip_vs_sh.c |   20 ++++++++++++++++++--
+ 2 files changed, 33 insertions(+), 2 deletions(-)
+
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index 70bd1d0..af4c0b8 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -232,6 +232,21 @@ config	IP_VS_NQ
+ 	  If you want to compile it in kernel, say Y. To compile it as a
+ 	  module, choose M here. If unsure, say N.
+ 
++comment 'IPVS SH scheduler'
++
++config IP_VS_SH_TAB_BITS
++	int "IPVS source hashing table size (the Nth power of 2)"
++	range 4 20
++	default 8
++	---help---
++	  The source hashing scheduler maps source IPs to destinations
++	  stored in a hash table. This table is tiled by each destination
++	  until all slots in the table are filled. When using weights to
++	  allow destinations to receive more connections, the table is
++	  tiled an amount proportional to the weights specified. The table
++	  needs to be large enough to effectively fit all the destinations
++	  multiplied by their respective weights.
++
+ comment 'IPVS application helper'
+ 
+ config	IP_VS_FTP
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index 33815f4..e0ca520 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -30,6 +30,11 @@
+  * server is dead or overloaded, the load balancer can bypass the cache
+  * server and send requests to the original server directly.
+  *
++ * The weight destination attribute can be used to control the
++ * distribution of connections to the destinations in servernode. The
++ * greater the weight, the more connections the destination
++ * will receive.
++ *
+  */
+ 
+ #define KMSG_COMPONENT "IPVS"
+@@ -99,9 +104,11 @@ ip_vs_sh_assign(struct ip_vs_sh_bucket *tbl, struct ip_vs_service *svc)
+ 	struct ip_vs_sh_bucket *b;
+ 	struct list_head *p;
+ 	struct ip_vs_dest *dest;
++	int d_count;
+ 
+ 	b = tbl;
+ 	p = &svc->destinations;
++	d_count = 0;
+ 	for (i=0; i<IP_VS_SH_TAB_SIZE; i++) {
+ 		if (list_empty(p)) {
+ 			b->dest = NULL;
+@@ -113,14 +120,23 @@ ip_vs_sh_assign(struct ip_vs_sh_bucket *tbl, struct ip_vs_service *svc)
+ 			atomic_inc(&dest->refcnt);
+ 			b->dest = dest;
+ 
+-			p = p->next;
++			IP_VS_DBG_BUF(6, "assigned i: %d dest: %s weight: %d\n",
++				      i, IP_VS_DBG_ADDR(svc->af, &dest->addr),
++				      atomic_read(&dest->weight));
++
++			/* Don't move to next dest until filling weight */
++			if (++d_count >= atomic_read(&dest->weight)) {
++				p = p->next;
++				d_count = 0;
++			}
++
+ 		}
+ 		b++;
+ 	}
++
+ 	return 0;
+ }
+ 
