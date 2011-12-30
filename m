@@ -1,25 +1,28 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: try also real server with port 0 in backup server
-Date: Fri, 30 Dec 2011 12:24:38 +0900
-Message-ID: <20111230032437.GA8119@verge.net.au>
-References: <1325191602-1772-1-git-send-email-ja@ssi.bg>
-Mime-Version: 1.0
+Subject: [GIT PULL net-next] IPVS
+Date: Fri, 30 Dec 2011 14:19:01 +0900
+Message-ID: <1325222342-20240-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1325191602-1772-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org
+To: Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-On Thu, Dec 29, 2011 at 10:46:42PM +0200, Julian Anastasov wrote:
-> 	We should not forget to try for real server with port 0
-> in the backup server when processing the sync message. We should
-> do it in all cases because the backup server can use different
-> forwarding method.
+Hi Pablo,
 
-Thanks Julian,
+please consider pulling
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next master
 
-I have queued this up for 3.3.
+To get the following fix from Julian
+
+Julian Anastasov (1):
+      ipvs: try also real server with port 0 in backup server
+
+ include/net/ip_vs.h             |    2 +-
+ net/netfilter/ipvs/ip_vs_conn.c |    2 +-
+ net/netfilter/ipvs/ip_vs_ctl.c  |   10 ++++++++--
+ net/netfilter/ipvs/ip_vs_sync.c |    2 +-
+ 4 files changed, 11 insertions(+), 5 deletions(-)
