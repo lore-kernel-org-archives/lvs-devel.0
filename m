@@ -1,55 +1,100 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH] ipvs: fix matching of fwmark templates during scheduling
-Date: Fri, 27 Jan 2012 10:45:27 +0900
-Message-ID: <1327628727-22482-2-git-send-email-horms@verge.net.au>
-References: <1327628727-22482-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <1327628727-22482-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Anders Henke <anders.henke@1und1.de>
+Subject: [PATCH] libipvs: Fix initialization of netlink (needed for IPv6)
+Date: Thu, 9 Feb 2012 15:00:01 +0100
+Message-ID: <20120209140001.GB22237@1und1.de>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="fUYQa+Pmc3FrFX/N"
+Content-Transfer-Encoding: 8bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, stable@vger.kernel.org, Simon Horman <horms@verge.net.au>
+To: lvs-devel@vger.kernel.org
 
-From: Julian Anastasov <ja@ssi.bg>
 
-	Commit f11017ec2d1859c661f4e2b12c4a8d250e1f47cf (2.6.37)
-moved the fwmark variable in subcontext that is invalidated before
-reaching the ip_vs_ct_in_get call. As vaddr is provided as pointer
-in the param structure make sure the fwmark variable is in
-same context. As the fwmark templates can not be matched,
-more and more template connections are created and the
-controlled connections can not go to single real server.
+--fUYQa+Pmc3FrFX/N
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Cc: stable@vger.kernel.org
-Signed-off-by: Simon Horman <horms@verge.net.au>
+Hi,
+
+we've been investigating a few minor issues with LVS and keepalived; a=20
+freelance developer at my team also prepared a couple of smaller patches=20
+to resolve those issues we'd like to contribute to the general LVS public.
+
+=3D=3D=3D Fix Netlink Init
+
+When the kernel module for ip_vs hasn't been loaded yet and an
+application (say, keepalived) tries to call ipvs, IPVS assumes
+netlink not to be present and triggers another load attempt
+of the kernel module, but without re-testing for netlink.
+In the end, netlink isn't being used. However, netlink is essential
+for running IPVS with IPv6.
+
+Attached is a oneline-patch for libipvs to adress this issue; it is
+based upon commit 91c61a85dccffd00dd6e887d24302443e412433d from
+http://master.formilux.org/git/people/alex/keepalived.git,
+but is simple enough to be applied to almost any other
+release of libipvs as well.
+
+As it's directly related to keepalived and they do seem to keep their own
+copy of libipvs, I'll post this patch to keepalived-devel as well
+(among a few other patches).
+
+
+Best,
+
+Anders
+--=20
+1&1 Internet AG              Expert Systems Architect (IT Operations)
+Brauerstrasse 48             v://49.721.91374.0
+D-76135 Karlsruhe            f://49.721.91374.225
+
+Amtsgericht Montabaur HRB 6484
+Vorst=E4nde: Henning Ahlert, Ralph Dommermuth, Matthias Ehrlich, Robert Hof=
+fmann,
+Markus Huhn, Hans-Henning Kettler, Dr. Oliver Mauss, Jan Oetjen
+
+Aufsichtsratsvorsitzender: Michael Scheeren
+
+
+--fUYQa+Pmc3FrFX/N
+Content-Type: text/x-diff; charset=us-ascii
+Content-Disposition: attachment; filename="0001-libipvs-Fix-initialization-of-netlink-needed-for-IPv.patch"
+
+From cf8ff745812b7fe00d509fb50592348b6f60b433 Mon Sep 17 00:00:00 2001
+From: Alexander Holler <alexander.holler@1und1.de>
+Date: Mon, 9 Jan 2012 12:58:12 +0100
+Subject: [PATCH] libipvs: Fix initialization of netlink (needed for IPv6)
+ when the module ip_vs wasn't loaded.
+
+The following happened when keepalived was started before the module for IPVS was loaded:
+
+ipvs_init() failed => netlink got disabled.
+modprobe_ipvs()
+ipvs_init() => netlink was not tested again => no netlink => no IPv6
+
+Fixed through testing netlink always in ipvs_init().
 ---
- net/netfilter/ipvs/ip_vs_core.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ keepalived/libipvs-2.6/libipvs.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 093cc32..6dc7d7d 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -232,6 +232,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	__be16 dport = 0;		/* destination port to forward */
- 	unsigned int flags;
- 	struct ip_vs_conn_param param;
-+	const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
- 	union nf_inet_addr snet;	/* source network of the client,
- 					   after masking */
+diff --git a/keepalived/libipvs-2.6/libipvs.c b/keepalived/libipvs-2.6/libipvs.c
+index 2c75118..ea5e851 100644
+--- a/keepalived/libipvs-2.6/libipvs.c
++++ b/keepalived/libipvs-2.6/libipvs.c
+@@ -114,6 +114,8 @@ int ipvs_init(void)
+ 	ipvs_func = ipvs_init;
  
-@@ -267,7 +268,6 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	{
- 		int protocol = iph.protocol;
- 		const union nf_inet_addr *vaddr = &iph.daddr;
--		const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
- 		__be16 vport = 0;
- 
- 		if (dst_port == svc->port) {
+ #ifdef LIBIPVS_USE_NL
++	try_nl = 1;
++
+ 	if (ipvs_nl_send_message(NULL, NULL, NULL) == 0) {
+ 		return ipvs_getinfo();
+ 	}
 -- 
-1.7.6.3
+1.7.6.5
 
+
+--fUYQa+Pmc3FrFX/N--
