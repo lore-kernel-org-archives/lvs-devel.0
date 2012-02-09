@@ -1,36 +1,75 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH] ipvs: fix matching of fwmark templates during
- scheduling
-Date: Thu, 9 Feb 2012 16:15:07 +0100
-Message-ID: <20120209151507.GA5842@1984>
-References: <1327628727-22482-1-git-send-email-horms@verge.net.au>
- <1327628727-22482-2-git-send-email-horms@verge.net.au>
+From: "Ryan O'Hara" <rohara@redhat.com>
+Subject: [PATCH] ipvsadm: fix list_daemon to handle master/backup status in
+ either position
+Date: Thu, 09 Feb 2012 09:50:32 -0600
+Message-ID: <4F33EB48.8010708@redhat.com>
 Mime-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------010302040707050404030004"
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1327628727-22482-2-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+To: lvs-devel@vger.kernel.org
+
+This is a multi-part message in MIME format.
+--------------010302040707050404030004
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, stable@vger.kernel.org
 
-On Fri, Jan 27, 2012 at 10:45:27AM +0900, Simon Horman wrote:
-> From: Julian Anastasov <ja@ssi.bg>
-> 
-> 	Commit f11017ec2d1859c661f4e2b12c4a8d250e1f47cf (2.6.37)
-> moved the fwmark variable in subcontext that is invalidated before
-> reaching the ip_vs_ct_in_get call. As vaddr is provided as pointer
-> in the param structure make sure the fwmark variable is in
-> same context. As the fwmark templates can not be matched,
-> more and more template connections are created and the
-> controlled connections can not go to single real server.
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Simon Horman <horms@verge.net.au>
+Attached is a patch that fixes the list_daemon function such that it 
+does not assume that the master sync daemon status is always in the 
+first position and master sync daemon status is always in the second 
+position.
 
-Applied, thanks. I'll pass it to davem.
+If libipvs uses the netlink interface to retrieve sync daemon status, 
+the results are not guaranteed to follow this ordering. As explained in 
+a previous email, if libipvs uses the netlink interface to retrieve sync 
+daemon status while only a backup sync daemon is running, the backup 
+sync daemon status will but in the first position (index 0). This 
+differs from the getsockopt interface, which would always put master 
+sync daemon status in first position and backup sync daemon status in 
+the second position, even when only backup sync daemon exists. Solution 
+is to make ipvsadm check both elements of the array for master and backup.
 
-I'll pass it to stable once this hits Linus tree.
+Ryan
+
+
+--------------010302040707050404030004
+Content-Type: text/plain;
+ name="ipvsadm-1.26-fix_list_daemon.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="ipvsadm-1.26-fix_list_daemon.patch"
+
+Index: ipvsadm.c
+===================================================================
+--- ipvsadm.c	(revision 77)
++++ ipvsadm.c	(working copy)
+@@ -1631,16 +1631,19 @@
+ static void list_daemon(void)
+ {
+ 	ipvs_daemon_t *u;
++	int i;
+ 
+ 	if (!(u = ipvs_get_daemon()))
+ 		exit(1);
+ 
+-	if (u[0].state & IP_VS_STATE_MASTER)
+-		printf("master sync daemon (mcast=%s, syncid=%d)\n",
+-		       u[0].mcast_ifn, u[0].syncid);
+-	if (u[1].state & IP_VS_STATE_BACKUP)
+-		printf("backup sync daemon (mcast=%s, syncid=%d)\n",
+-		       u[1].mcast_ifn, u[1].syncid);
++	for (i = 0; i < 2; i++) {
++		if (u[i].state & IP_VS_STATE_MASTER)
++			printf("master sync daemon (mcast=%s, syncid=%d)\n",
++			       u[i].mcast_ifn, u[i].syncid);
++		if (u[i].state & IP_VS_STATE_MASTER)
++			printf("master sync daemon (mcast=%s, syncid=%d)\n",
++			       u[i].mcast_ifn, u[i].syncid);
++	}
+ 	free(u);
+ }
+ 
+
+--------------010302040707050404030004--
