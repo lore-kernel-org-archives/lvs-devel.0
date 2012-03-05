@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 1/8] ipvs: ignore IP_VS_CONN_F_NOOUTPUT in backup server
-Date: Tue,  6 Mar 2012 00:00:01 +0200
-Message-ID: <1330984808-2343-2-git-send-email-ja@ssi.bg>
+Subject: [PATCH net-next 3/8] ipvs: fix ip_vs_try_bind_dest to rebind app and transmitter
+Date: Tue,  6 Mar 2012 00:00:03 +0200
+Message-ID: <1330984808-2343-4-git-send-email-ja@ssi.bg>
 References: <1330984808-2343-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1330984808-2343-1-git-send-email-ja@ssi.bg>
@@ -13,29 +13,65 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, Aleksey Chudov <aleksey.chudov@gmail.com>
 
-	As IP_VS_CONN_F_NOOUTPUT is derived from the
-forwarding method we should get it from conn_flags just
-like we do it for IP_VS_CONN_F_FWD_MASK bits when binding
-to real server.
+	Initially, when the synced connection is created we
+use the forwarding method provided by master but once we
+bind to destination it can be changed. As result, we must
+update the application and the transmitter.
+
+	As ip_vs_try_bind_dest is called always for connections
+that require dest binding, there is no need to validate the
+cp and dest pointers.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/netfilter/ipvs/ip_vs_conn.c |   33 ++++++++++++++++++++++++++-------
+ 1 files changed, 26 insertions(+), 7 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 29fa5ba..6413d58 100644
+index 18f58a08..a7c6bc8 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -567,7 +567,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
- 		if (!(cp->flags & IP_VS_CONN_F_TEMPLATE))
- 			conn_flags &= ~IP_VS_CONN_F_INACTIVE;
- 		/* connections inherit forwarding method from dest */
--		cp->flags &= ~IP_VS_CONN_F_FWD_MASK;
-+		cp->flags &= ~(IP_VS_CONN_F_FWD_MASK | IP_VS_CONN_F_NOOUTPUT);
- 	}
- 	cp->flags |= conn_flags;
- 	cp->dest = dest;
+@@ -612,14 +612,33 @@ struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp)
+ {
+ 	struct ip_vs_dest *dest;
+ 
+-	if ((cp) && (!cp->dest)) {
+-		dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, &cp->daddr,
+-				       cp->dport, &cp->vaddr, cp->vport,
+-				       cp->protocol, cp->fwmark, cp->flags);
++	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, &cp->daddr,
++			       cp->dport, &cp->vaddr, cp->vport,
++			       cp->protocol, cp->fwmark, cp->flags);
++	if (dest) {
++		struct ip_vs_proto_data *pd;
++
++		/* Applications work depending on the forwarding method
++		 * but better to reassign them always when binding dest */
++		if (cp->app)
++			ip_vs_unbind_app(cp);
++
+ 		ip_vs_bind_dest(cp, dest);
+-		return dest;
+-	} else
+-		return NULL;
++
++		/* Update its packet transmitter */
++		cp->packet_xmit = NULL;
++#ifdef CONFIG_IP_VS_IPV6
++		if (cp->af == AF_INET6)
++			ip_vs_bind_xmit_v6(cp);
++		else
++#endif
++			ip_vs_bind_xmit(cp);
++
++		pd = ip_vs_proto_data_get(ip_vs_conn_net(cp), cp->protocol);
++		if (pd && atomic_read(&pd->appcnt))
++			ip_vs_bind_app(cp, pd->pp);
++	}
++	return dest;
+ }
+ 
+ 
 -- 
 1.7.3.4
 
