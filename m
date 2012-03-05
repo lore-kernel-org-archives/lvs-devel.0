@@ -1,10 +1,8 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 4/8] ipvs: always update some of the flags bits in backup
-Date: Tue,  6 Mar 2012 00:00:04 +0200
-Message-ID: <1330984808-2343-5-git-send-email-ja@ssi.bg>
-References: <1330984808-2343-1-git-send-email-ja@ssi.bg>
+Subject: [PATCH net-next 0/8] Changes for IPVS sync
+Date: Tue,  6 Mar 2012 00:00:00 +0200
+Message-ID: <1330984808-2343-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1330984808-2343-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -13,135 +11,68 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, Aleksey Chudov <aleksey.chudov@gmail.com>
 
-	As the goal is to mirror the inactconns/activeconns
-counters in the backup server, make sure the cp->flags are
-updated even if cp is still not bound to dest. If cp->flags
-are not updated ip_vs_bind_dest will rely only on the initial
-flags when updating the counters. To avoid mistakes and
-complicated checks for protocol state rely only on the
-IP_VS_CONN_F_INACTIVE bit when updating the counters.
+	The following patchset contains changes for the
+master-backup synchronization mechanism.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Tested-by: Aleksey Chudov <aleksey.chudov@gmail.com>
----
- include/linux/ip_vs.h           |    5 +++
- net/netfilter/ipvs/ip_vs_sync.c |   65 ++++++++++++++-------------------------
- 2 files changed, 28 insertions(+), 42 deletions(-)
+Patches 1-4 fix some flags and transmitter issues for the backup
 
-diff --git a/include/linux/ip_vs.h b/include/linux/ip_vs.h
-index 4deb383..ac31ef2 100644
---- a/include/linux/ip_vs.h
-+++ b/include/linux/ip_vs.h
-@@ -89,6 +89,7 @@
- #define IP_VS_CONN_F_TEMPLATE	0x1000		/* template, not connection */
- #define IP_VS_CONN_F_ONE_PACKET	0x2000		/* forward only one packet */
- 
-+/* Initial bits allowed in backup server */
- #define IP_VS_CONN_F_BACKUP_MASK (IP_VS_CONN_F_FWD_MASK | \
- 				  IP_VS_CONN_F_NOOUTPUT | \
- 				  IP_VS_CONN_F_INACTIVE | \
-@@ -97,6 +98,10 @@
- 				  IP_VS_CONN_F_TEMPLATE \
- 				 )
- 
-+/* Bits allowed to update in backup server */
-+#define IP_VS_CONN_F_BACKUP_UPD_MASK (IP_VS_CONN_F_INACTIVE | \
-+				      IP_VS_CONN_F_SEQ_MASK)
-+
- /* Flags that are not sent to backup server start from bit 16 */
- #define IP_VS_CONN_F_NFCT	(1 << 16)	/* use netfilter conntrack */
- 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 8a0d6d6..0e36679 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -731,9 +731,30 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 	else
- 		cp = ip_vs_ct_in_get(param);
- 
--	if (cp && param->pe_data) 	/* Free pe_data */
-+	if (cp) {
-+		/* Free pe_data */
- 		kfree(param->pe_data);
--	if (!cp) {
-+
-+		dest = cp->dest;
-+		if ((cp->flags ^ flags) & IP_VS_CONN_F_INACTIVE &&
-+		    !(flags & IP_VS_CONN_F_TEMPLATE) && dest) {
-+			if (flags & IP_VS_CONN_F_INACTIVE) {
-+				atomic_dec(&dest->activeconns);
-+				atomic_inc(&dest->inactconns);
-+			} else {
-+				atomic_inc(&dest->activeconns);
-+				atomic_dec(&dest->inactconns);
-+			}
-+		}
-+		flags &= IP_VS_CONN_F_BACKUP_UPD_MASK;
-+		flags |= cp->flags & ~IP_VS_CONN_F_BACKUP_UPD_MASK;
-+		cp->flags = flags;
-+		if (!dest) {
-+			dest = ip_vs_try_bind_dest(cp);
-+			if (dest)
-+				atomic_dec(&dest->refcnt);
-+		}
-+	} else {
- 		/*
- 		 * Find the appropriate destination for the connection.
- 		 * If it is not found the connection will remain unbound
-@@ -742,18 +763,6 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 		dest = ip_vs_find_dest(net, type, daddr, dport, param->vaddr,
- 				       param->vport, protocol, fwmark, flags);
- 
--		/*  Set the approprite ativity flag */
--		if (protocol == IPPROTO_TCP) {
--			if (state != IP_VS_TCP_S_ESTABLISHED)
--				flags |= IP_VS_CONN_F_INACTIVE;
--			else
--				flags &= ~IP_VS_CONN_F_INACTIVE;
--		} else if (protocol == IPPROTO_SCTP) {
--			if (state != IP_VS_SCTP_S_ESTABLISHED)
--				flags |= IP_VS_CONN_F_INACTIVE;
--			else
--				flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
- 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
- 		if (dest)
- 			atomic_dec(&dest->refcnt);
-@@ -763,34 +772,6 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 			IP_VS_DBG(2, "BACKUP, add new conn. failed\n");
- 			return;
- 		}
--	} else if (!cp->dest) {
--		dest = ip_vs_try_bind_dest(cp);
--		if (dest)
--			atomic_dec(&dest->refcnt);
--	} else if ((cp->dest) && (cp->protocol == IPPROTO_TCP) &&
--		(cp->state != state)) {
--		/* update active/inactive flag for the connection */
--		dest = cp->dest;
--		if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
--			(state != IP_VS_TCP_S_ESTABLISHED)) {
--			atomic_dec(&dest->activeconns);
--			atomic_inc(&dest->inactconns);
--			cp->flags |= IP_VS_CONN_F_INACTIVE;
--		} else if ((cp->flags & IP_VS_CONN_F_INACTIVE) &&
--			(state == IP_VS_TCP_S_ESTABLISHED)) {
--			atomic_inc(&dest->activeconns);
--			atomic_dec(&dest->inactconns);
--			cp->flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
--	} else if ((cp->dest) && (cp->protocol == IPPROTO_SCTP) &&
--		(cp->state != state)) {
--		dest = cp->dest;
--		if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
--		(state != IP_VS_SCTP_S_ESTABLISHED)) {
--			atomic_dec(&dest->activeconns);
--			atomic_inc(&dest->inactconns);
--			cp->flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
- 	}
- 
- 	if (opt)
+Patch 5 (use adaptive pause in master thread) changes the fixed
+pause of 1 HZ in master thread to adaptive pause, useful for
+setups that use v0 of the sync protocol or when persistence
+is used for v1 because the next patch changes the sync rate for
+persistence connections back to original method (sync templates
+every time when syncing controlled connections).
+
+Patch 6 (reduce sync rate with time thresholds) addresses the
+problem of high sync rate for loaded sites. With commit
+986a075795339c5ea1122ce9290dfd5504252eb0
+(Backup, Change sending to Version 1 format) we tried to
+reduce the sync rate for templates in protocol v1 but using
+sync_threshold for templates is too arbitrary and leads
+to inaccurate information in backup when the template life
+time is extended. This change restores the high rate of
+templates for the default case (using sync_threshold parameters)
+but adds new controls that can reduce the sync rate for all
+kind of connections: sync_refresh_period and sync_retries.
+Tests with sync_refresh_period=1000 can show 10 times lower
+sync traffic compared to sync_threshold=3 100.
+
+Patch 7 (add support for sync threads) addresses the problem
+that single thread in backup server is not suitable for high sync
+rate. For setups that use many masters and single backup or
+when the backup is used as master or real server at the same time
+we can prefer to serve the sync traffic on many CPUs. This patch
+adds sysctl var "sync_ports" and starts the specified number of
+threads (one thread per port). This value is used for master
+threads too.
+
+Patch 8 (optimize the use of flags in ip_vs_bind_dest) is just
+an optimization for the cp->flags usage.
+
+
+Special thanks to Aleksey Chudov <aleksey.chudov@gmail.com> for
+being patient with me, for his extensive reports and helping
+in all tests.
+
+
+Julian Anastasov (8):
+  ipvs: ignore IP_VS_CONN_F_NOOUTPUT in backup server
+  ipvs: remove check for IP_VS_CONN_F_SYNC from ip_vs_bind_dest
+  ipvs: fix ip_vs_try_bind_dest to rebind app and transmitter
+  ipvs: always update some of the flags bits in backup
+  ipvs: use adaptive pause in master thread
+  ipvs: reduce sync rate with time thresholds
+  ipvs: add support for sync threads
+  ipvs: optimize the use of flags in ip_vs_bind_dest
+
+ include/linux/ip_vs.h           |    5 +
+ include/net/ip_vs.h             |   59 ++++-
+ net/netfilter/ipvs/ip_vs_conn.c |   69 ++++--
+ net/netfilter/ipvs/ip_vs_core.c |   30 +--
+ net/netfilter/ipvs/ip_vs_ctl.c  |   54 ++++-
+ net/netfilter/ipvs/ip_vs_sync.c |  585 +++++++++++++++++++++++++--------------
+ 6 files changed, 540 insertions(+), 262 deletions(-)
+
 -- 
 1.7.3.4
 
