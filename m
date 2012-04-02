@@ -1,150 +1,165 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 4/9] ipvs: always update some of the flags bits in backup
-Date: Wed, 21 Mar 2012 17:56:19 +0900
-Message-ID: <1332320185-27157-5-git-send-email-horms@verge.net.au>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH 5/9] ipvs: use adaptive pause in master thread
+Date: Mon, 2 Apr 2012 13:11:45 +0200
+Message-ID: <20120402111145.GA15181@1984>
 References: <1332320185-27157-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1332320185-27157-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+ <1332320185-27157-6-git-send-email-horms@verge.net.au>
+Mime-Version: 1.0
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1332320185-27157-6-git-send-email-horms@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-From: Julian Anastasov <ja@ssi.bg>
+Hi Simon et al.
 
-	As the goal is to mirror the inactconns/activeconns
-counters in the backup server, make sure the cp->flags are
-updated even if cp is still not bound to dest. If cp->flags
-are not updated ip_vs_bind_dest will rely only on the initial
-flags when updating the counters. To avoid mistakes and
-complicated checks for protocol state rely only on the
-IP_VS_CONN_F_INACTIVE bit when updating the counters.
+On Wed, Mar 21, 2012 at 05:56:20PM +0900, Simon Horman wrote:
+> From: Julian Anastasov <ja@ssi.bg>
+> 
+> 	High rate of sync messages in master can lead to
+> overflowing the socket buffer and dropping the messages.
+> Instead of using fixed pause try to adapt to the sync
+> rate, so that we do not wakeup too often while at the same
+> time staying below the socket buffer limit.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Tested-by: Aleksey Chudov <aleksey.chudov@gmail.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- include/linux/ip_vs.h           |    5 +++
- net/netfilter/ipvs/ip_vs_sync.c |   65 ++++++++++++++-------------------------
- 2 files changed, 28 insertions(+), 42 deletions(-)
+I see. You are avoiding the congestion in the socket queue by putting
+the pressure in your sync_buff queue  (I don't find any limit in
+the code for the amount of memory that it may consume btw).
 
-diff --git a/include/linux/ip_vs.h b/include/linux/ip_vs.h
-index 4deb383..ac31ef2 100644
---- a/include/linux/ip_vs.h
-+++ b/include/linux/ip_vs.h
-@@ -89,6 +89,7 @@
- #define IP_VS_CONN_F_TEMPLATE	0x1000		/* template, not connection */
- #define IP_VS_CONN_F_ONE_PACKET	0x2000		/* forward only one packet */
- 
-+/* Initial bits allowed in backup server */
- #define IP_VS_CONN_F_BACKUP_MASK (IP_VS_CONN_F_FWD_MASK | \
- 				  IP_VS_CONN_F_NOOUTPUT | \
- 				  IP_VS_CONN_F_INACTIVE | \
-@@ -97,6 +98,10 @@
- 				  IP_VS_CONN_F_TEMPLATE \
- 				 )
- 
-+/* Bits allowed to update in backup server */
-+#define IP_VS_CONN_F_BACKUP_UPD_MASK (IP_VS_CONN_F_INACTIVE | \
-+				      IP_VS_CONN_F_SEQ_MASK)
-+
- /* Flags that are not sent to backup server start from bit 16 */
- #define IP_VS_CONN_F_NFCT	(1 << 16)	/* use netfilter conntrack */
- 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 8a0d6d6..0e36679 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -731,9 +731,30 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 	else
- 		cp = ip_vs_ct_in_get(param);
- 
--	if (cp && param->pe_data) 	/* Free pe_data */
-+	if (cp) {
-+		/* Free pe_data */
- 		kfree(param->pe_data);
--	if (!cp) {
-+
-+		dest = cp->dest;
-+		if ((cp->flags ^ flags) & IP_VS_CONN_F_INACTIVE &&
-+		    !(flags & IP_VS_CONN_F_TEMPLATE) && dest) {
-+			if (flags & IP_VS_CONN_F_INACTIVE) {
-+				atomic_dec(&dest->activeconns);
-+				atomic_inc(&dest->inactconns);
-+			} else {
-+				atomic_inc(&dest->activeconns);
-+				atomic_dec(&dest->inactconns);
-+			}
-+		}
-+		flags &= IP_VS_CONN_F_BACKUP_UPD_MASK;
-+		flags |= cp->flags & ~IP_VS_CONN_F_BACKUP_UPD_MASK;
-+		cp->flags = flags;
-+		if (!dest) {
-+			dest = ip_vs_try_bind_dest(cp);
-+			if (dest)
-+				atomic_dec(&dest->refcnt);
-+		}
-+	} else {
- 		/*
- 		 * Find the appropriate destination for the connection.
- 		 * If it is not found the connection will remain unbound
-@@ -742,18 +763,6 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 		dest = ip_vs_find_dest(net, type, daddr, dport, param->vaddr,
- 				       param->vport, protocol, fwmark, flags);
- 
--		/*  Set the approprite ativity flag */
--		if (protocol == IPPROTO_TCP) {
--			if (state != IP_VS_TCP_S_ESTABLISHED)
--				flags |= IP_VS_CONN_F_INACTIVE;
--			else
--				flags &= ~IP_VS_CONN_F_INACTIVE;
--		} else if (protocol == IPPROTO_SCTP) {
--			if (state != IP_VS_SCTP_S_ESTABLISHED)
--				flags |= IP_VS_CONN_F_INACTIVE;
--			else
--				flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
- 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
- 		if (dest)
- 			atomic_dec(&dest->refcnt);
-@@ -763,34 +772,6 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 			IP_VS_DBG(2, "BACKUP, add new conn. failed\n");
- 			return;
- 		}
--	} else if (!cp->dest) {
--		dest = ip_vs_try_bind_dest(cp);
--		if (dest)
--			atomic_dec(&dest->refcnt);
--	} else if ((cp->dest) && (cp->protocol == IPPROTO_TCP) &&
--		(cp->state != state)) {
--		/* update active/inactive flag for the connection */
--		dest = cp->dest;
--		if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
--			(state != IP_VS_TCP_S_ESTABLISHED)) {
--			atomic_dec(&dest->activeconns);
--			atomic_inc(&dest->inactconns);
--			cp->flags |= IP_VS_CONN_F_INACTIVE;
--		} else if ((cp->flags & IP_VS_CONN_F_INACTIVE) &&
--			(state == IP_VS_TCP_S_ESTABLISHED)) {
--			atomic_inc(&dest->activeconns);
--			atomic_dec(&dest->inactconns);
--			cp->flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
--	} else if ((cp->dest) && (cp->protocol == IPPROTO_SCTP) &&
--		(cp->state != state)) {
--		dest = cp->dest;
--		if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
--		(state != IP_VS_SCTP_S_ESTABLISHED)) {
--			atomic_dec(&dest->activeconns);
--			atomic_inc(&dest->inactconns);
--			cp->flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
- 	}
- 
- 	if (opt)
--- 
-1.7.6.3
+Please, correct me if I'm wrong, but from this I can se you're
+assuming that there's always room in the syn_buff queue to store
+messages. This is valid if the high peak of traffic lasts for short
+time. However, if it lasts long, the worker thread may not be able to
+consume all the messages in time under high stress situation that
+lasts long and the sync_buffer may keep growing more and more.
 
+Moreover, the backup may receive sync messages talking about old
+states that are not useful anymore to recover the load-balancing in
+case of failover.
+
+One more concern, please see below.
+
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> Tested-by: Aleksey Chudov <aleksey.chudov@gmail.com>
+> Signed-off-by: Simon Horman <horms@verge.net.au>
+> ---
+>  net/netfilter/ipvs/ip_vs_sync.c |   60 +++++++++++++++++++++++++++++---------
+>  1 files changed, 46 insertions(+), 14 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> index 0e36679..9201c43 100644
+> --- a/net/netfilter/ipvs/ip_vs_sync.c
+> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> @@ -1392,18 +1392,22 @@ ip_vs_send_async(struct socket *sock, const char *buffer, const size_t length)
+>  	return len;
+>  }
+>  
+> -static void
+> +static int
+>  ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg *msg)
+>  {
+>  	int msize;
+> +	int ret;
+>  
+>  	msize = msg->size;
+>  
+>  	/* Put size in network byte order */
+>  	msg->size = htons(msg->size);
+>  
+> -	if (ip_vs_send_async(sock, (char *)msg, msize) != msize)
+> -		pr_err("ip_vs_send_async error\n");
+> +	ret = ip_vs_send_async(sock, (char *)msg, msize);
+> +	if (ret >= 0 || ret == -EAGAIN)
+> +		return ret;
+> +	pr_err("ip_vs_send_async error %d\n", ret);
+> +	return 0;
+>  }
+>  
+>  static int
+> @@ -1428,33 +1432,61 @@ ip_vs_receive(struct socket *sock, char *buffer, const size_t buflen)
+>  	return len;
+>  }
+>  
+> +/* Get next buffer to send */
+> +static inline struct ip_vs_sync_buff *
+> +next_sync_buff(struct netns_ipvs *ipvs)
+> +{
+> +	struct ip_vs_sync_buff *sb;
+> +
+> +	sb = sb_dequeue(ipvs);
+> +	if (sb)
+> +		return sb;
+> +	/* Do not delay entries in buffer for more than 2 seconds */
+> +	return get_curr_sync_buff(ipvs, 2 * HZ);
+> +}
+>  
+>  static int sync_thread_master(void *data)
+>  {
+>  	struct ip_vs_sync_thread_data *tinfo = data;
+>  	struct netns_ipvs *ipvs = net_ipvs(tinfo->net);
+> -	struct ip_vs_sync_buff *sb;
+> +	struct ip_vs_sync_buff *sb = NULL;
+> +	int pause = HZ / 10;
+>  
+>  	pr_info("sync thread started: state = MASTER, mcast_ifn = %s, "
+>  		"syncid = %d\n",
+>  		ipvs->master_mcast_ifn, ipvs->master_syncid);
+>  
+>  	while (!kthread_should_stop()) {
+> -		while ((sb = sb_dequeue(ipvs))) {
+> -			ip_vs_send_sync_msg(tinfo->sock, sb->mesg);
+> -			ip_vs_sync_buff_release(sb);
+> -		}
+> +		int count = 0;
+>  
+> -		/* check if entries stay in ipvs->sync_buff for 2 seconds */
+> -		sb = get_curr_sync_buff(ipvs, 2 * HZ);
+> -		if (sb) {
+> -			ip_vs_send_sync_msg(tinfo->sock, sb->mesg);
+> -			ip_vs_sync_buff_release(sb);
+> +		for (;;) {
+> +			if (!sb) {
+> +				sb = next_sync_buff(ipvs);
+> +				if (!sb)
+> +					break;
+> +			}
+> +			if (ip_vs_send_sync_msg(tinfo->sock, sb->mesg) >= 0 ||
+> +			    pause == 1) {
+> +				ip_vs_sync_buff_release(sb);
+> +				sb = NULL;
+> +				count++;
+> +			} else {
+> +				pause = max(1, (pause >> 1));
+> +				break;
+> +			}
+>  		}
+>  
+> -		schedule_timeout_interruptible(HZ);
+> +		/* Max packets to send at once */
+> +		if (count > 200)
+> +			pause = max(1, (pause - HZ / 20));
+> +		else if (count < 20)
+> +			pause = min(HZ / 4, (pause + HZ / 20));
+> +		schedule_timeout_interruptible(sb ? 1 : pause);
+
+This rate-limits the amount of times the worker is woken up.
+
+Still, this seems to me like an ad-hoc congestion solution. There's no
+justification why those numbers has been chosed, eg. why do we assume
+that we're congested if we've reached 200 packets in one single loop?
+
+To me, congestion control is a complicated thing (there is plenty of
+literature for TCP avoid it). I'm not sure how many patches will
+follow after this one to try to improve your congestion control
+solution.
+
+So, my question is, are you sure you want to enter this domain?
+
+IMO, better to stick to some simple solution, ie. just drop messages
+if the worker thread receives a high peak of work, than trying to
+define some sort of rate-limit solution based on assumptions that are
+not generic enough for every setup.
