@@ -1,18 +1,31 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: Transport support in LVS
-Date: Tue, 3 Apr 2012 08:44:24 +0200
-Message-ID: <201204030844.25074.hans.schillstrom@ericsson.com>
+From: Abhijit Chaudhary <achaudhary@sandvine.com>
+Subject: RE: Transport support in LVS
+Date: Tue, 3 Apr 2012 07:12:21 +0000
+Message-ID: <4F5F4CFFAA985C4AB0BF413F3081D9B47D2C9174@blr-exch-1.sandvine.com>
 References: <4F5F4CFFAA985C4AB0BF413F3081D9B47D2C90FA@blr-exch-1.sandvine.com>
+ <201204030844.25074.hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <4F5F4CFFAA985C4AB0BF413F3081D9B47D2C90FA@blr-exch-1.sandvine.com>
-Content-Disposition: inline
+In-Reply-To: <201204030844.25074.hans.schillstrom@ericsson.com>
+Content-Language: en-US
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Abhijit Chaudhary <achaudhary@sandvine.com>
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
 Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
+
+Thanks Hans.
+My requirement for IPSEC is little different, I want to offload the IPSEC or reassembly processing in the LVS node itself.
+I plan to use a VIP address in the LVS node and do the IPSEC decryption/IP reassembly on the VIP address before the LVS load-balancing as I may use L4-ports to load-balance.
+Is this possible in the current LVS.
+
+-----Original Message-----
+From: Hans Schillstrom [mailto:hans.schillstrom@ericsson.com] 
+Sent: Tuesday, April 03, 2012 12:14 PM
+To: Abhijit Chaudhary
+Cc: lvs-devel@vger.kernel.org
+Subject: Re: Transport support in LVS
 
 Hello
 On Tuesday 03 April 2012 07:45:03 Abhijit Chaudhary wrote:
