@@ -1,72 +1,115 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: Transport support in LVS
-Date: Tue, 3 Apr 2012 11:43:05 +0200
-Message-ID: <201204031143.06587.hans.schillstrom@ericsson.com>
-References: <4F5F4CFFAA985C4AB0BF413F3081D9B47D2C90FA@blr-exch-1.sandvine.com> <201204030844.25074.hans.schillstrom@ericsson.com>  <4F5F4CFFAA985C4AB0BF413F3081D9B47D2C9174@blr-exch-1.sandvine.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 5/9] ipvs: use adaptive pause in master thread
+Date: Wed, 4 Apr 2012 00:16:15 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1204032258540.1995@ja.ssi.bg>
+References: <1332320185-27157-1-git-send-email-horms@verge.net.au> <1332320185-27157-6-git-send-email-horms@verge.net.au> <20120402111145.GA15181@1984>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <4F5F4CFFAA985C4AB0BF413F3081D9B47D2C9174@blr-exch-1.sandvine.com>
-Content-Disposition: inline
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20120402111145.GA15181@1984>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Abhijit Chaudhary <achaudhary@sandvine.com>
-Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>
 
-On Tuesday 03 April 2012 09:12:21 Abhijit Chaudhary wrote:
-> Thanks Hans.
-> My requirement for IPSEC is little different, I want to offload the IPSEC or reassembly processing in the LVS node itself.
-> I plan to use a VIP address in the LVS node and do the IPSEC decryption/IP reassembly on the VIP address before the LVS load-balancing as I may use L4-ports to load-balance.
-> Is this possible in the current LVS.
 
-In theory it wold be possibly, 
-First do not have any ESP/AH services in ipvs, so the xfrm will take care of the packet.
-Next turn when the packet is decrypted it will go into the prerouting chain again.
-However it will be forced into the input chain later since skb_dst is set because it is transport mode.
- (see xtrm_input at the end,  decaps=0 so xfrm4_transport_finish() will be called by x->inner_mode->afinfo->transport_finish() .)
+	Hello,
 
-Now you have the decrypted packet in the INPUT chain and ipvs will take care of it.
-I don't think the output chain will cause any problems here, but you never know.
+On Mon, 2 Apr 2012, Pablo Neira Ayuso wrote:
 
-Give it a try, it might work :-)
-
-> 
-> -----Original Message-----
-> From: Hans Schillstrom [mailto:hans.schillstrom@ericsson.com] 
-> Sent: Tuesday, April 03, 2012 12:14 PM
-> To: Abhijit Chaudhary
-> Cc: lvs-devel@vger.kernel.org
-> Subject: Re: Transport support in LVS
-> 
-> Hello
-> On Tuesday 03 April 2012 07:45:03 Abhijit Chaudhary wrote:
-> > Hi,
-> > I am new to LVS and wanted to understand its transport-level support. Am using RHEL 6.2 (kernel 2.6.32-220) and had couple of questions on it:
-> > Did not find support for SCTP as a LVS transport protocol (no ip_vs_protocol). But LVS website mentions about SCTP support in ipvsadm-1.26. 
-> > Am I missing something, was SCTP supported in older kernel release?
-> 
-> SCTP was introduced in 2.6.34 
-> 
+> > From: Julian Anastasov <ja@ssi.bg>
 > > 
-> > Other question is whether LVS supports load-balancing of IPSEC-packet (for ESP in transport mode with authentication and encryption enabled).  
-> > My understanding:  ip_vs_in() is hooked to NF_INET_LOCAL_IN. But, ip_local_deliver() calls NF_INET_LOCAL_IN before decryption (esp_input). 
-> > So, IPSEC with encryption enabled should not be load-balanced unless there is a repeat call to ip_local_deliver() after decryption.
-> > My knowledge on xfrm framework and IPSEC is not good, so I may be missing something.
+> > 	High rate of sync messages in master can lead to
+> > overflowing the socket buffer and dropping the messages.
+> > Instead of using fixed pause try to adapt to the sync
+> > rate, so that we do not wakeup too often while at the same
+> > time staying below the socket buffer limit.
 > 
-> If you don't have the VIP address in your LVS node (just force the VIP to loopback by routing),
-> then you should be able to send the ESP (or AH) packets through IPVS to a RS for decryption.
+> I see. You are avoiding the congestion in the socket queue by putting
+> the pressure in your sync_buff queue  (I don't find any limit in
+> the code for the amount of memory that it may consume btw).
 > 
-> > 
-> > Thanks,
-> > -Abhijit
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
+> Please, correct me if I'm wrong, but from this I can se you're
+> assuming that there's always room in the syn_buff queue to store
+> messages. This is valid if the high peak of traffic lasts for short
+> time. However, if it lasts long, the worker thread may not be able to
+> consume all the messages in time under high stress situation that
+> lasts long and the sync_buffer may keep growing more and more.
 
--- 
+	Agreed, packet processing does not check for any
+limits for the sync_queues lists. This can be addressed
+additionally, may be there can be some wakeup if threshold
+is reached, so that we wake up the master thread early.
+But there is always the problem that we do not know how
+deep/free is the socket buffer, after how much time the
+master thread will wakeup... We have to select some arbitrary
+number again.
+
+> Moreover, the backup may receive sync messages talking about old
+> states that are not useful anymore to recover the load-balancing in
+> case of failover.
+
+	Can you explain more? Are you referring to the
+2-second buffer delay?
+
+> One more concern, please see below.
+
+> > -		schedule_timeout_interruptible(HZ);
+> > +		/* Max packets to send at once */
+> > +		if (count > 200)
+> > +			pause = max(1, (pause - HZ / 20));
+> > +		else if (count < 20)
+> > +			pause = min(HZ / 4, (pause + HZ / 20));
+> > +		schedule_timeout_interruptible(sb ? 1 : pause);
+> 
+> This rate-limits the amount of times the worker is woken up.
+> 
+> Still, this seems to me like an ad-hoc congestion solution. There's no
+> justification why those numbers has been chosed, eg. why do we assume
+> that we're congested if we've reached 200 packets in one single loop?
+
+	200 is arbitrary, 20% of txqueuelen, a way to avoid
+large bursts. It is the 'pause = max(1, (pause >> 1));' part
+that also matters because we try to increase the wakeup rate, so
+that socket buffer is below 50%. We assume sync traffic rate
+does not change much but we are still prepared to avoid
+drops while pause > 1 jiffie. If sync rate is too high may be
+we should wakeup the master thread in sb_queue_tail.
+
+	The above logic should be read like this:
+
+- limit bursts to min(200, half of guessed socket buffer size)
+- limit pause to HZ/4 jiffies in idle periods
+- if socket buffer is full try again after 1 jiffie and
+increase the wakeups twice, so that we do not hit the
+socket limit again
+
+> To me, congestion control is a complicated thing (there is plenty of
+> literature for TCP avoid it). I'm not sure how many patches will
+> follow after this one to try to improve your congestion control
+> solution.
+> 
+> So, my question is, are you sure you want to enter this domain?
+
+	We should start with something. Better ideas are
+always welcome.
+
+> IMO, better to stick to some simple solution, ie. just drop messages
+> if the worker thread receives a high peak of work, than trying to
+> define some sort of rate-limit solution based on assumptions that are
+> not generic enough for every setup.
+
+	Before now we dropped messages due to large fixed sleep time.
+They were dropped when socket buffer was full. Dropping messages is
+not nice just because we decided to sleep longer than needed.
+With the change we still drop messages but not before pause
+reaches 1 jiffie. As we can not use lower sleep time only
+additional wakeup in sb_queue_tail can keep up with higher
+sync rates. May be we should decide to drop messages only
+when some max limit for packets in sync_queues is reached.
+
 Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
+
+--
+Julian Anastasov <ja@ssi.bg>
