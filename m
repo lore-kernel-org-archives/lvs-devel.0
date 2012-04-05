@@ -1,167 +1,120 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH 5/9] ipvs: use adaptive pause in master thread
-Date: Thu, 5 Apr 2012 17:05:53 +0200
-Message-ID: <20120405150553.GA8144@1984>
-References: <1332320185-27157-1-git-send-email-horms@verge.net.au>
- <1332320185-27157-6-git-send-email-horms@verge.net.au>
- <20120402111145.GA15181@1984>
- <alpine.LFD.2.00.1204032258540.1995@ja.ssi.bg>
-Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1204032258540.1995@ja.ssi.bg>
-Sender: netdev-owner@vger.kernel.org
+From: Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH] netfilter: ipvs: Verify that IP_VS protocol has been registered
+Date: Thu,  5 Apr 2012 19:24:33 -0400
+Message-ID: <1333668273-8873-1-git-send-email-levinsasha928@gmail.com>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=from:to:cc:subject:date:message-id:x-mailer;
+        bh=4bYGLDQUYyY3t0oxUq+BqZ4kGMNa2VDFhAGoNko2PMQ=;
+        b=ei/mrun2/+NSJ6vNsz1hqFLMIayLsgsMINqzndFCk5Tzevq7197xyt2tGEo+cFb35k
+         SOByWwZD04H9PaMmqLy54ODxrHnAapKwA6zYaRnd/S0kyFTzDBG2TxPWNj0lkaqT3Ml4
+         MB6NY3HNUR08WYyM3vAR66FULnHFlrT2PYhkp5bmGhbG1HH765piLBGy/WO489+ZiGfd
+         R8Rfz0KfOGB/FpHxQpXFZMFcHNihgnRT8Yx/3wcq0Jr+sPaVC/vDroxpF0P8RHpA5FSk
+         LjK5qr16aEpedQKb/oRg+emIYPmARTxt/ED6rcoaz8TwA2RV0MjQuIpf4e7HqrPr+O7n
+         GTGw==
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, kaber@trash.net, davem@davemloft.net
+Cc: davej@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Sasha Levin <levinsasha928@gmail.com>
 
-Hi Julian,
+The registration of a protocol might fail, there were no checks
+and all registrations were assumed to be correct. This lead to
+NULL ptr dereferences when apps tried registering.
 
-On Wed, Apr 04, 2012 at 12:16:15AM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 2 Apr 2012, Pablo Neira Ayuso wrote:
-> 
-> > > From: Julian Anastasov <ja@ssi.bg>
-> > > 
-> > > 	High rate of sync messages in master can lead to
-> > > overflowing the socket buffer and dropping the messages.
-> > > Instead of using fixed pause try to adapt to the sync
-> > > rate, so that we do not wakeup too often while at the same
-> > > time staying below the socket buffer limit.
-> > 
-> > I see. You are avoiding the congestion in the socket queue by putting
-> > the pressure in your sync_buff queue  (I don't find any limit in
-> > the code for the amount of memory that it may consume btw).
-> > 
-> > Please, correct me if I'm wrong, but from this I can se you're
-> > assuming that there's always room in the syn_buff queue to store
-> > messages. This is valid if the high peak of traffic lasts for short
-> > time. However, if it lasts long, the worker thread may not be able to
-> > consume all the messages in time under high stress situation that
-> > lasts long and the sync_buffer may keep growing more and more.
-> 
-> 	Agreed, packet processing does not check for any
-> limits for the sync_queues lists. This can be addressed
-> additionally, may be there can be some wakeup if threshold
-> is reached, so that we wake up the master thread early.
-> But there is always the problem that we do not know how
-> deep/free is the socket buffer, after how much time the
-> master thread will wakeup... We have to select some arbitrary
-> number again.
+For example:
 
-I see, see below.
+[ 1293.226051] BUG: unable to handle kernel NULL pointer dereference at 0000000000000018
+[ 1293.227038] IP: [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+[ 1293.227038] PGD 391de067 PUD 6c20b067 PMD 0
+[ 1293.227038] Oops: 0000 [#1] PREEMPT SMP
+[ 1293.227038] CPU 1
+[ 1293.227038] Pid: 19609, comm: trinity Tainted: G        W    3.4.0-rc1-next-20120405-sasha-dirty #57
+[ 1293.227038] RIP: 0010:[<ffffffff822aacb0>]  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+[ 1293.227038] RSP: 0018:ffff880038c1dd18  EFLAGS: 00010286
+[ 1293.227038] RAX: ffffffffffffffc0 RBX: 0000000000001500 RCX: 0000000000010000
+[ 1293.227038] RDX: 0000000000000000 RSI: ffff88003a2d5888 RDI: 0000000000000282
+[ 1293.227038] RBP: ffff880038c1dd48 R08: 0000000000000000 R09: 0000000000000000
+[ 1293.227038] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88003a2d5668
+[ 1293.227038] R13: ffff88003a2d5988 R14: ffff8800696a8ff8 R15: 0000000000000000
+[ 1293.227038] FS:  00007f01930d9700(0000) GS:ffff88007ce00000(0000) knlGS:0000000000000000
+[ 1293.227038] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 1293.227038] CR2: 0000000000000018 CR3: 0000000065dfc000 CR4: 00000000000406e0
+[ 1293.227038] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[ 1293.227038] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[ 1293.227038] Process trinity (pid: 19609, threadinfo ffff880038c1c000, task ffff88002dc73000)
+[ 1293.227038] Stack:
+[ 1293.227038]  ffff880038c1dd48 00000000fffffff4 ffff8800696aada0 ffff8800694f5580
+[ 1293.227038]  ffffffff8369f1e0 0000000000001500 ffff880038c1dd98 ffffffff822a716b
+[ 1293.227038]  0000000000000000 ffff8800696a8ff8 0000000000000015 ffff8800694f5580
+[ 1293.227038] Call Trace:
+[ 1293.227038]  [<ffffffff822a716b>] ip_vs_app_inc_new+0xdb/0x180
+[ 1293.227038]  [<ffffffff822a7258>] register_ip_vs_app_inc+0x48/0x70
+[ 1293.227038]  [<ffffffff822b2fea>] __ip_vs_ftp_init+0xba/0x140
+[ 1293.227038]  [<ffffffff821c9060>] ops_init+0x80/0x90
+[ 1293.227038]  [<ffffffff821c90cb>] setup_net+0x5b/0xe0
+[ 1293.227038]  [<ffffffff821c9416>] copy_net_ns+0x76/0x100
+[ 1293.227038]  [<ffffffff810dc92b>] create_new_namespaces+0xfb/0x190
+[ 1293.227038]  [<ffffffff810dca21>] unshare_nsproxy_namespaces+0x61/0x80
+[ 1293.227038]  [<ffffffff810afd1f>] sys_unshare+0xff/0x290
+[ 1293.227038]  [<ffffffff8187622e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+[ 1293.227038]  [<ffffffff82665539>] system_call_fastpath+0x16/0x1b
+[ 1293.227038] Code: 89 c7 e8 34 91 3b 00 89 de 66 c1 ee 04 31 de 83 e6 0f 48 83 c6 22 48 c1 e6 04 4a 8b 14 26 49 8d 34 34 48 8d 42 c0 48 39 d6 74 13 <66> 39 58 58 74 22 48 8b 48 40 48 8d 41 c0 48 39 ce 75 ed 49 8d
+[ 1293.227038] RIP  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+[ 1293.227038]  RSP <ffff880038c1dd18>
+[ 1293.227038] CR2: 0000000000000018
+[ 1293.379284] ---[ end trace 364ab40c7011a009 ]---
+[ 1293.381182] Kernel panic - not syncing: Fatal exception in interrupt
 
-> > Moreover, the backup may receive sync messages talking about old
-> > states that are not useful anymore to recover the load-balancing in
-> > case of failover.
-> 
-> 	Can you explain more? Are you referring to the
-> 2-second buffer delay?
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_proto.c |   21 ++++++++++++++++-----
+ 1 files changed, 16 insertions(+), 5 deletions(-)
 
-I was refering to the situation in which you decide to delay sync
-messages due to congestion. State sync needs to be soft real-time to
-ensure that the backup is one copy-equivalence of the master (at
-least, close to it, even if that's not possible). Otherwise, the
-backup may contain useless out-of-date states.
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index f843a88..43893ba 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -316,20 +316,31 @@ ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
+  */
+ int __net_init ip_vs_protocol_net_init(struct net *net)
+ {
++	int ret;
+ #ifdef CONFIG_IP_VS_PROTO_TCP
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_tcp);
++	ret = register_ip_vs_proto_netns(net, &ip_vs_protocol_tcp);
++	if (ret < 0)
++		return ret;
+ #endif
+ #ifdef CONFIG_IP_VS_PROTO_UDP
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_udp);
++	ret = register_ip_vs_proto_netns(net, &ip_vs_protocol_udp);
++	if (ret < 0)
++		return ret;
+ #endif
+ #ifdef CONFIG_IP_VS_PROTO_SCTP
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_sctp);
++	ret = register_ip_vs_proto_netns(net, &ip_vs_protocol_sctp);
++	if (ret < 0)
++		return ret;
+ #endif
+ #ifdef CONFIG_IP_VS_PROTO_AH
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_ah);
++	ret = register_ip_vs_proto_netns(net, &ip_vs_protocol_ah);
++	if (ret < 0)
++		return ret;
+ #endif
+ #ifdef CONFIG_IP_VS_PROTO_ESP
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_esp);
++	ret = register_ip_vs_proto_netns(net, &ip_vs_protocol_esp);
++	if (ret < 0)
++		return ret;
+ #endif
+ 	return 0;
+ }
+-- 
+1.7.8.5
 
-> > One more concern, please see below.
-> 
-> > > -		schedule_timeout_interruptible(HZ);
-> > > +		/* Max packets to send at once */
-> > > +		if (count > 200)
-> > > +			pause = max(1, (pause - HZ / 20));
-> > > +		else if (count < 20)
-> > > +			pause = min(HZ / 4, (pause + HZ / 20));
-> > > +		schedule_timeout_interruptible(sb ? 1 : pause);
-> > 
-> > This rate-limits the amount of times the worker is woken up.
-> > 
-> > Still, this seems to me like an ad-hoc congestion solution. There's no
-> > justification why those numbers has been chosed, eg. why do we assume
-> > that we're congested if we've reached 200 packets in one single loop?
-> 
-> 	200 is arbitrary, 20% of txqueuelen, a way to avoid
-> large bursts. It is the 'pause = max(1, (pause >> 1));' part
-> that also matters because we try to increase the wakeup rate, so
-> that socket buffer is below 50%. We assume sync traffic rate
-> does not change much but we are still prepared to avoid
-> drops while pause > 1 jiffie. If sync rate is too high may be
-> we should wakeup the master thread in sb_queue_tail.
-> 
-> 	The above logic should be read like this:
-> 
-> - limit bursts to min(200, half of guessed socket buffer size)
-> - limit pause to HZ/4 jiffies in idle periods
-> - if socket buffer is full try again after 1 jiffie and
-> increase the wakeups twice, so that we do not hit the
-> socket limit again
-
-I think you can control when the kernel thread is woken up with a
-counting semaphore. The counter of that semaphore will be initially
-set to zero. Then, you can up() the semaphore once per new buffer
-that you enqueue to the sender.
-
-feeder:
-        add message to sync buffer
-        if buffer full:
-                enqueue buffer to sender_thread
-                up(s)
-
-sender_thread:
-        while (1) {
-                down(s)
-                retrieve message from queue
-                send message
-        }
-
-It seems to me like the classical producer/consumer problem that you
-can resolve with semaphores.
-
-Thus, you don't need to poll periodically to check if there's
-messages. You won't need to adapt "pause" time.
-
-> > To me, congestion control is a complicated thing (there is plenty of
-> > literature for TCP avoid it). I'm not sure how many patches will
-> > follow after this one to try to improve your congestion control
-> > solution.
-> > 
-> > So, my question is, are you sure you want to enter this domain?
-> 
-> 	We should start with something. Better ideas are
-> always welcome.
-> 
-> > IMO, better to stick to some simple solution, ie. just drop messages
-> > if the worker thread receives a high peak of work, than trying to
-> > define some sort of rate-limit solution based on assumptions that are
-> > not generic enough for every setup.
-> 
-> 	Before now we dropped messages due to large fixed sleep time.
-> They were dropped when socket buffer was full. Dropping messages is
-> not nice just because we decided to sleep longer than needed.
-> With the change we still drop messages but not before pause
-> reaches 1 jiffie. As we can not use lower sleep time only
-> additional wakeup in sb_queue_tail can keep up with higher
-> sync rates. May be we should decide to drop messages only
-> when some max limit for packets in sync_queues is reached.
-
-Under congestion the situation is complicated. At some point you'll
-end up dropping messages.
-
-You may want to increase the socket queue to delay the moment at which
-we start dropping messages. You can expose the socke buffer length via
-/proc interface I guess (not sure if you're already doing that or
-suggesting to use the global socket buffer length).
-
-You also can define some mechanism to reduce the amount of events,
-some state filtering so you only propagate important states.
-
-Some partially reliable protocol, so the backup can request messages
-that got lost in a smart way would can also in handy. Basically, the
-master only retransmits the current state, not the whole sequence of
-messages (this is good under congestion, since you save messages).
-I implement that in conntrackd, but that's more complex solution,
-of course. I'd start with something simple.
