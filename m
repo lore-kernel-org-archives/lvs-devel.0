@@ -1,53 +1,39 @@
-From: "Hans Schillstrom" <hans@schillstrom.com>
-Subject: Re[2]:  [PATCH] netfilter: ipvs: Verify that IP_VS protocol 
-	has been registered
-Date: Fri, 6 Apr 2012 10:59:23 +0200 (CEST)
-Message-ID: <6dfqp4f.85748eeb029b04c66ac5e143b62a5455@obelix.schillstrom.com>
+From: Sasha Levin <levinsasha928@gmail.com>
+Subject: Re: [PATCH] netfilter: ipvs: Verify that IP_VS protocol has been registered
+Date: Fri, 6 Apr 2012 11:07:21 +0200
+Message-ID: <CA+1xoqcS2+F+Nz_akXNQ7k+nuHkJjXYG6d=faMZ6xx1CW=RtPA@mail.gmail.com>
+References: <1333668273-8873-1-git-send-email-levinsasha928@gmail.com> <20120405231942.GB7715@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=mime-version:in-reply-to:references:from:date:message-id:subject:to
+         :cc:content-type;
+        bh=smzpJh+MHcjCqtDhJbtqEviJnTCRVoRKjJNhB+HzMiY=;
+        b=a4tY105Pb2BsgNzOTbM/+xjtxpgMupnV1+4ed0tumngwd5znZRGVH8D4VcHvaGZ4zY
+         R0uWrUkRKGzgKdTBGA4YwHKavU2GCxAX2qgG2y3IeqqWTLDsCWe9FHMB7UdoAmGze8jv
+         E0979vAT1mAkVxSHuMQZAii9RaOwuVE7yMF/4BzHNJZFWSl8lgsF5a5ahTuzyeRV1SI1
+         RBhr+c1+bkrSX7zoniB6T6KSsIegeUAwpC5HJsGCFIOhhTkqYOUx6dnYa93CVIVJh5lv
+         9rkJ4DYj+M550OYIuluE7sAPiLVi1Af7KeFEsVcuYD4YCnvqXVdzrTxVX3pxX+bFqa+o
+         IxuQ==
+In-Reply-To: <20120405231942.GB7715@verge.net.au>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: Sasha Levin <levinsasha928@gmail.com>, wensong@linux-vs.org, ja@ssi.bg, kaber@trash.net, davem@davemloft.net, davej@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: wensong@linux-vs.org, ja@ssi.bg, kaber@trash.net, davem@davemloft.net, davej@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Hello Simon
-
->---- Original Message ----
->From: Simon Horman <horms@verge.net.au>
->To: "Sasha Levin" <levinsasha928@gmail.com>
->Cc: wensong@linux-vs.org, ja@ssi.bg, kaber@trash.net, davem@davemloft.net, davej@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
->Sent: Fri, Apr 6, 2012, 1:19 AM
->Subject: Re: [PATCH] netfilter: ipvs: Verify that IP_VS protocol has been registered
->
->On Thu, Apr 05, 2012 at 07:24:33PM -0400, Sasha Levin wrote:
+On Fri, Apr 6, 2012 at 1:19 AM, Simon Horman <horms@verge.net.au> wrote:
+> On Thu, Apr 05, 2012 at 07:24:33PM -0400, Sasha Levin wrote:
 >> The registration of a protocol might fail, there were no checks
 >> and all registrations were assumed to be correct. This lead to
 >> NULL ptr dereferences when apps tried registering.
 >
->Thanks, I will queue up this fix.
+> Thanks, I will queue up this fix.
 >
->Do you have a real-world example of this failing, if so it
->might be worth pushing your change into stable.
+> Do you have a real-world example of this failing, if so it
+> might be worth pushing your change into stable.
 
-I don't think this is a big thing, the only thing that can cause it is out of memory,
-and that will cause a "kernel death" anyway :-(
-
-here is the code :
-
-register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
-{
-...
-	struct ip_vs_proto_data *pd =
-			kzalloc(sizeof(struct ip_vs_proto_data), GFP_ATOMIC);
-
-	if (!pd)
-		return -ENOMEM;
-
-
->--
->To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
->the body of a message to majordomo@vger.kernel.org
->More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+The scenario is a failed allocation in register_ip_vs_proto_netns(),
+which can happen in real world cases as well.
