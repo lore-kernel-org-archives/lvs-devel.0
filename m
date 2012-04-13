@@ -1,8 +1,7 @@
 From: "Hans Schillstrom" <hans@schillstrom.com>
-Subject: Re: [PATCH 1/6] ipvs: timeout tables do not need GFP_ATOMIC 
-	allocation
-Date: Fri, 13 Apr 2012 22:14:19 +0200 (CEST)
-Message-ID: <6dfqp4f.b2278bba6d7c32d57e4d73422014448c@obelix.schillstrom.com>
+Subject: Re[2]:  [PATCH 2/2] ipvs: fix app registration in netns
+Date: Fri, 13 Apr 2012 22:22:10 +0200 (CEST)
+Message-ID: <6dfqp4f.13413aadaead24bb8e0685fc27648dc7@obelix.schillstrom.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8BIT
 Return-path: <lvs-devel-owner@vger.kernel.org>
@@ -10,44 +9,63 @@ Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, Simon Horman <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
 
-Hello
-All 6 patches look fine to me, and are all called from process context
+Hello Julian
+>
+>Hello,
+>
+>On Fri, 13 Apr 2012, Hans Schillstrom wrote:
+>
+>> Hello Julian
+>> On Friday 13 April 2012 10:44:02 Julian Anastasov wrote:
+>> > 	Avoid crash when registering applications (ftp) when
+>> > the IPVS core initialization for netns fails. Do this by
+>> > checking for present core (net->ipvs) when registering apps.
+>> > 
+>> > 	As result this gets rid of the ftp_app pointer and allows
+>> > applications to be registered without adding fields in the
+>> > netns_ipvs structure.
+>> > 
+>> > 	Also, make sure applications are unregistered from the
+>> > core automatically, should not be needed in theory.
+>> > 
+>> 
+>> I think we can do this much simpler,
+>> remove the auto init of ftp (ip_vs_ftp_init and ip_vs_ftp_exit) 
+>> and let ip_vs_app call __ip_vs_ftp_init() as a we do with the protocols.
+>> 
+>> If the init fails before ip_vs_app_net_init() ftp init will not be called
+>> and if it fails after a proper cleanup will be performed.
+>> 
+>> i.e. same design every where.
+>> 
+>> ex remove the
+>>  ip_vs_ftp_init(void)
+>>  ip_vs_ftp_exit(void)
+>
+>	OK, go ahead. But also change init_netns for
+>proto (and now for apps) to return int error. Now
+>__ip_vs_tcp_init does not return error if the
+>pd->timeout_table allocation fails. This is fatal.
+>
+>	May be you can do this change on top of these
+>two patches because init_netns for ftp should be NULL,
+>we do not need to allocate anything for netns. Only
+>&ip_vs_ftp should go in some new global list to be cloned
+>for every netns as my 2nd patch:
 
->---- Original Message ----
->From: Julian Anastasov <ja@ssi.bg>
->To: "Simon Horman" <horms@verge.net.au>
->Cc: lvs-devel@vger.kernel.org
->Sent: Fri, Apr 13, 2012, 3:49 PM
->Subject: [PATCH 1/6] ipvs: timeout tables do not need GFP_ATOMIC allocation
->
->They are called only on initialization.
->
->Signed-off-by: Julian Anastasov <ja@ssi.bg>
+OK I can take care of this, but not before Sunday evening 
 
-Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
-
->---
-> net/netfilter/ipvs/ip_vs_proto.c |    2 +-
-> 1 files changed, 1 insertions(+), 1 deletions(-)
+>- new: global list for registered apps
+>- present: app per netns: to hold incs_list
+>- present: inc (app instance for port) per netns: to hold the
+>instance in the per-netns context of proto
 >
->diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
->index 8531293..f549ff7 100644
->--- a/net/netfilter/ipvs/ip_vs_proto.c
->+++ b/net/netfilter/ipvs/ip_vs_proto.c
->@@ -197,7 +197,7 @@ void ip_vs_protocol_timeout_change(struct netns_ipvs *ipvs, int flags)
-> int *
-> ip_vs_create_timeout_table(int *table, int size)
-> {
->-	return kmemdup(table, size, GFP_ATOMIC);
->+	return kmemdup(table, size, GFP_KERNEL);
-> }
-> 
-> 
->-- 
->1.7.3.4
+>Regards
 >
+>--
+>Julian Anastasov <ja@ssi.bg>
 >--
 >To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
 >the body of a message to majordomo@vger.kernel.org
