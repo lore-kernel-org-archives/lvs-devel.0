@@ -1,12 +1,12 @@
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [PATCH 1/2] ipvs: reset ipvs pointer in netns
-Date: Fri, 13 Apr 2012 11:29:09 +0200
-Message-ID: <201204131129.10283.hans.schillstrom@ericsson.com>
-References: <1334306642-3765-1-git-send-email-ja@ssi.bg> <1334306642-3765-2-git-send-email-ja@ssi.bg>
+Subject: Re: [PATCH 2/2] ipvs: fix app registration in netns
+Date: Fri, 13 Apr 2012 11:47:48 +0200
+Message-ID: <201204131147.49259.hans.schillstrom@ericsson.com>
+References: <1334306642-3765-1-git-send-email-ja@ssi.bg> <1334306642-3765-3-git-send-email-ja@ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1334306642-3765-2-git-send-email-ja@ssi.bg>
+In-Reply-To: <1334306642-3765-3-git-send-email-ja@ssi.bg>
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -15,45 +15,31 @@ To: Julian Anastasov <ja@ssi.bg>
 Cc: Simon Horman <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
 
 Hello Julian
-On Friday 13 April 2012 10:44:01 Julian Anastasov wrote:
-> 	Make sure net->ipvs is reset on netns cleanup or failed
-> initialization. It is needed for IPVS applications to know that
-> IPVS core is not loaded in netns.
+On Friday 13 April 2012 10:44:02 Julian Anastasov wrote:
+> 	Avoid crash when registering applications (ftp) when
+> the IPVS core initialization for netns fails. Do this by
+> checking for present core (net->ipvs) when registering apps.
 > 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
->  net/netfilter/ipvs/ip_vs_core.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
+> 	As result this gets rid of the ftp_app pointer and allows
+> applications to be registered without adding fields in the
+> netns_ipvs structure.
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 2555816..260b9ef 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1924,6 +1924,7 @@ protocol_fail:
->  control_fail:
->  	ip_vs_estimator_net_cleanup(net);
->  estimator_fail:
-> +	net->ipvs = NULL;
+> 	Also, make sure applications are unregistered from the
+> core automatically, should not be needed in theory.
+> 
 
-You can't do this since name space cleanup will call __ip_vs_cleanup later
-and that will cause  NULL pointer problems
+I think we can do this much simpler,
+remove the auto init of ftp (ip_vs_ftp_init and ip_vs_ftp_exit) 
+and let ip_vs_app call __ip_vs_ftp_init() as a we do with the protocols.
 
+If the init fails before ip_vs_app_net_init() ftp init will not be called
+and if it fails after a proper cleanup will be performed.
 
-Note that any netns init faiulure will be rolled back later by net_namespace.c
-And you will not receive any trafic into a namepace until all init is OK
+i.e. same design every where.
 
-
->  	return -ENOMEM;
->  }
->  
-> @@ -1936,6 +1937,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
->  	ip_vs_control_net_cleanup(net);
->  	ip_vs_estimator_net_cleanup(net);
->  	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
-> +	net->ipvs = NULL;
->  }
->  
->  static void __net_exit __ip_vs_dev_cleanup(struct net *net)
+ex remove the
+ ip_vs_ftp_init(void)
+ ip_vs_ftp_exit(void)
 
 -- 
 Regards
