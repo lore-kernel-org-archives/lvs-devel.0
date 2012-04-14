@@ -1,69 +1,124 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re[2]:  [PATCH 2/2] ipvs: fix app registration in netns
-Date: Sat, 14 Apr 2012 00:29:08 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1204140014300.12601@ja.ssi.bg>
-References: <6dfqp4f.13413aadaead24bb8e0685fc27648dc7@obelix.schillstrom.com>
-Mime-Version: 1.0
+From: Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v2 1/2] netfilter: ipvs: Verify that IP_VS protocol has been registered
+Date: Sat, 14 Apr 2012 09:22:01 -0400
+Message-ID: <1334409722-26315-1-git-send-email-levinsasha928@gmail.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <6dfqp4f.13413aadaead24bb8e0685fc27648dc7@obelix.schillstrom.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=from:to:cc:subject:date:message-id:x-mailer;
+        bh=8k8MDaxwtUSivyWR+5ONatfhmV+PM2tgX61RMWyulFU=;
+        b=mauCiFrJ4BHZU5eiuc11l2ptJnuuDsXkuYmNCLv63/UNUFH259GC193AqhQ6rtySbR
+         38gXKwkMy6Bb9Zk7pjni170awh3/dSWusiLWZEcailUpGpQ/XRx+6F36DJgc+VhZJIDA
+         D1b7yz4MnVf+8csJQH7AGfypvB+JqVSyeZR77G5Kvw5Rk6sAr/+TnBjcSbjQVHnGO8kR
+         LgSEKzKvS075mDfM89F015MCdP+Pf/RJrGBh+RLgSf+ReGHNRYSv/yDm9J8wo5W3i0O7
+         R53+04CTGqTSChRlAcTbdHMMWBKtTVkblwTmt+Gw+VqbZoGIVrbApbaR2n/qylb0Dr0k
+         s3Dg==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: Hans Schillstrom <hans.schillstrom@ericsson.com>, Simon Horman <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, kaber@trash.net, davem@davemloft.net
+Cc: davej@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Sasha Levin <levinsasha928@gmail.com>
 
+The registration of a protocol might fail, there were no checks
+and all registrations were assumed to be correct. This lead to
+NULL ptr dereferences when apps tried registering.
 
-	Hello,
+For example:
 
-On Fri, 13 Apr 2012, Hans Schillstrom wrote:
+[ 1293.226051] BUG: unable to handle kernel NULL pointer dereference at 0000000000000018
+[ 1293.227038] IP: [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+[ 1293.227038] PGD 391de067 PUD 6c20b067 PMD 0
+[ 1293.227038] Oops: 0000 [#1] PREEMPT SMP
+[ 1293.227038] CPU 1
+[ 1293.227038] Pid: 19609, comm: trinity Tainted: G        W    3.4.0-rc1-next-20120405-sasha-dirty #57
+[ 1293.227038] RIP: 0010:[<ffffffff822aacb0>]  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+[ 1293.227038] RSP: 0018:ffff880038c1dd18  EFLAGS: 00010286
+[ 1293.227038] RAX: ffffffffffffffc0 RBX: 0000000000001500 RCX: 0000000000010000
+[ 1293.227038] RDX: 0000000000000000 RSI: ffff88003a2d5888 RDI: 0000000000000282
+[ 1293.227038] RBP: ffff880038c1dd48 R08: 0000000000000000 R09: 0000000000000000
+[ 1293.227038] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88003a2d5668
+[ 1293.227038] R13: ffff88003a2d5988 R14: ffff8800696a8ff8 R15: 0000000000000000
+[ 1293.227038] FS:  00007f01930d9700(0000) GS:ffff88007ce00000(0000) knlGS:0000000000000000
+[ 1293.227038] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 1293.227038] CR2: 0000000000000018 CR3: 0000000065dfc000 CR4: 00000000000406e0
+[ 1293.227038] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[ 1293.227038] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[ 1293.227038] Process trinity (pid: 19609, threadinfo ffff880038c1c000, task ffff88002dc73000)
+[ 1293.227038] Stack:
+[ 1293.227038]  ffff880038c1dd48 00000000fffffff4 ffff8800696aada0 ffff8800694f5580
+[ 1293.227038]  ffffffff8369f1e0 0000000000001500 ffff880038c1dd98 ffffffff822a716b
+[ 1293.227038]  0000000000000000 ffff8800696a8ff8 0000000000000015 ffff8800694f5580
+[ 1293.227038] Call Trace:
+[ 1293.227038]  [<ffffffff822a716b>] ip_vs_app_inc_new+0xdb/0x180
+[ 1293.227038]  [<ffffffff822a7258>] register_ip_vs_app_inc+0x48/0x70
+[ 1293.227038]  [<ffffffff822b2fea>] __ip_vs_ftp_init+0xba/0x140
+[ 1293.227038]  [<ffffffff821c9060>] ops_init+0x80/0x90
+[ 1293.227038]  [<ffffffff821c90cb>] setup_net+0x5b/0xe0
+[ 1293.227038]  [<ffffffff821c9416>] copy_net_ns+0x76/0x100
+[ 1293.227038]  [<ffffffff810dc92b>] create_new_namespaces+0xfb/0x190
+[ 1293.227038]  [<ffffffff810dca21>] unshare_nsproxy_namespaces+0x61/0x80
+[ 1293.227038]  [<ffffffff810afd1f>] sys_unshare+0xff/0x290
+[ 1293.227038]  [<ffffffff8187622e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+[ 1293.227038]  [<ffffffff82665539>] system_call_fastpath+0x16/0x1b
+[ 1293.227038] Code: 89 c7 e8 34 91 3b 00 89 de 66 c1 ee 04 31 de 83 e6 0f 48 83 c6 22 48 c1 e6 04 4a 8b 14 26 49 8d 34 34 48 8d 42 c0 48 39 d6 74 13 <66> 39 58 58 74 22 48 8b 48 40 48 8d 41 c0 48 39 ce 75 ed 49 8d
+[ 1293.227038] RIP  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+[ 1293.227038]  RSP <ffff880038c1dd18>
+[ 1293.227038] CR2: 0000000000000018
+[ 1293.379284] ---[ end trace 364ab40c7011a009 ]---
+[ 1293.381182] Kernel panic - not syncing: Fatal exception in interrupt
 
-> >> I think we can do this much simpler,
-> >> remove the auto init of ftp (ip_vs_ftp_init and ip_vs_ftp_exit) 
-> >> and let ip_vs_app call __ip_vs_ftp_init() as a we do with the protocols.
-> >> 
-> >> If the init fails before ip_vs_app_net_init() ftp init will not be called
-> >> and if it fails after a proper cleanup will be performed.
-> >> 
-> >> i.e. same design every where.
-> >> 
-> >> ex remove the
-> >>  ip_vs_ftp_init(void)
-> >>  ip_vs_ftp_exit(void)
-> >
-> >	OK, go ahead. But also change init_netns for
-> >proto (and now for apps) to return int error. Now
-> >__ip_vs_tcp_init does not return error if the
-> >pd->timeout_table allocation fails. This is fatal.
-> >
-> >	May be you can do this change on top of these
-> >two patches because init_netns for ftp should be NULL,
-> >we do not need to allocate anything for netns. Only
-> >&ip_vs_ftp should go in some new global list to be cloned
-> >for every netns as my 2nd patch:
-> 
-> OK I can take care of this, but not before Sunday evening 
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_proto.c |   23 ++++++++++++++++++-----
+ 1 files changed, 18 insertions(+), 5 deletions(-)
 
-	You say it is simple but I'm not sure :)
-If things look complicated you do not need to do it.
-Note that apps and schedulers are loaded after core,
-so their netns handlers are always called after the
-handlers of ip_vs_core. It works in both ways:
-with init_netns handler or with their own pernet
-subsys.
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index f843a88..57a242d 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -316,22 +316,35 @@ ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
+  */
+ int __net_init ip_vs_protocol_net_init(struct net *net)
+ {
++	int i, ret;
++	static struct ip_vs_protocol *protos[] = {
+ #ifdef CONFIG_IP_VS_PROTO_TCP
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_tcp);
++        &ip_vs_protocol_tcp,
+ #endif
+ #ifdef CONFIG_IP_VS_PROTO_UDP
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_udp);
++	&ip_vs_protocol_udp,
+ #endif
+ #ifdef CONFIG_IP_VS_PROTO_SCTP
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_sctp);
++	&ip_vs_protocol_sctp,
+ #endif
+ #ifdef CONFIG_IP_VS_PROTO_AH
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_ah);
++	&ip_vs_protocol_ah,
+ #endif
+ #ifdef CONFIG_IP_VS_PROTO_ESP
+-	register_ip_vs_proto_netns(net, &ip_vs_protocol_esp);
++	&ip_vs_protocol_esp,
+ #endif
++	};
++
++	for (i = 0; i < ARRAY_SIZE(protos); i++) {
++		ret = register_ip_vs_proto_netns(net, protos[i]);
++		if (ret < 0)
++			goto cleanup;
++	}
+ 	return 0;
++
++cleanup:
++	ip_vs_protocol_net_cleanup(net);
++	return ret;
+ }
+ 
+ void __net_exit ip_vs_protocol_net_cleanup(struct net *net)
+-- 
+1.7.8.5
 
-	Currently, __ip_vs_ftp_init has the freedom
-to call register_ip_vs_app_inc directly for netns context.
-Or may be this will be the part that will remain in the
-init_netns handler for FTP... and register_ip_vs_app
-will be for ip_vs_ftp_init.
-
-> >- new: global list for registered apps
-> >- present: app per netns: to hold incs_list
-> >- present: inc (app instance for port) per netns: to hold the
-> >instance in the per-netns context of proto
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
