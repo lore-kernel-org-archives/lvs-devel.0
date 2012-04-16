@@ -1,152 +1,217 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH v3 1/2] netfilter: ipvs: Verify that IP_VS protocol has
- been registered
-Date: Sat, 14 Apr 2012 17:23:29 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1204141711470.10455@ja.ssi.bg>
-References: <1334421467-30313-1-git-send-email-levinsasha928@gmail.com>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Subject: [PATCH 2/2] IPVS: make failure of netns init more stable
+Date: Mon, 16 Apr 2012 13:39:38 +0200
+Message-ID: <1334576378-2034-2-git-send-email-hans.schillstrom@ericsson.com>
+References: <1334576378-2034-1-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1334421467-30313-1-git-send-email-levinsasha928@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1334576378-2034-1-git-send-email-hans.schillstrom@ericsson.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: wensong@linux-vs.org, horms@verge.net.au, kaber@trash.net, davem@davemloft.net, davej@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: hans@schillstrom.com, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
+Add a IP_VS_F_NET_INIT_OK flag
+that other modules can use for check of a successful init of ip_vs
 
-	Hello,
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+---
+ include/net/ip_vs.h              |   20 +++++++++++++++++++-
+ net/netfilter/ipvs/ip_vs_conn.c  |    2 +-
+ net/netfilter/ipvs/ip_vs_core.c  |   15 +++++++++------
+ net/netfilter/ipvs/ip_vs_ctl.c   |    2 +-
+ net/netfilter/ipvs/ip_vs_ftp.c   |    2 ++
+ net/netfilter/ipvs/ip_vs_lblc.c  |    3 +++
+ net/netfilter/ipvs/ip_vs_lblcr.c |    3 +++
+ 7 files changed, 38 insertions(+), 9 deletions(-)
 
-On Sat, 14 Apr 2012, Sasha Levin wrote:
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 04e2211..96add20 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -787,7 +787,8 @@ struct ip_vs_app {
+ /* IPVS in network namespace */
+ struct netns_ipvs {
+ 	int			gen;		/* Generation */
+-	int			enable;		/* enable like nf_hooks do */
++	/* Status flags: enable like nf_hooks, and netns init ok */
++	int			status;
+ 	/*
+ 	 *	Hash table: for real service lookups
+ 	 */
+@@ -909,6 +910,23 @@ struct netns_ipvs {
+ 	struct net		*net;            /* Needed by timer routines */
+ };
+ 
++/*
++ * Status flags for each netns
++ */
++enum {
++	IP_VS_ENABLE,		/* Enabled ipvs i.e. service registered */
++	IP_VS_NET_INIT_OK,	/* Netns init is OK */
++	IP_VS_F_ENABLE      = (1 << IP_VS_ENABLE),
++	IP_VS_F_NET_INIT_OK = (1 << IP_VS_NET_INIT_OK)
++};
++
++#define IS_IPVS_ENABLED(ipvs) (ipvs->status & IP_VS_F_ENABLE)
++#define IPVS_ENABLE(ipvs) (ipvs->status |= IP_VS_F_ENABLE)
++#define IPVS_DISABLE(ipvs) (ipvs->status &= ~IP_VS_F_ENABLE)
++
++#define IS_IPVS_NETNS_OK(ipvs) (ipvs->status & IP_VS_F_NET_INIT_OK)
++#define IPVS_NETNS_OK(ipvs) (ipvs->status |= IP_VS_F_NET_INIT_OK)
++
+ #define DEFAULT_SYNC_THRESHOLD	3
+ #define DEFAULT_SYNC_PERIOD	50
+ #define DEFAULT_SYNC_VER	1
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 4a09b78..4f2a7ec 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -783,7 +783,7 @@ static void ip_vs_conn_expire(unsigned long data)
+ 			 * conntrack cleanup for the net.
+ 			 */
+ 			smp_rmb();
+-			if (ipvs->enable)
++			if (IS_IPVS_ENABLED(ipvs))
+ 				ip_vs_conn_drop_conntrack(cp);
+ 		}
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index b5a5c73..58722a2 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1112,7 +1112,7 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 		return NF_ACCEPT;
+ 
+ 	net = skb_net(skb);
+-	if (!net_ipvs(net)->enable)
++	if (!IS_IPVS_ENABLED(net_ipvs(net)))
+ 		return NF_ACCEPT;
+ 
+ 	ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
+@@ -1513,7 +1513,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	}
+ 	/* ipvs enabled in this netns ? */
+ 	net = skb_net(skb);
+-	if (!net_ipvs(net)->enable)
++	if (!IS_IPVS_ENABLED(net_ipvs(net)))
+ 		return NF_ACCEPT;
+ 
+ 	ip_vs_fill_iphdr(af, skb_network_header(skb), &iph);
+@@ -1735,7 +1735,7 @@ ip_vs_forward_icmp(unsigned int hooknum, struct sk_buff *skb,
+ 
+ 	/* ipvs enabled in this netns ? */
+ 	net = skb_net(skb);
+-	if (!net_ipvs(net)->enable)
++	if (!IS_IPVS_ENABLED(net_ipvs(net)))
+ 		return NF_ACCEPT;
+ 
+ 	return ip_vs_in_icmp(skb, &r, hooknum);
+@@ -1755,7 +1755,7 @@ ip_vs_forward_icmp_v6(unsigned int hooknum, struct sk_buff *skb,
+ 
+ 	/* ipvs enabled in this netns ? */
+ 	net = skb_net(skb);
+-	if (!net_ipvs(net)->enable)
++	if (!IS_IPVS_ENABLED(net_ipvs(net)))
+ 		return NF_ACCEPT;
+ 
+ 	return ip_vs_in_icmp_v6(skb, &r, hooknum);
+@@ -1881,7 +1881,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 		return -ENOMEM;
+ 
+ 	/* Hold the beast until a service is registerd */
+-	ipvs->enable = 0;
++	ipvs->status = 0;
+ 	ipvs->net = net;
+ 	/* Counters used for creating unique names */
+ 	ipvs->gen = atomic_read(&ipvs_netns_cnt);
+@@ -1906,6 +1906,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_sync_net_init(net) < 0)
+ 		goto sync_fail;
+ 
++	IPVS_NETNS_OK(ipvs);
+ 	printk(KERN_INFO "IPVS: Creating netns size=%zu id=%d\n",
+ 			 sizeof(struct netns_ipvs), ipvs->gen);
+ 	return 0;
+@@ -1924,6 +1925,7 @@ protocol_fail:
+ control_fail:
+ 	ip_vs_estimator_net_cleanup(net);
+ estimator_fail:
++	ipvs->status = 0;	/* Nothing is enabled */
+ 	return -ENOMEM;
+ }
+ 
+@@ -1936,12 +1938,13 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 	ip_vs_control_net_cleanup(net);
+ 	ip_vs_estimator_net_cleanup(net);
+ 	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
++	net->ipvs = NULL;
+ }
+ 
+ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
+ {
+ 	EnterFunction(2);
+-	net_ipvs(net)->enable = 0;	/* Disable packet reception */
++	IPVS_DISABLE(net_ipvs(net));	/* Disable packet reception */
+ 	smp_wmb();
+ 	ip_vs_sync_net_cleanup(net);
+ 	LeaveFunction(2);
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index b8d0df7..5392de9 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1221,7 +1221,7 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+ 
+ 	*svc_p = svc;
+ 	/* Now there is a service - full throttle */
+-	ipvs->enable = 1;
++	IPVS_ENABLE(ipvs);
+ 	return 0;
+ 
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index debb8c7..6bc2420 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -439,6 +439,8 @@ static int __net_init __ip_vs_ftp_init(struct net *net)
+ 	struct ip_vs_app *app;
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
++	if (!IS_IPVS_NETNS_OK(ipvs))
++		return -EUNATCH;
+ 	app = kmemdup(&ip_vs_ftp, sizeof(struct ip_vs_app), GFP_KERNEL);
+ 	if (!app)
+ 		return -ENOMEM;
+diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+index 27c24f1..f158f0c 100644
+--- a/net/netfilter/ipvs/ip_vs_lblc.c
++++ b/net/netfilter/ipvs/ip_vs_lblc.c
+@@ -551,6 +551,9 @@ static int __net_init __ip_vs_lblc_init(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
++	if (!IS_IPVS_NETNS_OK(ipvs))
++		return -EUNATCH;
++
+ 	if (!net_eq(net, &init_net)) {
+ 		ipvs->lblc_ctl_table = kmemdup(vs_vars_table,
+ 						sizeof(vs_vars_table),
+diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+index 7498756..aeecda4 100644
+--- a/net/netfilter/ipvs/ip_vs_lblcr.c
++++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+@@ -745,6 +745,9 @@ static int __net_init __ip_vs_lblcr_init(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
++	if (!IS_IPVS_NETNS_OK(ipvs))
++		return -EUNATCH;
++
+ 	if (!net_eq(net, &init_net)) {
+ 		ipvs->lblcr_ctl_table = kmemdup(vs_vars_table,
+ 						sizeof(vs_vars_table),
+-- 
+1.7.2.3
 
-> The registration of a protocol might fail, there were no checks
-> and all registrations were assumed to be correct. This lead to
-> NULL ptr dereferences when apps tried registering.
-> 
-> For example:
-> 
-> [ 1293.226051] BUG: unable to handle kernel NULL pointer dereference at 0000000000000018
-> [ 1293.227038] IP: [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
-> [ 1293.227038] PGD 391de067 PUD 6c20b067 PMD 0
-> [ 1293.227038] Oops: 0000 [#1] PREEMPT SMP
-> [ 1293.227038] CPU 1
-> [ 1293.227038] Pid: 19609, comm: trinity Tainted: G        W    3.4.0-rc1-next-20120405-sasha-dirty #57
-> [ 1293.227038] RIP: 0010:[<ffffffff822aacb0>]  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
-> [ 1293.227038] RSP: 0018:ffff880038c1dd18  EFLAGS: 00010286
-> [ 1293.227038] RAX: ffffffffffffffc0 RBX: 0000000000001500 RCX: 0000000000010000
-> [ 1293.227038] RDX: 0000000000000000 RSI: ffff88003a2d5888 RDI: 0000000000000282
-> [ 1293.227038] RBP: ffff880038c1dd48 R08: 0000000000000000 R09: 0000000000000000
-> [ 1293.227038] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88003a2d5668
-> [ 1293.227038] R13: ffff88003a2d5988 R14: ffff8800696a8ff8 R15: 0000000000000000
-> [ 1293.227038] FS:  00007f01930d9700(0000) GS:ffff88007ce00000(0000) knlGS:0000000000000000
-> [ 1293.227038] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [ 1293.227038] CR2: 0000000000000018 CR3: 0000000065dfc000 CR4: 00000000000406e0
-> [ 1293.227038] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> [ 1293.227038] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> [ 1293.227038] Process trinity (pid: 19609, threadinfo ffff880038c1c000, task ffff88002dc73000)
-> [ 1293.227038] Stack:
-> [ 1293.227038]  ffff880038c1dd48 00000000fffffff4 ffff8800696aada0 ffff8800694f5580
-> [ 1293.227038]  ffffffff8369f1e0 0000000000001500 ffff880038c1dd98 ffffffff822a716b
-> [ 1293.227038]  0000000000000000 ffff8800696a8ff8 0000000000000015 ffff8800694f5580
-> [ 1293.227038] Call Trace:
-> [ 1293.227038]  [<ffffffff822a716b>] ip_vs_app_inc_new+0xdb/0x180
-> [ 1293.227038]  [<ffffffff822a7258>] register_ip_vs_app_inc+0x48/0x70
-> [ 1293.227038]  [<ffffffff822b2fea>] __ip_vs_ftp_init+0xba/0x140
-> [ 1293.227038]  [<ffffffff821c9060>] ops_init+0x80/0x90
-> [ 1293.227038]  [<ffffffff821c90cb>] setup_net+0x5b/0xe0
-> [ 1293.227038]  [<ffffffff821c9416>] copy_net_ns+0x76/0x100
-> [ 1293.227038]  [<ffffffff810dc92b>] create_new_namespaces+0xfb/0x190
-> [ 1293.227038]  [<ffffffff810dca21>] unshare_nsproxy_namespaces+0x61/0x80
-> [ 1293.227038]  [<ffffffff810afd1f>] sys_unshare+0xff/0x290
-> [ 1293.227038]  [<ffffffff8187622e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-> [ 1293.227038]  [<ffffffff82665539>] system_call_fastpath+0x16/0x1b
-> [ 1293.227038] Code: 89 c7 e8 34 91 3b 00 89 de 66 c1 ee 04 31 de 83 e6 0f 48 83 c6 22 48 c1 e6 04 4a 8b 14 26 49 8d 34 34 48 8d 42 c0 48 39 d6 74 13 <66> 39 58 58 74 22 48 8b 48 40 48 8d 41 c0 48 39 ce 75 ed 49 8d
-> [ 1293.227038] RIP  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
-> [ 1293.227038]  RSP <ffff880038c1dd18>
-> [ 1293.227038] CR2: 0000000000000018
-> [ 1293.379284] ---[ end trace 364ab40c7011a009 ]---
-> [ 1293.381182] Kernel panic - not syncing: Fatal exception in interrupt
-> 
-> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-
-	Very good. Thank you! Simon, please apply both
-patches from v3.
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	This patch can be applied on 2.6.39+
-
-> ---
->  net/netfilter/ipvs/ip_vs_proto.c |   27 ++++++++++++++++++---------
->  1 files changed, 18 insertions(+), 9 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-> index f843a88..a62360e 100644
-> --- a/net/netfilter/ipvs/ip_vs_proto.c
-> +++ b/net/netfilter/ipvs/ip_vs_proto.c
-> @@ -59,9 +59,6 @@ static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
->  	return 0;
->  }
->  
-> -#if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP) || \
-> -    defined(CONFIG_IP_VS_PROTO_SCTP) || defined(CONFIG_IP_VS_PROTO_AH) || \
-> -    defined(CONFIG_IP_VS_PROTO_ESP)
->  /*
->   *	register an ipvs protocols netns related data
->   */
-> @@ -86,7 +83,6 @@ register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
->  
->  	return 0;
->  }
-> -#endif
->  
->  /*
->   *	unregister an ipvs protocol
-> @@ -316,22 +312,35 @@ ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
->   */
->  int __net_init ip_vs_protocol_net_init(struct net *net)
->  {
-> +	int i, ret;
-> +	static struct ip_vs_protocol *protos[] = {
->  #ifdef CONFIG_IP_VS_PROTO_TCP
-> -	register_ip_vs_proto_netns(net, &ip_vs_protocol_tcp);
-> +        &ip_vs_protocol_tcp,
->  #endif
->  #ifdef CONFIG_IP_VS_PROTO_UDP
-> -	register_ip_vs_proto_netns(net, &ip_vs_protocol_udp);
-> +	&ip_vs_protocol_udp,
->  #endif
->  #ifdef CONFIG_IP_VS_PROTO_SCTP
-> -	register_ip_vs_proto_netns(net, &ip_vs_protocol_sctp);
-> +	&ip_vs_protocol_sctp,
->  #endif
->  #ifdef CONFIG_IP_VS_PROTO_AH
-> -	register_ip_vs_proto_netns(net, &ip_vs_protocol_ah);
-> +	&ip_vs_protocol_ah,
->  #endif
->  #ifdef CONFIG_IP_VS_PROTO_ESP
-> -	register_ip_vs_proto_netns(net, &ip_vs_protocol_esp);
-> +	&ip_vs_protocol_esp,
->  #endif
-> +	};
-> +
-> +	for (i = 0; i < ARRAY_SIZE(protos); i++) {
-> +		ret = register_ip_vs_proto_netns(net, protos[i]);
-> +		if (ret < 0)
-> +			goto cleanup;
-> +	}
->  	return 0;
-> +
-> +cleanup:
-> +	ip_vs_protocol_net_cleanup(net);
-> +	return ret;
->  }
->  
->  void __net_exit ip_vs_protocol_net_cleanup(struct net *net)
-> -- 
-> 1.7.8.5
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
