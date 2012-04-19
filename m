@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH v2 3/8] ipvs: fix ip_vs_try_bind_dest to rebind app and transmitter
-Date: Fri, 20 Apr 2012 00:49:54 +0300
-Message-ID: <1334872199-8826-4-git-send-email-ja@ssi.bg>
+Subject: [PATCH v2 8/8] ipvs: optimize the use of flags in ip_vs_bind_dest
+Date: Fri, 20 Apr 2012 00:49:59 +0300
+Message-ID: <1334872199-8826-9-git-send-email-ja@ssi.bg>
 References: <1334872199-8826-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1334872199-8826-1-git-send-email-ja@ssi.bg>
@@ -13,65 +13,65 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Aleksey Chudov <aleksey.chudov@gmail.com>
 
-	Initially, when the synced connection is created we
-use the forwarding method provided by master but once we
-bind to destination it can be changed. As result, we must
-update the application and the transmitter.
-
-	As ip_vs_try_bind_dest is called always for connections
-that require dest binding, there is no need to validate the
-cp and dest pointers.
+	cp->flags is marked volatile but ip_vs_bind_dest
+can safely modify the flags, so save some CPU cycles by
+using temp variable.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |   33 ++++++++++++++++++++++++++-------
- 1 files changed, 26 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_conn.c |   15 +++++++++------
+ 1 files changed, 9 insertions(+), 6 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 18f58a08..a7c6bc8 100644
+index 7478b66..1eaec99 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -612,14 +612,33 @@ struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp)
+@@ -548,6 +548,7 @@ static inline void
+ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
  {
- 	struct ip_vs_dest *dest;
+ 	unsigned int conn_flags;
++	__u32 flags;
  
--	if ((cp) && (!cp->dest)) {
--		dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, &cp->daddr,
--				       cp->dport, &cp->vaddr, cp->vport,
--				       cp->protocol, cp->fwmark, cp->flags);
-+	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, &cp->daddr,
-+			       cp->dport, &cp->vaddr, cp->vport,
-+			       cp->protocol, cp->fwmark, cp->flags);
-+	if (dest) {
-+		struct ip_vs_proto_data *pd;
-+
-+		/* Applications work depending on the forwarding method
-+		 * but better to reassign them always when binding dest */
-+		if (cp->app)
-+			ip_vs_unbind_app(cp);
-+
- 		ip_vs_bind_dest(cp, dest);
--		return dest;
--	} else
--		return NULL;
-+
-+		/* Update its packet transmitter */
-+		cp->packet_xmit = NULL;
-+#ifdef CONFIG_IP_VS_IPV6
-+		if (cp->af == AF_INET6)
-+			ip_vs_bind_xmit_v6(cp);
-+		else
-+#endif
-+			ip_vs_bind_xmit(cp);
-+
-+		pd = ip_vs_proto_data_get(ip_vs_conn_net(cp), cp->protocol);
-+		if (pd && atomic_read(&pd->appcnt))
-+			ip_vs_bind_app(cp, pd->pp);
-+	}
-+	return dest;
- }
+ 	/* if dest is NULL, then return directly */
+ 	if (!dest)
+@@ -559,17 +560,19 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 	conn_flags = atomic_read(&dest->conn_flags);
+ 	if (cp->protocol != IPPROTO_UDP)
+ 		conn_flags &= ~IP_VS_CONN_F_ONE_PACKET;
++	flags = cp->flags;
+ 	/* Bind with the destination and its corresponding transmitter */
+-	if (cp->flags & IP_VS_CONN_F_SYNC) {
++	if (flags & IP_VS_CONN_F_SYNC) {
+ 		/* if the connection is not template and is created
+ 		 * by sync, preserve the activity flag.
+ 		 */
+-		if (!(cp->flags & IP_VS_CONN_F_TEMPLATE))
++		if (!(flags & IP_VS_CONN_F_TEMPLATE))
+ 			conn_flags &= ~IP_VS_CONN_F_INACTIVE;
+ 		/* connections inherit forwarding method from dest */
+-		cp->flags &= ~(IP_VS_CONN_F_FWD_MASK | IP_VS_CONN_F_NOOUTPUT);
++		flags &= ~(IP_VS_CONN_F_FWD_MASK | IP_VS_CONN_F_NOOUTPUT);
+ 	}
+-	cp->flags |= conn_flags;
++	flags |= conn_flags;
++	cp->flags = flags;
+ 	cp->dest = dest;
  
+ 	IP_VS_DBG_BUF(7, "Bind-dest %s c:%s:%d v:%s:%d "
+@@ -584,11 +587,11 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 		      atomic_read(&dest->refcnt));
  
+ 	/* Update the connection counters */
+-	if (!(cp->flags & IP_VS_CONN_F_TEMPLATE)) {
++	if (!(flags & IP_VS_CONN_F_TEMPLATE)) {
+ 		/* It is a normal connection, so modify the counters
+ 		 * according to the flags, later the protocol can
+ 		 * update them on state change */
+-		if (!(cp->flags & IP_VS_CONN_F_INACTIVE))
++		if (!(flags & IP_VS_CONN_F_INACTIVE))
+ 			atomic_inc(&dest->activeconns);
+ 		else
+ 			atomic_inc(&dest->inactconns);
 -- 
 1.7.3.4
 
