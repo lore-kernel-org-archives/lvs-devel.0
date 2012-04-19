@@ -1,147 +1,139 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH v2 4/8] ipvs: always update some of the flags bits in backup
-Date: Fri, 20 Apr 2012 00:49:55 +0300
-Message-ID: <1334872199-8826-5-git-send-email-ja@ssi.bg>
-References: <1334872199-8826-1-git-send-email-ja@ssi.bg>
+Subject: Re: [PATCH 5/9] ipvs: use adaptive pause in master thread
+Date: Fri, 20 Apr 2012 01:51:31 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1204200052180.8786@ja.ssi.bg>
+References: <1332320185-27157-1-git-send-email-horms@verge.net.au> <1332320185-27157-6-git-send-email-horms@verge.net.au> <20120402111145.GA15181@1984> <alpine.LFD.2.00.1204032258540.1995@ja.ssi.bg> <20120405150553.GA8144@1984> <alpine.LFD.2.00.1204082221440.6964@ja.ssi.bg>
+ <20120409230803.GB27514@1984> <alpine.LFD.2.00.1204112221250.2000@ja.ssi.bg> <20120412001309.GA7294@1984>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1334872199-8826-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <20120412001309.GA7294@1984>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Aleksey Chudov <aleksey.chudov@gmail.com>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>
 
-	As the goal is to mirror the inactconns/activeconns
-counters in the backup server, make sure the cp->flags are
-updated even if cp is still not bound to dest. If cp->flags
-are not updated ip_vs_bind_dest will rely only on the initial
-flags when updating the counters. To avoid mistakes and
-complicated checks for protocol state rely only on the
-IP_VS_CONN_F_INACTIVE bit when updating the counters.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Tested-by: Aleksey Chudov <aleksey.chudov@gmail.com>
----
- include/linux/ip_vs.h           |    5 +++
- net/netfilter/ipvs/ip_vs_sync.c |   65 ++++++++++++++-------------------------
- 2 files changed, 28 insertions(+), 42 deletions(-)
+	Hello Pablo,
 
-diff --git a/include/linux/ip_vs.h b/include/linux/ip_vs.h
-index 4deb383..ac31ef2 100644
---- a/include/linux/ip_vs.h
-+++ b/include/linux/ip_vs.h
-@@ -89,6 +89,7 @@
- #define IP_VS_CONN_F_TEMPLATE	0x1000		/* template, not connection */
- #define IP_VS_CONN_F_ONE_PACKET	0x2000		/* forward only one packet */
- 
-+/* Initial bits allowed in backup server */
- #define IP_VS_CONN_F_BACKUP_MASK (IP_VS_CONN_F_FWD_MASK | \
- 				  IP_VS_CONN_F_NOOUTPUT | \
- 				  IP_VS_CONN_F_INACTIVE | \
-@@ -97,6 +98,10 @@
- 				  IP_VS_CONN_F_TEMPLATE \
- 				 )
- 
-+/* Bits allowed to update in backup server */
-+#define IP_VS_CONN_F_BACKUP_UPD_MASK (IP_VS_CONN_F_INACTIVE | \
-+				      IP_VS_CONN_F_SEQ_MASK)
-+
- /* Flags that are not sent to backup server start from bit 16 */
- #define IP_VS_CONN_F_NFCT	(1 << 16)	/* use netfilter conntrack */
- 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 8a0d6d6..0e36679 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -731,9 +731,30 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 	else
- 		cp = ip_vs_ct_in_get(param);
- 
--	if (cp && param->pe_data) 	/* Free pe_data */
-+	if (cp) {
-+		/* Free pe_data */
- 		kfree(param->pe_data);
--	if (!cp) {
-+
-+		dest = cp->dest;
-+		if ((cp->flags ^ flags) & IP_VS_CONN_F_INACTIVE &&
-+		    !(flags & IP_VS_CONN_F_TEMPLATE) && dest) {
-+			if (flags & IP_VS_CONN_F_INACTIVE) {
-+				atomic_dec(&dest->activeconns);
-+				atomic_inc(&dest->inactconns);
-+			} else {
-+				atomic_inc(&dest->activeconns);
-+				atomic_dec(&dest->inactconns);
-+			}
-+		}
-+		flags &= IP_VS_CONN_F_BACKUP_UPD_MASK;
-+		flags |= cp->flags & ~IP_VS_CONN_F_BACKUP_UPD_MASK;
-+		cp->flags = flags;
-+		if (!dest) {
-+			dest = ip_vs_try_bind_dest(cp);
-+			if (dest)
-+				atomic_dec(&dest->refcnt);
-+		}
-+	} else {
- 		/*
- 		 * Find the appropriate destination for the connection.
- 		 * If it is not found the connection will remain unbound
-@@ -742,18 +763,6 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 		dest = ip_vs_find_dest(net, type, daddr, dport, param->vaddr,
- 				       param->vport, protocol, fwmark, flags);
- 
--		/*  Set the approprite ativity flag */
--		if (protocol == IPPROTO_TCP) {
--			if (state != IP_VS_TCP_S_ESTABLISHED)
--				flags |= IP_VS_CONN_F_INACTIVE;
--			else
--				flags &= ~IP_VS_CONN_F_INACTIVE;
--		} else if (protocol == IPPROTO_SCTP) {
--			if (state != IP_VS_SCTP_S_ESTABLISHED)
--				flags |= IP_VS_CONN_F_INACTIVE;
--			else
--				flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
- 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
- 		if (dest)
- 			atomic_dec(&dest->refcnt);
-@@ -763,34 +772,6 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 			IP_VS_DBG(2, "BACKUP, add new conn. failed\n");
- 			return;
- 		}
--	} else if (!cp->dest) {
--		dest = ip_vs_try_bind_dest(cp);
--		if (dest)
--			atomic_dec(&dest->refcnt);
--	} else if ((cp->dest) && (cp->protocol == IPPROTO_TCP) &&
--		(cp->state != state)) {
--		/* update active/inactive flag for the connection */
--		dest = cp->dest;
--		if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
--			(state != IP_VS_TCP_S_ESTABLISHED)) {
--			atomic_dec(&dest->activeconns);
--			atomic_inc(&dest->inactconns);
--			cp->flags |= IP_VS_CONN_F_INACTIVE;
--		} else if ((cp->flags & IP_VS_CONN_F_INACTIVE) &&
--			(state == IP_VS_TCP_S_ESTABLISHED)) {
--			atomic_inc(&dest->activeconns);
--			atomic_dec(&dest->inactconns);
--			cp->flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
--	} else if ((cp->dest) && (cp->protocol == IPPROTO_SCTP) &&
--		(cp->state != state)) {
--		dest = cp->dest;
--		if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
--		(state != IP_VS_SCTP_S_ESTABLISHED)) {
--			atomic_dec(&dest->activeconns);
--			atomic_inc(&dest->inactconns);
--			cp->flags &= ~IP_VS_CONN_F_INACTIVE;
--		}
- 	}
- 
- 	if (opt)
--- 
-1.7.3.4
+On Thu, 12 Apr 2012, Pablo Neira Ayuso wrote:
 
+> > 	OK, now I added up(). It will be called when
+> > 32 messages are queued after last sent by thread.
+> 
+> Why 32?
+> 
+> If you do up() once per message, you will still get an arbitrary
+> number of messages in the queue until the scheduler selects your
+> thread to enter the running state.
+
+	I understand this. It will save wakeups while
+master thread is busy with messages but not if the
+messages come with such gap that causes master thread
+to send them one by one for every wakeup.
+
+> In other works, if you do up() once per 32 messages, your thread will
+> get N+32 messages in its queue by the time the scheduler makes it
+> enter the running state. Being N that amount of arbitrary messages.
+> This seems to me like more chances to overrun the socket buffer under
+> high stress.
+
+	I now modified the constant (to 8 which should be
+8*8KB data, below default sndbuf) and the algorithm. The idea of
+IPVS_SYNC_WAKEUP_RATE is to avoid situation where
+we send wakeup for every message. It should be better
+for the caching to send messages in short bursts.
+
+> > 	Still, I think the down/up idea is not better.
+> > We are adding two new vars: master_stopped and
+> > master_sem.
+> 
+> Well, this is not exactly the idea I had in mind.
+
+	Currently, we need a _timeout version because
+sync_buff can be ready after 2 seconds and we do not
+get wakeup for such incomplete buffer, we have to check it
+from time to time. IIRC, using uninterruptible version
+causes the thread to bump the CPU load usage, so it
+is not appropriate - this state contributes to load.
+It is really for busy state, not for idle state
+waiting for messages to send.
+
+> > 	The problem is that kthread_stop() is a blocking
+> > function. It waits thread to terminate. It can not wakeup
+> > thread blocked in down(), so we add master_stopped flag
+> > that will unblock the down() loop while kthread_stop() will also
+> > unblock thread if waiting for write_space. I.e. up()+kthread_stop()
+> > is racy without additional flag while kthread_stop()+up()
+> > is not possible to work.
+> 
+> I don't see the up+kthread_stop() race you mention.
+
+	The problem is that __down_common exits only
+on waiter.up != 0 (set only by __up). Here is the race:
+
+master_thread		stop_sync_thread
+----------------------------------------
+down*
+
+			STOP MASTER
+			up()
+next_sync_buff()=NULL
+- no buffer to send
+
+kthread_should_stop()?
+Not yet
+
+down*()
+
+			- some delay here
+
+			kthread_stop()
+wakeup. Is semaphore
+up (waiter.up)?
+No => block again
+			- we are blocked in
+			kthread_stop()
+
+The race is that master_thread can block again with
+down() before kthread_stop() is reached by stop_sync_thread.
+If master uses down_timeout it can exit this block but
+after the timeout (-ETIME) which is not very good.
+down_timeout uses TASK_UNINTERRUPTIBLE state :(
+
+> > 	I'm appending untested version with up+down but I think
+> > we should use wake_up_process and schedule_timeout instead,
+> > as in previous version.
+> 
+> OK.
+> 
+> I still think that using an intermediate queue is *not* the way
+> to achieve reliability and congestion control, sorry.
+
+	It seems the idea here is not to delay the packet
+processing with sending sync traffic from softirq, so we use
+thread and intermediate queue for sending of sync messages,
+probably by using idle CPU for this. It is a compromise
+for setups with overloaded CPU for packets and other
+idle CPU. During our tests for some sync parameters the
+sync traffic was 100-200mbit which is not a small thing to
+offload to other CPUs, even by using multiple master threads.
+In such cases the CPU speed is bigger problem than the
+memory used for intermediate queue.
+
+> But, you seem to persist on the idea and I don't want to block your
+> developments, I just wanted to show my point and provide some ideas.
+> After all, you maintain that part of the code.
+> 
+> Please, tell me what patch you want me to apply and I'll take it.
+
+	I'm posting new patchset that includes new version
+of this patch. I hope it should be better, it limits the
+delay of queued messages, so that conn state is synced without
+big delays (20ms).
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
