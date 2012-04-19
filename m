@@ -1,8 +1,10 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH v2 0/8] Changes for IPVS sync
-Date: Fri, 20 Apr 2012 00:49:51 +0300
-Message-ID: <1334872199-8826-1-git-send-email-ja@ssi.bg>
+Subject: [PATCH v2 2/8] ipvs: remove check for IP_VS_CONN_F_SYNC from ip_vs_bind_dest
+Date: Fri, 20 Apr 2012 00:49:53 +0300
+Message-ID: <1334872199-8826-3-git-send-email-ja@ssi.bg>
+References: <1334872199-8826-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1334872199-8826-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -11,74 +13,37 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Aleksey Chudov <aleksey.chudov@gmail.com>
 
-	The following patchset contains changes for the
-master-backup synchronization mechanism.
+	As the IP_VS_CONN_F_INACTIVE bit is properly set
+in cp->flags for all kind of connections we do not need to
+add special checks for synced connections when updating
+the activeconns/inactconns counters for first time. Now
+logic will look just like in ip_vs_unbind_dest.
 
-	Pablo, you can check the new version of patch 5
-(wakeup master thread) but the plan is Simon to take
-these changes first, so that we have valid working tree.
-I hope other IPVS folks will test these changes too.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ net/netfilter/ipvs/ip_vs_conn.c |    9 ++++-----
+ 1 files changed, 4 insertions(+), 5 deletions(-)
 
-Patches 1-4 fix some flags and transmitter issues for the backup
-
-Patch 5 (wakeup master thread) replaces the fixed
-pause of 1 HZ in master thread with logic that generates
-wakeups events, useful for setups that use v0 of the sync
-protocol or when persistence is used for v1 because the
-next patch changes the sync rate for persistence
-connections back to original method (sync templates
-every time when syncing controlled connections).
-
-Patch 6 (reduce sync rate with time thresholds) addresses the
-problem of high sync rate for loaded sites. With commit
-986a075795339c5ea1122ce9290dfd5504252eb0
-(Backup, Change sending to Version 1 format) we tried to
-reduce the sync rate for templates in protocol v1 but using
-sync_threshold for templates is too arbitrary and leads
-to inaccurate information in backup when the template life
-time is extended. This change restores the high rate of
-templates for the default case (using sync_threshold parameters)
-but adds new controls that can reduce the sync rate for all
-kind of connections: sync_refresh_period and sync_retries.
-Tests with sync_refresh_period=1000 can show 10 times lower
-sync traffic compared to sync_threshold=3 100.
-
-Patch 7 (add support for sync threads) addresses the problem
-that single thread in backup server is not suitable for high sync
-rate. For setups that use many masters and single backup or
-when the backup is used as master or real server at the same time
-we can prefer to serve the sync traffic on many CPUs. This patch
-adds sysctl var "sync_ports" and starts the specified number of
-threads (one thread per port). This value is used for master
-threads too.
-
-Patch 8 (optimize the use of flags in ip_vs_bind_dest) is just
-an optimization for the cp->flags usage.
-
-v2:
-- replaced patch 5 (use adaptive pause in master thread) with
-(wakeup master thread)
-- rediff patch 6 (reduce sync rate with time thresholds)
-- update patch 7 (add support for sync threads)
-
-Julian Anastasov (8):
-  ipvs: ignore IP_VS_CONN_F_NOOUTPUT in backup server
-  ipvs: remove check for IP_VS_CONN_F_SYNC from ip_vs_bind_dest
-  ipvs: fix ip_vs_try_bind_dest to rebind app and transmitter
-  ipvs: always update some of the flags bits in backup
-  ipvs: wakeup master thread
-  ipvs: reduce sync rate with time thresholds
-  ipvs: add support for sync threads
-  ipvs: optimize the use of flags in ip_vs_bind_dest
-
- include/linux/ip_vs.h           |    5 +
- include/net/ip_vs.h             |   87 +++++-
- net/netfilter/ipvs/ip_vs_conn.c |   69 +++-
- net/netfilter/ipvs/ip_vs_core.c |   30 +--
- net/netfilter/ipvs/ip_vs_ctl.c  |   70 ++++-
- net/netfilter/ipvs/ip_vs_sync.c |  662 +++++++++++++++++++++++++++------------
- 6 files changed, 658 insertions(+), 265 deletions(-)
-
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 6413d58..18f58a08 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -585,11 +585,10 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 
+ 	/* Update the connection counters */
+ 	if (!(cp->flags & IP_VS_CONN_F_TEMPLATE)) {
+-		/* It is a normal connection, so increase the inactive
+-		   connection counter because it is in TCP SYNRECV
+-		   state (inactive) or other protocol inacive state */
+-		if ((cp->flags & IP_VS_CONN_F_SYNC) &&
+-		    (!(cp->flags & IP_VS_CONN_F_INACTIVE)))
++		/* It is a normal connection, so modify the counters
++		 * according to the flags, later the protocol can
++		 * update them on state change */
++		if (!(cp->flags & IP_VS_CONN_F_INACTIVE))
+ 			atomic_inc(&dest->activeconns);
+ 		else
+ 			atomic_inc(&dest->inactconns);
 -- 
 1.7.3.4
 
