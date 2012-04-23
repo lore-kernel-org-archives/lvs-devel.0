@@ -1,43 +1,37 @@
-From: "Hans Schillstrom" <hans@schillstrom.com>
-Subject: Re[3]: kernel oops - do_ip_vs_get_ctl
-Date: Sat, 21 Apr 2012 12:11:49 +0200 (CEST)
-Message-ID: <856i5i0.baad648bc0bbda1d9e290168a4213443@obelix.schillstrom.com>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
+From: Simon Horman <horms@verge.net.au>
+Subject: [GIT PULL net] IPVS
+Date: Mon, 23 Apr 2012 21:17:06 +0900
+Message-ID: <1335183428-2585-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Ryan O'Hara <rohara@redhat.com>, lvs-devel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Sasha Levin <levinsasha928@gmail.com>
 
-Hello 
->Subject: Re[2]: kernel oops - do_ip_vs_get_ctl
->
->Hello,
->
->On Fri, 20 Apr 2012, Hans Schillstrom wrote:
->
->> >On Fri, 20 Apr 2012, Ryan O'Hara wrote:
->> >
->> >> 
->> >> I frequently get a kernel oops in do_ip_vs_get_ctl when starting keepalived on
->> >> a 3.3.0 kernel. I'm attaching the trace from /var/log/messages. Has anyone
->> >> encountered this problem and if so is there a patch available? Much
->> >> appreciated.
->> >
-[snip]
+Hi Pablo,
 
->> Do you prepare a patch or should I do it  ?
->
->	I'm stopping doing more patches until Simon takes
->the previous changes, so that we can use some fresh tree.
->You can try fixing this problem if you think you have
->recent changes.
->
-OK I'll take care of this and double check with Simon that we have the same view of patches
+please consider the following two changes for 3.4.  They are from Sasha
+Levin and  resolve bugs on initialisation failure in IPVS.
 
-Regards 
-Hans Schillstrom <hans@schillstrom.com>
+The following changes since commit 6ba900676bec8baaf61aa2f85b7345c0e65774d9:
 
+  netfilter: nf_conntrack: fix incorrect logic in nf_conntrack_init_net (2012-04-10 13:00:38 +0200)
 
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git master
+
+for you to fetch changes up to eb93daa9396acdcb9aea47ef125a60228f174deb:
+
+  netfilter: ipvs: use GFP_KERNEL allocation where possible (2012-04-23 17:00:52 +0900)
+
+----------------------------------------------------------------
+Sasha Levin (2):
+      netfilter: ipvs: Verify that IP_VS protocol has been registered
+      netfilter: ipvs: use GFP_KERNEL allocation where possible
+
+ net/netfilter/ipvs/ip_vs_proto.c |   29 +++++++++++++++++++----------
+ 1 file changed, 19 insertions(+), 10 deletions(-)
