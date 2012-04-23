@@ -1,71 +1,48 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: kernel oops - do_ip_vs_get_ctl
-Date: Mon, 23 Apr 2012 22:55:30 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1204232245150.1890@ja.ssi.bg>
-References: <856i5i0.baad648bc0bbda1d9e290168a4213443@obelix.schillstrom.com> <20120423133243.GC13990@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH v2 7/8] ipvs: add support for sync threads
+Date: Tue, 24 Apr 2012 07:29:21 +0900
+Message-ID: <20120423222921.GC580@verge.net.au>
+References: <1334872199-8826-1-git-send-email-ja@ssi.bg>
+ <1334872199-8826-8-git-send-email-ja@ssi.bg>
+ <20120423125412.GD20296@verge.net.au>
+ <alpine.LFD.2.00.1204232241060.1890@ja.ssi.bg>
 Mime-Version: 1.0
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20120423133243.GC13990@verge.net.au>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1204232241060.1890@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Hans Schillstrom <hans@schillstrom.com>, Ryan O'Hara <rohara@redhat.com>, lvs-devel@vger.kernel.org, Sasha Levin <levinsasha928@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Aleksey Chudov <aleksey.chudov@gmail.com>
 
+On Mon, Apr 23, 2012 at 10:43:33PM +0300, Julian Anastasov wrote:
+>=20
+> 	Hello,
+>=20
+> On Mon, 23 Apr 2012, Simon Horman wrote:
+>=20
+> > > +	return ((int) cp >> (1 + ilog2(sizeof(*cp)))) & ipvs->threads_m=
+ask;
+> > >  }
+> >=20
+> > Hi Julian,
+> >=20
+> > My gcc running on x86_64 doesn't seem to like this cast.
+> >=20
+> > # gcc --version
+> > gcc (Debian 4.6.3-1) 4.6.3
+> > # make
+> > ...
+> >   CC      net/netfilter/ipvs/ip_vs_est.o
+> > net/netfilter/ipvs/ip_vs_sync.c: In function =E2=80=98select_master=
+_thread_id=E2=80=99:
+> > net/netfilter/ipvs/ip_vs_sync.c:398:10: warning: cast from pointer =
+to integer of different size [-Wpointer-to-int-cast]
+>=20
+> 	Ops. I'll change this '(int)' with '(long)'. You
+> want new version for the whole patchset or just for this patch?
 
-	Hello,
+Just an update of patch 7 is fine.
 
-On Mon, 23 Apr 2012, Simon Horman wrote:
-
-> Hi,
-> 
-> sorry for not being a little more attentive to patches.
-> 
-> I have now picked up all the patches that seem to have consensus.
-> Those that seem critical I have pushed into ipvs with a CC: stable@
-> and sent a pull request to Pablo to consider them for 3.4.
-> 
-> There are two such patches and the head of the ipvs tree now looks like
-> this:
-> 
-> 0cc4789 ipvs: fix crash in ip_vs_control_net_cleanup on unload
-> bd7dc1c netfilter: ipvs: Verify that IP_VS protocol has been registered
-> 
-> Those that seemed less critical where the GFP_ATOMIC changes, one
-> from Sasha and 6 from Julian. The head of the ipvs-next tree now looks like
-> this:
-> 
-> 663f4b2 netfilter: ipvs: use GFP_KERNEL allocation where possible
-> b5cfd04 ipvs: SH scheduler does not need GFP_ATOMIC allocation
-> 5b3b290 ipvs: LBLCR scheduler does not need GFP_ATOMIC allocation on init
-> c087c6f ipvs: WRR scheduler does not need GFP_ATOMIC allocation
-> 8cfaf8d ipvs: DH scheduler does not need GFP_ATOMIC allocation
-> e7c6390 ipvs: LBLC scheduler does not need GFP_ATOMIC allocation on init
-> 8f78609 ipvs: timeout tables do not need GFP_ATOMIC allocation
-> 
-> Please let me know if there are any other patches you would like
-> merged at this time.
-
-	These two patches are also fixes but may be the 2nd
-patch is too long for fix:
-
-ipvs: reset ipvs pointer in netns
-ipvs: fix app registration in netns
-
-	If it looks too long for fix we can push some
-simple check for net->ipvs in __ip_vs_ftp_init, so that
-we do not oops when IPVS core is compiled in kernel.
-Even if smaller version is sent to stable kernels,
-I prefer "ipvs: fix app registration in netns" to be
-applied at least for net-next. May be I should split
-this 2nd patch as two-line fix + additional change
-for net-next?
-
-	Hans should provide similar two-line fixes for
-LBLC and LBLCR. And one for latest crash report.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
