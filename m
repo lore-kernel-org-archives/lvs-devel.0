@@ -1,36 +1,25 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 1/6] ipvs: timeout tables do not need GFP_ATOMIC
- allocation
-Date: Mon, 23 Apr 2012 21:32:32 +0900
-Message-ID: <20120423123232.GA20296@verge.net.au>
-References: <6dfqp4f.b2278bba6d7c32d57e4d73422014448c@obelix.schillstrom.com>
+Subject: Re: [GIT PULL net] IPVS
+Date: Mon, 23 Apr 2012 21:44:13 +0900
+Message-ID: <20120423124412.GB20296@verge.net.au>
+References: <1335183428-2585-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <6dfqp4f.b2278bba6d7c32d57e4d73422014448c@obelix.schillstrom.com>
+In-Reply-To: <1335183428-2585-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Sasha Levin <levinsasha928@gmail.com>
 
-On Fri, Apr 13, 2012 at 10:14:19PM +0200, Hans Schillstrom wrote:
-> Hello
-> All 6 patches look fine to me, and are all called from process context
+On Mon, Apr 23, 2012 at 09:17:06PM +0900, Simon Horman wrote:
+> Hi Pablo,
 > 
-> >---- Original Message ----
-> >From: Julian Anastasov <ja@ssi.bg>
-> >To: "Simon Horman" <horms@verge.net.au>
-> >Cc: lvs-devel@vger.kernel.org
-> >Sent: Fri, Apr 13, 2012, 3:49 PM
-> >Subject: [PATCH 1/6] ipvs: timeout tables do not need GFP_ATOMIC allocation
-> >
-> >They are called only on initialization.
-> >
-> >Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> please consider the following two changes for 3.4.  They are from Sasha
+> Levin and  resolve bugs on initialisation failure in IPVS.
 > 
-> Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
 
-Thanks, I have applied these to my ipvs-next tree which I will push
-to kernel.org shortly.
+Sorry, could you please ignore this.
+I will repost a fresh pull request shortly.
