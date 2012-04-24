@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH v4 1/8] ipvs: ignore IP_VS_CONN_F_NOOUTPUT in backup server
-Date: Tue, 24 Apr 2012 23:46:35 +0300
-Message-ID: <1335300402-8076-2-git-send-email-ja@ssi.bg>
+Subject: [PATCH v4 2/8] ipvs: remove check for IP_VS_CONN_F_SYNC from ip_vs_bind_dest
+Date: Tue, 24 Apr 2012 23:46:36 +0300
+Message-ID: <1335300402-8076-3-git-send-email-ja@ssi.bg>
 References: <1335300402-8076-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1335300402-8076-1-git-send-email-ja@ssi.bg>
@@ -13,29 +13,37 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org
 
-	As IP_VS_CONN_F_NOOUTPUT is derived from the
-forwarding method we should get it from conn_flags just
-like we do it for IP_VS_CONN_F_FWD_MASK bits when binding
-to real server.
+	As the IP_VS_CONN_F_INACTIVE bit is properly set
+in cp->flags for all kind of connections we do not need to
+add special checks for synced connections when updating
+the activeconns/inactconns counters for first time. Now
+logic will look just like in ip_vs_unbind_dest.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/netfilter/ipvs/ip_vs_conn.c |    9 ++++-----
+ 1 files changed, 4 insertions(+), 5 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 4a09b78..f562e63 100644
+index f562e63..7647f3b 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -567,7 +567,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
- 		if (!(cp->flags & IP_VS_CONN_F_TEMPLATE))
- 			conn_flags &= ~IP_VS_CONN_F_INACTIVE;
- 		/* connections inherit forwarding method from dest */
--		cp->flags &= ~IP_VS_CONN_F_FWD_MASK;
-+		cp->flags &= ~(IP_VS_CONN_F_FWD_MASK | IP_VS_CONN_F_NOOUTPUT);
- 	}
- 	cp->flags |= conn_flags;
- 	cp->dest = dest;
+@@ -585,11 +585,10 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 
+ 	/* Update the connection counters */
+ 	if (!(cp->flags & IP_VS_CONN_F_TEMPLATE)) {
+-		/* It is a normal connection, so increase the inactive
+-		   connection counter because it is in TCP SYNRECV
+-		   state (inactive) or other protocol inacive state */
+-		if ((cp->flags & IP_VS_CONN_F_SYNC) &&
+-		    (!(cp->flags & IP_VS_CONN_F_INACTIVE)))
++		/* It is a normal connection, so modify the counters
++		 * according to the flags, later the protocol can
++		 * update them on state change */
++		if (!(cp->flags & IP_VS_CONN_F_INACTIVE))
+ 			atomic_inc(&dest->activeconns);
+ 		else
+ 			atomic_inc(&dest->inactconns);
 -- 
 1.7.3.4
 
