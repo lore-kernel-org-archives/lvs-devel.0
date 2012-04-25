@@ -1,44 +1,51 @@
-From: Hans Schillstrom <hans.schillstrom@ericsson.com>
-Subject: Re: [PATCH v2 2/2] ipvs: add check in ftp for initialized core
-Date: Wed, 25 Apr 2012 09:49:37 +0200
-Message-ID: <201204250949.38101.hans.schillstrom@ericsson.com>
-References: <1335302999-10702-1-git-send-email-ja@ssi.bg> <1335302999-10702-3-git-send-email-ja@ssi.bg>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 2/4] ipvs: take care of return value from protocol
+ init_netns
+Date: Wed, 25 Apr 2012 11:35:28 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1204251126420.1895@ja.ssi.bg>
+References: <1335339821-29684-1-git-send-email-hans.schillstrom@ericsson.com> <1335339821-29684-3-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1335302999-10702-3-git-send-email-ja@ssi.bg>
-Content-Disposition: inline
+In-Reply-To: <1335339821-29684-3-git-send-email-hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: horms@verge.net.au, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, hans@schillstrom.com
 
-On Tuesday 24 April 2012 23:29:59 Julian Anastasov wrote:
-> 	Avoid crash when registering ip_vs_ftp after
-> the IPVS core initialization for netns fails. Do this by
-> checking for present core (net->ipvs).
+
+	Hello,
+
+On Wed, 25 Apr 2012, Hans Schillstrom wrote:
+
+> ip_vs_create_timeout_table() can return NULL
+> All functions protocol init_netns is affected of this patch.
 > 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Acked-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+> Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 > ---
->  net/netfilter/ipvs/ip_vs_ftp.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-> index 538d74e..e39f693 100644
-> --- a/net/netfilter/ipvs/ip_vs_ftp.c
-> +++ b/net/netfilter/ipvs/ip_vs_ftp.c
-> @@ -439,6 +439,8 @@ static int __net_init __ip_vs_ftp_init(struct net *net)
->  	struct ip_vs_app *app;
->  	struct netns_ipvs *ipvs = net_ipvs(net);
->  
-> +	if (!ipvs)
-> +		return -ENOENT;
->  	app = kmemdup(&ip_vs_ftp, sizeof(struct ip_vs_app), GFP_KERNEL);
->  	if (!app)
->  		return -ENOMEM;
 
--- 
+> diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+> index 6a8d176..0b74795 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto.c
+> @@ -79,7 +79,7 @@ register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
+>  	atomic_set(&pd->appcnt, 0);	/* Init app counter */
+>  
+>  	if (pp->init_netns != NULL)
+> -		pp->init_netns(net, pd);
+> +		return pp->init_netns(net, pd);
+
+	May be it is better to unlink and free the pd here
+if init_netns fails. Currently, protocols attach only
+allocated pointer (pd->timeout_table) and it is not a
+big problem to call exit_netns on failure but lets do
+it safely, every init handler should release its data on
+failure and then we should not call exit_netns.
+
+	Patch 1 looks ok and I'll ack it next time.
+
 Regards
-Hans Schillstrom <hans.schillstrom@ericsson.com>
+
+--
+Julian Anastasov <ja@ssi.bg>
