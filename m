@@ -1,39 +1,192 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH 2/2] ipvs: fix crash in ip_vs_control_net_cleanup on
- unload
-Date: Wed, 25 Apr 2012 11:15:29 +0200
-Message-ID: <20120425091529.GB15049@1984>
-References: <1335186732-16002-1-git-send-email-horms@verge.net.au>
- <1335186732-16002-3-git-send-email-horms@verge.net.au>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Subject: Re: [PATCH 1/1] ipvs: kernel oops - do_ip_vs_get_ctl
+Date: Wed, 25 Apr 2012 11:36:44 +0200
+Message-ID: <201204251136.46013.hans.schillstrom@ericsson.com>
+References: <1335339884-29825-1-git-send-email-hans.schillstrom@ericsson.com> <1335344761.6337.42.camel@t520>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <1335344761.6337.42.camel@t520>
 Content-Disposition: inline
-In-Reply-To: <1335186732-16002-3-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Sasha Levin <levinsasha928@gmail.com>, stable@vger.kernel.org, Hans Schillstrom <hans@schillstrom.com>
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: "horms@verge.net.au" <horms@verge.net.au>, "ja@ssi.bg" <ja@ssi.bg>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "hans@schillstrom.com" <hans@schillstrom.com>
 
-On Mon, Apr 23, 2012 at 10:12:12PM +0900, Simon Horman wrote:
-> From: Julian Anastasov <ja@ssi.bg>
+On Wednesday 25 April 2012 11:06:01 Jesper Dangaard Brouer wrote:
+> Hi Hans,
 > 
-> 	commit 14e405461e664b777e2a5636e10b2ebf36a686ec (2.6.39)
-> ("Add __ip_vs_control_{init,cleanup}_sysctl()")
-> introduced regression due to wrong __net_init for
-> __ip_vs_control_cleanup_sysctl. This leads to crash when
-> the ip_vs module is unloaded.
+> Thank you for your work.
+> Just some whitespace nitpicks below.
+
+OK thanks I forgott to run checkpatch ...
+I'll send a new patch  
+
+> I have not been able to reproduce the bug in:
+>   https://bugzilla.redhat.com/show_bug.cgi?id=806704
 > 
-> 	Fix it by changing __net_init to __net_exit for
-> the function that is already renamed to ip_vs_control_net_cleanup_sysctl.
+> Can you recommend a (better) way to reproduce this bug?
+> I just want to be able to verify that this fixes the bug in question.
+
+I think you need two threads or procs.
+Start a modprobe in thread one then issue a ipvs ioctl in the other.
+The timing is not that easy here :-)
+
 > 
-> Cc: stable@vger.kernel.org
+> 
+> On Wed, 2012-04-25 at 09:44 +0200, Hans Schillstrom wrote:
+> > Change order of init so netns init is ready
+> > when register ioctl and netlink.
+> > 
+> > Reported-by: "Ryan O'Hara" <rohara@redhat.com>
+> > Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+> > ---
+> >  include/net/ip_vs.h             |    2 +
+> >  net/netfilter/ipvs/ip_vs_core.c |    9 ++++++
+> >  net/netfilter/ipvs/ip_vs_ctl.c  |   52 ++++++++++++++++++++++----------------
+> >  3 files changed, 41 insertions(+), 22 deletions(-)
+> > 
+> > diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> > index f967395..93b81aa 100644
+> > --- a/include/net/ip_vs.h
+> > +++ b/include/net/ip_vs.h
+> > @@ -1201,6 +1201,8 @@ ip_vs_lookup_real_service(struct net *net, int af, __u16 protocol,
+> >  
+> >  extern int ip_vs_use_count_inc(void);
+> >  extern void ip_vs_use_count_dec(void);
+> > +extern int ip_vs_register_nl_ioctl(void);
+> > +extern void ip_vs_unregister_nl_ioctl(void);
+> >  extern int ip_vs_control_init(void);
+> >  extern void ip_vs_control_cleanup(void);
+> >  extern struct ip_vs_dest *
+> > diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> > index d8b1d30..c8f36b9 100644
+> > --- a/net/netfilter/ipvs/ip_vs_core.c
+> > +++ b/net/netfilter/ipvs/ip_vs_core.c
+> > @@ -1995,10 +1995,18 @@ static int __init ip_vs_init(void)
+> >  		goto cleanup_dev;
+> >  	}
+> >  
+> > +	ret = ip_vs_register_nl_ioctl();
+> > +	if (ret < 0) {
+> > +		pr_err("can't register netlink/ioctl.\n");
+> > +		goto cleanup_hooks;
+> > +	}
+> > +
+> >  	pr_info("ipvs loaded.\n");
+> >  
+> >  	return ret;
+> >  
+> > +cleanup_hooks:
+> > +	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+> >  cleanup_dev:
+> >  	unregister_pernet_device(&ipvs_core_dev_ops);
+> >  cleanup_sub:
+> > @@ -2014,6 +2022,7 @@ exit:
+> >  
+> >  static void __exit ip_vs_cleanup(void)
+> >  {
+> > +	ip_vs_unregister_nl_ioctl();
+> >  	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+> >  	unregister_pernet_device(&ipvs_core_dev_ops);
+> >  	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+> > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> > index 7131417..efaf484 100644
+> > --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> > @@ -3750,21 +3750,10 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
+> >  	free_percpu(ipvs->tot_stats.cpustats);
+> >  }
+> >  
+> > -int __init ip_vs_control_init(void)
+> > +int ip_vs_register_nl_ioctl(void)
+> >  {
+> > -	int idx;
+> >  	int ret;
+> >  
+> > -	EnterFunction(2);
+> > -
+> > -	/* Initialize svc_table, ip_vs_svc_fwm_table, rs_table */
+> > -	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++)  {
+> > -		INIT_LIST_HEAD(&ip_vs_svc_table[idx]);
+> > -		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
+> > -	}
+> > -
+> > -	smp_wmb();	/* Do we really need it now ? */
+> > -
+> >  	ret = nf_register_sockopt(&ip_vs_sockopts);
+> >  	if (ret) {
+> >  		pr_err("cannot register sockopt.\n");
+> > @@ -3776,28 +3765,47 @@ int __init ip_vs_control_init(void)
+> >  		pr_err("cannot register Generic Netlink interface.\n");
+> >  		goto err_genl;
+> >  	}
+> > -
+> > -	ret = register_netdevice_notifier(&ip_vs_dst_notifier);
+> > -	if (ret < 0)
+> > -		goto err_notf;
+> > -
+> > -	LeaveFunction(2);
+> >  	return 0;
+> >  
+> > -err_notf:
+> > -	ip_vs_genl_unregister();
+> >  err_genl:
+> >  	nf_unregister_sockopt(&ip_vs_sockopts);
+> >  err_sock:
+> >  	return ret;
+> >  }
+> >  
+> > +void ip_vs_unregister_nl_ioctl(void) 
+> 
+> There is a extra trailing whitespace behind
+> ip_vs_unregister_nl_ioctl(void)
+> 
+> 
+> > +{
+> > +	ip_vs_genl_unregister();
+> > +	nf_unregister_sockopt(&ip_vs_sockopts);
+> > +}
+> > +
+> > +int __init ip_vs_control_init(void)
+> > +{
+> > +	int idx;
+> > +	int ret;
+> > +
+> > +	EnterFunction(2);
+> > +
+> > +	/* Initialize svc_table, ip_vs_svc_fwm_table, rs_table */
+> > +	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++)  {
+> 
+> The for loop is funny spaced...
+> 
+> 
+> > +		INIT_LIST_HEAD(&ip_vs_svc_table[idx]);
+> > +		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
+> > +	}
+> > +
+> > +	smp_wmb();	/* Do we really need it now ? */
+> > +
+> > +	ret = register_netdevice_notifier(&ip_vs_dst_notifier);
+> > +	if (ret < 0)
+> > +		return ret;
+> > +
+> > +	LeaveFunction(2);
+> > +	return 0;
+> > +}
+> > +
+> >  
+> >  void ip_vs_control_cleanup(void)
+> >  {
+> >  	EnterFunction(2);
+> >  	unregister_netdevice_notifier(&ip_vs_dst_notifier);
+> > -	ip_vs_genl_unregister();
+> > -	nf_unregister_sockopt(&ip_vs_sockopts);
+> >  	LeaveFunction(2);
+> >  }
+> 
 
-Removed this above.
-
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
-> Signed-off-by: Simon Horman <horms@verge.net.au>
-
-And applied, thanks Simon.
+-- 
+Regards
+Hans Schillstrom <hans.schillstrom@ericsson.com>
