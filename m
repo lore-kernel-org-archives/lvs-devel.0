@@ -1,12 +1,11 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 2/4] ipvs: take care of return value from protocol
- init_netns
-Date: Wed, 25 Apr 2012 11:35:28 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1204251126420.1895@ja.ssi.bg>
-References: <1335339821-29684-1-git-send-email-hans.schillstrom@ericsson.com> <1335339821-29684-3-git-send-email-hans.schillstrom@ericsson.com>
+Subject: Re: [PATCH 1/1] ipvs: kernel oops - do_ip_vs_get_ctl
+Date: Wed, 25 Apr 2012 11:56:15 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1204251151280.1895@ja.ssi.bg>
+References: <1335339884-29825-1-git-send-email-hans.schillstrom@ericsson.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1335339821-29684-3-git-send-email-hans.schillstrom@ericsson.com>
+In-Reply-To: <1335339884-29825-1-git-send-email-hans.schillstrom@ericsson.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
@@ -19,31 +18,30 @@ Cc: horms@verge.net.au, wensong@linux-vs.org, lvs-devel@vger.kernel.org, netdev@
 
 On Wed, 25 Apr 2012, Hans Schillstrom wrote:
 
-> ip_vs_create_timeout_table() can return NULL
-> All functions protocol init_netns is affected of this patch.
+> Change order of init so netns init is ready
+> when register ioctl and netlink.
 > 
+> Reported-by: "Ryan O'Hara" <rohara@redhat.com>
 > Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 > ---
+>  include/net/ip_vs.h             |    2 +
+>  net/netfilter/ipvs/ip_vs_core.c |    9 ++++++
+>  net/netfilter/ipvs/ip_vs_ctl.c  |   52 ++++++++++++++++++++++----------------
+>  3 files changed, 41 insertions(+), 22 deletions(-)
+> 
 
-> diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-> index 6a8d176..0b74795 100644
-> --- a/net/netfilter/ipvs/ip_vs_proto.c
-> +++ b/net/netfilter/ipvs/ip_vs_proto.c
-> @@ -79,7 +79,7 @@ register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
->  	atomic_set(&pd->appcnt, 0);	/* Init app counter */
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index 7131417..efaf484 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> @@ -3750,21 +3750,10 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
+>  	free_percpu(ipvs->tot_stats.cpustats);
+>  }
 >  
->  	if (pp->init_netns != NULL)
-> -		pp->init_netns(net, pd);
-> +		return pp->init_netns(net, pd);
+> -int __init ip_vs_control_init(void)
+> +int ip_vs_register_nl_ioctl(void)
 
-	May be it is better to unlink and free the pd here
-if init_netns fails. Currently, protocols attach only
-allocated pointer (pd->timeout_table) and it is not a
-big problem to call exit_netns on failure but lets do
-it safely, every init handler should release its data on
-failure and then we should not call exit_netns.
-
-	Patch 1 looks ok and I'll ack it next time.
+	Can we add __init here. Everything else looks good.
 
 Regards
 
