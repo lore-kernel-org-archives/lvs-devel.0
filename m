@@ -1,93 +1,94 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 1/2] netfilter: ipvs: Verify that IP_VS protocol has been
- registered
-Date: Thu, 26 Apr 2012 15:15:59 +0900
-Message-ID: <20120426061558.GD13141@verge.net.au>
-References: <1335186732-16002-1-git-send-email-horms@verge.net.au>
- <1335186732-16002-2-git-send-email-horms@verge.net.au>
- <20120425091422.GA15049@1984>
+Subject: Re: [PATCH v4 0/8] Changes for IPVS sync
+Date: Thu, 26 Apr 2012 15:20:47 +0900
+Message-ID: <20120426062047.GE13141@verge.net.au>
+References: <1335300402-8076-1-git-send-email-ja@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20120425091422.GA15049@1984>
+In-Reply-To: <1335300402-8076-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Sasha Levin <levinsasha928@gmail.com>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
 
-On Wed, Apr 25, 2012 at 11:14:22AM +0200, Pablo Neira Ayuso wrote:
-> On Mon, Apr 23, 2012 at 10:12:11PM +0900, Simon Horman wrote:
-> > From: Sasha Levin <levinsasha928@gmail.com>
-> > 
-> > The registration of a protocol might fail, there were no checks
-> > and all registrations were assumed to be correct. This lead to
-> > NULL ptr dereferences when apps tried registering.
-> > 
-> > For example:
-> > 
-> > [ 1293.226051] BUG: unable to handle kernel NULL pointer dereference at 0000000000000018
-> > [ 1293.227038] IP: [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
-> > [ 1293.227038] PGD 391de067 PUD 6c20b067 PMD 0
-> > [ 1293.227038] Oops: 0000 [#1] PREEMPT SMP
-> > [ 1293.227038] CPU 1
-> > [ 1293.227038] Pid: 19609, comm: trinity Tainted: G        W    3.4.0-rc1-next-20120405-sasha-dirty #57
-> > [ 1293.227038] RIP: 0010:[<ffffffff822aacb0>]  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
-> > [ 1293.227038] RSP: 0018:ffff880038c1dd18  EFLAGS: 00010286
-> > [ 1293.227038] RAX: ffffffffffffffc0 RBX: 0000000000001500 RCX: 0000000000010000
-> > [ 1293.227038] RDX: 0000000000000000 RSI: ffff88003a2d5888 RDI: 0000000000000282
-> > [ 1293.227038] RBP: ffff880038c1dd48 R08: 0000000000000000 R09: 0000000000000000
-> > [ 1293.227038] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88003a2d5668
-> > [ 1293.227038] R13: ffff88003a2d5988 R14: ffff8800696a8ff8 R15: 0000000000000000
-> > [ 1293.227038] FS:  00007f01930d9700(0000) GS:ffff88007ce00000(0000) knlGS:0000000000000000
-> > [ 1293.227038] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> > [ 1293.227038] CR2: 0000000000000018 CR3: 0000000065dfc000 CR4: 00000000000406e0
-> > [ 1293.227038] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > [ 1293.227038] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> > [ 1293.227038] Process trinity (pid: 19609, threadinfo ffff880038c1c000, task ffff88002dc73000)
-> > [ 1293.227038] Stack:
-> > [ 1293.227038]  ffff880038c1dd48 00000000fffffff4 ffff8800696aada0 ffff8800694f5580
-> > [ 1293.227038]  ffffffff8369f1e0 0000000000001500 ffff880038c1dd98 ffffffff822a716b
-> > [ 1293.227038]  0000000000000000 ffff8800696a8ff8 0000000000000015 ffff8800694f5580
-> > [ 1293.227038] Call Trace:
-> > [ 1293.227038]  [<ffffffff822a716b>] ip_vs_app_inc_new+0xdb/0x180
-> > [ 1293.227038]  [<ffffffff822a7258>] register_ip_vs_app_inc+0x48/0x70
-> > [ 1293.227038]  [<ffffffff822b2fea>] __ip_vs_ftp_init+0xba/0x140
-> > [ 1293.227038]  [<ffffffff821c9060>] ops_init+0x80/0x90
-> > [ 1293.227038]  [<ffffffff821c90cb>] setup_net+0x5b/0xe0
-> > [ 1293.227038]  [<ffffffff821c9416>] copy_net_ns+0x76/0x100
-> > [ 1293.227038]  [<ffffffff810dc92b>] create_new_namespaces+0xfb/0x190
-> > [ 1293.227038]  [<ffffffff810dca21>] unshare_nsproxy_namespaces+0x61/0x80
-> > [ 1293.227038]  [<ffffffff810afd1f>] sys_unshare+0xff/0x290
-> > [ 1293.227038]  [<ffffffff8187622e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-> > [ 1293.227038]  [<ffffffff82665539>] system_call_fastpath+0x16/0x1b
-> > [ 1293.227038] Code: 89 c7 e8 34 91 3b 00 89 de 66 c1 ee 04 31 de 83 e6 0f 48 83 c6 22 48 c1 e6 04 4a 8b 14 26 49 8d 34 34 48 8d 42 c0 48 39 d6 74 13 <66> 39 58 58 74 22 48 8b 48 40 48 8d 41 c0 48 39 ce 75 ed 49 8d
-> > [ 1293.227038] RIP  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
-> > [ 1293.227038]  RSP <ffff880038c1dd18>
-> > [ 1293.227038] CR2: 0000000000000018
-> > [ 1293.379284] ---[ end trace 364ab40c7011a009 ]---
-> > [ 1293.381182] Kernel panic - not syncing: Fatal exception in interrupt
-> > 
-> > Cc: stable@vger.kernel.org
-> 
-> I've removed this above from the patch. I prefer not to add confusing
-> information (this means you'll have to rebase, sorry).
-
-Understood.
-
-> > Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-> > Acked-by: Julian Anastasov <ja@ssi.bg>
-> > Signed-off-by: Simon Horman <horms@verge.net.au>
-> 
-> Applied. Thanks.
+On Tue, Apr 24, 2012 at 11:46:34PM +0300, Julian Anastasov wrote:
+> 	The following patchset contains changes for the
+> master-backup synchronization mechanism.
 
 Thanks.
 
-> BTW, did you consider using an array for ipvs->ip_vs_proto_table?
-> 
-> I think a hash table for only 5 protocols is overkill. I know, we'll
-> consume more memory but lookups will definitely be faster, but it will
-> consume a bit more memory (the space-time tradeoff again).
+I have pushed these to ipvs-next. But I am awaiting Pablo's review
+before sending him a pull request.
 
-That sounds reasonable to me.
+> Patches 1-4 fix some flags and transmitter issues for the backup
+> 
+> Patch 5 (wakeup master thread) replaces the fixed
+> pause of 1 HZ in master thread with logic that generates
+> wakeups events, useful for setups that use v0 of the sync
+> protocol or when persistence is used for v1 because the
+> next patch changes the sync rate for persistence
+> connections back to original method (sync templates
+> every time when syncing controlled connections).
+> 
+> Patch 6 (reduce sync rate with time thresholds) addresses the
+> problem of high sync rate for loaded sites. With commit
+> 986a075795339c5ea1122ce9290dfd5504252eb0
+> (Backup, Change sending to Version 1 format) we tried to
+> reduce the sync rate for templates in protocol v1 but using
+> sync_threshold for templates is too arbitrary and leads
+> to inaccurate information in backup when the template life
+> time is extended. This change restores the high rate of
+> templates for the default case (using sync_threshold parameters)
+> but adds new controls that can reduce the sync rate for all
+> kind of connections: sync_refresh_period and sync_retries.
+> Tests with sync_refresh_period=1000 can show 10 times lower
+> sync traffic compared to sync_threshold=3 100.
+> 
+> Patch 7 (add support for sync threads) addresses the problem
+> that single thread in backup server is not suitable for high sync
+> rate. For setups that use many masters and single backup or
+> when the backup is used as master or real server at the same time
+> we can prefer to serve the sync traffic on many CPUs. This patch
+> adds sysctl var "sync_ports" and starts the specified number of
+> threads (one thread per port). This value is used for master
+> threads too.
+> 
+> Patch 8 (optimize the use of flags in ip_vs_bind_dest) is just
+> an optimization for the cp->flags usage.
+> 
+> v4:
+> - fix patch 5 to compile on recent tree
+> 
+> v3:
+> - fix patch 7 to compile on 64-bit
+> 
+> v2:
+> - replaced patch 5 (use adaptive pause in master thread) with
+> (wakeup master thread)
+> - rediff patch 6 (reduce sync rate with time thresholds)
+> - update patch 7 (add support for sync threads)
+> 
+> Julian Anastasov (8):
+>   ipvs: ignore IP_VS_CONN_F_NOOUTPUT in backup server
+>   ipvs: remove check for IP_VS_CONN_F_SYNC from ip_vs_bind_dest
+>   ipvs: fix ip_vs_try_bind_dest to rebind app and transmitter
+>   ipvs: always update some of the flags bits in backup
+>   ipvs: wakeup master thread
+>   ipvs: reduce sync rate with time thresholds
+>   ipvs: add support for sync threads
+>   ipvs: optimize the use of flags in ip_vs_bind_dest
+> 
+>  include/linux/ip_vs.h           |    5 +
+>  include/net/ip_vs.h             |   87 +++++-
+>  net/netfilter/ipvs/ip_vs_conn.c |   69 +++-
+>  net/netfilter/ipvs/ip_vs_core.c |   30 +--
+>  net/netfilter/ipvs/ip_vs_ctl.c  |   70 ++++-
+>  net/netfilter/ipvs/ip_vs_sync.c |  662 +++++++++++++++++++++++++++------------
+>  6 files changed, 658 insertions(+), 265 deletions(-)
+> 
+> -- 
+> 1.7.3.4
+> 
