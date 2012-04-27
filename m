@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 5/5] ipvs: kernel oops - do_ip_vs_get_ctl
-Date: Fri, 27 Apr 2012 09:53:59 +0900
-Message-ID: <1335488039-13471-6-git-send-email-horms@verge.net.au>
+Subject: [PATCH 4/5] ipvs: take care of return value from protocol init_netns
+Date: Fri, 27 Apr 2012 09:53:58 +0900
+Message-ID: <1335488039-13471-5-git-send-email-horms@verge.net.au>
 References: <1335488039-13471-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1335488039-13471-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,152 +15,125 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-Change order of init so netns init is ready
-when register ioctl and netlink.
+ip_vs_create_timeout_table() can return NULL
+All functions protocol init_netns is affected of this patch.
 
-Ver2
-	Whitespace fixes and __init added.
-
-Reported-by: "Ryan O'Hara" <rohara@redhat.com>
 Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             |    2 ++
- net/netfilter/ipvs/ip_vs_core.c |    9 +++++++
- net/netfilter/ipvs/ip_vs_ctl.c  |   52 ++++++++++++++++++++++-----------------
- 3 files changed, 41 insertions(+), 22 deletions(-)
+ include/net/ip_vs.h                   |    2 +-
+ net/netfilter/ipvs/ip_vs_proto.c      |   11 +++++++++--
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |    5 ++++-
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  |    5 ++++-
+ net/netfilter/ipvs/ip_vs_proto_udp.c  |    5 ++++-
+ 5 files changed, 22 insertions(+), 6 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 6d90dda..72522f0 100644
+index 2bdee51..6d90dda 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1203,6 +1203,8 @@ ip_vs_lookup_real_service(struct net *net, int af, __u16 protocol,
+@@ -393,7 +393,7 @@ struct ip_vs_protocol {
  
- extern int ip_vs_use_count_inc(void);
- extern void ip_vs_use_count_dec(void);
-+extern int ip_vs_register_nl_ioctl(void);
-+extern void ip_vs_unregister_nl_ioctl(void);
- extern int ip_vs_control_init(void);
- extern void ip_vs_control_cleanup(void);
- extern struct ip_vs_dest *
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 260b9ef..00bdb1d 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1995,10 +1995,18 @@ static int __init ip_vs_init(void)
- 		goto cleanup_dev;
- 	}
+ 	void (*exit)(struct ip_vs_protocol *pp);
  
-+	ret = ip_vs_register_nl_ioctl();
-+	if (ret < 0) {
-+		pr_err("can't register netlink/ioctl.\n");
-+		goto cleanup_hooks;
+-	void (*init_netns)(struct net *net, struct ip_vs_proto_data *pd);
++	int (*init_netns)(struct net *net, struct ip_vs_proto_data *pd);
+ 
+ 	void (*exit_netns)(struct net *net, struct ip_vs_proto_data *pd);
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index a62360e..ed835e6 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -78,8 +78,15 @@ register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
+ 	ipvs->proto_data_table[hash] = pd;
+ 	atomic_set(&pd->appcnt, 0);	/* Init app counter */
+ 
+-	if (pp->init_netns != NULL)
+-		pp->init_netns(net, pd);
++	if (pp->init_netns != NULL) {
++		int ret = pp->init_netns(net, pd);
++		if (ret) {
++			/* unlink an free proto data */
++			ipvs->proto_data_table[hash] = pd->next;
++			kfree(pd);
++			return ret;
++		}
 +	}
-+
- 	pr_info("ipvs loaded.\n");
  
- 	return ret;
- 
-+cleanup_hooks:
-+	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
- cleanup_dev:
- 	unregister_pernet_device(&ipvs_core_dev_ops);
- cleanup_sub:
-@@ -2014,6 +2022,7 @@ exit:
- 
- static void __exit ip_vs_cleanup(void)
- {
-+	ip_vs_unregister_nl_ioctl();
- 	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
- 	unregister_pernet_device(&ipvs_core_dev_ops);
- 	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 376d2b1..f558998 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3750,21 +3750,10 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
- 	free_percpu(ipvs->tot_stats.cpustats);
- }
- 
--int __init ip_vs_control_init(void)
-+int __init ip_vs_register_nl_ioctl(void)
- {
--	int idx;
- 	int ret;
- 
--	EnterFunction(2);
--
--	/* Initialize svc_table, ip_vs_svc_fwm_table, rs_table */
--	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++)  {
--		INIT_LIST_HEAD(&ip_vs_svc_table[idx]);
--		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
--	}
--
--	smp_wmb();	/* Do we really need it now ? */
--
- 	ret = nf_register_sockopt(&ip_vs_sockopts);
- 	if (ret) {
- 		pr_err("cannot register sockopt.\n");
-@@ -3776,28 +3765,47 @@ int __init ip_vs_control_init(void)
- 		pr_err("cannot register Generic Netlink interface.\n");
- 		goto err_genl;
- 	}
--
--	ret = register_netdevice_notifier(&ip_vs_dst_notifier);
--	if (ret < 0)
--		goto err_notf;
--
--	LeaveFunction(2);
  	return 0;
- 
--err_notf:
--	ip_vs_genl_unregister();
- err_genl:
- 	nf_unregister_sockopt(&ip_vs_sockopts);
- err_sock:
- 	return ret;
  }
- 
-+void ip_vs_unregister_nl_ioctl(void)
-+{
-+	ip_vs_genl_unregister();
-+	nf_unregister_sockopt(&ip_vs_sockopts);
-+}
-+
-+int __init ip_vs_control_init(void)
-+{
-+	int idx;
-+	int ret;
-+
-+	EnterFunction(2);
-+
-+	/* Initialize svc_table, ip_vs_svc_fwm_table, rs_table */
-+	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
-+		INIT_LIST_HEAD(&ip_vs_svc_table[idx]);
-+		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
-+	}
-+
-+	smp_wmb();	/* Do we really need it now ? */
-+
-+	ret = register_netdevice_notifier(&ip_vs_dst_notifier);
-+	if (ret < 0)
-+		return ret;
-+
-+	LeaveFunction(2);
-+	return 0;
-+}
-+
- 
- void ip_vs_control_cleanup(void)
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 1fbf7a2..9f3fb75 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -1090,7 +1090,7 @@ out:
+  *   timeouts is netns related now.
+  * ---------------------------------------------
+  */
+-static void __ip_vs_sctp_init(struct net *net, struct ip_vs_proto_data *pd)
++static int __ip_vs_sctp_init(struct net *net, struct ip_vs_proto_data *pd)
  {
- 	EnterFunction(2);
- 	unregister_netdevice_notifier(&ip_vs_dst_notifier);
--	ip_vs_genl_unregister();
--	nf_unregister_sockopt(&ip_vs_sockopts);
- 	LeaveFunction(2);
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+@@ -1098,6 +1098,9 @@ static void __ip_vs_sctp_init(struct net *net, struct ip_vs_proto_data *pd)
+ 	spin_lock_init(&ipvs->sctp_app_lock);
+ 	pd->timeout_table = ip_vs_create_timeout_table((int *)sctp_timeouts,
+ 							sizeof(sctp_timeouts));
++	if (!pd->timeout_table)
++		return -ENOMEM;
++	return 0;
  }
+ 
+ static void __ip_vs_sctp_exit(struct net *net, struct ip_vs_proto_data *pd)
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index ef8641f..cd609cc 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -677,7 +677,7 @@ void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp)
+  *   timeouts is netns related now.
+  * ---------------------------------------------
+  */
+-static void __ip_vs_tcp_init(struct net *net, struct ip_vs_proto_data *pd)
++static int __ip_vs_tcp_init(struct net *net, struct ip_vs_proto_data *pd)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+@@ -685,7 +685,10 @@ static void __ip_vs_tcp_init(struct net *net, struct ip_vs_proto_data *pd)
+ 	spin_lock_init(&ipvs->tcp_app_lock);
+ 	pd->timeout_table = ip_vs_create_timeout_table((int *)tcp_timeouts,
+ 							sizeof(tcp_timeouts));
++	if (!pd->timeout_table)
++		return -ENOMEM;
+ 	pd->tcp_state_table =  tcp_states;
++	return 0;
+ }
+ 
+ static void __ip_vs_tcp_exit(struct net *net, struct ip_vs_proto_data *pd)
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index f4b7262..2fedb2d 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -467,7 +467,7 @@ udp_state_transition(struct ip_vs_conn *cp, int direction,
+ 	cp->timeout = pd->timeout_table[IP_VS_UDP_S_NORMAL];
+ }
+ 
+-static void __udp_init(struct net *net, struct ip_vs_proto_data *pd)
++static int __udp_init(struct net *net, struct ip_vs_proto_data *pd)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+@@ -475,6 +475,9 @@ static void __udp_init(struct net *net, struct ip_vs_proto_data *pd)
+ 	spin_lock_init(&ipvs->udp_app_lock);
+ 	pd->timeout_table = ip_vs_create_timeout_table((int *)udp_timeouts,
+ 							sizeof(udp_timeouts));
++	if (!pd->timeout_table)
++		return -ENOMEM;
++	return 0;
+ }
+ 
+ static void __udp_exit(struct net *net, struct ip_vs_proto_data *pd)
 -- 
 1.7.9.5
 
