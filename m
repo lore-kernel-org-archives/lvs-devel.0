@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 2/5] ipvs: reset ipvs pointer in netns
-Date: Fri, 27 Apr 2012 09:53:56 +0900
-Message-ID: <1335488039-13471-3-git-send-email-horms@verge.net.au>
+Subject: [PATCH 5/5] ipvs: kernel oops - do_ip_vs_get_ctl
+Date: Fri, 27 Apr 2012 09:53:59 +0900
+Message-ID: <1335488039-13471-6-git-send-email-horms@verge.net.au>
 References: <1335488039-13471-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1335488039-13471-1-git-send-email-horms@verge.net.au>
@@ -13,39 +13,154 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Simon Horman <horms@verge.net.au>
 
-From: Julian Anastasov <ja@ssi.bg>
+From: Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-	Make sure net->ipvs is reset on netns cleanup or failed
-initialization. It is needed for IPVS applications to know that
-IPVS core is not loaded in netns.
+Change order of init so netns init is ready
+when register ioctl and netlink.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Acked-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Ver2
+	Whitespace fixes and __init added.
+
+Reported-by: "Ryan O'Hara" <rohara@redhat.com>
+Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_core.c |    2 ++
- 1 file changed, 2 insertions(+)
+ include/net/ip_vs.h             |    2 ++
+ net/netfilter/ipvs/ip_vs_core.c |    9 +++++++
+ net/netfilter/ipvs/ip_vs_ctl.c  |   52 ++++++++++++++++++++++-----------------
+ 3 files changed, 41 insertions(+), 22 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 6d90dda..72522f0 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1203,6 +1203,8 @@ ip_vs_lookup_real_service(struct net *net, int af, __u16 protocol,
+ 
+ extern int ip_vs_use_count_inc(void);
+ extern void ip_vs_use_count_dec(void);
++extern int ip_vs_register_nl_ioctl(void);
++extern void ip_vs_unregister_nl_ioctl(void);
+ extern int ip_vs_control_init(void);
+ extern void ip_vs_control_cleanup(void);
+ extern struct ip_vs_dest *
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 2555816..260b9ef 100644
+index 260b9ef..00bdb1d 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1924,6 +1924,7 @@ protocol_fail:
- control_fail:
- 	ip_vs_estimator_net_cleanup(net);
- estimator_fail:
-+	net->ipvs = NULL;
- 	return -ENOMEM;
+@@ -1995,10 +1995,18 @@ static int __init ip_vs_init(void)
+ 		goto cleanup_dev;
+ 	}
+ 
++	ret = ip_vs_register_nl_ioctl();
++	if (ret < 0) {
++		pr_err("can't register netlink/ioctl.\n");
++		goto cleanup_hooks;
++	}
++
+ 	pr_info("ipvs loaded.\n");
+ 
+ 	return ret;
+ 
++cleanup_hooks:
++	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ cleanup_dev:
+ 	unregister_pernet_device(&ipvs_core_dev_ops);
+ cleanup_sub:
+@@ -2014,6 +2022,7 @@ exit:
+ 
+ static void __exit ip_vs_cleanup(void)
+ {
++	ip_vs_unregister_nl_ioctl();
+ 	nf_unregister_hooks(ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ 	unregister_pernet_device(&ipvs_core_dev_ops);
+ 	unregister_pernet_subsys(&ipvs_core_ops);	/* free ip_vs struct */
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 376d2b1..f558998 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3750,21 +3750,10 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
+ 	free_percpu(ipvs->tot_stats.cpustats);
  }
  
-@@ -1936,6 +1937,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
- 	ip_vs_control_net_cleanup(net);
- 	ip_vs_estimator_net_cleanup(net);
- 	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
-+	net->ipvs = NULL;
+-int __init ip_vs_control_init(void)
++int __init ip_vs_register_nl_ioctl(void)
+ {
+-	int idx;
+ 	int ret;
+ 
+-	EnterFunction(2);
+-
+-	/* Initialize svc_table, ip_vs_svc_fwm_table, rs_table */
+-	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++)  {
+-		INIT_LIST_HEAD(&ip_vs_svc_table[idx]);
+-		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
+-	}
+-
+-	smp_wmb();	/* Do we really need it now ? */
+-
+ 	ret = nf_register_sockopt(&ip_vs_sockopts);
+ 	if (ret) {
+ 		pr_err("cannot register sockopt.\n");
+@@ -3776,28 +3765,47 @@ int __init ip_vs_control_init(void)
+ 		pr_err("cannot register Generic Netlink interface.\n");
+ 		goto err_genl;
+ 	}
+-
+-	ret = register_netdevice_notifier(&ip_vs_dst_notifier);
+-	if (ret < 0)
+-		goto err_notf;
+-
+-	LeaveFunction(2);
+ 	return 0;
+ 
+-err_notf:
+-	ip_vs_genl_unregister();
+ err_genl:
+ 	nf_unregister_sockopt(&ip_vs_sockopts);
+ err_sock:
+ 	return ret;
  }
  
- static void __net_exit __ip_vs_dev_cleanup(struct net *net)
++void ip_vs_unregister_nl_ioctl(void)
++{
++	ip_vs_genl_unregister();
++	nf_unregister_sockopt(&ip_vs_sockopts);
++}
++
++int __init ip_vs_control_init(void)
++{
++	int idx;
++	int ret;
++
++	EnterFunction(2);
++
++	/* Initialize svc_table, ip_vs_svc_fwm_table, rs_table */
++	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
++		INIT_LIST_HEAD(&ip_vs_svc_table[idx]);
++		INIT_LIST_HEAD(&ip_vs_svc_fwm_table[idx]);
++	}
++
++	smp_wmb();	/* Do we really need it now ? */
++
++	ret = register_netdevice_notifier(&ip_vs_dst_notifier);
++	if (ret < 0)
++		return ret;
++
++	LeaveFunction(2);
++	return 0;
++}
++
+ 
+ void ip_vs_control_cleanup(void)
+ {
+ 	EnterFunction(2);
+ 	unregister_netdevice_notifier(&ip_vs_dst_notifier);
+-	ip_vs_genl_unregister();
+-	nf_unregister_sockopt(&ip_vs_sockopts);
+ 	LeaveFunction(2);
+ }
 -- 
 1.7.9.5
 
