@@ -1,51 +1,51 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL net] IPVS
-Date: Fri, 27 Apr 2012 09:53:54 +0900
-Message-ID: <1335488039-13471-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-Sender: netdev-owner@vger.kernel.org
+Subject: [PATCH 2/5] ipvs: reset ipvs pointer in netns
+Date: Fri, 27 Apr 2012 09:53:56 +0900
+Message-ID: <1335488039-13471-3-git-send-email-horms@verge.net.au>
+References: <1335488039-13471-1-git-send-email-horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1335488039-13471-1-git-send-email-horms@verge.net.au>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Julian Anastasov <ja@ssi.bg>
 
-please consider the following 5 changes for 3.4, they are all bug fixes.
-I would also like these changes considered for stable.
+	Make sure net->ipvs is reset on netns cleanup or failed
+initialization. It is needed for IPVS applications to know that
+IPVS core is not loaded in netns.
 
-The following changes since commit 8f9b9a2fad47af27e14b037395e03cd8278d96d7:
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Acked-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_core.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-  ipvs: fix crash in ip_vs_control_net_cleanup on unload (2012-04-25 11:16:30 +0200)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 2555816..260b9ef 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1924,6 +1924,7 @@ protocol_fail:
+ control_fail:
+ 	ip_vs_estimator_net_cleanup(net);
+ estimator_fail:
++	net->ipvs = NULL;
+ 	return -ENOMEM;
+ }
+ 
+@@ -1936,6 +1937,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 	ip_vs_control_net_cleanup(net);
+ 	ip_vs_estimator_net_cleanup(net);
+ 	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
++	net->ipvs = NULL;
+ }
+ 
+ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
+-- 
+1.7.9.5
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git master
-
-for you to fetch changes up to 1c3dc0f92d127d3fdefa84c7ef629b070bf8d32c:
-
-  ipvs: kernel oops - do_ip_vs_get_ctl (2012-04-26 18:04:31 +0900)
-
-----------------------------------------------------------------
-Hans Schillstrom (3):
-      ipvs: null check of net->ipvs in lblc(r) shedulers
-      ipvs: take care of return value from protocol init_netns
-      ipvs: kernel oops - do_ip_vs_get_ctl
-
-Julian Anastasov (2):
-      ipvs: add check in ftp for initialized core
-      ipvs: reset ipvs pointer in netns
-
- include/net/ip_vs.h                   |    4 ++-
- net/netfilter/ipvs/ip_vs_core.c       |   11 +++++++
- net/netfilter/ipvs/ip_vs_ctl.c        |   52 +++++++++++++++++++--------------
- net/netfilter/ipvs/ip_vs_ftp.c        |    2 ++
- net/netfilter/ipvs/ip_vs_lblc.c       |    3 ++
- net/netfilter/ipvs/ip_vs_lblcr.c      |    3 ++
- net/netfilter/ipvs/ip_vs_proto.c      |   11 +++++--
- net/netfilter/ipvs/ip_vs_proto_sctp.c |    5 +++-
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |    5 +++-
- net/netfilter/ipvs/ip_vs_proto_udp.c  |    5 +++-
- 10 files changed, 73 insertions(+), 28 deletions(-)
