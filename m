@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 13/18] ipvs: reduce sync rate with time thresholds
-Date: Wed,  2 May 2012 15:22:37 +0900
-Message-ID: <1335939762-1912-14-git-send-email-horms@verge.net.au>
+Subject: [PATCH 12/18] ipvs: wakeup master thread
+Date: Wed,  2 May 2012 15:22:36 +0900
+Message-ID: <1335939762-1912-13-git-send-email-horms@verge.net.au>
 References: <1335939762-1912-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1335939762-1912-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,441 +15,416 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-	Add two new sysctl vars to control the sync rate with the
-main idea to reduce the rate for connection templates because
-currently it depends on the packet rate for controlled connections.
-This mechanism should be useful also for normal connections
-with high traffic.
+	High rate of sync messages in master can lead to
+overflowing the socket buffer and dropping the messages.
+Fixed sleep of 1 second without wakeup events is not suitable
+for loaded masters,
 
-sync_refresh_period: in seconds, difference in reported connection
-	timer that triggers new sync message. It can be used to
-	avoid sync messages for the specified period (or half of
-	the connection timeout if it is lower) if connection state
-	is not changed from last sync.
+	Use delayed_work to schedule sending for queued messages
+and limit the delay to IPVS_SYNC_SEND_DELAY (20ms). This will
+reduce the rate of wakeups but to avoid sending long bursts we
+wakeup the master thread after IPVS_SYNC_WAKEUP_RATE (8) messages.
 
-sync_retries: integer, 0..3, defines sync retries with period of
-	sync_refresh_period/8. Useful to protect against loss of
-	sync messages.
+	Add hard limit for the queued messages before sending
+by using "sync_qlen_max" sysctl var. It defaults to 1/32 of
+the memory pages but actually represents number of messages.
+It will protect us from allocating large parts of memory
+when the sending rate is lower than the queuing rate.
 
-	Allow sysctl_sync_threshold to be used with
-sysctl_sync_period=0, so that only single sync message is sent
-if sync_refresh_period is also 0.
+	As suggested by Pablo, add new sysctl var
+"sync_sock_size" to configure the SNDBUF (master) or
+RCVBUF (slave) socket limit. Default value is 0 (preserve
+system defaults).
 
-	Add new field "sync_endtime" in connection structure to
-hold the reported time when connection expires. The 2 lowest
-bits will represent the retry count.
+	Change the master thread to detect and block on
+SNDBUF overflow, so that we do not drop messages when
+the socket limit is low but the sync_qlen_max limit is
+not reached. On ENOBUFS or other errors just drop the
+messages.
 
-	As the sysctl_sync_period now can be 0 use ACCESS_ONCE to
-avoid division by zero.
+	Change master thread to enter TASK_INTERRUPTIBLE
+state early, so that we do not miss wakeups due to messages or
+kthread_should_stop event.
 
-	Special thanks to Aleksey Chudov for being patient with me,
-for his extensive reports and helping in all tests.
+Thanks to Pablo Neira Ayuso for his valuable feedback!
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Tested-by: Aleksey Chudov <aleksey.chudov@gmail.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             |   30 +++++++++-
- net/netfilter/ipvs/ip_vs_conn.c |    7 ++-
- net/netfilter/ipvs/ip_vs_core.c |   30 +---------
- net/netfilter/ipvs/ip_vs_ctl.c  |   25 +++++++-
- net/netfilter/ipvs/ip_vs_sync.c |  121 +++++++++++++++++++++++++++++++++------
- 5 files changed, 165 insertions(+), 48 deletions(-)
+ include/net/ip_vs.h             |   29 ++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c  |   16 +++++
+ net/netfilter/ipvs/ip_vs_sync.c |  149 ++++++++++++++++++++++++++++++---------
+ 3 files changed, 162 insertions(+), 32 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 8721a78..941df45 100644
+index a903a82..8721a78 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -505,6 +505,7 @@ struct ip_vs_conn {
- 						 * state transition triggerd
- 						 * synchronization
- 						 */
-+	unsigned long		sync_endtime;	/* jiffies + sent_retries */
- 
- 	/* Control members */
- 	struct ip_vs_conn       *control;       /* Master control connection */
-@@ -876,6 +877,8 @@ struct netns_ipvs {
+@@ -870,6 +870,8 @@ struct netns_ipvs {
+ #endif
+ 	int			sysctl_snat_reroute;
+ 	int			sysctl_sync_ver;
++	int			sysctl_sync_qlen_max;
++	int			sysctl_sync_sock_size;
+ 	int			sysctl_cache_bypass;
  	int			sysctl_expire_nodest_conn;
  	int			sysctl_expire_quiescent_template;
- 	int			sysctl_sync_threshold[2];
-+	unsigned int		sysctl_sync_refresh_period;
-+	int			sysctl_sync_retries;
- 	int			sysctl_nat_icmp_send;
- 
- 	/* ip_vs_lblc */
-@@ -917,10 +920,13 @@ struct netns_ipvs {
+@@ -890,6 +892,9 @@ struct netns_ipvs {
+ 	struct timer_list	est_timer;	/* Estimation timer */
+ 	/* ip_vs_sync */
+ 	struct list_head	sync_queue;
++	int			sync_queue_len;
++	unsigned int		sync_queue_delay;
++	struct delayed_work	master_wakeup_work;
+ 	spinlock_t		sync_lock;
+ 	struct ip_vs_sync_buff  *sync_buff;
+ 	spinlock_t		sync_buff_lock;
+@@ -912,6 +917,10 @@ struct netns_ipvs {
  #define DEFAULT_SYNC_THRESHOLD	3
  #define DEFAULT_SYNC_PERIOD	50
  #define DEFAULT_SYNC_VER	1
-+#define DEFAULT_SYNC_REFRESH_PERIOD	(0U * HZ)
-+#define DEFAULT_SYNC_RETRIES		0
- #define IPVS_SYNC_WAKEUP_RATE	8
- #define IPVS_SYNC_QLEN_MAX	(IPVS_SYNC_WAKEUP_RATE * 4)
- #define IPVS_SYNC_SEND_DELAY	(HZ / 50)
- #define IPVS_SYNC_CHECK_PERIOD	HZ
-+#define IPVS_SYNC_FLUSH_TIME	(HZ * 2)
++#define IPVS_SYNC_WAKEUP_RATE	8
++#define IPVS_SYNC_QLEN_MAX	(IPVS_SYNC_WAKEUP_RATE * 4)
++#define IPVS_SYNC_SEND_DELAY	(HZ / 50)
++#define IPVS_SYNC_CHECK_PERIOD	HZ
  
  #ifdef CONFIG_SYSCTL
  
-@@ -931,7 +937,17 @@ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
- 
- static inline int sysctl_sync_period(struct netns_ipvs *ipvs)
- {
--	return ipvs->sysctl_sync_threshold[1];
-+	return ACCESS_ONCE(ipvs->sysctl_sync_threshold[1]);
-+}
-+
-+static inline unsigned int sysctl_sync_refresh_period(struct netns_ipvs *ipvs)
-+{
-+	return ACCESS_ONCE(ipvs->sysctl_sync_refresh_period);
-+}
-+
-+static inline int sysctl_sync_retries(struct netns_ipvs *ipvs)
-+{
-+	return ipvs->sysctl_sync_retries;
+@@ -930,6 +939,16 @@ static inline int sysctl_sync_ver(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_sync_ver;
  }
  
- static inline int sysctl_sync_ver(struct netns_ipvs *ipvs)
-@@ -961,6 +977,16 @@ static inline int sysctl_sync_period(struct netns_ipvs *ipvs)
- 	return DEFAULT_SYNC_PERIOD;
- }
++static inline int sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_sync_qlen_max;
++}
++
++static inline int sysctl_sync_sock_size(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_sync_sock_size;
++}
++
+ #else
  
-+static inline unsigned int sysctl_sync_refresh_period(struct netns_ipvs *ipvs)
-+{
-+	return DEFAULT_SYNC_REFRESH_PERIOD;
-+}
-+
-+static inline int sysctl_sync_retries(struct netns_ipvs *ipvs)
-+{
-+	return DEFAULT_SYNC_RETRIES & 3;
-+}
-+
- static inline int sysctl_sync_ver(struct netns_ipvs *ipvs)
- {
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -947,6 +966,16 @@ static inline int sysctl_sync_ver(struct netns_ipvs *ipvs)
  	return DEFAULT_SYNC_VER;
-@@ -1248,7 +1274,7 @@ extern struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp);
- extern int start_sync_thread(struct net *net, int state, char *mcast_ifn,
- 			     __u8 syncid);
- extern int stop_sync_thread(struct net *net, int state);
--extern void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp);
-+extern void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp, int pkts);
+ }
  
++static inline int sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
++{
++	return IPVS_SYNC_QLEN_MAX;
++}
++
++static inline int sysctl_sync_sock_size(struct netns_ipvs *ipvs)
++{
++	return 0;
++}
++
+ #endif
  
  /*
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 9d237d7..46260fb 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -761,7 +761,8 @@ int ip_vs_check_template(struct ip_vs_conn *ct)
- static void ip_vs_conn_expire(unsigned long data)
- {
- 	struct ip_vs_conn *cp = (struct ip_vs_conn *)data;
--	struct netns_ipvs *ipvs = net_ipvs(ip_vs_conn_net(cp));
-+	struct net *net = ip_vs_conn_net(cp);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	cp->timeout = 60*HZ;
- 
-@@ -826,6 +827,9 @@ static void ip_vs_conn_expire(unsigned long data)
- 		  atomic_read(&cp->refcnt)-1,
- 		  atomic_read(&cp->n_control));
- 
-+	if (ipvs->sync_state & IP_VS_STATE_MASTER)
-+		ip_vs_sync_conn(net, cp, sysctl_sync_threshold(ipvs));
-+
- 	ip_vs_conn_put(cp);
- }
- 
-@@ -899,6 +903,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
- 	/* Set its state and timeout */
- 	cp->state = 0;
- 	cp->timeout = 3*HZ;
-+	cp->sync_endtime = jiffies & ~3UL;
- 
- 	/* Bind its packet transmitter */
- #ifdef CONFIG_IP_VS_IPV6
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index b5a5c73..7ce5819 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1613,34 +1613,8 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	else
- 		pkts = atomic_add_return(1, &cp->in_pkts);
- 
--	if ((ipvs->sync_state & IP_VS_STATE_MASTER) &&
--	    cp->protocol == IPPROTO_SCTP) {
--		if ((cp->state == IP_VS_SCTP_S_ESTABLISHED &&
--			(pkts % sysctl_sync_period(ipvs)
--			 == sysctl_sync_threshold(ipvs))) ||
--				(cp->old_state != cp->state &&
--				 ((cp->state == IP_VS_SCTP_S_CLOSED) ||
--				  (cp->state == IP_VS_SCTP_S_SHUT_ACK_CLI) ||
--				  (cp->state == IP_VS_SCTP_S_SHUT_ACK_SER)))) {
--			ip_vs_sync_conn(net, cp);
--			goto out;
--		}
--	}
--
--	/* Keep this block last: TCP and others with pp->num_states <= 1 */
--	else if ((ipvs->sync_state & IP_VS_STATE_MASTER) &&
--	    (((cp->protocol != IPPROTO_TCP ||
--	       cp->state == IP_VS_TCP_S_ESTABLISHED) &&
--	      (pkts % sysctl_sync_period(ipvs)
--	       == sysctl_sync_threshold(ipvs))) ||
--	     ((cp->protocol == IPPROTO_TCP) && (cp->old_state != cp->state) &&
--	      ((cp->state == IP_VS_TCP_S_FIN_WAIT) ||
--	       (cp->state == IP_VS_TCP_S_CLOSE) ||
--	       (cp->state == IP_VS_TCP_S_CLOSE_WAIT) ||
--	       (cp->state == IP_VS_TCP_S_TIME_WAIT)))))
--		ip_vs_sync_conn(net, cp);
--out:
--	cp->old_state = cp->state;
-+	if (ipvs->sync_state & IP_VS_STATE_MASTER)
-+		ip_vs_sync_conn(net, cp, pkts);
- 
- 	ip_vs_conn_put(cp);
- 	return ret;
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 854e9a6..83bdbbc 100644
+index b8d0df7..854e9a6 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1599,6 +1599,10 @@ static int ip_vs_zero_all(struct net *net)
- }
- 
- #ifdef CONFIG_SYSCTL
-+
-+static int zero;
-+static int three = 3;
-+
- static int
- proc_do_defense_mode(ctl_table *table, int write,
- 		     void __user *buffer, size_t *lenp, loff_t *ppos)
-@@ -1632,7 +1636,8 @@ proc_do_sync_threshold(ctl_table *table, int write,
- 	memcpy(val, valp, sizeof(val));
- 
- 	rc = proc_dointvec(table, write, buffer, lenp, ppos);
--	if (write && (valp[0] < 0 || valp[1] < 0 || valp[0] >= valp[1])) {
-+	if (write && (valp[0] < 0 || valp[1] < 0 ||
-+	    (valp[0] >= valp[1] && valp[1]))) {
- 		/* Restore the correct value */
- 		memcpy(valp, val, sizeof(val));
- 	}
-@@ -1755,6 +1760,20 @@ static struct ctl_table vs_vars[] = {
- 		.proc_handler	= proc_do_sync_threshold,
+@@ -1718,6 +1718,18 @@ static struct ctl_table vs_vars[] = {
+ 		.proc_handler	= &proc_do_sync_mode,
  	},
  	{
-+		.procname	= "sync_refresh_period",
++		.procname	= "sync_qlen_max",
 +		.maxlen		= sizeof(int),
 +		.mode		= 0644,
-+		.proc_handler	= proc_dointvec_jiffies,
++		.proc_handler	= proc_dointvec,
 +	},
 +	{
-+		.procname	= "sync_retries",
++		.procname	= "sync_sock_size",
 +		.maxlen		= sizeof(int),
 +		.mode		= 0644,
-+		.proc_handler	= proc_dointvec_minmax,
-+		.extra1		= &zero,
-+		.extra2		= &three,
++		.proc_handler	= proc_dointvec,
 +	},
 +	{
- 		.procname	= "nat_icmp_send",
+ 		.procname	= "cache_bypass",
  		.maxlen		= sizeof(int),
  		.mode		= 0644,
-@@ -3685,6 +3704,10 @@ int __net_init ip_vs_control_net_init_sysctl(struct net *net)
- 	ipvs->sysctl_sync_threshold[1] = DEFAULT_SYNC_PERIOD;
- 	tbl[idx].data = &ipvs->sysctl_sync_threshold;
- 	tbl[idx++].maxlen = sizeof(ipvs->sysctl_sync_threshold);
-+	ipvs->sysctl_sync_refresh_period = DEFAULT_SYNC_REFRESH_PERIOD;
-+	tbl[idx++].data = &ipvs->sysctl_sync_refresh_period;
-+	ipvs->sysctl_sync_retries = clamp_t(int, DEFAULT_SYNC_RETRIES, 0, 3);
-+	tbl[idx++].data = &ipvs->sysctl_sync_retries;
- 	tbl[idx++].data = &ipvs->sysctl_nat_icmp_send;
- 
- 
+@@ -3662,6 +3674,10 @@ int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	tbl[idx++].data = &ipvs->sysctl_snat_reroute;
+ 	ipvs->sysctl_sync_ver = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_ver;
++	ipvs->sysctl_sync_qlen_max = nr_free_buffer_pages() / 32;
++	tbl[idx++].data = &ipvs->sysctl_sync_qlen_max;
++	ipvs->sysctl_sync_sock_size = 0;
++	tbl[idx++].data = &ipvs->sysctl_sync_sock_size;
+ 	tbl[idx++].data = &ipvs->sysctl_cache_bypass;
+ 	tbl[idx++].data = &ipvs->sysctl_expire_nodest_conn;
+ 	tbl[idx++].data = &ipvs->sysctl_expire_quiescent_template;
 diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index eafc1d2..4aa9290 100644
+index eeed767..eafc1d2 100644
 --- a/net/netfilter/ipvs/ip_vs_sync.c
 +++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -451,11 +451,94 @@ ip_vs_sync_buff_create_v0(struct netns_ipvs *ipvs)
- 	return sb;
+@@ -307,11 +307,15 @@ static inline struct ip_vs_sync_buff *sb_dequeue(struct netns_ipvs *ipvs)
+ 	spin_lock_bh(&ipvs->sync_lock);
+ 	if (list_empty(&ipvs->sync_queue)) {
+ 		sb = NULL;
++		__set_current_state(TASK_INTERRUPTIBLE);
+ 	} else {
+ 		sb = list_entry(ipvs->sync_queue.next,
+ 				struct ip_vs_sync_buff,
+ 				list);
+ 		list_del(&sb->list);
++		ipvs->sync_queue_len--;
++		if (!ipvs->sync_queue_len)
++			ipvs->sync_queue_delay = 0;
+ 	}
+ 	spin_unlock_bh(&ipvs->sync_lock);
+ 
+@@ -358,9 +362,16 @@ static inline void sb_queue_tail(struct netns_ipvs *ipvs)
+ 	struct ip_vs_sync_buff *sb = ipvs->sync_buff;
+ 
+ 	spin_lock(&ipvs->sync_lock);
+-	if (ipvs->sync_state & IP_VS_STATE_MASTER)
++	if (ipvs->sync_state & IP_VS_STATE_MASTER &&
++	    ipvs->sync_queue_len < sysctl_sync_qlen_max(ipvs)) {
++		if (!ipvs->sync_queue_len)
++			schedule_delayed_work(&ipvs->master_wakeup_work,
++					      max(IPVS_SYNC_SEND_DELAY, 1));
++		ipvs->sync_queue_len++;
+ 		list_add_tail(&sb->list, &ipvs->sync_queue);
+-	else
++		if ((++ipvs->sync_queue_delay) == IPVS_SYNC_WAKEUP_RATE)
++			wake_up_process(ipvs->master_thread);
++	} else
+ 		ip_vs_sync_buff_release(sb);
+ 	spin_unlock(&ipvs->sync_lock);
+ }
+@@ -379,6 +390,7 @@ get_curr_sync_buff(struct netns_ipvs *ipvs, unsigned long time)
+ 	    time_after_eq(jiffies - ipvs->sync_buff->firstuse, time)) {
+ 		sb = ipvs->sync_buff;
+ 		ipvs->sync_buff = NULL;
++		__set_current_state(TASK_RUNNING);
+ 	} else
+ 		sb = NULL;
+ 	spin_unlock_bh(&ipvs->sync_buff_lock);
+@@ -392,26 +404,23 @@ get_curr_sync_buff(struct netns_ipvs *ipvs, unsigned long time)
+ void ip_vs_sync_switch_mode(struct net *net, int mode)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct ip_vs_sync_buff *sb;
+ 
++	spin_lock_bh(&ipvs->sync_buff_lock);
+ 	if (!(ipvs->sync_state & IP_VS_STATE_MASTER))
+-		return;
+-	if (mode == sysctl_sync_ver(ipvs) || !ipvs->sync_buff)
+-		return;
++		goto unlock;
++	sb = ipvs->sync_buff;
++	if (mode == sysctl_sync_ver(ipvs) || !sb)
++		goto unlock;
+ 
+-	spin_lock_bh(&ipvs->sync_buff_lock);
+ 	/* Buffer empty ? then let buf_create do the job  */
+-	if (ipvs->sync_buff->mesg->size <=  sizeof(struct ip_vs_sync_mesg)) {
+-		kfree(ipvs->sync_buff);
++	if (sb->mesg->size <= sizeof(struct ip_vs_sync_mesg)) {
++		ip_vs_sync_buff_release(sb);
+ 		ipvs->sync_buff = NULL;
+-	} else {
+-		spin_lock_bh(&ipvs->sync_lock);
+-		if (ipvs->sync_state & IP_VS_STATE_MASTER)
+-			list_add_tail(&ipvs->sync_buff->list,
+-				      &ipvs->sync_queue);
+-		else
+-			ip_vs_sync_buff_release(ipvs->sync_buff);
+-		spin_unlock_bh(&ipvs->sync_lock);
+-	}
++	} else
++		sb_queue_tail(ipvs);
++
++unlock:
+ 	spin_unlock_bh(&ipvs->sync_buff_lock);
  }
  
-+/* Check if conn should be synced.
-+ * pkts: conn packets, use sysctl_sync_threshold to avoid packet check
-+ * - (1) sync_refresh_period: reduce sync rate. Additionally, retry
-+ *	sync_retries times with period of sync_refresh_period/8
-+ * - (2) if both sync_refresh_period and sync_period are 0 send sync only
-+ *	for state changes or only once when pkts matches sync_threshold
-+ * - (3) templates: rate can be reduced only with sync_refresh_period or
-+ *	with (2)
+@@ -1130,6 +1139,28 @@ static void ip_vs_process_message(struct net *net, __u8 *buffer,
+ 
+ 
+ /*
++ *      Setup sndbuf (mode=1) or rcvbuf (mode=0)
 + */
-+static int ip_vs_sync_conn_needed(struct netns_ipvs *ipvs,
-+				  struct ip_vs_conn *cp, int pkts)
++static void set_sock_size(struct sock *sk, int mode, int val)
 +{
-+	unsigned long orig = ACCESS_ONCE(cp->sync_endtime);
-+	unsigned long now = jiffies;
-+	unsigned long n = (now + cp->timeout) & ~3UL;
-+	unsigned int sync_refresh_period;
-+	int sync_period;
-+	int force;
-+
-+	/* Check if we sync in current state */
-+	if (unlikely(cp->flags & IP_VS_CONN_F_TEMPLATE))
-+		force = 0;
-+	else if (likely(cp->protocol == IPPROTO_TCP)) {
-+		if (!((1 << cp->state) &
-+		      ((1 << IP_VS_TCP_S_ESTABLISHED) |
-+		       (1 << IP_VS_TCP_S_FIN_WAIT) |
-+		       (1 << IP_VS_TCP_S_CLOSE) |
-+		       (1 << IP_VS_TCP_S_CLOSE_WAIT) |
-+		       (1 << IP_VS_TCP_S_TIME_WAIT))))
-+			return 0;
-+		force = cp->state != cp->old_state;
-+		if (force && cp->state != IP_VS_TCP_S_ESTABLISHED)
-+			goto set;
-+	} else if (unlikely(cp->protocol == IPPROTO_SCTP)) {
-+		if (!((1 << cp->state) &
-+		      ((1 << IP_VS_SCTP_S_ESTABLISHED) |
-+		       (1 << IP_VS_SCTP_S_CLOSED) |
-+		       (1 << IP_VS_SCTP_S_SHUT_ACK_CLI) |
-+		       (1 << IP_VS_SCTP_S_SHUT_ACK_SER))))
-+			return 0;
-+		force = cp->state != cp->old_state;
-+		if (force && cp->state != IP_VS_SCTP_S_ESTABLISHED)
-+			goto set;
++	/* setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &val, sizeof(val)); */
++	/* setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &val, sizeof(val)); */
++	lock_sock(sk);
++	if (mode) {
++		val = clamp_t(int, val, (SOCK_MIN_SNDBUF + 1) / 2,
++			      sysctl_wmem_max);
++		sk->sk_sndbuf = val * 2;
++		sk->sk_userlocks |= SOCK_SNDBUF_LOCK;
 +	} else {
-+		/* UDP or another protocol with single state */
-+		force = 0;
++		val = clamp_t(int, val, (SOCK_MIN_RCVBUF + 1) / 2,
++			      sysctl_rmem_max);
++		sk->sk_rcvbuf = val * 2;
++		sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
 +	}
-+
-+	sync_refresh_period = sysctl_sync_refresh_period(ipvs);
-+	if (sync_refresh_period > 0) {
-+		long diff = n - orig;
-+		long min_diff = max(cp->timeout >> 1, 10UL * HZ);
-+
-+		/* Avoid sync if difference is below sync_refresh_period
-+		 * and below the half timeout.
-+		 */
-+		if (abs(diff) < min_t(long, sync_refresh_period, min_diff)) {
-+			int retries = orig & 3;
-+
-+			if (retries >= sysctl_sync_retries(ipvs))
-+				return 0;
-+			if (time_before(now, orig - cp->timeout +
-+					(sync_refresh_period >> 3)))
-+				return 0;
-+			n |= retries + 1;
-+		}
-+	}
-+	sync_period = sysctl_sync_period(ipvs);
-+	if (sync_period > 0) {
-+		if (!(cp->flags & IP_VS_CONN_F_TEMPLATE) &&
-+		    pkts % sync_period != sysctl_sync_threshold(ipvs))
-+			return 0;
-+	} else if (sync_refresh_period <= 0 &&
-+		   pkts != sysctl_sync_threshold(ipvs))
-+		return 0;
-+
-+set:
-+	cp->old_state = cp->state;
-+	n = cmpxchg(&cp->sync_endtime, orig, n);
-+	return n == orig || force;
++	release_sock(sk);
 +}
 +
- /*
-  *      Version 0 , could be switched in by sys_ctl.
-  *      Add an ip_vs_conn information into the current sync_buff.
++/*
+  *      Setup loopback of outgoing multicasts on a sending socket
   */
--void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp)
-+static void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp,
-+			       int pkts)
+ static void set_mcast_loop(struct sock *sk, u_char loop)
+@@ -1305,6 +1336,9 @@ static struct socket *make_send_sock(struct net *net)
+ 
+ 	set_mcast_loop(sock->sk, 0);
+ 	set_mcast_ttl(sock->sk, 1);
++	result = sysctl_sync_sock_size(ipvs);
++	if (result > 0)
++		set_sock_size(sock->sk, 1, result);
+ 
+ 	result = bind_mcastif_addr(sock, ipvs->master_mcast_ifn);
+ 	if (result < 0) {
+@@ -1350,6 +1384,9 @@ static struct socket *make_receive_sock(struct net *net)
+ 	sk_change_net(sock->sk, net);
+ 	/* it is equivalent to the REUSEADDR option in user-space */
+ 	sock->sk->sk_reuse = 1;
++	result = sysctl_sync_sock_size(ipvs);
++	if (result > 0)
++		set_sock_size(sock->sk, 0, result);
+ 
+ 	result = sock->ops->bind(sock, (struct sockaddr *) &mcast_addr,
+ 			sizeof(struct sockaddr));
+@@ -1392,18 +1429,22 @@ ip_vs_send_async(struct socket *sock, const char *buffer, const size_t length)
+ 	return len;
+ }
+ 
+-static void
++static int
+ ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg *msg)
  {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_mesg_v0 *m;
-@@ -468,6 +551,9 @@ void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp)
- 	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
- 		return;
+ 	int msize;
++	int ret;
  
-+	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
-+		return;
+ 	msize = msg->size;
+ 
+ 	/* Put size in network byte order */
+ 	msg->size = htons(msg->size);
+ 
+-	if (ip_vs_send_async(sock, (char *)msg, msize) != msize)
+-		pr_err("ip_vs_send_async error\n");
++	ret = ip_vs_send_async(sock, (char *)msg, msize);
++	if (ret >= 0 || ret == -EAGAIN)
++		return ret;
++	pr_err("ip_vs_send_async error %d\n", ret);
++	return 0;
+ }
+ 
+ static int
+@@ -1428,36 +1469,75 @@ ip_vs_receive(struct socket *sock, char *buffer, const size_t buflen)
+ 	return len;
+ }
+ 
++/* Wakeup the master thread for sending */
++static void master_wakeup_work_handler(struct work_struct *work)
++{
++	struct netns_ipvs *ipvs = container_of(work, struct netns_ipvs,
++					       master_wakeup_work.work);
 +
- 	spin_lock(&ipvs->sync_buff_lock);
- 	if (!ipvs->sync_buff) {
- 		ipvs->sync_buff =
-@@ -513,8 +599,14 @@ void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp)
- 	spin_unlock(&ipvs->sync_buff_lock);
- 
- 	/* synchronize its controller if it has */
--	if (cp->control)
--		ip_vs_sync_conn(net, cp->control);
-+	cp = cp->control;
-+	if (cp) {
-+		if (cp->flags & IP_VS_CONN_F_TEMPLATE)
-+			pkts = atomic_add_return(1, &cp->in_pkts);
-+		else
-+			pkts = sysctl_sync_threshold(ipvs);
-+		ip_vs_sync_conn(net, cp->control, pkts);
++	spin_lock_bh(&ipvs->sync_lock);
++	if (ipvs->sync_queue_len &&
++	    ipvs->sync_queue_delay < IPVS_SYNC_WAKEUP_RATE) {
++		ipvs->sync_queue_delay = IPVS_SYNC_WAKEUP_RATE;
++		wake_up_process(ipvs->master_thread);
 +	}
- }
- 
- /*
-@@ -522,7 +614,7 @@ void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp)
-  *      Called by ip_vs_in.
-  *      Sending Version 1 messages
-  */
--void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp)
-+void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp, int pkts)
- {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_mesg *m;
-@@ -532,13 +624,16 @@ void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp)
- 
- 	/* Handle old version of the protocol */
- 	if (sysctl_sync_ver(ipvs) == 0) {
--		ip_vs_sync_conn_v0(net, cp);
-+		ip_vs_sync_conn_v0(net, cp, pkts);
- 		return;
- 	}
- 	/* Do not sync ONE PACKET */
- 	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
- 		goto control;
- sloop:
-+	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
-+		goto control;
++	spin_unlock_bh(&ipvs->sync_lock);
++}
 +
- 	/* Sanity checks */
- 	pe_name_len = 0;
- 	if (cp->pe_data_len) {
-@@ -653,16 +748,10 @@ control:
- 	cp = cp->control;
- 	if (!cp)
- 		return;
--	/*
--	 * Reduce sync rate for templates
--	 * i.e only increment in_pkts for Templates.
--	 */
--	if (cp->flags & IP_VS_CONN_F_TEMPLATE) {
--		int pkts = atomic_add_return(1, &cp->in_pkts);
--
--		if (pkts % sysctl_sync_period(ipvs) != 1)
--			return;
--	}
-+	if (cp->flags & IP_VS_CONN_F_TEMPLATE)
-+		pkts = atomic_add_return(1, &cp->in_pkts);
-+	else
-+		pkts = sysctl_sync_threshold(ipvs);
- 	goto sloop;
- }
- 
-@@ -1494,7 +1583,7 @@ next_sync_buff(struct netns_ipvs *ipvs)
- 	if (sb)
- 		return sb;
- 	/* Do not delay entries in buffer for more than 2 seconds */
--	return get_curr_sync_buff(ipvs, 2 * HZ);
-+	return get_curr_sync_buff(ipvs, IPVS_SYNC_FLUSH_TIME);
- }
++/* Get next buffer to send */
++static inline struct ip_vs_sync_buff *
++next_sync_buff(struct netns_ipvs *ipvs)
++{
++	struct ip_vs_sync_buff *sb;
++
++	sb = sb_dequeue(ipvs);
++	if (sb)
++		return sb;
++	/* Do not delay entries in buffer for more than 2 seconds */
++	return get_curr_sync_buff(ipvs, 2 * HZ);
++}
  
  static int sync_thread_master(void *data)
+ {
+ 	struct ip_vs_sync_thread_data *tinfo = data;
+ 	struct netns_ipvs *ipvs = net_ipvs(tinfo->net);
++	struct sock *sk = tinfo->sock->sk;
+ 	struct ip_vs_sync_buff *sb;
+ 
+ 	pr_info("sync thread started: state = MASTER, mcast_ifn = %s, "
+ 		"syncid = %d\n",
+ 		ipvs->master_mcast_ifn, ipvs->master_syncid);
+ 
+-	while (!kthread_should_stop()) {
+-		while ((sb = sb_dequeue(ipvs))) {
+-			ip_vs_send_sync_msg(tinfo->sock, sb->mesg);
+-			ip_vs_sync_buff_release(sb);
++	for (;;) {
++		sb = next_sync_buff(ipvs);
++		if (unlikely(kthread_should_stop()))
++			break;
++		if (!sb) {
++			schedule_timeout(IPVS_SYNC_CHECK_PERIOD);
++			continue;
+ 		}
+-
+-		/* check if entries stay in ipvs->sync_buff for 2 seconds */
+-		sb = get_curr_sync_buff(ipvs, 2 * HZ);
+-		if (sb) {
+-			ip_vs_send_sync_msg(tinfo->sock, sb->mesg);
+-			ip_vs_sync_buff_release(sb);
++		while (ip_vs_send_sync_msg(tinfo->sock, sb->mesg) < 0) {
++			int ret = 0;
++
++			__wait_event_interruptible(*sk_sleep(sk),
++						   sock_writeable(sk) ||
++						   kthread_should_stop(),
++						   ret);
++			if (unlikely(kthread_should_stop()))
++				goto done;
+ 		}
+-
+-		schedule_timeout_interruptible(HZ);
++		ip_vs_sync_buff_release(sb);
+ 	}
+ 
++done:
++	__set_current_state(TASK_RUNNING);
++	if (sb)
++		ip_vs_sync_buff_release(sb);
++
+ 	/* clean up the sync_buff queue */
+ 	while ((sb = sb_dequeue(ipvs)))
+ 		ip_vs_sync_buff_release(sb);
++	__set_current_state(TASK_RUNNING);
+ 
+ 	/* clean up the current sync_buff */
+ 	sb = get_curr_sync_buff(ipvs, 0);
+@@ -1538,6 +1618,10 @@ int start_sync_thread(struct net *net, int state, char *mcast_ifn, __u8 syncid)
+ 		realtask = &ipvs->master_thread;
+ 		name = "ipvs_master:%d";
+ 		threadfn = sync_thread_master;
++		ipvs->sync_queue_len = 0;
++		ipvs->sync_queue_delay = 0;
++		INIT_DELAYED_WORK(&ipvs->master_wakeup_work,
++				  master_wakeup_work_handler);
+ 		sock = make_send_sock(net);
+ 	} else if (state == IP_VS_STATE_BACKUP) {
+ 		if (ipvs->backup_thread)
+@@ -1623,6 +1707,7 @@ int stop_sync_thread(struct net *net, int state)
+ 		spin_lock_bh(&ipvs->sync_lock);
+ 		ipvs->sync_state &= ~IP_VS_STATE_MASTER;
+ 		spin_unlock_bh(&ipvs->sync_lock);
++		cancel_delayed_work_sync(&ipvs->master_wakeup_work);
+ 		retc = kthread_stop(ipvs->master_thread);
+ 		ipvs->master_thread = NULL;
+ 	} else if (state == IP_VS_STATE_BACKUP) {
 -- 
 1.7.10
-
