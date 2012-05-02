@@ -1,31 +1,26 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [ANNOUNCE] ipvs and ipvs-next trees rebased
-Date: Wed, 2 May 2012 10:33:30 +0900
-Message-ID: <20120502013329.GB20415@verge.net.au>
+Subject: Re: [PATCH v3 2/2] netfilter: ipvs: use GFP_KERNEL allocation where
+ possible
+Date: Wed, 2 May 2012 10:19:50 +0900
+Message-ID: <20120502011949.GA20415@verge.net.au>
+References: <1334421467-30313-1-git-send-email-levinsasha928@gmail.com>
+ <1334421467-30313-2-git-send-email-levinsasha928@gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <1334421467-30313-2-git-send-email-levinsasha928@gmail.com>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org
-Cc: Julian Anastasov <ja@ssi.bg>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: wensong@linux-vs.org, ja@ssi.bg, kaber@trash.net, davem@davemloft.net, davej@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Hi,
+On Sat, Apr 14, 2012 at 12:37:47PM -0400, Sasha Levin wrote:
+> Use GFP_KERNEL instead of GFP_ATOMIC when registering an ipvs protocol.
+> 
+> This is safe since it will always run from a process context.
 
-I have rebased my ipvs tree on kernel.org to reflect that the patches
-have been added to Pablo's net tree.
+For the benefit of patchwork, this patch is in ipvs-next.
 
-The current head of the master branch is now:
-
-116a0fc netem: fix possible skb leak
-
-
-I have also rebased my ipvs-net tree on kernel.org in order to provide a pull
-request for Pablo based on his net-next tree.
-
-The current head of the master branch is now:
-
-f0cb1db IPVS: ip_vs_proto.c: local functions should not be exposed globally
-
+Thanks again for the good work.
