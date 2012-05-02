@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 01/17] ipvs: timeout tables do not need GFP_ATOMIC allocation
-Date: Wed,  2 May 2012 10:24:45 +0900
-Message-ID: <1335921901-21284-2-git-send-email-horms@verge.net.au>
+Subject: [PATCH 05/17] ipvs: LBLCR scheduler does not need GFP_ATOMIC allocation on init
+Date: Wed,  2 May 2012 10:24:49 +0900
+Message-ID: <1335921901-21284-6-git-send-email-horms@verge.net.au>
 References: <1335921901-21284-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1335921901-21284-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,28 +15,28 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-	They are called only on initialization.
+	Schedulers are initialized and bound to services only
+on commands.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_proto.c |    2 +-
+ net/netfilter/ipvs/ip_vs_lblcr.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-index 6eda11d..a981b7c 100644
---- a/net/netfilter/ipvs/ip_vs_proto.c
-+++ b/net/netfilter/ipvs/ip_vs_proto.c
-@@ -196,7 +196,7 @@ void ip_vs_protocol_timeout_change(struct netns_ipvs *ipvs, int flags)
- int *
- ip_vs_create_timeout_table(int *table, int size)
- {
--	return kmemdup(table, size, GFP_ATOMIC);
-+	return kmemdup(table, size, GFP_KERNEL);
- }
- 
+diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+index 7498756..00906ea 100644
+--- a/net/netfilter/ipvs/ip_vs_lblcr.c
++++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+@@ -511,7 +511,7 @@ static int ip_vs_lblcr_init_svc(struct ip_vs_service *svc)
+ 	/*
+ 	 *    Allocate the ip_vs_lblcr_table for this service
+ 	 */
+-	tbl = kmalloc(sizeof(*tbl), GFP_ATOMIC);
++	tbl = kmalloc(sizeof(*tbl), GFP_KERNEL);
+ 	if (tbl == NULL)
+ 		return -ENOMEM;
  
 -- 
 1.7.9.5
-
