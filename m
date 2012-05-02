@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 04/18] ipvs: WRR scheduler does not need GFP_ATOMIC allocation
-Date: Wed,  2 May 2012 15:22:28 +0900
-Message-ID: <1335939762-1912-5-git-send-email-horms@verge.net.au>
+Subject: [PATCH 02/18] ipvs: LBLC scheduler does not need GFP_ATOMIC allocation on init
+Date: Wed,  2 May 2012 15:22:26 +0900
+Message-ID: <1335939762-1912-3-git-send-email-horms@verge.net.au>
 References: <1335939762-1912-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1335939762-1912-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -22,22 +22,21 @@ Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_wrr.c |    2 +-
+ net/netfilter/ipvs/ip_vs_lblc.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_wrr.c b/net/netfilter/ipvs/ip_vs_wrr.c
-index fd0d4e0..231be7d 100644
---- a/net/netfilter/ipvs/ip_vs_wrr.c
-+++ b/net/netfilter/ipvs/ip_vs_wrr.c
-@@ -84,7 +84,7 @@ static int ip_vs_wrr_init_svc(struct ip_vs_service *svc)
+diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+index 27c24f1..7ba1672 100644
+--- a/net/netfilter/ipvs/ip_vs_lblc.c
++++ b/net/netfilter/ipvs/ip_vs_lblc.c
+@@ -342,7 +342,7 @@ static int ip_vs_lblc_init_svc(struct ip_vs_service *svc)
  	/*
- 	 *    Allocate the mark variable for WRR scheduling
+ 	 *    Allocate the ip_vs_lblc_table for this service
  	 */
--	mark = kmalloc(sizeof(struct ip_vs_wrr_mark), GFP_ATOMIC);
-+	mark = kmalloc(sizeof(struct ip_vs_wrr_mark), GFP_KERNEL);
- 	if (mark == NULL)
+-	tbl = kmalloc(sizeof(*tbl), GFP_ATOMIC);
++	tbl = kmalloc(sizeof(*tbl), GFP_KERNEL);
+ 	if (tbl == NULL)
  		return -ENOMEM;
  
 -- 
 1.7.10
-
