@@ -1,42 +1,31 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 05/17] ipvs: LBLCR scheduler does not need GFP_ATOMIC allocation on init
-Date: Wed,  2 May 2012 10:24:49 +0900
-Message-ID: <1335921901-21284-6-git-send-email-horms@verge.net.au>
-References: <1335921901-21284-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1335921901-21284-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Subject: [ANNOUNCE] ipvs and ipvs-next trees rebased
+Date: Wed, 2 May 2012 10:33:30 +0900
+Message-ID: <20120502013329.GB20415@verge.net.au>
+Mime-Version: 1.0
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
+To: lvs-devel@vger.kernel.org
+Cc: Julian Anastasov <ja@ssi.bg>
 
-From: Julian Anastasov <ja@ssi.bg>
+Hi,
 
-	Schedulers are initialized and bound to services only
-on commands.
+I have rebased my ipvs tree on kernel.org to reflect that the patches
+have been added to Pablo's net tree.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_lblcr.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+The current head of the master branch is now:
 
-diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
-index 7498756..00906ea 100644
---- a/net/netfilter/ipvs/ip_vs_lblcr.c
-+++ b/net/netfilter/ipvs/ip_vs_lblcr.c
-@@ -511,7 +511,7 @@ static int ip_vs_lblcr_init_svc(struct ip_vs_service *svc)
- 	/*
- 	 *    Allocate the ip_vs_lblcr_table for this service
- 	 */
--	tbl = kmalloc(sizeof(*tbl), GFP_ATOMIC);
-+	tbl = kmalloc(sizeof(*tbl), GFP_KERNEL);
- 	if (tbl == NULL)
- 		return -ENOMEM;
- 
--- 
-1.7.9.5
+116a0fc netem: fix possible skb leak
+
+
+I have also rebased my ipvs-net tree on kernel.org in order to provide a pull
+request for Pablo based on his net-next tree.
+
+The current head of the master branch is now:
+
+f0cb1db IPVS: ip_vs_proto.c: local functions should not be exposed globally
+
