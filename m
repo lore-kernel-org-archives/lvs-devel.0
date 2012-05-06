@@ -1,43 +1,61 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 06/18] ipvs: SH scheduler does not need GFP_ATOMIC allocation
-Date: Wed,  2 May 2012 15:22:30 +0900
-Message-ID: <1335939762-1912-7-git-send-email-horms@verge.net.au>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH 18/18] export sysctl symbols needed by ip_vs_sync
+Date: Sun, 6 May 2012 22:54:12 +0200
+Message-ID: <20120506205412.GA22406@1984>
 References: <1335939762-1912-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1335939762-1912-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+ <1335939762-1912-19-git-send-email-horms@verge.net.au>
+Mime-Version: 1.0
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1335939762-1912-19-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
+To: davem@davemloft.net
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>
 
-From: Julian Anastasov <ja@ssi.bg>
+Hi David,
 
-        Schedulers are initialized and bound to services only
-on commands.
+The IPVS people needs this patch for net-next to allow to tune the
+socket buffer for ipvs_sync (the state synchronization that they do
+from kernel-space). This exports sysctl_wmem_max and sysctl_rmem_max
+living in net/core/sock.c. So far, they've been using global socket
+tuning to make them bigger (this avoids overruning the socket under
+high peak of state-change synchronization).
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_sh.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I think this is out of my scope (since it's out of the netfilter
+tree).
 
-diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-index 91e97ee..0512652 100644
---- a/net/netfilter/ipvs/ip_vs_sh.c
-+++ b/net/netfilter/ipvs/ip_vs_sh.c
-@@ -162,7 +162,7 @@ static int ip_vs_sh_init_svc(struct ip_vs_service *svc)
- 
- 	/* allocate the SH table for this service */
- 	tbl = kmalloc(sizeof(struct ip_vs_sh_bucket)*IP_VS_SH_TAB_SIZE,
--		      GFP_ATOMIC);
-+		      GFP_KERNEL);
- 	if (tbl == NULL)
- 		return -ENOMEM;
- 
--- 
-1.7.10
+Would you acknowledge it, please?
 
+On Wed, May 02, 2012 at 03:22:42PM +0900, Simon Horman wrote:
+> From: Hans Schillstrom <hans.schillstrom@ericsson.com>
+> 
+> To build ip_vs as a module sysctl_rmem_max and sysctl_wmem_max
+> needs to be exported.
+> The dependency was added by "ipvs: wakeup master thread" patch
+> 
+> Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+> Signed-off-by: Simon Horman <horms@verge.net.au>
+> ---
+>  net/core/sock.c |    2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/net/core/sock.c b/net/core/sock.c
+> index c7e60ea..ac3131a 100644
+> --- a/net/core/sock.c
+> +++ b/net/core/sock.c
+> @@ -258,7 +258,9 @@ static struct lock_class_key af_callback_keys[AF_MAX];
+>  
+>  /* Run time adjustable parameters. */
+>  __u32 sysctl_wmem_max __read_mostly = SK_WMEM_MAX;
+> +EXPORT_SYMBOL(sysctl_wmem_max);
+>  __u32 sysctl_rmem_max __read_mostly = SK_RMEM_MAX;
+> +EXPORT_SYMBOL(sysctl_rmem_max);
+>  __u32 sysctl_wmem_default __read_mostly = SK_WMEM_MAX;
+>  __u32 sysctl_rmem_default __read_mostly = SK_RMEM_MAX;
+>  
+> -- 
+> 1.7.10
+> 
