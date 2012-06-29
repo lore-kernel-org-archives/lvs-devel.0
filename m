@@ -1,24 +1,21 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
 Subject: Re: [RFC PATCH net-next] ipvs: add missing lock in
  ip_vs_ftp_init_conn()
-Date: Fri, 29 Jun 2012 03:17:33 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1206290225490.1722@ja.ssi.bg>
+Date: Fri, 29 Jun 2012 09:34:45 +0900
+Message-ID: <20120629003445.GB23521@verge.net.au>
 References: <1340890587-8169-1-git-send-email-xtfeng@gmail.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <1340890587-8169-1-git-send-email-xtfeng@gmail.com>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xiaotian Feng <xtfeng@gmail.com>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, Xiaotian Feng <dannyfeng@tencent.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, Xiaotian Feng <dannyfeng@tencent.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>
 
-
-	Hello,
-
-On Thu, 28 Jun 2012, Xiaotian Feng wrote:
-
+On Thu, Jun 28, 2012 at 09:36:27PM +0800, Xiaotian Feng wrote:
 > We met a kernel panic in 2.6.32.43 kernel:
 > 
 > [2680191.848044] IPVS: ip_vs_conn_hash(): request for already hashed, called from run_timer_softirq+0x175/0x1d0
@@ -58,17 +55,7 @@ On Thu, 28 Jun 2012, Xiaotian Feng wrote:
 > After code review, the only chance that kernel change connection flag without protection is
 > in ip_vs_ftp_init_conn().
 
-	Hm, ip_vs_ftp_init_conn is called before 1st hashing,
-from ip_vs_bind_app() in ip_vs_conn_new() before
-ip_vs_conn_hash(). It should be another problem with
-the flags. How different is IPVS in 2.6.32.43 compared to
-recent kernels? If commit aea9d711 is present, I'm not
-aware of other similar problems.
-
-	May be you can post some details for your setup on
-lvs-devel@vger.kernel.org. I assume FTP is used,
-what about master-backup sync? Can you confirm that
-this fix solves the problem or it happens in rare cases?
+Thanks for being thorough.
 
 > Signed-off-by: Xiaotian Feng <dannyfeng@tencent.com>
 > Cc: Wensong Zhang <wensong@linux-vs.org>
@@ -77,6 +64,12 @@ this fix solves the problem or it happens in rare cases?
 > Cc: Pablo Neira Ayuso <pablo@netfilter.org>
 > Cc: Patrick McHardy <kaber@trash.net>
 > Cc: "David S. Miller" <davem@davemloft.net> 
+
+Acked-by: Simon Horman <horms@verge.net.au>
+
+Pablo, can you handle this directly through your tree?
+I think it also needs to go to -stable.
+
 > ---
 >  net/netfilter/ipvs/ip_vs_ftp.c |    2 ++
 >  1 files changed, 2 insertions(+), 0 deletions(-)
@@ -95,11 +88,3 @@ this fix solves the problem or it happens in rare cases?
 > +	spin_unlock(&cp->lock);
 >  	return 0;
 >  }
->  
-> -- 
-> 1.7.1
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
