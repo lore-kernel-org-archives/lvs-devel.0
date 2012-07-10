@@ -1,89 +1,189 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [RFC PATCH net-next] ipvs: add missing lock in
- ip_vs_ftp_init_conn()
-Date: Tue, 10 Jul 2012 18:05:50 +0900
-Message-ID: <20120710090550.GC12776@verge.net.au>
-References: <1340890587-8169-1-git-send-email-xtfeng@gmail.com>
- <alpine.LFD.2.00.1207030952340.1749@ja.ssi.bg>
+Subject: Re: [GIT PULL net] IPVS
+Date: Tue, 10 Jul 2012 18:20:03 +0900
+Message-ID: <20120710092002.GE12776@verge.net.au>
+References: <1335488039-13471-1-git-send-email-horms@verge.net.au>
+ <20120430092722.GA6866@1984>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1207030952340.1749@ja.ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <20120430092722.GA6866@1984>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Xiaotian Feng <xtfeng@gmail.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, Xiaotian Feng <dannyfeng@tencent.com>, Wensong Zhang <wensong@linux-vs.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>
 
-On Tue, Jul 03, 2012 at 10:12:41AM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Thu, 28 Jun 2012, Xiaotian Feng wrote:
-> 
-> > We met a kernel panic in 2.6.32.43 kernel:
+On Mon, Apr 30, 2012 at 11:27:22AM +0200, Pablo Neira Ayuso wrote:
+> On Fri, Apr 27, 2012 at 09:53:54AM +0900, Simon Horman wrote:
+> > Hi Pablo,
 > > 
-> > [2680191.848044] IPVS: ip_vs_conn_hash(): request for already hashed, called from run_timer_softirq+0x175/0x1d0
-> > <snip>
-> > [2680311.849009] general protection fault: 0000 [#1] SMP
-> > [2680311.853001] RIP: 0010:[<ffffffff815f155c>]  [<ffffffff815f155c>] ip_vs_conn_expire+0xdc/0x2f0
-> > [2680311.853001] RSP: 0018:ffff880028303e70  EFLAGS: 00010202
-> > [2680311.853001] RAX: dead000000200200 RBX: ffff8801aad00b80 RCX: 0000000000001d90
-> > [2680311.853001] RDX: dead000000100100 RSI: 000000004fd59800 RDI: ffff8801aad00c08
-> > <snip>
-> > [2680311.853001] Call Trace:
-> > [2680311.853001]  <IRQ>
-> > [2680311.853001]  [<ffffffff815f1480>] ? ip_vs_conn_expire+0x0/0x2f0
-> > [2680311.853001]  [<ffffffff8104e2a5>] run_timer_softirq+0x175/0x1d0
-> > [2680311.853001]  [<ffffffff81021a48>] ? lapic_next_event+0x18/0x20
-> > [2680311.853001]  [<ffffffff81049a13>] __do_softirq+0xb3/0x150
-> > [2680311.853001]  [<ffffffff8100cc5c>] call_softirq+0x1c/0x30
-> > [2680311.853001]  [<ffffffff8100ea9a>] do_softirq+0x4a/0x80
-> > [2680311.853001]  [<ffffffff81049957>] irq_exit+0x77/0x80
-> > [2680311.853001]  [<ffffffff81021f2c>] smp_apic_timer_interrupt+0x6c/0xa0
-> > [2680311.853001]  [<ffffffff8100c633>] apic_timer_interrupt+0x13/0x20
-> > [2680311.853001]  <EOI>
-> > [2680311.853001]  [<ffffffff81013b52>] ? mwait_idle+0x52/0x70
-> > [2680311.853001]  [<ffffffff8100a7b0>] ? enter_idle+0x20/0x30
-> > [2680311.853001]  [<ffffffff8100ac62>] ? cpu_idle+0x52/0x80
-> > [2680311.853001]  [<ffffffff816d504d>] ? start_secondary+0x19d/0x280
-> > 
-> > rax and rdx is LIST_POISON1 and LIST_POISON2, so kernel is list_del() on an already deleted
-> > connection and result the general protect fault.
-> > 
-> > The "request for already hashed" warning, told us someone might change the connection flags
-> > incorrectly, like described in commit aea9d711, it changes the connection flags, but doesn't
-> > put the connection back to the list. So ip_vs_conn_hash() throw a warning and return.
-> > Later, when ip_vs_conn_expire fire again, ip_vs_conn_unhash() will find the HASHED connection
-> > and list_del() it, then kernel panic happened.
-> > 
-> > After code review, the only chance that kernel change connection flag without protection is
-> > in ip_vs_ftp_init_conn().
-> > 
-> > Signed-off-by: Xiaotian Feng <dannyfeng@tencent.com>
-> > Cc: Wensong Zhang <wensong@linux-vs.org>
-> > Cc: Simon Horman <horms@verge.net.au>
-> > Cc: Julian Anastasov <ja@ssi.bg>
-> > Cc: Pablo Neira Ayuso <pablo@netfilter.org>
-> > Cc: Patrick McHardy <kaber@trash.net>
-> > Cc: "David S. Miller" <davem@davemloft.net> 
+> > please consider the following 5 changes for 3.4, they are all bug fixes.
+> > I would also like these changes considered for stable.
 > 
-> 	For the fix below:
-> 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
-> 
-> 	Simon, the change looks ok. ip_vs_ftp_init_conn is called
-> from context where cp->lock is not locked (no double lock), so it
-> should be safe for the backup.
-> 
-> 	Only that the comment is not specifying that we
-> fix a problem in the backup server.
+> Please, ping me again once these have hit Linus tree to ask for
+> -stable submission.
 
-Thanks.
+Sorry for letting this slip through the cracks.
 
-I have pushed this to my ipvs branch and will see about getting it included in 3.5.
+Please consider the following commits which are in Linus's tree for stable.
+Or I can submit them directly if that is easier.
 
-It appears that this problem has been present since (at least) 2.6.37 and
-my feeling is that it is -stable material.
+There are 7 patches listed below. The first 5 were the patches in this
+pull request. The last two were patches in a git pull request
+a few days earlier.
+
+
+commit 8537de8a7ab6681cc72fb0411ab1ba7fdba62dd0
+Author: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Date:   Thu Apr 26 07:47:44 2012 +0200
+
+    ipvs: kernel oops - do_ip_vs_get_ctl
+    
+    Change order of init so netns init is ready
+    when register ioctl and netlink.
+    
+    Ver2
+    	Whitespace fixes and __init added.
+    
+    Reported-by: "Ryan O'Hara" <rohara@redhat.com>
+    Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+    Acked-by: Julian Anastasov <ja@ssi.bg>
+    Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+
+commit 582b8e3eadaec77788c1aa188081a8d5059c42a6
+Author: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Date:   Thu Apr 26 09:45:35 2012 +0200
+
+    ipvs: take care of return value from protocol init_netns
+    
+    ip_vs_create_timeout_table() can return NULL
+    All functions protocol init_netns is affected of this patch.
+    
+    Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+    Acked-by: Julian Anastasov <ja@ssi.bg>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+
+commit 4b984cd50bc1b6d492175cd77bfabb78e76ffa67
+Author: Hans Schillstrom <hans.schillstrom@ericsson.com>
+Date:   Thu Apr 26 09:45:34 2012 +0200
+
+    ipvs: null check of net->ipvs in lblc(r) shedulers
+    
+    Avoid crash when registering shedulers after
+    the IPVS core initialization for netns fails. Do this by
+    checking for present core (net->ipvs).
+    
+    Signed-off-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+    Acked-by: Julian Anastasov <ja@ssi.bg>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+
+commit 39f618b4fd95ae243d940ec64c961009c74e3333
+Author: Julian Anastasov <ja@ssi.bg>
+Date:   Wed Apr 25 00:29:58 2012 +0300
+
+    ipvs: reset ipvs pointer in netns
+    
+    	Make sure net->ipvs is reset on netns cleanup or failed
+    initialization. It is needed for IPVS applications to know that
+    IPVS core is not loaded in netns.
+    
+    Signed-off-by: Julian Anastasov <ja@ssi.bg>
+    Acked-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+
+commit 8d08d71ce59438a6ef06be5db07966e0c144b74e
+Author: Julian Anastasov <ja@ssi.bg>
+Date:   Wed Apr 25 00:29:59 2012 +0300
+
+    ipvs: add check in ftp for initialized core
+    
+    	Avoid crash when registering ip_vs_ftp after
+    the IPVS core initialization for netns fails. Do this by
+    checking for present core (net->ipvs).
+    
+    Signed-off-by: Julian Anastasov <ja@ssi.bg>
+    Acked-by: Hans Schillstrom <hans.schillstrom@ericsson.com>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+
+commit 8f9b9a2fad47af27e14b037395e03cd8278d96d7
+Author: Julian Anastasov <ja@ssi.bg>
+Date:   Fri Apr 13 18:08:43 2012 +0300
+
+    ipvs: fix crash in ip_vs_control_net_cleanup on unload
+    
+    	commit 14e405461e664b777e2a5636e10b2ebf36a686ec (2.6.39)
+    ("Add __ip_vs_control_{init,cleanup}_sysctl()")
+    introduced regression due to wrong __net_init for
+    __ip_vs_control_cleanup_sysctl. This leads to crash when
+    the ip_vs module is unloaded.
+    
+    	Fix it by changing __net_init to __net_exit for
+    the function that is already renamed to ip_vs_control_net_cleanup_sysctl.
+    
+    Signed-off-by: Julian Anastasov <ja@ssi.bg>
+    Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+    Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
+
+commit 7118c07a844d367560ee91adb2071bde2fabcdbf
+Author: Sasha Levin <levinsasha928@gmail.com>
+Date:   Sat Apr 14 12:37:46 2012 -0400
+
+    ipvs: Verify that IP_VS protocol has been registered
+    
+    The registration of a protocol might fail, there were no checks
+    and all registrations were assumed to be correct. This lead to
+    NULL ptr dereferences when apps tried registering.
+    
+    For example:
+    
+    [ 1293.226051] BUG: unable to handle kernel NULL pointer dereference at 0000000000000018
+    [ 1293.227038] IP: [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+    [ 1293.227038] PGD 391de067 PUD 6c20b067 PMD 0
+    [ 1293.227038] Oops: 0000 [#1] PREEMPT SMP
+    [ 1293.227038] CPU 1
+    [ 1293.227038] Pid: 19609, comm: trinity Tainted: G        W    3.4.0-rc1-next-20120405-sasha-dirty #57
+    [ 1293.227038] RIP: 0010:[<ffffffff822aacb0>]  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+    [ 1293.227038] RSP: 0018:ffff880038c1dd18  EFLAGS: 00010286
+    [ 1293.227038] RAX: ffffffffffffffc0 RBX: 0000000000001500 RCX: 0000000000010000
+    [ 1293.227038] RDX: 0000000000000000 RSI: ffff88003a2d5888 RDI: 0000000000000282
+    [ 1293.227038] RBP: ffff880038c1dd48 R08: 0000000000000000 R09: 0000000000000000
+    [ 1293.227038] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88003a2d5668
+    [ 1293.227038] R13: ffff88003a2d5988 R14: ffff8800696a8ff8 R15: 0000000000000000
+    [ 1293.227038] FS:  00007f01930d9700(0000) GS:ffff88007ce00000(0000) knlGS:0000000000000000
+    [ 1293.227038] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+    [ 1293.227038] CR2: 0000000000000018 CR3: 0000000065dfc000 CR4: 00000000000406e0
+    [ 1293.227038] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+    [ 1293.227038] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+    [ 1293.227038] Process trinity (pid: 19609, threadinfo ffff880038c1c000, task ffff88002dc73000)
+    [ 1293.227038] Stack:
+    [ 1293.227038]  ffff880038c1dd48 00000000fffffff4 ffff8800696aada0 ffff8800694f5580
+    [ 1293.227038]  ffffffff8369f1e0 0000000000001500 ffff880038c1dd98 ffffffff822a716b
+    [ 1293.227038]  0000000000000000 ffff8800696a8ff8 0000000000000015 ffff8800694f5580
+    [ 1293.227038] Call Trace:
+    [ 1293.227038]  [<ffffffff822a716b>] ip_vs_app_inc_new+0xdb/0x180
+    [ 1293.227038]  [<ffffffff822a7258>] register_ip_vs_app_inc+0x48/0x70
+    [ 1293.227038]  [<ffffffff822b2fea>] __ip_vs_ftp_init+0xba/0x140
+    [ 1293.227038]  [<ffffffff821c9060>] ops_init+0x80/0x90
+    [ 1293.227038]  [<ffffffff821c90cb>] setup_net+0x5b/0xe0
+    [ 1293.227038]  [<ffffffff821c9416>] copy_net_ns+0x76/0x100
+    [ 1293.227038]  [<ffffffff810dc92b>] create_new_namespaces+0xfb/0x190
+    [ 1293.227038]  [<ffffffff810dca21>] unshare_nsproxy_namespaces+0x61/0x80
+    [ 1293.227038]  [<ffffffff810afd1f>] sys_unshare+0xff/0x290
+    [ 1293.227038]  [<ffffffff8187622e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+    [ 1293.227038]  [<ffffffff82665539>] system_call_fastpath+0x16/0x1b
+    [ 1293.227038] Code: 89 c7 e8 34 91 3b 00 89 de 66 c1 ee 04 31 de 83 e6 0f 48 83 c6 22 48 c1 e6 04 4a 8b 14 26 49 8d 34 34 48 8d 42 c0 48 39 d6 74 13 <66> 39 58 58 74 22 48 8b 48 40 48 8d 41 c0 48 39 ce 75 ed 49 8d
+    [ 1293.227038] RIP  [<ffffffff822aacb0>] tcp_register_app+0x60/0xb0
+    [ 1293.227038]  RSP <ffff880038c1dd18>
+    [ 1293.227038] CR2: 0000000000000018
+    [ 1293.379284] ---[ end trace 364ab40c7011a009 ]---
+    [ 1293.381182] Kernel panic - not syncing: Fatal exception in interrupt
+    
+    Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+    Acked-by: Julian Anastasov <ja@ssi.bg>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+    Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
 
