@@ -1,12 +1,12 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 1/2] ipvs: ip_vs_ftp depends on nf_conntrack_ftp helper
-Date: Thu, 12 Jul 2012 22:43:22 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1207122238220.1831@ja.ssi.bg>
-References: <1341966327-16606-1-git-send-email-horms@verge.net.au> <1341966327-16606-2-git-send-email-horms@verge.net.au> <20120712153937.GB18793@1984>
+Subject: Re: [PATCH 2/2] ipvs: generalize app registration in netns
+Date: Thu, 12 Jul 2012 23:04:04 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1207122301360.1831@ja.ssi.bg>
+References: <1341966327-16606-1-git-send-email-horms@verge.net.au> <1341966327-16606-3-git-send-email-horms@verge.net.au> <20120712162209.GA21904@1984>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20120712153937.GB18793@1984>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20120712162209.GA21904@1984>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -18,39 +18,61 @@ Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.ke
 
 On Thu, 12 Jul 2012, Pablo Neira Ayuso wrote:
 
-> On Wed, Jul 11, 2012 at 09:25:26AM +0900, Simon Horman wrote:
-> > From: Julian Anastasov <ja@ssi.bg>
-> > 
-> > 	The FTP application indirectly depends on the
-> > nf_conntrack_ftp helper for proper NAT support. If the
-> > module is not loaded, IPVS can resize the packets for the
-> > command connection, eg. PASV response but the SEQ adjustment
-> > logic in ipv4_confirm is not called without helper.
-> > 
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > Signed-off-by: Simon Horman <horms@verge.net.au>
-> > ---
-> >  net/netfilter/ipvs/Kconfig | 3 ++-
-> >  1 file changed, 2 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-> > index f987138..8b2cffd 100644
-> > --- a/net/netfilter/ipvs/Kconfig
-> > +++ b/net/netfilter/ipvs/Kconfig
-> > @@ -250,7 +250,8 @@ comment 'IPVS application helper'
+> > +struct ip_vs_app *register_ip_vs_app(struct net *net, struct ip_vs_app *app)
+> >  {
+> >  	struct netns_ipvs *ipvs = net_ipvs(net);
+> > -	/* increase the module use count */
+> > -	ip_vs_use_count_inc();
+> > +	struct ip_vs_app *a;
+> > +	int err = 0;
+> > +
+> > +	if (!ipvs)
+> > +		return ERR_PTR(-ENOENT);
 > >  
-> >  config	IP_VS_FTP
-> >    	tristate "FTP protocol helper"
-> > -        depends on IP_VS_PROTO_TCP && NF_CONNTRACK && NF_NAT
-> > +	depends on IP_VS_PROTO_TCP && NF_CONNTRACK && NF_NAT && \
-> > +		NF_CONNTRACK_FTP
+> >  	mutex_lock(&__ip_vs_app_mutex);
+> >  
+> > -	list_add(&app->a_list, &ipvs->app_list);
+> > +	list_for_each_entry(a, &ipvs->app_list, a_list) {
+> > +		if (!strcmp(app->name, a->name)) {
+> > +			err = -EEXIST;
+> > +			break;
+> > +		}
+> > +	}
+> > +	if (!err) {
+> > +		a = kmemdup(app, sizeof(*app), GFP_KERNEL);
+> > +		if (!a)
+> > +			err = -ENOMEM;
+> > +	}
+> > +	if (!err) {
+> > +		INIT_LIST_HEAD(&a->incs_list);
+> > +		list_add(&a->a_list, &ipvs->app_list);
+> > +		/* increase the module use count */
+> > +		ip_vs_use_count_inc();
+> > +	}
 > 
-> If you require FTP NAT support, then this depends on NF_NAT_FTP
-> instead of NF_CONNTRACK_FTP.
+> I think this code will look better if you use something like:
+> 
+> +		if (!strcmp(app->name, a->name)) {
+> +			err = -EEXIST;
+> +			goto err_unlock;
+> +		}
+> 
+> err_unlock:
+>         mutex_unlock(...)
+> 
+> >  
+> >  	mutex_unlock(&__ip_vs_app_mutex);
+> >  
+> > -	return 0;
+> > +	if (err)
+> > +		return ERR_PTR(err);
+> > +	return a;
+> 
+> For this three lines above, you can use:
+> 
+> return err ? return ERR_PTR(err) : a;
 
-	No, I just checked again, it works without nf_nat_ftp,
-only nf_nat, nf_conntrack_ftp and iptable_nat are needed.
-We use packet mangling part from nf_nat (nf_nat_mangle_tcp_packet).
+	Good point, sending v2 ...
 
 Regards
 
