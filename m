@@ -1,51 +1,49 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH ipvsadm 2/2] Fallback to libpopt on shared object
-Date: Fri, 13 Jul 2012 11:48:46 +0300
-Message-ID: <1342169326-1911-3-git-send-email-ja@ssi.bg>
-References: <1342169326-1911-1-git-send-email-ja@ssi.bg>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH 2/3] ipvs: add missing lock in ip_vs_ftp_init_conn()
+Date: Mon, 16 Jul 2012 23:07:57 +0200
+Message-ID: <20120716210757.GA18026@1984>
+References: <1341965963-7275-1-git-send-email-horms@verge.net.au>
+ <1341965963-7275-3-git-send-email-horms@verge.net.au>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1342169326-1911-1-git-send-email-ja@ssi.bg>
+Content-Disposition: inline
+In-Reply-To: <1341965963-7275-3-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: Wensong Zhang <wensong@linux-vs.org>, lvs-devel@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Xiaotian Feng <xtfeng@gmail.com>, Xiaotian Feng <dannyfeng@tencent.com>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>
 
-	Use shared library if no static library is installed.
+Hi Simon,
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- Makefile |   15 +++++++++++++++
- 1 files changed, 15 insertions(+), 0 deletions(-)
+On Wed, Jul 11, 2012 at 09:19:22AM +0900, Simon Horman wrote:
+> From: Xiaotian Feng <xtfeng@gmail.com>
+> 
+> We met a kernel panic in 2.6.32.43 kernel:
+[...]
+>  net/netfilter/ipvs/ip_vs_ftp.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+> index b20b29c..c2bc264 100644
+> --- a/net/netfilter/ipvs/ip_vs_ftp.c
+> +++ b/net/netfilter/ipvs/ip_vs_ftp.c
+> @@ -65,8 +65,10 @@ static int ip_vs_ftp_pasv;
+>  static int
+>  ip_vs_ftp_init_conn(struct ip_vs_app *app, struct ip_vs_conn *cp)
+>  {
+> +	spin_lock(&cp->lock);
+>  	/* We use connection tracking for the command connection */
+>  	cp->flags |= IP_VS_CONN_F_NFCT;
+> +	spin_unlock(&cp->lock);
+>  	return 0;
 
-diff --git a/Makefile b/Makefile
-index e4e03cc..b411649 100644
---- a/Makefile
-+++ b/Makefile
-@@ -72,6 +72,21 @@ POPT_LIB = $(shell for i in $(LIB_SEARCH); do \
-     fi; \
-   fi; \
- done)
-+ifeq (,$(POPT_LIB))
-+POPT_LIB = $(shell for i in $(LIB_SEARCH); do \
-+  f1=""; \
-+  for so in $$i/libpopt.so*; do \
-+    if [ -f $$so ]; then \
-+      if objdump -T $$so | fgrep -q poptGetContext; then \
-+	  echo "-lpopt"; \
-+	  f1=y; \
-+	  break; \
-+      fi; \
-+    fi; \
-+  done; \
-+  [ "$$f1" != "" ] && break; \
-+done)
-+endif
- endif
- 
- ifneq (,$(POPT_LIB))
--- 
-1.7.3.4
+The conntrack support for FTP IPVS helper seems to be there since
+2.6.37.
 
+However, the patch description mentions 2.6.32.43.
+
+Something doesn't match here, could you clarify this?
+
+Thanks.
