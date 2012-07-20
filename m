@@ -1,22 +1,29 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH ipvsadm 0/2] Changes for ipvsadm
-Date: Wed, 18 Jul 2012 09:16:36 +0900
-Message-ID: <20120718001636.GE10971@verge.net.au>
-References: <1342169326-1911-1-git-send-email-ja@ssi.bg>
- <20120717001201.GA23121@verge.net.au>
- <CAHWFoux81rOetCST7ZbC7dCps=QZh7XV2LZhNa8ES0gQyj5RbA@mail.gmail.com>
-Mime-Version: 1.0
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCH 0/2] Changes for PMTU Discovery
+Date: Fri, 20 Jul 2012 11:59:51 +0300
+Message-ID: <1342774793-29234-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAHWFoux81rOetCST7ZbC7dCps=QZh7XV2LZhNa8ES0gQyj5RbA@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wensong Zhang <wensong@linux-vs.org>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org
 
-On Wed, Jul 18, 2012 at 12:07:50AM +0800, Wensong Zhang wrote:
-> Hi Horms, I have no problem, please convert ipvsadm svn repository to git.
+	This patchset implements PMTU Discovery for TUN
+packets and option to disable it.
 
-Thanks, will do.
+Julian Anastasov (2):
+  ipvs: implement passive PMTUD for IPIP packets
+  ipvs: add pmtu_disc option to disable IP DF for TUN packets
+
+ include/net/ip_vs.h             |   11 +++++
+ net/netfilter/ipvs/ip_vs_core.c |   76 ++++++++++++++++++++++++++++++++++-
+ net/netfilter/ipvs/ip_vs_ctl.c  |    8 ++++
+ net/netfilter/ipvs/ip_vs_xmit.c |   83 ++++++++++++++++++++++++++------------
+ 4 files changed, 149 insertions(+), 29 deletions(-)
+
+-- 
+1.7.3.4
+
