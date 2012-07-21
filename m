@@ -1,317 +1,85 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH 1/2] ipvs: implement passive PMTUD for IPIP packets
-Date: Fri, 20 Jul 2012 11:59:52 +0300
-Message-ID: <1342774793-29234-2-git-send-email-ja@ssi.bg>
-References: <1342774793-29234-1-git-send-email-ja@ssi.bg>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1342774793-29234-1-git-send-email-ja@ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: [PATCH] b44: add 64 bit stats
+Date: Sat, 21 Jul 2012 07:09:36 +0200
+Message-ID: <1342847376.2626.8162.camel@edumazet-glaptop>
+References: <CABF+-6XaYk8qXnFNXF_+rQ144jyDFgFqDVKsuZv+S_0VZxBAvw@mail.gmail.com>
+	 <1342337165.3265.10640.camel@edumazet-glaptop>
+	 <CABF+-6XVCTDZedzcp-gWACYpG9NLmZUdwW2zsXC8WNKWk3dE5w@mail.gmail.com>
+	 <1342759989.2626.5472.camel@edumazet-glaptop>
+	 <1342761865.2626.5572.camel@edumazet-glaptop>
+	 <CABF+-6Ubh6rSYV=L8-QV466XNo5OqCxA+4DRqXGdELhnSPkPZQ@mail.gmail.com>
+	 <CABF+-6XGO0Qvqd1O-aY28kG1jV=L6eRcupnZpaimTunddPwL2A@mail.gmail.com>
+Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=subject:from:to:cc:in-reply-to:references:content-type:date
+         :message-id:mime-version:x-mailer:content-transfer-encoding;
+        bh=INEEZz5jJ3aICJYbvmjIf3vk9D+Qdoqybi2PI35DaF0=;
+        b=J93X8paMwTAG/fmcq+eUcaBcxFY16KRx+qZKP5NY/FJ1v7wLZAie4mWPjLpd09dOGB
+         WFAjLVIu5UfcBLd8fudX+tdpJknEJw7ObukszY5K7Kj+h1AGVPAQI3Xx3h22iBGPJ71V
+         SU5PG5hO3Gwvf64Jubwv54oOIFmpQBsU+EqzzFv7SJfDrtCjc3ye04OSKg7na2bPHOVg
+         04NlHKNxtqtVi+xI36Rayd+lNVJNs7+3mpkF5wdt9GqHwBGNzIi8JT/4pPo7lE+QX7sO
+         9H1KdJvBlkp71TdeozoSzM2/xNPo9BZ0RZGS+MRk2HWmxpjL6mxLEDChaEQHgs3fHMES
+         5zaw==
+In-Reply-To: <CABF+-6XGO0Qvqd1O-aY28kG1jV=L6eRcupnZpaimTunddPwL2A@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+To: Kevin Groeneveld <kgroeneveld@gmail.com>
+Cc: netdev@vger.kernel.org, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Wensong Zhang <wensong@linux-vs.org>, lvs-devel@vger.kernel.org
 
-	IPVS is missing the logic to update PMTU in routing
-for its IPIP packets. We monitor the dst_mtu and can return
-FRAG_NEEDED messages but if the tunneled packets get ICMP
-error we can not rely on other traffic to save the lowest
-MTU.
+On Fri, 2012-07-20 at 22:22 -0400, Kevin Groeneveld wrote:
+> On Fri, Jul 20, 2012 at 2:56 PM, Kevin Groeneveld <kgroeneveld@gmail.com> wrote:
+> >> In fact all network drivers should use the _bh version.
+> >> Could you send a patch for all of them, based on net-next tree ?
+> >
+> > Sure, I can work on that.  It should be a relatively easy thing to
+> > update.  I can probably send a patch within the next couple days.
+> 
+> As I have been working on the patch I have been trying convince myself
+> that each case I change actually needs the _bh version of the
+> functions instead of blindly changing them.  So far I have found the
+> following where the change seems to make sense:
+> 
+> drivers/net/dummy.c
+> drivers/net/ethernet/neterion/vxge/vxge-main.c
+> drivers/net/loopback.c
+> drivers/net/virtio_net.c
+> net/bridge/br_device.c
+> 
 
-	The following patch adds ICMP handling for IPIP
-packets in incoming direction, from some remote host to
-our local IP used as saddr in the outer header. By this
-way we can forward any related ICMP traffic if it is for IPVS
-TUN connection. For the special case of PMTUD we update the
-routing and if client requested DF we can forward the
-error.
+Thats right.
 
-	To properly update the routing we have to bind
-the cached route (dest->dst_cache) to the selected saddr
-because ipv4_update_pmtu uses saddr for dst lookup.
-Add IP_VS_RT_MODE_CONNECT flag to force such binding with
-second route.
+> The only two other places in the networking code that use
+> u64_stats_fetch_begin/u64_stats_fetch_retry are:
+> 
+> net/l2tp/l2tp_netlink.c
 
-	Update ip_vs_tunnel_xmit to provide IP_VS_RT_MODE_CONNECT
-and change the code to copy DF. For now we prefer not to
-force PMTU discovery (outer DF=1) because we don't have
-configuration option to enable or disable PMTUD. As we
-do not keep any packets to resend, we prefer not to
-play games with packets without DF bit because the sender
-is not informed when they are rejected.
+This one is completely buggy, dont waste your time on it.
 
-	Also, change ops->update_pmtu to be called only
-for local clients because there is no point to update
-MTU for input routes, in our case skb->dst->dev is lo.
-It seems the code is copied from ipip.c where the skb
-dst points to tunnel device.
+My plan for this one : dont try to have 64bit stats on 32bit arches, and
+use plain "unsigned long" counters (if they are percpu), or
+atomic_long_t (if they are shared by all cpus)
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- net/netfilter/ipvs/ip_vs_core.c |   76 ++++++++++++++++++++++++++++++++++++-
- net/netfilter/ipvs/ip_vs_xmit.c |   79 +++++++++++++++++++++++++++------------
- 2 files changed, 128 insertions(+), 27 deletions(-)
+The writer sides might be run concurrently by several cpus, so
+u64_stats_update_begin(&sstats->syncp); are racy : a reader can
+be trapped forever.
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index b54ecce..58918e2 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1303,7 +1303,8 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 	struct ip_vs_conn *cp;
- 	struct ip_vs_protocol *pp;
- 	struct ip_vs_proto_data *pd;
--	unsigned int offset, ihl, verdict;
-+	unsigned int offset, offset2, ihl, verdict;
-+	bool ipip;
- 
- 	*related = 1;
- 
-@@ -1345,6 +1346,21 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 
- 	net = skb_net(skb);
- 
-+	/* Special case for errors for IPIP packets */
-+	ipip = false;
-+	if (cih->protocol == IPPROTO_IPIP) {
-+		if (unlikely(cih->frag_off & htons(IP_OFFSET)))
-+			return NF_ACCEPT;
-+		/* Error for our IPIP must arrive at LOCAL_IN */
-+		if (!(skb_rtable(skb)->rt_flags & RTCF_LOCAL))
-+			return NF_ACCEPT;
-+		offset += cih->ihl * 4;
-+		cih = skb_header_pointer(skb, offset, sizeof(_ciph), &_ciph);
-+		if (cih == NULL)
-+			return NF_ACCEPT; /* The packet looks wrong, ignore */
-+		ipip = true;
-+	}
-+
- 	pd = ip_vs_proto_data_get(net, cih->protocol);
- 	if (!pd)
- 		return NF_ACCEPT;
-@@ -1358,11 +1374,14 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 	IP_VS_DBG_PKT(11, AF_INET, pp, skb, offset,
- 		      "Checking incoming ICMP for");
- 
-+	offset2 = offset;
- 	offset += cih->ihl * 4;
- 
- 	ip_vs_fill_iphdr(AF_INET, cih, &ciph);
--	/* The embedded headers contain source and dest in reverse order */
--	cp = pp->conn_in_get(AF_INET, skb, &ciph, offset, 1);
-+	/* The embedded headers contain source and dest in reverse order.
-+	 * For IPIP this is error for request, not for reply.
-+	 */
-+	cp = pp->conn_in_get(AF_INET, skb, &ciph, offset, ipip ? 0 : 1);
- 	if (!cp)
- 		return NF_ACCEPT;
- 
-@@ -1376,6 +1395,57 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 		goto out;
- 	}
- 
-+	if (ipip) {
-+		__be32 info = ic->un.gateway;
-+
-+		/* Update the MTU */
-+		if (ic->type == ICMP_DEST_UNREACH &&
-+		    ic->code == ICMP_FRAG_NEEDED) {
-+			struct ip_vs_dest *dest = cp->dest;
-+			u32 mtu = ntohs(ic->un.frag.mtu);
-+
-+			/* Strip outer IP and ICMP, go to IPIP header */
-+			__skb_pull(skb, ihl + sizeof(_icmph));
-+			offset2 -= ihl + sizeof(_icmph);
-+			skb_reset_network_header(skb);
-+			IP_VS_DBG(12, "ICMP for IPIP %pI4->%pI4: mtu=%u\n",
-+				&ip_hdr(skb)->saddr, &ip_hdr(skb)->daddr, mtu);
-+			rcu_read_lock();
-+			ipv4_update_pmtu(skb, dev_net(skb->dev),
-+					 mtu, 0, 0, 0, 0);
-+			rcu_read_unlock();
-+			/* Client uses PMTUD? */
-+			if (!(cih->frag_off & htons(IP_DF)))
-+				goto ignore_ipip;
-+			/* Prefer the resulting PMTU */
-+			if (dest) {
-+				spin_lock(&dest->dst_lock);
-+				if (dest->dst_cache)
-+					mtu = dst_mtu(dest->dst_cache);
-+				spin_unlock(&dest->dst_lock);
-+			}
-+			if (mtu > 68 + sizeof(struct iphdr))
-+				mtu -= sizeof(struct iphdr);
-+			info = htonl(mtu);
-+		}
-+		/* Strip outer IP, ICMP and IPIP, go to IP header of
-+		 * original request.
-+		 */
-+		__skb_pull(skb, offset2);
-+		skb_reset_network_header(skb);
-+		IP_VS_DBG(12, "Sending ICMP for %pI4->%pI4: t=%u, c=%u, i=%u\n",
-+			&ip_hdr(skb)->saddr, &ip_hdr(skb)->daddr,
-+			ic->type, ic->code, ntohl(info));
-+		icmp_send(skb, ic->type, ic->code, info);
-+		/* ICMP can be shorter but anyways, account it */
-+		ip_vs_out_stats(cp, skb);
-+
-+ignore_ipip:
-+		consume_skb(skb);
-+		verdict = NF_STOLEN;
-+		goto out;
-+	}
-+
- 	/* do the statistics and put it back */
- 	ip_vs_in_stats(cp, skb);
- 	if (IPPROTO_TCP == cih->protocol || IPPROTO_UDP == cih->protocol)
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 65b616a..c2275ba 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -49,6 +49,7 @@ enum {
- 	IP_VS_RT_MODE_RDR	= 4, /* Allow redirect from remote daddr to
- 				      * local
- 				      */
-+	IP_VS_RT_MODE_CONNECT	= 8, /* Always bind route to saddr */
- };
- 
- /*
-@@ -84,6 +85,42 @@ __ip_vs_dst_check(struct ip_vs_dest *dest, u32 rtos)
- 	return dst;
- }
- 
-+/* Get route to daddr, update *saddr, optionally bind route to saddr */
-+static struct rtable *do_output_route4(struct net *net, __be32 daddr,
-+				       u32 rtos, int rt_mode, __be32 *saddr)
-+{
-+	struct flowi4 fl4;
-+	struct rtable *rt;
-+	int loop = 0;
-+
-+	memset(&fl4, 0, sizeof(fl4));
-+	fl4.daddr = daddr;
-+	fl4.saddr = (rt_mode & IP_VS_RT_MODE_CONNECT) ? *saddr : 0;
-+	fl4.flowi4_tos = rtos;
-+
-+retry:
-+	rt = ip_route_output_key(net, &fl4);
-+	if (IS_ERR(rt)) {
-+		/* Invalid saddr ? */
-+		if (PTR_ERR(rt) == -EINVAL && *saddr &&
-+		    rt_mode & IP_VS_RT_MODE_CONNECT && !loop) {
-+			*saddr = 0;
-+			flowi4_update_output(&fl4, 0, rtos, daddr, 0);
-+			goto retry;
-+		}
-+		IP_VS_DBG_RL("ip_route_output error, dest: %pI4\n", &daddr);
-+		return NULL;
-+	} else if (!*saddr && rt_mode & IP_VS_RT_MODE_CONNECT && fl4.saddr) {
-+		ip_rt_put(rt);
-+		*saddr = fl4.saddr;
-+		flowi4_update_output(&fl4, 0, rtos, daddr, fl4.saddr);
-+		loop++;
-+		goto retry;
-+	}
-+	*saddr = fl4.saddr;
-+	return rt;
-+}
-+
- /* Get route to destination or remote server */
- static struct rtable *
- __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
-@@ -98,20 +135,13 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
- 		spin_lock(&dest->dst_lock);
- 		if (!(rt = (struct rtable *)
- 		      __ip_vs_dst_check(dest, rtos))) {
--			struct flowi4 fl4;
--
--			memset(&fl4, 0, sizeof(fl4));
--			fl4.daddr = dest->addr.ip;
--			fl4.flowi4_tos = rtos;
--			rt = ip_route_output_key(net, &fl4);
--			if (IS_ERR(rt)) {
-+			rt = do_output_route4(net, dest->addr.ip, rtos,
-+					      rt_mode, &dest->dst_saddr.ip);
-+			if (!rt) {
- 				spin_unlock(&dest->dst_lock);
--				IP_VS_DBG_RL("ip_route_output error, dest: %pI4\n",
--					     &dest->addr.ip);
- 				return NULL;
- 			}
- 			__ip_vs_dst_set(dest, rtos, dst_clone(&rt->dst), 0);
--			dest->dst_saddr.ip = fl4.saddr;
- 			IP_VS_DBG(10, "new dst %pI4, src %pI4, refcnt=%d, "
- 				  "rtos=%X\n",
- 				  &dest->addr.ip, &dest->dst_saddr.ip,
-@@ -122,19 +152,17 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
- 			*ret_saddr = dest->dst_saddr.ip;
- 		spin_unlock(&dest->dst_lock);
- 	} else {
--		struct flowi4 fl4;
-+		__be32 saddr = htonl(INADDR_ANY);
- 
--		memset(&fl4, 0, sizeof(fl4));
--		fl4.daddr = daddr;
--		fl4.flowi4_tos = rtos;
--		rt = ip_route_output_key(net, &fl4);
--		if (IS_ERR(rt)) {
--			IP_VS_DBG_RL("ip_route_output error, dest: %pI4\n",
--				     &daddr);
-+		/* For such unconfigured boxes avoid many route lookups
-+		 * for performance reasons because we do not remember saddr
-+		 */
-+		rt_mode &= ~IP_VS_RT_MODE_CONNECT;
-+		rt = do_output_route4(net, daddr, rtos, rt_mode, &saddr);
-+		if (!rt)
- 			return NULL;
--		}
- 		if (ret_saddr)
--			*ret_saddr = fl4.saddr;
-+			*ret_saddr = saddr;
- 	}
- 
- 	local = rt->rt_flags & RTCF_LOCAL;
-@@ -331,6 +359,7 @@ ip_vs_dst_reset(struct ip_vs_dest *dest)
- 	old_dst = dest->dst_cache;
- 	dest->dst_cache = NULL;
- 	dst_release(old_dst);
-+	dest->dst_saddr.ip = 0;
- }
- 
- #define IP_VS_XMIT_TUNNEL(skb, cp)				\
-@@ -771,7 +800,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	struct net_device *tdev;		/* Device to other host */
- 	struct iphdr  *old_iph = ip_hdr(skb);
- 	u8     tos = old_iph->tos;
--	__be16 df = old_iph->frag_off;
-+	__be16 df;
- 	struct iphdr  *iph;			/* Our new IP header */
- 	unsigned int max_headroom;		/* The extra header space needed */
- 	int    mtu;
-@@ -781,7 +810,8 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 
- 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
- 				      RT_TOS(tos), IP_VS_RT_MODE_LOCAL |
--						   IP_VS_RT_MODE_NON_LOCAL,
-+						   IP_VS_RT_MODE_NON_LOCAL |
-+						   IP_VS_RT_MODE_CONNECT,
- 						   &saddr)))
- 		goto tx_error_icmp;
- 	if (rt->rt_flags & RTCF_LOCAL) {
-@@ -796,10 +826,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
- 		goto tx_error_put;
- 	}
--	if (skb_dst(skb))
-+	if (rt_is_output_route(skb_rtable(skb)))
- 		skb_dst(skb)->ops->update_pmtu(skb_dst(skb), NULL, skb, mtu);
- 
--	df |= (old_iph->frag_off & htons(IP_DF));
-+	/* Copy DF, reset fragment offset and MF */
-+	df = old_iph->frag_off & htons(IP_DF);
- 
- 	if ((old_iph->frag_off & htons(IP_DF) &&
- 	    mtu < ntohs(old_iph->tot_len) && !skb_is_gso(skb))) {
--- 
-1.7.3.4
+> net/netfilter/ipvs/ip_vs_est.c
+> 
+
+Same problem for this one, I think.
+
+I CCed ipvs maintainers so that they can take a look.
+
+> Do these need to be updated as well?  Looking at these files quickly
+> and with my limited knowledge of the kernel I am not sure if they
+> update the stats in a BH context or not.
+> 
+> 
+> Kevin
+
+Thanks !
 
