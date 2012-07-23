@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 1/5] ipvs: ip_vs_ftp depends on nf_conntrack_ftp helper
-Date: Tue, 24 Jul 2012 08:28:56 +0900
-Message-ID: <1343086141-9086-2-git-send-email-horms@verge.net.au>
+Subject: [PATCH 3/5] ipvs: fixed sparse warning
+Date: Tue, 24 Jul 2012 08:28:58 +0900
+Message-ID: <1343086141-9086-4-git-send-email-horms@verge.net.au>
 References: <1343086141-9086-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1343086141-9086-1-git-send-email-horms@verge.net.au>
@@ -11,36 +11,56 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Claudiu Ghioc <claudiughioc@gmail.com>, Claudiu Ghioc <claudiu.ghioc@gmail.com>, Simon Horman <horms@verge.net.au>
 
-From: Julian Anastasov <ja@ssi.bg>
+From: Claudiu Ghioc <claudiughioc@gmail.com>
 
-	The FTP application indirectly depends on the
-nf_conntrack_ftp helper for proper NAT support. If the
-module is not loaded, IPVS can resize the packets for the
-command connection, eg. PASV response but the SEQ adjustment
-logic in ipv4_confirm is not called without helper.
+Removed the following sparse warnings, wether CONFIG_SYSCTL
+is defined or not:
+*       warning: symbol 'ip_vs_control_net_init_sysctl' was not
+	declared. Should it be static?
+*       warning: symbol 'ip_vs_control_net_cleanup_sysctl' was
+	not declared. Should it be static?
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Claudiu Ghioc <claudiu.ghioc@gmail.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/Kconfig | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-index f987138..8b2cffd 100644
---- a/net/netfilter/ipvs/Kconfig
-+++ b/net/netfilter/ipvs/Kconfig
-@@ -250,7 +250,8 @@ comment 'IPVS application helper'
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 84444dd..d6d5cca 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3675,7 +3675,7 @@ static void ip_vs_genl_unregister(void)
+  * per netns intit/exit func.
+  */
+ #ifdef CONFIG_SYSCTL
+-int __net_init ip_vs_control_net_init_sysctl(struct net *net)
++static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ {
+ 	int idx;
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+@@ -3743,7 +3743,7 @@ int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	return 0;
+ }
  
- config	IP_VS_FTP
-   	tristate "FTP protocol helper"
--        depends on IP_VS_PROTO_TCP && NF_CONNTRACK && NF_NAT
-+	depends on IP_VS_PROTO_TCP && NF_CONNTRACK && NF_NAT && \
-+		NF_CONNTRACK_FTP
- 	select IP_VS_NFCT
- 	---help---
- 	  FTP is a protocol that transfers IP address and/or port number in
+-void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
++static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+@@ -3754,8 +3754,8 @@ void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
+ 
+ #else
+ 
+-int __net_init ip_vs_control_net_init_sysctl(struct net *net) { return 0; }
+-void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net) { }
++static int __net_init ip_vs_control_net_init_sysctl(struct net *net) { return 0; }
++static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net) { }
+ 
+ #endif
+ 
 -- 
 1.7.10.2.484.gcd07cc5
 
