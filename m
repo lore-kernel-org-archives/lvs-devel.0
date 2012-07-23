@@ -1,65 +1,65 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH 1/2] ipvs: ip_vs_ftp depends on nf_conntrack_ftp helper
-Date: Mon, 23 Jul 2012 19:39:06 +0200
-Message-ID: <20120723173906.GA1430@1984>
-References: <1341966327-16606-1-git-send-email-horms@verge.net.au>
- <1341966327-16606-2-git-send-email-horms@verge.net.au>
- <20120712153937.GB18793@1984>
- <alpine.LFD.2.00.1207122238220.1831@ja.ssi.bg>
- <20120723064818.GK6603@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH 0/2] Changes for PMTU Discovery
+Date: Tue, 24 Jul 2012 08:02:25 +0900
+Message-ID: <20120723230220.GA2966@verge.net.au>
+References: <1342774793-29234-1-git-send-email-ja@ssi.bg>
+ <20120723064609.GJ6603@verge.net.au>
+ <alpine.LFD.2.00.1207231029160.1626@ja.ssi.bg>
+ <20120723075949.GB9371@verge.net.au>
+ <20120723104545.GA4757@1984>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20120723064818.GK6603@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+In-Reply-To: <20120723104545.GA4757@1984>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
 
-On Mon, Jul 23, 2012 at 03:48:18PM +0900, Simon Horman wrote:
-> On Thu, Jul 12, 2012 at 10:43:22PM +0300, Julian Anastasov wrote:
-> > 
-> > 	Hello,
-> > 
-> > On Thu, 12 Jul 2012, Pablo Neira Ayuso wrote:
-> > 
-> > > On Wed, Jul 11, 2012 at 09:25:26AM +0900, Simon Horman wrote:
-> > > > From: Julian Anastasov <ja@ssi.bg>
-> > > > 
-> > > > 	The FTP application indirectly depends on the
-> > > > nf_conntrack_ftp helper for proper NAT support. If the
-> > > > module is not loaded, IPVS can resize the packets for the
-> > > > command connection, eg. PASV response but the SEQ adjustment
-> > > > logic in ipv4_confirm is not called without helper.
-> > > > 
-> > > > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > > > Signed-off-by: Simon Horman <horms@verge.net.au>
-> > > > ---
-> > > >  net/netfilter/ipvs/Kconfig | 3 ++-
-> > > >  1 file changed, 2 insertions(+), 1 deletion(-)
-> > > > 
-> > > > diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-> > > > index f987138..8b2cffd 100644
-> > > > --- a/net/netfilter/ipvs/Kconfig
-> > > > +++ b/net/netfilter/ipvs/Kconfig
-> > > > @@ -250,7 +250,8 @@ comment 'IPVS application helper'
-> > > >  
-> > > >  config	IP_VS_FTP
-> > > >    	tristate "FTP protocol helper"
-> > > > -        depends on IP_VS_PROTO_TCP && NF_CONNTRACK && NF_NAT
-> > > > +	depends on IP_VS_PROTO_TCP && NF_CONNTRACK && NF_NAT && \
-> > > > +		NF_CONNTRACK_FTP
+On Mon, Jul 23, 2012 at 12:45:45PM +0200, Pablo Neira Ayuso wrote:
+> On Mon, Jul 23, 2012 at 04:59:49PM +0900, Simon Horman wrote:
+> > On Mon, Jul 23, 2012 at 10:33:24AM +0300, Julian Anastasov wrote:
 > > > 
-> > > If you require FTP NAT support, then this depends on NF_NAT_FTP
-> > > instead of NF_CONNTRACK_FTP.
+> > > 	Hello,
+> > > 
+> > > On Mon, 23 Jul 2012, Simon Horman wrote:
+> > > 
+> > > > On Fri, Jul 20, 2012 at 11:59:51AM +0300, Julian Anastasov wrote:
+> > > > > 	This patchset implements PMTU Discovery for TUN
+> > > > > packets and option to disable it.
+> > > > > 
+> > > > > Julian Anastasov (2):
+> > > > >   ipvs: implement passive PMTUD for IPIP packets
+> > > > >   ipvs: add pmtu_disc option to disable IP DF for TUN packets
+> > > > > 
+> > > > >  include/net/ip_vs.h             |   11 +++++
+> > > > >  net/netfilter/ipvs/ip_vs_core.c |   76 ++++++++++++++++++++++++++++++++++-
+> > > > >  net/netfilter/ipvs/ip_vs_ctl.c  |    8 ++++
+> > > > >  net/netfilter/ipvs/ip_vs_xmit.c |   83 ++++++++++++++++++++++++++------------
+> > > > >  4 files changed, 149 insertions(+), 29 deletions(-)
+> > > > 
+> > > > Thanks, I have applied these to ipvs-next.
+> > > > 
+> > > > There were some offsets when applying the patches
+> > > > and a conflict in the last hunk of ip_vs_xmit.c (in the first patch).
+> > > > Could you check to make sure everything went in ok?
+> > > 
+> > > 	I created it for net-next on the same day because
+> > > I saw this problem. Both patches apply even on net-next from
+> > > today. May be ipvs-next is outdated, net-next changes rapidly
+> > > last days. If you want to push these patches in this merge
+> > > window you have to update ipvs-next. If it is not possible
+> > > I'll resend after 2 weeks.
 > > 
-> > 	No, I just checked again, it works without nf_nat_ftp,
-> > only nf_nat, nf_conntrack_ftp and iptable_nat are needed.
-> > We use packet mangling part from nf_nat (nf_nat_mangle_tcp_packet).
+> > ipvs-next is based on Pablo's nf-next tree.
+> > So the timing of updating is up to him.
 > 
-> Is there a consensus on this?
+> I just refreshed my tree. Let me know if this is what you needed.
 
-Fine with me, just wanted to make sure this what you wanted. Thanks
-Simon.
+Thanks, I'll rebase my tree.
+
+> Please, feel free to ping me whenever you need this.
+
+Sure, will do.
