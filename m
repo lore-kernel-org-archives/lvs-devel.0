@@ -1,31 +1,116 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf-next] IPVS
-Date: Tue, 14 Aug 2012 11:06:38 +0200
-Message-ID: <20120814090638.GA17450@1984>
-References: <1344562895-22790-1-git-send-email-horms@verge.net.au>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: [PATCH 1/3] ipvs: Trivial changes,
+	use compressed IPv6 address in output
+Date: Mon, 20 Aug 2012 15:08:35 +0200
+Message-ID: <20120820130835.1509.80543.stgit@dragon>
+References: <20120820130732.1509.13080.stgit@dragon>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1344562895-22790-1-git-send-email-horms@verge.net.au>
+In-Reply-To: <20120820130732.1509.13080.stgit@dragon>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Jesper Dangaard Brouer <brouer@redhat.com>
+To: netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>, Hans Schillstrom <hans@schillstrom.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
 
-On Fri, Aug 10, 2012 at 10:41:29AM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider the following enhancements to IPVS for inclusion in 3.7.
-> 
-> ----------------------------------------------------------------
-> The following changes since commit 173f8654746c138a08f51a8a0db7747763a896a2:
-> 
->   Merge tag 'ext4_for_linus' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4 (2012-07-27 20:52:25 -0700)
-> 
-> are available in the git repository at:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git master
+Have not converted the proc file output to compressed IPv6 addresses.
 
-Pulled, thanks Simon.
+Move trivial fixes to this first patch.
+
+Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+---
+
+ include/net/ip_vs.h              |    2 +-
+ net/netfilter/ipvs/ip_vs_proto.c |    6 +++---
+ net/netfilter/ipvs/ip_vs_sched.c |    2 +-
+ net/netfilter/ipvs/ip_vs_xmit.c  |   10 +++++-----
+ 4 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index ee75ccd..aba0bb2 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -165,7 +165,7 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+ 	int len;
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (af == AF_INET6)
+-		len = snprintf(&buf[*idx], buf_len - *idx, "[%pI6]",
++		len = snprintf(&buf[*idx], buf_len - *idx, "[%pI6c]",
+ 			       &addr->in6) + 1;
+ 	else
+ #endif
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index 50d8218..939f7fb 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -280,17 +280,17 @@ ip_vs_tcpudp_debug_packet_v6(struct ip_vs_protocol *pp,
+ 	if (ih == NULL)
+ 		sprintf(buf, "TRUNCATED");
+ 	else if (ih->nexthdr == IPPROTO_FRAGMENT)
+-		sprintf(buf, "%pI6->%pI6 frag",	&ih->saddr, &ih->daddr);
++		sprintf(buf, "%pI6c->%pI6c frag", &ih->saddr, &ih->daddr);
+ 	else {
+ 		__be16 _ports[2], *pptr;
+ 
+ 		pptr = skb_header_pointer(skb, offset + sizeof(struct ipv6hdr),
+ 					  sizeof(_ports), _ports);
+ 		if (pptr == NULL)
+-			sprintf(buf, "TRUNCATED %pI6->%pI6",
++			sprintf(buf, "TRUNCATED %pI6c->%pI6c",
+ 				&ih->saddr, &ih->daddr);
+ 		else
+-			sprintf(buf, "%pI6:%u->%pI6:%u",
++			sprintf(buf, "%pI6c:%u->%pI6c:%u",
+ 				&ih->saddr, ntohs(pptr[0]),
+ 				&ih->daddr, ntohs(pptr[1]));
+ 	}
+diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
+index 08dbdd5..d6bf20d 100644
+--- a/net/netfilter/ipvs/ip_vs_sched.c
++++ b/net/netfilter/ipvs/ip_vs_sched.c
+@@ -159,7 +159,7 @@ void ip_vs_scheduler_err(struct ip_vs_service *svc, const char *msg)
+ 			     svc->fwmark, msg);
+ #ifdef CONFIG_IP_VS_IPV6
+ 	} else if (svc->af == AF_INET6) {
+-		IP_VS_ERR_RL("%s: %s [%pI6]:%d - %s\n",
++		IP_VS_ERR_RL("%s: %s [%pI6c]:%d - %s\n",
+ 			     svc->scheduler->name,
+ 			     ip_vs_proto_name(svc->protocol),
+ 			     &svc->addr.in6, ntohs(svc->port), msg);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 543a554..eef3432 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -319,7 +319,7 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	local = __ip_vs_is_local_route6(rt);
+ 	if (!((local ? IP_VS_RT_MODE_LOCAL : IP_VS_RT_MODE_NON_LOCAL) &
+ 	      rt_mode)) {
+-		IP_VS_DBG_RL("Stopping traffic to %s address, dest: %pI6\n",
++		IP_VS_DBG_RL("Stopping traffic to %s address, dest: %pI6c\n",
+ 			     local ? "local":"non-local", daddr);
+ 		dst_release(&rt->dst);
+ 		return NULL;
+@@ -327,8 +327,8 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	if (local && !(rt_mode & IP_VS_RT_MODE_RDR) &&
+ 	    !((ort = (struct rt6_info *) skb_dst(skb)) &&
+ 	      __ip_vs_is_local_route6(ort))) {
+-		IP_VS_DBG_RL("Redirect from non-local address %pI6 to local "
+-			     "requires NAT method, dest: %pI6\n",
++		IP_VS_DBG_RL("Redirect from non-local address %pI6c to local "
++			     "requires NAT method, dest: %pI6c\n",
+ 			     &ipv6_hdr(skb)->daddr, daddr);
+ 		dst_release(&rt->dst);
+ 		return NULL;
+@@ -336,8 +336,8 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	if (unlikely(!local && (!skb->dev || skb->dev->flags & IFF_LOOPBACK) &&
+ 		     ipv6_addr_type(&ipv6_hdr(skb)->saddr) &
+ 				    IPV6_ADDR_LOOPBACK)) {
+-		IP_VS_DBG_RL("Stopping traffic from loopback address %pI6 "
+-			     "to non-local address, dest: %pI6\n",
++		IP_VS_DBG_RL("Stopping traffic from loopback address %pI6c "
++			     "to non-local address, dest: %pI6c\n",
+ 			     &ipv6_hdr(skb)->saddr, daddr);
+ 		dst_release(&rt->dst);
+ 		return NULL;
+
