@@ -1,32 +1,46 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 0/3] ipvs: IPv6 fragment handling for IPVS
-Date: Wed, 22 Aug 2012 15:42:04 +0900
-Message-ID: <20120822064204.GE20726@verge.net.au>
-References: <20120820130732.1509.13080.stgit@dragon>
- <20120821052415.GD14933@verge.net.au>
- <1345535487.3069.281.camel@localhost>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: [PATCH] ipvs: Fix GSO support for IPVS DR IPv6 mode
+Date: Wed, 22 Aug 2012 13:11:18 +0200
+Message-ID: <20120822111040.29174.4871.stgit@dragon>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1345535487.3069.281.camel@localhost>
-Sender: netfilter-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>, Hans Schillstrom <hans@schillstrom.com>, LVS devel <lvs-devel@vger.kernel.org>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
+To: Simon Horman <horms@verge.net.au>, Hans Schillstrom <hans@schillstrom.com>, lvs-devel@vger.kernel.org, Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
 
-On Tue, Aug 21, 2012 at 09:51:27AM +0200, Jesper Dangaard Brouer wrote:
-> On Tue, 2012-08-21 at 14:24 +0900, Simon Horman wrote:
-> > I have no objection to these changes, but I would be more comfortable
-> > applying them after a review from Hans, Julian or Pablo.
-> > 
-> I would appreciate a review, especially from Julian.
-> 
-> I'm going to do some more extensive testing on the patchset, in this
-> week.  So, no hurry on applying these, we have time for a good review
-> process.
+The MTU check in ip_vs_dr_xmit_v6() were missing a
+check for skb_is_gso().
 
-Thanks Jesper, and Julian and Hans who also responded.
-Let me know when you feel the series is ready to merge.
-I am also in no hurry.
+This e.g. caused issues for KVM IPVS setups, where different
+Segmentation Offloading techniques are utilized, between guests,
+via the virtio driver.  This resulted in very bad performance,
+due to the ICMPv6 "too big" messages didn't affect the sender.
+
+Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+
+---
+To Simon,
+This should perhaps go to stable?
+The patch is based on ipvs-next, but will apply on ipvs with an offset.
+Jesper
+
+ net/netfilter/ipvs/ip_vs_xmit.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 543a554..80c3006 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -1113,7 +1113,7 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 
+ 	/* MTU checking */
+ 	mtu = dst_mtu(&rt->dst);
+-	if (skb->len > mtu) {
++	if (skb->len > mtu && !skb_is_gso(skb))) {
+ 		if (!skb->dev) {
+ 			struct net *net = dev_net(skb_dst(skb)->dev);
+ 
+
