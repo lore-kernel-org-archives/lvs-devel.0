@@ -1,52 +1,52 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re[3]: [PATCH 2/3] ipvs: Fix faulty IPv6 extension header  handling
- in IPVS
-Date: Mon, 27 Aug 2012 14:02:41 +0200 (MEST)
-Message-ID: <Pine.GSO.4.63.1208271401140.17922@stinky-local.trash.net>
-References: <mdaatbj.7a4274ea6c8f14ea15788c8953acb422@obelix.schillstrom.com>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: [PATCH 0/2] net: ipvs and netfilter IPv6 defrag MTU handling
+Date: Mon, 27 Aug 2012 16:40:35 +0200
+Message-ID: <20120827144024.5754.23872.stgit@dragon>
+References: <Pine.GSO.4.63.1208271238170.5279@stinky-local.trash.net>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <mdaatbj.7a4274ea6c8f14ea15788c8953acb422@obelix.schillstrom.com>
-Sender: netfilter-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <Pine.GSO.4.63.1208271238170.5279@stinky-local.trash.net>
+Sender: lvs-devel-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+To: netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Hans Schillstrom <hans@schillstrom.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
 
-On Mon, 27 Aug 2012, Hans Schillstrom wrote:
+The following patchset makes IPVS compatible with Patrick McHardys
+IPv6 NAT patchset: http://thread.gmane.org/gmane.linux.network/239615
 
->>>>
->>>> On Mon, 20 Aug 2012, Jesper Dangaard Brouer wrote:
->>>>
->>>>> Based on patch from: Hans Schillstrom
->>>>>
->>>>> IPv6 headers must be processed in order of appearance,
->>>>> neither can it be assumed that Upper layer headers is first.
->>>>> If anything else than L4 is the first header IPVS will throw it.
->>>>>
->>>>> IPVS will write SNAT & DNAT modifications at a fixed pos which
->>>>> will corrupt the message. Proper header position must be found
->>>>> before writing modifying packet.
->>>>>
->>>>> This patch contains a lot of API changes.  This is done, to avoid
->>>>> the costly scan of finding the IPv6 headers, via ipv6_find_hdr().
->>>>> Finding the IPv6 headers is done as early as possible, and passed
->>>>> on as a pointer "struct ip_vs_iphdr *" to the affected functions.
->>>>
->>>> How about we change netfilter to set up the skb's transport header
->>>> at an early time so we can avoid all (most of) these header scans
->>>> in netfilter?
->>>
->>> I think that would be great, maybe it should be global i.e. not only a netfilter issue.
->>
->> I think in most other cases the headers are supposed to be processed
->> sequentially. One problem though - to be useful for netfilter/IPVS
->> we'd also need to store the transport layer protocol somewhere.
->
-> I guess that's the problem, adding it to the skb will not be popular ....
-> Right now I don't have a good solution, maybe a more generic netfilter ptr in the skb ...
+Specifically the part that improves defragmentation.
 
-I guess inet6_skb_parm will be at least slightly more popular than
-adding it to the skb itself. The netfilter pointers are all used for
-optional things, so we can't really add it to any of those.
+ Patch01: Cleanup (and fixes a bug) in IPVS MTU IPv6 handling
+
+ Patch02: Extend MTU check to account for IPv6 NAT defrag changes
+
+This patchset is based upon:
+ Homes ipvs-next tree:
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git
+
+BUT with Patrick McHardy's IPv6 NAT patchset applied first, on top of
+commit: 3654e61137db891f5312e6dd813b961484b5fdf3
+title: "ipvs: add pmtu_disc option to disable IP DF for TUN packets"
+
+Send due to request by Patrick:
+ http://thread.gmane.org/gmane.linux.network/239615/focus=43870
+
+---
+
+Jesper Dangaard Brouer (2):
+      ipvs: Extend MTU check to account for IPv6 NAT defrag changes
+      ipvs: IPv6 MTU checking cleanup and bugfix
+
+
+ net/netfilter/ipvs/ip_vs_xmit.c |   32 ++++++++++++++++++++++++++------
+ 1 files changed, 26 insertions(+), 6 deletions(-)
+
+
+--
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Sr. Network Kernel Developer at Red Hat
+  Author of http://www.iptv-analyzer.org
+  LinkedIn: http://www.linkedin.com/in/brouer
