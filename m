@@ -1,52 +1,98 @@
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: [PATCH 0/2] net: ipvs and netfilter IPv6 defrag MTU handling
-Date: Mon, 27 Aug 2012 16:40:35 +0200
-Message-ID: <20120827144024.5754.23872.stgit@dragon>
-References: <Pine.GSO.4.63.1208271238170.5279@stinky-local.trash.net>
+Subject: [PATCH 1/2] ipvs: IPv6 MTU checking cleanup and bugfix
+Date: Mon, 27 Aug 2012 16:40:54 +0200
+Message-ID: <20120827144040.5754.64302.stgit@dragon>
+References: <20120827144024.5754.23872.stgit@dragon>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Pine.GSO.4.63.1208271238170.5279@stinky-local.trash.net>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20120827144024.5754.23872.stgit@dragon>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: Hans Schillstrom <hans@schillstrom.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
 
-The following patchset makes IPVS compatible with Patrick McHardys
-IPv6 NAT patchset: http://thread.gmane.org/gmane.linux.network/239615
+Cleaning up the IPv6 MTU checking in the IPVS xmit code, by using
+a common helper function __mtu_check_toobig_v6().  The MTU check
+for tunnel mode is special, and does not use this helper.
 
-Specifically the part that improves defragmentation.
+Notice, this also fixes a bug, as the the MTU check in ip_vs_dr_xmit_v6()
+were missing a check for skb_is_gso().
 
- Patch01: Cleanup (and fixes a bug) in IPVS MTU IPv6 handling
+This e.g. caused issues for KVM IPVS setups, where different
+Segmentation Offloading techniques are utilized, between guests,
+via the virtio driver.  This resulted in very bad performance,
+due to the ICMPv6 "too big" messages didn't affect the sender.
 
- Patch02: Extend MTU check to account for IPv6 NAT defrag changes
-
-This patchset is based upon:
- Homes ipvs-next tree:
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git
-
-BUT with Patrick McHardy's IPv6 NAT patchset applied first, on top of
-commit: 3654e61137db891f5312e6dd813b961484b5fdf3
-title: "ipvs: add pmtu_disc option to disable IP DF for TUN packets"
-
-Send due to request by Patrick:
- http://thread.gmane.org/gmane.linux.network/239615/focus=43870
-
+Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 ---
 
-Jesper Dangaard Brouer (2):
-      ipvs: Extend MTU check to account for IPv6 NAT defrag changes
-      ipvs: IPv6 MTU checking cleanup and bugfix
+ net/netfilter/ipvs/ip_vs_xmit.c |   18 ++++++++++++++----
+ 1 files changed, 14 insertions(+), 4 deletions(-)
 
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 543a554..e56f0df 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -85,6 +85,15 @@ __ip_vs_dst_check(struct ip_vs_dest *dest, u32 rtos)
+ 	return dst;
+ }
+ 
++static inline bool
++__mtu_check_toobig_v6(const struct sk_buff *skb, u32 mtu)
++{
++	if (skb->len > mtu && !skb_is_gso(skb)) {
++		return true; /* Packet size violate MTU size */
++	}
++	return false;
++}
++
+ /* Get route to daddr, update *saddr, optionally bind route to saddr */
+ static struct rtable *do_output_route4(struct net *net, __be32 daddr,
+ 				       u32 rtos, int rt_mode, __be32 *saddr)
+@@ -491,7 +500,7 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 
+ 	/* MTU checking */
+ 	mtu = dst_mtu(&rt->dst);
+-	if (skb->len > mtu && !skb_is_gso(skb)) {
++	if (__mtu_check_toobig_v6(skb, mtu)) {
+ 		if (!skb->dev) {
+ 			struct net *net = dev_net(skb_dst(skb)->dev);
+ 
+@@ -712,7 +721,7 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 
+ 	/* MTU checking */
+ 	mtu = dst_mtu(&rt->dst);
+-	if (skb->len > mtu && !skb_is_gso(skb)) {
++	if (__mtu_check_toobig_v6(skb, mtu)) {
+ 		if (!skb->dev) {
+ 			struct net *net = dev_net(skb_dst(skb)->dev);
+ 
+@@ -946,6 +955,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	if (skb_dst(skb))
+ 		skb_dst(skb)->ops->update_pmtu(skb_dst(skb), NULL, skb, mtu);
+ 
++	/* MTU checking: Special for tunnel mode */
+ 	if (mtu < ntohs(old_iph->payload_len) + sizeof(struct ipv6hdr) &&
+ 	    !skb_is_gso(skb)) {
+ 		if (!skb->dev) {
+@@ -1113,7 +1123,7 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 
+ 	/* MTU checking */
+ 	mtu = dst_mtu(&rt->dst);
+-	if (skb->len > mtu) {
++	if (__mtu_check_toobig_v6(skb, mtu)) {
+ 		if (!skb->dev) {
+ 			struct net *net = dev_net(skb_dst(skb)->dev);
+ 
+@@ -1349,7 +1359,7 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 
+ 	/* MTU checking */
+ 	mtu = dst_mtu(&rt->dst);
+-	if (skb->len > mtu && !skb_is_gso(skb)) {
++	if (__mtu_check_toobig_v6(skb, mtu)) {
+ 		if (!skb->dev) {
+ 			struct net *net = dev_net(skb_dst(skb)->dev);
+ 
 
- net/netfilter/ipvs/ip_vs_xmit.c |   32 ++++++++++++++++++++++++++------
- 1 files changed, 26 insertions(+), 6 deletions(-)
-
-
---
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Sr. Network Kernel Developer at Red Hat
-  Author of http://www.iptv-analyzer.org
-  LinkedIn: http://www.linkedin.com/in/brouer
