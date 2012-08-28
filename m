@@ -1,46 +1,63 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: Multiple load balancers problem
-Date: Tue, 28 Aug 2012 10:21:15 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1208281013570.1693@ja.ssi.bg>
-References: <503880A4.6000801@stalker.com> <alpine.LFD.2.00.1208251118260.1864@ja.ssi.bg> <503B2982.7010507@stalker.com> <alpine.LFD.2.00.1208271313420.1934@ja.ssi.bg> <503B8EF6.5040609@stalker.com> <alpine.LFD.2.00.1208271832460.24809@ja.ssi.bg>
- <503BD786.9020604@stalker.com>
+From: Patrick McHardy <kaber@trash.net>
+Subject: Re: [PATCH 2/2] ipvs: Extend MTU check to account for IPv6 NAT defrag
+ changes
+Date: Tue, 28 Aug 2012 10:22:05 +0200 (MEST)
+Message-ID: <Pine.GSO.4.63.1208281020530.18770@stinky-local.trash.net>
+References: <20120827144024.5754.23872.stgit@dragon> <20120827144059.5754.55303.stgit@dragon>
+ <alpine.LFD.2.00.1208271810070.24809@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <503BD786.9020604@stalker.com>
+In-Reply-To: <alpine.LFD.2.00.1208271810070.24809@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"; format="flowed"
 Content-Transfer-Encoding: 7bit
-To: Dmitry Akindinov <dimak@stalker.com>
-Cc: lvs-devel@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Hans Schillstrom <hans@schillstrom.com>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
 
+On Mon, 27 Aug 2012, Julian Anastasov wrote:
 
-	Hello,
+>
+> 	Hello,
+>
+> On Mon, 27 Aug 2012, Jesper Dangaard Brouer wrote:
+>
+>> This patch is necessary, to make IPVS work, after Patrick McHardys
+>> IPv6 NAT defragmentation changes.
+>>
+>> Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+>> ---
+>>
+>> I would appriciate, if someone (e.g. Julian) double check the tunnel mode code.
+>
+> 	Sure
+>
+>> --Jesper
+>>
+>>  net/netfilter/ipvs/ip_vs_xmit.c |   16 +++++++++++++---
+>>  1 files changed, 13 insertions(+), 3 deletions(-)
+>>
+>> @@ -956,8 +963,11 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+>>  		skb_dst(skb)->ops->update_pmtu(skb_dst(skb), NULL, skb, mtu);
+>>
+>>  	/* MTU checking: Special for tunnel mode */
+>> -	if (mtu < ntohs(old_iph->payload_len) + sizeof(struct ipv6hdr) &&
+>> -	    !skb_is_gso(skb)) {
+>> +	if ((!IP6CB(skb)->frag_max_size &&
+>> +	     (mtu < ntohs(old_iph->payload_len) + sizeof(struct ipv6hdr) &&
+>> +	      !skb_is_gso(skb)))
+>> +	    || IP6CB(skb)->frag_max_size + sizeof(struct ipv6hdr) > mtu) {
+>> +
+>
+> 	mtu is already reduced with the new outer header size,
+> may be we can just call __mtu_check_toobig_v6 with mtu?
+>
+>>  		if (!skb->dev) {
+>>  			struct net *net = dev_net(skb_dst(skb)->dev);
+>
+> 	All other changes in patch 1 and 2 look ok and
+> I'll ack them next time.
 
-On Tue, 28 Aug 2012, Dmitry Akindinov wrote:
-
-> > 	No loop? Because S2 will receive DR method in
-> > the SYNC messages for its stack. You see traffic flow
-> > or just that there is no reset?
-> 
-> Yes, after the failover, all connections that were open on the S2 (which now
-> becomes the active balancer) do not reset and continue to function just fine
-> (traffic flow in both directions).
-
-	Aha, I now see why, ip_vs_bind_dest assigns the
-forwarding mode from real server, not from SYNC messages.
-As you have LOCALNODE when S2 is slave, the DR mode from
-SYNC message is not used, that is why after failover the
-S2 connections work and are not reset. So, at least, we have
-explanation for all things that happen. If you run slave
-without any rules the connection will use the mode from
-master and you will see packet loop.
-
-> -- 
-> Best regards,
-> Dmitry Akindinov
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+I'd like to take the final patches through my nat-ipv6 tree in order
+to avoid temporary regressions. Please let me know when they're ready
+for applying.
