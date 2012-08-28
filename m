@@ -1,48 +1,46 @@
-From: "Hans Schillstrom" <hans@schillstrom.com>
-Subject: Re[2]:  Multiple load balancers problem
-Date: Mon, 27 Aug 2012 22:43:41 +0200 (CEST)
-Message-ID: <thl3856.36e267c5beb1d7b35e7e87b807e0b5f4@obelix.schillstrom.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: Multiple load balancers problem
+Date: Tue, 28 Aug 2012 10:21:15 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1208281013570.1693@ja.ssi.bg>
+References: <503880A4.6000801@stalker.com> <alpine.LFD.2.00.1208251118260.1864@ja.ssi.bg> <503B2982.7010507@stalker.com> <alpine.LFD.2.00.1208271313420.1934@ja.ssi.bg> <503B8EF6.5040609@stalker.com> <alpine.LFD.2.00.1208271832460.24809@ja.ssi.bg>
+ <503BD786.9020604@stalker.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <503BD786.9020604@stalker.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: Dmitry Akindinov <dimak@stalker.com>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org
 
-Hello
 
-[snip]
+	Hello,
 
->>
->> 	No loop? Because S2 will receive DR method in
->> the SYNC messages for its stack. You see traffic flow
->> or just that there is no reset?
->
->Yes, after the failover, all connections that were open on the S2 (which 
->now becomes the active balancer) do not reset and continue to function 
->just fine (traffic flow in both directions).
->
->We do understand (we think) your explanation about the sync table 
->problem  - the connections to the actual balancer are marked in a 
->special way, which causes problems when these connection table records 
->are used on a new balancer.
->
->It looks like updating the kernels is the only way, if (as you and Hans 
->Schillstrom outlines) even the latest CentOS/RedHat kernels do not 
->contain necessary patches. It's a pity, as the idea was to provide an 
->"out of the box" solution for our customers, and asking them to update 
->to some Linux kernel is not what they like to hear.
->
->But thank you very much in any case, we will update the kernels on our 
->test systems and will see if this (last?) problem disappears.
->
+On Tue, 28 Aug 2012, Dmitry Akindinov wrote:
 
-There is newer kernels floating around in the 3.x range
-Have a look at ELRepo Project there you can find a 3.5.x kernel
-that have all necessary changes.
+> > 	No loop? Because S2 will receive DR method in
+> > the SYNC messages for its stack. You see traffic flow
+> > or just that there is no reset?
+> 
+> Yes, after the failover, all connections that were open on the S2 (which now
+> becomes the active balancer) do not reset and continue to function just fine
+> (traffic flow in both directions).
 
-BR
-Hans 
+	Aha, I now see why, ip_vs_bind_dest assigns the
+forwarding mode from real server, not from SYNC messages.
+As you have LOCALNODE when S2 is slave, the DR mode from
+SYNC message is not used, that is why after failover the
+S2 connections work and are not reset. So, at least, we have
+explanation for all things that happen. If you run slave
+without any rules the connection will use the mode from
+master and you will see packet loop.
 
+> -- 
+> Best regards,
+> Dmitry Akindinov
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
