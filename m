@@ -1,75 +1,63 @@
-From: "Hans Schillstrom" <hans@schillstrom.com>
-Subject: Re[2]:  Re[3]: [PATCH 2/3] ipvs: Fix faulty IPv6 extension 
-	header handling in IPVS
-Date: Wed, 29 Aug 2012 14:36:01 +0200 (CEST)
-Message-ID: <nhkcv8u.f16524476c35ce73b70e1f5f17594ae6@obelix.schillstrom.com>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
+From: Julia Lawall <Julia.Lawall@lip6.fr>
+Subject: [PATCH 1/7] ipvs: fix error return code
+Date: Wed, 29 Aug 2012 18:49:11 +0200
+Message-ID: <1346258957-7649-2-git-send-email-Julia.Lawall@lip6.fr>
+References: <1346258957-7649-1-git-send-email-Julia.Lawall@lip6.fr>
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1346258957-7649-1-git-send-email-Julia.Lawall@lip6.fr>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Patrick McHardy <kaber@trash.net>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: Wensong Zhang <wensong@linux-vs.org>
+Cc: kernel-janitors@vger.kernel.org, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
->
->On Wed, 29 Aug 2012, Jesper Dangaard Brouer wrote:
->
->> To Hans and Patrick,
->>
->> On Mon, 2012-08-27 at 14:02 +0200, Patrick McHardy wrote:
->>> On Mon, 27 Aug 2012, Hans Schillstrom wrote:
->>>
->>>>>>>
->>>>>>> On Mon, 20 Aug 2012, Jesper Dangaard Brouer wrote:
->>>>>>>
->>>>>>>> Based on patch from: Hans Schillstrom
->>>>>>>>
->>>>>>>> IPv6 headers must be processed in order of appearance,
->>>>>>>> neither can it be assumed that Upper layer headers is first.
->>>>>>>> If anything else than L4 is the first header IPVS will throw it.
->>>>>>>>
->>>>>>>> IPVS will write SNAT & DNAT modifications at a fixed pos which
->>>>>>>> will corrupt the message. Proper header position must be found
->>>>>>>> before writing modifying packet.
->>>>>>>>
->>>>>>>> This patch contains a lot of API changes.  This is done, to avoid
->>>>>>>> the costly scan of finding the IPv6 headers, via ipv6_find_hdr().
->>>>>>>> Finding the IPv6 headers is done as early as possible, and passed
->>>>>>>> on as a pointer "struct ip_vs_iphdr *" to the affected functions.
->>>>>>>
->>>>>>> How about we change netfilter to set up the skb's transport header
->>>>>>> at an early time so we can avoid all (most of) these header scans
->>>>>>> in netfilter?
->>>>>>
->>>>>> I think that would be great, maybe it should be global i.e. not only a netfilter issue.
->>>>>
->>>>> I think in most other cases the headers are supposed to be processed
->>>>> sequentially. One problem though - to be useful for netfilter/IPVS
->>>>> we'd also need to store the transport layer protocol somewhere.
->>>>
->>>> I guess that's the problem, adding it to the skb will not be popular ....
->>>> Right now I don't have a good solution, maybe a more generic netfilter ptr in the skb ...
->>>
->>> I guess inet6_skb_parm will be at least slightly more popular than
->>> adding it to the skb itself. The netfilter pointers are all used for
->>> optional things, so we can't really add it to any of those.
->>
->> Okay, but how do we go from here?
->>
->> Hans, should this hold back the patch ("ipvs: Fix faulty IPv6 extension
->> header handling in IPVS").  Or should we pursue our patch, and circle
->> back later once e.g. Patrick have found a generic solution for IPv6
->> transport header handling?
->
->I don't think we can do much better than using inet6_skb_parm. I think
->the main question is whether it is really worth it, the iteration 
->shouldn't be that expensive in most cases.
+From: Julia Lawall <Julia.Lawall@lip6.fr>
 
-Well, if we start using it it could be worth it...
+Initialize return variable before exiting on an error path.
 
-As a first sketch I think adding protocol and offset to inet6_skb_parm would be sufficient,
-and  then scan the header in ipv6_defrag() which is a quite early ...
+A simplified version of the semantic match that finds this problem is as
+follows: (http://coccinelle.lip6.fr/)
 
-/Hans
+// <smpl>
+(
+if@p1 (\(ret < 0\|ret != 0\))
+ { ... return ret; }
+|
+ret@p1 = 0
+)
+... when != ret = e1
+    when != &ret
+*if(...)
+{
+  ... when != ret = e2
+      when forall
+ return ret;
+}
+
+// </smpl>
+
+Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
+
+---
+ net/netfilter/ipvs/ip_vs_ctl.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 3c60137..767cc12 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1171,8 +1171,10 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+ 		goto out_err;
+ 	}
+ 	svc->stats.cpustats = alloc_percpu(struct ip_vs_cpu_stats);
+-	if (!svc->stats.cpustats)
++	if (!svc->stats.cpustats) {
++		ret = -ENOMEM;
+ 		goto out_err;
++	}
+ 
+ 	/* I'm the first user of the service */
+ 	atomic_set(&svc->usecnt, 0);
 
