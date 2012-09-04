@@ -1,87 +1,58 @@
-From: Dmitry Akindinov <dimak@stalker.com>
-Subject: Re: Multiple load balancers problem
-Date: Mon, 03 Sep 2012 11:54:52 +0400
-Message-ID: <5044624C.2050502@stalker.com>
-References: <qnh1578.b598d4432b1e15f21bf9beee8c3c376e@obelix.schillstrom.com>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: ipvs: memset problem/bug in ip_vs_tunnel_xmit_v6() ?
+Date: Tue, 04 Sep 2012 11:52:38 +0200
+Message-ID: <1346752358.3069.594.camel@localhost>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <qnh1578.b598d4432b1e15f21bf9beee8c3c376e@obelix.schillstrom.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: LVS devel <lvs-devel@vger.kernel.org>, Julian Anastasov <ja@ssi.bg>
 
-Hello,
 
-On 2012-08-31 12:21, Hans Schillstrom wrote:
->>
->> Hello,
->>
->> On 2012-08-28 00:43, Hans Schillstrom wrote:
->>> Hello
->>>
->>> [snip]
->>>
->>>>>
->>>>> 	No loop? Because S2 will receive DR method in
->>>>> the SYNC messages for its stack. You see traffic flow
->>>>> or just that there is no reset?
->>>>
->>>> Yes, after the failover, all connections that were open on the S2 (which
->>>> now becomes the active balancer) do not reset and continue to function
->>>> just fine (traffic flow in both directions).
->>>>
->>>> We do understand (we think) your explanation about the sync table
->>>> problem  - the connections to the actual balancer are marked in a
->>>> special way, which causes problems when these connection table records
->>>> are used on a new balancer.
->>>>
->>>> It looks like updating the kernels is the only way, if (as you and Hans
->>>> Schillstrom outlines) even the latest CentOS/RedHat kernels do not
->>>> contain necessary patches. It's a pity, as the idea was to provide an
->>>> "out of the box" solution for our customers, and asking them to update
->>>> to some Linux kernel is not what they like to hear.
->>>>
->>>> But thank you very much in any case, we will update the kernels on our
->>>> test systems and will see if this (last?) problem disappears.
->>>>
->>>
->>> There is newer kernels floating around in the 3.x range
->>> Have a look at ELRepo Project there you can find a 3.5.x kernel
->>> that have all necessary changes.
->>
->> Installed CentOS 6.3 and the kernel 3.5.3 from elrepo.org
->>
->> [root@fe3 ~]# uname -a
->> Linux fe3.msk 3.5.3-1.el6.elrepo.x86_64 #1 SMP Sun Aug 26 14:05:15 EDT
->> 2012 x86_64 x86_64 x86_64 GNU/Linux
->>
->>
->> But we still see the same problem: connections to the old balancer are
->> RSET'ed when the new balancer takes over. Any idea which particular
->> kernel we need to use? Or, do we need to apply some specific patches and
->> build our own kernel?
->
-> A silly question,  old and new in this case
-> I hope it's a 3.5.x kernel in both cases ...
+Hi 
 
-Yes, sure. :-) The kernels were upgraded on both frontends.
-And in fact, that helped. My previous report that the problem was still 
-observed with the new kernel - well, it was not correct. The test 
-environment on virtual machines was not set up correctly.
+While looking at the IP6CB related code in IPVS, I stumbled upon this,
+memset in ip_vs_tunnel_xmit_v6() which look wrong in a IPv6 related
+function...
 
-We will do more extensive testing this week, but for now it appears that 
-problems we reported initially have gone when we upgraded the kernel to 
-3.5.3.
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c
+b/net/netfilter/ipvs/ip_vs_xmit.c
+index 1060bd5..7efa90c 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -998,6 +998,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct
+ip_vs_conn *cp,
+ 
+        skb_push(skb, sizeof(struct ipv6hdr));
+        skb_reset_network_header(skb);
++       /* jbrouer: Hmmm, memset below looks wrong in a IPv6 context */
+        memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
+ 
+        /* drop old route */
 
-Thank you!
 
-[]
+The change looks like a copy-paste introduced in commit:
+
+commit b3cdd2a73867d309dca288b8e820c09e3b7f1da1
+Author: Julius Volz <juliusv@google.com>
+Date:   Tue Sep 2 15:55:45 2008 +0200
+
+    IPVS: Add and bind IPv6 xmit functions
+    
+    Add xmit functions for IPv6. Also add the already needed __ip_vs_get_out_rt_v6()
+    to ip_vs_core.c. Bind the new xmit functions to v6 connections.
+    
+    Signed-off-by: Julius Volz <juliusv@google.com>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+
 
 -- 
 Best regards,
-Dmitry Akindinov
+  Jesper Dangaard Brouer
+  MSc.CS, Sr. Network Kernel Developer at Red Hat
+  Author of http://www.iptv-analyzer.org
+  LinkedIn: http://www.linkedin.com/in/brouer
 
 
