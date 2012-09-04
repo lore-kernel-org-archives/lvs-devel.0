@@ -1,75 +1,46 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: ipvs: memset problem/bug in ip_vs_tunnel_xmit_v6() ?
-Date: Tue, 4 Sep 2012 22:53:44 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1209042244580.2017@ja.ssi.bg>
-References: <1346752358.3069.594.camel@localhost>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: [PATCH 2/3] ipvs: Fix faulty IPv6 extension header handling in
+ IPVS
+Date: Tue, 04 Sep 2012 23:25:18 +0200
+Message-ID: <1346793918.3069.663.camel@localhost>
+References: <20120820130732.1509.13080.stgit@dragon>
+	 <20120820130840.1509.75794.stgit@dragon>
+	 <Pine.GSO.4.63.1208262311110.16771@stinky-local.trash.net>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1346752358.3069.594.camel@localhost>
+In-Reply-To: <Pine.GSO.4.63.1208262311110.16771@stinky-local.trash.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: LVS devel <lvs-devel@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+To: Patrick McHardy <kaber@trash.net>
+Cc: netdev@vger.kernel.org, Hans Schillstrom <hans@schillstrom.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
+
+On Mon, 20 Aug 2012, Jesper Dangaard Brouer wrote:
+
+[cut]
+
+> This patch contains a lot of API changes.  This is done, to avoid
+> the costly scan of finding the IPv6 headers, via ipv6_find_hdr().
+
+(small correction ipv6_find_hdr() is not that costly for the general
+case of no exthdrs)
+
+> Finding the IPv6 headers is done as early as possible, and passed
+> on as a pointer "struct ip_vs_iphdr *" to the affected functions.
+
+This passing the "struct ip_vs_iphdr" actually makes sense.  It reminds
+me of the way netfilter/iptables passes the xt_actions_param to each
+rule.  Which contains the same information as ip_vs_iphdr.  (note ipvs
+register at hooks at a lower level and don't get passed the
+xt_actions_param).
+
+Thus, perhaps we should keep these API changes.  Even if we decide to
+optimize ipv6_find_hdr().  (as proposed by my RFC patch)
+
+Perhaps we should consider adding a "family" to ip_vs_iphdr, as is done
+in xt_actions_param.  This could help us, with collapsing IPv4 and IPv6
+code, but i can see that other structs in IPVS carry this info already,
+so not sure its relevant.
 
 
-	Hello,
-
-On Tue, 4 Sep 2012, Jesper Dangaard Brouer wrote:
-
-> Hi 
-> 
-> While looking at the IP6CB related code in IPVS, I stumbled upon this,
-> memset in ip_vs_tunnel_xmit_v6() which look wrong in a IPv6 related
-> function...
-
-	I saw it too in the last days. But I was not
-sure what needs to be reset for output IPv6 path, may be
-only IP6CB(skb)->flags matters and we should preserve it.
-Comparing it with other places, eg. ip6_tnl_xmit2, may be
-we should just delete this memset? By this way we will
-preserve the flags.
-
-> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c
-> b/net/netfilter/ipvs/ip_vs_xmit.c
-> index 1060bd5..7efa90c 100644
-> --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> @@ -998,6 +998,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct
-> ip_vs_conn *cp,
->  
->         skb_push(skb, sizeof(struct ipv6hdr));
->         skb_reset_network_header(skb);
-> +       /* jbrouer: Hmmm, memset below looks wrong in a IPv6 context */
->         memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
->  
->         /* drop old route */
-> 
-> 
-> The change looks like a copy-paste introduced in commit:
-> 
-> commit b3cdd2a73867d309dca288b8e820c09e3b7f1da1
-> Author: Julius Volz <juliusv@google.com>
-> Date:   Tue Sep 2 15:55:45 2008 +0200
-> 
->     IPVS: Add and bind IPv6 xmit functions
->     
->     Add xmit functions for IPv6. Also add the already needed __ip_vs_get_out_rt_v6()
->     to ip_vs_core.c. Bind the new xmit functions to v6 connections.
->     
->     Signed-off-by: Julius Volz <juliusv@google.com>
->     Signed-off-by: Simon Horman <horms@verge.net.au>
-> 
-> 
-> -- 
-> Best regards,
->   Jesper Dangaard Brouer
->   MSc.CS, Sr. Network Kernel Developer at Red Hat
->   Author of http://www.iptv-analyzer.org
->   LinkedIn: http://www.linkedin.com/in/brouer
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
