@@ -1,46 +1,51 @@
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH 2/3] ipvs: Fix faulty IPv6 extension header handling in
- IPVS
-Date: Tue, 04 Sep 2012 23:25:18 +0200
-Message-ID: <1346793918.3069.663.camel@localhost>
-References: <20120820130732.1509.13080.stgit@dragon>
-	 <20120820130840.1509.75794.stgit@dragon>
-	 <Pine.GSO.4.63.1208262311110.16771@stinky-local.trash.net>
+From: Wei Yongjun <weiyj.lk@gmail.com>
+Subject: [PATCH] ipvs: use list_del_init instead of list_del/INIT_LIST_HEAD
+Date: Thu, 6 Sep 2012 12:21:53 +0800
+Message-ID: <CAPgLHd_JMzWm-Eh48bXcq6xW2viVEQgmkxLU8KgVyD2gUk6sZQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Pine.GSO.4.63.1208262311110.16771@stinky-local.trash.net>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=mime-version:date:message-id:subject:from:to:cc:content-type;
+        bh=1QT5PNfhDq9zyQIHd96wYxM8f1eTccVNrhiwXd/QaNY=;
+        b=WZ9H277LOFs/bJvBn1K4ea4iepKSL+B9ZJrWcC4NZGHjD0HTMKCSageOvccpOTke4j
+         /VUFLrSLaGVorfNXvcgxW/1mUDI8bnP/NijywjXBjiPXO1u3u/u1t8TY/OjxXzNwpSje
+         TIM2rEl963g2wjGokrZxBhOtSrYuA2YMTDJCenC1R9mjcdh6vYeXnRNN569N5ZC/IKI4
+         2ZJhx8edUlKvU6g8n4E/4Qzoe9y5nS7T3+OZkBc4u6X6jHN5wa5gxQQO4MhmZnDYCkSm
+         YQhRf3ShpQ5+1bgqWo2KJgiVQjWhiqXDECq4lL/AjVp4YaP/s8eSCrqKW6Xug9qXXz55
+         JH5w==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Patrick McHardy <kaber@trash.net>
-Cc: netdev@vger.kernel.org, Hans Schillstrom <hans@schillstrom.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kaber@trash.net
+Cc: yongjun_wei@trendmicro.com.cn, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org
 
-On Mon, 20 Aug 2012, Jesper Dangaard Brouer wrote:
+From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 
-[cut]
+Using list_del_init() instead of list_del() + INIT_LIST_HEAD().
 
-> This patch contains a lot of API changes.  This is done, to avoid
-> the costly scan of finding the IPv6 headers, via ipv6_find_hdr().
+spatch with a semantic match is used to found this problem.
+(http://coccinelle.lip6.fr/)
 
-(small correction ipv6_find_hdr() is not that costly for the general
-case of no exthdrs)
+Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-> Finding the IPv6 headers is done as early as possible, and passed
-> on as a pointer "struct ip_vs_iphdr *" to the affected functions.
-
-This passing the "struct ip_vs_iphdr" actually makes sense.  It reminds
-me of the way netfilter/iptables passes the xt_actions_param to each
-rule.  Which contains the same information as ip_vs_iphdr.  (note ipvs
-register at hooks at a lower level and don't get passed the
-xt_actions_param).
-
-Thus, perhaps we should keep these API changes.  Even if we decide to
-optimize ipv6_find_hdr().  (as proposed by my RFC patch)
-
-Perhaps we should consider adding a "family" to ip_vs_iphdr, as is done
-in xt_actions_param.  This could help us, with collapsing IPv4 and IPv6
-code, but i can see that other structs in IPVS carry this info already,
-so not sure its relevant.
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index f51013c..9d9f83e 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -539,8 +539,7 @@ static int ip_vs_rs_unhash(struct ip_vs_dest *dest)
+ 	 * Remove it from the rs_table table.
+ 	 */
+ 	if (!list_empty(&dest->d_list)) {
+-		list_del(&dest->d_list);
+-		INIT_LIST_HEAD(&dest->d_list);
++		list_del_init(&dest->d_list);
+ 	}
+ 
+ 	return 1;
 
 
