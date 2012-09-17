@@ -1,34 +1,29 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re[2]:  [PATCH V3 0/8] ipvs: IPv6 fragment handling for  IPVS
-Date: Fri, 14 Sep 2012 11:23:50 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1209141121260.1551@ja.ssi.bg>
-References: <ee5vnhe.0891bc4ff9e38f64c4c5c0da6c50af1c@obelix.schillstrom.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: [ANNOUNCE] Ipvsadm GIT repository
+Date: Mon, 17 Sep 2012 10:04:45 +0900
+Message-ID: <20120917010441.GA21387@verge.net.au>
+References: <1342169326-1911-1-git-send-email-ja@ssi.bg>
+ <20120717001201.GA23121@verge.net.au>
+ <CAHWFoux81rOetCST7ZbC7dCps=QZh7XV2LZhNa8ES0gQyj5RbA@mail.gmail.com>
+ <20120718001636.GE10971@verge.net.au>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <ee5vnhe.0891bc4ff9e38f64c4c5c0da6c50af1c@obelix.schillstrom.com>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120718001636.GE10971@verge.net.au>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Hans Schillstrom <hans.schillstrom@ericsson.com>, netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>, lvs-devel@vger.kernel.org, Thomas Graf <tgraf@suug.ch>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
+To: Wensong Zhang <wensong@linux-vs.org>
+Cc: Julian Anastasov <ja@ssi.bg>, Joseph Mack NA3T <jmack@wm7d.net>, lvs-devel@vger.kernel.org
 
+I have created a git repository for ipvsadm on kernel.org,
+which includes a change history imported from SVN.
 
-	Hello,
+git://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git
 
-On Thu, 13 Sep 2012, Hans Schillstrom wrote:
+If you have fixes or enhancements for ipvsadm please:
 
-> >	I also see that we should not send ICMP
-> >errors (FRAG NEEDED/TOO BIG) in response to large
-> >ICMP error packets but it is not related to your changes,
-> >it needs separate change to all transmitters.
-> 
-> Just a curious question, have you seen such big ICMP packets in real life ?
-> (if you have normal MTU:s) 
-
-	No, may be it can happen when PMTU reaches minimum.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+1. Base your changes on the above tree
+2. Provide a Signed-off-by line, as per kernel patches
+3. Send them to lvs-devel@vger.kernel.org and CC me.
