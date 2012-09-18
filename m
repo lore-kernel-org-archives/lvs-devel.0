@@ -1,7 +1,7 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH] Linking against libpopt is always requited
-Date: Mon, 17 Sep 2012 10:24:43 +0900
-Message-ID: <1347845083-32449-1-git-send-email-horms@verge.net.au>
+From: Tim Serong <tserong@suse.com>
+Subject: [PATCH] ipvsadm: Fix buffer overrun in ipvs_dests_parse_cb() (bnc#775051)
+Date: Tue, 18 Sep 2012 20:01:53 +1000
+Message-ID: <1347962513-9933-1-git-send-email-tserong@suse.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -9,52 +9,47 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org
-Cc: Simon Horman <horms@verge.net.au>
+Cc: Tim Serong <tserong@suse.com>
 
-It used to be the case that ipvsadm could be compiled to use
-getopt_long rather than libpopt. However, this is no longer the case
-and linking against libpopt is always requited.
+The attrs and dest_attrs arrays in ipvs_dest_parse_cb() seem to be using
+the wrong defines for their length.  This resulted in a buffer overrun
+corrupting EBX, which later caused a segfault running 'ipvsadm -Ln' on
+32 bit intel (SLES 11 SP2).
 
-Signed-off-by: Simon Horman <horms@verge.net.au>
+Signed-off-by: Tim Serong <tserong@suse.com>
 ---
- Makefile |   33 +--------------------------------
- 1 file changed, 1 insertion(+), 32 deletions(-)
+ libipvs/ip_vs.h   |    2 +-
+ libipvs/libipvs.c |    4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/Makefile b/Makefile
-index 930b29f..6e36d79 100644
---- a/Makefile
-+++ b/Makefile
-@@ -62,39 +62,8 @@ RPMBUILD = $(shell				\
- 		echo "/bin/rpm";		\
- 	fi )
+diff --git a/libipvs/ip_vs.h b/libipvs/ip_vs.h
+index 9726a17..5e1d544 100644
+--- a/libipvs/ip_vs.h
++++ b/libipvs/ip_vs.h
+@@ -413,7 +413,7 @@ enum {
+ 	__IPVS_CMD_ATTR_MAX,
+ };
  
--ifeq (,$(FORCE_GETOPT))
--LIB_SEARCH = /lib64 /usr/lib64 /usr/local/lib64 /lib /usr/lib /usr/local/lib
--POPT_LIB = $(shell for i in $(LIB_SEARCH); do \
--  if [ -f $$i/libpopt.a ]; then \
--    if nm $$i/libpopt.a | fgrep -q poptGetContext; then \
--	echo "-lpopt"; \
--	break; \
--    fi; \
--  fi; \
--done)
--ifeq (,$(POPT_LIB))
--POPT_LIB = $(shell for i in $(LIB_SEARCH); do \
--  f1=""; \
--  for so in $$i/libpopt.so*; do \
--    if [ -f $$so ]; then \
--      if objdump -T $$so | fgrep -q poptGetContext; then \
--	  echo "-lpopt"; \
--	  f1=y; \
--	  break; \
--      fi; \
--    fi; \
--  done; \
--  [ "$$f1" != "" ] && break; \
--done)
--endif
--endif
--
--ifneq (,$(POPT_LIB))
--POPT_DEFINE = -DHAVE_POPT
--endif
+-#define IPVS_CMD_ATTR_MAX (__IPVS_SVC_ATTR_MAX - 1)
++#define IPVS_CMD_ATTR_MAX (__IPVS_CMD_ATTR_MAX - 1)
+ 
+ /*
+  * Attributes used to describe a service
+diff --git a/libipvs/libipvs.c b/libipvs/libipvs.c
+index a157e18..be34dbc 100644
+--- a/libipvs/libipvs.c
++++ b/libipvs/libipvs.c
+@@ -726,8 +726,8 @@ ipvs_sort_services(struct ip_vs_get_services *s, ipvs_service_cmp_t f)
+ static int ipvs_dests_parse_cb(struct nl_msg *msg, void *arg)
+ {
+ 	struct nlmsghdr *nlh = nlmsg_hdr(msg);
+-	struct nlattr *attrs[IPVS_DEST_ATTR_MAX + 1];
+-	struct nlattr *dest_attrs[IPVS_SVC_ATTR_MAX + 1];
++	struct nlattr *attrs[IPVS_CMD_ATTR_MAX + 1];
++	struct nlattr *dest_attrs[IPVS_DEST_ATTR_MAX + 1];
+ 	struct ip_vs_get_dests **dp = (struct ip_vs_get_dests **)arg;
+ 	struct ip_vs_get_dests *d = (struct ip_vs_get_dests *)*dp;
+ 	int i = d->num_dests;
+-- 
+1.7.10.4
+
