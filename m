@@ -1,119 +1,128 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH V3 0/8] ipvs: IPv6 fragment handling for IPVS
-Date: Tue, 25 Sep 2012 23:48:11 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1209252319260.1770@ja.ssi.bg>
-References: <20120911123531.4305.40304.stgit@dragon>  <alpine.LFD.2.00.1209130143410.1653@ja.ssi.bg> <1348578674.2689.15.camel@localhost>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: [PATCH V4 1/7] ipvs: Trivial changes,
+	use compressed IPv6 address in output
+Date: Wed, 26 Sep 2012 14:05:53 +0200
+Message-ID: <20120926120546.24804.22455.stgit@dragon>
+References: <20120926120534.24804.78415.stgit@dragon>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <1348578674.2689.15.camel@localhost>
-Sender: netfilter-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Hans Schillstrom <hans@schillstrom.com>, Hans Schillstrom <hans.schillstrom@ericsson.com>, netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>, Pablo Neira Ayuso <pablo@netfilter.org>, lvs-devel@vger.kernel.org, Thomas Graf <tgraf@suug.ch>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20120926120534.24804.78415.stgit@dragon>
+Sender: lvs-devel-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+To: Hans Schillstrom <hans@schillstrom.com>, Hans Schillstrom <hans.schillstrom@ericsson.com>, netdev@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Patrick McHardy <kaber@trash.net>, Thomas Graf <tgraf@suug.ch>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
 
+Have not converted the proc file output to compressed IPv6 addresses.
 
-	Hello,
+Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+---
 
-On Tue, 25 Sep 2012, Jesper Dangaard Brouer wrote:
+ include/net/ip_vs.h              |    2 +-
+ net/netfilter/ipvs/ip_vs_core.c  |    2 +-
+ net/netfilter/ipvs/ip_vs_proto.c |    6 +++---
+ net/netfilter/ipvs/ip_vs_sched.c |    2 +-
+ net/netfilter/ipvs/ip_vs_xmit.c  |   10 +++++-----
+ 5 files changed, 11 insertions(+), 11 deletions(-)
 
-> > 	Some comments:
-> > 
-> > - About patch 4: ip_vs_icmp_xmit_v6 already calls skb_make_writable
-> > before ip_vs_nat_icmp_v6, that is why we provide 'offset'.
-> 
-> I see, that call path is correct, BUT I was talking about another call
-> path of ip_vs_nat_icmp_v6(), via handle_response_icmp() (which also
-> calls skb_make_writable).  That call path is triggered, if the
-> real-server, have shutdown its service and send back an ICMPv6 packet.
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index ee75ccd..aba0bb2 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -165,7 +165,7 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+ 	int len;
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (af == AF_INET6)
+-		len = snprintf(&buf[*idx], buf_len - *idx, "[%pI6]",
++		len = snprintf(&buf[*idx], buf_len - *idx, "[%pI6c]",
+ 			       &addr->in6) + 1;
+ 	else
+ #endif
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 58918e2..4edb654 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1487,7 +1487,7 @@ ip_vs_in_icmp_v6(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	if (ic == NULL)
+ 		return NF_DROP;
+ 
+-	IP_VS_DBG(12, "Incoming ICMPv6 (%d,%d) %pI6->%pI6\n",
++	IP_VS_DBG(12, "Incoming ICMPv6 (%d,%d) %pI6c->%pI6c\n",
+ 		  ic->icmp6_type, ntohs(icmpv6_id(ic)),
+ 		  &iph->saddr, &iph->daddr);
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index 50d8218..939f7fb 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -280,17 +280,17 @@ ip_vs_tcpudp_debug_packet_v6(struct ip_vs_protocol *pp,
+ 	if (ih == NULL)
+ 		sprintf(buf, "TRUNCATED");
+ 	else if (ih->nexthdr == IPPROTO_FRAGMENT)
+-		sprintf(buf, "%pI6->%pI6 frag",	&ih->saddr, &ih->daddr);
++		sprintf(buf, "%pI6c->%pI6c frag", &ih->saddr, &ih->daddr);
+ 	else {
+ 		__be16 _ports[2], *pptr;
+ 
+ 		pptr = skb_header_pointer(skb, offset + sizeof(struct ipv6hdr),
+ 					  sizeof(_ports), _ports);
+ 		if (pptr == NULL)
+-			sprintf(buf, "TRUNCATED %pI6->%pI6",
++			sprintf(buf, "TRUNCATED %pI6c->%pI6c",
+ 				&ih->saddr, &ih->daddr);
+ 		else
+-			sprintf(buf, "%pI6:%u->%pI6:%u",
++			sprintf(buf, "%pI6c:%u->%pI6c:%u",
+ 				&ih->saddr, ntohs(pptr[0]),
+ 				&ih->daddr, ntohs(pptr[1]));
+ 	}
+diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
+index 08dbdd5..d6bf20d 100644
+--- a/net/netfilter/ipvs/ip_vs_sched.c
++++ b/net/netfilter/ipvs/ip_vs_sched.c
+@@ -159,7 +159,7 @@ void ip_vs_scheduler_err(struct ip_vs_service *svc, const char *msg)
+ 			     svc->fwmark, msg);
+ #ifdef CONFIG_IP_VS_IPV6
+ 	} else if (svc->af == AF_INET6) {
+-		IP_VS_ERR_RL("%s: %s [%pI6]:%d - %s\n",
++		IP_VS_ERR_RL("%s: %s [%pI6c]:%d - %s\n",
+ 			     svc->scheduler->name,
+ 			     ip_vs_proto_name(svc->protocol),
+ 			     &svc->addr.in6, ntohs(svc->port), msg);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 56f6d5d..1060bd5 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -335,7 +335,7 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	local = __ip_vs_is_local_route6(rt);
+ 	if (!((local ? IP_VS_RT_MODE_LOCAL : IP_VS_RT_MODE_NON_LOCAL) &
+ 	      rt_mode)) {
+-		IP_VS_DBG_RL("Stopping traffic to %s address, dest: %pI6\n",
++		IP_VS_DBG_RL("Stopping traffic to %s address, dest: %pI6c\n",
+ 			     local ? "local":"non-local", daddr);
+ 		dst_release(&rt->dst);
+ 		return NULL;
+@@ -343,8 +343,8 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	if (local && !(rt_mode & IP_VS_RT_MODE_RDR) &&
+ 	    !((ort = (struct rt6_info *) skb_dst(skb)) &&
+ 	      __ip_vs_is_local_route6(ort))) {
+-		IP_VS_DBG_RL("Redirect from non-local address %pI6 to local "
+-			     "requires NAT method, dest: %pI6\n",
++		IP_VS_DBG_RL("Redirect from non-local address %pI6c to local "
++			     "requires NAT method, dest: %pI6c\n",
+ 			     &ipv6_hdr(skb)->daddr, daddr);
+ 		dst_release(&rt->dst);
+ 		return NULL;
+@@ -352,8 +352,8 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	if (unlikely(!local && (!skb->dev || skb->dev->flags & IFF_LOOPBACK) &&
+ 		     ipv6_addr_type(&ipv6_hdr(skb)->saddr) &
+ 				    IPV6_ADDR_LOOPBACK)) {
+-		IP_VS_DBG_RL("Stopping traffic from loopback address %pI6 "
+-			     "to non-local address, dest: %pI6\n",
++		IP_VS_DBG_RL("Stopping traffic from loopback address %pI6c "
++			     "to non-local address, dest: %pI6c\n",
+ 			     &ipv6_hdr(skb)->saddr, daddr);
+ 		dst_release(&rt->dst);
+ 		return NULL;
 
-	Yes, currently, both ip_vs_nat_icmp_v6 callers use
-skb_make_writable before calling it.
-
-> Hmm, testing it again, I cannot trigger this issue.  Perhaps I was
-> confusing my self and were using my test script that added IPv6 exthdrs
-> to the packet.  Adding print statements to the code, also show the
-> correct offset now.
-> I'm dropping this patch-4, and I'll adjust/fix patch-5 ("ipvs: fix
-> faulty IPv6 extension header handling in IPVS") accordingly.  And I'll
-> double check patch-5, that exthdr have been accounted for (in the offset
-> used by skb_make_writable() before calling ip_vs_nat_icmp_v6()).
-
-	Yes, patch-4 is not needed.
-
-> > - May be we can provide the offset of ICMPv6 header
-> > from ip_vs_in_icmp_v6 to ip_vs_icmp_xmit_v6 as additional
-> > argument (icmp_offset) and then to ip_vs_nat_icmp_v6. By this
-> > way we can avoid the two ipv6_find_hdr calls if we also provide
-> > the iph argument from ip_vs_icmp_xmit_v6 to ip_vs_nat_icmp_v6,
-> > its ->len points to the ports. ip_vs_in_icmp_v6 provides
-> > also protocol in this ciph, so may be we have everything.
-> 
-> Is this comment for the API patch-7 ("ipvs: API change to avoid rescan
-> of IPv6 exthdr") ?
-
-	No, this comment is for patch-5 where 2 ipv6_find_hdr
-calls are added to ip_vs_nat_icmp_v6. But we can change it
-later in followup patch as an optimization.
-
-> The API patch is going to save 19 calls to ipv6_find_hdr ().
-> 
-> 
-> > - in ip_vs_in_icmp_v6 there must be 'offs_ciph = ciph.len;'
-> > just before this line:
-> > 
-> > if (IPPROTO_TCP == ciph.protocol || IPPROTO_UDP == ciph.protocol ||
-> > 
-> 
-> It would be a lot easier for me, if you commented directly on the
-> patches.
-
-	Sorry, this is for patch-5, its purpose is for
-skb_make_writable in ip_vs_icmp_xmit_v6, not for debug.
-
-> I can see that 'offs_ciph = ciph.len;' is set earlier in this patch, but
-> that value is primarily used by IP_VS_DBG_PKT.  And offs_ciph, needs to
-> be updated, again, with the value of ciph.len after the call to
-> ipv6_find_hdr().  So, yes you are right ;-)
-> 
-> I'll rename offs_ciph to "writable" to emphasize what we are using this
-> value for.
-
-	Good idea, this is its purpose.
-
-> > 	The idea is that we linearize for writing the inner
-> > IP header and optionally the 2 ports. That is why old
-> > logic was 'offset += 2 * sizeof(__u16);'
-> 
-> The port logic was kept.  But I'll make it more clear whats happening,
-> and keep the "+=" coding style.
-
-	Yes, it was in this way at 2 places before your changes,
-one in handle_response_icmp and another in ip_vs_in_icmp_v6.
-
-> > - initially, ip_vs_fill_iph_skb fills iphdr->flags from
-> > current fragment, later ip_vs_out_icmp_v6 uses the same
-> > ipvsh when calling ipv6_find_hdr. Should we initialize
-> > ipvsh->flags to 0 before calling ipv6_find_hdr because
-> > it is I/O argument?
-
-	For the record, this is patch-7
-
-> As we don't use the flag, after this point, we can just give
-> ipv6_find_hdr() a NULL value instead.
-
-	Agreed, NULL for flags looks fine.
-
-> But I must give you, that it's a little confusing the way we reuse the
-> ipvsh variable (in ip_vs_out_icmp_v6()).  Think, this needs to be
-> rewritten to use a separate variable, like in ip_vs_in_icmp_v6().
-
-	The initialization is risky but saves stack. So,
-it is up to you to decide whether we need local ipvsh_stack
-var as before patch-7.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
