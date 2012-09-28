@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 1/7] ipvs: Trivial changes, use compressed IPv6 address in output
-Date: Fri, 28 Sep 2012 11:54:58 +0900
-Message-ID: <1348800904-23902-2-git-send-email-horms@verge.net.au>
+Subject: [PATCH 7/7] ipvs: SIP fragment handling
+Date: Fri, 28 Sep 2012 11:55:04 +0900
+Message-ID: <1348800904-23902-8-git-send-email-horms@verge.net.au>
 References: <1348800904-23902-1-git-send-email-horms@verge.net.au>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1348800904-23902-1-git-send-email-horms@verge.net.au>
@@ -15,118 +15,56 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Jesper Dangaard Brouer <brouer@redhat.com>
 
-Have not converted the proc file output to compressed IPv6 addresses.
+Use the nfct_reasm SKB if available.
+
+Based on part of a patch from: Hans Schillstrom
+I have left Hans'es comment in the patch (marked /HS)
 
 Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
+[ horms@verge.net.au: Fix comment style ]
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h              |    2 +-
- net/netfilter/ipvs/ip_vs_core.c  |    2 +-
- net/netfilter/ipvs/ip_vs_proto.c |    6 +++---
- net/netfilter/ipvs/ip_vs_sched.c |    2 +-
- net/netfilter/ipvs/ip_vs_xmit.c  |   10 +++++-----
- 5 files changed, 11 insertions(+), 11 deletions(-)
+ net/netfilter/ipvs/ip_vs_pe_sip.c |   16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index ee75ccd..aba0bb2 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -165,7 +165,7 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
- 	int len;
- #ifdef CONFIG_IP_VS_IPV6
- 	if (af == AF_INET6)
--		len = snprintf(&buf[*idx], buf_len - *idx, "[%pI6]",
-+		len = snprintf(&buf[*idx], buf_len - *idx, "[%pI6c]",
- 			       &addr->in6) + 1;
- 	else
- #endif
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 58918e2..4edb654 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1487,7 +1487,7 @@ ip_vs_in_icmp_v6(struct sk_buff *skb, int *related, unsigned int hooknum)
- 	if (ic == NULL)
- 		return NF_DROP;
+diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
+index ee4e2e3..12475ef 100644
+--- a/net/netfilter/ipvs/ip_vs_pe_sip.c
++++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+@@ -68,6 +68,7 @@ static int get_callid(const char *dptr, unsigned int dataoff,
+ static int
+ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+ {
++	struct sk_buff *reasm = skb_nfct_reasm(skb);
+ 	struct ip_vs_iphdr iph;
+ 	unsigned int dataoff, datalen, matchoff, matchlen;
+ 	const char *dptr;
+@@ -78,13 +79,20 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+ 	/* Only useful with UDP */
+ 	if (iph.protocol != IPPROTO_UDP)
+ 		return -EINVAL;
++	/* todo: IPv6 fragments:
++	 *       I think this only should be done for the first fragment. /HS
++	 */
++	if (reasm) {
++		skb = reasm;
++		dataoff = iph.thoff_reasm + sizeof(struct udphdr);
++	} else
++		dataoff = iph.len + sizeof(struct udphdr);
  
--	IP_VS_DBG(12, "Incoming ICMPv6 (%d,%d) %pI6->%pI6\n",
-+	IP_VS_DBG(12, "Incoming ICMPv6 (%d,%d) %pI6c->%pI6c\n",
- 		  ic->icmp6_type, ntohs(icmpv6_id(ic)),
- 		  &iph->saddr, &iph->daddr);
- 
-diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-index 50d82186..939f7fb 100644
---- a/net/netfilter/ipvs/ip_vs_proto.c
-+++ b/net/netfilter/ipvs/ip_vs_proto.c
-@@ -280,17 +280,17 @@ ip_vs_tcpudp_debug_packet_v6(struct ip_vs_protocol *pp,
- 	if (ih == NULL)
- 		sprintf(buf, "TRUNCATED");
- 	else if (ih->nexthdr == IPPROTO_FRAGMENT)
--		sprintf(buf, "%pI6->%pI6 frag",	&ih->saddr, &ih->daddr);
-+		sprintf(buf, "%pI6c->%pI6c frag", &ih->saddr, &ih->daddr);
- 	else {
- 		__be16 _ports[2], *pptr;
- 
- 		pptr = skb_header_pointer(skb, offset + sizeof(struct ipv6hdr),
- 					  sizeof(_ports), _ports);
- 		if (pptr == NULL)
--			sprintf(buf, "TRUNCATED %pI6->%pI6",
-+			sprintf(buf, "TRUNCATED %pI6c->%pI6c",
- 				&ih->saddr, &ih->daddr);
- 		else
--			sprintf(buf, "%pI6:%u->%pI6:%u",
-+			sprintf(buf, "%pI6c:%u->%pI6c:%u",
- 				&ih->saddr, ntohs(pptr[0]),
- 				&ih->daddr, ntohs(pptr[1]));
- 	}
-diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
-index 08dbdd5..d6bf20d 100644
---- a/net/netfilter/ipvs/ip_vs_sched.c
-+++ b/net/netfilter/ipvs/ip_vs_sched.c
-@@ -159,7 +159,7 @@ void ip_vs_scheduler_err(struct ip_vs_service *svc, const char *msg)
- 			     svc->fwmark, msg);
- #ifdef CONFIG_IP_VS_IPV6
- 	} else if (svc->af == AF_INET6) {
--		IP_VS_ERR_RL("%s: %s [%pI6]:%d - %s\n",
-+		IP_VS_ERR_RL("%s: %s [%pI6c]:%d - %s\n",
- 			     svc->scheduler->name,
- 			     ip_vs_proto_name(svc->protocol),
- 			     &svc->addr.in6, ntohs(svc->port), msg);
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 56f6d5d..1060bd5 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -335,7 +335,7 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
- 	local = __ip_vs_is_local_route6(rt);
- 	if (!((local ? IP_VS_RT_MODE_LOCAL : IP_VS_RT_MODE_NON_LOCAL) &
- 	      rt_mode)) {
--		IP_VS_DBG_RL("Stopping traffic to %s address, dest: %pI6\n",
-+		IP_VS_DBG_RL("Stopping traffic to %s address, dest: %pI6c\n",
- 			     local ? "local":"non-local", daddr);
- 		dst_release(&rt->dst);
- 		return NULL;
-@@ -343,8 +343,8 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
- 	if (local && !(rt_mode & IP_VS_RT_MODE_RDR) &&
- 	    !((ort = (struct rt6_info *) skb_dst(skb)) &&
- 	      __ip_vs_is_local_route6(ort))) {
--		IP_VS_DBG_RL("Redirect from non-local address %pI6 to local "
--			     "requires NAT method, dest: %pI6\n",
-+		IP_VS_DBG_RL("Redirect from non-local address %pI6c to local "
-+			     "requires NAT method, dest: %pI6c\n",
- 			     &ipv6_hdr(skb)->daddr, daddr);
- 		dst_release(&rt->dst);
- 		return NULL;
-@@ -352,8 +352,8 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
- 	if (unlikely(!local && (!skb->dev || skb->dev->flags & IFF_LOOPBACK) &&
- 		     ipv6_addr_type(&ipv6_hdr(skb)->saddr) &
- 				    IPV6_ADDR_LOOPBACK)) {
--		IP_VS_DBG_RL("Stopping traffic from loopback address %pI6 "
--			     "to non-local address, dest: %pI6\n",
-+		IP_VS_DBG_RL("Stopping traffic from loopback address %pI6c "
-+			     "to non-local address, dest: %pI6c\n",
- 			     &ipv6_hdr(skb)->saddr, daddr);
- 		dst_release(&rt->dst);
- 		return NULL;
+-	/* No Data ? */
+-	dataoff = iph.len + sizeof(struct udphdr);
+ 	if (dataoff >= skb->len)
+ 		return -EINVAL;
+-
+-	if ((retc=skb_linearize(skb)) < 0)
++	/* todo: Check if this will mess-up the reasm skb !!! /HS */
++	retc = skb_linearize(skb);
++	if (retc < 0)
+ 		return retc;
+ 	dptr = skb->data + dataoff;
+ 	datalen = skb->len - dataoff;
 -- 
 1.7.10.4
 
