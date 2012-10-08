@@ -1,46 +1,72 @@
-From: "Hans Schillstrom" <hans@schillstrom.com>
-Subject: Re: [PATCH V4 0/7] ipvs: IPv6 fragment handling for IPVS
-Date: Fri, 28 Sep 2012 20:21:44 +0200 (CEST)
-Message-ID: <1jj3ert.72366b742299319232fdb641d38cb87b@obelix.schillstrom.com>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: [GIT PULL nf-next] IPVS for 3.7 #2
+Date: Mon, 08 Oct 2012 20:44:25 +0200
+Message-ID: <1349721865.22194.53.camel@localhost>
+References: <1348800904-23902-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1348800904-23902-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Jesper Dangaard Brouer <brouer@redhat.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, davem@davemloft.net
-Cc: lvs-devel@vger.kernel.org, Patrick McHardy <kaber@trash.net>, Thomas Graf <tgraf@suug.ch>, Wensong Zhang <wensong@linux-vs.org>, netfilter-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Hans Schillstrom <hans@schillstrom.com>
 
-Hello
->Subject: [PATCH V4 0/7] ipvs: IPv6 fragment handling for IPVS
->
->The following patch set implement IPv6 fragment handling for IPVS.
+Hey Pablo,
 
-I've been running this patch set for a while now I seems to work well.
+These changes were intended for 3.7, but just checked you git tree...
+and it looks like you didn't pull in Simon's changes, and thus they have
+not hit DaveM's tree for the merge window :-(
 
-Netns tests with 4k nets ns have passed without problems (nothing left on loopback)
+--Jesper
 
-All tcp/udp fragment test - OK
-sctp  didn't pass but that is not related to IPVS.
-esp/ah  not affected by this patch, basic tests works fine.
-ipvs sync (backup)  - OK
 
-IPv4 DR, Tunnel, NAT - OK
-IPv6 DR, Tunnel OK  
-IPv6 NAT and Patrick's IPv6 NAT seems to work, however SIP or sipp doesn''t like IPv6 NAT yet
+On Fri, 2012-09-28 at 11:54 +0900, Simon Horman wrote:
+> Hi Pablo,
+> 
+> please consider the following enhancements to IPVS for inclusion in 3.7.
+> 
+> ----------------------------------------------------------------
+> The following changes since commit 82c93fcc2e1737fede2752520f1bf8f4de6304d8:
+> 
+>   x86: bpf_jit_comp: add XOR instruction for BPF JIT (2012-09-24 16:54:35 -0400)
+> 
+> are available in the git repository at:
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git master
+> 
+> for you to fetch changes up to 92eec78d25aee6bbc9bd295f51c022ddfa80cdd9:
+> 
+>   ipvs: SIP fragment handling (2012-09-28 11:37:16 +0900)
+> 
+> ----------------------------------------------------------------
+> Jesper Dangaard Brouer (7):
+>       ipvs: Trivial changes, use compressed IPv6 address in output
+>       ipvs: IPv6 extend ICMPv6 handling for future types
+>       ipvs: Use config macro IS_ENABLED()
+>       ipvs: Fix faulty IPv6 extension header handling in IPVS
+>       ipvs: Complete IPv6 fragment handling for IPVS
+>       ipvs: API change to avoid rescan of IPv6 exthdr
+>       ipvs: SIP fragment handling
+> 
+>  include/net/ip_vs.h                     |  194 +++++++++++----
+>  net/netfilter/ipvs/Kconfig              |    7 +-
+>  net/netfilter/ipvs/ip_vs_conn.c         |   15 +-
+>  net/netfilter/ipvs/ip_vs_core.c         |  404 +++++++++++++++++--------------
+>  net/netfilter/ipvs/ip_vs_dh.c           |    2 +-
+>  net/netfilter/ipvs/ip_vs_lblc.c         |    2 +-
+>  net/netfilter/ipvs/ip_vs_lblcr.c        |    2 +-
+>  net/netfilter/ipvs/ip_vs_pe_sip.c       |   18 +-
+>  net/netfilter/ipvs/ip_vs_proto.c        |    6 +-
+>  net/netfilter/ipvs/ip_vs_proto_ah_esp.c |    9 +-
+>  net/netfilter/ipvs/ip_vs_proto_sctp.c   |   42 ++--
+>  net/netfilter/ipvs/ip_vs_proto_tcp.c    |   40 ++-
+>  net/netfilter/ipvs/ip_vs_proto_udp.c    |   41 ++--
+>  net/netfilter/ipvs/ip_vs_sched.c        |    2 +-
+>  net/netfilter/ipvs/ip_vs_sh.c           |    2 +-
+>  net/netfilter/ipvs/ip_vs_xmit.c         |   73 +++---
+>  net/netfilter/xt_ipvs.c                 |    4 +-
+>  17 files changed, 501 insertions(+), 362 deletions(-)
 
-ICMPv6 - "packet to big" works except for
-pmtu when using esp/ah, but that didn't work without the patch set either. 
-
-Performance: No noticeable effects
-
-My recommendation is that this patch set OK for inclusion in 3.7 
-
-Thanks for a great work Jesper.
-
-All seven patches:
-Acked-by: Hans Schillstrom <hans@schillstrom.com>
-
-Regards
-Hans 
 
