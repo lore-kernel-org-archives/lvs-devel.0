@@ -1,32 +1,58 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf-next] IPVS for 3.8
-Date: Tue, 23 Oct 2012 10:49:12 +0200
-Message-ID: <20121023084912.GB7079@1984>
-References: <1350953451-19441-1-git-send-email-horms@verge.net.au>
+Subject: Re: [nf-next PATCH v2] ipvs: fix build errors related to config
+ option combinations
+Date: Tue, 23 Oct 2012 10:53:20 +0200
+Message-ID: <20121023085320.GC7079@1984>
+References: <20121022192245.12620.84466.stgit@dragon>
+ <20121023003314.GC5015@verge.net.au>
+ <20121023084241.GA7079@1984>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1350953451-19441-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+In-Reply-To: <20121023084241.GA7079@1984>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Hans Schillstrom <hans@schillstrom.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Fengguang Wu <fengguang.wu@intel.com>, Yuanhan Liu <yuanhan.liu@linux.intel.com>
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, fengguang.wu@intel.com, yuanhan.liu@linux.intel.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Hans Schillstrom <hans.schillstrom@ericsson.com>
 
-On Tue, Oct 23, 2012 at 09:50:50AM +0900, Simon Horman wrote:
-> Hi Pablo,
+On Tue, Oct 23, 2012 at 10:42:41AM +0200, Pablo Neira Ayuso wrote:
+> On Tue, Oct 23, 2012 at 09:33:15AM +0900, Simon Horman wrote:
+> > On Mon, Oct 22, 2012 at 09:22:45PM +0200, Jesper Dangaard Brouer wrote:
+> > > Fix two build error introduced by commit 63dca2c0:
+> > >  "ipvs: Fix faulty IPv6 extension header handling in IPVS"
+> > > 
+> > > First build error was fairly trivial and can occur, when
+> > > CONFIG_IP_VS_IPV6 is disabled.
+> > > 
+> > > The second build error was tricky, and can occur when deselecting
+> > > both all Netfilter and IPVS, but selecting CONFIG_IPV6.  This is
+> > > caused by "kernel/sysctl_binary.c" including "net/ip_vs.h", which
+> > > includes "linux/netfilter_ipv6/ip6_tables.h" causing include
+> > > of "include/linux/netfilter/x_tables.h" which then cannot find
+> > > the typedef nf_hookfn.
+> > > 
+> > > Fix this by only including "linux/netfilter_ipv6/ip6_tables.h" in
+> > > case of CONFIG_IP_VS_IPV6 as its already used to guard the usage
+> > > of ipv6_find_hdr().
+> > 
+> > Thanks, I have verified both of these fixes and I will send a pull
+> > request ASAP.
+> > 
+> > I do wonder how we might get earlier test coverage of these kinds of problems.
 > 
-> please consider the following build fix from Jesper for 3.8.
+> David already mentioned that we (Netfilter/IPVS) should aim to reduce
+> the amount of ifdef pollution in the code. Sometimes it is possible in
+> a nice way by encapsulating code that depends on the feature in one
+> single file.
 > 
-> ----------------------------------------------------------------
-> The following changes since commit bcc58c4d9141160d6448e4589acbd46e5c647518:
+> Sometimes it also requires some more thinking to make it that way (not
+> as easy as adding ifdef).
 > 
->   Merge branch 'master' of git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next (2012-10-22 12:30:41 +0200)
-> 
-> are available in the git repository at:
-> 
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git master
+> I think if we aim to that, we can avoid this sort of problems.
 
-Pulled, thanks.
+By looking at all those CONFIG_IP_VS_IPV6. I'd suggest to abstract
+generic layer 3 operations and thus move all IPv4 and IPv6 to the
+corresponding files (eg. ipvs_l3proto_ipv4.c and
+ipvs_l3proto_ipv6.c).
