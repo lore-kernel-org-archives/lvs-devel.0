@@ -1,39 +1,25 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf] IPVS
-Date: Mon, 28 Jan 2013 10:18:33 +0900
-Message-ID: <1359335914-27325-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: =?utf-8?Q?Stefan_Bauer?= <stefan.bauer@cubewerk.de>
+Subject: How does the mode fullnat work in detail and is implemented?
+Date: Sat, 2 Feb 2013 10:12:41 +0100
+Message-ID: <zarafa.510cd889.2056.2ff512266db7af11@zarafa.cubewerk.int>
+Mime-Version: 1.0
+Content-Transfer-Encoding: 8BIT
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Hans Schillstrom <hans@schillstrom.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Dan Carpenter <dan.carpenter@oracle.com>
+To: =?utf-8?Q?lvs-devel=40vger=2Ekernel=2Eorg?= <lvs-devel@vger.kernel.org>
 
-Hi Pablo,
+Dear developers,
 
-please consider the following fix for IPVS patch for 3.8.
+how does the mode fullnat work and how is it implemented?
 
-I believe that the problem was introduced in 3.4 and thus
-this fix is appropriate for 3.4, 3.5, 3.6 and 3.7 -stable.
+I see there are patches at http://kb.linuxvirtualserver.org/images/a/a5/Lvs-fullnat-synproxy.tar.gz for the kernel.
 
-----------------------------------------------------------------
-The following changes since commit 5b76c4948fe6977bead2359c2054f3e6a2dcf3d0:
+How is this mode triggered in userland? I see there are patches for ipvsadm as well. Additionally to this, do i have to set a SNAT-rule with iptables?
 
-  netfilter: x_tables: print correct hook names for ARP (2013-01-13 12:54:12 +0100)
+It would be nice to get some informations on this - there arent many informations out there about the deeper details.
 
-are available in the git repository at:
+Thank you in advance.
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git master
-
-for you to fetch changes up to b425df4cdd953a400d814b4474c9d3ec04481858:
-
-  ipvs: freeing uninitialized pointer on error (2013-01-28 10:14:37 +0900)
-
-----------------------------------------------------------------
-Dan Carpenter (1):
-      ipvs: freeing uninitialized pointer on error
-
- net/netfilter/ipvs/ip_vs_sync.c |    2 ++
- 1 file changed, 2 insertions(+)
+Stefan Bauer
