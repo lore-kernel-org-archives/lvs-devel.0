@@ -1,64 +1,27 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: How does the mode fullnat work in detail and is implemented?
-Date: Tue, 5 Feb 2013 10:44:35 +0900
-Message-ID: <20130205014435.GA2394@verge.net.au>
-References: <zarafa.510cd889.2056.2ff512266db7af11@zarafa.cubewerk.int>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [GIT PULL nf] IPVS
+Date: Tue, 5 Feb 2013 03:58:30 +0100
+Message-ID: <20130205025830.GA12762@localhost>
+References: <1359335914-27325-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <zarafa.510cd889.2056.2ff512266db7af11@zarafa.cubewerk.int>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <1359335914-27325-1-git-send-email-horms@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Stefan Bauer <stefan.bauer@cubewerk.de>
-Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Hans Schillstrom <hans@schillstrom.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Dan Carpenter <dan.carpenter@oracle.com>
 
-On Sat, Feb 02, 2013 at 10:12:41AM +0100, Stefan Bauer wrote:
-> Dear developers,
+On Mon, Jan 28, 2013 at 10:18:33AM +0900, Simon Horman wrote:
+> Hi Pablo,
 > 
-> how does the mode fullnat work and how is it implemented?
-> 
-> I see there are patches at http://kb.linuxvirtualserver.org/images/a/a5/Lvs-fullnat-synproxy.tar.gz for the kernel.
+> please consider the following fix for IPVS patch for 3.8.
 
-I do not believe that is the code that was merged into the kernel.
-Full-nat for IPVS was included in the 2.6.35 kernel and I do not
-details of how to configure it have changed since.
+Pulled, thanks Simon.
 
-> How is this mode triggered in userland? I see there are patches for
-> ipvsadm as well. Additionally to this, do i have to set a SNAT-rule with
-> iptables?
-> 
-> It would be nice to get some informations on this - there arent many
-> informations out there about the deeper details.
+> I believe that the problem was introduced in 3.4 and thus
+> this fix is appropriate for 3.4, 3.5, 3.6 and 3.7 -stable.
 
-My recollection is as follows:
-
-FULL-NAT is implemented by using the existing LVS-NAT (DNAT) implementation
-plus an IPVS helper module for iptables which allows it to handle SNAT
-of connections which are handled by IPVS.
-
-The code changes where:
-* IPVS (kernel)
-* New iptables IPVS module (kernel)
-* New iptables IPVS module (user-space)
-
-There is some description of how this may be configured at
-http://old.nabble.com/-lvs-users---PATCH-v2-0-4--IPVS-full-NAT-support-%2B-netfilter-'ipvs'-match-support-tc25663214.html
-and
-http://blog.loadbalancer.org/enabling-snat-in-lvs-xt_ipvs-and-iptables/
-
-I have cut and pasted a portion of the first link below:
-
-% ipvsadm -A -t 192.168.100.30:80 -s rr 
-% ipvsadm -a -t 192.168.100.30:80 -r 192.168.10.20:80 -m 
-# ... 
-
-# Source NAT for VIP 192.168.100.30:80 
-% iptables -t nat -A POSTROUTING -m ipvs --vaddr 192.168.100.30/32 \
-  --vport 80 -j SNAT --to-source 192.168.10.10
-
-or SNAT-ing only a specific real server:
-
-% iptables -t nat -A POSTROUTING --dst 192.168.11.20 \
-  -m ipvs --vaddr 192.168.100.30/32 -j SNAT --to-source 192.168.10.10
+Will pass this to -stable for 3.4 and 3.7.
