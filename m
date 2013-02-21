@@ -1,45 +1,89 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Subject: Re: [GIT PULL nf] IPVS fixes #2
-Date: Thu, 21 Feb 2013 12:19:02 +0100
-Message-ID: <512602A6.8090609@redhat.com>
-References: <1360113878-31051-1-git-send-email-horms@verge.net.au> <20130207181213.GA18181@localhost> <20130213201301.GA7245@localhost>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20130213201301.GA7245@localhost>
-Sender: netdev-owner@vger.kernel.org
+Subject: [PATCH stable] ipvs: sctp: fix checksumming on snat and dnat handlers
+Date: Thu, 21 Feb 2013 14:05:39 +0100
+Message-ID: <f904dab20914b562ad9c0baf0727971dc5a4b549.1361451476.git.dborkman@redhat.com>
+References: <cover.1361451476.git.dborkman@redhat.com>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <cover.1361451476.git.dborkman@redhat.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>
 
-On 02/13/2013 09:13 PM, Pablo Neira Ayuso wrote:
-> On Thu, Feb 07, 2013 at 07:12:13PM +0100, Pablo Neira Ayuso wrote:
->> On Wed, Feb 06, 2013 at 10:24:37AM +0900, Simon Horman wrote:
->>> Hi Pablo,
->>>
->>> Another fix. This one seems suitable for stable all the way back to
->>> 2.6.34. I suspect this change may not apply cleanly all the way back there.
->>> Please let me know if I should prepare some backports.
->
-> While reviewing patches that I'll pass to -stable, I noticed that:
->
-> 4b47bc9 ipvs: sctp: fix checksumming on snat and dnat handlers
->
-> depends on:
->
-> commit d4383f04d145cce8b855c463f40020639ef83ea0
-> Author: Jesper Dangaard Brouer <brouer@redhat.com>
-> Date:   Wed Sep 26 14:07:17 2012 +0200
->
->      ipvs: API change to avoid rescan of IPv6 exthdr
->
-> which is too big to add as dependency (it does not fulfill -stable
-> rule of not bigger patches than 100 lines).
->
-> If you want to me pass this sctp fix to -stable, you or Daniel will
-> have to send me a backport.
+In our test lab, we have a simple SCTP client connecting to a SCTP
+server via an IPVS load balancer. On some machines, load balancing
+works, but on others the initial handshake just fails, thus no
+SCTP connection whatsoever can be established!
 
-I'm currently working on it. Will send you a patch by today.
+We observed that the SCTP INIT-ACK handshake reply from the IPVS
+machine to the client had a correct IP checksum, but corrupt SCTP
+checksum when forwarded, thus on the client-side the packet was
+dropped and an intial handshake retriggered until all attempts
+run into the void.
 
-Thanks.
+To fix this issue, this patch i) adds a missing CHECKSUM_UNNECESSARY
+after the full checksum (re-)calculation (as done in IPVS TCP and UDP
+code as well), and ii) calculates the checksum in little-endian format
+(as fixed with the SCTP code in commit 4458f04c: sctp: Clean up sctp
+checksumming code). Stable backport of upstream commit 4b47bc9a.
+
+Cc: Julian Anastasov <ja@ssi.bg>
+Cc: Simon Horman <horms@verge.net.au>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 9f3fb75..94bb367 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -70,7 +70,7 @@ sctp_snat_handler(struct sk_buff *skb,
+ 	sctp_sctphdr_t *sctph;
+ 	unsigned int sctphoff;
+ 	struct sk_buff *iter;
+-	__be32 crc32;
++	__u32 crc32;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (cp->af == AF_INET6)
+@@ -101,8 +101,9 @@ sctp_snat_handler(struct sk_buff *skb,
+ 	skb_walk_frags(skb, iter)
+ 		crc32 = sctp_update_cksum((u8 *) iter->data, skb_headlen(iter),
+ 				          crc32);
+-	crc32 = sctp_end_cksum(crc32);
+-	sctph->checksum = crc32;
++	sctph->checksum = sctp_end_cksum(crc32);
++
++	skb->ip_summed = CHECKSUM_UNNECESSARY;
+ 
+ 	return 1;
+ }
+@@ -114,7 +115,7 @@ sctp_dnat_handler(struct sk_buff *skb,
+ 	sctp_sctphdr_t *sctph;
+ 	unsigned int sctphoff;
+ 	struct sk_buff *iter;
+-	__be32 crc32;
++	__u32 crc32;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (cp->af == AF_INET6)
+@@ -145,8 +146,9 @@ sctp_dnat_handler(struct sk_buff *skb,
+ 	skb_walk_frags(skb, iter)
+ 		crc32 = sctp_update_cksum((u8 *) iter->data, skb_headlen(iter),
+ 					  crc32);
+-	crc32 = sctp_end_cksum(crc32);
+-	sctph->checksum = crc32;
++	sctph->checksum = sctp_end_cksum(crc32);
++
++	skb->ip_summed = CHECKSUM_UNNECESSARY;
+ 
+ 	return 1;
+ }
+-- 
+1.7.11.7
+
