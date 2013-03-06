@@ -1,81 +1,68 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH net-next 03/12] ipvs: prefer NETDEV_DOWN event to free
- cached dsts
-Date: Wed, 6 Mar 2013 23:21:17 +0200 (EET)
-Message-ID: <alpine.LFD.2.00.1303062310520.1899@ja.ssi.bg>
-References: <1362559342-18784-1-git-send-email-ja@ssi.bg>  <1362559342-18784-4-git-send-email-ja@ssi.bg> <1362563789.17102.69.camel@hawk.mlab.se>
+Subject: Re: [PATCH net-next 06/12] ipvs: optimize dst usage for real
+ server
+Date: Wed, 6 Mar 2013 23:58:09 +0200 (EET)
+Message-ID: <alpine.LFD.2.00.1303062321230.1899@ja.ssi.bg>
+References: <1362559342-18784-1-git-send-email-ja@ssi.bg> <1362559342-18784-7-git-send-email-ja@ssi.bg> <20130306.151810.1494132480233578627.davem@davemloft.net>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1362563789.17102.69.camel@hawk.mlab.se>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20130306.151810.1494132480233578627.davem@davemloft.net>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
 
 	Hello,
 
-On Wed, 6 Mar 2013, Hans Schillstrom wrote:
+On Wed, 6 Mar 2013, David Miller wrote:
 
-> Hi Julian
+> From: Julian Anastasov <ja@ssi.bg>
+> Date: Wed,  6 Mar 2013 10:42:16 +0200
 > 
-> On Wed, 2013-03-06 at 10:42 +0200, Julian Anastasov wrote:
-> > 	The real server becomes unreachable on down event,
-> > no need to wait device unregistration. Should help in
-> > releasing dsts early before dst->dev is replaced with lo.
-> 
-> Have you test this in a network namespace ?
-> i.e. kill the namespace with heave traffic through it
-
-	This should not be a problem. Even without ns exit
-situation, we can have a case where device goes down,
-the output routes will start to fail and we will
-not cache route anymore. It can happen while the
-input device floods us with requests.
-
-> From what I remember this was a tricky area...
-> 
-> I have some test cases for this, should I run them ?
-
-	If it is easy...
-
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > ---
-> >  net/netfilter/ipvs/ip_vs_ctl.c |    8 +++-----
-> >  1 files changed, 3 insertions(+), 5 deletions(-)
+> > 	Currently when forwarding requests to real servers
+> > we use dst_lock and atomic operations when cloning the
+> > dst_cache value. As the dst_cache value does not change
+> > most of the time it is better to use RCU and to lock
+> > dst_lock only when we need to replace the obsoleted dst.
+> > For this to work we keep dst_cache in new structure protected
+> > by RCU. For packets to remote real servers we will use noref
+> > version of dst_cache, it will be valid while we are in RCU
+> > read-side critical section because now dst_release for replaced
+> > dsts will be invoked after the grace period. NAT-ed packets
+> > via loopback that are not sent but are passed to local stack
+> > with NF_ACCEPT need a dst clone (skb_dst_force).
 > > 
-> > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> > index c68198b..76fc8f2 100644
-> > --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> > @@ -1512,10 +1512,8 @@ __ip_vs_dev_reset(struct ip_vs_dest *dest, struct net_device *dev)
-> >  	spin_unlock_bh(&dest->dst_lock);
-> >  
-> >  }
-> > -/*
-> > - * Netdev event receiver
-> > - * Currently only NETDEV_UNREGISTER is handled, i.e. if we hold a reference to
-> > - * a device that is "unregister" it must be released.
-> > +/* Netdev event receiver
-> > + * Currently only NETDEV_DOWN is handled to release refs to cached dsts
-> >   */
-> >  static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
-> >  			    void *ptr)
-> > @@ -1527,7 +1525,7 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
-> >  	struct ip_vs_dest *dest;
-> >  	unsigned int idx;
-> >  
-> > -	if (event != NETDEV_UNREGISTER || !ipvs)
-> > +	if (event != NETDEV_DOWN || !ipvs)
-> >  		return NOTIFY_DONE;
-> >  	IP_VS_DBG(3, "%s() dev=%s\n", __func__, dev->name);
-> >  	EnterFunction(2);
+> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
 > 
-> 
-> Regards
-> Hans
+> It think it's much cleaner to have the callers of route lookups do
+> skb_set_dst_noref().
+
+	This was my first thought but commit 27b75c95f1
+(net: avoid RCU for NOCACHE dst) uses dst_hold for
+DST_NOCACHE dsts. IPVS wants to cache DST_NOCACHE entries
+(due to known-NH reasons) and later to use them for
+noref dsts...
+
+	Also, in the IPVS case we can not set skb_dst
+at the time when route is looked up because due to
+MTU and other checks we can fail, functions like
+icmp_send() will need the original skb_dst in
+such case.
+
+	There are two choices: __ip_vs_get_out_rt
+to return refdst as implemented in this patchset or
+to return dst with additional 'bool *noref' argument,
+so that caller can decide between skb_dst_set or
+skb_set_dst_noref. Then may be we will need just
+a new skb_dst_set_noref_{always,force} func that will
+contain the old skb_set_dst_noref code, i.e. without
+dst_hold? Not sure which variant sounds better.
+
+> Then you don't need any new interfaces, and you therefore don't need
+> to expose bits of the noref implementation and semantics at all.
 
 Regards
 
