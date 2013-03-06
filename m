@@ -1,129 +1,83 @@
 From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [PATCH net-next 11/12] ipvs: reorder keys in connection
- structure
-Date: Wed, 06 Mar 2013 10:43:34 +0100
-Message-ID: <1362563014.17102.63.camel@hawk.mlab.se>
+Subject: Re: [PATCH net-next 03/12] ipvs: prefer NETDEV_DOWN event to free
+ cached dsts
+Date: Wed, 06 Mar 2013 10:56:29 +0100
+Message-ID: <1362563789.17102.69.camel@hawk.mlab.se>
 References: <1362559342-18784-1-git-send-email-ja@ssi.bg>
-	 <1362559342-18784-12-git-send-email-ja@ssi.bg>
+	 <1362559342-18784-4-git-send-email-ja@ssi.bg>
 Reply-To: hans@schillstrom.com
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg="sha1"; protocol="application/x-pkcs7-signature";
-	boundary="=-osn2b+chKMJUz0oQYucn"
+	boundary="=-ze387PMXJ4zDRGPtMW0y"
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1362559342-18784-12-git-send-email-ja@ssi.bg>
+In-Reply-To: <1362559342-18784-4-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 To: Julian Anastasov <ja@ssi.bg>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
 
---=-osn2b+chKMJUz0oQYucn
+--=-ze387PMXJ4zDRGPtMW0y
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
 Hi Julian
-Great job you have done !
-I'll test it immediate...
-
 
 On Wed, 2013-03-06 at 10:42 +0200, Julian Anastasov wrote:
-> 	__ip_vs_conn_in_get and ip_vs_conn_out_get are
-> hot places. Optimize them, so that ports are matched first.
-> By moving net and fwmark below, on 32-bit arch we can fit
-> caddr in 32-byte cache line and all addresses in 64-byte
-> cache line.
+> 	The real server becomes unreachable on down event,
+> no need to wait device unregistration. Should help in
+> releasing dsts early before dst->dev is replaced with lo.
 
-Earlier I made some rearrangements like the one you have made.
-My conclusion at that time was that the best gain was to have
-fwmark and net within the first 64 bytes, and move daddr to the next
-cache line.
+Have you test this in a network namespace ?
+i.e. kill the namespace with heave traffic through it
 
-I uesd UDP at ~7Gbit/sec and 256k source address into a x86_64 machine,
-and a 50/50 mix of fwmarks and port in that tests.=20
+=46rom what I remember this was a tricky area...
 
-I guess that you have made similar test, and even take
-ip_vs_conn_out_get() into your calculations ?
+I have some test cases for this, should I run them ?
+
+
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> ---
+>  net/netfilter/ipvs/ip_vs_ctl.c |    8 +++-----
+>  1 files changed, 3 insertions(+), 5 deletions(-)
+>=20
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ct=
+l.c
+> index c68198b..76fc8f2 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> @@ -1512,10 +1512,8 @@ __ip_vs_dev_reset(struct ip_vs_dest *dest, struct =
+net_device *dev)
+>  	spin_unlock_bh(&dest->dst_lock);
+> =20
+>  }
+> -/*
+> - * Netdev event receiver
+> - * Currently only NETDEV_UNREGISTER is handled, i.e. if we hold a refere=
+nce to
+> - * a device that is "unregister" it must be released.
+> +/* Netdev event receiver
+> + * Currently only NETDEV_DOWN is handled to release refs to cached dsts
+>   */
+>  static int ip_vs_dst_event(struct notifier_block *this, unsigned long ev=
+ent,
+>  			    void *ptr)
+> @@ -1527,7 +1525,7 @@ static int ip_vs_dst_event(struct notifier_block *t=
+his, unsigned long event,
+>  	struct ip_vs_dest *dest;
+>  	unsigned int idx;
+> =20
+> -	if (event !=3D NETDEV_UNREGISTER || !ipvs)
+> +	if (event !=3D NETDEV_DOWN || !ipvs)
+>  		return NOTIFY_DONE;
+>  	IP_VS_DBG(3, "%s() dev=3D%s\n", __func__, dev->name);
+>  	EnterFunction(2);
 
 
 Regards
 Hans
 
->=20
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
->  include/net/ip_vs.h             |   12 ++++++------
->  net/netfilter/ipvs/ip_vs_conn.c |    8 ++++----
->  2 files changed, 10 insertions(+), 10 deletions(-)
->=20
-> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-> index 9059360..2bc30e6 100644
-> --- a/include/net/ip_vs.h
-> +++ b/include/net/ip_vs.h
-> @@ -566,20 +566,19 @@ struct ip_vs_conn_param {
->   */
->  struct ip_vs_conn {
->  	struct hlist_node	c_list;         /* hashed list heads */
-> -#ifdef CONFIG_NET_NS
-> -	struct net              *net;           /* Name space */
-> -#endif
->  	/* Protocol, addresses and port numbers */
-> -	u16                     af;             /* address family */
->  	__be16                  cport;
-> -	__be16                  vport;
->  	__be16                  dport;
-> -	__u32                   fwmark;         /* Fire wall mark from skb */
-> +	__be16                  vport;
-> +	u16			af;		/* address family */
->  	union nf_inet_addr      caddr;          /* client address */
->  	union nf_inet_addr      vaddr;          /* virtual address */
->  	union nf_inet_addr      daddr;          /* destination address */
->  	volatile __u32          flags;          /* status flags */
->  	__u16                   protocol;       /* Which protocol (TCP/UDP) */
-> +#ifdef CONFIG_NET_NS
-> +	struct net              *net;           /* Name space */
-> +#endif
-> =20
->  	/* counter and timer */
->  	atomic_t		refcnt;		/* reference count */
-> @@ -593,6 +592,7 @@ struct ip_vs_conn {
->  						 * state transition triggerd
->  						 * synchronization
->  						 */
-> +	__u32			fwmark;		/* Fire wall mark from skb */
->  	unsigned long		sync_endtime;	/* jiffies + sent_retries */
-> =20
->  	/* Control members */
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_c=
-onn.c
-> index b0cd2be..a4d8ec5 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -265,8 +265,8 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
->  	rcu_read_lock();
-> =20
->  	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
-> -		if (cp->af =3D=3D p->af &&
-> -		    p->cport =3D=3D cp->cport && p->vport =3D=3D cp->vport &&
-> +		if (p->cport =3D=3D cp->cport && p->vport =3D=3D cp->vport &&
-> +		    cp->af =3D=3D p->af &&
->  		    ip_vs_addr_equal(p->af, p->caddr, &cp->caddr) &&
->  		    ip_vs_addr_equal(p->af, p->vaddr, &cp->vaddr) &&
->  		    ((!p->cport) ^ (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
-> @@ -404,8 +404,8 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip=
-_vs_conn_param *p)
->  	rcu_read_lock();
-> =20
->  	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
-> -		if (cp->af =3D=3D p->af &&
-> -		    p->vport =3D=3D cp->cport && p->cport =3D=3D cp->dport &&
-> +		if (p->vport =3D=3D cp->cport && p->cport =3D=3D cp->dport &&
-> +		    cp->af =3D=3D p->af &&
->  		    ip_vs_addr_equal(p->af, p->vaddr, &cp->caddr) &&
->  		    ip_vs_addr_equal(p->af, p->caddr, &cp->daddr) &&
->  		    p->protocol =3D=3D cp->protocol &&
-
-
---=-osn2b+chKMJUz0oQYucn
+--=-ze387PMXJ4zDRGPtMW0y
 Content-Type: application/x-pkcs7-signature; name="smime.p7s"
 Content-Disposition: attachment; filename="smime.p7s"
 Content-Transfer-Encoding: base64
@@ -224,20 +178,20 @@ iKqpDIK394OF+G7TlpKLpihLt4xz5Yov+Fk+GNEC4qNE9Fy7qPV955LzQRc/Q2kkD+Tn/mBakYpi
 lDCBjDELMAkGA1UEBhMCSUwxFjAUBgNVBAoTDVN0YXJ0Q29tIEx0ZC4xKzApBgNVBAsTIlNlY3Vy
 ZSBEaWdpdGFsIENlcnRpZmljYXRlIFNpZ25pbmcxODA2BgNVBAMTL1N0YXJ0Q29tIENsYXNzIDEg
 UHJpbWFyeSBJbnRlcm1lZGlhdGUgQ2xpZW50IENBAgME/1UwCQYFKw4DAhoFAKCCAa8wGAYJKoZI
-hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMwMzA2MDk0MzM0WjAjBgkqhkiG
-9w0BCQQxFgQUiK2aIEewc5BHLnpaWlwVzWqxBdEwgaUGCSsGAQQBgjcQBDGBlzCBlDCBjDELMAkG
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMwMzA2MDk1NjI5WjAjBgkqhkiG
+9w0BCQQxFgQUtFKbXXsbdsK7uEm9RZjQedlMonUwgaUGCSsGAQQBgjcQBDGBlzCBlDCBjDELMAkG
 A1UEBhMCSUwxFjAUBgNVBAoTDVN0YXJ0Q29tIEx0ZC4xKzApBgNVBAsTIlNlY3VyZSBEaWdpdGFs
 IENlcnRpZmljYXRlIFNpZ25pbmcxODA2BgNVBAMTL1N0YXJ0Q29tIENsYXNzIDEgUHJpbWFyeSBJ
 bnRlcm1lZGlhdGUgQ2xpZW50IENBAgME/1UwgacGCyqGSIb3DQEJEAILMYGXoIGUMIGMMQswCQYD
 VQQGEwJJTDEWMBQGA1UEChMNU3RhcnRDb20gTHRkLjErMCkGA1UECxMiU2VjdXJlIERpZ2l0YWwg
 Q2VydGlmaWNhdGUgU2lnbmluZzE4MDYGA1UEAxMvU3RhcnRDb20gQ2xhc3MgMSBQcmltYXJ5IElu
-dGVybWVkaWF0ZSBDbGllbnQgQ0ECAwT/VTANBgkqhkiG9w0BAQEFAASCAQCoiymhW6aEXzZxvmG+
-DFZt93TFGx1B2GZDcXyI3KIZPpHZ+YTH2JuByH4YYhp6r5ZGeC+SmWXVA8LKmL5moJDB/eQe0xqR
-RdXU8tSl8v+fpOZ5+jAM7g0AYt9Eo1tZxSt23Uh9nN+8jyT1923s04E0iFi1LlO4WbbJRYBrU4zq
-yWjkydqUYMpNc+X1ww+Z8H36dyAfzvcivDileHAPNgGZ5Se1wEqfHUVvzyHSgB/0LXW/liuVc8iS
-ZAE4iMWAlJQrNN2V1+h3+sCGAJD6v+xIcI78Gy+AQIWJnFqnhUff0usPAw2QSVfAuHS/WeEyRzoX
-sEa7wsW7UfD4Xoezy05gAAAAAAAA
+dGVybWVkaWF0ZSBDbGllbnQgQ0ECAwT/VTANBgkqhkiG9w0BAQEFAASCAQADyWHdNqIC9fM35KWe
+XtsUz1Ss3O7aDKGOCdqlLS/3LQsaG4KUv9yrdf4CP7ZNfrMQ9PVG55JreMIS3dakp7o0rsO0N5Jz
+2WtmizK7Bf4/J/k9Ci63qPborfdUzdK+3XrOZOrZ1zlaa1+82GeL4OFwFb/VV84iEO+vpn4ZEOxT
+9MQLyC3MwfWxyHCFfVByYJbUMS+VJ2eKxjThlFa5XyxaME3ZG6/nWZorcI2svcYNX/VvlLFDS+Dc
+jErEK1XWcAWjPumtvaOICh8LCJsyScomiXWtQ/478wu7361soU3bn6LG+aU7BOmdGGIJqP1/Yx97
+Uqmyv8jcp6+6SVqPy0qpAAAAAAAA
 
 
---=-osn2b+chKMJUz0oQYucn--
+--=-ze387PMXJ4zDRGPtMW0y--
 
