@@ -1,115 +1,168 @@
 From: Hans Schillstrom <hans@schillstrom.com>
-Subject: Re: [PATCH net-next 03/12] ipvs: prefer NETDEV_DOWN event to free
- cached dsts
-Date: Thu, 07 Mar 2013 08:43:10 +0100
-Message-ID: <1362642190.17102.134.camel@hawk.mlab.se>
+Subject: Re: [PATCH net-next 11/12] ipvs: reorder keys in connection
+ structure
+Date: Thu, 07 Mar 2013 08:49:52 +0100
+Message-ID: <1362642592.17102.140.camel@hawk.mlab.se>
 References: <1362559342-18784-1-git-send-email-ja@ssi.bg>
-	  <1362559342-18784-4-git-send-email-ja@ssi.bg>
-	 <1362563789.17102.69.camel@hawk.mlab.se>
-	 <alpine.LFD.2.00.1303062310520.1899@ja.ssi.bg>
+	  <1362559342-18784-12-git-send-email-ja@ssi.bg>
+	 <1362563014.17102.63.camel@hawk.mlab.se>
+	 <alpine.LFD.2.00.1303062246480.1899@ja.ssi.bg>
 Reply-To: hans@schillstrom.com
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg="sha1"; protocol="application/x-pkcs7-signature";
-	boundary="=-tJ/C5elOARIKFQnVYJM+"
+	boundary="=-AUHNcBeCbFxpIYchPEz6"
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1303062310520.1899@ja.ssi.bg>
+In-Reply-To: <alpine.LFD.2.00.1303062246480.1899@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 To: Julian Anastasov <ja@ssi.bg>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
 
---=-tJ/C5elOARIKFQnVYJM+
+--=-AUHNcBeCbFxpIYchPEz6
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-Hello
-On Wed, 2013-03-06 at 23:21 +0200, Julian Anastasov wrote:
+Hi Julian
+On Wed, 2013-03-06 at 23:01 +0200, Julian Anastasov wrote:
 > 	Hello,
 >=20
 > On Wed, 6 Mar 2013, Hans Schillstrom wrote:
 >=20
 > > Hi Julian
-> >=20
+> > Great job you have done !
+> > I'll test it immediate...
+>=20
+> 	Thanks, it would be good to catch the problems
+> in early phase...
+>=20
 > > On Wed, 2013-03-06 at 10:42 +0200, Julian Anastasov wrote:
-> > > 	The real server becomes unreachable on down event,
-> > > no need to wait device unregistration. Should help in
-> > > releasing dsts early before dst->dev is replaced with lo.
+> > > 	__ip_vs_conn_in_get and ip_vs_conn_out_get are
+> > > hot places. Optimize them, so that ports are matched first.
+> > > By moving net and fwmark below, on 32-bit arch we can fit
+> > > caddr in 32-byte cache line and all addresses in 64-byte
+> > > cache line.
 > >=20
-> > Have you test this in a network namespace ?
-> > i.e. kill the namespace with heave traffic through it
+> > Earlier I made some rearrangements like the one you have made.
+> > My conclusion at that time was that the best gain was to have
+> > fwmark and net within the first 64 bytes, and move daddr to the next
+> > cache line.
 >=20
-> 	This should not be a problem. Even without ns exit
-> situation, we can have a case where device goes down,
-> the output routes will start to fail and we will
-> not cache route anymore. It can happen while the
-> input device floods us with requests.
+> 	But fwmark is used only for lookups in backup
+> server. The net field is checked first only in
+> ip_vs_ct_in_get (on scheduling), it can be optimized too.
+> Modern CPUs have 64-byte cache line and may be the
+> places of these fields do not play much because checking
+> the two ports is enough to differentiate most of the
+> connections. The addresses play when ports do not
+> differ, i.e. mostly for persistent connections. So,
+> on 64-byte cache line it would be more difficult to
+> see any difference.
 
-I've gone through the unregister code a couple of times now
-and in theory it should work.=20
-The test suit have also been running without problem=20
+I made some tests on weaker machine (i7-3930K) with moderate background
+load, there is absolute no measurable difference with daddr in first
+cache line or in second line.
+So based on that I prefer your solution since it keeps data together.
 
 
-> > From what I remember this was a tricky area...
+> > I uesd UDP at ~7Gbit/sec and 256k source address into a x86_64 machine,
+> > and a 50/50 mix of fwmarks and port in that tests.=20
 > >=20
-> > I have some test cases for this, should I run them ?
+> > I guess that you have made similar test, and even take
+> > ip_vs_conn_out_get() into your calculations ?
 >=20
-> 	If it is easy...
+> 	No, I have only virtual boxes for tests...
 >=20
-> > > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-
-Signed-off by: Hans Schillstrom <hans@schillstrom.com>
-
-> > > ---
-> > >  net/netfilter/ipvs/ip_vs_ctl.c |    8 +++-----
-> > >  1 files changed, 3 insertions(+), 5 deletions(-)
-> > >=20
-> > > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_v=
-s_ctl.c
-> > > index c68198b..76fc8f2 100644
-> > > --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> > > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> > > @@ -1512,10 +1512,8 @@ __ip_vs_dev_reset(struct ip_vs_dest *dest, str=
-uct net_device *dev)
-> > >  	spin_unlock_bh(&dest->dst_lock);
-> > > =20
-> > >  }
-> > > -/*
-> > > - * Netdev event receiver
-> > > - * Currently only NETDEV_UNREGISTER is handled, i.e. if we hold a re=
-ference to
-> > > - * a device that is "unregister" it must be released.
-> > > +/* Netdev event receiver
-> > > + * Currently only NETDEV_DOWN is handled to release refs to cached d=
-sts
-> > >   */
-> > >  static int ip_vs_dst_event(struct notifier_block *this, unsigned lon=
-g event,
-> > >  			    void *ptr)
-> > > @@ -1527,7 +1525,7 @@ static int ip_vs_dst_event(struct notifier_bloc=
-k *this, unsigned long event,
-> > >  	struct ip_vs_dest *dest;
-> > >  	unsigned int idx;
-> > > =20
-> > > -	if (event !=3D NETDEV_UNREGISTER || !ipvs)
-> > > +	if (event !=3D NETDEV_DOWN || !ipvs)
-> > >  		return NOTIFY_DONE;
-> > >  	IP_VS_DBG(3, "%s() dev=3D%s\n", __func__, dev->name);
-> > >  	EnterFunction(2);
-> >=20
-> >=20
 > > Regards
 > > Hans
+> >=20
+> > >=20
+> > > Signed-off-by: Julian Anastasov <ja@ssi.bg>
+
+Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+
+> > > ---
+> > >  include/net/ip_vs.h             |   12 ++++++------
+> > >  net/netfilter/ipvs/ip_vs_conn.c |    8 ++++----
+> > >  2 files changed, 10 insertions(+), 10 deletions(-)
+> > >=20
+> > > diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> > > index 9059360..2bc30e6 100644
+> > > --- a/include/net/ip_vs.h
+> > > +++ b/include/net/ip_vs.h
+> > > @@ -566,20 +566,19 @@ struct ip_vs_conn_param {
+> > >   */
+> > >  struct ip_vs_conn {
+> > >  	struct hlist_node	c_list;         /* hashed list heads */
+> > > -#ifdef CONFIG_NET_NS
+> > > -	struct net              *net;           /* Name space */
+> > > -#endif
+> > >  	/* Protocol, addresses and port numbers */
+> > > -	u16                     af;             /* address family */
+> > >  	__be16                  cport;
+> > > -	__be16                  vport;
+> > >  	__be16                  dport;
+> > > -	__u32                   fwmark;         /* Fire wall mark from skb =
+*/
+> > > +	__be16                  vport;
+> > > +	u16			af;		/* address family */
+> > >  	union nf_inet_addr      caddr;          /* client address */
+> > >  	union nf_inet_addr      vaddr;          /* virtual address */
+> > >  	union nf_inet_addr      daddr;          /* destination address */
+> > >  	volatile __u32          flags;          /* status flags */
+> > >  	__u16                   protocol;       /* Which protocol (TCP/UDP)=
+ */
+> > > +#ifdef CONFIG_NET_NS
+> > > +	struct net              *net;           /* Name space */
+> > > +#endif
+> > > =20
+> > >  	/* counter and timer */
+> > >  	atomic_t		refcnt;		/* reference count */
+> > > @@ -593,6 +592,7 @@ struct ip_vs_conn {
+> > >  						 * state transition triggerd
+> > >  						 * synchronization
+> > >  						 */
+> > > +	__u32			fwmark;		/* Fire wall mark from skb */
+> > >  	unsigned long		sync_endtime;	/* jiffies + sent_retries */
+> > > =20
+> > >  	/* Control members */
+> > > diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_=
+vs_conn.c
+> > > index b0cd2be..a4d8ec5 100644
+> > > --- a/net/netfilter/ipvs/ip_vs_conn.c
+> > > +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> > > @@ -265,8 +265,8 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param=
+ *p)
+> > >  	rcu_read_lock();
+> > > =20
+> > >  	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
+> > > -		if (cp->af =3D=3D p->af &&
+> > > -		    p->cport =3D=3D cp->cport && p->vport =3D=3D cp->vport &&
+> > > +		if (p->cport =3D=3D cp->cport && p->vport =3D=3D cp->vport &&
+> > > +		    cp->af =3D=3D p->af &&
+> > >  		    ip_vs_addr_equal(p->af, p->caddr, &cp->caddr) &&
+> > >  		    ip_vs_addr_equal(p->af, p->vaddr, &cp->vaddr) &&
+> > >  		    ((!p->cport) ^ (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
+> > > @@ -404,8 +404,8 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struc=
+t ip_vs_conn_param *p)
+> > >  	rcu_read_lock();
+> > > =20
+> > >  	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
+> > > -		if (cp->af =3D=3D p->af &&
+> > > -		    p->vport =3D=3D cp->cport && p->cport =3D=3D cp->dport &&
+> > > +		if (p->vport =3D=3D cp->cport && p->cport =3D=3D cp->dport &&
+> > > +		    cp->af =3D=3D p->af &&
+> > >  		    ip_vs_addr_equal(p->af, p->vaddr, &cp->caddr) &&
+> > >  		    ip_vs_addr_equal(p->af, p->caddr, &cp->daddr) &&
+> > >  		    p->protocol =3D=3D cp->protocol &&
 >=20
 > Regards
 >=20
 > --
 > Julian Anastasov <ja@ssi.bg>
 
-Regargs
-Hans
 
---=-tJ/C5elOARIKFQnVYJM+
+--=-AUHNcBeCbFxpIYchPEz6
 Content-Type: application/x-pkcs7-signature; name="smime.p7s"
 Content-Disposition: attachment; filename="smime.p7s"
 Content-Transfer-Encoding: base64
@@ -210,20 +263,20 @@ iKqpDIK394OF+G7TlpKLpihLt4xz5Yov+Fk+GNEC4qNE9Fy7qPV955LzQRc/Q2kkD+Tn/mBakYpi
 lDCBjDELMAkGA1UEBhMCSUwxFjAUBgNVBAoTDVN0YXJ0Q29tIEx0ZC4xKzApBgNVBAsTIlNlY3Vy
 ZSBEaWdpdGFsIENlcnRpZmljYXRlIFNpZ25pbmcxODA2BgNVBAMTL1N0YXJ0Q29tIENsYXNzIDEg
 UHJpbWFyeSBJbnRlcm1lZGlhdGUgQ2xpZW50IENBAgME/1UwCQYFKw4DAhoFAKCCAa8wGAYJKoZI
-hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMwMzA3MDc0MzExWjAjBgkqhkiG
-9w0BCQQxFgQUBAVN+MfF49xf+agaEBv6qk+FPvAwgaUGCSsGAQQBgjcQBDGBlzCBlDCBjDELMAkG
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMwMzA3MDc0OTUyWjAjBgkqhkiG
+9w0BCQQxFgQUV7zR50/oz0BG0NH0n0wJBHdWM4kwgaUGCSsGAQQBgjcQBDGBlzCBlDCBjDELMAkG
 A1UEBhMCSUwxFjAUBgNVBAoTDVN0YXJ0Q29tIEx0ZC4xKzApBgNVBAsTIlNlY3VyZSBEaWdpdGFs
 IENlcnRpZmljYXRlIFNpZ25pbmcxODA2BgNVBAMTL1N0YXJ0Q29tIENsYXNzIDEgUHJpbWFyeSBJ
 bnRlcm1lZGlhdGUgQ2xpZW50IENBAgME/1UwgacGCyqGSIb3DQEJEAILMYGXoIGUMIGMMQswCQYD
 VQQGEwJJTDEWMBQGA1UEChMNU3RhcnRDb20gTHRkLjErMCkGA1UECxMiU2VjdXJlIERpZ2l0YWwg
 Q2VydGlmaWNhdGUgU2lnbmluZzE4MDYGA1UEAxMvU3RhcnRDb20gQ2xhc3MgMSBQcmltYXJ5IElu
-dGVybWVkaWF0ZSBDbGllbnQgQ0ECAwT/VTANBgkqhkiG9w0BAQEFAASCAQC38cBFAsSywpIrTarZ
-VD6MkaR9O+0Lew4QCc+9ucDxPyKdoYTZb8gN48/mfvTn3vthoeC52IAzsOFmo16knWcjIz5Uaduh
-YW+AsMMJfpHtdGaW3SPn0E/y1B+DuwKiRD8ImOjHg93Cg28OrADMV832iqMVhVLNHsjnvWjxYWeO
-zK//YvYxOo7AsYcXmY2wY3uOPbwByUzn+Qy29u+do0zaK9O73WyYAoP+rKLeHT8PZj3Jk85a00Wt
-zzfaqc8cZ82RBrYitUGpmysRYf+eQ/YNRfaRB51/tvUW2XNvCMy8gh30gn1Ag0xwbkzLNIEVm/ts
-Gm8TWPu3sPUevCxM7lY0AAAAAAAA
+dGVybWVkaWF0ZSBDbGllbnQgQ0ECAwT/VTANBgkqhkiG9w0BAQEFAASCAQDDkC0+4bvhxq9IZSmM
+fPeFOIxXuX85sMehKbein1to3JqJeShASKg32aLcxClgDbMJOgA62nCrowSHURPYsrf2CRfK8WqW
+0pKeyhVUsc9jn1xajAj0eS0N0u1yDZMlIbYoZ1AWl5NL1WbKIwCgT8bqtMZxtzHg4JTszle6L9tb
+cnScV6FEWs9hucXewZf7iZMx7dBNj2ehksWigj4AqmbqOWAAj1wDa5w3PQpTj9IIkff6C8DEUx5P
+WkdmRngdcyThRYeAuCcJz+1JijO6iamCMTdj9dXlQxlDEIZUZcrRilvmGH7iS8vEvZHUsJe4BF1j
+xdYu6UHVeqzikPhHnq8PAAAAAAAA
 
 
---=-tJ/C5elOARIKFQnVYJM+--
+--=-AUHNcBeCbFxpIYchPEz6--
 
