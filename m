@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 1/5] ipvs: add backup_only flag to avoid loops
-Date: Sat,  9 Mar 2013 23:25:04 +0200
-Message-ID: <1362864308-8259-2-git-send-email-ja@ssi.bg>
+Subject: [PATCH net-next 4/5] ipvs: fix hashing in ip_vs_svc_hashkey
+Date: Sat,  9 Mar 2013 23:25:07 +0200
+Message-ID: <1362864308-8259-5-git-send-email-ja@ssi.bg>
 References: <1362864308-8259-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1362864308-8259-1-git-send-email-ja@ssi.bg>
@@ -13,180 +13,40 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org
 
-	Dmitry Akindinov is reporting for a problem where
-SYNs are looping between the master and backup server
-when the backup server is used as real server in DR mode
-and has IPVS rules to function as director.
+	net is a pointer in host order, mix it properly
+with other keys in network order. Fixes sparse warning.
 
-	Even when the backup function is enabled we
-continue to forward traffic and schedule new connections
-when the current master is using the backup server as
-real server. While this is not a problem for NAT, for
-DR and TUN method the backup server can not determine
-if a request comes from client or from director.
-
-	To avoid such loops add new sysctl flag
-backup_only. It can be needed for DR/TUN setups that
-do not need backup and director function at the
-same time. When the backup function is enabled we
-stop any forwarding and pass the traffic to the local
-stack (real server mode). The flag disables the
-director function when the backup function is enabled.
-
-	For setups that enable backup function for
-some virtual services and director function for
-other virtual services there should be another more
-complex solution to support DR/TUN mode, may be to
-assign per-virtual service syncid value, so that
-we can differentiate the requests.
-
-Reported-by: Dmitry Akindinov <dimak@stalker.com>
-Tested-by: German Myzovsky <lawyer@sipnet.ru>
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- Documentation/networking/ipvs-sysctl.txt |    7 +++++++
- include/net/ip_vs.h                      |   12 ++++++++++++
- net/netfilter/ipvs/ip_vs_core.c          |   12 ++++++++----
- net/netfilter/ipvs/ip_vs_ctl.c           |    7 +++++++
- 4 files changed, 34 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
-index f2a2488..9573d0c 100644
---- a/Documentation/networking/ipvs-sysctl.txt
-+++ b/Documentation/networking/ipvs-sysctl.txt
-@@ -15,6 +15,13 @@ amemthresh - INTEGER
-         enabled and the variable is automatically set to 2, otherwise
-         the strategy is disabled and the variable is  set  to 1.
- 
-+backup_only - BOOLEAN
-+	0 - disabled (default)
-+	not 0 - enabled
-+
-+	If set, disable the director function while the server is
-+	in backup mode to avoid packet loops for DR/TUN methods.
-+
- conntrack - BOOLEAN
- 	0 - disabled (default)
- 	not 0 - enabled
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index d1fb021..5ed8939 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -997,6 +997,7 @@ struct netns_ipvs {
- 	int			sysctl_sync_retries;
- 	int			sysctl_nat_icmp_send;
- 	int			sysctl_pmtu_disc;
-+	int			sysctl_backup_only;
- 
- 	/* ip_vs_lblc */
- 	int			sysctl_lblc_expiration;
-@@ -1088,6 +1089,12 @@ static inline int sysctl_pmtu_disc(struct netns_ipvs *ipvs)
- 	return ipvs->sysctl_pmtu_disc;
- }
- 
-+static inline int sysctl_backup_only(struct netns_ipvs *ipvs)
-+{
-+	return ipvs->sync_state & IP_VS_STATE_BACKUP &&
-+	       ipvs->sysctl_backup_only;
-+}
-+
- #else
- 
- static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
-@@ -1135,6 +1142,11 @@ static inline int sysctl_pmtu_disc(struct netns_ipvs *ipvs)
- 	return 1;
- }
- 
-+static inline int sysctl_backup_only(struct netns_ipvs *ipvs)
-+{
-+	return 0;
-+}
-+
- #endif
- 
- /*
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 2ea2862..15a051c 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1579,7 +1579,8 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	}
- 	/* ipvs enabled in this netns ? */
- 	net = skb_net(skb);
--	if (!net_ipvs(net)->enable)
-+	ipvs = net_ipvs(net);
-+	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
- 		return NF_ACCEPT;
- 
- 	ip_vs_fill_iph_skb(af, skb, &iph);
-@@ -1656,7 +1657,6 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	}
- 
- 	IP_VS_DBG_PKT(11, af, pp, skb, 0, "Incoming packet");
--	ipvs = net_ipvs(net);
- 	/* Check the server status */
- 	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
- 		/* the destination server is not available */
-@@ -1817,13 +1817,15 @@ ip_vs_forward_icmp(unsigned int hooknum, struct sk_buff *skb,
- {
- 	int r;
- 	struct net *net;
-+	struct netns_ipvs *ipvs;
- 
- 	if (ip_hdr(skb)->protocol != IPPROTO_ICMP)
- 		return NF_ACCEPT;
- 
- 	/* ipvs enabled in this netns ? */
- 	net = skb_net(skb);
--	if (!net_ipvs(net)->enable)
-+	ipvs = net_ipvs(net);
-+	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
- 		return NF_ACCEPT;
- 
- 	return ip_vs_in_icmp(skb, &r, hooknum);
-@@ -1837,6 +1839,7 @@ ip_vs_forward_icmp_v6(unsigned int hooknum, struct sk_buff *skb,
- {
- 	int r;
- 	struct net *net;
-+	struct netns_ipvs *ipvs;
- 	struct ip_vs_iphdr iphdr;
- 
- 	ip_vs_fill_iph_skb(AF_INET6, skb, &iphdr);
-@@ -1845,7 +1848,8 @@ ip_vs_forward_icmp_v6(unsigned int hooknum, struct sk_buff *skb,
- 
- 	/* ipvs enabled in this netns ? */
- 	net = skb_net(skb);
--	if (!net_ipvs(net)->enable)
-+	ipvs = net_ipvs(net);
-+	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
- 		return NF_ACCEPT;
- 
- 	return ip_vs_in_icmp_v6(skb, &r, hooknum, &iphdr);
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index f4b53c4..11326db 100644
+index 11326db..2c8db45 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1806,6 +1806,12 @@ static struct ctl_table vs_vars[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec,
- 	},
-+	{
-+		.procname	= "backup_only",
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
- #ifdef CONFIG_IP_VS_DEBUG
- 	{
- 		.procname	= "debug_level",
-@@ -3739,6 +3745,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
- 	tbl[idx++].data = &ipvs->sysctl_nat_icmp_send;
- 	ipvs->sysctl_pmtu_disc = 1;
- 	tbl[idx++].data = &ipvs->sysctl_pmtu_disc;
-+	tbl[idx++].data = &ipvs->sysctl_backup_only;
+@@ -271,16 +271,18 @@ ip_vs_svc_hashkey(struct net *net, int af, unsigned int proto,
+ {
+ 	register unsigned int porth = ntohs(port);
+ 	__be32 addr_fold = addr->ip;
++	__u32 ahash;
  
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (af == AF_INET6)
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
+ #endif
+-	addr_fold ^= ((size_t)net>>8);
++	ahash = ntohl(addr_fold);
++	ahash ^= ((size_t) net >> 8);
  
- 	ipvs->sysctl_hdr = register_net_sysctl(net, "net/ipv4/vs", tbl);
+-	return (proto^ntohl(addr_fold)^(porth>>IP_VS_SVC_TAB_BITS)^porth)
+-		& IP_VS_SVC_TAB_MASK;
++	return (proto ^ ahash ^ (porth >> IP_VS_SVC_TAB_BITS) ^ porth) &
++	       IP_VS_SVC_TAB_MASK;
+ }
+ 
+ /*
 -- 
 1.7.3.4
 
