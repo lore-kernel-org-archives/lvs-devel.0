@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCHv2 net-next 03/15] ipvs: prefer NETDEV_DOWN event to free cached dsts
-Date: Sat,  9 Mar 2013 23:16:43 +0200
-Message-ID: <1362863815-5898-4-git-send-email-ja@ssi.bg>
+Subject: [PATCHv2 net-next 12/15] ipvs: convert locks used in persistence engines
+Date: Sat,  9 Mar 2013 23:16:52 +0200
+Message-ID: <1362863815-5898-13-git-send-email-ja@ssi.bg>
 References: <1362863815-5898-1-git-send-email-ja@ssi.bg>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1362863815-5898-1-git-send-email-ja@ssi.bg>
@@ -13,41 +13,129 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-	The real server becomes unreachable on down event,
-no need to wait device unregistration. Should help in
-releasing dsts early before dst->dev is replaced with lo.
+	Allow the readers to use RCU lock and for
+PE module registrations use global mutex instead of
+spinlock. All PE modules need to use rcu_barrier
+in their module exit handler.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off by: Hans Schillstrom <hans@schillstrom.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c |    8 +++-----
- 1 files changed, 3 insertions(+), 5 deletions(-)
+ net/netfilter/ipvs/ip_vs_pe.c     |   43 +++++++++++-------------------------
+ net/netfilter/ipvs/ip_vs_pe_sip.c |    1 +
+ 2 files changed, 14 insertions(+), 30 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index c68198b..76fc8f2 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1512,10 +1512,8 @@ __ip_vs_dev_reset(struct ip_vs_dest *dest, struct net_device *dev)
- 	spin_unlock_bh(&dest->dst_lock);
+diff --git a/net/netfilter/ipvs/ip_vs_pe.c b/net/netfilter/ipvs/ip_vs_pe.c
+index 5cf859c..5d9774c 100644
+--- a/net/netfilter/ipvs/ip_vs_pe.c
++++ b/net/netfilter/ipvs/ip_vs_pe.c
+@@ -13,8 +13,8 @@
+ /* IPVS pe list */
+ static LIST_HEAD(ip_vs_pe);
  
+-/* lock for service table */
+-static DEFINE_SPINLOCK(ip_vs_pe_lock);
++/* semaphore for IPVS PEs. */
++static DEFINE_MUTEX(ip_vs_pe_mutex);
+ 
+ /* Bind a service with a pe */
+ void ip_vs_bind_pe(struct ip_vs_service *svc, struct ip_vs_pe *pe)
+@@ -36,9 +36,8 @@ struct ip_vs_pe *__ip_vs_pe_getbyname(const char *pe_name)
+ 	IP_VS_DBG(10, "%s(): pe_name \"%s\"\n", __func__,
+ 		  pe_name);
+ 
+-	spin_lock_bh(&ip_vs_pe_lock);
+-
+-	list_for_each_entry(pe, &ip_vs_pe, n_list) {
++	rcu_read_lock();
++	list_for_each_entry_rcu(pe, &ip_vs_pe, n_list) {
+ 		/* Test and get the modules atomically */
+ 		if (pe->module &&
+ 		    !try_module_get(pe->module)) {
+@@ -47,14 +46,14 @@ struct ip_vs_pe *__ip_vs_pe_getbyname(const char *pe_name)
+ 		}
+ 		if (strcmp(pe_name, pe->name)==0) {
+ 			/* HIT */
+-			spin_unlock_bh(&ip_vs_pe_lock);
++			rcu_read_unlock();
+ 			return pe;
+ 		}
+ 		if (pe->module)
+ 			module_put(pe->module);
+ 	}
++	rcu_read_unlock();
+ 
+-	spin_unlock_bh(&ip_vs_pe_lock);
+ 	return NULL;
  }
--/*
-- * Netdev event receiver
-- * Currently only NETDEV_UNREGISTER is handled, i.e. if we hold a reference to
-- * a device that is "unregister" it must be released.
-+/* Netdev event receiver
-+ * Currently only NETDEV_DOWN is handled to release refs to cached dsts
-  */
- static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
- 			    void *ptr)
-@@ -1527,7 +1525,7 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
- 	struct ip_vs_dest *dest;
- 	unsigned int idx;
  
--	if (event != NETDEV_UNREGISTER || !ipvs)
-+	if (event != NETDEV_DOWN || !ipvs)
- 		return NOTIFY_DONE;
- 	IP_VS_DBG(3, "%s() dev=%s\n", __func__, dev->name);
- 	EnterFunction(2);
+@@ -83,22 +82,13 @@ int register_ip_vs_pe(struct ip_vs_pe *pe)
+ 	/* increase the module use count */
+ 	ip_vs_use_count_inc();
+ 
+-	spin_lock_bh(&ip_vs_pe_lock);
+-
+-	if (!list_empty(&pe->n_list)) {
+-		spin_unlock_bh(&ip_vs_pe_lock);
+-		ip_vs_use_count_dec();
+-		pr_err("%s(): [%s] pe already linked\n",
+-		       __func__, pe->name);
+-		return -EINVAL;
+-	}
+-
++	mutex_lock(&ip_vs_pe_mutex);
+ 	/* Make sure that the pe with this name doesn't exist
+ 	 * in the pe list.
+ 	 */
+ 	list_for_each_entry(tmp, &ip_vs_pe, n_list) {
+ 		if (strcmp(tmp->name, pe->name) == 0) {
+-			spin_unlock_bh(&ip_vs_pe_lock);
++			mutex_unlock(&ip_vs_pe_mutex);
+ 			ip_vs_use_count_dec();
+ 			pr_err("%s(): [%s] pe already existed "
+ 			       "in the system\n", __func__, pe->name);
+@@ -106,8 +96,8 @@ int register_ip_vs_pe(struct ip_vs_pe *pe)
+ 		}
+ 	}
+ 	/* Add it into the d-linked pe list */
+-	list_add(&pe->n_list, &ip_vs_pe);
+-	spin_unlock_bh(&ip_vs_pe_lock);
++	list_add_rcu(&pe->n_list, &ip_vs_pe);
++	mutex_unlock(&ip_vs_pe_mutex);
+ 
+ 	pr_info("[%s] pe registered.\n", pe->name);
+ 
+@@ -118,17 +108,10 @@ EXPORT_SYMBOL_GPL(register_ip_vs_pe);
+ /* Unregister a pe from the pe list */
+ int unregister_ip_vs_pe(struct ip_vs_pe *pe)
+ {
+-	spin_lock_bh(&ip_vs_pe_lock);
+-	if (list_empty(&pe->n_list)) {
+-		spin_unlock_bh(&ip_vs_pe_lock);
+-		pr_err("%s(): [%s] pe is not in the list. failed\n",
+-		       __func__, pe->name);
+-		return -EINVAL;
+-	}
+-
++	mutex_lock(&ip_vs_pe_mutex);
+ 	/* Remove it from the d-linked pe list */
+-	list_del(&pe->n_list);
+-	spin_unlock_bh(&ip_vs_pe_lock);
++	list_del_rcu(&pe->n_list);
++	mutex_unlock(&ip_vs_pe_mutex);
+ 
+ 	/* decrease the module use count */
+ 	ip_vs_use_count_dec();
+diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
+index 12475ef..0b3ac73 100644
+--- a/net/netfilter/ipvs/ip_vs_pe_sip.c
++++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+@@ -172,6 +172,7 @@ static int __init ip_vs_sip_init(void)
+ static void __exit ip_vs_sip_cleanup(void)
+ {
+ 	unregister_ip_vs_pe(&ip_vs_sip_pe);
++	rcu_barrier();
+ }
+ 
+ module_init(ip_vs_sip_init);
 -- 
 1.7.3.4
