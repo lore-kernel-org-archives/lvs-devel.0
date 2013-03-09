@@ -1,11 +1,11 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCHv2 net-next 15/15] ipvs: avoid kmem_cache_zalloc in ip_vs_conn_new
-Date: Sat,  9 Mar 2013 23:16:55 +0200
-Message-ID: <1362863815-5898-16-git-send-email-ja@ssi.bg>
+Subject: [PATCHv2 net-next 07/15] ipvs: do not use skb_share_check
+Date: Sat,  9 Mar 2013 23:16:47 +0200
+Message-ID: <1362863815-5898-8-git-send-email-ja@ssi.bg>
 References: <1362863815-5898-1-git-send-email-ja@ssi.bg>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1362863815-5898-1-git-send-email-ja@ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,112 +13,125 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-	We have many fields to set and few to reset,
-use kmem_cache_alloc instead to save some cycles.
+	We run in contexts like ip_rcv, ipv6_rcv, br_handle_frame,
+do not expect shared skbs.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/ip_vs.h             |   15 +++++++++++++++
- net/netfilter/ipvs/ip_vs_conn.c |   24 +++++++++++++++++++-----
- 2 files changed, 34 insertions(+), 5 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c |   45 +-------------------------------------
+ 1 files changed, 2 insertions(+), 43 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 2bc30e6..d1fb021 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -233,6 +233,21 @@ static inline void ip_vs_addr_copy(int af, union nf_inet_addr *dst,
- 	dst->ip = src->ip;
- }
- 
-+static inline void ip_vs_addr_set(int af, union nf_inet_addr *dst,
-+				  const union nf_inet_addr *src)
-+{
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (af == AF_INET6) {
-+		dst->in6 = src->in6;
-+		return;
-+	}
-+#endif
-+	dst->ip = src->ip;
-+	dst->all[1] = 0;
-+	dst->all[2] = 0;
-+	dst->all[3] = 0;
-+}
-+
- static inline int ip_vs_addr_equal(int af, const union nf_inet_addr *a,
- 				   const union nf_inet_addr *b)
- {
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 416015b..e3e2b4d 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -861,7 +861,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
- 	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(p->net,
- 							   p->protocol);
- 
--	cp = kmem_cache_zalloc(ip_vs_conn_cachep, GFP_ATOMIC);
-+	cp = kmem_cache_alloc(ip_vs_conn_cachep, GFP_ATOMIC);
- 	if (cp == NULL) {
- 		IP_VS_ERR_RL("%s(): no memory\n", __func__);
- 		return NULL;
-@@ -872,13 +872,13 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
- 	ip_vs_conn_net_set(cp, p->net);
- 	cp->af		   = p->af;
- 	cp->protocol	   = p->protocol;
--	ip_vs_addr_copy(p->af, &cp->caddr, p->caddr);
-+	ip_vs_addr_set(p->af, &cp->caddr, p->caddr);
- 	cp->cport	   = p->cport;
--	ip_vs_addr_copy(p->af, &cp->vaddr, p->vaddr);
-+	ip_vs_addr_set(p->af, &cp->vaddr, p->vaddr);
- 	cp->vport	   = p->vport;
- 	/* proto should only be IPPROTO_IP if d_addr is a fwmark */
--	ip_vs_addr_copy(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
--			&cp->daddr, daddr);
-+	ip_vs_addr_set(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
-+		       &cp->daddr, daddr);
- 	cp->dport          = dport;
- 	cp->flags	   = flags;
- 	cp->fwmark         = fwmark;
-@@ -887,6 +887,10 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
- 		cp->pe = p->pe;
- 		cp->pe_data = p->pe_data;
- 		cp->pe_data_len = p->pe_data_len;
-+	} else {
-+		cp->pe = NULL;
-+		cp->pe_data = NULL;
-+		cp->pe_data_len = 0;
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index c942d36..e6e2d3f 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -421,14 +421,6 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error;
  	}
- 	spin_lock_init(&cp->lock);
  
-@@ -897,18 +901,28 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+-	/*
+-	 * Call ip_send_check because we are not sure it is called
+-	 * after ip_defrag. Is copy-on-write needed?
+-	 */
+-	if (unlikely((skb = skb_share_check(skb, GFP_ATOMIC)) == NULL)) {
+-		ip_rt_put(rt);
+-		return NF_STOLEN;
+-	}
+ 	ip_send_check(ip_hdr(skb));
+ 
+ 	/* drop old route */
+@@ -482,16 +474,6 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error;
+ 	}
+ 
+-	/*
+-	 * Call ip_send_check because we are not sure it is called
+-	 * after ip_defrag. Is copy-on-write needed?
+-	 */
+-	skb = skb_share_check(skb, GFP_ATOMIC);
+-	if (unlikely(skb == NULL)) {
+-		dst_release(&rt->dst);
+-		return NF_STOLEN;
+-	}
+-
+ 	/* drop old route */
+ 	skb_dst_drop(skb);
+ 	skb_dst_set(skb, &rt->dst);
+@@ -708,7 +690,6 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	ipv6_hdr(skb)->daddr = cp->daddr.in6;
+ 
+ 	if (!local || !skb->dev) {
+-		/* drop the old route when skb is not shared */
+ 		skb_dst_drop(skb);
+ 		skb_dst_set(skb, &rt->dst);
+ 	} else {
+@@ -814,8 +795,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	 */
- 	atomic_set(&cp->refcnt, 1);
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
  
-+	cp->control = NULL;
- 	atomic_set(&cp->n_control, 0);
- 	atomic_set(&cp->in_pkts, 0);
+-	if (skb_headroom(skb) < max_headroom
+-	    || skb_cloned(skb) || skb_shared(skb)) {
++	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+ 		struct sk_buff *new_skb =
+ 			skb_realloc_headroom(skb, max_headroom);
+ 		if (!new_skb) {
+@@ -935,8 +915,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	 */
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
  
-+	cp->packet_xmit = NULL;
-+	cp->app = NULL;
-+	cp->app_data = NULL;
-+	/* reset struct ip_vs_seq */
-+	cp->in_seq.delta = 0;
-+	cp->out_seq.delta = 0;
-+
- 	atomic_inc(&ipvs->conn_count);
- 	if (flags & IP_VS_CONN_F_NO_CPORT)
- 		atomic_inc(&ip_vs_conn_no_cport_cnt);
+-	if (skb_headroom(skb) < max_headroom
+-	    || skb_cloned(skb) || skb_shared(skb)) {
++	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+ 		struct sk_buff *new_skb =
+ 			skb_realloc_headroom(skb, max_headroom);
+ 		if (!new_skb) {
+@@ -1034,14 +1013,6 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error;
+ 	}
  
- 	/* Bind the connection with a destination server */
-+	cp->dest = NULL;
- 	ip_vs_bind_dest(cp, dest);
+-	/*
+-	 * Call ip_send_check because we are not sure it is called
+-	 * after ip_defrag. Is copy-on-write needed?
+-	 */
+-	if (unlikely((skb = skb_share_check(skb, GFP_ATOMIC)) == NULL)) {
+-		ip_rt_put(rt);
+-		return NF_STOLEN;
+-	}
+ 	ip_send_check(ip_hdr(skb));
  
- 	/* Set its state and timeout */
- 	cp->state = 0;
-+	cp->old_state = 0;
- 	cp->timeout = 3*HZ;
- 	cp->sync_endtime = jiffies & ~3UL;
+ 	/* drop old route */
+@@ -1099,16 +1070,6 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error;
+ 	}
  
+-	/*
+-	 * Call ip_send_check because we are not sure it is called
+-	 * after ip_defrag. Is copy-on-write needed?
+-	 */
+-	skb = skb_share_check(skb, GFP_ATOMIC);
+-	if (unlikely(skb == NULL)) {
+-		dst_release(&rt->dst);
+-		return NF_STOLEN;
+-	}
+-
+ 	/* drop old route */
+ 	skb_dst_drop(skb);
+ 	skb_dst_set(skb, &rt->dst);
+@@ -1220,7 +1181,6 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	ip_vs_nat_icmp(skb, pp, cp, 0);
+ 
+ 	if (!local) {
+-		/* drop the old route when skb is not shared */
+ 		skb_dst_drop(skb);
+ 		skb_dst_set(skb, &rt->dst);
+ 	} else
+@@ -1337,7 +1297,6 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	ip_vs_nat_icmp_v6(skb, pp, cp, 0);
+ 
+ 	if (!local || !skb->dev) {
+-		/* drop the old route when skb is not shared */
+ 		skb_dst_drop(skb);
+ 		skb_dst_set(skb, &rt->dst);
+ 	} else {
 -- 
 1.7.3.4
-
