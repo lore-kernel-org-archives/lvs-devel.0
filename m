@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCHv2 net-next 11/15] ipvs: remove rs_lock by using RCU
-Date: Sat,  9 Mar 2013 23:16:51 +0200
-Message-ID: <1362863815-5898-12-git-send-email-ja@ssi.bg>
+Subject: [PATCHv2 net-next 02/15] ipvs: avoid routing by TOS for real server
+Date: Sat,  9 Mar 2013 23:16:42 +0200
+Message-ID: <1362863815-5898-3-git-send-email-ja@ssi.bg>
 References: <1362863815-5898-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1362863815-5898-1-git-send-email-ja@ssi.bg>
@@ -13,262 +13,217 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-	rs_lock was used to protect rs_table (hash table)
-from updaters (under global mutex) and readers (packet handlers).
-We can remove rs_lock by using RCU lock for readers. Reclaiming
-dest only with kfree_rcu is enough because the readers access
-only fields from the ip_vs_dest structure.
-
-	Use hlist for rs_table.
-
-	As we are now using hlist_del_rcu, introduce in_rs_table
-flag as replacement for the list_empty checks which do not
-work with RCU. It is needed because only NAT dests are in
-the rs_table.
+	Avoid replacing the cached route for real server
+on every packet with different TOS. I doubt that routing
+by TOS for real server is used at all, so we should be
+better with such optimization.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/ip_vs.h             |   14 ++++---
- net/netfilter/ipvs/ip_vs_core.c |    5 +--
- net/netfilter/ipvs/ip_vs_ctl.c  |   74 ++++++++++++++-------------------------
- 3 files changed, 36 insertions(+), 57 deletions(-)
+ include/net/ip_vs.h             |    1 -
+ net/netfilter/ipvs/ip_vs_xmit.c |   58 +++++++++++++++++----------------------
+ 2 files changed, 25 insertions(+), 34 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index f0038a8..b2657c1 100644
+index 68c69d5..459c328 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -738,7 +738,7 @@ struct ip_vs_dest_dst {
+@@ -753,7 +753,6 @@ struct ip_vs_dest {
+ 	/* for destination cache */
+ 	spinlock_t		dst_lock;	/* lock of dst_cache */
+ 	struct dst_entry	*dst_cache;	/* destination cache entry */
+-	u32			dst_rtos;	/* RT_TOS(tos) for dst */
+ 	u32			dst_cookie;
+ 	union nf_inet_addr	dst_saddr;
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index ee6b7a9..4b0bd15 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -57,27 +57,24 @@ enum {
+  *      Destination cache to speed up outgoing route lookup
   */
- struct ip_vs_dest {
- 	struct list_head	n_list;   /* for the dests in the service */
--	struct list_head	d_list;   /* for table with all the dests */
-+	struct hlist_node	d_list;   /* for table with all the dests */
- 
- 	u16			af;		/* address family */
- 	__be16			port;		/* port number of the server */
-@@ -767,6 +767,9 @@ struct ip_vs_dest {
- 	__be16			vport;		/* virtual port number */
- 	union nf_inet_addr	vaddr;		/* virtual IP address */
- 	__u32			vfwmark;	/* firewall mark of service */
-+
-+	struct rcu_head		rcu_head;
-+	unsigned int		in_rs_table:1;	/* we are in rs_table */
- };
- 
- 
-@@ -897,7 +900,7 @@ struct netns_ipvs {
- 	#define IP_VS_RTAB_SIZE (1 << IP_VS_RTAB_BITS)
- 	#define IP_VS_RTAB_MASK (IP_VS_RTAB_SIZE - 1)
- 
--	struct list_head	rs_table[IP_VS_RTAB_SIZE];
-+	struct hlist_head	rs_table[IP_VS_RTAB_SIZE];
- 	/* ip_vs_app */
- 	struct list_head	app_list;
- 	/* ip_vs_proto */
-@@ -933,7 +936,6 @@ struct netns_ipvs {
- 
- 	int			num_services;    /* no of virtual services */
- 
--	rwlock_t		rs_lock;         /* real services table */
- 	/* Trash for destinations */
- 	struct list_head	dest_trash;
- 	/* Service counters */
-@@ -1364,9 +1366,9 @@ static inline void ip_vs_service_put(struct ip_vs_service *svc)
- 	atomic_dec(&svc->usecnt);
- }
- 
--extern struct ip_vs_dest *
--ip_vs_lookup_real_service(struct net *net, int af, __u16 protocol,
--			  const union nf_inet_addr *daddr, __be16 dport);
-+extern bool
-+ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
-+		       const union nf_inet_addr *daddr, __be16 dport);
- 
- extern int ip_vs_use_count_inc(void);
- extern void ip_vs_use_count_dec(void);
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 7e03f42..2ea2862 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1164,9 +1164,8 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
- 					 sizeof(_ports), _ports, &iph);
- 		if (pptr == NULL)
- 			return NF_ACCEPT;	/* Not for me */
--		if (ip_vs_lookup_real_service(net, af, iph.protocol,
--					      &iph.saddr,
--					      pptr[0])) {
-+		if (ip_vs_has_real_service(net, af, iph.protocol, &iph.saddr,
-+					   pptr[0])) {
- 			/*
- 			 * Notify the real server: there is no
- 			 * existing entry if it is not RST
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 844fb9b..f4b53c4 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -506,17 +506,13 @@ static inline unsigned int ip_vs_rs_hashkey(int af,
- 		& IP_VS_RTAB_MASK;
- }
- 
--/*
-- *	Hashes ip_vs_dest in rs_table by <proto,addr,port>.
-- *	should be called with locked tables.
-- */
--static int ip_vs_rs_hash(struct netns_ipvs *ipvs, struct ip_vs_dest *dest)
-+/* Hash ip_vs_dest in rs_table by <proto,addr,port>. */
-+static void ip_vs_rs_hash(struct netns_ipvs *ipvs, struct ip_vs_dest *dest)
+ static inline void
+-__ip_vs_dst_set(struct ip_vs_dest *dest, u32 rtos, struct dst_entry *dst,
+-		u32 dst_cookie)
++__ip_vs_dst_set(struct ip_vs_dest *dest, struct dst_entry *dst, u32 dst_cookie)
  {
- 	unsigned int hash;
+ 	struct dst_entry *old_dst;
  
--	if (!list_empty(&dest->d_list)) {
--		return 0;
--	}
-+	if (dest->in_rs_table)
-+		return;
- 
- 	/*
- 	 *	Hash by proto,addr,port,
-@@ -524,34 +520,25 @@ static int ip_vs_rs_hash(struct netns_ipvs *ipvs, struct ip_vs_dest *dest)
- 	 */
- 	hash = ip_vs_rs_hashkey(dest->af, &dest->addr, dest->port);
- 
--	list_add(&dest->d_list, &ipvs->rs_table[hash]);
--
--	return 1;
-+	hlist_add_head_rcu(&dest->d_list, &ipvs->rs_table[hash]);
-+	dest->in_rs_table = 1;
+ 	old_dst = dest->dst_cache;
+ 	dest->dst_cache = dst;
+-	dest->dst_rtos = rtos;
+ 	dest->dst_cookie = dst_cookie;
+ 	dst_release(old_dst);
  }
  
--/*
-- *	UNhashes ip_vs_dest from rs_table.
-- *	should be called with locked tables.
-- */
--static int ip_vs_rs_unhash(struct ip_vs_dest *dest)
-+/* Unhash ip_vs_dest from rs_table. */
-+static void ip_vs_rs_unhash(struct ip_vs_dest *dest)
+ static inline struct dst_entry *
+-__ip_vs_dst_check(struct ip_vs_dest *dest, u32 rtos)
++__ip_vs_dst_check(struct ip_vs_dest *dest)
  {
- 	/*
- 	 * Remove it from the rs_table table.
- 	 */
--	if (!list_empty(&dest->d_list)) {
--		list_del_init(&dest->d_list);
-+	if (dest->in_rs_table) {
-+		hlist_del_rcu(&dest->d_list);
-+		dest->in_rs_table = 0;
- 	}
--
--	return 1;
- }
+ 	struct dst_entry *dst = dest->dst_cache;
  
--/*
-- *	Lookup real service by <proto,addr,port> in the real service table.
-- */
--struct ip_vs_dest *
--ip_vs_lookup_real_service(struct net *net, int af, __u16 protocol,
--			  const union nf_inet_addr *daddr,
--			  __be16 dport)
-+/* Check if real service by <proto,addr,port> is present */
-+bool ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
-+			    const union nf_inet_addr *daddr, __be16 dport)
+ 	if (!dst)
+ 		return NULL;
+-	if ((dst->obsolete || rtos != dest->dst_rtos) &&
+-	    dst->ops->check(dst, dest->dst_cookie) == NULL) {
++	if (dst->obsolete && dst->ops->check(dst, dest->dst_cookie) == NULL) {
+ 		dest->dst_cache = NULL;
+ 		dst_release(dst);
+ 		return NULL;
+@@ -104,7 +101,7 @@ __mtu_check_toobig_v6(const struct sk_buff *skb, u32 mtu)
+ 
+ /* Get route to daddr, update *saddr, optionally bind route to saddr */
+ static struct rtable *do_output_route4(struct net *net, __be32 daddr,
+-				       u32 rtos, int rt_mode, __be32 *saddr)
++				       int rt_mode, __be32 *saddr)
  {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	unsigned int hash;
-@@ -563,21 +550,21 @@ ip_vs_lookup_real_service(struct net *net, int af, __u16 protocol,
- 	 */
- 	hash = ip_vs_rs_hashkey(af, daddr, dport);
+ 	struct flowi4 fl4;
+ 	struct rtable *rt;
+@@ -113,7 +110,6 @@ static struct rtable *do_output_route4(struct net *net, __be32 daddr,
+ 	memset(&fl4, 0, sizeof(fl4));
+ 	fl4.daddr = daddr;
+ 	fl4.saddr = (rt_mode & IP_VS_RT_MODE_CONNECT) ? *saddr : 0;
+-	fl4.flowi4_tos = rtos;
+ 	fl4.flowi4_flags = (rt_mode & IP_VS_RT_MODE_KNOWN_NH) ?
+ 			   FLOWI_FLAG_KNOWN_NH : 0;
  
--	read_lock(&ipvs->rs_lock);
--	list_for_each_entry(dest, &ipvs->rs_table[hash], d_list) {
-+	rcu_read_lock();
-+	hlist_for_each_entry_rcu(dest, &ipvs->rs_table[hash], d_list) {
- 		if ((dest->af == af)
- 		    && ip_vs_addr_equal(af, &dest->addr, daddr)
- 		    && (dest->port == dport)
- 		    && ((dest->protocol == protocol) ||
- 			dest->vfwmark)) {
- 			/* HIT */
--			read_unlock(&ipvs->rs_lock);
--			return dest;
-+			rcu_read_unlock();
-+			return true;
+@@ -124,7 +120,7 @@ retry:
+ 		if (PTR_ERR(rt) == -EINVAL && *saddr &&
+ 		    rt_mode & IP_VS_RT_MODE_CONNECT && !loop) {
+ 			*saddr = 0;
+-			flowi4_update_output(&fl4, 0, rtos, daddr, 0);
++			flowi4_update_output(&fl4, 0, 0, daddr, 0);
+ 			goto retry;
  		}
+ 		IP_VS_DBG_RL("ip_route_output error, dest: %pI4\n", &daddr);
+@@ -132,7 +128,7 @@ retry:
+ 	} else if (!*saddr && rt_mode & IP_VS_RT_MODE_CONNECT && fl4.saddr) {
+ 		ip_rt_put(rt);
+ 		*saddr = fl4.saddr;
+-		flowi4_update_output(&fl4, 0, rtos, daddr, fl4.saddr);
++		flowi4_update_output(&fl4, 0, 0, daddr, fl4.saddr);
+ 		loop++;
+ 		goto retry;
  	}
--	read_unlock(&ipvs->rs_lock);
-+	rcu_read_unlock();
+@@ -143,7 +139,7 @@ retry:
+ /* Get route to destination or remote server */
+ static struct rtable *
+ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
+-		   __be32 daddr, u32 rtos, int rt_mode, __be32 *ret_saddr)
++		   __be32 daddr, int rt_mode, __be32 *ret_saddr)
+ {
+ 	struct net *net = dev_net(skb_dst(skb)->dev);
+ 	struct rtable *rt;			/* Route to the other host */
+@@ -152,19 +148,18 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
  
--	return NULL;
-+	return false;
- }
- 
- /*
-@@ -610,9 +597,6 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
-  * the backup synchronization daemon. It finds the
-  * destination to be bound to the received connection
-  * on the backup.
-- *
-- * ip_vs_lookup_real_service() looked promissing, but
-- * seems not working as expected.
-  */
- struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
- 				   const union nf_inet_addr *daddr,
-@@ -712,7 +696,7 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
- 			__ip_vs_dst_cache_reset(dest);
- 			__ip_vs_unbind_svc(dest);
- 			free_percpu(dest->stats.cpustats);
--			kfree(dest);
-+			kfree_rcu(dest, rcu_head);
+ 	if (dest) {
+ 		spin_lock(&dest->dst_lock);
+-		if (!(rt = (struct rtable *)
+-		      __ip_vs_dst_check(dest, rtos))) {
+-			rt = do_output_route4(net, dest->addr.ip, rtos,
+-					      rt_mode, &dest->dst_saddr.ip);
++		rt = (struct rtable *) __ip_vs_dst_check(dest);
++		if (!rt) {
++			rt = do_output_route4(net, dest->addr.ip, rt_mode,
++					      &dest->dst_saddr.ip);
+ 			if (!rt) {
+ 				spin_unlock(&dest->dst_lock);
+ 				return NULL;
+ 			}
+-			__ip_vs_dst_set(dest, rtos, dst_clone(&rt->dst), 0);
+-			IP_VS_DBG(10, "new dst %pI4, src %pI4, refcnt=%d, "
+-				  "rtos=%X\n",
++			__ip_vs_dst_set(dest, dst_clone(&rt->dst), 0);
++			IP_VS_DBG(10, "new dst %pI4, src %pI4, refcnt=%d\n",
+ 				  &dest->addr.ip, &dest->dst_saddr.ip,
+-				  atomic_read(&rt->dst.__refcnt), rtos);
++				  atomic_read(&rt->dst.__refcnt));
  		}
- 	}
- 
-@@ -739,7 +723,7 @@ static void ip_vs_trash_cleanup(struct net *net)
- 		__ip_vs_dst_cache_reset(dest);
- 		__ip_vs_unbind_svc(dest);
- 		free_percpu(dest->stats.cpustats);
--		kfree(dest);
-+		kfree_rcu(dest, rcu_head);
- 	}
- }
- 
-@@ -804,9 +788,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 		 *    Put the real service in rs_table if not present.
- 		 *    For now only for NAT!
+ 		daddr = dest->addr.ip;
+ 		if (ret_saddr)
+@@ -177,7 +172,7 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		 * for performance reasons because we do not remember saddr
  		 */
--		write_lock_bh(&ipvs->rs_lock);
- 		ip_vs_rs_hash(ipvs, dest);
--		write_unlock_bh(&ipvs->rs_lock);
+ 		rt_mode &= ~IP_VS_RT_MODE_CONNECT;
+-		rt = do_output_route4(net, daddr, rtos, rt_mode, &saddr);
++		rt = do_output_route4(net, daddr, rt_mode, &saddr);
+ 		if (!rt)
+ 			return NULL;
+ 		if (ret_saddr)
+@@ -307,7 +302,7 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 
+ 	if (dest) {
+ 		spin_lock(&dest->dst_lock);
+-		rt = (struct rt6_info *)__ip_vs_dst_check(dest, 0);
++		rt = (struct rt6_info *)__ip_vs_dst_check(dest);
+ 		if (!rt) {
+ 			u32 cookie;
+ 
+@@ -320,7 +315,7 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 			}
+ 			rt = (struct rt6_info *) dst;
+ 			cookie = rt->rt6i_node ? rt->rt6i_node->fn_sernum : 0;
+-			__ip_vs_dst_set(dest, 0, dst_clone(&rt->dst), cookie);
++			__ip_vs_dst_set(dest, dst_clone(&rt->dst), cookie);
+ 			IP_VS_DBG(10, "new dst %pI6, src %pI6, refcnt=%d\n",
+ 				  &dest->addr.in6, &dest->dst_saddr.in6,
+ 				  atomic_read(&rt->dst.__refcnt));
+@@ -449,8 +444,9 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 
+ 	EnterFunction(10);
+ 
+-	if (!(rt = __ip_vs_get_out_rt(skb, NULL, iph->daddr, RT_TOS(iph->tos),
+-				      IP_VS_RT_MODE_NON_LOCAL, NULL)))
++	rt = __ip_vs_get_out_rt(skb, NULL, iph->daddr, IP_VS_RT_MODE_NON_LOCAL,
++				NULL);
++	if (!rt)
+ 		goto tx_error_icmp;
+ 
+ 	/* MTU checking */
+@@ -581,10 +577,9 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	}
- 	atomic_set(&dest->conn_flags, conn_flags);
  
-@@ -902,7 +884,7 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- 	atomic_set(&dest->persistconns, 0);
- 	atomic_set(&dest->refcnt, 1);
- 
--	INIT_LIST_HEAD(&dest->d_list);
-+	INIT_HLIST_NODE(&dest->d_list);
- 	spin_lock_init(&dest->dst_lock);
- 	spin_lock_init(&dest->stats.lock);
- 	__ip_vs_update_dest(svc, dest, udest, 1);
-@@ -1042,9 +1024,7 @@ static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest)
+ 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
+-				      RT_TOS(iph->tos),
+ 				      IP_VS_RT_MODE_LOCAL |
+-					IP_VS_RT_MODE_NON_LOCAL |
+-					IP_VS_RT_MODE_RDR, NULL)))
++				      IP_VS_RT_MODE_NON_LOCAL |
++				      IP_VS_RT_MODE_RDR, NULL)))
+ 		goto tx_error_icmp;
+ 	local = rt->rt_flags & RTCF_LOCAL;
  	/*
- 	 *  Remove it from the d-linked list with the real services.
- 	 */
--	write_lock_bh(&ipvs->rs_lock);
- 	ip_vs_rs_unhash(dest);
--	write_unlock_bh(&ipvs->rs_lock);
+@@ -832,10 +827,9 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
  
- 	/*
- 	 *  Decrease the refcnt of the dest, and free the dest
-@@ -1064,7 +1044,7 @@ static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest)
- 		   time, so the operation here is OK */
- 		atomic_dec(&dest->svc->refcnt);
- 		free_percpu(dest->stats.cpustats);
--		kfree(dest);
-+		kfree_rcu(dest, rcu_head);
- 	} else {
- 		IP_VS_DBG_BUF(3, "Moving dest %s:%u into trash, "
- 			      "dest->refcnt=%d\n",
-@@ -3801,11 +3781,9 @@ int __net_init ip_vs_control_net_init(struct net *net)
- 	int idx;
- 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
+-				      RT_TOS(tos), IP_VS_RT_MODE_LOCAL |
+-						   IP_VS_RT_MODE_NON_LOCAL |
+-						   IP_VS_RT_MODE_CONNECT,
+-						   &saddr)))
++				      IP_VS_RT_MODE_LOCAL |
++				      IP_VS_RT_MODE_NON_LOCAL |
++				      IP_VS_RT_MODE_CONNECT, &saddr)))
+ 		goto tx_error_icmp;
+ 	if (rt->rt_flags & RTCF_LOCAL) {
+ 		ip_rt_put(rt);
+@@ -1067,7 +1061,6 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
  
--	rwlock_init(&ipvs->rs_lock);
+ 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
+-				      RT_TOS(iph->tos),
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+ 				      IP_VS_RT_MODE_KNOWN_NH, NULL)))
+@@ -1223,7 +1216,6 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
+-				      RT_TOS(ip_hdr(skb)->tos),
+ 				      rt_mode, NULL)))
+ 		goto tx_error_icmp;
+ 	local = rt->rt_flags & RTCF_LOCAL;
+-- 
+1.7.3.4
+
