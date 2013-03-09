@@ -1,8 +1,10 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCHv2 net-next 00/15] IPVS optimizations
-Date: Sat,  9 Mar 2013 23:16:40 +0200
-Message-ID: <1362863815-5898-1-git-send-email-ja@ssi.bg>
+Subject: [PATCHv2 net-next 06/15] ipvs: no need to reroute anymore on DNAT over loopback
+Date: Sat,  9 Mar 2013 23:16:46 +0200
+Message-ID: <1362863815-5898-7-git-send-email-ja@ssi.bg>
+References: <1362863815-5898-1-git-send-email-ja@ssi.bg>
 Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1362863815-5898-1-git-send-email-ja@ssi.bg>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -11,66 +13,100 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-	This is a first patchset for IPVS optimizations.
-Another patchset will address the locking in schedulers
-and moving the global _bh disabling from LOCAL_OUT to all
-locks. It is in TODO list.
+	After commit 70e7341673 (ipv4: Show that ip_send_reply()
+is purely unicast routine.) we do not need to reroute DNAT-ed
+traffic over loopback because reply uses iph daddr and not
+rt_spec_dst.
 
-	All patches are for net-next. The idea is
-after discussion and review Simon to apply the patchset
-to ipvs-next tree.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ net/netfilter/ipvs/ip_vs_xmit.c |   58 +-------------------------------------
+ 1 files changed, 2 insertions(+), 56 deletions(-)
 
-	The changes in this patchset eliminate locks
-and dst refcnt operations from packet processing by
-using RCU. There are more details in the patches.
-
-v2:
-* use "net: add skb_dst_set_unref" instead of
-  "net: add dst_get_noref and refdst_ptr helpers"
-* add "ipvs: no need to reroute anymore on DNAT over loopback"
-* add "ipvs: do not use skb_share_check"
-* add "ipvs: consolidate all dst checks on transmit in one place", so
-  that we can avoid the refdst games in next patch
-* after "ipvs: consolidate all dst checks on transmit in one place"
-  "ipvs: optimize dst usage for real server" is simpler and
-  uses the new skb_dst_set_unref function
-* extend "ipvs: reorder keys in connection structure" with
-  changes in ip_vs_ct_in_get
-* fix "ipvs: avoid kmem_cache_zalloc in ip_vs_conn_new" to use new
-  function ip_vs_addr_set, so that we reset all address fields
-  that are used for hashing by hash_conntrack_raw
-
-Julian Anastasov (15):
-  net: add skb_dst_set_unref
-  ipvs: avoid routing by TOS for real server
-  ipvs: prefer NETDEV_DOWN event to free cached dsts
-  ipvs: convert the IP_VS_XMIT macros to functions
-  ipvs: rename functions related to dst_cache reset
-  ipvs: no need to reroute anymore on DNAT over loopback
-  ipvs: do not use skb_share_check
-  ipvs: consolidate all dst checks on transmit in one place
-  ipvs: optimize dst usage for real server
-  ipvs: convert app locks
-  ipvs: remove rs_lock by using RCU
-  ipvs: convert locks used in persistence engines
-  ipvs: convert connection locking
-  ipvs: reorder keys in connection structure
-  ipvs: avoid kmem_cache_zalloc in ip_vs_conn_new
-
- include/linux/skbuff.h                |   14 +
- include/net/ip_vs.h                   |   71 ++-
- net/netfilter/ipvs/ip_vs_app.c        |   27 +-
- net/netfilter/ipvs/ip_vs_conn.c       |  271 +++++----
- net/netfilter/ipvs/ip_vs_core.c       |   16 +-
- net/netfilter/ipvs/ip_vs_ctl.c        |  128 ++--
- net/netfilter/ipvs/ip_vs_ftp.c        |    2 +
- net/netfilter/ipvs/ip_vs_pe.c         |   43 +-
- net/netfilter/ipvs/ip_vs_pe_sip.c     |    1 +
- net/netfilter/ipvs/ip_vs_proto_sctp.c |   18 +-
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |   18 +-
- net/netfilter/ipvs/ip_vs_proto_udp.c  |   19 +-
- net/netfilter/ipvs/ip_vs_xmit.c       | 1046 ++++++++++++++-------------------
- 13 files changed, 779 insertions(+), 895 deletions(-)
-
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 6448a2e..c942d36 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -207,44 +207,6 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	return rt;
+ }
+ 
+-/* Reroute packet to local IPv4 stack after DNAT */
+-static int
+-__ip_vs_reroute_locally(struct sk_buff *skb)
+-{
+-	struct rtable *rt = skb_rtable(skb);
+-	struct net_device *dev = rt->dst.dev;
+-	struct net *net = dev_net(dev);
+-	struct iphdr *iph = ip_hdr(skb);
+-
+-	if (rt_is_input_route(rt)) {
+-		unsigned long orefdst = skb->_skb_refdst;
+-
+-		if (ip_route_input(skb, iph->daddr, iph->saddr,
+-				   iph->tos, skb->dev))
+-			return 0;
+-		refdst_drop(orefdst);
+-	} else {
+-		struct flowi4 fl4 = {
+-			.daddr = iph->daddr,
+-			.saddr = iph->saddr,
+-			.flowi4_tos = RT_TOS(iph->tos),
+-			.flowi4_mark = skb->mark,
+-		};
+-
+-		rt = ip_route_output_key(net, &fl4);
+-		if (IS_ERR(rt))
+-			return 0;
+-		if (!(rt->rt_flags & RTCF_LOCAL)) {
+-			ip_rt_put(rt);
+-			return 0;
+-		}
+-		/* Drop old route. */
+-		skb_dst_drop(skb);
+-		skb_dst_set(skb, &rt->dst);
+-	}
+-	return 1;
+-}
+-
+ #ifdef CONFIG_IP_VS_IPV6
+ 
+ static inline int __ip_vs_is_local_route6(struct rt6_info *rt)
+@@ -635,16 +597,8 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		/* drop old route */
+ 		skb_dst_drop(skb);
+ 		skb_dst_set(skb, &rt->dst);
+-	} else {
++	} else
+ 		ip_rt_put(rt);
+-		/*
+-		 * Some IPv4 replies get local address from routes,
+-		 * not from iph, so while we DNAT after routing
+-		 * we need this second input/output route.
+-		 */
+-		if (!__ip_vs_reroute_locally(skb))
+-			goto tx_error;
+-	}
+ 
+ 	IP_VS_DBG_PKT(10, AF_INET, pp, skb, 0, "After DNAT");
+ 
+@@ -1269,16 +1223,8 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		/* drop the old route when skb is not shared */
+ 		skb_dst_drop(skb);
+ 		skb_dst_set(skb, &rt->dst);
+-	} else {
++	} else
+ 		ip_rt_put(rt);
+-		/*
+-		 * Some IPv4 replies get local address from routes,
+-		 * not from iph, so while we DNAT after routing
+-		 * we need this second input/output route.
+-		 */
+-		if (!__ip_vs_reroute_locally(skb))
+-			goto tx_error;
+-	}
+ 
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
 -- 
 1.7.3.4
