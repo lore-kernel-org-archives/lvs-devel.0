@@ -1,48 +1,54 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next] IPVS
-Date: Mon, 18 Mar 2013 22:15:38 +0900
-Message-ID: <1363612543-9787-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [PATCH 4/5] ipvs: fix hashing in ip_vs_svc_hashkey
+Date: Mon, 18 Mar 2013 22:15:42 +0900
+Message-ID: <1363612543-9787-5-git-send-email-horms@verge.net.au>
+References: <1363612543-9787-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1363612543-9787-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Julian Anastasov <ja@ssi.bg>
 
-please consider the following IPVS enhancements from Julian for 3.10.
+	net is a pointer in host order, mix it properly
+with other keys in network order. Fixes sparse warning.
 
-----------------------------------------------------------------
-The following changes since commit 1cdb09056b27b2a06b06dc7187d2c33d57082d20:
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-  netfilter: nfnetlink_queue: use xor hash function to distribute instances (2013-03-15 12:38:40 +0100)
-
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.10
-
-for you to fetch changes up to e095c65caffc923a0d1fb27763c3f9ec1dcb57fc:
-
-  ipvs: fix some sparse warnings (2013-03-18 19:25:14 +0900)
-
-----------------------------------------------------------------
-IPVS enhancements for v3.10 from Julian Anastasov
-
-----------------------------------------------------------------
-Julian Anastasov (5):
-      ipvs: add backup_only flag to avoid loops
-      ipvs: remove extra rcu lock
-      ipvs: fix sctp chunk length order
-      ipvs: fix hashing in ip_vs_svc_hashkey
-      ipvs: fix some sparse warnings
-
- Documentation/networking/ipvs-sysctl.txt |    7 +++++++
- include/net/ip_vs.h                      |   14 +++++++++++++-
- net/netfilter/ipvs/ip_vs_core.c          |   22 +++++++++-------------
- net/netfilter/ipvs/ip_vs_ctl.c           |   15 ++++++++++++---
- net/netfilter/ipvs/ip_vs_est.c           |    2 +-
- net/netfilter/ipvs/ip_vs_proto_sctp.c    |   16 +++++++++-------
- 6 files changed, 51 insertions(+), 25 deletions(-)
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 9e2d1cc..8104120 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -271,16 +271,18 @@ ip_vs_svc_hashkey(struct net *net, int af, unsigned int proto,
+ {
+ 	register unsigned int porth = ntohs(port);
+ 	__be32 addr_fold = addr->ip;
++	__u32 ahash;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (af == AF_INET6)
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
+ #endif
+-	addr_fold ^= ((size_t)net>>8);
++	ahash = ntohl(addr_fold);
++	ahash ^= ((size_t) net >> 8);
+ 
+-	return (proto^ntohl(addr_fold)^(porth>>IP_VS_SVC_TAB_BITS)^porth)
+-		& IP_VS_SVC_TAB_MASK;
++	return (proto ^ ahash ^ (porth >> IP_VS_SVC_TAB_BITS) ^ porth) &
++	       IP_VS_SVC_TAB_MASK;
+ }
+ 
+ /*
+-- 
+1.7.10.4
