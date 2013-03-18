@@ -1,27 +1,48 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net-next 0/5] IPVS changes
-Date: Mon, 18 Mar 2013 22:04:05 +0900
-Message-ID: <20130318130405.GA7337@verge.net.au>
-References: <1362864308-8259-1-git-send-email-ja@ssi.bg>
-Mime-Version: 1.0
+Subject: [GIT PULL nf-next] IPVS
+Date: Mon, 18 Mar 2013 22:15:38 +0900
+Message-ID: <1363612543-9787-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1362864308-8259-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-On Sat, Mar 09, 2013 at 11:25:03PM +0200, Julian Anastasov wrote:
-> 	This patchset adds new backup_only flag and fixes
-> some warnings found by sparse. I hope the SCTP part is
-> correct. In fact I see other problems with the SCTP state
-> machine that need to be resolved.
-> 
-> 	The patchset does not overlap with the other
-> patchset for IPVS optimizations, so can be applied
-> independently.
+Hi Pablo,
 
-Thanks, applied.
+please consider the following IPVS enhancements from Julian for 3.10.
+
+----------------------------------------------------------------
+The following changes since commit 1cdb09056b27b2a06b06dc7187d2c33d57082d20:
+
+  netfilter: nfnetlink_queue: use xor hash function to distribute instances (2013-03-15 12:38:40 +0100)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.10
+
+for you to fetch changes up to e095c65caffc923a0d1fb27763c3f9ec1dcb57fc:
+
+  ipvs: fix some sparse warnings (2013-03-18 19:25:14 +0900)
+
+----------------------------------------------------------------
+IPVS enhancements for v3.10 from Julian Anastasov
+
+----------------------------------------------------------------
+Julian Anastasov (5):
+      ipvs: add backup_only flag to avoid loops
+      ipvs: remove extra rcu lock
+      ipvs: fix sctp chunk length order
+      ipvs: fix hashing in ip_vs_svc_hashkey
+      ipvs: fix some sparse warnings
+
+ Documentation/networking/ipvs-sysctl.txt |    7 +++++++
+ include/net/ip_vs.h                      |   14 +++++++++++++-
+ net/netfilter/ipvs/ip_vs_core.c          |   22 +++++++++-------------
+ net/netfilter/ipvs/ip_vs_ctl.c           |   15 ++++++++++++---
+ net/netfilter/ipvs/ip_vs_est.c           |    2 +-
+ net/netfilter/ipvs/ip_vs_proto_sctp.c    |   16 +++++++++-------
+ 6 files changed, 51 insertions(+), 25 deletions(-)
