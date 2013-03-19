@@ -1,54 +1,28 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 1/2] ipvs: fix hashing in ip_vs_svc_hashkey
-Date: Tue, 19 Mar 2013 21:43:47 +0900
-Message-ID: <1363697028-15314-2-git-send-email-horms@verge.net.au>
-References: <1363697028-15314-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1363697028-15314-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [GIT PULL nf v2] IPVS fixes for v3.9
+Date: Tue, 19 Mar 2013 16:42:50 +0100
+Message-ID: <20130319154250.GA5385@localhost>
+References: <1363696850-14766-1-git-send-email-horms@verge.net.au>
+Mime-Version: 1.0
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1363696850-14766-1-git-send-email-horms@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-From: Julian Anastasov <ja@ssi.bg>
+On Tue, Mar 19, 2013 at 09:40:47PM +0900, Simon Horman wrote:
+> Hi Pablo,
+> 
+> The following changes since commit a82783c91d5dce680dbd290ebf301a520b0e72a5:
+> 
+>   netfilter: ip6t_NPT: restrict to mangle table (2013-03-15 12:58:21 +0100)
+> 
+> are available in the git repository at:
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.9
 
-net is a pointer in host order, mix it properly
-with other keys in network order. Fixes sparse warning.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_ctl.c |    8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index c68198b..a528178 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -271,16 +271,18 @@ ip_vs_svc_hashkey(struct net *net, int af, unsigned int proto,
- {
- 	register unsigned int porth = ntohs(port);
- 	__be32 addr_fold = addr->ip;
-+	__u32 ahash;
- 
- #ifdef CONFIG_IP_VS_IPV6
- 	if (af == AF_INET6)
- 		addr_fold = addr->ip6[0]^addr->ip6[1]^
- 			    addr->ip6[2]^addr->ip6[3];
- #endif
--	addr_fold ^= ((size_t)net>>8);
-+	ahash = ntohl(addr_fold);
-+	ahash ^= ((size_t) net >> 8);
- 
--	return (proto^ntohl(addr_fold)^(porth>>IP_VS_SVC_TAB_BITS)^porth)
--		& IP_VS_SVC_TAB_MASK;
-+	return (proto ^ ahash ^ (porth >> IP_VS_SVC_TAB_BITS) ^ porth) &
-+	       IP_VS_SVC_TAB_MASK;
- }
- 
- /*
--- 
-1.7.10.4
+Pulled, thanks Simon.
