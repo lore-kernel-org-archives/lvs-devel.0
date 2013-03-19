@@ -1,40 +1,81 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next] IPVS changes for v3.10
-Date: Tue, 19 Mar 2013 21:43:46 +0900
-Message-ID: <1363697028-15314-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Subject: [PATCH 2/2] ipvs: fix some sparse warnings
+Date: Tue, 19 Mar 2013 21:43:48 +0900
+Message-ID: <1363697028-15314-3-git-send-email-horms@verge.net.au>
+References: <1363697028-15314-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1363697028-15314-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Julian Anastasov <ja@ssi.bg>
 
-The following changes since commit 1cdb09056b27b2a06b06dc7187d2c33d57082d20:
+Add missing __percpu annotations and make ip_vs_net_id static.
 
-  netfilter: nfnetlink_queue: use xor hash function to distribute instances (2013-03-15 12:38:40 +0100)
-
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.10
-
-for you to fetch changes up to b962abdc6531c8de837504ebc98139587162f223:
-
-  ipvs: fix some sparse warnings (2013-03-19 21:18:38 +0900)
-
-----------------------------------------------------------------
-IPVS changes for v3.10 from Julian Anastasov
-
-----------------------------------------------------------------
-Julian Anastasov (2):
-      ipvs: fix hashing in ip_vs_svc_hashkey
-      ipvs: fix some sparse warnings
-
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
  include/net/ip_vs.h             |    2 +-
  net/netfilter/ipvs/ip_vs_core.c |    8 +-------
- net/netfilter/ipvs/ip_vs_ctl.c  |    8 +++++---
  net/netfilter/ipvs/ip_vs_est.c  |    2 +-
- 4 files changed, 8 insertions(+), 12 deletions(-)
+ 3 files changed, 3 insertions(+), 9 deletions(-)
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 68c69d5..29bc055 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -459,7 +459,7 @@ struct ip_vs_estimator {
+ struct ip_vs_stats {
+ 	struct ip_vs_stats_user	ustats;		/* statistics */
+ 	struct ip_vs_estimator	est;		/* estimator */
+-	struct ip_vs_cpu_stats	*cpustats;	/* per cpu counters */
++	struct ip_vs_cpu_stats __percpu	*cpustats;	/* per cpu counters */
+ 	spinlock_t		lock;		/* spin lock */
+ 	struct ip_vs_stats_user	ustats0;	/* reset values */
+ };
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 47edf5a..3e5e80b 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -69,10 +69,7 @@ EXPORT_SYMBOL(ip_vs_conn_put);
+ EXPORT_SYMBOL(ip_vs_get_debug_level);
+ #endif
+ 
+-int ip_vs_net_id __read_mostly;
+-#ifdef IP_VS_GENERIC_NETNS
+-EXPORT_SYMBOL(ip_vs_net_id);
+-#endif
++static int ip_vs_net_id __read_mostly;
+ /* netns cnt used for uniqueness */
+ static atomic_t ipvs_netns_cnt = ATOMIC_INIT(0);
+ 
+@@ -1181,9 +1178,6 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 						iph.len)))) {
+ #ifdef CONFIG_IP_VS_IPV6
+ 				if (af == AF_INET6) {
+-					struct net *net =
+-						dev_net(skb_dst(skb)->dev);
+-
+ 					if (!skb->dev)
+ 						skb->dev = net->loopback_dev;
+ 					icmpv6_send(skb,
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 0fac601..6bee6d0 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -56,7 +56,7 @@
+  * Make a summary from each cpu
+  */
+ static void ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
+-				 struct ip_vs_cpu_stats *stats)
++				 struct ip_vs_cpu_stats __percpu *stats)
+ {
+ 	int i;
+ 
+-- 
+1.7.10.4
