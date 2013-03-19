@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 1/3] ipvs: fix sctp chunk length order
-Date: Tue, 19 Mar 2013 10:39:56 +0900
-Message-ID: <1363657198-5333-2-git-send-email-horms@verge.net.au>
+Subject: [PATCH 2/3] ipvs: fix hashing in ip_vs_svc_hashkey
+Date: Tue, 19 Mar 2013 10:39:57 +0900
+Message-ID: <1363657198-5333-3-git-send-email-horms@verge.net.au>
 References: <1363657198-5333-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1363657198-5333-1-git-send-email-horms@verge.net.au>
@@ -15,56 +15,40 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-Fix wrong but non-fatal access to chunk length.
-sch->length should be in network order, next chunk should
-be aligned to 4 bytes. Problem noticed in sparse output.
+net is a pointer in host order, mix it properly
+with other keys in network order. Fixes sparse warning.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_proto_sctp.c |   16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index ae8ec6f..cd1d729 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -906,7 +906,7 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 	sctp_chunkhdr_t _sctpch, *sch;
- 	unsigned char chunk_type;
- 	int event, next_state;
--	int ihl;
-+	int ihl, cofs;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index c68198b..a528178 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -271,16 +271,18 @@ ip_vs_svc_hashkey(struct net *net, int af, unsigned int proto,
+ {
+ 	register unsigned int porth = ntohs(port);
+ 	__be32 addr_fold = addr->ip;
++	__u32 ahash;
  
  #ifdef CONFIG_IP_VS_IPV6
- 	ihl = cp->af == AF_INET ? ip_hdrlen(skb) : sizeof(struct ipv6hdr);
-@@ -914,8 +914,8 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 	ihl = ip_hdrlen(skb);
+ 	if (af == AF_INET6)
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
  #endif
+-	addr_fold ^= ((size_t)net>>8);
++	ahash = ntohl(addr_fold);
++	ahash ^= ((size_t) net >> 8);
  
--	sch = skb_header_pointer(skb, ihl + sizeof(sctp_sctphdr_t),
--				sizeof(_sctpch), &_sctpch);
-+	cofs = ihl + sizeof(sctp_sctphdr_t);
-+	sch = skb_header_pointer(skb, cofs, sizeof(_sctpch), &_sctpch);
- 	if (sch == NULL)
- 		return;
+-	return (proto^ntohl(addr_fold)^(porth>>IP_VS_SVC_TAB_BITS)^porth)
+-		& IP_VS_SVC_TAB_MASK;
++	return (proto ^ ahash ^ (porth >> IP_VS_SVC_TAB_BITS) ^ porth) &
++	       IP_VS_SVC_TAB_MASK;
+ }
  
-@@ -933,10 +933,12 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 	 */
- 	if ((sch->type == SCTP_CID_COOKIE_ECHO) ||
- 	    (sch->type == SCTP_CID_COOKIE_ACK)) {
--		sch = skb_header_pointer(skb, (ihl + sizeof(sctp_sctphdr_t) +
--				sch->length), sizeof(_sctpch), &_sctpch);
--		if (sch) {
--			if (sch->type == SCTP_CID_ABORT)
-+		int clen = ntohs(sch->length);
-+
-+		if (clen >= sizeof(sctp_chunkhdr_t)) {
-+			sch = skb_header_pointer(skb, cofs + ALIGN(clen, 4),
-+						 sizeof(_sctpch), &_sctpch);
-+			if (sch && sch->type == SCTP_CID_ABORT)
- 				chunk_type = sch->type;
- 		}
- 	}
+ /*
 -- 
 1.7.10.4
