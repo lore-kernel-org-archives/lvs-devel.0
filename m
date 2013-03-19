@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 3/3] ipvs: fix some sparse warnings
-Date: Tue, 19 Mar 2013 10:39:58 +0900
-Message-ID: <1363657198-5333-4-git-send-email-horms@verge.net.au>
+Subject: [PATCH 1/3] ipvs: fix sctp chunk length order
+Date: Tue, 19 Mar 2013 10:39:56 +0900
+Message-ID: <1363657198-5333-2-git-send-email-horms@verge.net.au>
 References: <1363657198-5333-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1363657198-5333-1-git-send-email-horms@verge.net.au>
@@ -15,67 +15,56 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-Add missing __percpu annotations and make ip_vs_net_id static.
+Fix wrong but non-fatal access to chunk length.
+sch->length should be in network order, next chunk should
+be aligned to 4 bytes. Problem noticed in sparse output.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             |    2 +-
- net/netfilter/ipvs/ip_vs_core.c |    8 +-------
- net/netfilter/ipvs/ip_vs_est.c  |    2 +-
- 3 files changed, 3 insertions(+), 9 deletions(-)
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |   16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 68c69d5..29bc055 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -459,7 +459,7 @@ struct ip_vs_estimator {
- struct ip_vs_stats {
- 	struct ip_vs_stats_user	ustats;		/* statistics */
- 	struct ip_vs_estimator	est;		/* estimator */
--	struct ip_vs_cpu_stats	*cpustats;	/* per cpu counters */
-+	struct ip_vs_cpu_stats __percpu	*cpustats;	/* per cpu counters */
- 	spinlock_t		lock;		/* spin lock */
- 	struct ip_vs_stats_user	ustats0;	/* reset values */
- };
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 47edf5a..3e5e80b 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -69,10 +69,7 @@ EXPORT_SYMBOL(ip_vs_conn_put);
- EXPORT_SYMBOL(ip_vs_get_debug_level);
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index ae8ec6f..cd1d729 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -906,7 +906,7 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+ 	sctp_chunkhdr_t _sctpch, *sch;
+ 	unsigned char chunk_type;
+ 	int event, next_state;
+-	int ihl;
++	int ihl, cofs;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	ihl = cp->af == AF_INET ? ip_hdrlen(skb) : sizeof(struct ipv6hdr);
+@@ -914,8 +914,8 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+ 	ihl = ip_hdrlen(skb);
  #endif
  
--int ip_vs_net_id __read_mostly;
--#ifdef IP_VS_GENERIC_NETNS
--EXPORT_SYMBOL(ip_vs_net_id);
--#endif
-+static int ip_vs_net_id __read_mostly;
- /* netns cnt used for uniqueness */
- static atomic_t ipvs_netns_cnt = ATOMIC_INIT(0);
+-	sch = skb_header_pointer(skb, ihl + sizeof(sctp_sctphdr_t),
+-				sizeof(_sctpch), &_sctpch);
++	cofs = ihl + sizeof(sctp_sctphdr_t);
++	sch = skb_header_pointer(skb, cofs, sizeof(_sctpch), &_sctpch);
+ 	if (sch == NULL)
+ 		return;
  
-@@ -1181,9 +1178,6 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
- 						iph.len)))) {
- #ifdef CONFIG_IP_VS_IPV6
- 				if (af == AF_INET6) {
--					struct net *net =
--						dev_net(skb_dst(skb)->dev);
--
- 					if (!skb->dev)
- 						skb->dev = net->loopback_dev;
- 					icmpv6_send(skb,
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index 0fac601..6bee6d0 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -56,7 +56,7 @@
-  * Make a summary from each cpu
-  */
- static void ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
--				 struct ip_vs_cpu_stats *stats)
-+				 struct ip_vs_cpu_stats __percpu *stats)
- {
- 	int i;
- 
+@@ -933,10 +933,12 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+ 	 */
+ 	if ((sch->type == SCTP_CID_COOKIE_ECHO) ||
+ 	    (sch->type == SCTP_CID_COOKIE_ACK)) {
+-		sch = skb_header_pointer(skb, (ihl + sizeof(sctp_sctphdr_t) +
+-				sch->length), sizeof(_sctpch), &_sctpch);
+-		if (sch) {
+-			if (sch->type == SCTP_CID_ABORT)
++		int clen = ntohs(sch->length);
++
++		if (clen >= sizeof(sctp_chunkhdr_t)) {
++			sch = skb_header_pointer(skb, cofs + ALIGN(clen, 4),
++						 sizeof(_sctpch), &_sctpch);
++			if (sch && sch->type == SCTP_CID_ABORT)
+ 				chunk_type = sch->type;
+ 		}
+ 	}
 -- 
 1.7.10.4
