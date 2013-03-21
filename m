@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCHv3 net-next 02/15] ipvs: avoid routing by TOS for real server
-Date: Thu, 21 Mar 2013 11:57:59 +0200
-Message-ID: <1363859892-9058-3-git-send-email-ja@ssi.bg>
+Subject: [PATCHv3 net-next 05/15] ipvs: rename functions related to dst_cache reset
+Date: Thu, 21 Mar 2013 11:58:02 +0200
+Message-ID: <1363859892-9058-6-git-send-email-ja@ssi.bg>
 References: <1363859892-9058-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1363859892-9058-1-git-send-email-ja@ssi.bg>
@@ -13,217 +13,157 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org
 
-	Avoid replacing the cached route for real server
-on every packet with different TOS. I doubt that routing
-by TOS for real server is used at all, so we should be
-better with such optimization.
+	Move and give better names to two functions:
+
+- ip_vs_dst_reset to __ip_vs_dst_cache_reset
+- __ip_vs_dev_reset to ip_vs_forget_dev
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
  include/net/ip_vs.h             |    1 -
- net/netfilter/ipvs/ip_vs_xmit.c |   58 +++++++++++++++++----------------------
- 2 files changed, 25 insertions(+), 34 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c  |   34 ++++++++++++++++++++++------------
+ net/netfilter/ipvs/ip_vs_xmit.c |   14 --------------
+ 3 files changed, 22 insertions(+), 27 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index fce8e6b..2d14ba8 100644
+index 2d14ba8..c448d3c 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -753,7 +753,6 @@ struct ip_vs_dest {
- 	/* for destination cache */
- 	spinlock_t		dst_lock;	/* lock of dst_cache */
- 	struct dst_entry	*dst_cache;	/* destination cache entry */
--	u32			dst_rtos;	/* RT_TOS(tos) for dst */
- 	u32			dst_cookie;
- 	union nf_inet_addr	dst_saddr;
+@@ -1427,7 +1427,6 @@ extern int ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ extern int ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 			   struct ip_vs_protocol *pp, int offset,
+ 			   unsigned int hooknum, struct ip_vs_iphdr *iph);
+-extern void ip_vs_dst_reset(struct ip_vs_dest *dest);
  
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index ee6b7a9..4b0bd15 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -57,27 +57,24 @@ enum {
-  *      Destination cache to speed up outgoing route lookup
-  */
- static inline void
--__ip_vs_dst_set(struct ip_vs_dest *dest, u32 rtos, struct dst_entry *dst,
--		u32 dst_cookie)
-+__ip_vs_dst_set(struct ip_vs_dest *dest, struct dst_entry *dst, u32 dst_cookie)
- {
- 	struct dst_entry *old_dst;
- 
- 	old_dst = dest->dst_cache;
- 	dest->dst_cache = dst;
--	dest->dst_rtos = rtos;
- 	dest->dst_cookie = dst_cookie;
- 	dst_release(old_dst);
+ #ifdef CONFIG_IP_VS_IPV6
+ extern int ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 1648454..b545549 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -639,6 +639,17 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
+ 	return dest;
  }
  
- static inline struct dst_entry *
--__ip_vs_dst_check(struct ip_vs_dest *dest, u32 rtos)
-+__ip_vs_dst_check(struct ip_vs_dest *dest)
++/* Release dst_cache for dest in user context */
++static void __ip_vs_dst_cache_reset(struct ip_vs_dest *dest)
++{
++	struct dst_entry *old_dst;
++
++	old_dst = dest->dst_cache;
++	dest->dst_cache = NULL;
++	dst_release(old_dst);
++	dest->dst_saddr.ip = 0;
++}
++
+ /*
+  *  Lookup dest by {svc,addr,port} in the destination trash.
+  *  The destination trash is used to hold the destinations that are removed
+@@ -688,7 +699,7 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+ 				      IP_VS_DBG_ADDR(svc->af, &dest->addr),
+ 				      ntohs(dest->port));
+ 			list_del(&dest->n_list);
+-			ip_vs_dst_reset(dest);
++			__ip_vs_dst_cache_reset(dest);
+ 			__ip_vs_unbind_svc(dest);
+ 			free_percpu(dest->stats.cpustats);
+ 			kfree(dest);
+@@ -715,7 +726,7 @@ static void ip_vs_trash_cleanup(struct net *net)
+ 
+ 	list_for_each_entry_safe(dest, nxt, &ipvs->dest_trash, n_list) {
+ 		list_del(&dest->n_list);
+-		ip_vs_dst_reset(dest);
++		__ip_vs_dst_cache_reset(dest);
+ 		__ip_vs_unbind_svc(dest);
+ 		free_percpu(dest->stats.cpustats);
+ 		kfree(dest);
+@@ -809,7 +820,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+ 	dest->l_threshold = udest->l_threshold;
+ 
+ 	spin_lock_bh(&dest->dst_lock);
+-	ip_vs_dst_reset(dest);
++	__ip_vs_dst_cache_reset(dest);
+ 	spin_unlock_bh(&dest->dst_lock);
+ 
+ 	if (add)
+@@ -1035,7 +1046,7 @@ static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest)
+ 			      dest->vfwmark,
+ 			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 			      ntohs(dest->port));
+-		ip_vs_dst_reset(dest);
++		__ip_vs_dst_cache_reset(dest);
+ 		/* simply decrease svc->refcnt here, let the caller check
+ 		   and release the service if nobody refers to it.
+ 		   Only user context can release destination and service,
+@@ -1494,11 +1505,10 @@ void ip_vs_service_net_cleanup(struct net *net)
+ 	mutex_unlock(&__ip_vs_mutex);
+ 	LeaveFunction(2);
+ }
+-/*
+- * Release dst hold by dst_cache
+- */
++
++/* Put all references for device (dst_cache) */
+ static inline void
+-__ip_vs_dev_reset(struct ip_vs_dest *dest, struct net_device *dev)
++ip_vs_forget_dev(struct ip_vs_dest *dest, struct net_device *dev)
  {
- 	struct dst_entry *dst = dest->dst_cache;
- 
- 	if (!dst)
- 		return NULL;
--	if ((dst->obsolete || rtos != dest->dst_rtos) &&
--	    dst->ops->check(dst, dest->dst_cookie) == NULL) {
-+	if (dst->obsolete && dst->ops->check(dst, dest->dst_cookie) == NULL) {
- 		dest->dst_cache = NULL;
- 		dst_release(dst);
- 		return NULL;
-@@ -104,7 +101,7 @@ __mtu_check_toobig_v6(const struct sk_buff *skb, u32 mtu)
- 
- /* Get route to daddr, update *saddr, optionally bind route to saddr */
- static struct rtable *do_output_route4(struct net *net, __be32 daddr,
--				       u32 rtos, int rt_mode, __be32 *saddr)
-+				       int rt_mode, __be32 *saddr)
- {
- 	struct flowi4 fl4;
- 	struct rtable *rt;
-@@ -113,7 +110,6 @@ static struct rtable *do_output_route4(struct net *net, __be32 daddr,
- 	memset(&fl4, 0, sizeof(fl4));
- 	fl4.daddr = daddr;
- 	fl4.saddr = (rt_mode & IP_VS_RT_MODE_CONNECT) ? *saddr : 0;
--	fl4.flowi4_tos = rtos;
- 	fl4.flowi4_flags = (rt_mode & IP_VS_RT_MODE_KNOWN_NH) ?
- 			   FLOWI_FLAG_KNOWN_NH : 0;
- 
-@@ -124,7 +120,7 @@ retry:
- 		if (PTR_ERR(rt) == -EINVAL && *saddr &&
- 		    rt_mode & IP_VS_RT_MODE_CONNECT && !loop) {
- 			*saddr = 0;
--			flowi4_update_output(&fl4, 0, rtos, daddr, 0);
-+			flowi4_update_output(&fl4, 0, 0, daddr, 0);
- 			goto retry;
- 		}
- 		IP_VS_DBG_RL("ip_route_output error, dest: %pI4\n", &daddr);
-@@ -132,7 +128,7 @@ retry:
- 	} else if (!*saddr && rt_mode & IP_VS_RT_MODE_CONNECT && fl4.saddr) {
- 		ip_rt_put(rt);
- 		*saddr = fl4.saddr;
--		flowi4_update_output(&fl4, 0, rtos, daddr, fl4.saddr);
-+		flowi4_update_output(&fl4, 0, 0, daddr, fl4.saddr);
- 		loop++;
- 		goto retry;
+ 	spin_lock_bh(&dest->dst_lock);
+ 	if (dest->dst_cache && dest->dst_cache->dev == dev) {
+@@ -1507,7 +1517,7 @@ __ip_vs_dev_reset(struct ip_vs_dest *dest, struct net_device *dev)
+ 			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 			      ntohs(dest->port),
+ 			      atomic_read(&dest->refcnt));
+-		ip_vs_dst_reset(dest);
++		__ip_vs_dst_cache_reset(dest);
  	}
-@@ -143,7 +139,7 @@ retry:
- /* Get route to destination or remote server */
- static struct rtable *
- __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
--		   __be32 daddr, u32 rtos, int rt_mode, __be32 *ret_saddr)
-+		   __be32 daddr, int rt_mode, __be32 *ret_saddr)
- {
- 	struct net *net = dev_net(skb_dst(skb)->dev);
- 	struct rtable *rt;			/* Route to the other host */
-@@ -152,19 +148,18 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	spin_unlock_bh(&dest->dst_lock);
  
- 	if (dest) {
- 		spin_lock(&dest->dst_lock);
--		if (!(rt = (struct rtable *)
--		      __ip_vs_dst_check(dest, rtos))) {
--			rt = do_output_route4(net, dest->addr.ip, rtos,
--					      rt_mode, &dest->dst_saddr.ip);
-+		rt = (struct rtable *) __ip_vs_dst_check(dest);
-+		if (!rt) {
-+			rt = do_output_route4(net, dest->addr.ip, rt_mode,
-+					      &dest->dst_saddr.ip);
- 			if (!rt) {
- 				spin_unlock(&dest->dst_lock);
- 				return NULL;
+@@ -1535,7 +1545,7 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
+ 			if (net_eq(svc->net, net)) {
+ 				list_for_each_entry(dest, &svc->destinations,
+ 						    n_list) {
+-					__ip_vs_dev_reset(dest, dev);
++					ip_vs_forget_dev(dest, dev);
+ 				}
  			}
--			__ip_vs_dst_set(dest, rtos, dst_clone(&rt->dst), 0);
--			IP_VS_DBG(10, "new dst %pI4, src %pI4, refcnt=%d, "
--				  "rtos=%X\n",
-+			__ip_vs_dst_set(dest, dst_clone(&rt->dst), 0);
-+			IP_VS_DBG(10, "new dst %pI4, src %pI4, refcnt=%d\n",
- 				  &dest->addr.ip, &dest->dst_saddr.ip,
--				  atomic_read(&rt->dst.__refcnt), rtos);
-+				  atomic_read(&rt->dst.__refcnt));
  		}
- 		daddr = dest->addr.ip;
- 		if (ret_saddr)
-@@ -177,7 +172,7 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
- 		 * for performance reasons because we do not remember saddr
- 		 */
- 		rt_mode &= ~IP_VS_RT_MODE_CONNECT;
--		rt = do_output_route4(net, daddr, rtos, rt_mode, &saddr);
-+		rt = do_output_route4(net, daddr, rt_mode, &saddr);
- 		if (!rt)
- 			return NULL;
- 		if (ret_saddr)
-@@ -307,7 +302,7 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
- 
- 	if (dest) {
- 		spin_lock(&dest->dst_lock);
--		rt = (struct rt6_info *)__ip_vs_dst_check(dest, 0);
-+		rt = (struct rt6_info *)__ip_vs_dst_check(dest);
- 		if (!rt) {
- 			u32 cookie;
- 
-@@ -320,7 +315,7 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+@@ -1544,7 +1554,7 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
+ 			if (net_eq(svc->net, net)) {
+ 				list_for_each_entry(dest, &svc->destinations,
+ 						    n_list) {
+-					__ip_vs_dev_reset(dest, dev);
++					ip_vs_forget_dev(dest, dev);
+ 				}
  			}
- 			rt = (struct rt6_info *) dst;
- 			cookie = rt->rt6i_node ? rt->rt6i_node->fn_sernum : 0;
--			__ip_vs_dst_set(dest, 0, dst_clone(&rt->dst), cookie);
-+			__ip_vs_dst_set(dest, dst_clone(&rt->dst), cookie);
- 			IP_VS_DBG(10, "new dst %pI6, src %pI6, refcnt=%d\n",
- 				  &dest->addr.in6, &dest->dst_saddr.in6,
- 				  atomic_read(&rt->dst.__refcnt));
-@@ -449,8 +444,9 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  
- 	EnterFunction(10);
- 
--	if (!(rt = __ip_vs_get_out_rt(skb, NULL, iph->daddr, RT_TOS(iph->tos),
--				      IP_VS_RT_MODE_NON_LOCAL, NULL)))
-+	rt = __ip_vs_get_out_rt(skb, NULL, iph->daddr, IP_VS_RT_MODE_NON_LOCAL,
-+				NULL);
-+	if (!rt)
- 		goto tx_error_icmp;
- 
- 	/* MTU checking */
-@@ -581,10 +577,9 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+@@ -1552,7 +1562,7 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
  	}
  
- 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
--				      RT_TOS(iph->tos),
- 				      IP_VS_RT_MODE_LOCAL |
--					IP_VS_RT_MODE_NON_LOCAL |
--					IP_VS_RT_MODE_RDR, NULL)))
-+				      IP_VS_RT_MODE_NON_LOCAL |
-+				      IP_VS_RT_MODE_RDR, NULL)))
- 		goto tx_error_icmp;
- 	local = rt->rt_flags & RTCF_LOCAL;
- 	/*
-@@ -832,10 +827,9 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
+ 	list_for_each_entry(dest, &ipvs->dest_trash, n_list) {
+-		__ip_vs_dev_reset(dest, dev);
++		ip_vs_forget_dev(dest, dev);
+ 	}
+ 	mutex_unlock(&__ip_vs_mutex);
+ 	LeaveFunction(2);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 7cd7c61..6448a2e 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -362,20 +362,6 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ #endif
  
- 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
--				      RT_TOS(tos), IP_VS_RT_MODE_LOCAL |
--						   IP_VS_RT_MODE_NON_LOCAL |
--						   IP_VS_RT_MODE_CONNECT,
--						   &saddr)))
-+				      IP_VS_RT_MODE_LOCAL |
-+				      IP_VS_RT_MODE_NON_LOCAL |
-+				      IP_VS_RT_MODE_CONNECT, &saddr)))
- 		goto tx_error_icmp;
- 	if (rt->rt_flags & RTCF_LOCAL) {
- 		ip_rt_put(rt);
-@@ -1067,7 +1061,6 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
  
- 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
--				      RT_TOS(iph->tos),
- 				      IP_VS_RT_MODE_LOCAL |
- 				      IP_VS_RT_MODE_NON_LOCAL |
- 				      IP_VS_RT_MODE_KNOWN_NH, NULL)))
-@@ -1223,7 +1216,6 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
- 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
- 	if (!(rt = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
--				      RT_TOS(ip_hdr(skb)->tos),
- 				      rt_mode, NULL)))
- 		goto tx_error_icmp;
- 	local = rt->rt_flags & RTCF_LOCAL;
--- 
-1.7.3.4
-
+-/*
+- *	Release dest->dst_cache before a dest is removed
+- */
+-void
+-ip_vs_dst_reset(struct ip_vs_dest *dest)
+-{
+-	struct dst_entry *old_dst;
+-
+-	old_dst = dest->dst_cache;
+-	dest->dst_cache = NULL;
+-	dst_release(old_dst);
+-	dest->dst_saddr.ip = 0;
+-}
