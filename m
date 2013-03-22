@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 15/19] ipvs: do not expect result from done_service
-Date: Fri, 22 Mar 2013 11:46:50 +0200
-Message-ID: <1363945614-11752-16-git-send-email-ja@ssi.bg>
+Subject: [PATCH net-next 19/19] ipvs: do not disable bh for long time
+Date: Fri, 22 Mar 2013 11:46:54 +0200
+Message-ID: <1363945614-11752-20-git-send-email-ja@ssi.bg>
 References: <1363945614-11752-1-git-send-email-ja@ssi.bg>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1363945614-11752-1-git-send-email-ja@ssi.bg>
@@ -13,200 +13,575 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-	This method releases the scheduler state,
-it can not fail. Such change will help to properly
-replace the scheduler in following patch.
+	We used a global BH disable in LOCAL_OUT hook.
+Add _bh suffix to all places that need it and remove
+the disabling from LOCAL_OUT and sync code.
+
+	Functions like ip_defrag need protection from
+BH, so add it. As for nf_nat_mangle_tcp_packet, it needs
+RCU lock.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/ip_vs.h              |    4 ++--
- net/netfilter/ipvs/ip_vs_ctl.c   |    5 +----
- net/netfilter/ipvs/ip_vs_dh.c    |    4 +---
- net/netfilter/ipvs/ip_vs_lblc.c  |    4 +---
- net/netfilter/ipvs/ip_vs_lblcr.c |    4 +---
- net/netfilter/ipvs/ip_vs_sched.c |   13 ++++---------
- net/netfilter/ipvs/ip_vs_sh.c    |    4 +---
- net/netfilter/ipvs/ip_vs_wrr.c   |    4 +---
- 8 files changed, 12 insertions(+), 30 deletions(-)
+ net/netfilter/ipvs/ip_vs_app.c        |    4 +-
+ net/netfilter/ipvs/ip_vs_conn.c       |   30 +++++++++++++-------------
+ net/netfilter/ipvs/ip_vs_core.c       |   37 +++++++-------------------------
+ net/netfilter/ipvs/ip_vs_ftp.c        |    2 +
+ net/netfilter/ipvs/ip_vs_lblc.c       |    4 +-
+ net/netfilter/ipvs/ip_vs_lblcr.c      |   12 +++++-----
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |    4 +-
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  |    8 +++---
+ net/netfilter/ipvs/ip_vs_rr.c         |    6 ++--
+ net/netfilter/ipvs/ip_vs_sync.c       |   24 +++++++++------------
+ net/netfilter/ipvs/ip_vs_wrr.c        |    4 +-
+ net/netfilter/ipvs/ip_vs_xmit.c       |   16 +++++++-------
+ 12 files changed, 64 insertions(+), 87 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 76747d9..8597a71 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -806,7 +806,7 @@ struct ip_vs_scheduler {
- 	/* scheduler initializing service */
- 	int (*init_service)(struct ip_vs_service *svc);
- 	/* scheduling service finish */
--	int (*done_service)(struct ip_vs_service *svc);
-+	void (*done_service)(struct ip_vs_service *svc);
- 	/* scheduler updating service */
- 	int (*update_service)(struct ip_vs_service *svc);
- 	/* dest is linked */
-@@ -1392,7 +1392,7 @@ extern int register_ip_vs_scheduler(struct ip_vs_scheduler *scheduler);
- extern int unregister_ip_vs_scheduler(struct ip_vs_scheduler *scheduler);
- extern int ip_vs_bind_scheduler(struct ip_vs_service *svc,
- 				struct ip_vs_scheduler *scheduler);
--extern int ip_vs_unbind_scheduler(struct ip_vs_service *svc);
-+extern void ip_vs_unbind_scheduler(struct ip_vs_service *svc);
- extern struct ip_vs_scheduler *ip_vs_scheduler_get(const char *sched_name);
- extern void ip_vs_scheduler_put(struct ip_vs_scheduler *scheduler);
- extern struct ip_vs_conn *
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index a6c206f..e010deb 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1332,10 +1332,7 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
- 		/*
- 		 * Unbind the old scheduler
- 		 */
--		if ((ret = ip_vs_unbind_scheduler(svc))) {
--			old_sched = sched;
--			goto out_unlock;
--		}
-+		ip_vs_unbind_scheduler(svc);
- 
- 		/*
- 		 * Bind the new scheduler
-diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
-index ebe80f4..89c2723 100644
---- a/net/netfilter/ipvs/ip_vs_dh.c
-+++ b/net/netfilter/ipvs/ip_vs_dh.c
-@@ -174,7 +174,7 @@ static int ip_vs_dh_init_svc(struct ip_vs_service *svc)
- }
- 
- 
--static int ip_vs_dh_done_svc(struct ip_vs_service *svc)
-+static void ip_vs_dh_done_svc(struct ip_vs_service *svc)
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index a956030..dfd7b65 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -352,14 +352,14 @@ static inline void vs_seq_update(struct ip_vs_conn *cp, struct ip_vs_seq *vseq,
+ 				 unsigned int flag, __u32 seq, int diff)
  {
- 	struct ip_vs_dh_state *s = svc->sched_data;
+ 	/* spinlock is to keep updating cp->flags atomic */
+-	spin_lock(&cp->lock);
++	spin_lock_bh(&cp->lock);
+ 	if (!(cp->flags & flag) || after(seq, vseq->init_seq)) {
+ 		vseq->previous_delta = vseq->delta;
+ 		vseq->delta += diff;
+ 		vseq->init_seq = seq;
+ 		cp->flags |= flag;
+ 	}
+-	spin_unlock(&cp->lock);
++	spin_unlock_bh(&cp->lock);
+ }
  
-@@ -185,8 +185,6 @@ static int ip_vs_dh_done_svc(struct ip_vs_service *svc)
- 	kfree_rcu(s, rcu_head);
- 	IP_VS_DBG(6, "DH hash table (memory=%Zdbytes) released\n",
- 		  sizeof(struct ip_vs_dh_bucket)*IP_VS_DH_TAB_SIZE);
--
--	return 0;
+ static inline int app_tcp_pkt_out(struct ip_vs_conn *cp, struct sk_buff *skb,
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 54de340..de64758 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -86,14 +86,14 @@ struct ip_vs_aligned_lock
+ static struct ip_vs_aligned_lock
+ __ip_vs_conntbl_lock_array[CT_LOCKARRAY_SIZE] __cacheline_aligned;
+ 
+-static inline void ct_write_lock(unsigned int key)
++static inline void ct_write_lock_bh(unsigned int key)
+ {
+-	spin_lock(&__ip_vs_conntbl_lock_array[key&CT_LOCKARRAY_MASK].l);
++	spin_lock_bh(&__ip_vs_conntbl_lock_array[key&CT_LOCKARRAY_MASK].l);
+ }
+ 
+-static inline void ct_write_unlock(unsigned int key)
++static inline void ct_write_unlock_bh(unsigned int key)
+ {
+-	spin_unlock(&__ip_vs_conntbl_lock_array[key&CT_LOCKARRAY_MASK].l);
++	spin_unlock_bh(&__ip_vs_conntbl_lock_array[key&CT_LOCKARRAY_MASK].l);
  }
  
  
+@@ -167,7 +167,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ 	/* Hash by protocol, client address and port */
+ 	hash = ip_vs_conn_hashkey_conn(cp);
+ 
+-	ct_write_lock(hash);
++	ct_write_lock_bh(hash);
+ 	spin_lock(&cp->lock);
+ 
+ 	if (!(cp->flags & IP_VS_CONN_F_HASHED)) {
+@@ -182,7 +182,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ 	}
+ 
+ 	spin_unlock(&cp->lock);
+-	ct_write_unlock(hash);
++	ct_write_unlock_bh(hash);
+ 
+ 	return ret;
+ }
+@@ -200,7 +200,7 @@ static inline int ip_vs_conn_unhash(struct ip_vs_conn *cp)
+ 	/* unhash it and decrease its reference counter */
+ 	hash = ip_vs_conn_hashkey_conn(cp);
+ 
+-	ct_write_lock(hash);
++	ct_write_lock_bh(hash);
+ 	spin_lock(&cp->lock);
+ 
+ 	if (cp->flags & IP_VS_CONN_F_HASHED) {
+@@ -212,7 +212,7 @@ static inline int ip_vs_conn_unhash(struct ip_vs_conn *cp)
+ 		ret = 0;
+ 
+ 	spin_unlock(&cp->lock);
+-	ct_write_unlock(hash);
++	ct_write_unlock_bh(hash);
+ 
+ 	return ret;
+ }
+@@ -227,7 +227,7 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ 
+ 	hash = ip_vs_conn_hashkey_conn(cp);
+ 
+-	ct_write_lock(hash);
++	ct_write_lock_bh(hash);
+ 	spin_lock(&cp->lock);
+ 
+ 	if (cp->flags & IP_VS_CONN_F_HASHED) {
+@@ -242,7 +242,7 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ 		ret = atomic_read(&cp->refcnt) ? false : true;
+ 
+ 	spin_unlock(&cp->lock);
+-	ct_write_unlock(hash);
++	ct_write_unlock_bh(hash);
+ 
+ 	return ret;
+ }
+@@ -462,13 +462,13 @@ void ip_vs_conn_put(struct ip_vs_conn *cp)
+ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ {
+ 	if (ip_vs_conn_unhash(cp)) {
+-		spin_lock(&cp->lock);
++		spin_lock_bh(&cp->lock);
+ 		if (cp->flags & IP_VS_CONN_F_NO_CPORT) {
+ 			atomic_dec(&ip_vs_conn_no_cport_cnt);
+ 			cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
+ 			cp->cport = cport;
+ 		}
+-		spin_unlock(&cp->lock);
++		spin_unlock_bh(&cp->lock);
+ 
+ 		/* hash on new dport */
+ 		ip_vs_conn_hash(cp);
+@@ -622,9 +622,9 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
+ 	if (dest) {
+ 		struct ip_vs_proto_data *pd;
+ 
+-		spin_lock(&cp->lock);
++		spin_lock_bh(&cp->lock);
+ 		if (cp->dest) {
+-			spin_unlock(&cp->lock);
++			spin_unlock_bh(&cp->lock);
+ 			rcu_read_unlock();
+ 			return;
+ 		}
+@@ -635,7 +635,7 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
+ 			ip_vs_unbind_app(cp);
+ 
+ 		ip_vs_bind_dest(cp, dest);
+-		spin_unlock(&cp->lock);
++		spin_unlock_bh(&cp->lock);
+ 
+ 		/* Update its packet transmitter */
+ 		cp->packet_xmit = NULL;
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 8814f02..1ac56c7 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -641,8 +641,11 @@ static inline enum ip_defrag_users ip_vs_defrag_user(unsigned int hooknum)
+ 
+ static inline int ip_vs_gather_frags(struct sk_buff *skb, u_int32_t user)
+ {
+-	int err = ip_defrag(skb, user);
++	int err;
+ 
++	local_bh_disable();
++	err = ip_defrag(skb, user);
++	local_bh_enable();
+ 	if (!err)
+ 		ip_send_check(ip_hdr(skb));
+ 
+@@ -1223,13 +1226,7 @@ ip_vs_local_reply4(unsigned int hooknum, struct sk_buff *skb,
+ 		   const struct net_device *in, const struct net_device *out,
+ 		   int (*okfn)(struct sk_buff *))
+ {
+-	unsigned int verdict;
+-
+-	/* Disable BH in LOCAL_OUT until all places are fixed */
+-	local_bh_disable();
+-	verdict = ip_vs_out(hooknum, skb, AF_INET);
+-	local_bh_enable();
+-	return verdict;
++	return ip_vs_out(hooknum, skb, AF_INET);
+ }
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+@@ -1256,13 +1253,7 @@ ip_vs_local_reply6(unsigned int hooknum, struct sk_buff *skb,
+ 		   const struct net_device *in, const struct net_device *out,
+ 		   int (*okfn)(struct sk_buff *))
+ {
+-	unsigned int verdict;
+-
+-	/* Disable BH in LOCAL_OUT until all places are fixed */
+-	local_bh_disable();
+-	verdict = ip_vs_out(hooknum, skb, AF_INET6);
+-	local_bh_enable();
+-	return verdict;
++	return ip_vs_out(hooknum, skb, AF_INET6);
+ }
+ 
+ #endif
+@@ -1720,13 +1711,7 @@ ip_vs_local_request4(unsigned int hooknum, struct sk_buff *skb,
+ 		     const struct net_device *in, const struct net_device *out,
+ 		     int (*okfn)(struct sk_buff *))
+ {
+-	unsigned int verdict;
+-
+-	/* Disable BH in LOCAL_OUT until all places are fixed */
+-	local_bh_disable();
+-	verdict = ip_vs_in(hooknum, skb, AF_INET);
+-	local_bh_enable();
+-	return verdict;
++	return ip_vs_in(hooknum, skb, AF_INET);
+ }
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+@@ -1785,13 +1770,7 @@ ip_vs_local_request6(unsigned int hooknum, struct sk_buff *skb,
+ 		     const struct net_device *in, const struct net_device *out,
+ 		     int (*okfn)(struct sk_buff *))
+ {
+-	unsigned int verdict;
+-
+-	/* Disable BH in LOCAL_OUT until all places are fixed */
+-	local_bh_disable();
+-	verdict = ip_vs_in(hooknum, skb, AF_INET6);
+-	local_bh_enable();
+-	return verdict;
++	return ip_vs_in(hooknum, skb, AF_INET6);
+ }
+ 
+ #endif
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 7f90825..77c1732 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -267,10 +267,12 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 			 * hopefully it will succeed on the retransmitted
+ 			 * packet.
+ 			 */
++			rcu_read_lock();
+ 			ret = nf_nat_mangle_tcp_packet(skb, ct, ctinfo,
+ 						       iph->ihl * 4,
+ 						       start-data, end-start,
+ 						       buf, buf_len);
++			rcu_read_unlock();
+ 			if (ret) {
+ 				ip_vs_nfct_expect_related(skb, ct, n_cp,
+ 							  IPPROTO_TCP, 0, 0);
 diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
-index b873e17..c7ff978 100644
+index d8e5238..b2cc252 100644
 --- a/net/netfilter/ipvs/ip_vs_lblc.c
 +++ b/net/netfilter/ipvs/ip_vs_lblc.c
-@@ -388,7 +388,7 @@ static int ip_vs_lblc_init_svc(struct ip_vs_service *svc)
- }
+@@ -527,10 +527,10 @@ ip_vs_lblc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 	}
  
+ 	/* If we fail to create a cache entry, we'll just use the valid dest */
+-	spin_lock(&svc->sched_lock);
++	spin_lock_bh(&svc->sched_lock);
+ 	if (!tbl->dead)
+ 		ip_vs_lblc_new(tbl, &iph.daddr, dest);
+-	spin_unlock(&svc->sched_lock);
++	spin_unlock_bh(&svc->sched_lock);
  
--static int ip_vs_lblc_done_svc(struct ip_vs_service *svc)
-+static void ip_vs_lblc_done_svc(struct ip_vs_service *svc)
- {
- 	struct ip_vs_lblc_table *tbl = svc->sched_data;
- 
-@@ -402,8 +402,6 @@ static int ip_vs_lblc_done_svc(struct ip_vs_service *svc)
- 	kfree_rcu(tbl, rcu_head);
- 	IP_VS_DBG(6, "LBLC hash table (memory=%Zdbytes) released\n",
- 		  sizeof(*tbl));
--
--	return 0;
- }
- 
- 
+ out:
+ 	IP_VS_DBG_BUF(6, "LBLC: destination IP address %s --> server %s:%d\n",
 diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
-index c22f173..6049b85 100644
+index 041b7cc..feb9656 100644
 --- a/net/netfilter/ipvs/ip_vs_lblcr.c
 +++ b/net/netfilter/ipvs/ip_vs_lblcr.c
-@@ -555,7 +555,7 @@ static int ip_vs_lblcr_init_svc(struct ip_vs_service *svc)
- }
+@@ -678,7 +678,7 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 		if (atomic_read(&en->set.size) > 1 &&
+ 		    time_after(jiffies, en->set.lastmod +
+ 				sysctl_lblcr_expiration(svc))) {
+-			spin_lock(&svc->sched_lock);
++			spin_lock_bh(&svc->sched_lock);
+ 			if (atomic_read(&en->set.size) > 1) {
+ 				struct ip_vs_dest *m;
  
+@@ -686,7 +686,7 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 				if (m)
+ 					ip_vs_dest_set_erase(&en->set, m);
+ 			}
+-			spin_unlock(&svc->sched_lock);
++			spin_unlock_bh(&svc->sched_lock);
+ 		}
  
--static int ip_vs_lblcr_done_svc(struct ip_vs_service *svc)
-+static void ip_vs_lblcr_done_svc(struct ip_vs_service *svc)
+ 		/* If the destination is not overloaded, use it */
+@@ -701,10 +701,10 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 		}
+ 
+ 		/* Update our cache entry */
+-		spin_lock(&svc->sched_lock);
++		spin_lock_bh(&svc->sched_lock);
+ 		if (!tbl->dead)
+ 			ip_vs_dest_set_insert(&en->set, dest, true);
+-		spin_unlock(&svc->sched_lock);
++		spin_unlock_bh(&svc->sched_lock);
+ 		goto out;
+ 	}
+ 
+@@ -716,10 +716,10 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 	}
+ 
+ 	/* If we fail to create a cache entry, we'll just use the valid dest */
+-	spin_lock(&svc->sched_lock);
++	spin_lock_bh(&svc->sched_lock);
+ 	if (!tbl->dead)
+ 		ip_vs_lblcr_new(tbl, &iph.daddr, dest);
+-	spin_unlock(&svc->sched_lock);
++	spin_unlock_bh(&svc->sched_lock);
+ 
+ out:
+ 	IP_VS_DBG_BUF(6, "LBLCR: destination IP address %s --> server %s:%d\n",
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 4de5176..6e14a7b 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -994,9 +994,9 @@ static void
+ sctp_state_transition(struct ip_vs_conn *cp, int direction,
+ 		const struct sk_buff *skb, struct ip_vs_proto_data *pd)
  {
- 	struct ip_vs_lblcr_table *tbl = svc->sched_data;
- 
-@@ -569,8 +569,6 @@ static int ip_vs_lblcr_done_svc(struct ip_vs_service *svc)
- 	kfree_rcu(tbl, rcu_head);
- 	IP_VS_DBG(6, "LBLCR hash table (memory=%Zdbytes) released\n",
- 		  sizeof(*tbl));
--
--	return 0;
+-	spin_lock(&cp->lock);
++	spin_lock_bh(&cp->lock);
+ 	set_sctp_state(pd, cp, direction, skb);
+-	spin_unlock(&cp->lock);
++	spin_unlock_bh(&cp->lock);
  }
  
+ static inline __u16 sctp_app_hashkey(__be16 port)
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 7de3342..50a1594 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -557,9 +557,9 @@ tcp_state_transition(struct ip_vs_conn *cp, int direction,
+ 	if (th == NULL)
+ 		return;
  
-diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
-index 7f11d3d..1b715d0 100644
---- a/net/netfilter/ipvs/ip_vs_sched.c
-+++ b/net/netfilter/ipvs/ip_vs_sched.c
-@@ -64,22 +64,17 @@ int ip_vs_bind_scheduler(struct ip_vs_service *svc,
- /*
-  *  Unbind a service with its scheduler
-  */
--int ip_vs_unbind_scheduler(struct ip_vs_service *svc)
-+void ip_vs_unbind_scheduler(struct ip_vs_service *svc)
+-	spin_lock(&cp->lock);
++	spin_lock_bh(&cp->lock);
+ 	set_tcp_state(pd, cp, direction, th);
+-	spin_unlock(&cp->lock);
++	spin_unlock_bh(&cp->lock);
+ }
+ 
+ static inline __u16 tcp_app_hashkey(__be16 port)
+@@ -655,11 +655,11 @@ void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp)
  {
- 	struct ip_vs_scheduler *sched = svc->scheduler;
+ 	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(net, IPPROTO_TCP);
  
- 	if (!sched)
--		return 0;
-+		return;
- 
--	if (sched->done_service) {
--		if (sched->done_service(svc) != 0) {
--			pr_err("%s(): done error\n", __func__);
--			return -EINVAL;
--		}
--	}
-+	if (sched->done_service)
-+		sched->done_service(svc);
- 
- 	svc->scheduler = NULL;
--	return 0;
+-	spin_lock(&cp->lock);
++	spin_lock_bh(&cp->lock);
+ 	cp->state = IP_VS_TCP_S_LISTEN;
+ 	cp->timeout = (pd ? pd->timeout_table[IP_VS_TCP_S_LISTEN]
+ 			   : tcp_timeouts[IP_VS_TCP_S_LISTEN]);
+-	spin_unlock(&cp->lock);
++	spin_unlock_bh(&cp->lock);
  }
  
+ /* ---------------------------------------------
+diff --git a/net/netfilter/ipvs/ip_vs_rr.c b/net/netfilter/ipvs/ip_vs_rr.c
+index 749c98a..c35986c 100644
+--- a/net/netfilter/ipvs/ip_vs_rr.c
++++ b/net/netfilter/ipvs/ip_vs_rr.c
+@@ -63,7 +63,7 @@ ip_vs_rr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
  
-diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-index 55e76d8..81c1a10 100644
---- a/net/netfilter/ipvs/ip_vs_sh.c
-+++ b/net/netfilter/ipvs/ip_vs_sh.c
-@@ -187,7 +187,7 @@ static int ip_vs_sh_init_svc(struct ip_vs_service *svc)
- }
+ 	IP_VS_DBG(6, "%s(): Scheduling...\n", __func__);
  
+-	spin_lock(&svc->sched_lock);
++	spin_lock_bh(&svc->sched_lock);
+ 	p = (struct list_head *) svc->sched_data;
+ 	last = dest = list_entry(p, struct ip_vs_dest, n_list);
  
--static int ip_vs_sh_done_svc(struct ip_vs_service *svc)
-+static void ip_vs_sh_done_svc(struct ip_vs_service *svc)
- {
- 	struct ip_vs_sh_state *s = svc->sched_data;
+@@ -85,13 +85,13 @@ ip_vs_rr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
+ 	} while (pass < 2 && p != &svc->destinations);
  
-@@ -198,8 +198,6 @@ static int ip_vs_sh_done_svc(struct ip_vs_service *svc)
- 	kfree_rcu(s, rcu_head);
- 	IP_VS_DBG(6, "SH hash table (memory=%Zdbytes) released\n",
- 		  sizeof(struct ip_vs_sh_bucket)*IP_VS_SH_TAB_SIZE);
--
--	return 0;
- }
+ stop:
+-	spin_unlock(&svc->sched_lock);
++	spin_unlock_bh(&svc->sched_lock);
+ 	ip_vs_scheduler_err(svc, "no destination available");
+ 	return NULL;
  
+   out:
+ 	svc->sched_data = &dest->n_list;
+-	spin_unlock(&svc->sched_lock);
++	spin_unlock_bh(&svc->sched_lock);
+ 	IP_VS_DBG_BUF(6, "RR: server %s:%u "
+ 		      "activeconns %d refcnt %d weight %d\n",
+ 		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port),
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 9724174..8e57077 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -531,9 +531,9 @@ static void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp,
+ 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
+ 		return;
+ 
+-	spin_lock(&ipvs->sync_buff_lock);
++	spin_lock_bh(&ipvs->sync_buff_lock);
+ 	if (!(ipvs->sync_state & IP_VS_STATE_MASTER)) {
+-		spin_unlock(&ipvs->sync_buff_lock);
++		spin_unlock_bh(&ipvs->sync_buff_lock);
+ 		return;
+ 	}
+ 
+@@ -552,7 +552,7 @@ static void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp,
+ 	if (!buff) {
+ 		buff = ip_vs_sync_buff_create_v0(ipvs);
+ 		if (!buff) {
+-			spin_unlock(&ipvs->sync_buff_lock);
++			spin_unlock_bh(&ipvs->sync_buff_lock);
+ 			pr_err("ip_vs_sync_buff_create failed.\n");
+ 			return;
+ 		}
+@@ -590,7 +590,7 @@ static void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp,
+ 		sb_queue_tail(ipvs, ms);
+ 		ms->sync_buff = NULL;
+ 	}
+-	spin_unlock(&ipvs->sync_buff_lock);
++	spin_unlock_bh(&ipvs->sync_buff_lock);
+ 
+ 	/* synchronize its controller if it has */
+ 	cp = cp->control;
+@@ -641,9 +641,9 @@ sloop:
+ 		pe_name_len = strnlen(cp->pe->name, IP_VS_PENAME_MAXLEN);
+ 	}
+ 
+-	spin_lock(&ipvs->sync_buff_lock);
++	spin_lock_bh(&ipvs->sync_buff_lock);
+ 	if (!(ipvs->sync_state & IP_VS_STATE_MASTER)) {
+-		spin_unlock(&ipvs->sync_buff_lock);
++		spin_unlock_bh(&ipvs->sync_buff_lock);
+ 		return;
+ 	}
+ 
+@@ -683,7 +683,7 @@ sloop:
+ 	if (!buff) {
+ 		buff = ip_vs_sync_buff_create(ipvs);
+ 		if (!buff) {
+-			spin_unlock(&ipvs->sync_buff_lock);
++			spin_unlock_bh(&ipvs->sync_buff_lock);
+ 			pr_err("ip_vs_sync_buff_create failed.\n");
+ 			return;
+ 		}
+@@ -750,7 +750,7 @@ sloop:
+ 		}
+ 	}
+ 
+-	spin_unlock(&ipvs->sync_buff_lock);
++	spin_unlock_bh(&ipvs->sync_buff_lock);
+ 
+ control:
+ 	/* synchronize its controller if it has */
+@@ -843,7 +843,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+ 		kfree(param->pe_data);
+ 
+ 		dest = cp->dest;
+-		spin_lock(&cp->lock);
++		spin_lock_bh(&cp->lock);
+ 		if ((cp->flags ^ flags) & IP_VS_CONN_F_INACTIVE &&
+ 		    !(flags & IP_VS_CONN_F_TEMPLATE) && dest) {
+ 			if (flags & IP_VS_CONN_F_INACTIVE) {
+@@ -857,7 +857,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+ 		flags &= IP_VS_CONN_F_BACKUP_UPD_MASK;
+ 		flags |= cp->flags & ~IP_VS_CONN_F_BACKUP_UPD_MASK;
+ 		cp->flags = flags;
+-		spin_unlock(&cp->lock);
++		spin_unlock_bh(&cp->lock);
+ 		if (!dest)
+ 			ip_vs_try_bind_dest(cp);
+ 	} else {
+@@ -1689,11 +1689,7 @@ static int sync_thread_backup(void *data)
+ 				break;
+ 			}
+ 
+-			/* disable bottom half, because it accesses the data
+-			   shared by softirq while getting/creating conns */
+-			local_bh_disable();
+ 			ip_vs_process_message(tinfo->net, tinfo->buf, len);
+-			local_bh_enable();
+ 		}
+ 	}
  
 diff --git a/net/netfilter/ipvs/ip_vs_wrr.c b/net/netfilter/ipvs/ip_vs_wrr.c
-index 98cb05e..a74fd9b 100644
+index 32c646e..0e68555 100644
 --- a/net/netfilter/ipvs/ip_vs_wrr.c
 +++ b/net/netfilter/ipvs/ip_vs_wrr.c
-@@ -129,7 +129,7 @@ static int ip_vs_wrr_init_svc(struct ip_vs_service *svc)
- }
+@@ -170,7 +170,7 @@ ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
  
+ 	IP_VS_DBG(6, "%s(): Scheduling...\n", __func__);
  
--static int ip_vs_wrr_done_svc(struct ip_vs_service *svc)
-+static void ip_vs_wrr_done_svc(struct ip_vs_service *svc)
- {
- 	struct ip_vs_wrr_mark *mark = svc->sched_data;
+-	spin_lock(&svc->sched_lock);
++	spin_lock_bh(&svc->sched_lock);
+ 	dest = mark->cl;
+ 	/* No available dests? */
+ 	if (mark->mw == 0)
+@@ -222,7 +222,7 @@ found:
+ 	mark->cl = dest;
  
-@@ -137,8 +137,6 @@ static int ip_vs_wrr_done_svc(struct ip_vs_service *svc)
- 	 *    Release the mark variable
- 	 */
- 	kfree_rcu(mark, rcu_head);
--
--	return 0;
- }
+   out:
+-	spin_unlock(&svc->sched_lock);
++	spin_unlock_bh(&svc->sched_lock);
+ 	return dest;
  
+ err_noavail:
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 3db7889..b75ff64 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -177,22 +177,22 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 			rt = (struct rtable *) dest_dst->dst_cache;
+ 		else {
+ 			dest_dst = ip_vs_dest_dst_alloc();
+-			spin_lock(&dest->dst_lock);
++			spin_lock_bh(&dest->dst_lock);
+ 			if (!dest_dst) {
+ 				__ip_vs_dst_set(dest, NULL, NULL, 0);
+-				spin_unlock(&dest->dst_lock);
++				spin_unlock_bh(&dest->dst_lock);
+ 				goto err_unreach;
+ 			}
+ 			rt = do_output_route4(net, dest->addr.ip, rt_mode,
+ 					      &dest_dst->dst_saddr.ip);
+ 			if (!rt) {
+ 				__ip_vs_dst_set(dest, NULL, NULL, 0);
+-				spin_unlock(&dest->dst_lock);
++				spin_unlock_bh(&dest->dst_lock);
+ 				ip_vs_dest_dst_free(dest_dst);
+ 				goto err_unreach;
+ 			}
+ 			__ip_vs_dst_set(dest, dest_dst, &rt->dst, 0);
+-			spin_unlock(&dest->dst_lock);
++			spin_unlock_bh(&dest->dst_lock);
+ 			IP_VS_DBG(10, "new dst %pI4, src %pI4, refcnt=%d\n",
+ 				  &dest->addr.ip, &dest_dst->dst_saddr.ip,
+ 				  atomic_read(&rt->dst.__refcnt));
+@@ -358,10 +358,10 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 			u32 cookie;
  
+ 			dest_dst = ip_vs_dest_dst_alloc();
+-			spin_lock(&dest->dst_lock);
++			spin_lock_bh(&dest->dst_lock);
+ 			if (!dest_dst) {
+ 				__ip_vs_dst_set(dest, NULL, NULL, 0);
+-				spin_unlock(&dest->dst_lock);
++				spin_unlock_bh(&dest->dst_lock);
+ 				goto err_unreach;
+ 			}
+ 			dst = __ip_vs_route_output_v6(net, &dest->addr.in6,
+@@ -369,14 +369,14 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 						      do_xfrm);
+ 			if (!dst) {
+ 				__ip_vs_dst_set(dest, NULL, NULL, 0);
+-				spin_unlock(&dest->dst_lock);
++				spin_unlock_bh(&dest->dst_lock);
+ 				ip_vs_dest_dst_free(dest_dst);
+ 				goto err_unreach;
+ 			}
+ 			rt = (struct rt6_info *) dst;
+ 			cookie = rt->rt6i_node ? rt->rt6i_node->fn_sernum : 0;
+ 			__ip_vs_dst_set(dest, dest_dst, &rt->dst, cookie);
+-			spin_unlock(&dest->dst_lock);
++			spin_unlock_bh(&dest->dst_lock);
+ 			IP_VS_DBG(10, "new dst %pI6, src %pI6, refcnt=%d\n",
+ 				  &dest->addr.in6, &dest_dst->dst_saddr.in6,
+ 				  atomic_read(&rt->dst.__refcnt));
 -- 
 1.7.3.4
