@@ -1,11 +1,9 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 17/19] ipvs: convert dests to rcu
-Date: Fri, 22 Mar 2013 11:46:52 +0200
-Message-ID: <1363945614-11752-18-git-send-email-ja@ssi.bg>
-References: <1363945614-11752-1-git-send-email-ja@ssi.bg>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1363945614-11752-1-git-send-email-ja@ssi.bg>
-Sender: netdev-owner@vger.kernel.org
+Subject: [PATCH net-next 00/19] IPVS optimizations, part 2
+Date: Fri, 22 Mar 2013 11:46:35 +0200
+Message-ID: <1363945614-11752-1-git-send-email-ja@ssi.bg>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,222 +11,102 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-	In previous commits the schedulers started to access
-svc->destinations with _rcu list traversal primitives
-because the IP_VS_WAIT_WHILE macro still plays the role of
-grace period. Now it is time to finish the updating part,
-i.e. adding and deleting of dests with _rcu suffix before
-removing the IP_VS_WAIT_WHILE in next commit.
+	This is the second patchset with IPVS optimizations.
+Now we convert the schedulers, dests and services to RCU.
 
-	We use the same rule for conns as for the
-schedulers: dests can be searched in RCU read-side critical
-section where ip_vs_dest_hold can be called by ip_vs_bind_dest.
+	All patches are for net-next based on the first
+patchset v3. The idea is after discussion and review Simon to
+apply the patchset after a week or so to ipvs-next tree.
 
-	Some things are not perfect, for example, calling
-functions like ip_vs_lookup_dest from updating code under
-RCU, just because we use some function both from reader
-and from updater.
+	The changes in this patchset eliminate global locks
+from packet processing by using RCU. There are more details
+in the patches.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- include/net/ip_vs.h             |    2 +-
- net/netfilter/ipvs/ip_vs_conn.c |    8 +++++---
- net/netfilter/ipvs/ip_vs_ctl.c  |   32 +++++++++++++++++---------------
- net/netfilter/ipvs/ip_vs_sync.c |   11 ++++-------
- 4 files changed, 27 insertions(+), 26 deletions(-)
+	After this patchset the situation is as follows:
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 034ce38..40bb2a6 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1434,7 +1434,7 @@ extern struct ip_vs_dest *
- ip_vs_find_dest(struct net *net, int af, const union nf_inet_addr *daddr,
- 		__be16 dport, const union nf_inet_addr *vaddr, __be16 vport,
- 		__u16 protocol, __u32 fwmark, __u32 flags);
--extern struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp);
-+extern void ip_vs_try_bind_dest(struct ip_vs_conn *cp);
- 
- static inline void ip_vs_dest_hold(struct ip_vs_dest *dest)
- {
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 1b29e4a..54de340 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -611,10 +611,11 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
-  * Check if there is a destination for the connection, if so
-  * bind the connection to the destination.
-  */
--struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp)
-+void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- {
- 	struct ip_vs_dest *dest;
- 
-+	rcu_read_lock();
- 	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, &cp->daddr,
- 			       cp->dport, &cp->vaddr, cp->vport,
- 			       cp->protocol, cp->fwmark, cp->flags);
-@@ -624,7 +625,8 @@ struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- 		spin_lock(&cp->lock);
- 		if (cp->dest) {
- 			spin_unlock(&cp->lock);
--			return dest;
-+			rcu_read_unlock();
-+			return;
- 		}
- 
- 		/* Applications work depending on the forwarding method
-@@ -648,7 +650,7 @@ struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- 		if (pd && atomic_read(&pd->appcnt))
- 			ip_vs_bind_app(cp, pd->pp);
- 	}
--	return dest;
-+	rcu_read_unlock();
- }
- 
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index ada61a8..8778927 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -563,8 +563,8 @@ bool ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
- 	return false;
- }
- 
--/*
-- *	Lookup destination by {addr,port} in the given service
-+/* Lookup destination by {addr,port} in the given service
-+ * Called under RCU lock.
-  */
- static struct ip_vs_dest *
- ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
-@@ -575,7 +575,7 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
- 	/*
- 	 * Find the destination for the given service
- 	 */
--	list_for_each_entry(dest, &svc->destinations, n_list) {
-+	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
- 		if ((dest->af == svc->af)
- 		    && ip_vs_addr_equal(svc->af, &dest->addr, daddr)
- 		    && (dest->port == dport)) {
-@@ -589,10 +589,11 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
- 
- /*
-  * Find destination by {daddr,dport,vaddr,protocol}
-- * Cretaed to be used in ip_vs_process_message() in
-+ * Created to be used in ip_vs_process_message() in
-  * the backup synchronization daemon. It finds the
-  * destination to be bound to the received connection
-  * on the backup.
-+ * Called under RCU lock, no refcnt is returned.
-  */
- struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
- 				   const union nf_inet_addr *daddr,
-@@ -613,8 +614,6 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
- 	dest = ip_vs_lookup_dest(svc, daddr, port);
- 	if (!dest)
- 		dest = ip_vs_lookup_dest(svc, daddr, port ^ dport);
--	if (dest)
--		ip_vs_dest_hold(dest);
- 	ip_vs_service_put(svc);
- 	return dest;
- }
-@@ -824,7 +823,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	IP_VS_WAIT_WHILE(atomic_read(&svc->usecnt) > 0);
- 
- 	if (add) {
--		list_add(&dest->n_list, &svc->destinations);
-+		list_add_rcu(&dest->n_list, &svc->destinations);
- 		svc->num_dests++;
- 		if (svc->scheduler->add_dest)
- 			svc->scheduler->add_dest(svc, dest);
-@@ -931,10 +930,10 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 
- 	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
- 
--	/*
--	 * Check if the dest already exists in the list
--	 */
-+	/* We use function that requires RCU lock */
-+	rcu_read_lock();
- 	dest = ip_vs_lookup_dest(svc, &daddr, dport);
-+	rcu_read_unlock();
- 
- 	if (dest != NULL) {
- 		IP_VS_DBG(1, "%s(): dest already exists\n", __func__);
-@@ -995,10 +994,10 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 
- 	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
- 
--	/*
--	 *  Lookup the destination list
--	 */
-+	/* We use function that requires RCU lock */
-+	rcu_read_lock();
- 	dest = ip_vs_lookup_dest(svc, &daddr, dport);
-+	rcu_read_unlock();
- 
- 	if (dest == NULL) {
- 		IP_VS_DBG(1, "%s(): dest doesn't exist\n", __func__);
-@@ -1067,7 +1066,7 @@ static void __ip_vs_unlink_dest(struct ip_vs_service *svc,
- 	/*
- 	 *  Remove it from the d-linked destination list.
- 	 */
--	list_del(&dest->n_list);
-+	list_del_rcu(&dest->n_list);
- 	svc->num_dests--;
- 
- 	if (svcupd && svc->scheduler->del_dest)
-@@ -1092,7 +1091,10 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 
- 	EnterFunction(2);
- 
-+	/* We use function that requires RCU lock */
-+	rcu_read_lock();
- 	dest = ip_vs_lookup_dest(svc, &udest->addr, dport);
-+	rcu_read_unlock();
- 
- 	if (dest == NULL) {
- 		IP_VS_DBG(1, "%s(): destination not found!\n", __func__);
-@@ -2102,7 +2104,7 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
- 		else
- 			seq_putc(seq, '\n');
- 
--		list_for_each_entry(dest, &svc->destinations, n_list) {
-+		list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
- #ifdef CONFIG_IP_VS_IPV6
- 			if (dest->af == AF_INET6)
- 				seq_printf(seq,
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 6cc3e52..9724174 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -858,23 +858,20 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 		flags |= cp->flags & ~IP_VS_CONN_F_BACKUP_UPD_MASK;
- 		cp->flags = flags;
- 		spin_unlock(&cp->lock);
--		if (!dest) {
--			dest = ip_vs_try_bind_dest(cp);
--			if (dest)
--				ip_vs_dest_put(dest);
--		}
-+		if (!dest)
-+			ip_vs_try_bind_dest(cp);
- 	} else {
- 		/*
- 		 * Find the appropriate destination for the connection.
- 		 * If it is not found the connection will remain unbound
- 		 * but still handled.
- 		 */
-+		rcu_read_lock();
- 		dest = ip_vs_find_dest(net, type, daddr, dport, param->vaddr,
- 				       param->vport, protocol, fwmark, flags);
- 
- 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
--		if (dest)
--			ip_vs_dest_put(dest);
-+		rcu_read_unlock();
- 		if (!cp) {
- 			if (param->pe_data)
- 				kfree(param->pe_data);
+- dests:
+	- lookups under RCU lock allow ip_vs_dest_hold, used
+	for binding dest to conn or to select dest by scheduler
+	- dests are freed by dest_trash code long after grace period
+
+- services:
+	- no global read_lock
+	- lookups under RCU lock allow scheduler to select
+	dests under RCU lock
+	- grace period implemented with IP_VS_WAIT_WHILE is
+	gone allowing scheduler's dest selection and scheduler
+	reconfiguration to run in parallel
+
+- schedulers:
+	- schedule method runs under RCU lock, needs _rcu
+	if using svc->destinations, needs _bh suffix to locks
+	because it can be called in LOCAL_OUT hook
+	- when dest is added, the add_dest method is called
+	instead of update_service
+	- when dest is deleted, the del_dest method is called
+	instead of update_service
+	- when dest is updated, the upd_dest method is called
+	instead of update_service
+	- scheduler can hold dests in its state long after they are
+	unlinked from svc, even without providing del_dest handler.
+	But such dests must not be returned by the
+	schedule method (needs IP_VS_DEST_F_AVAILABLE check)
+	- sched_data must be freed after grace period and
+	module exit should be delayed with synchronize_rcu
+	to wait all RCU read-side critical sections to
+	complete
+
+- BH:
+	- we do not disable BHs in LOCAL_OUT and sync code anymore
+	- _bh suffixes are added to all places that need them,
+	except timer handlers
+
+Julian Anastasov (19):
+  ipvs: change ip_vs_sched_lock to mutex
+  ipvs: preparations for using rcu in schedulers
+  ipvs: add ip_vs_dest_hold and ip_vs_dest_put
+  ipvs: convert dh scheduler to rcu
+  ipvs: convert lblc scheduler to rcu
+  ipvs: convert lblcr scheduler to rcu
+  ipvs: convert lc scheduler to rcu
+  ipvs: convert nq scheduler to rcu
+  ipvs: convert rr scheduler to rcu
+  ipvs: convert sed scheduler to rcu
+  ipvs: convert sh scheduler to rcu
+  ipvs: convert wlc scheduler to rcu
+  ipvs: convert wrr scheduler to rcu
+  ipvs: reorganize dest trash
+  ipvs: do not expect result from done_service
+  ipvs: convert sched_lock to spin lock
+  ipvs: convert dests to rcu
+  ipvs: convert services to rcu
+  ipvs: do not disable bh for long time
+
+ include/net/ip_vs.h                   |   59 +++--
+ net/netfilter/ipvs/ip_vs_app.c        |    4 +-
+ net/netfilter/ipvs/ip_vs_conn.c       |   47 ++--
+ net/netfilter/ipvs/ip_vs_core.c       |   57 ++---
+ net/netfilter/ipvs/ip_vs_ctl.c        |  510 ++++++++++++++++-----------------
+ net/netfilter/ipvs/ip_vs_dh.c         |   86 +++---
+ net/netfilter/ipvs/ip_vs_ftp.c        |    2 +
+ net/netfilter/ipvs/ip_vs_lblc.c       |  115 ++++----
+ net/netfilter/ipvs/ip_vs_lblcr.c      |  190 +++++++------
+ net/netfilter/ipvs/ip_vs_lc.c         |    3 +-
+ net/netfilter/ipvs/ip_vs_nq.c         |    3 +-
+ net/netfilter/ipvs/ip_vs_pe.c         |   12 -
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |   18 +-
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  |   22 +-
+ net/netfilter/ipvs/ip_vs_proto_udp.c  |   14 +-
+ net/netfilter/ipvs/ip_vs_rr.c         |   64 +++--
+ net/netfilter/ipvs/ip_vs_sched.c      |   63 ++---
+ net/netfilter/ipvs/ip_vs_sed.c        |    5 +-
+ net/netfilter/ipvs/ip_vs_sh.c         |   86 +++---
+ net/netfilter/ipvs/ip_vs_sync.c       |   35 +--
+ net/netfilter/ipvs/ip_vs_wlc.c        |    5 +-
+ net/netfilter/ipvs/ip_vs_wrr.c        |  176 +++++++-----
+ net/netfilter/ipvs/ip_vs_xmit.c       |   16 +-
+ 23 files changed, 819 insertions(+), 773 deletions(-)
+
 -- 
 1.7.3.4
+
