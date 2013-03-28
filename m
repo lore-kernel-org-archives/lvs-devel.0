@@ -1,46 +1,57 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCHv3 net-next 00/15] IPVS optimizations
-Date: Thu, 28 Mar 2013 14:17:56 +0900
-Message-ID: <20130328051756.GA10171@verge.net.au>
-References: <1363859892-9058-1-git-send-email-ja@ssi.bg>
- <1363946063.14162.20.camel@hawk.mlab.se>
-Mime-Version: 1.0
+Subject: [PATCH 03/15] ipvs: prefer NETDEV_DOWN event to free cached dsts
+Date: Thu, 28 Mar 2013 14:39:32 +0900
+Message-ID: <1364449184-26672-4-git-send-email-horms@verge.net.au>
+References: <1364449184-26672-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1363946063.14162.20.camel@hawk.mlab.se>
+In-Reply-To: <1364449184-26672-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Hans Schillstrom <hans@schillstrom.com>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Fri, Mar 22, 2013 at 10:54:23AM +0100, Hans Schillstrom wrote:
-> Hello Julian
-> Great work!
-> 
-> On Thu, 2013-03-21 at 11:57 +0200, Julian Anastasov wrote:
-> > 	This is a first patchset for IPVS optimizations.
-> > Another patchset will address the locking in schedulers
-> > and moving the global _bh disabling from LOCAL_OUT to all
-> > locks.
-> > 
-> > 	All patches are for net-next and Simon can
-> > take them for ipvs-next.
-> > 
-> > 	The changes in this patchset eliminate locks
-> > and dst refcnt operations from packet processing by
-> > using RCU. There are more details in the patches.
-> 
-> I've gone through all patches and tested them now
-> it looks very promising, all my tests have passed.
-> 
-> Signed-off by: Hans Schillstrom <hans@schillstrom.com>
+From: Julian Anastasov <ja@ssi.bg>
 
-Thanks, and sorry to be a bit slow.
+The real server becomes unreachable on down event,
+no need to wait device unregistration. Should help in
+releasing dsts early before dst->dev is replaced with lo.
 
-I will push these to the ipvs-next tree.
-I will then post them to netdev and David Miller for
-review as I think the first patch falls into that realm.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off by: Hans Schillstrom <hans@schillstrom.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c |    8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index a528178..2af8074 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1514,10 +1514,8 @@ __ip_vs_dev_reset(struct ip_vs_dest *dest, struct net_device *dev)
+ 	spin_unlock_bh(&dest->dst_lock);
+ 
+ }
+-/*
+- * Netdev event receiver
+- * Currently only NETDEV_UNREGISTER is handled, i.e. if we hold a reference to
+- * a device that is "unregister" it must be released.
++/* Netdev event receiver
++ * Currently only NETDEV_DOWN is handled to release refs to cached dsts
+  */
+ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
+ 			    void *ptr)
+@@ -1529,7 +1527,7 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
+ 	struct ip_vs_dest *dest;
+ 	unsigned int idx;
+ 
+-	if (event != NETDEV_UNREGISTER || !ipvs)
++	if (event != NETDEV_DOWN || !ipvs)
+ 		return NOTIFY_DONE;
+ 	IP_VS_DBG(3, "%s() dev=%s\n", __func__, dev->name);
+ 	EnterFunction(2);
+-- 
+1.7.10.4
 
