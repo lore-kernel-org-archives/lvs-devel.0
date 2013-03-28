@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 14/15] ipvs: reorder keys in connection structure
-Date: Thu, 28 Mar 2013 14:39:43 +0900
-Message-ID: <1364449184-26672-15-git-send-email-horms@verge.net.au>
+Subject: [PATCH 12/15] ipvs: convert locks used in persistence engines
+Date: Thu, 28 Mar 2013 14:39:41 +0900
+Message-ID: <1364449184-26672-13-git-send-email-horms@verge.net.au>
 References: <1364449184-26672-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1364449184-26672-1-git-send-email-horms@verge.net.au>
@@ -15,109 +15,131 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-__ip_vs_conn_in_get and ip_vs_conn_out_get are
-hot places. Optimize them, so that ports are matched first.
-By moving net and fwmark below, on 32-bit arch we can fit
-caddr in 32-byte cache line and all addresses in 64-byte
-cache line.
+Allow the readers to use RCU lock and for
+PE module registrations use global mutex instead of
+spinlock. All PE modules need to use synchronize_rcu
+in their module exit handler.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off by: Hans Schillstrom <hans@schillstrom.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             |   12 ++++++------
- net/netfilter/ipvs/ip_vs_conn.c |   19 ++++++++++---------
- 2 files changed, 16 insertions(+), 15 deletions(-)
+ net/netfilter/ipvs/ip_vs_pe.c     |   43 +++++++++++--------------------------
+ net/netfilter/ipvs/ip_vs_pe_sip.c |    1 +
+ 2 files changed, 14 insertions(+), 30 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 72ca406..7122f7b 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -566,20 +566,19 @@ struct ip_vs_conn_param {
-  */
- struct ip_vs_conn {
- 	struct hlist_node	c_list;         /* hashed list heads */
--#ifdef CONFIG_NET_NS
--	struct net              *net;           /* Name space */
--#endif
- 	/* Protocol, addresses and port numbers */
--	u16                     af;             /* address family */
- 	__be16                  cport;
--	__be16                  vport;
- 	__be16                  dport;
--	__u32                   fwmark;         /* Fire wall mark from skb */
-+	__be16                  vport;
-+	u16			af;		/* address family */
- 	union nf_inet_addr      caddr;          /* client address */
- 	union nf_inet_addr      vaddr;          /* virtual address */
- 	union nf_inet_addr      daddr;          /* destination address */
- 	volatile __u32          flags;          /* status flags */
- 	__u16                   protocol;       /* Which protocol (TCP/UDP) */
-+#ifdef CONFIG_NET_NS
-+	struct net              *net;           /* Name space */
-+#endif
+diff --git a/net/netfilter/ipvs/ip_vs_pe.c b/net/netfilter/ipvs/ip_vs_pe.c
+index 5cf859c..5d9774c 100644
+--- a/net/netfilter/ipvs/ip_vs_pe.c
++++ b/net/netfilter/ipvs/ip_vs_pe.c
+@@ -13,8 +13,8 @@
+ /* IPVS pe list */
+ static LIST_HEAD(ip_vs_pe);
  
- 	/* counter and timer */
- 	atomic_t		refcnt;		/* reference count */
-@@ -593,6 +592,7 @@ struct ip_vs_conn {
- 						 * state transition triggerd
- 						 * synchronization
- 						 */
-+	__u32			fwmark;		/* Fire wall mark from skb */
- 	unsigned long		sync_endtime;	/* jiffies + sent_retries */
+-/* lock for service table */
+-static DEFINE_SPINLOCK(ip_vs_pe_lock);
++/* semaphore for IPVS PEs. */
++static DEFINE_MUTEX(ip_vs_pe_mutex);
  
- 	/* Control members */
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index b0cd2be..416015b 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -265,8 +265,8 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
- 	rcu_read_lock();
+ /* Bind a service with a pe */
+ void ip_vs_bind_pe(struct ip_vs_service *svc, struct ip_vs_pe *pe)
+@@ -36,9 +36,8 @@ struct ip_vs_pe *__ip_vs_pe_getbyname(const char *pe_name)
+ 	IP_VS_DBG(10, "%s(): pe_name \"%s\"\n", __func__,
+ 		  pe_name);
  
- 	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
--		if (cp->af == p->af &&
--		    p->cport == cp->cport && p->vport == cp->vport &&
-+		if (p->cport == cp->cport && p->vport == cp->vport &&
-+		    cp->af == p->af &&
- 		    ip_vs_addr_equal(p->af, p->caddr, &cp->caddr) &&
- 		    ip_vs_addr_equal(p->af, p->vaddr, &cp->vaddr) &&
- 		    ((!p->cport) ^ (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
-@@ -350,9 +350,9 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
- 	rcu_read_lock();
- 
- 	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
--		if (!ip_vs_conn_net_eq(cp, p->net))
--			continue;
--		if (p->pe_data && p->pe->ct_match) {
-+		if (unlikely(p->pe_data && p->pe->ct_match)) {
-+			if (!ip_vs_conn_net_eq(cp, p->net))
-+				continue;
- 			if (p->pe == cp->pe && p->pe->ct_match(p, cp)) {
- 				if (__ip_vs_conn_get(cp))
- 					goto out;
-@@ -366,9 +366,10 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
- 		     * p->vaddr is a fwmark */
- 		    ip_vs_addr_equal(p->protocol == IPPROTO_IP ? AF_UNSPEC :
- 				     p->af, p->vaddr, &cp->vaddr) &&
--		    p->cport == cp->cport && p->vport == cp->vport &&
-+		    p->vport == cp->vport && p->cport == cp->cport &&
- 		    cp->flags & IP_VS_CONN_F_TEMPLATE &&
--		    p->protocol == cp->protocol) {
-+		    p->protocol == cp->protocol &&
-+		    ip_vs_conn_net_eq(cp, p->net)) {
- 			if (__ip_vs_conn_get(cp))
- 				goto out;
+-	spin_lock_bh(&ip_vs_pe_lock);
+-
+-	list_for_each_entry(pe, &ip_vs_pe, n_list) {
++	rcu_read_lock();
++	list_for_each_entry_rcu(pe, &ip_vs_pe, n_list) {
+ 		/* Test and get the modules atomically */
+ 		if (pe->module &&
+ 		    !try_module_get(pe->module)) {
+@@ -47,14 +46,14 @@ struct ip_vs_pe *__ip_vs_pe_getbyname(const char *pe_name)
  		}
-@@ -404,8 +405,8 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
- 	rcu_read_lock();
+ 		if (strcmp(pe_name, pe->name)==0) {
+ 			/* HIT */
+-			spin_unlock_bh(&ip_vs_pe_lock);
++			rcu_read_unlock();
+ 			return pe;
+ 		}
+ 		if (pe->module)
+ 			module_put(pe->module);
+ 	}
++	rcu_read_unlock();
  
- 	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
--		if (cp->af == p->af &&
--		    p->vport == cp->cport && p->cport == cp->dport &&
-+		if (p->vport == cp->cport && p->cport == cp->dport &&
-+		    cp->af == p->af &&
- 		    ip_vs_addr_equal(p->af, p->vaddr, &cp->caddr) &&
- 		    ip_vs_addr_equal(p->af, p->caddr, &cp->daddr) &&
- 		    p->protocol == cp->protocol &&
+-	spin_unlock_bh(&ip_vs_pe_lock);
+ 	return NULL;
+ }
+ 
+@@ -83,22 +82,13 @@ int register_ip_vs_pe(struct ip_vs_pe *pe)
+ 	/* increase the module use count */
+ 	ip_vs_use_count_inc();
+ 
+-	spin_lock_bh(&ip_vs_pe_lock);
+-
+-	if (!list_empty(&pe->n_list)) {
+-		spin_unlock_bh(&ip_vs_pe_lock);
+-		ip_vs_use_count_dec();
+-		pr_err("%s(): [%s] pe already linked\n",
+-		       __func__, pe->name);
+-		return -EINVAL;
+-	}
+-
++	mutex_lock(&ip_vs_pe_mutex);
+ 	/* Make sure that the pe with this name doesn't exist
+ 	 * in the pe list.
+ 	 */
+ 	list_for_each_entry(tmp, &ip_vs_pe, n_list) {
+ 		if (strcmp(tmp->name, pe->name) == 0) {
+-			spin_unlock_bh(&ip_vs_pe_lock);
++			mutex_unlock(&ip_vs_pe_mutex);
+ 			ip_vs_use_count_dec();
+ 			pr_err("%s(): [%s] pe already existed "
+ 			       "in the system\n", __func__, pe->name);
+@@ -106,8 +96,8 @@ int register_ip_vs_pe(struct ip_vs_pe *pe)
+ 		}
+ 	}
+ 	/* Add it into the d-linked pe list */
+-	list_add(&pe->n_list, &ip_vs_pe);
+-	spin_unlock_bh(&ip_vs_pe_lock);
++	list_add_rcu(&pe->n_list, &ip_vs_pe);
++	mutex_unlock(&ip_vs_pe_mutex);
+ 
+ 	pr_info("[%s] pe registered.\n", pe->name);
+ 
+@@ -118,17 +108,10 @@ EXPORT_SYMBOL_GPL(register_ip_vs_pe);
+ /* Unregister a pe from the pe list */
+ int unregister_ip_vs_pe(struct ip_vs_pe *pe)
+ {
+-	spin_lock_bh(&ip_vs_pe_lock);
+-	if (list_empty(&pe->n_list)) {
+-		spin_unlock_bh(&ip_vs_pe_lock);
+-		pr_err("%s(): [%s] pe is not in the list. failed\n",
+-		       __func__, pe->name);
+-		return -EINVAL;
+-	}
+-
++	mutex_lock(&ip_vs_pe_mutex);
+ 	/* Remove it from the d-linked pe list */
+-	list_del(&pe->n_list);
+-	spin_unlock_bh(&ip_vs_pe_lock);
++	list_del_rcu(&pe->n_list);
++	mutex_unlock(&ip_vs_pe_mutex);
+ 
+ 	/* decrease the module use count */
+ 	ip_vs_use_count_dec();
+diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
+index 12475ef..00cc024 100644
+--- a/net/netfilter/ipvs/ip_vs_pe_sip.c
++++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+@@ -172,6 +172,7 @@ static int __init ip_vs_sip_init(void)
+ static void __exit ip_vs_sip_cleanup(void)
+ {
+ 	unregister_ip_vs_pe(&ip_vs_sip_pe);
++	synchronize_rcu();
+ }
+ 
+ module_init(ip_vs_sip_init);
 -- 
 1.7.10.4
