@@ -1,116 +1,127 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 01/15] net: add skb_dst_set_noref_force
-Date: Thu, 28 Mar 2013 14:39:30 +0900
-Message-ID: <1364449184-26672-2-git-send-email-horms@verge.net.au>
-References: <1364449184-26672-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH 00/15 v3] IPVS optimizations (repost)
+Date: Thu, 28 Mar 2013 14:39:29 +0900
+Message-ID: <1364449184-26672-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1364449184-26672-1-git-send-email-horms@verge.net.au>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
+Hi Dave, Hi Pablo, Hi All,
+
+This is a repost of an IPVS optimisations series by Julian Anastasov
+which has been acked by Hans Schillstrom.
+
+I have tentatively applied them to the ipvs-next tree.
+However, the first patch of the series "net: add skb_dst_set_noref_force"
+touches core code and thus I believe it needs some review on netdev,
+this is the reason for me posting the series.
+
+Assuming the patch is ok it would be easiest for me if
+it went through the ipvs-next tree. But if there is a preference
+for taking it through net-next, feel free.
+
+What follows is Julian's cover-email for the series.
+And then git information. I am happy for Pablo to pull this
+if Dave is happy with that.
+
+======================================================================
+
+Date: Thu, 21 Mar 2013 11:57:57 +0200
 From: Julian Anastasov <ja@ssi.bg>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org
+Subject: [PATCHv3 net-next 00/15] IPVS optimizations
 
-Rename skb_dst_set_noref to __skb_dst_set_noref and
-add force flag as suggested by David Miller. The new wrapper
-skb_dst_set_noref_force will force dst entries that are not
-cached to be attached as skb dst without taking reference
-as long as provided dst is reclaimed after RCU grace period.
+	This is a first patchset for IPVS optimizations.
+Another patchset will address the locking in schedulers
+and moving the global _bh disabling from LOCAL_OUT to all
+locks.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off by: Hans Schillstrom <hans@schillstrom.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- include/linux/skbuff.h |   35 ++++++++++++++++++++++++++++++++++-
- net/core/dst.c         |    9 +++++----
- 2 files changed, 39 insertions(+), 5 deletions(-)
+	All patches are for net-next and Simon can
+take them for ipvs-next.
 
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index eb2106f..e56d851 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -574,7 +574,40 @@ static inline void skb_dst_set(struct sk_buff *skb, struct dst_entry *dst)
- 	skb->_skb_refdst = (unsigned long)dst;
- }
- 
--extern void skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst);
-+extern void __skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst,
-+				bool force);
-+
-+/**
-+ * skb_dst_set_noref - sets skb dst, hopefully, without taking reference
-+ * @skb: buffer
-+ * @dst: dst entry
-+ *
-+ * Sets skb dst, assuming a reference was not taken on dst.
-+ * If dst entry is cached, we do not take reference and dst_release
-+ * will be avoided by refdst_drop. If dst entry is not cached, we take
-+ * reference, so that last dst_release can destroy the dst immediately.
-+ */
-+static inline void skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst)
-+{
-+	__skb_dst_set_noref(skb, dst, false);
-+}
-+
-+/**
-+ * skb_dst_set_noref_force - sets skb dst, without taking reference
-+ * @skb: buffer
-+ * @dst: dst entry
-+ *
-+ * Sets skb dst, assuming a reference was not taken on dst.
-+ * No reference is taken and no dst_release will be called. While for
-+ * cached dsts deferred reclaim is a basic feature, for entries that are
-+ * not cached it is caller's job to guarantee that last dst_release for
-+ * provided dst happens when nobody uses it, eg. after a RCU grace period.
-+ */
-+static inline void skb_dst_set_noref_force(struct sk_buff *skb,
-+					   struct dst_entry *dst)
-+{
-+	__skb_dst_set_noref(skb, dst, true);
-+}
- 
- /**
-  * skb_dst_is_noref - Test if skb dst isn't refcounted
-diff --git a/net/core/dst.c b/net/core/dst.c
-index 35fd12f..df9cc81 100644
---- a/net/core/dst.c
-+++ b/net/core/dst.c
-@@ -320,27 +320,28 @@ void __dst_destroy_metrics_generic(struct dst_entry *dst, unsigned long old)
- EXPORT_SYMBOL(__dst_destroy_metrics_generic);
- 
- /**
-- * skb_dst_set_noref - sets skb dst, without a reference
-+ * __skb_dst_set_noref - sets skb dst, without a reference
-  * @skb: buffer
-  * @dst: dst entry
-+ * @force: if force is set, use noref version even for DST_NOCACHE entries
-  *
-  * Sets skb dst, assuming a reference was not taken on dst
-  * skb_dst_drop() should not dst_release() this dst
-  */
--void skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst)
-+void __skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst, bool force)
- {
- 	WARN_ON(!rcu_read_lock_held() && !rcu_read_lock_bh_held());
- 	/* If dst not in cache, we must take a reference, because
- 	 * dst_release() will destroy dst as soon as its refcount becomes zero
- 	 */
--	if (unlikely(dst->flags & DST_NOCACHE)) {
-+	if (unlikely((dst->flags & DST_NOCACHE) && !force)) {
- 		dst_hold(dst);
- 		skb_dst_set(skb, dst);
- 	} else {
- 		skb->_skb_refdst = (unsigned long)dst | SKB_DST_NOREF;
- 	}
- }
--EXPORT_SYMBOL(skb_dst_set_noref);
-+EXPORT_SYMBOL(__skb_dst_set_noref);
- 
- /* Dirty hack. We did it in 2.2 (in __dst_free),
-  * we have _very_ good reasons not to repeat
--- 
-1.7.10.4
+	The changes in this patchset eliminate locks
+and dst refcnt operations from packet processing by
+using RCU. There are more details in the patches.
+
+v3:
+* in "ipvs: consolidate all dst checks on transmit in one place"
+  preserve original skb dst even for local client, remove the
+  rt_is_input_route and skb->dev check. Call update_pmtu only for
+  local client by providing sk instead of skb.
+* in "ipvs: optimize dst usage for real server" use
+  rcu_dereference_protected for __ip_vs_dst_cache_reset instead of
+  rcu_dereference_raw. Use the new skb_dst_set_noref_force func.
+* in "ipvs: remove rs_lock by using RCU" prefer the port check in
+  ip_vs_has_real_service
+* "ipvs: convert locks used in persistence engines" needs only
+  synchronize_rcu, not rcu_barrier, we do not use rcu callbacks
+
+v2:
+* use "net: add skb_dst_set_unref" instead of
+  "net: add dst_get_noref and refdst_ptr helpers"
+* add "ipvs: no need to reroute anymore on DNAT over loopback"
+* add "ipvs: do not use skb_share_check"
+* add "ipvs: consolidate all dst checks on transmit in one place", so
+  that we can avoid the refdst games in next patch
+* after "ipvs: consolidate all dst checks on transmit in one place"
+  "ipvs: optimize dst usage for real server" is simpler and
+  uses the new skb_dst_set_unref function
+* extend "ipvs: reorder keys in connection structure" with
+  changes in ip_vs_ct_in_get
+* fix "ipvs: avoid kmem_cache_zalloc in ip_vs_conn_new" to use new
+  function ip_vs_addr_set, so that we reset all address fields
+  that are used for hashing by hash_conntrack_raw
+
+======================================================================
+
+The following changes since commit dece40e848f6e022f960dc9de54be518928460c3:
+
+  netfilter: nf_conntrack: speed up module removal path if netns in use (2013-03-19 17:08:31 +0100)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git master
+
+for you to fetch changes up to e8a0eb703e38870118928384ffd5eeeb47e7e1ef:
+
+  ipvs: avoid kmem_cache_zalloc in ip_vs_conn_new (2013-03-28 14:16:38 +0900)
+
+----------------------------------------------------------------
+Julian Anastasov (15):
+      net: add skb_dst_set_noref_force
+      ipvs: avoid routing by TOS for real server
+      ipvs: prefer NETDEV_DOWN event to free cached dsts
+      ipvs: convert the IP_VS_XMIT macros to functions
+      ipvs: rename functions related to dst_cache reset
+      ipvs: no need to reroute anymore on DNAT over loopback
+      ipvs: do not use skb_share_check
+      ipvs: consolidate all dst checks on transmit in one place
+      ipvs: optimize dst usage for real server
+      ipvs: convert app locks
+      ipvs: remove rs_lock by using RCU
+      ipvs: convert locks used in persistence engines
+      ipvs: convert connection locking
+      ipvs: reorder keys in connection structure
+      ipvs: avoid kmem_cache_zalloc in ip_vs_conn_new
+
+ include/linux/skbuff.h                |   35 +-
+ include/net/ip_vs.h                   |   71 ++-
+ net/core/dst.c                        |    9 +-
+ net/netfilter/ipvs/ip_vs_app.c        |   27 +-
+ net/netfilter/ipvs/ip_vs_conn.c       |  271 +++++----
+ net/netfilter/ipvs/ip_vs_core.c       |   16 +-
+ net/netfilter/ipvs/ip_vs_ctl.c        |  143 +++--
+ net/netfilter/ipvs/ip_vs_ftp.c        |    2 +
+ net/netfilter/ipvs/ip_vs_pe.c         |   43 +-
+ net/netfilter/ipvs/ip_vs_pe_sip.c     |    1 +
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |   18 +-
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  |   18 +-
+ net/netfilter/ipvs/ip_vs_proto_udp.c  |   19 +-
+ net/netfilter/ipvs/ip_vs_xmit.c       | 1046 ++++++++++++++-------------------
+ 14 files changed, 810 insertions(+), 909 deletions(-)
