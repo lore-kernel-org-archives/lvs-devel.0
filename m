@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 18/34] ipvs: add ip_vs_dest_hold and ip_vs_dest_put
-Date: Fri, 29 Mar 2013 13:11:35 +0900
-Message-ID: <1364530311-11512-19-git-send-email-horms@verge.net.au>
+Subject: [PATCH 16/34] ipvs: change ip_vs_sched_lock to mutex
+Date: Fri, 29 Mar 2013 13:11:33 +0900
+Message-ID: <1364530311-11512-17-git-send-email-horms@verge.net.au>
 References: <1364530311-11512-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1364530311-11512-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,111 +15,110 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-ip_vs_dest_hold will be used under RCU lock
-while ip_vs_dest_put can be called even after dest
-is removed from service, as it happens for conns and
-some schedulers.
+The global list with schedulers ip_vs_schedulers
+is accessed only from user context - configuration and
+scheduler module [un]registration. Use ip_vs_sched_mutex
+instead.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             |   10 ++++++++++
- net/netfilter/ipvs/ip_vs_conn.c |    9 ++-------
- net/netfilter/ipvs/ip_vs_ctl.c  |    4 ++--
- net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
- 4 files changed, 16 insertions(+), 11 deletions(-)
+ net/netfilter/ipvs/ip_vs_sched.c |   24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index d91385c..7d3027f 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1427,6 +1427,16 @@ ip_vs_find_dest(struct net *net, int af, const union nf_inet_addr *daddr,
- 		__u16 protocol, __u32 fwmark, __u32 flags);
- extern struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp);
+diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
+index d6bf20d..7f11d3d 100644
+--- a/net/netfilter/ipvs/ip_vs_sched.c
++++ b/net/netfilter/ipvs/ip_vs_sched.c
+@@ -35,8 +35,8 @@ EXPORT_SYMBOL(ip_vs_scheduler_err);
+  */
+ static LIST_HEAD(ip_vs_schedulers);
  
-+static inline void ip_vs_dest_hold(struct ip_vs_dest *dest)
-+{
-+	atomic_inc(&dest->refcnt);
-+}
-+
-+static inline void ip_vs_dest_put(struct ip_vs_dest *dest)
-+{
-+	smp_mb__before_atomic_dec();
-+	atomic_dec(&dest->refcnt);
-+}
+-/* lock for service table */
+-static DEFINE_SPINLOCK(ip_vs_sched_lock);
++/* semaphore for schedulers */
++static DEFINE_MUTEX(ip_vs_sched_mutex);
+ 
  
  /*
-  *      IPVS sync daemon data and function prototypes
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index e3e2b4d..1b29e4a 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -554,7 +554,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
- 		return;
+@@ -92,7 +92,7 @@ static struct ip_vs_scheduler *ip_vs_sched_getbyname(const char *sched_name)
  
- 	/* Increase the refcnt counter of the dest */
--	atomic_inc(&dest->refcnt);
-+	ip_vs_dest_hold(dest);
+ 	IP_VS_DBG(2, "%s(): sched_name \"%s\"\n", __func__, sched_name);
  
- 	conn_flags = atomic_read(&dest->conn_flags);
- 	if (cp->protocol != IPPROTO_UDP)
-@@ -700,12 +700,7 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
- 			dest->flags &= ~IP_VS_DEST_F_OVERLOAD;
- 	}
+-	spin_lock_bh(&ip_vs_sched_lock);
++	mutex_lock(&ip_vs_sched_mutex);
  
--	/*
--	 * Simply decrease the refcnt of the dest, because the
--	 * dest will be either in service's destination list
--	 * or in the trash.
--	 */
--	atomic_dec(&dest->refcnt);
-+	ip_vs_dest_put(dest);
- }
- 
- static int expire_quiescent_template(struct netns_ipvs *ipvs,
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index d64f800..a4f6388 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -616,7 +616,7 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
- 	if (!dest)
- 		dest = ip_vs_lookup_dest(svc, daddr, port ^ dport);
- 	if (dest)
--		atomic_inc(&dest->refcnt);
-+		ip_vs_dest_hold(dest);
- 	ip_vs_service_put(svc);
- 	return dest;
- }
-@@ -1056,7 +1056,7 @@ static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest)
- 			      ntohs(dest->port),
- 			      atomic_read(&dest->refcnt));
- 		list_add(&dest->n_list, &ipvs->dest_trash);
--		atomic_inc(&dest->refcnt);
-+		ip_vs_dest_hold(dest);
- 	}
- }
- 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 44fd10c..6cc3e52 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -861,7 +861,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 		if (!dest) {
- 			dest = ip_vs_try_bind_dest(cp);
- 			if (dest)
--				atomic_dec(&dest->refcnt);
-+				ip_vs_dest_put(dest);
- 		}
- 	} else {
+ 	list_for_each_entry(sched, &ip_vs_schedulers, n_list) {
  		/*
-@@ -874,7 +874,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+@@ -106,14 +106,14 @@ static struct ip_vs_scheduler *ip_vs_sched_getbyname(const char *sched_name)
+ 		}
+ 		if (strcmp(sched_name, sched->name)==0) {
+ 			/* HIT */
+-			spin_unlock_bh(&ip_vs_sched_lock);
++			mutex_unlock(&ip_vs_sched_mutex);
+ 			return sched;
+ 		}
+ 		if (sched->module)
+ 			module_put(sched->module);
+ 	}
  
- 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
- 		if (dest)
--			atomic_dec(&dest->refcnt);
-+			ip_vs_dest_put(dest);
- 		if (!cp) {
- 			if (param->pe_data)
- 				kfree(param->pe_data);
+-	spin_unlock_bh(&ip_vs_sched_lock);
++	mutex_unlock(&ip_vs_sched_mutex);
+ 	return NULL;
+ }
+ 
+@@ -192,10 +192,10 @@ int register_ip_vs_scheduler(struct ip_vs_scheduler *scheduler)
+ 	/* increase the module use count */
+ 	ip_vs_use_count_inc();
+ 
+-	spin_lock_bh(&ip_vs_sched_lock);
++	mutex_lock(&ip_vs_sched_mutex);
+ 
+ 	if (!list_empty(&scheduler->n_list)) {
+-		spin_unlock_bh(&ip_vs_sched_lock);
++		mutex_unlock(&ip_vs_sched_mutex);
+ 		ip_vs_use_count_dec();
+ 		pr_err("%s(): [%s] scheduler already linked\n",
+ 		       __func__, scheduler->name);
+@@ -208,7 +208,7 @@ int register_ip_vs_scheduler(struct ip_vs_scheduler *scheduler)
+ 	 */
+ 	list_for_each_entry(sched, &ip_vs_schedulers, n_list) {
+ 		if (strcmp(scheduler->name, sched->name) == 0) {
+-			spin_unlock_bh(&ip_vs_sched_lock);
++			mutex_unlock(&ip_vs_sched_mutex);
+ 			ip_vs_use_count_dec();
+ 			pr_err("%s(): [%s] scheduler already existed "
+ 			       "in the system\n", __func__, scheduler->name);
+@@ -219,7 +219,7 @@ int register_ip_vs_scheduler(struct ip_vs_scheduler *scheduler)
+ 	 *	Add it into the d-linked scheduler list
+ 	 */
+ 	list_add(&scheduler->n_list, &ip_vs_schedulers);
+-	spin_unlock_bh(&ip_vs_sched_lock);
++	mutex_unlock(&ip_vs_sched_mutex);
+ 
+ 	pr_info("[%s] scheduler registered.\n", scheduler->name);
+ 
+@@ -237,9 +237,9 @@ int unregister_ip_vs_scheduler(struct ip_vs_scheduler *scheduler)
+ 		return -EINVAL;
+ 	}
+ 
+-	spin_lock_bh(&ip_vs_sched_lock);
++	mutex_lock(&ip_vs_sched_mutex);
+ 	if (list_empty(&scheduler->n_list)) {
+-		spin_unlock_bh(&ip_vs_sched_lock);
++		mutex_unlock(&ip_vs_sched_mutex);
+ 		pr_err("%s(): [%s] scheduler is not in the list. failed\n",
+ 		       __func__, scheduler->name);
+ 		return -EINVAL;
+@@ -249,7 +249,7 @@ int unregister_ip_vs_scheduler(struct ip_vs_scheduler *scheduler)
+ 	 *	Remove it from the d-linked scheduler list
+ 	 */
+ 	list_del(&scheduler->n_list);
+-	spin_unlock_bh(&ip_vs_sched_lock);
++	mutex_unlock(&ip_vs_sched_mutex);
+ 
+ 	/* decrease the module use count */
+ 	ip_vs_use_count_dec();
 -- 
 1.7.10.4
+
