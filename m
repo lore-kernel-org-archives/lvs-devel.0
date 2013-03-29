@@ -1,88 +1,57 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net-next 00/19] IPVS optimizations, part 2
-Date: Thu, 28 Mar 2013 18:05:27 +0900
-Message-ID: <20130328090527.GB31379@verge.net.au>
-References: <1363945614-11752-1-git-send-email-ja@ssi.bg>
- <20130328054127.GC10171@verge.net.au>
- <alpine.LFD.2.00.1303281052370.2010@ja.ssi.bg>
-Mime-Version: 1.0
+Subject: [PATCH 03/34] ipvs: prefer NETDEV_DOWN event to free cached dsts
+Date: Fri, 29 Mar 2013 13:11:20 +0900
+Message-ID: <1364530311-11512-4-git-send-email-horms@verge.net.au>
+References: <1364530311-11512-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1303281052370.2010@ja.ssi.bg>
+In-Reply-To: <1364530311-11512-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Thu, Mar 28, 2013 at 10:57:12AM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Thu, 28 Mar 2013, Simon Horman wrote:
-> 
-> > On Fri, Mar 22, 2013 at 11:46:35AM +0200, Julian Anastasov wrote:
-> > > 	This is the second patchset with IPVS optimizations.
-> > > Now we convert the schedulers, dests and services to RCU.
-> > > 
-> > > 	All patches are for net-next based on the first
-> > > patchset v3. The idea is after discussion and review Simon to
-> > > apply the patchset after a week or so to ipvs-next tree.
-> > > 
-> > > 	The changes in this patchset eliminate global locks
-> > > from packet processing by using RCU. There are more details
-> > > in the patches.
-> > > 
-> > > 	After this patchset the situation is as follows:
-> > > 
-> > > - dests:
-> > > 	- lookups under RCU lock allow ip_vs_dest_hold, used
-> > > 	for binding dest to conn or to select dest by scheduler
-> > > 	- dests are freed by dest_trash code long after grace period
-> > > 
-> > > - services:
-> > > 	- no global read_lock
-> > > 	- lookups under RCU lock allow scheduler to select
-> > > 	dests under RCU lock
-> > > 	- grace period implemented with IP_VS_WAIT_WHILE is
-> > > 	gone allowing scheduler's dest selection and scheduler
-> > > 	reconfiguration to run in parallel
-> > > 
-> > > - schedulers:
-> > > 	- schedule method runs under RCU lock, needs _rcu
-> > > 	if using svc->destinations, needs _bh suffix to locks
-> > > 	because it can be called in LOCAL_OUT hook
-> > > 	- when dest is added, the add_dest method is called
-> > > 	instead of update_service
-> > > 	- when dest is deleted, the del_dest method is called
-> > > 	instead of update_service
-> > > 	- when dest is updated, the upd_dest method is called
-> > > 	instead of update_service
-> > > 	- scheduler can hold dests in its state long after they are
-> > > 	unlinked from svc, even without providing del_dest handler.
-> > > 	But such dests must not be returned by the
-> > > 	schedule method (needs IP_VS_DEST_F_AVAILABLE check)
-> > > 	- sched_data must be freed after grace period and
-> > > 	module exit should be delayed with synchronize_rcu
-> > > 	to wait all RCU read-side critical sections to
-> > > 	complete
-> > > 
-> > > - BH:
-> > > 	- we do not disable BHs in LOCAL_OUT and sync code anymore
-> > > 	- _bh suffixes are added to all places that need them,
-> > > 	except timer handlers
-> > 
-> > Hi Julian,
-> > 
-> > what is the status of this series?
-> > 
-> > N.B: THis series is different to "[PATCH 00/15 v3] IPVS optimizations (repost)"
-> 
-> 	Yes, I posted 2 parts with optimizations. Part 1 is
-> at v3 while part 2 is at its first version. Both series
-> are ready for applying. BTW, Hans plans more tests in
-> the next days, may be we will have some numbers for
-> comparison.
+From: Julian Anastasov <ja@ssi.bg>
 
-Thanks, I'll apply these changes.
+The real server becomes unreachable on down event,
+no need to wait device unregistration. Should help in
+releasing dsts early before dst->dev is replaced with lo.
+
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off by: Hans Schillstrom <hans@schillstrom.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c |    8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 8104120..6b55ba6 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1514,10 +1514,8 @@ __ip_vs_dev_reset(struct ip_vs_dest *dest, struct net_device *dev)
+ 	spin_unlock_bh(&dest->dst_lock);
+ 
+ }
+-/*
+- * Netdev event receiver
+- * Currently only NETDEV_UNREGISTER is handled, i.e. if we hold a reference to
+- * a device that is "unregister" it must be released.
++/* Netdev event receiver
++ * Currently only NETDEV_DOWN is handled to release refs to cached dsts
+  */
+ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
+ 			    void *ptr)
+@@ -1529,7 +1527,7 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
+ 	struct ip_vs_dest *dest;
+ 	unsigned int idx;
+ 
+-	if (event != NETDEV_UNREGISTER || !ipvs)
++	if (event != NETDEV_DOWN || !ipvs)
+ 		return NOTIFY_DONE;
+ 	IP_VS_DBG(3, "%s() dev=%s\n", __func__, dev->name);
+ 	EnterFunction(2);
+-- 
+1.7.10.4
+
