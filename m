@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 24/34] ipvs: convert rr scheduler to rcu
-Date: Fri, 29 Mar 2013 13:11:41 +0900
-Message-ID: <1364530311-11512-25-git-send-email-horms@verge.net.au>
+Subject: [PATCH 18/34] ipvs: add ip_vs_dest_hold and ip_vs_dest_put
+Date: Fri, 29 Mar 2013 13:11:35 +0900
+Message-ID: <1364530311-11512-19-git-send-email-horms@verge.net.au>
 References: <1364530311-11512-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1364530311-11512-1-git-send-email-horms@verge.net.au>
@@ -15,109 +15,111 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-The schedule method now needs _rcu list-traversal
-primitive for svc->destinations. As the previous entry
-could be unlinked, limit the list traversals to 2 when
-lookup started from previous entry.
+ip_vs_dest_hold will be used under RCU lock
+while ip_vs_dest_put can be called even after dest
+is removed from service, as it happens for conns and
+some schedulers.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_rr.c |   55 ++++++++++++++++++++++++++---------------
- 1 file changed, 35 insertions(+), 20 deletions(-)
+ include/net/ip_vs.h             |   10 ++++++++++
+ net/netfilter/ipvs/ip_vs_conn.c |    9 ++-------
+ net/netfilter/ipvs/ip_vs_ctl.c  |    4 ++--
+ net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
+ 4 files changed, 16 insertions(+), 11 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_rr.c b/net/netfilter/ipvs/ip_vs_rr.c
-index c49b388..3942890 100644
---- a/net/netfilter/ipvs/ip_vs_rr.c
-+++ b/net/netfilter/ipvs/ip_vs_rr.c
-@@ -35,9 +35,18 @@ static int ip_vs_rr_init_svc(struct ip_vs_service *svc)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index d91385c..7d3027f 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1427,6 +1427,16 @@ ip_vs_find_dest(struct net *net, int af, const union nf_inet_addr *daddr,
+ 		__u16 protocol, __u32 fwmark, __u32 flags);
+ extern struct ip_vs_dest *ip_vs_try_bind_dest(struct ip_vs_conn *cp);
+ 
++static inline void ip_vs_dest_hold(struct ip_vs_dest *dest)
++{
++	atomic_inc(&dest->refcnt);
++}
++
++static inline void ip_vs_dest_put(struct ip_vs_dest *dest)
++{
++	smp_mb__before_atomic_dec();
++	atomic_dec(&dest->refcnt);
++}
+ 
+ /*
+  *      IPVS sync daemon data and function prototypes
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index e3e2b4d..1b29e4a 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -554,7 +554,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 		return;
+ 
+ 	/* Increase the refcnt counter of the dest */
+-	atomic_inc(&dest->refcnt);
++	ip_vs_dest_hold(dest);
+ 
+ 	conn_flags = atomic_read(&dest->conn_flags);
+ 	if (cp->protocol != IPPROTO_UDP)
+@@ -700,12 +700,7 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
+ 			dest->flags &= ~IP_VS_DEST_F_OVERLOAD;
+ 	}
+ 
+-	/*
+-	 * Simply decrease the refcnt of the dest, because the
+-	 * dest will be either in service's destination list
+-	 * or in the trash.
+-	 */
+-	atomic_dec(&dest->refcnt);
++	ip_vs_dest_put(dest);
  }
  
- 
--static int ip_vs_rr_update_svc(struct ip_vs_service *svc)
-+static int ip_vs_rr_del_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest)
- {
--	svc->sched_data = &svc->destinations;
-+	struct list_head *p;
-+
-+	write_lock_bh(&svc->sched_lock);
-+	p = (struct list_head *) svc->sched_data;
-+	/* dest is already unlinked, so p->prev is not valid but
-+	 * p->next is valid, use it to reach previous entry.
-+	 */
-+	if (p == &dest->n_list)
-+		svc->sched_data = p->next->prev;
-+	write_unlock_bh(&svc->sched_lock);
- 	return 0;
+ static int expire_quiescent_template(struct netns_ipvs *ipvs,
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index d64f800..a4f6388 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -616,7 +616,7 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
+ 	if (!dest)
+ 		dest = ip_vs_lookup_dest(svc, daddr, port ^ dport);
+ 	if (dest)
+-		atomic_inc(&dest->refcnt);
++		ip_vs_dest_hold(dest);
+ 	ip_vs_service_put(svc);
+ 	return dest;
+ }
+@@ -1056,7 +1056,7 @@ static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest)
+ 			      ntohs(dest->port),
+ 			      atomic_read(&dest->refcnt));
+ 		list_add(&dest->n_list, &ipvs->dest_trash);
+-		atomic_inc(&dest->refcnt);
++		ip_vs_dest_hold(dest);
+ 	}
  }
  
-@@ -48,35 +57,40 @@ static int ip_vs_rr_update_svc(struct ip_vs_service *svc)
- static struct ip_vs_dest *
- ip_vs_rr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- {
--	struct list_head *p, *q;
--	struct ip_vs_dest *dest;
-+	struct list_head *p;
-+	struct ip_vs_dest *dest, *last;
-+	int pass = 0;
- 
- 	IP_VS_DBG(6, "%s(): Scheduling...\n", __func__);
- 
- 	write_lock(&svc->sched_lock);
--	p = (struct list_head *)svc->sched_data;
--	p = p->next;
--	q = p;
-+	p = (struct list_head *) svc->sched_data;
-+	last = dest = list_entry(p, struct ip_vs_dest, n_list);
-+
- 	do {
--		/* skip list head */
--		if (q == &svc->destinations) {
--			q = q->next;
--			continue;
-+		list_for_each_entry_continue_rcu(dest,
-+						 &svc->destinations,
-+						 n_list) {
-+			if (!(dest->flags & IP_VS_DEST_F_OVERLOAD) &&
-+			    atomic_read(&dest->weight) > 0)
-+				/* HIT */
-+				goto out;
-+			if (dest == last)
-+				goto stop;
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 44fd10c..6cc3e52 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -861,7 +861,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+ 		if (!dest) {
+ 			dest = ip_vs_try_bind_dest(cp);
+ 			if (dest)
+-				atomic_dec(&dest->refcnt);
++				ip_vs_dest_put(dest);
  		}
-+		pass++;
-+		/* Previous dest could be unlinked, do not loop forever.
-+		 * If we stay at head there is no need for 2nd pass.
-+		 */
-+	} while (pass < 2 && p != &svc->destinations);
+ 	} else {
+ 		/*
+@@ -874,7 +874,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
  
--		dest = list_entry(q, struct ip_vs_dest, n_list);
--		if (!(dest->flags & IP_VS_DEST_F_OVERLOAD) &&
--		    atomic_read(&dest->weight) > 0)
--			/* HIT */
--			goto out;
--		q = q->next;
--	} while (q != p);
-+stop:
- 	write_unlock(&svc->sched_lock);
- 	ip_vs_scheduler_err(svc, "no destination available");
- 	return NULL;
- 
-   out:
--	svc->sched_data = q;
-+	svc->sched_data = &dest->n_list;
- 	write_unlock(&svc->sched_lock);
- 	IP_VS_DBG_BUF(6, "RR: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d\n",
-@@ -94,7 +108,8 @@ static struct ip_vs_scheduler ip_vs_rr_scheduler = {
- 	.module =		THIS_MODULE,
- 	.n_list =		LIST_HEAD_INIT(ip_vs_rr_scheduler.n_list),
- 	.init_service =		ip_vs_rr_init_svc,
--	.update_service =	ip_vs_rr_update_svc,
-+	.add_dest =		NULL,
-+	.del_dest =		ip_vs_rr_del_dest,
- 	.schedule =		ip_vs_rr_schedule,
- };
- 
+ 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
+ 		if (dest)
+-			atomic_dec(&dest->refcnt);
++			ip_vs_dest_put(dest);
+ 		if (!cp) {
+ 			if (param->pe_data)
+ 				kfree(param->pe_data);
 -- 
 1.7.10.4
