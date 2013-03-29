@@ -1,94 +1,296 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next] IPVS optimisations for v3.10
-Date: Fri, 29 Mar 2013 13:11:17 +0900
-Message-ID: <1364530311-11512-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH 04/34] ipvs: convert the IP_VS_XMIT macros to functions
+Date: Fri, 29 Mar 2013 13:11:21 +0900
+Message-ID: <1364530311-11512-5-git-send-email-horms@verge.net.au>
+References: <1364530311-11512-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1364530311-11512-1-git-send-email-horms@verge.net.au>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Julian Anastasov <ja@ssi.bg>
 
-The following changes since commit e5c5d22e8dcf7c2d430336cbf8e180bd38e8daf1:
+It was a bad idea to hide return statements in macros.
 
-  net: add ETH_P_802_3_MIN (2013-03-28 01:20:42 -0400)
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off by: Hans Schillstrom <hans@schillstrom.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_xmit.c |  134 +++++++++++++++++++++------------------
+ 1 file changed, 72 insertions(+), 62 deletions(-)
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs2-for-v3.10
-
-for you to fetch changes up to e0566a7cef2f1afca4aa98244224fb9ca6ded08e:
-
-  ipvs: do not disable bh for long time (2013-03-29 12:59:02 +0900)
-
-----------------------------------------------------------------
-IPVS optimisations for v3.10 by Julian Anastasov
-
-----------------------------------------------------------------
-Julian Anastasov (34):
-      net: add skb_dst_set_noref_force
-      ipvs: avoid routing by TOS for real server
-      ipvs: prefer NETDEV_DOWN event to free cached dsts
-      ipvs: convert the IP_VS_XMIT macros to functions
-      ipvs: rename functions related to dst_cache reset
-      ipvs: no need to reroute anymore on DNAT over loopback
-      ipvs: do not use skb_share_check
-      ipvs: consolidate all dst checks on transmit in one place
-      ipvs: optimize dst usage for real server
-      ipvs: convert app locks
-      ipvs: remove rs_lock by using RCU
-      ipvs: convert locks used in persistence engines
-      ipvs: convert connection locking
-      ipvs: reorder keys in connection structure
-      ipvs: avoid kmem_cache_zalloc in ip_vs_conn_new
-      ipvs: change ip_vs_sched_lock to mutex
-      ipvs: preparations for using rcu in schedulers
-      ipvs: add ip_vs_dest_hold and ip_vs_dest_put
-      ipvs: convert dh scheduler to rcu
-      ipvs: convert lblc scheduler to rcu
-      ipvs: convert lblcr scheduler to rcu
-      ipvs: convert lc scheduler to rcu
-      ipvs: convert nq scheduler to rcu
-      ipvs: convert rr scheduler to rcu
-      ipvs: convert sed scheduler to rcu
-      ipvs: convert sh scheduler to rcu
-      ipvs: convert wlc scheduler to rcu
-      ipvs: convert wrr scheduler to rcu
-      ipvs: reorganize dest trash
-      ipvs: do not expect result from done_service
-      ipvs: convert sched_lock to spin lock
-      ipvs: convert dests to rcu
-      ipvs: convert services to rcu
-      ipvs: do not disable bh for long time
-
- include/linux/skbuff.h                |   35 +-
- include/net/ip_vs.h                   |  130 ++--
- net/core/dst.c                        |    9 +-
- net/netfilter/ipvs/ip_vs_app.c        |   31 +-
- net/netfilter/ipvs/ip_vs_conn.c       |  306 +++++-----
- net/netfilter/ipvs/ip_vs_core.c       |   73 +--
- net/netfilter/ipvs/ip_vs_ctl.c        |  641 ++++++++++----------
- net/netfilter/ipvs/ip_vs_dh.c         |   86 +--
- net/netfilter/ipvs/ip_vs_ftp.c        |    4 +
- net/netfilter/ipvs/ip_vs_lblc.c       |  115 ++--
- net/netfilter/ipvs/ip_vs_lblcr.c      |  190 +++---
- net/netfilter/ipvs/ip_vs_lc.c         |    3 +-
- net/netfilter/ipvs/ip_vs_nq.c         |    3 +-
- net/netfilter/ipvs/ip_vs_pe.c         |   55 +-
- net/netfilter/ipvs/ip_vs_pe_sip.c     |    1 +
- net/netfilter/ipvs/ip_vs_proto_sctp.c |   36 +-
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |   40 +-
- net/netfilter/ipvs/ip_vs_proto_udp.c  |   33 +-
- net/netfilter/ipvs/ip_vs_rr.c         |   64 +-
- net/netfilter/ipvs/ip_vs_sched.c      |   63 +-
- net/netfilter/ipvs/ip_vs_sed.c        |    5 +-
- net/netfilter/ipvs/ip_vs_sh.c         |   86 +--
- net/netfilter/ipvs/ip_vs_sync.c       |   35 +-
- net/netfilter/ipvs/ip_vs_wlc.c        |    5 +-
- net/netfilter/ipvs/ip_vs_wrr.c        |  176 +++---
- net/netfilter/ipvs/ip_vs_xmit.c       | 1050 ++++++++++++++-------------------
- 26 files changed, 1611 insertions(+), 1664 deletions(-)
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 4b0bd15..7cd7c61 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -376,45 +376,59 @@ ip_vs_dst_reset(struct ip_vs_dest *dest)
+ 	dest->dst_saddr.ip = 0;
+ }
+ 
+-#define IP_VS_XMIT_TUNNEL(skb, cp)				\
+-({								\
+-	int __ret = NF_ACCEPT;					\
+-								\
+-	(skb)->ipvs_property = 1;				\
+-	if (unlikely((cp)->flags & IP_VS_CONN_F_NFCT))		\
+-		__ret = ip_vs_confirm_conntrack(skb);		\
+-	if (__ret == NF_ACCEPT) {				\
+-		nf_reset(skb);					\
+-		skb_forward_csum(skb);				\
+-	}							\
+-	__ret;							\
+-})
+-
+-#define IP_VS_XMIT_NAT(pf, skb, cp, local)		\
+-do {							\
+-	(skb)->ipvs_property = 1;			\
+-	if (likely(!((cp)->flags & IP_VS_CONN_F_NFCT)))	\
+-		ip_vs_notrack(skb);			\
+-	else						\
+-		ip_vs_update_conntrack(skb, cp, 1);	\
+-	if (local)					\
+-		return NF_ACCEPT;			\
+-	skb_forward_csum(skb);				\
+-	NF_HOOK(pf, NF_INET_LOCAL_OUT, (skb), NULL,	\
+-		skb_dst(skb)->dev, dst_output);		\
+-} while (0)
+-
+-#define IP_VS_XMIT(pf, skb, cp, local)			\
+-do {							\
+-	(skb)->ipvs_property = 1;			\
+-	if (likely(!((cp)->flags & IP_VS_CONN_F_NFCT)))	\
+-		ip_vs_notrack(skb);			\
+-	if (local)					\
+-		return NF_ACCEPT;			\
+-	skb_forward_csum(skb);				\
+-	NF_HOOK(pf, NF_INET_LOCAL_OUT, (skb), NULL,	\
+-		skb_dst(skb)->dev, dst_output);		\
+-} while (0)
++/* return NF_ACCEPT to allow forwarding or other NF_xxx on error */
++static inline int ip_vs_tunnel_xmit_prepare(struct sk_buff *skb,
++					    struct ip_vs_conn *cp)
++{
++	int ret = NF_ACCEPT;
++
++	skb->ipvs_property = 1;
++	if (unlikely(cp->flags & IP_VS_CONN_F_NFCT))
++		ret = ip_vs_confirm_conntrack(skb);
++	if (ret == NF_ACCEPT) {
++		nf_reset(skb);
++		skb_forward_csum(skb);
++	}
++	return ret;
++}
++
++/* return NF_STOLEN (sent) or NF_ACCEPT if local=1 (not sent) */
++static inline int ip_vs_nat_send_or_cont(int pf, struct sk_buff *skb,
++					 struct ip_vs_conn *cp, int local)
++{
++	int ret = NF_STOLEN;
++
++	skb->ipvs_property = 1;
++	if (likely(!(cp->flags & IP_VS_CONN_F_NFCT)))
++		ip_vs_notrack(skb);
++	else
++		ip_vs_update_conntrack(skb, cp, 1);
++	if (!local) {
++		skb_forward_csum(skb);
++		NF_HOOK(pf, NF_INET_LOCAL_OUT, skb, NULL, skb_dst(skb)->dev,
++			dst_output);
++	} else
++		ret = NF_ACCEPT;
++	return ret;
++}
++
++/* return NF_STOLEN (sent) or NF_ACCEPT if local=1 (not sent) */
++static inline int ip_vs_send_or_cont(int pf, struct sk_buff *skb,
++				     struct ip_vs_conn *cp, int local)
++{
++	int ret = NF_STOLEN;
++
++	skb->ipvs_property = 1;
++	if (likely(!(cp->flags & IP_VS_CONN_F_NFCT)))
++		ip_vs_notrack(skb);
++	if (!local) {
++		skb_forward_csum(skb);
++		NF_HOOK(pf, NF_INET_LOCAL_OUT, skb, NULL, skb_dst(skb)->dev,
++			dst_output);
++	} else
++		ret = NF_ACCEPT;
++	return ret;
++}
+ 
+ 
+ /*
+@@ -425,7 +439,7 @@ ip_vs_null_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		struct ip_vs_protocol *pp, struct ip_vs_iphdr *ipvsh)
+ {
+ 	/* we do not touch skb and do not need pskb ptr */
+-	IP_VS_XMIT(NFPROTO_IPV4, skb, cp, 1);
++	return ip_vs_send_or_cont(NFPROTO_IPV4, skb, cp, 1);
+ }
+ 
+ 
+@@ -476,7 +490,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV4, skb, cp, 0);
++	ip_vs_send_or_cont(NFPROTO_IPV4, skb, cp, 0);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -537,7 +551,7 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV6, skb, cp, 0);
++	ip_vs_send_or_cont(NFPROTO_IPV6, skb, cp, 0);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -562,7 +576,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	struct rtable *rt;		/* Route to the other host */
+ 	int mtu;
+ 	struct iphdr *iph = ip_hdr(skb);
+-	int local;
++	int local, rc;
+ 
+ 	EnterFunction(10);
+ 
+@@ -655,10 +669,10 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT_NAT(NFPROTO_IPV4, skb, cp, local);
++	rc = ip_vs_nat_send_or_cont(NFPROTO_IPV4, skb, cp, local);
+ 
+ 	LeaveFunction(10);
+-	return NF_STOLEN;
++	return rc;
+ 
+   tx_error_icmp:
+ 	dst_link_failure(skb);
+@@ -678,7 +692,7 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ {
+ 	struct rt6_info *rt;		/* Route to the other host */
+ 	int mtu;
+-	int local;
++	int local, rc;
+ 
+ 	EnterFunction(10);
+ 
+@@ -771,10 +785,10 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT_NAT(NFPROTO_IPV6, skb, cp, local);
++	rc = ip_vs_nat_send_or_cont(NFPROTO_IPV6, skb, cp, local);
+ 
+ 	LeaveFunction(10);
+-	return NF_STOLEN;
++	return rc;
+ 
+ tx_error_icmp:
+ 	dst_link_failure(skb);
+@@ -833,7 +847,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error_icmp;
+ 	if (rt->rt_flags & RTCF_LOCAL) {
+ 		ip_rt_put(rt);
+-		IP_VS_XMIT(NFPROTO_IPV4, skb, cp, 1);
++		return ip_vs_send_or_cont(NFPROTO_IPV4, skb, cp, 1);
+ 	}
+ 
+ 	tdev = rt->dst.dev;
+@@ -905,7 +919,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	ret = IP_VS_XMIT_TUNNEL(skb, cp);
++	ret = ip_vs_tunnel_xmit_prepare(skb, cp);
+ 	if (ret == NF_ACCEPT)
+ 		ip_local_out(skb);
+ 	else if (ret == NF_DROP)
+@@ -948,7 +962,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error_icmp;
+ 	if (__ip_vs_is_local_route6(rt)) {
+ 		dst_release(&rt->dst);
+-		IP_VS_XMIT(NFPROTO_IPV6, skb, cp, 1);
++		return ip_vs_send_or_cont(NFPROTO_IPV6, skb, cp, 1);
+ 	}
+ 
+ 	tdev = rt->dst.dev;
+@@ -1023,7 +1037,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	ret = IP_VS_XMIT_TUNNEL(skb, cp);
++	ret = ip_vs_tunnel_xmit_prepare(skb, cp);
+ 	if (ret == NF_ACCEPT)
+ 		ip6_local_out(skb);
+ 	else if (ret == NF_DROP)
+@@ -1067,7 +1081,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error_icmp;
+ 	if (rt->rt_flags & RTCF_LOCAL) {
+ 		ip_rt_put(rt);
+-		IP_VS_XMIT(NFPROTO_IPV4, skb, cp, 1);
++		return ip_vs_send_or_cont(NFPROTO_IPV4, skb, cp, 1);
+ 	}
+ 
+ 	/* MTU checking */
+@@ -1097,7 +1111,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV4, skb, cp, 0);
++	ip_vs_send_or_cont(NFPROTO_IPV4, skb, cp, 0);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -1126,7 +1140,7 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error_icmp;
+ 	if (__ip_vs_is_local_route6(rt)) {
+ 		dst_release(&rt->dst);
+-		IP_VS_XMIT(NFPROTO_IPV6, skb, cp, 1);
++		return ip_vs_send_or_cont(NFPROTO_IPV6, skb, cp, 1);
+ 	}
+ 
+ 	/* MTU checking */
+@@ -1162,7 +1176,7 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT(NFPROTO_IPV6, skb, cp, 0);
++	ip_vs_send_or_cont(NFPROTO_IPV6, skb, cp, 0);
+ 
+ 	LeaveFunction(10);
+ 	return NF_STOLEN;
+@@ -1283,9 +1297,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT_NAT(NFPROTO_IPV4, skb, cp, local);
+-
+-	rc = NF_STOLEN;
++	rc = ip_vs_nat_send_or_cont(NFPROTO_IPV4, skb, cp, local);
+ 	goto out;
+ 
+   tx_error_icmp:
+@@ -1404,9 +1416,7 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->local_df = 1;
+ 
+-	IP_VS_XMIT_NAT(NFPROTO_IPV6, skb, cp, local);
+-
+-	rc = NF_STOLEN;
++	rc = ip_vs_nat_send_or_cont(NFPROTO_IPV6, skb, cp, local);
+ 	goto out;
+ 
+ tx_error_icmp:
+-- 
+1.7.10.4
