@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 12/34] ipvs: convert locks used in persistence engines
-Date: Fri, 29 Mar 2013 13:11:29 +0900
-Message-ID: <1364530311-11512-13-git-send-email-horms@verge.net.au>
+Subject: [PATCH 07/34] ipvs: do not use skb_share_check
+Date: Fri, 29 Mar 2013 13:11:24 +0900
+Message-ID: <1364530311-11512-8-git-send-email-horms@verge.net.au>
 References: <1364530311-11512-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1364530311-11512-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,107 +15,128 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-Allow the readers to use RCU lock and for
-PE module registrations use global mutex instead of
-spinlock. All PE modules need to use synchronize_rcu
-in their module exit handler.
+We run in contexts like ip_rcv, ipv6_rcv, br_handle_frame,
+do not expect shared skbs.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off by: Hans Schillstrom <hans@schillstrom.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_pe.c     |   43 +++++++++++--------------------------
- net/netfilter/ipvs/ip_vs_pe_sip.c |    1 +
- 2 files changed, 14 insertions(+), 30 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c |   45 ++-------------------------------------
+ 1 file changed, 2 insertions(+), 43 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_pe.c b/net/netfilter/ipvs/ip_vs_pe.c
-index 5cf859c..5d9774c 100644
---- a/net/netfilter/ipvs/ip_vs_pe.c
-+++ b/net/netfilter/ipvs/ip_vs_pe.c
-@@ -13,8 +13,8 @@
- /* IPVS pe list */
- static LIST_HEAD(ip_vs_pe);
- 
--/* lock for service table */
--static DEFINE_SPINLOCK(ip_vs_pe_lock);
-+/* semaphore for IPVS PEs. */
-+static DEFINE_MUTEX(ip_vs_pe_mutex);
- 
- /* Bind a service with a pe */
- void ip_vs_bind_pe(struct ip_vs_service *svc, struct ip_vs_pe *pe)
-@@ -36,9 +36,8 @@ struct ip_vs_pe *__ip_vs_pe_getbyname(const char *pe_name)
- 	IP_VS_DBG(10, "%s(): pe_name \"%s\"\n", __func__,
- 		  pe_name);
- 
--	spin_lock_bh(&ip_vs_pe_lock);
--
--	list_for_each_entry(pe, &ip_vs_pe, n_list) {
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(pe, &ip_vs_pe, n_list) {
- 		/* Test and get the modules atomically */
- 		if (pe->module &&
- 		    !try_module_get(pe->module)) {
-@@ -47,14 +46,14 @@ struct ip_vs_pe *__ip_vs_pe_getbyname(const char *pe_name)
- 		}
- 		if (strcmp(pe_name, pe->name)==0) {
- 			/* HIT */
--			spin_unlock_bh(&ip_vs_pe_lock);
-+			rcu_read_unlock();
- 			return pe;
- 		}
- 		if (pe->module)
- 			module_put(pe->module);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index c942d36..e6e2d3f 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -421,14 +421,6 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error;
  	}
-+	rcu_read_unlock();
  
--	spin_unlock_bh(&ip_vs_pe_lock);
- 	return NULL;
- }
+-	/*
+-	 * Call ip_send_check because we are not sure it is called
+-	 * after ip_defrag. Is copy-on-write needed?
+-	 */
+-	if (unlikely((skb = skb_share_check(skb, GFP_ATOMIC)) == NULL)) {
+-		ip_rt_put(rt);
+-		return NF_STOLEN;
+-	}
+ 	ip_send_check(ip_hdr(skb));
  
-@@ -83,22 +82,13 @@ int register_ip_vs_pe(struct ip_vs_pe *pe)
- 	/* increase the module use count */
- 	ip_vs_use_count_inc();
+ 	/* drop old route */
+@@ -482,16 +474,6 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error;
+ 	}
  
--	spin_lock_bh(&ip_vs_pe_lock);
--
--	if (!list_empty(&pe->n_list)) {
--		spin_unlock_bh(&ip_vs_pe_lock);
--		ip_vs_use_count_dec();
--		pr_err("%s(): [%s] pe already linked\n",
--		       __func__, pe->name);
--		return -EINVAL;
+-	/*
+-	 * Call ip_send_check because we are not sure it is called
+-	 * after ip_defrag. Is copy-on-write needed?
+-	 */
+-	skb = skb_share_check(skb, GFP_ATOMIC);
+-	if (unlikely(skb == NULL)) {
+-		dst_release(&rt->dst);
+-		return NF_STOLEN;
 -	}
 -
-+	mutex_lock(&ip_vs_pe_mutex);
- 	/* Make sure that the pe with this name doesn't exist
- 	 * in the pe list.
+ 	/* drop old route */
+ 	skb_dst_drop(skb);
+ 	skb_dst_set(skb, &rt->dst);
+@@ -708,7 +690,6 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	ipv6_hdr(skb)->daddr = cp->daddr.in6;
+ 
+ 	if (!local || !skb->dev) {
+-		/* drop the old route when skb is not shared */
+ 		skb_dst_drop(skb);
+ 		skb_dst_set(skb, &rt->dst);
+ 	} else {
+@@ -814,8 +795,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	 */
- 	list_for_each_entry(tmp, &ip_vs_pe, n_list) {
- 		if (strcmp(tmp->name, pe->name) == 0) {
--			spin_unlock_bh(&ip_vs_pe_lock);
-+			mutex_unlock(&ip_vs_pe_mutex);
- 			ip_vs_use_count_dec();
- 			pr_err("%s(): [%s] pe already existed "
- 			       "in the system\n", __func__, pe->name);
-@@ -106,8 +96,8 @@ int register_ip_vs_pe(struct ip_vs_pe *pe)
- 		}
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
+ 
+-	if (skb_headroom(skb) < max_headroom
+-	    || skb_cloned(skb) || skb_shared(skb)) {
++	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+ 		struct sk_buff *new_skb =
+ 			skb_realloc_headroom(skb, max_headroom);
+ 		if (!new_skb) {
+@@ -935,8 +915,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	 */
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
+ 
+-	if (skb_headroom(skb) < max_headroom
+-	    || skb_cloned(skb) || skb_shared(skb)) {
++	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+ 		struct sk_buff *new_skb =
+ 			skb_realloc_headroom(skb, max_headroom);
+ 		if (!new_skb) {
+@@ -1034,14 +1013,6 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error;
  	}
- 	/* Add it into the d-linked pe list */
--	list_add(&pe->n_list, &ip_vs_pe);
--	spin_unlock_bh(&ip_vs_pe_lock);
-+	list_add_rcu(&pe->n_list, &ip_vs_pe);
-+	mutex_unlock(&ip_vs_pe_mutex);
  
- 	pr_info("[%s] pe registered.\n", pe->name);
- 
-@@ -118,17 +108,10 @@ EXPORT_SYMBOL_GPL(register_ip_vs_pe);
- /* Unregister a pe from the pe list */
- int unregister_ip_vs_pe(struct ip_vs_pe *pe)
- {
--	spin_lock_bh(&ip_vs_pe_lock);
--	if (list_empty(&pe->n_list)) {
--		spin_unlock_bh(&ip_vs_pe_lock);
--		pr_err("%s(): [%s] pe is not in the list. failed\n",
--		       __func__, pe->name);
--		return -EINVAL;
+-	/*
+-	 * Call ip_send_check because we are not sure it is called
+-	 * after ip_defrag. Is copy-on-write needed?
+-	 */
+-	if (unlikely((skb = skb_share_check(skb, GFP_ATOMIC)) == NULL)) {
+-		ip_rt_put(rt);
+-		return NF_STOLEN;
 -	}
+ 	ip_send_check(ip_hdr(skb));
+ 
+ 	/* drop old route */
+@@ -1099,16 +1070,6 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		goto tx_error;
+ 	}
+ 
+-	/*
+-	 * Call ip_send_check because we are not sure it is called
+-	 * after ip_defrag. Is copy-on-write needed?
+-	 */
+-	skb = skb_share_check(skb, GFP_ATOMIC);
+-	if (unlikely(skb == NULL)) {
+-		dst_release(&rt->dst);
+-		return NF_STOLEN;
+-	}
+-
+ 	/* drop old route */
+ 	skb_dst_drop(skb);
+ 	skb_dst_set(skb, &rt->dst);
+@@ -1220,7 +1181,6 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	ip_vs_nat_icmp(skb, pp, cp, 0);
+ 
+ 	if (!local) {
+-		/* drop the old route when skb is not shared */
+ 		skb_dst_drop(skb);
+ 		skb_dst_set(skb, &rt->dst);
+ 	} else
+@@ -1337,7 +1297,6 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	ip_vs_nat_icmp_v6(skb, pp, cp, 0);
+ 
+ 	if (!local || !skb->dev) {
+-		/* drop the old route when skb is not shared */
+ 		skb_dst_drop(skb);
+ 		skb_dst_set(skb, &rt->dst);
+ 	} else {
+-- 
+1.7.10.4
+
