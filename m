@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 28/34] ipvs: convert wrr scheduler to rcu
-Date: Fri, 29 Mar 2013 13:11:45 +0900
-Message-ID: <1364530311-11512-29-git-send-email-horms@verge.net.au>
+Subject: [PATCH 26/34] ipvs: convert sh scheduler to rcu
+Date: Fri, 29 Mar 2013 13:11:43 +0900
+Message-ID: <1364530311-11512-27-git-send-email-horms@verge.net.au>
 References: <1364530311-11512-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1364530311-11512-1-git-send-email-horms@verge.net.au>
@@ -15,265 +15,208 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-The schedule method now needs _rcu list-traversal
-primitive for svc->destinations. As the weight for some
-dest can be reduced during dest selection, change the
-algorithm to check weights by using minimum weights in the
-1 .. max_weight-(di-1) range, with the same step (di). By this
-way we ensure that there will be always a weight >= 1 check
-before claiming that all destinations are overloaded.
+Use the 3 new methods to reassign dests.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_wrr.c |  167 +++++++++++++++++++++++++---------------
- 1 file changed, 103 insertions(+), 64 deletions(-)
+ net/netfilter/ipvs/ip_vs_sh.c |   81 +++++++++++++++++++++++------------------
+ 1 file changed, 45 insertions(+), 36 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_wrr.c b/net/netfilter/ipvs/ip_vs_wrr.c
-index 231be7d..98cb05e 100644
---- a/net/netfilter/ipvs/ip_vs_wrr.c
-+++ b/net/netfilter/ipvs/ip_vs_wrr.c
-@@ -29,14 +29,45 @@
- 
- #include <net/ip_vs.h>
- 
-+/* The WRR algorithm depends on some caclulations:
-+ * - mw: maximum weight
-+ * - di: weight step, greatest common divisor from all weights
-+ * - cw: current required weight
-+ * As result, all weights are in the [di..mw] range with a step=di.
-+ *
-+ * First, we start with cw = mw and select dests with weight >= cw.
-+ * Then cw is reduced with di and all dests are checked again.
-+ * Last pass should be with cw = di. We have mw/di passes in total:
-+ *
-+ * pass 1: cw = max weight
-+ * pass 2: cw = max weight - di
-+ * pass 3: cw = max weight - 2 * di
-+ * ...
-+ * last pass: cw = di
-+ *
-+ * Weights are supposed to be >= di but we run in parallel with
-+ * weight changes, it is possible some dest weight to be reduced
-+ * below di, bad if it is the only available dest.
-+ *
-+ * So, we modify how mw is calculated, now it is reduced with (di - 1),
-+ * so that last cw is 1 to catch such dests with weight below di:
-+ * pass 1: cw = max weight - (di - 1)
-+ * pass 2: cw = max weight - di - (di - 1)
-+ * pass 3: cw = max weight - 2 * di - (di - 1)
-+ * ...
-+ * last pass: cw = 1
-+ *
-+ */
-+
- /*
-  * current destination pointer for weighted round-robin scheduling
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index e331269..55e76d8 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -53,7 +53,7 @@
+  *      IPVS SH bucket
   */
- struct ip_vs_wrr_mark {
--	struct list_head *cl;	/* current list head */
-+	struct ip_vs_dest *cl;	/* current dest or head */
- 	int cw;			/* current weight */
- 	int mw;			/* maximum weight */
- 	int di;			/* decreasing interval */
-+	struct rcu_head		rcu_head;
+ struct ip_vs_sh_bucket {
+-	struct ip_vs_dest       *dest;          /* real server (cache) */
++	struct ip_vs_dest __rcu	*dest;	/* real server (cache) */
  };
  
+ /*
+@@ -66,6 +66,10 @@ struct ip_vs_sh_bucket {
+ #define IP_VS_SH_TAB_SIZE               (1 << IP_VS_SH_TAB_BITS)
+ #define IP_VS_SH_TAB_MASK               (IP_VS_SH_TAB_SIZE - 1)
  
-@@ -88,10 +119,10 @@ static int ip_vs_wrr_init_svc(struct ip_vs_service *svc)
- 	if (mark == NULL)
++struct ip_vs_sh_state {
++	struct ip_vs_sh_bucket		buckets[IP_VS_SH_TAB_SIZE];
++	struct rcu_head			rcu_head;
++};
+ 
+ /*
+  *	Returns hash value for IPVS SH entry
+@@ -87,10 +91,9 @@ static inline unsigned int ip_vs_sh_hashkey(int af, const union nf_inet_addr *ad
+  *      Get ip_vs_dest associated with supplied parameters.
+  */
+ static inline struct ip_vs_dest *
+-ip_vs_sh_get(int af, struct ip_vs_sh_bucket *tbl,
+-	     const union nf_inet_addr *addr)
++ip_vs_sh_get(int af, struct ip_vs_sh_state *s, const union nf_inet_addr *addr)
+ {
+-	return (tbl[ip_vs_sh_hashkey(af, addr)]).dest;
++	return rcu_dereference(s->buckets[ip_vs_sh_hashkey(af, addr)].dest);
+ }
+ 
+ 
+@@ -98,27 +101,32 @@ ip_vs_sh_get(int af, struct ip_vs_sh_bucket *tbl,
+  *      Assign all the hash buckets of the specified table with the service.
+  */
+ static int
+-ip_vs_sh_assign(struct ip_vs_sh_bucket *tbl, struct ip_vs_service *svc)
++ip_vs_sh_reassign(struct ip_vs_sh_state *s, struct ip_vs_service *svc)
+ {
+ 	int i;
+ 	struct ip_vs_sh_bucket *b;
+ 	struct list_head *p;
+ 	struct ip_vs_dest *dest;
+ 	int d_count;
++	bool empty;
+ 
+-	b = tbl;
++	b = &s->buckets[0];
+ 	p = &svc->destinations;
++	empty = list_empty(p);
+ 	d_count = 0;
+ 	for (i=0; i<IP_VS_SH_TAB_SIZE; i++) {
+-		if (list_empty(p)) {
+-			b->dest = NULL;
+-		} else {
++		dest = rcu_dereference_protected(b->dest, 1);
++		if (dest)
++			ip_vs_dest_put(dest);
++		if (empty)
++			RCU_INIT_POINTER(b->dest, NULL);
++		else {
+ 			if (p == &svc->destinations)
+ 				p = p->next;
+ 
+ 			dest = list_entry(p, struct ip_vs_dest, n_list);
+-			atomic_inc(&dest->refcnt);
+-			b->dest = dest;
++			ip_vs_dest_hold(dest);
++			RCU_INIT_POINTER(b->dest, dest);
+ 
+ 			IP_VS_DBG_BUF(6, "assigned i: %d dest: %s weight: %d\n",
+ 				      i, IP_VS_DBG_ADDR(svc->af, &dest->addr),
+@@ -140,16 +148,18 @@ ip_vs_sh_assign(struct ip_vs_sh_bucket *tbl, struct ip_vs_service *svc)
+ /*
+  *      Flush all the hash buckets of the specified table.
+  */
+-static void ip_vs_sh_flush(struct ip_vs_sh_bucket *tbl)
++static void ip_vs_sh_flush(struct ip_vs_sh_state *s)
+ {
+ 	int i;
+ 	struct ip_vs_sh_bucket *b;
++	struct ip_vs_dest *dest;
+ 
+-	b = tbl;
++	b = &s->buckets[0];
+ 	for (i=0; i<IP_VS_SH_TAB_SIZE; i++) {
+-		if (b->dest) {
+-			atomic_dec(&b->dest->refcnt);
+-			b->dest = NULL;
++		dest = rcu_dereference_protected(b->dest, 1);
++		if (dest) {
++			ip_vs_dest_put(dest);
++			RCU_INIT_POINTER(b->dest, NULL);
+ 		}
+ 		b++;
+ 	}
+@@ -158,21 +168,20 @@ static void ip_vs_sh_flush(struct ip_vs_sh_bucket *tbl)
+ 
+ static int ip_vs_sh_init_svc(struct ip_vs_service *svc)
+ {
+-	struct ip_vs_sh_bucket *tbl;
++	struct ip_vs_sh_state *s;
+ 
+ 	/* allocate the SH table for this service */
+-	tbl = kmalloc(sizeof(struct ip_vs_sh_bucket)*IP_VS_SH_TAB_SIZE,
+-		      GFP_KERNEL);
+-	if (tbl == NULL)
++	s = kzalloc(sizeof(struct ip_vs_sh_state), GFP_KERNEL);
++	if (s == NULL)
  		return -ENOMEM;
  
--	mark->cl = &svc->destinations;
--	mark->cw = 0;
--	mark->mw = ip_vs_wrr_max_weight(svc);
-+	mark->cl = list_entry(&svc->destinations, struct ip_vs_dest, n_list);
- 	mark->di = ip_vs_wrr_gcd_weight(svc);
-+	mark->mw = ip_vs_wrr_max_weight(svc) - (mark->di - 1);
-+	mark->cw = mark->mw;
- 	svc->sched_data = mark;
+-	svc->sched_data = tbl;
++	svc->sched_data = s;
+ 	IP_VS_DBG(6, "SH hash table (memory=%Zdbytes) allocated for "
+ 		  "current service\n",
+ 		  sizeof(struct ip_vs_sh_bucket)*IP_VS_SH_TAB_SIZE);
+ 
+-	/* assign the hash buckets with the updated service */
+-	ip_vs_sh_assign(tbl, svc);
++	/* assign the hash buckets with current dests */
++	ip_vs_sh_reassign(s, svc);
  
  	return 0;
-@@ -100,24 +131,31 @@ static int ip_vs_wrr_init_svc(struct ip_vs_service *svc)
+ }
+@@ -180,13 +189,13 @@ static int ip_vs_sh_init_svc(struct ip_vs_service *svc)
  
- static int ip_vs_wrr_done_svc(struct ip_vs_service *svc)
+ static int ip_vs_sh_done_svc(struct ip_vs_service *svc)
  {
-+	struct ip_vs_wrr_mark *mark = svc->sched_data;
-+
- 	/*
- 	 *    Release the mark variable
- 	 */
+-	struct ip_vs_sh_bucket *tbl = svc->sched_data;
++	struct ip_vs_sh_state *s = svc->sched_data;
+ 
+ 	/* got to clean up hash buckets here */
+-	ip_vs_sh_flush(tbl);
++	ip_vs_sh_flush(s);
+ 
+ 	/* release the table itself */
 -	kfree(svc->sched_data);
-+	kfree_rcu(mark, rcu_head);
++	kfree_rcu(s, rcu_head);
+ 	IP_VS_DBG(6, "SH hash table (memory=%Zdbytes) released\n",
+ 		  sizeof(struct ip_vs_sh_bucket)*IP_VS_SH_TAB_SIZE);
+ 
+@@ -194,15 +203,13 @@ static int ip_vs_sh_done_svc(struct ip_vs_service *svc)
+ }
+ 
+ 
+-static int ip_vs_sh_update_svc(struct ip_vs_service *svc)
++static int ip_vs_sh_dest_changed(struct ip_vs_service *svc,
++				 struct ip_vs_dest *dest)
+ {
+-	struct ip_vs_sh_bucket *tbl = svc->sched_data;
+-
+-	/* got to clean up hash buckets here */
+-	ip_vs_sh_flush(tbl);
++	struct ip_vs_sh_state *s = svc->sched_data;
+ 
+ 	/* assign the hash buckets with the updated service */
+-	ip_vs_sh_assign(tbl, svc);
++	ip_vs_sh_reassign(s, svc);
  
  	return 0;
  }
- 
- 
--static int ip_vs_wrr_update_svc(struct ip_vs_service *svc)
-+static int ip_vs_wrr_dest_changed(struct ip_vs_service *svc,
-+				  struct ip_vs_dest *dest)
+@@ -225,15 +232,15 @@ static struct ip_vs_dest *
+ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
  {
- 	struct ip_vs_wrr_mark *mark = svc->sched_data;
+ 	struct ip_vs_dest *dest;
+-	struct ip_vs_sh_bucket *tbl;
++	struct ip_vs_sh_state *s;
+ 	struct ip_vs_iphdr iph;
  
--	mark->cl = &svc->destinations;
--	mark->mw = ip_vs_wrr_max_weight(svc);
-+	write_lock_bh(&svc->sched_lock);
-+	mark->cl = list_entry(&svc->destinations, struct ip_vs_dest, n_list);
- 	mark->di = ip_vs_wrr_gcd_weight(svc);
--	if (mark->cw > mark->mw)
--		mark->cw = 0;
-+	mark->mw = ip_vs_wrr_max_weight(svc) - (mark->di - 1);
-+	if (mark->cw > mark->mw || !mark->cw)
-+		mark->cw = mark->mw;
-+	else if (mark->di > 1)
-+		mark->cw = (mark->cw / mark->di) * mark->di + 1;
-+	write_unlock_bh(&svc->sched_lock);
- 	return 0;
- }
+ 	ip_vs_fill_iph_addr_only(svc->af, skb, &iph);
  
-@@ -128,80 +166,79 @@ static int ip_vs_wrr_update_svc(struct ip_vs_service *svc)
- static struct ip_vs_dest *
- ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
- {
--	struct ip_vs_dest *dest;
-+	struct ip_vs_dest *dest, *last, *stop = NULL;
- 	struct ip_vs_wrr_mark *mark = svc->sched_data;
--	struct list_head *p;
-+	bool last_pass = false, restarted = false;
+ 	IP_VS_DBG(6, "ip_vs_sh_schedule(): Scheduling...\n");
  
- 	IP_VS_DBG(6, "%s(): Scheduling...\n", __func__);
- 
--	/*
--	 * This loop will always terminate, because mark->cw in (0, max_weight]
--	 * and at least one server has its weight equal to max_weight.
--	 */
- 	write_lock(&svc->sched_lock);
--	p = mark->cl;
-+	dest = mark->cl;
-+	/* No available dests? */
-+	if (mark->mw == 0)
-+		goto err_noavail;
-+	last = dest;
-+	/* Stop only after all dests were checked for weight >= 1 (last pass) */
- 	while (1) {
--		if (mark->cl == &svc->destinations) {
--			/* it is at the head of the destination list */
--
--			if (mark->cl == mark->cl->next) {
--				/* no dest entry */
--				ip_vs_scheduler_err(svc,
--					"no destination available: "
--					"no destinations present");
--				dest = NULL;
--				goto out;
--			}
--
--			mark->cl = svc->destinations.next;
--			mark->cw -= mark->di;
--			if (mark->cw <= 0) {
--				mark->cw = mark->mw;
--				/*
--				 * Still zero, which means no available servers.
--				 */
--				if (mark->cw == 0) {
--					mark->cl = &svc->destinations;
--					ip_vs_scheduler_err(svc,
--						"no destination available");
--					dest = NULL;
--					goto out;
--				}
--			}
--		} else
--			mark->cl = mark->cl->next;
--
--		if (mark->cl != &svc->destinations) {
--			/* not at the head of the list */
--			dest = list_entry(mark->cl, struct ip_vs_dest, n_list);
-+		list_for_each_entry_continue_rcu(dest,
-+						 &svc->destinations,
-+						 n_list) {
- 			if (!(dest->flags & IP_VS_DEST_F_OVERLOAD) &&
--			    atomic_read(&dest->weight) >= mark->cw) {
--				/* got it */
--				break;
--			}
-+			    atomic_read(&dest->weight) >= mark->cw)
-+				goto found;
-+			if (dest == stop)
-+				goto err_over;
- 		}
--
--		if (mark->cl == p && mark->cw == mark->di) {
--			/* back to the start, and no dest is found.
--			   It is only possible when all dests are OVERLOADED */
--			dest = NULL;
--			ip_vs_scheduler_err(svc,
--				"no destination available: "
--				"all destinations are overloaded");
--			goto out;
-+		mark->cw -= mark->di;
-+		if (mark->cw <= 0) {
-+			mark->cw = mark->mw;
-+			/* Stop if we tried last pass from first dest:
-+			 * 1. last_pass: we started checks when cw > di but
-+			 *	then all dests were checked for w >= 1
-+			 * 2. last was head: the first and only traversal
-+			 *	was for weight >= 1, for all dests.
-+			 */
-+			if (last_pass ||
-+			    &last->n_list == &svc->destinations)
-+				goto err_over;
-+			restarted = true;
-+		}
-+		last_pass = mark->cw <= mark->di;
-+		if (last_pass && restarted &&
-+		    &last->n_list != &svc->destinations) {
-+			/* First traversal was for w >= 1 but only
-+			 * for dests after 'last', now do the same
-+			 * for all dests up to 'last'.
-+			 */
-+			stop = last;
- 		}
- 	}
- 
-+found:
- 	IP_VS_DBG_BUF(6, "WRR: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d\n",
- 		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port),
- 		      atomic_read(&dest->activeconns),
- 		      atomic_read(&dest->refcnt),
- 		      atomic_read(&dest->weight));
-+	mark->cl = dest;
- 
-   out:
- 	write_unlock(&svc->sched_lock);
- 	return dest;
-+
-+err_noavail:
-+	mark->cl = dest;
-+	dest = NULL;
-+	ip_vs_scheduler_err(svc, "no destination available");
-+	goto out;
-+
-+err_over:
-+	mark->cl = dest;
-+	dest = NULL;
-+	ip_vs_scheduler_err(svc, "no destination available: "
-+			    "all destinations are overloaded");
-+	goto out;
- }
- 
- 
-@@ -212,7 +249,9 @@ static struct ip_vs_scheduler ip_vs_wrr_scheduler = {
- 	.n_list =		LIST_HEAD_INIT(ip_vs_wrr_scheduler.n_list),
- 	.init_service =		ip_vs_wrr_init_svc,
- 	.done_service =		ip_vs_wrr_done_svc,
--	.update_service =	ip_vs_wrr_update_svc,
-+	.add_dest =		ip_vs_wrr_dest_changed,
-+	.del_dest =		ip_vs_wrr_dest_changed,
-+	.upd_dest =		ip_vs_wrr_dest_changed,
- 	.schedule =		ip_vs_wrr_schedule,
+-	tbl = (struct ip_vs_sh_bucket *)svc->sched_data;
+-	dest = ip_vs_sh_get(svc->af, tbl, &iph.saddr);
++	s = (struct ip_vs_sh_state *) svc->sched_data;
++	dest = ip_vs_sh_get(svc->af, s, &iph.saddr);
+ 	if (!dest
+ 	    || !(dest->flags & IP_VS_DEST_F_AVAILABLE)
+ 	    || atomic_read(&dest->weight) <= 0
+@@ -262,7 +269,9 @@ static struct ip_vs_scheduler ip_vs_sh_scheduler =
+ 	.n_list	 =		LIST_HEAD_INIT(ip_vs_sh_scheduler.n_list),
+ 	.init_service =		ip_vs_sh_init_svc,
+ 	.done_service =		ip_vs_sh_done_svc,
+-	.update_service =	ip_vs_sh_update_svc,
++	.add_dest =		ip_vs_sh_dest_changed,
++	.del_dest =		ip_vs_sh_dest_changed,
++	.upd_dest =		ip_vs_sh_dest_changed,
+ 	.schedule =		ip_vs_sh_schedule,
  };
  
 -- 
