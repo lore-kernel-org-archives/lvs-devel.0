@@ -1,97 +1,125 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 06/34] ipvs: no need to reroute anymore on DNAT over
- loopback
-Date: Fri, 29 Mar 2013 23:47:01 +0200 (EET)
-Message-ID: <alpine.LFD.2.00.1303292318090.1804@ja.ssi.bg>
-References: <1364530311-11512-1-git-send-email-horms@verge.net.au> <1364530311-11512-7-git-send-email-horms@verge.net.au> <5155A8B6.9030303@cogentembedded.com>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH 01/34] net: add skb_dst_set_noref_force
+Date: Mon, 1 Apr 2013 14:06:44 +0200
+Message-ID: <20130401120644.GA4882@localhost>
+References: <1364530311-11512-1-git-send-email-horms@verge.net.au>
+ <1364530311-11512-2-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <5155A8B6.9030303@cogentembedded.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1364530311-11512-2-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>
-Cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
+Hi Simon,
 
-	Hello,
-
-On Fri, 29 Mar 2013, Sergei Shtylyov wrote:
-
-> On 29-03-2013 8:11, Simon Horman wrote:
+On Fri, Mar 29, 2013 at 01:11:18PM +0900, Simon Horman wrote:
+> From: Julian Anastasov <ja@ssi.bg>
 > 
-> > From: Julian Anastasov <ja@ssi.bg>
+> Rename skb_dst_set_noref to __skb_dst_set_noref and
+> add force flag as suggested by David Miller. The new wrapper
+> skb_dst_set_noref_force will force dst entries that are not
+> cached to be attached as skb dst without taking reference
+> as long as provided dst is reclaimed after RCU grace period.
 > 
-> > After commit 70e7341673 (ipv4: Show that ip_send_reply()
-> > is purely unicast routine.) we do not need to reroute DNAT-ed
-> > traffic over loopback because reply uses iph daddr and not
-> > rt_spec_dst.
-> 
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > Signed-off by: Hans Schillstrom <hans@schillstrom.com>
-> > Signed-off-by: Simon Horman <horms@verge.net.au>
-> > ---
-> >   net/netfilter/ipvs/ip_vs_xmit.c |   58
-> > ++-------------------------------------
-> >   1 file changed, 2 insertions(+), 56 deletions(-)
-> 
-> > diff --git a/net/netfilter/ipvs/ip_vs_xmit.c
-> > b/net/netfilter/ipvs/ip_vs_xmit.c
-> > index 6448a2e..c942d36 100644
-> > --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> > +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> [...]
-> > @@ -635,16 +597,8 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn
-> > *cp,
-> >   		/* drop old route */
-> >   		skb_dst_drop(skb);
-> >   		skb_dst_set(skb, &rt->dst);
-> > -	} else {
-> > +	} else
-> 
->    {} should be kept after *else*, according to Documentation/CodingStyle,
-> chapter 3.
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> Signed-off by: Hans Schillstrom <hans@schillstrom.com>
+> Signed-off-by: Simon Horman <horms@verge.net.au>
 
-	Sigh. I missed this rule from Nov 2011.
-It seems checkpatch.pl can not stop such crimes to occur :)
+I think was acked by David, right?
 
-> >   		ip_rt_put(rt);
-> > -		/*
-> > -		 * Some IPv4 replies get local address from routes,
-> > -		 * not from iph, so while we DNAT after routing
-> > -		 * we need this second input/output route.
-> > -		 */
-> > -		if (!__ip_vs_reroute_locally(skb))
-> > -			goto tx_error;
-> > -	}
-> > 
-> >   	IP_VS_DBG_PKT(10, AF_INET, pp, skb, 0, "After DNAT");
-> > 
-> > @@ -1269,16 +1223,8 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct
-> > ip_vs_conn *cp,
-> >   		/* drop the old route when skb is not shared */
-> >   		skb_dst_drop(skb);
-> >   		skb_dst_set(skb, &rt->dst);
-> > -	} else {
-> > +	} else
+> ---
+>  include/linux/skbuff.h |   35 ++++++++++++++++++++++++++++++++++-
+>  net/core/dst.c         |    9 +++++----
+>  2 files changed, 39 insertions(+), 5 deletions(-)
 > 
->    Same here.
+> diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+> index 878e0ee..364e244 100644
+> --- a/include/linux/skbuff.h
+> +++ b/include/linux/skbuff.h
+> @@ -575,7 +575,40 @@ static inline void skb_dst_set(struct sk_buff *skb, struct dst_entry *dst)
+>  	skb->_skb_refdst = (unsigned long)dst;
+>  }
+>  
+> -extern void skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst);
+> +extern void __skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst,
+> +				bool force);
+> +
+> +/**
+> + * skb_dst_set_noref - sets skb dst, hopefully, without taking reference
+> + * @skb: buffer
+> + * @dst: dst entry
+> + *
+> + * Sets skb dst, assuming a reference was not taken on dst.
+> + * If dst entry is cached, we do not take reference and dst_release
+> + * will be avoided by refdst_drop. If dst entry is not cached, we take
+> + * reference, so that last dst_release can destroy the dst immediately.
+> + */
+> +static inline void skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst)
+> +{
+> +	__skb_dst_set_noref(skb, dst, false);
+> +}
+> +
+> +/**
+> + * skb_dst_set_noref_force - sets skb dst, without taking reference
+> + * @skb: buffer
+> + * @dst: dst entry
+> + *
+> + * Sets skb dst, assuming a reference was not taken on dst.
+> + * No reference is taken and no dst_release will be called. While for
+> + * cached dsts deferred reclaim is a basic feature, for entries that are
+> + * not cached it is caller's job to guarantee that last dst_release for
+> + * provided dst happens when nobody uses it, eg. after a RCU grace period.
+> + */
+> +static inline void skb_dst_set_noref_force(struct sk_buff *skb,
+> +					   struct dst_entry *dst)
+> +{
+> +	__skb_dst_set_noref(skb, dst, true);
+> +}
+>  
+>  /**
+>   * skb_dst_is_noref - Test if skb dst isn't refcounted
+> diff --git a/net/core/dst.c b/net/core/dst.c
+> index 35fd12f..df9cc81 100644
+> --- a/net/core/dst.c
+> +++ b/net/core/dst.c
+> @@ -320,27 +320,28 @@ void __dst_destroy_metrics_generic(struct dst_entry *dst, unsigned long old)
+>  EXPORT_SYMBOL(__dst_destroy_metrics_generic);
+>  
+>  /**
+> - * skb_dst_set_noref - sets skb dst, without a reference
+> + * __skb_dst_set_noref - sets skb dst, without a reference
+>   * @skb: buffer
+>   * @dst: dst entry
+> + * @force: if force is set, use noref version even for DST_NOCACHE entries
+>   *
+>   * Sets skb dst, assuming a reference was not taken on dst
+>   * skb_dst_drop() should not dst_release() this dst
+>   */
+> -void skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst)
+> +void __skb_dst_set_noref(struct sk_buff *skb, struct dst_entry *dst, bool force)
+>  {
+>  	WARN_ON(!rcu_read_lock_held() && !rcu_read_lock_bh_held());
+>  	/* If dst not in cache, we must take a reference, because
+>  	 * dst_release() will destroy dst as soon as its refcount becomes zero
+>  	 */
+> -	if (unlikely(dst->flags & DST_NOCACHE)) {
+> +	if (unlikely((dst->flags & DST_NOCACHE) && !force)) {
+>  		dst_hold(dst);
+>  		skb_dst_set(skb, dst);
+>  	} else {
+>  		skb->_skb_refdst = (unsigned long)dst | SKB_DST_NOREF;
+>  	}
+>  }
+> -EXPORT_SYMBOL(skb_dst_set_noref);
+> +EXPORT_SYMBOL(__skb_dst_set_noref);
+>  
+>  /* Dirty hack. We did it in 2.2 (in __dst_free),
+>   * we have _very_ good reasons not to repeat
+> -- 
+> 1.7.10.4
 > 
-> >   		ip_rt_put(rt);
-> > -		/*
-> > -		 * Some IPv4 replies get local address from routes,
-> > -		 * not from iph, so while we DNAT after routing
-> > -		 * we need this second input/output route.
-> > -		 */
-> > -		if (!__ip_vs_reroute_locally(skb))
-> > -			goto tx_error;
-> > -	}
-> > 
-> >   	/* Another hack: avoid icmp_send in ip_fragment */
-> >   	skb->local_df = 1;
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
