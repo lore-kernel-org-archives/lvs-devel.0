@@ -1,50 +1,48 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 01/34] net: add skb_dst_set_noref_force
-Date: Tue, 2 Apr 2013 10:11:32 +0900
-Message-ID: <20130402011132.GF14785@verge.net.au>
-References: <1364530311-11512-1-git-send-email-horms@verge.net.au>
- <1364530311-11512-2-git-send-email-horms@verge.net.au>
- <20130401120644.GA4882@localhost>
- <20130401.125733.1045325402548119287.davem@davemloft.net>
- <20130401224230.GA12356@localhost>
+From: Simon Kirby <sim@hostway.ca>
+Subject: activeconns * weight overflowing 32-bit int
+Date: Fri, 12 Apr 2013 23:43:55 -0700
+Message-ID: <20130413064355.GB24319@hostway.ca>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130401224230.GA12356@localhost>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: David Miller <davem@davemloft.net>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, wensong@linux-vs.org, ja@ssi.bg
+To: lvs-devel@vger.kernel.org
+Cc: Changli Gao <xiaosuo@gmail.com>
 
-On Tue, Apr 02, 2013 at 12:42:30AM +0200, Pablo Neira Ayuso wrote:
-> On Mon, Apr 01, 2013 at 12:57:33PM -0400, David Miller wrote:
-> > From: Pablo Neira Ayuso <pablo@netfilter.org>
-> > Date: Mon, 1 Apr 2013 14:06:44 +0200
-> > 
-> > > Hi Simon,
-> > > 
-> > > On Fri, Mar 29, 2013 at 01:11:18PM +0900, Simon Horman wrote:
-> > >> From: Julian Anastasov <ja@ssi.bg>
-> > >> 
-> > >> Rename skb_dst_set_noref to __skb_dst_set_noref and
-> > >> add force flag as suggested by David Miller. The new wrapper
-> > >> skb_dst_set_noref_force will force dst entries that are not
-> > >> cached to be attached as skb dst without taking reference
-> > >> as long as provided dst is reclaimed after RCU grace period.
-> > >> 
-> > >> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > >> Signed-off by: Hans Schillstrom <hans@schillstrom.com>
-> > >> Signed-off-by: Simon Horman <horms@verge.net.au>
-> > > 
-> > > I think was acked by David, right?
-> > 
-> > It was:
-> > 
-> > Acked-by: David S. Miller <davem@davemloft.net>
-> 
-> I have added this missing Acked-by to the patch. Simon, you'll have to
-> rebase your tree, sorry.
+Hello!
 
-Thanks. Sorry for the mix up.
+We use lblc in some environments to try to maintain some cache locality.
+
+We recently had some problems upgrading beyond 2.6.38 in one environment.
+The cluster kept overloading real servers and showed flapping that didn't
+occur on 2.6.38 and older. I was never able to figure this out, but I
+think now I see the reason.
+
+We need to use fairly high weights, since lblc requires this in order to
+do rescheduling in the event of overload. In the event that we have 3000
+activeconns to a real server and a weight of 3000, the next connection
+will check to see if any other real server has 2*activeconns less than
+its weight, and if so, reschedule by wlc.
+
+With b552f7e3a9524abcbcdf86f0a99b2be58e55a9c6, which "git tag --contains"
+says appeared in 2.6.39-rc, the open-coded activeconns * 50 + inactconns
+was changed to ip_vs_dest_conn_overhead() that matches the implementation
+in ip_vs_wlc.c and others. The problem for us is that ip_vs_lblc.c uses
+"int" (and wlc uses "unsigned int") for "loh" and "doh" variables that
+the ip_vs_dest_conn_overhead() result is stored in, and then these are
+multiplied by the weight.
+
+ip_vs_dest_conn_overhead() uses (activeconns << 8) + inactconns (* 256
+instead of * 50), so before where 3000 * 3000 * 50 would fit in an int,
+3000 * 3000 * 256 does not.
+
+We really don't care about inactconns, so removing the "<< 8" and just
+using activeconns would work for us, but I suspect it must be there for a
+raeason. "unsigned long" would fix the problem only for 64-bit arches.
+Using __u64 would work everywhere, but perhaps be slow on 32-bit arches.
+Thoughts?
+
+Simon-
