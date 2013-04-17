@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 2/6] ipvs: fix sparse warnings for ip_vs_conn listing
-Date: Wed, 17 Apr 2013 23:50:46 +0300
-Message-ID: <1366231850-22188-3-git-send-email-ja@ssi.bg>
+Subject: [PATCH net-next 5/6] ipvs: fix sparse warnings for some parameters
+Date: Wed, 17 Apr 2013 23:50:49 +0300
+Message-ID: <1366231850-22188-6-git-send-email-ja@ssi.bg>
 References: <1366231850-22188-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1366231850-22188-1-git-send-email-ja@ssi.bg>
@@ -13,79 +13,207 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
 
-	kbuild test robot reports for sparse warnings
-in commit 088339a57d6042 ("ipvs: convert connection locking"):
+	Some service fields are in network order:
 
-net/netfilter/ipvs/ip_vs_conn.c:962:13: warning: context imbalance
-	in 'ip_vs_conn_array' - wrong count at exit
-include/linux/rcupdate.h:326:30: warning: context imbalance in
-	'ip_vs_conn_seq_next' - unexpected unlock
-include/linux/rcupdate.h:326:30: warning: context imbalance in
-	'ip_vs_conn_seq_stop' - unexpected unlock
+- netmask: used once in network order and also as prefix len for IPv6
+- port
 
-	Fix it by running ip_vs_conn_array under RCU lock
-to avoid conditional locking and by adding proper RCU
-annotations.
+	Other parameters are in host order:
+
+- struct ip_vs_flags: flags and mask moved between user and kernel only
+- sync state: moved between user and kernel only
+- syncid: sent over network as single octet
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |   14 ++++++--------
- 1 files changed, 6 insertions(+), 8 deletions(-)
+ include/net/ip_vs.h             |    8 +++---
+ include/uapi/linux/ip_vs.h      |    4 +-
+ net/netfilter/ipvs/ip_vs_core.c |    3 +-
+ net/netfilter/ipvs/ip_vs_ctl.c  |   40 +++++++++++++++++++++++---------------
+ 4 files changed, 32 insertions(+), 23 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index de64758..a083bda 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -966,7 +966,6 @@ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
- 	struct ip_vs_iter_state *iter = seq->private;
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index f9f5b05..4c062cc 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -678,7 +678,7 @@ struct ip_vs_service_user_kern {
+ 	u16			af;
+ 	u16			protocol;
+ 	union nf_inet_addr	addr;		/* virtual ip address */
+-	u16			port;
++	__be16			port;
+ 	u32			fwmark;		/* firwall mark of service */
  
- 	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
--		rcu_read_lock();
- 		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
- 			/* __ip_vs_conn_get() is not needed by
- 			 * ip_vs_conn_seq_show and ip_vs_conn_sync_seq_show
-@@ -977,16 +976,19 @@ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
- 			}
- 		}
- 		rcu_read_unlock();
-+		rcu_read_lock();
+ 	/* virtual service options */
+@@ -686,14 +686,14 @@ struct ip_vs_service_user_kern {
+ 	char			*pe_name;
+ 	unsigned int		flags;		/* virtual service flags */
+ 	unsigned int		timeout;	/* persistent timeout in sec */
+-	u32			netmask;	/* persistent netmask */
++	__be32			netmask;	/* persistent netmask or plen */
+ };
+ 
+ 
+ struct ip_vs_dest_user_kern {
+ 	/* destination server address */
+ 	union nf_inet_addr	addr;
+-	u16			port;
++	__be16			port;
+ 
+ 	/* real server options */
+ 	unsigned int		conn_flags;	/* connection flags */
+@@ -721,7 +721,7 @@ struct ip_vs_service {
+ 	__u32                   fwmark;   /* firewall mark of the service */
+ 	unsigned int		flags;	  /* service status flags */
+ 	unsigned int		timeout;  /* persistent timeout in ticks */
+-	__be32			netmask;  /* grouping granularity */
++	__be32			netmask;  /* grouping granularity, mask/plen */
+ 	struct net		*net;
+ 
+ 	struct list_head	destinations;  /* real server d-linked list */
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index 8a2d438..a245377 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -280,8 +280,8 @@ struct ip_vs_daemon_user {
+ #define IPVS_GENL_VERSION	0x1
+ 
+ struct ip_vs_flags {
+-	__be32 flags;
+-	__be32 mask;
++	__u32 flags;
++	__u32 mask;
+ };
+ 
+ /* Generic Netlink command attributes */
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index f26fe33..a0d7bd3 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -235,7 +235,8 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	/* Mask saddr with the netmask to adjust template granularity */
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (svc->af == AF_INET6)
+-		ipv6_addr_prefix(&snet.in6, &iph->saddr.in6, svc->netmask);
++		ipv6_addr_prefix(&snet.in6, &iph->saddr.in6,
++				 (__force __u32) svc->netmask);
+ 	else
+ #endif
+ 		snet.ip = iph->saddr.ip & svc->netmask;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 5a65444..68901e4 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1164,9 +1164,13 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
  	}
  
- 	return NULL;
- }
- 
- static void *ip_vs_conn_seq_start(struct seq_file *seq, loff_t *pos)
-+	__acquires(RCU)
- {
- 	struct ip_vs_iter_state *iter = seq->private;
- 
- 	iter->l = NULL;
-+	rcu_read_lock();
- 	return *pos ? ip_vs_conn_array(seq, *pos - 1) :SEQ_START_TOKEN;
- }
- 
-@@ -1006,28 +1008,24 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- 	e = rcu_dereference(hlist_next_rcu(&cp->c_list));
- 	if (e)
- 		return hlist_entry(e, struct ip_vs_conn, c_list);
--	rcu_read_unlock();
- 
- 	idx = l - ip_vs_conn_tab;
- 	while (++idx < ip_vs_conn_tab_size) {
--		rcu_read_lock();
- 		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
- 			iter->l = &ip_vs_conn_tab[idx];
- 			return cp;
- 		}
- 		rcu_read_unlock();
-+		rcu_read_lock();
+ #ifdef CONFIG_IP_VS_IPV6
+-	if (u->af == AF_INET6 && (u->netmask < 1 || u->netmask > 128)) {
+-		ret = -EINVAL;
+-		goto out_err;
++	if (u->af == AF_INET6) {
++		__u32 plen = (__force __u32) u->netmask;
++
++		if (plen < 1 || plen > 128) {
++			ret = -EINVAL;
++			goto out_err;
++		}
  	}
- 	iter->l = NULL;
- 	return NULL;
+ #endif
+ 
+@@ -1277,9 +1281,13 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
+ 	}
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+-	if (u->af == AF_INET6 && (u->netmask < 1 || u->netmask > 128)) {
+-		ret = -EINVAL;
+-		goto out;
++	if (u->af == AF_INET6) {
++		__u32 plen = (__force __u32) u->netmask;
++
++		if (plen < 1 || plen > 128) {
++			ret = -EINVAL;
++			goto out;
++		}
+ 	}
+ #endif
+ 
+@@ -2890,7 +2898,7 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
+ 	} else {
+ 		if (nla_put_u16(skb, IPVS_SVC_ATTR_PROTOCOL, svc->protocol) ||
+ 		    nla_put(skb, IPVS_SVC_ATTR_ADDR, sizeof(svc->addr), &svc->addr) ||
+-		    nla_put_u16(skb, IPVS_SVC_ATTR_PORT, svc->port))
++		    nla_put_be16(skb, IPVS_SVC_ATTR_PORT, svc->port))
+ 			goto nla_put_failure;
+ 	}
+ 
+@@ -2900,7 +2908,7 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
+ 	     nla_put_string(skb, IPVS_SVC_ATTR_PE_NAME, svc->pe->name)) ||
+ 	    nla_put(skb, IPVS_SVC_ATTR_FLAGS, sizeof(flags), &flags) ||
+ 	    nla_put_u32(skb, IPVS_SVC_ATTR_TIMEOUT, svc->timeout / HZ) ||
+-	    nla_put_u32(skb, IPVS_SVC_ATTR_NETMASK, svc->netmask))
++	    nla_put_be32(skb, IPVS_SVC_ATTR_NETMASK, svc->netmask))
+ 		goto nla_put_failure;
+ 	if (ip_vs_genl_fill_stats(skb, IPVS_SVC_ATTR_STATS, &svc->stats))
+ 		goto nla_put_failure;
+@@ -3013,7 +3021,7 @@ static int ip_vs_genl_parse_service(struct net *net,
+ 	} else {
+ 		usvc->protocol = nla_get_u16(nla_protocol);
+ 		nla_memcpy(&usvc->addr, nla_addr, sizeof(usvc->addr));
+-		usvc->port = nla_get_u16(nla_port);
++		usvc->port = nla_get_be16(nla_port);
+ 		usvc->fwmark = 0;
+ 	}
+ 
+@@ -3053,7 +3061,7 @@ static int ip_vs_genl_parse_service(struct net *net,
+ 		usvc->sched_name = nla_data(nla_sched);
+ 		usvc->pe_name = nla_pe ? nla_data(nla_pe) : NULL;
+ 		usvc->timeout = nla_get_u32(nla_timeout);
+-		usvc->netmask = nla_get_u32(nla_netmask);
++		usvc->netmask = nla_get_be32(nla_netmask);
+ 	}
+ 
+ 	return 0;
+@@ -3079,7 +3087,7 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
+ 		return -EMSGSIZE;
+ 
+ 	if (nla_put(skb, IPVS_DEST_ATTR_ADDR, sizeof(dest->addr), &dest->addr) ||
+-	    nla_put_u16(skb, IPVS_DEST_ATTR_PORT, dest->port) ||
++	    nla_put_be16(skb, IPVS_DEST_ATTR_PORT, dest->port) ||
+ 	    nla_put_u32(skb, IPVS_DEST_ATTR_FWD_METHOD,
+ 			(atomic_read(&dest->conn_flags) &
+ 			 IP_VS_CONN_F_FWD_MASK)) ||
+@@ -3188,7 +3196,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
+ 	memset(udest, 0, sizeof(*udest));
+ 
+ 	nla_memcpy(&udest->addr, nla_addr, sizeof(udest->addr));
+-	udest->port = nla_get_u16(nla_port);
++	udest->port = nla_get_be16(nla_port);
+ 
+ 	/* If a full entry was requested, check for the additional fields */
+ 	if (full_entry) {
+@@ -3213,8 +3221,8 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
+ 	return 0;
  }
  
- static void ip_vs_conn_seq_stop(struct seq_file *seq, void *v)
-+	__releases(RCU)
+-static int ip_vs_genl_fill_daemon(struct sk_buff *skb, __be32 state,
+-				  const char *mcast_ifn, __be32 syncid)
++static int ip_vs_genl_fill_daemon(struct sk_buff *skb, __u32 state,
++				  const char *mcast_ifn, __u32 syncid)
  {
--	struct ip_vs_iter_state *iter = seq->private;
--	struct hlist_head *l = iter->l;
+ 	struct nlattr *nl_daemon;
+ 
+@@ -3235,8 +3243,8 @@ nla_put_failure:
+ 	return -EMSGSIZE;
+ }
+ 
+-static int ip_vs_genl_dump_daemon(struct sk_buff *skb, __be32 state,
+-				  const char *mcast_ifn, __be32 syncid,
++static int ip_vs_genl_dump_daemon(struct sk_buff *skb, __u32 state,
++				  const char *mcast_ifn, __u32 syncid,
+ 				  struct netlink_callback *cb)
+ {
+ 	void *hdr;
+-- 
+1.7.3.4
+
