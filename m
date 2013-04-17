@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 6/6] ipvs: fix the remaining sparse warnings in ip_vs_ctl.c
-Date: Wed, 17 Apr 2013 23:50:50 +0300
-Message-ID: <1366231850-22188-7-git-send-email-ja@ssi.bg>
+Subject: [PATCH net-next 1/6] ipvs: properly dereference dest_dst in ip_vs_forget_dev
+Date: Wed, 17 Apr 2013 23:50:45 +0300
+Message-ID: <1366231850-22188-2-git-send-email-ja@ssi.bg>
 References: <1366231850-22188-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1366231850-22188-1-git-send-email-ja@ssi.bg>
@@ -13,66 +13,37 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
 
-- RCU annotations for ip_vs_info_seq_start and _stop
-- __percpu for cpustats
-- properly dereference svc->pe in ip_vs_genl_fill_service
+	Use rcu_dereference_protected to resolve
+sparse warning, found by kbuild test robot:
+
+net/netfilter/ipvs/ip_vs_ctl.c:1464:35: warning: dereference of
+noderef expression
+
+	Problem from commit 026ace060dfe29
+("ipvs: optimize dst usage for real server")
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 68901e4..5b142fb 100644
+index 9e4074c..5a65444 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1945,8 +1945,8 @@ static struct ip_vs_service *ip_vs_info_array(struct seq_file *seq, loff_t pos)
- }
- 
- static void *ip_vs_info_seq_start(struct seq_file *seq, loff_t *pos)
-+	__acquires(RCU)
+@@ -1460,8 +1460,11 @@ void ip_vs_service_net_cleanup(struct net *net)
+ static inline void
+ ip_vs_forget_dev(struct ip_vs_dest *dest, struct net_device *dev)
  {
--
- 	rcu_read_lock();
- 	return *pos ? ip_vs_info_array(seq, *pos - 1) : SEQ_START_TOKEN;
- }
-@@ -2001,6 +2001,7 @@ static void *ip_vs_info_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- }
- 
- static void ip_vs_info_seq_stop(struct seq_file *seq, void *v)
-+	__releases(RCU)
- {
- 	rcu_read_unlock();
- }
-@@ -2145,7 +2146,7 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
- {
- 	struct net *net = seq_file_single_net(seq);
- 	struct ip_vs_stats *tot_stats = &net_ipvs(net)->tot_stats;
--	struct ip_vs_cpu_stats *cpustats = tot_stats->cpustats;
-+	struct ip_vs_cpu_stats __percpu *cpustats = tot_stats->cpustats;
- 	struct ip_vs_stats_user rates;
- 	int i;
- 
-@@ -2882,6 +2883,7 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
- 				   struct ip_vs_service *svc)
- {
- 	struct ip_vs_scheduler *sched;
-+	struct ip_vs_pe *pe;
- 	struct nlattr *nl_service;
- 	struct ip_vs_flags flags = { .flags = svc->flags,
- 				     .mask = ~0 };
-@@ -2903,9 +2905,9 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
- 	}
- 
- 	sched = rcu_dereference_protected(svc->scheduler, 1);
-+	pe = rcu_dereference_protected(svc->pe, 1);
- 	if (nla_put_string(skb, IPVS_SVC_ATTR_SCHED_NAME, sched->name) ||
--	    (svc->pe &&
--	     nla_put_string(skb, IPVS_SVC_ATTR_PE_NAME, svc->pe->name)) ||
-+	    (pe && nla_put_string(skb, IPVS_SVC_ATTR_PE_NAME, pe->name)) ||
- 	    nla_put(skb, IPVS_SVC_ATTR_FLAGS, sizeof(flags), &flags) ||
- 	    nla_put_u32(skb, IPVS_SVC_ATTR_TIMEOUT, svc->timeout / HZ) ||
- 	    nla_put_be32(skb, IPVS_SVC_ATTR_NETMASK, svc->netmask))
++	struct ip_vs_dest_dst *dest_dst;
++
+ 	spin_lock_bh(&dest->dst_lock);
+-	if (dest->dest_dst && dest->dest_dst->dst_cache->dev == dev) {
++	dest_dst = rcu_dereference_protected(dest->dest_dst, 1);
++	if (dest_dst && dest_dst->dst_cache->dev == dev) {
+ 		IP_VS_DBG_BUF(3, "Reset dev:%s dest %s:%u ,dest->refcnt=%d\n",
+ 			      dev->name,
+ 			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
 -- 
 1.7.3.4
 
