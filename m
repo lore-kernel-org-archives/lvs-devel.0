@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 4/6] ipvs: fix sparse warnings for sync msg size
-Date: Wed, 17 Apr 2013 23:50:48 +0300
-Message-ID: <1366231850-22188-5-git-send-email-ja@ssi.bg>
+Subject: [PATCH net-next 6/6] ipvs: fix the remaining sparse warnings in ip_vs_ctl.c
+Date: Wed, 17 Apr 2013 23:50:50 +0300
+Message-ID: <1366231850-22188-7-git-send-email-ja@ssi.bg>
 References: <1366231850-22188-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1366231850-22188-1-git-send-email-ja@ssi.bg>
@@ -13,47 +13,66 @@ Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
 
-	Fix sparse warnings while changing the
-size between host and network order:
-
-net/netfilter/ipvs/ip_vs_sync.c:1179:20: warning: cast to restricted __be16
-net/netfilter/ipvs/ip_vs_sync.c:1179:20: warning: cast to restricted __be16
-net/netfilter/ipvs/ip_vs_sync.c:1179:20: warning: cast to restricted __be16
-net/netfilter/ipvs/ip_vs_sync.c:1179:20: warning: cast to restricted __be16
-net/netfilter/ipvs/ip_vs_sync.c:1550:19: warning: incorrect type in
-	assignment (different base types)
-net/netfilter/ipvs/ip_vs_sync.c:1550:19:    expected unsigned short
-	[unsigned] [usertype] size
-net/netfilter/ipvs/ip_vs_sync.c:1550:19:    got restricted __be16
-	[usertype] <noident>
+- RCU annotations for ip_vs_info_seq_start and _stop
+- __percpu for cpustats
+- properly dereference svc->pe in ip_vs_genl_fill_service
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c |   10 ++++++----
+ 1 files changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 8e57077..ff7f2ad 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1176,7 +1176,7 @@ static void ip_vs_process_message(struct net *net, __u8 *buffer,
- 		return;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 68901e4..5b142fb 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1945,8 +1945,8 @@ static struct ip_vs_service *ip_vs_info_array(struct seq_file *seq, loff_t pos)
+ }
+ 
+ static void *ip_vs_info_seq_start(struct seq_file *seq, loff_t *pos)
++	__acquires(RCU)
+ {
+-
+ 	rcu_read_lock();
+ 	return *pos ? ip_vs_info_array(seq, *pos - 1) : SEQ_START_TOKEN;
+ }
+@@ -2001,6 +2001,7 @@ static void *ip_vs_info_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ }
+ 
+ static void ip_vs_info_seq_stop(struct seq_file *seq, void *v)
++	__releases(RCU)
+ {
+ 	rcu_read_unlock();
+ }
+@@ -2145,7 +2146,7 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
+ {
+ 	struct net *net = seq_file_single_net(seq);
+ 	struct ip_vs_stats *tot_stats = &net_ipvs(net)->tot_stats;
+-	struct ip_vs_cpu_stats *cpustats = tot_stats->cpustats;
++	struct ip_vs_cpu_stats __percpu *cpustats = tot_stats->cpustats;
+ 	struct ip_vs_stats_user rates;
+ 	int i;
+ 
+@@ -2882,6 +2883,7 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
+ 				   struct ip_vs_service *svc)
+ {
+ 	struct ip_vs_scheduler *sched;
++	struct ip_vs_pe *pe;
+ 	struct nlattr *nl_service;
+ 	struct ip_vs_flags flags = { .flags = svc->flags,
+ 				     .mask = ~0 };
+@@ -2903,9 +2905,9 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
  	}
- 	/* Convert size back to host byte order */
--	m2->size = ntohs(m2->size);
-+	m2->size = ntohs((__force __be16) m2->size);
  
- 	if (buflen != m2->size) {
- 		IP_VS_DBG(2, "BACKUP, bogus message size\n");
-@@ -1547,7 +1547,7 @@ ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg *msg)
- 	msize = msg->size;
- 
- 	/* Put size in network byte order */
--	msg->size = htons(msg->size);
-+	msg->size = (__force __u16) htons(msg->size);
- 
- 	ret = ip_vs_send_async(sock, (char *)msg, msize);
- 	if (ret >= 0 || ret == -EAGAIN)
+ 	sched = rcu_dereference_protected(svc->scheduler, 1);
++	pe = rcu_dereference_protected(svc->pe, 1);
+ 	if (nla_put_string(skb, IPVS_SVC_ATTR_SCHED_NAME, sched->name) ||
+-	    (svc->pe &&
+-	     nla_put_string(skb, IPVS_SVC_ATTR_PE_NAME, svc->pe->name)) ||
++	    (pe && nla_put_string(skb, IPVS_SVC_ATTR_PE_NAME, pe->name)) ||
+ 	    nla_put(skb, IPVS_SVC_ATTR_FLAGS, sizeof(flags), &flags) ||
+ 	    nla_put_u32(skb, IPVS_SVC_ATTR_TIMEOUT, svc->timeout / HZ) ||
+ 	    nla_put_be32(skb, IPVS_SVC_ATTR_NETMASK, svc->netmask))
 -- 
 1.7.3.4
 
