@@ -1,49 +1,68 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next 1/6] ipvs: properly dereference dest_dst in ip_vs_forget_dev
-Date: Wed, 17 Apr 2013 23:50:45 +0300
-Message-ID: <1366231850-22188-2-git-send-email-ja@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH net-next 4/6] ipvs: fix sparse warnings for sync msg size
+Date: Thu, 18 Apr 2013 20:43:30 +0900
+Message-ID: <20130418114325.GA11486@verge.net.au>
 References: <1366231850-22188-1-git-send-email-ja@ssi.bg>
+ <1366231850-22188-5-git-send-email-ja@ssi.bg>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1366231850-22188-1-git-send-email-ja@ssi.bg>
+Content-Disposition: inline
+In-Reply-To: <1366231850-22188-5-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
+To: Julian Anastasov <ja@ssi.bg>
 Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
 
-	Use rcu_dereference_protected to resolve
-sparse warning, found by kbuild test robot:
+On Wed, Apr 17, 2013 at 11:50:48PM +0300, Julian Anastasov wrote:
+> 	Fix sparse warnings while changing the
+> size between host and network order:
+> 
+> net/netfilter/ipvs/ip_vs_sync.c:1179:20: warning: cast to restricted __be16
+> net/netfilter/ipvs/ip_vs_sync.c:1179:20: warning: cast to restricted __be16
+> net/netfilter/ipvs/ip_vs_sync.c:1179:20: warning: cast to restricted __be16
+> net/netfilter/ipvs/ip_vs_sync.c:1179:20: warning: cast to restricted __be16
+> net/netfilter/ipvs/ip_vs_sync.c:1550:19: warning: incorrect type in
+> 	assignment (different base types)
+> net/netfilter/ipvs/ip_vs_sync.c:1550:19:    expected unsigned short
+> 	[unsigned] [usertype] size
+> net/netfilter/ipvs/ip_vs_sync.c:1550:19:    got restricted __be16
+> 	[usertype] <noident>
+> 
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
 
-net/netfilter/ipvs/ip_vs_ctl.c:1464:35: warning: dereference of
-noderef expression
+I'm not very excited by the use of __force.
+Can't we change the type of the size element
+of struct ip_vs_sync_mesg and use the sparse annotations
+to our advantage?
 
-	Problem from commit 026ace060dfe29
-("ipvs: optimize dst usage for real server")
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- net/netfilter/ipvs/ip_vs_ctl.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 9e4074c..5a65444 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1460,8 +1460,11 @@ void ip_vs_service_net_cleanup(struct net *net)
- static inline void
- ip_vs_forget_dev(struct ip_vs_dest *dest, struct net_device *dev)
- {
-+	struct ip_vs_dest_dst *dest_dst;
-+
- 	spin_lock_bh(&dest->dst_lock);
--	if (dest->dest_dst && dest->dest_dst->dst_cache->dev == dev) {
-+	dest_dst = rcu_dereference_protected(dest->dest_dst, 1);
-+	if (dest_dst && dest_dst->dst_cache->dev == dev) {
- 		IP_VS_DBG_BUF(3, "Reset dev:%s dest %s:%u ,dest->refcnt=%d\n",
- 			      dev->name,
- 			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
--- 
-1.7.3.4
-
+> ---
+>  net/netfilter/ipvs/ip_vs_sync.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> index 8e57077..ff7f2ad 100644
+> --- a/net/netfilter/ipvs/ip_vs_sync.c
+> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> @@ -1176,7 +1176,7 @@ static void ip_vs_process_message(struct net *net, __u8 *buffer,
+>  		return;
+>  	}
+>  	/* Convert size back to host byte order */
+> -	m2->size = ntohs(m2->size);
+> +	m2->size = ntohs((__force __be16) m2->size);
+>  
+>  	if (buflen != m2->size) {
+>  		IP_VS_DBG(2, "BACKUP, bogus message size\n");
+> @@ -1547,7 +1547,7 @@ ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg *msg)
+>  	msize = msg->size;
+>  
+>  	/* Put size in network byte order */
+> -	msg->size = htons(msg->size);
+> +	msg->size = (__force __u16) htons(msg->size);
+>  
+>  	ret = ip_vs_send_async(sock, (char *)msg, msize);
+>  	if (ret >= 0 || ret == -EAGAIN)
+> -- 
+> 1.7.3.4
+> 
