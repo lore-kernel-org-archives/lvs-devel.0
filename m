@@ -1,63 +1,171 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [patch] ipvs: off by one in set_sctp_state()
-Date: Sat, 20 Apr 2013 15:25:21 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1304201504510.1593@ja.ssi.bg>
-References: <20130420112455.GA30198@elgon.mountain>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH net-next 4/6] ipvs: fix sparse warnings for sync msg size
+Date: Mon, 22 Apr 2013 13:05:21 +0900
+Message-ID: <20130422040520.GK15680@verge.net.au>
+References: <1366231850-22188-1-git-send-email-ja@ssi.bg>
+ <1366231850-22188-5-git-send-email-ja@ssi.bg>
+ <20130418114325.GA11486@verge.net.au>
+ <alpine.LFD.2.00.1304182215060.1842@ja.ssi.bg>
+ <20130419014952.GA25718@verge.net.au>
+ <alpine.LFD.2.00.1304192228380.1788@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20130420112455.GA30198@elgon.mountain>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1304192228380.1788@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
 
-
-	Hello,
-
-On Sat, 20 Apr 2013, Dan Carpenter wrote:
-
-> The sctp_events[] come from sch->type in set_sctp_state().  They are
-> between 0-255 so that means we need 256 elements in the array.
+On Fri, Apr 19, 2013 at 10:35:04PM +0300, Julian Anastasov wrote:
 > 
-> I believe that because of how the code is aligned there is normally a
-> hole after sctp_events[] so this patch doesn't actually change anything.
+> 	Hello,
 > 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> ---
-> This is static checker stuff.  I'm not very familiar with this code.
+> On Fri, 19 Apr 2013, Simon Horman wrote:
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> index 6e14a7b..8646488 100644
-> --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> @@ -208,7 +208,7 @@ enum ipvs_sctp_event_t {
->  	IP_VS_SCTP_EVE_LAST
->  };
->  
-> -static enum ipvs_sctp_event_t sctp_events[255] = {
-> +static enum ipvs_sctp_event_t sctp_events[256] = {
->  	IP_VS_SCTP_EVE_DATA_CLI,
->  	IP_VS_SCTP_EVE_INIT_CLI,
->  	IP_VS_SCTP_EVE_INIT_ACK_CLI,
+> > My idea is as follows:
+> > 
+> > From: Simon Horman <horms@verge.net.au>
+> > 
+> > ipvs: Use network byte order for sync message size
+> > 
+> > struct ip_vs_sync_mesg is both sent across the wire and
+> > used internally to store IPVS synchronisation messages.
+> > 
+> > Up until now the scheme used has been to convert the size field
+> > to network byte order before sending a message on the wire and
+> > convert it to host byte order when sending a message.
+> > 
+> > This patch changes that scheme to always treat the field
+> > as being network byte order. This seems appropriate as
+> > the structure is sent across the wire. And by consistently
+> > treating the field has network byte order it is now possible
+> > to take advantage of sparse to flag any future miss-use.
+> > 
+> > Signed-off-by: Simon Horman <horms@verge.net.au>
+> > ---
+> >  net/netfilter/ipvs/ip_vs_sync.c |   15 +++++----------
+> >  1 file changed, 5 insertions(+), 10 deletions(-)
+> > 
+> > diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> > index 8e57077..c73778a 100644
+> > --- a/net/netfilter/ipvs/ip_vs_sync.c
+> > +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> > @@ -255,7 +255,7 @@ struct ip_vs_sync_mesg_v0 {
+> >  struct ip_vs_sync_mesg {
+> >  	__u8			reserved;	/* must be zero */
+> >  	__u8			syncid;
+> > -	__u16			size;
+> > +	__be16			size;
+> 
+> 	It seems v0 should be changed too,
+> ip_vs_send_sync_msg() handles both versions in sb->mesg.
 
-	There are more confusing (still, non-fatal)
-problems in this IPVS-SCTP support, eg.
+Thanks and sorry for missing that.
+How about this?
 
-        if (direction == IP_VS_DIR_OUTPUT)
--               event++;
-+               event *= 2;
+From: Simon Horman <horms@verge.net.au>
 
-	I guess we are running with wrong timeouts.
+ipvs: Use network byte order for sync message size
 
-	Also, I'm not sure we support properly the
-one-way states as done for TCP (IP_VS_DIR_INPUT_ONLY).
-May be this code deserves more serious review, for example,
-net/netfilter/nf_conntrack_proto_sctp.c looks as good
-source for comparison.
+struct ip_vs_sync_mesg and ip_vs_sync_mesg_v0 are both sent across the wire
+and used internally to store IPVS synchronisation messages.
 
-	Anyways, this change looks correct to me,
+Up until now the scheme used has been to convert the size field
+to network byte order before sending a message on the wire and
+convert it to host byte order when sending a message.
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
+This patch changes that scheme to always treat the field
+as being network byte order. This seems appropriate as
+the structure is sent across the wire. And by consistently
+treating the field has network byte order it is now possible
+to take advantage of sparse to flag any future miss-use.
 
+Signed-off-by: Simon Horman <horms@verge.net.au>
+
+---
+
+v2
+* As suggested by Julian Anastasov,
+  update struct ip_vs_sync_mesg_v0  as well as struct ip_vs_sync_mesg.
+---
+ net/netfilter/ipvs/ip_vs_sync.c | 21 ++++++++-------------
+ 1 file changed, 8 insertions(+), 13 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 8e57077..f6046d9 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -246,7 +246,7 @@ struct ip_vs_sync_thread_data {
+ struct ip_vs_sync_mesg_v0 {
+ 	__u8                    nr_conns;
+ 	__u8                    syncid;
+-	__u16                   size;
++	__be16                  size;
+ 
+ 	/* ip_vs_sync_conn entries start here */
+ };
+@@ -255,7 +255,7 @@ struct ip_vs_sync_mesg_v0 {
+ struct ip_vs_sync_mesg {
+ 	__u8			reserved;	/* must be zero */
+ 	__u8			syncid;
+-	__u16			size;
++	__be16			size;
+ 	__u8			nr_conns;
+ 	__s8			version;	/* SYNC_PROTO_VER  */
+ 	__u16			spare;
+@@ -335,7 +335,7 @@ ip_vs_sync_buff_create(struct netns_ipvs *ipvs)
+ 	sb->mesg->reserved = 0;  /* old nr_conns i.e. must be zero now */
+ 	sb->mesg->version = SYNC_PROTO_VER;
+ 	sb->mesg->syncid = ipvs->master_syncid;
+-	sb->mesg->size = sizeof(struct ip_vs_sync_mesg);
++	sb->mesg->size = htons(sizeof(struct ip_vs_sync_mesg));
+ 	sb->mesg->nr_conns = 0;
+ 	sb->mesg->spare = 0;
+ 	sb->head = (unsigned char *)sb->mesg + sizeof(struct ip_vs_sync_mesg);
+@@ -418,7 +418,7 @@ ip_vs_sync_buff_create_v0(struct netns_ipvs *ipvs)
+ 	mesg = (struct ip_vs_sync_mesg_v0 *)sb->mesg;
+ 	mesg->nr_conns = 0;
+ 	mesg->syncid = ipvs->master_syncid;
+-	mesg->size = sizeof(struct ip_vs_sync_mesg_v0);
++	mesg->size = htons(sizeof(struct ip_vs_sync_mesg_v0));
+ 	sb->head = (unsigned char *)mesg + sizeof(struct ip_vs_sync_mesg_v0);
+ 	sb->end = (unsigned char *)mesg + ipvs->send_mesg_maxlen;
+ 	sb->firstuse = jiffies;
+@@ -582,7 +582,7 @@ static void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp,
+ 	}
+ 
+ 	m->nr_conns++;
+-	m->size += len;
++	m->size = htons(ntohs(m->size) + len);
+ 	buff->head += len;
+ 
+ 	/* check if there is a space for next one */
+@@ -693,7 +693,7 @@ sloop:
+ 
+ 	p = buff->head;
+ 	buff->head += pad + len;
+-	m->size += pad + len;
++	m->size = htons(ntohs(m->size) + pad + len);
+ 	/* Add ev. padding from prev. sync_conn */
+ 	while (pad--)
+ 		*(p++) = 0;
+@@ -1175,10 +1175,8 @@ static void ip_vs_process_message(struct net *net, __u8 *buffer,
+ 		IP_VS_DBG(2, "BACKUP, message header too short\n");
+ 		return;
+ 	}
+-	/* Convert size back to host byte order */
+-	m2->size = ntohs(m2->size);
+ 
+-	if (buflen != m2->size) {
++	if (buflen != ntohs(m2->size)) {
+ 		IP_VS_DBG(2, "BACKUP, bogus message size\n");
+ 		return;
+ 	}
+@@ -1544,10 +1542,7 @@ ip_vs_send_sync_msg(struct socket *sock, struct ip_vs_sync_mesg *msg)
+ 	int msize;
+ 	int ret;
+ 
+-	msize = msg->size;
