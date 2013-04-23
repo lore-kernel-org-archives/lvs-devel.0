@@ -1,63 +1,140 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch] ipvs: off by one in set_sctp_state()
-Date: Tue, 23 Apr 2013 11:22:43 +0900
-Message-ID: <20130423022243.GQ12017@verge.net.au>
-References: <20130420112455.GA30198@elgon.mountain>
- <alpine.LFD.2.00.1304201504510.1593@ja.ssi.bg>
- <20130422041151.GM15680@verge.net.au>
- <alpine.LFD.2.00.1304220843560.1626@ja.ssi.bg>
+Subject: Re: [PATCH net-next 4/6] ipvs: fix sparse warnings for sync msg size
+Date: Tue, 23 Apr 2013 11:52:32 +0900
+Message-ID: <20130423025232.GS12017@verge.net.au>
+References: <1366610151.29441.3.camel@hawk.mlab.se>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1304220843560.1626@ja.ssi.bg>
+In-Reply-To: <1366610151.29441.3.camel@hawk.mlab.se>
+ <alpine.LFD.2.00.1304220838030.1626@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Dan Carpenter <dan.carpenter@oracle.com>, Wensong Zhang <wensong@linux-vs.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org
+To: Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>
+Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
 
-On Mon, Apr 22, 2013 at 09:03:28AM +0300, Julian Anastasov wrote:
+On Mon, Apr 22, 2013 at 08:39:46AM +0300, Julian Anastasov wrote:
 > 
 > 	Hello,
 > 
 > On Mon, 22 Apr 2013, Simon Horman wrote:
 > 
-> > > 	There are more confusing (still, non-fatal)
-> > > problems in this IPVS-SCTP support, eg.
-> > > 
-> > >         if (direction == IP_VS_DIR_OUTPUT)
-> > > -               event++;
-> > > +               event *= 2;
-> > > 
-> > > 	I guess we are running with wrong timeouts.
+> > > 	It seems v0 should be changed too,
+> > > ip_vs_send_sync_msg() handles both versions in sb->mesg.
 > > 
-> > IMHO there seem to be many problems with SCTP, but it is good to
-> > fix the ones we find as we find them.
-> 
-> 	At the time I found it (during IPVS optimizations
-> development), it didn't looked fatal, I preferred to
-> allocate more time for SCTP for debugging.
-> 
-> > Would you like to make a patch for the above change or should I?
-> 
-> 	May be the code is correct, my mistake. I was
-> confused from the order in sctp_events[] but ipvs_sctp_event_t
-> allocates values for _SER states.
-
-Thanks, it sounds like we should study things more carefully
-before making any changes.
-
-> > > 	Also, I'm not sure we support properly the
-> > > one-way states as done for TCP (IP_VS_DIR_INPUT_ONLY).
-> > > May be this code deserves more serious review, for example,
-> > > net/netfilter/nf_conntrack_proto_sctp.c looks as good
-> > > source for comparison.
+> > Thanks and sorry for missing that.
+> > How about this?
 > > 
-> > I believe it does need a more serious review.
+> > From: Simon Horman <horms@verge.net.au>
+> > 
+> > ipvs: Use network byte order for sync message size
+> > 
+> > struct ip_vs_sync_mesg and ip_vs_sync_mesg_v0 are both sent across the wire
+> > and used internally to store IPVS synchronisation messages.
+> > 
+> > Up until now the scheme used has been to convert the size field
+> > to network byte order before sending a message on the wire and
+> > convert it to host byte order when sending a message.
+> > 
+> > This patch changes that scheme to always treat the field
+> > as being network byte order. This seems appropriate as
+> > the structure is sent across the wire. And by consistently
+> > treating the field has network byte order it is now possible
+> > to take advantage of sparse to flag any future miss-use.
+> > 
+> > Signed-off-by: Simon Horman <horms@verge.net.au>
+> > 
+> > ---
+> > 
+> > v2
+> > * As suggested by Julian Anastasov,
+> >   update struct ip_vs_sync_mesg_v0  as well as struct ip_vs_sync_mesg.
 > 
-> Regards
+> 	v2 looks good,
 > 
-> --
-> Julian Anastasov <ja@ssi.bg>
+> Acked-by: Julian Anastasov <ja@ssi.bg>
+
+[snip]
+
+On Mon, Apr 22, 2013 at 07:55:51AM +0200, Hans Schillstrom wrote:
+> Hello Simon
 > 
+> On Mon, 2013-04-22 at 13:05 +0900, Simon Horman wrote:
+> > On Fri, Apr 19, 2013 at 10:35:04PM +0300, Julian Anastasov wrote:
+> > > 
+> > > 	Hello,
+> > > 
+> > > On Fri, 19 Apr 2013, Simon Horman wrote:
+> > > 
+> > > > My idea is as follows:
+> > > > 
+> > > > From: Simon Horman <horms@verge.net.au>
+> > > > 
+> > > > ipvs: Use network byte order for sync message size
+> > > > 
+> > > > struct ip_vs_sync_mesg is both sent across the wire and
+> > > > used internally to store IPVS synchronisation messages.
+> > > > 
+> > > > Up until now the scheme used has been to convert the size field
+> > > > to network byte order before sending a message on the wire and
+> > > > convert it to host byte order when sending a message.
+> > > > 
+> > > > This patch changes that scheme to always treat the field
+> > > > as being network byte order. This seems appropriate as
+> > > > the structure is sent across the wire. And by consistently
+> > > > treating the field has network byte order it is now possible
+> > > > to take advantage of sparse to flag any future miss-use.
+> > > > 
+> > > > Signed-off-by: Simon Horman <horms@verge.net.au>
+> > > > ---
+> > > >  net/netfilter/ipvs/ip_vs_sync.c |   15 +++++----------
+> > > >  1 file changed, 5 insertions(+), 10 deletions(-)
+> > > > 
+> > > > diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> > > > index 8e57077..c73778a 100644
+> > > > --- a/net/netfilter/ipvs/ip_vs_sync.c
+> > > > +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> > > > @@ -255,7 +255,7 @@ struct ip_vs_sync_mesg_v0 {
+> > > >  struct ip_vs_sync_mesg {
+> > > >  	__u8			reserved;	/* must be zero */
+> > > >  	__u8			syncid;
+> > > > -	__u16			size;
+> > > > +	__be16			size;
+> > > 
+> > > 	It seems v0 should be changed too,
+> > > ip_vs_send_sync_msg() handles both versions in sb->mesg.
+> > 
+> > Thanks and sorry for missing that.
+> > How about this?
+> > 
+> > From: Simon Horman <horms@verge.net.au>
+> > 
+> > ipvs: Use network byte order for sync message size
+> > 
+> > struct ip_vs_sync_mesg and ip_vs_sync_mesg_v0 are both sent across the wire
+> > and used internally to store IPVS synchronisation messages.
+> > 
+> > Up until now the scheme used has been to convert the size field
+> > to network byte order before sending a message on the wire and
+> > convert it to host byte order when sending a message.
+> > 
+> > This patch changes that scheme to always treat the field
+> > as being network byte order. This seems appropriate as
+> > the structure is sent across the wire. And by consistently
+> > treating the field has network byte order it is now possible
+> > to take advantage of sparse to flag any future miss-use.
+> > 
+> > Signed-off-by: Simon Horman <horms@verge.net.au>
+> 
+> It looks good 
+> 
+> Ack-by: Hans Schillstrom <hans@schillstrom.com>
+
+[snip]
+
+Thanks, I have added your Acks and queued-up this this
+change in ipvs-next.
+
+
