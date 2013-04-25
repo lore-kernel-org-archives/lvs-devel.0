@@ -1,35 +1,58 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf-next v2] IPVS fixes for v3.10
-Date: Thu, 25 Apr 2013 01:42:06 +0200
-Message-ID: <20130424234206.GA6447@localhost>
-References: <1366686240-23493-1-git-send-email-horms@verge.net.au>
-Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1366686240-23493-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Simon Horman <horms@verge.net.au>
+Subject: [PATCH ipvs-next] ipvs: Remove rcu_read_unlock();rcu_read_lock();
+Date: Thu, 25 Apr 2013 10:12:33 +0900
+Message-ID: <1366852353-32561-1-git-send-email-horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Dan Carpenter <dan.carpenter@oracle.com>
+To: Pablo Neira Ayuso <pablo@netfilter.org>, Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>
 
-On Tue, Apr 23, 2013 at 12:03:51PM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> this is a revision of a previous pull request.
-> The previous pull request contained one fix-all patch.
-> As per your request it has been split into a number of separate patches.
-> This request also includes several new patches that fix
-> yet more problems flagged by static analysis.
-> 
-> Separately, I have also posted the following SCTP patch
-> "[PATCH] sctp: Correct type and usage of sctp_end_cksum()"
-> 
-> With this series and the above patch applied I
-> believe that IPVS is now sparse-clean.
-> 
-> Much thanks to Julian Anastasov for his patience, and
-> Dan Carpenter and Hans Schillstrom for their help.
+It is unclear to me that there is any utility in the following:
 
-Pulled, thanks Simon!
+	 rcu_read_unlock();
+	 rcu_read_lock();
+
+So this patch removes the two instances of the above from ip_vs_conn.c.
+
+This was introduced in 7cf2eb7bccbe0d7a8ab1d1382c4faa2b3abf817f ("ipvs: fix
+sparse warnings for ip_vs_conn listing") as part of cleaning up warnings
+flagged by sparse.
+
+Compile and sparse tested only.
+
+Cc: Julian Anastasov <ja@ssi.bg>
+Reported-by: Pablo Neira Ayuso <pablo@netfilter.org>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_conn.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index a083bda..458dc68 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -975,8 +975,6 @@ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
+ 				return cp;
+ 			}
+ 		}
+-		rcu_read_unlock();
+-		rcu_read_lock();
+ 	}
+ 
+ 	return NULL;
+@@ -1015,8 +1013,6 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ 			iter->l = &ip_vs_conn_tab[idx];
+ 			return cp;
+ 		}
+-		rcu_read_unlock();
+-		rcu_read_lock();
+ 	}
+ 	iter->l = NULL;
+ 	return NULL;
+-- 
+1.8.2.1
+
