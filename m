@@ -1,9 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL ipvs] ipvs fixes for v3.9 #2
-Date: Fri, 26 Apr 2013 10:53:09 +0900
-Message-ID: <1366941190-12135-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [PATCH ipvs 1/1] ipvs: ip_vs_sip_fill_param() BUG: bad check of return value
+Date: Fri, 26 Apr 2013 10:53:10 +0900
+Message-ID: <1366941190-12135-2-git-send-email-horms@verge.net.au>
+References: <1366941190-12135-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1366941190-12135-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,41 +13,76 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Hans Schillstrom <hans@schillstrom.com>
 
-I guess that it is too late in the cycle to get this fix into v3.9.
-If so could you please consider it for v3.10.
+The reason for this patch is crash in kmemdup
+caused by returning from get_callid with uniialized
+matchoff and matchlen.
 
-I would also like the patch considered for stable. It seems to be applicable
-to all kernel releases since the sip persistence engine was added
-by my in v2.6.37. In particular I have checked that it applies cleanly to:
+Removing Zero check of matchlen since it's done by ct_sip_get_header()
 
-3.8.8 stable
-3.4.41 longterm
-3.2.43 longterm
-3.0.74 longterm
+BUG: unable to handle kernel paging request at ffff880457b5763f
+IP: [<ffffffff810df7fc>] kmemdup+0x2e/0x35
+PGD 27f6067 PUD 0
+Oops: 0000 [#1] PREEMPT SMP
+Modules linked in: xt_state xt_helper nf_conntrack_ipv6 nf_defrag_ipv6 ip6table_mangle xt_connmark xt_conntrack ip6_tables nf_conntrack_ftp ip_vs_ftp nf_nat xt_tcpudp iptable_mangle xt_mark ip_tables x_tables ip_vs_rr ip_vs_lblcr ip_vs_pe_sip ip_vs nf_conntrack_sip nf_conntrack bonding igb i2c_algo_bit i2c_core
+CPU 5
+Pid: 0, comm: swapper/5 Not tainted 3.9.0-rc5+ #5                  /S1200KP
+RIP: 0010:[<ffffffff810df7fc>]  [<ffffffff810df7fc>] kmemdup+0x2e/0x35
+RSP: 0018:ffff8803fea03648  EFLAGS: 00010282
+RAX: ffff8803d61063e0 RBX: 0000000000000003 RCX: 0000000000000003
+RDX: 0000000000000003 RSI: ffff880457b5763f RDI: ffff8803d61063e0
+RBP: ffff8803fea03658 R08: 0000000000000008 R09: 0000000000000011
+R10: 0000000000000011 R11: 00ffffffff81a8a3 R12: ffff880457b5763f
+R13: ffff8803d67f786a R14: ffff8803fea03730 R15: ffffffffa0098e90
+FS:  0000000000000000(0000) GS:ffff8803fea00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: ffff880457b5763f CR3: 0000000001a0c000 CR4: 00000000001407e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process swapper/5 (pid: 0, threadinfo ffff8803ee18c000, task ffff8803ee18a480)
+Stack:
+ ffff8803d822a080 000000000000001c ffff8803fea036c8 ffffffffa000937a
+ ffffffff81f0d8a0 000000038135fdd5 ffff880300000014 ffff880300110000
+ ffffffff150118ac ffff8803d7e8a000 ffff88031e0118ac 0000000000000000
+Call Trace:
+ <IRQ>
 
-The following changes since commit 60d509fa6a9c4653a86ad830e4c4b30360b23f0e:
+ [<ffffffffa000937a>] ip_vs_sip_fill_param+0x13a/0x187 [ip_vs_pe_sip]
+ [<ffffffffa007b209>] ip_vs_sched_persist+0x2c6/0x9c3 [ip_vs]
+ [<ffffffff8107dc53>] ? __lock_acquire+0x677/0x1697
+ [<ffffffff8100972e>] ? native_sched_clock+0x3c/0x7d
+ [<ffffffff8100972e>] ? native_sched_clock+0x3c/0x7d
+ [<ffffffff810649bc>] ? sched_clock_cpu+0x43/0xcf
+ [<ffffffffa007bb1e>] ip_vs_schedule+0x181/0x4ba [ip_vs]
+...
 
-  Linux 3.9-rc8 (2013-04-21 14:38:45 -0700)
-
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes2-for-v3.9
-
-for you to fetch changes up to 75cbc7c25c3efdc325d71baa1cc0ce06940e0e65:
-
-  ipvs: ip_vs_sip_fill_param() BUG: bad check of return value (2013-04-26 09:59:16 +0900)
-
-----------------------------------------------------------------
-Fix for crash-bug in SIP persistence engine by Hans Schillstrom
-
-This bug appears to have been present since the sip persistence engine
-was added by me in v2.6.37.
-
-----------------------------------------------------------------
-Hans Schillstrom (1):
-      ipvs: ip_vs_sip_fill_param() BUG: bad check of return value
-
+Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
  net/netfilter/ipvs/ip_vs_pe_sip.c | 6 +-----
  1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
+index 12475ef..e5920fb 100644
+--- a/net/netfilter/ipvs/ip_vs_pe_sip.c
++++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+@@ -37,14 +37,10 @@ static int get_callid(const char *dptr, unsigned int dataoff,
+ 		if (ret > 0)
+ 			break;
+ 		if (!ret)
+-			return 0;
++			return -EINVAL;
+ 		dataoff += *matchoff;
+ 	}
+ 
+-	/* Empty callid is useless */
+-	if (!*matchlen)
+-		return -EINVAL;
+-
+ 	/* Too large is useless */
+ 	if (*matchlen > IP_VS_PEDATA_MAXLEN)
+ 		return -EINVAL;
+-- 
+1.8.2.1
