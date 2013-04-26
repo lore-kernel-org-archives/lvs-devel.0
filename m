@@ -1,45 +1,32 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH ipvs-next] ipvs: Remove rcu_read_unlock();rcu_read_lock();
-Date: Fri, 26 Apr 2013 02:59:26 +0200
-Message-ID: <20130426005900.GA4303@localhost>
-References: <1366852353-32561-1-git-send-email-horms@verge.net.au>
- <alpine.LFD.2.00.1304251038541.1752@ja.ssi.bg>
-Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1304251038541.1752@ja.ssi.bg>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Simon Horman <horms@verge.net.au>
+Subject: [PATCH 0/2] sched: Add cond_resched_rcu_lock() helper
+Date: Fri, 26 Apr 2013 10:45:06 +0900
+Message-ID: <1366940708-10180-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>
+To: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Dipankar Sarma <dipankar@in.ibm.com>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>, Simon Horman <horms@verge.net.au>
 
-Hi Julian,
+Add a helper that for use in loops which read data protected by RCU and
+may have a large number of iterations.  Such an example is dumping the list
+of connections known to IPVS: ip_vs_conn_array() and ip_vs_conn_seq_next().
 
-On Thu, Apr 25, 2013 at 11:15:25AM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Thu, 25 Apr 2013, Simon Horman wrote:
-> 
-> > It is unclear to me that there is any utility in the following:
-> > 
-> > 	 rcu_read_unlock();
-> > 	 rcu_read_lock();
-> 
-> 	I thought it is a good idea for fixed hash table
-> of IP_VS_TAB_BITS=20. May be if guarded by
-> 
-> 	if (!((++idx) & 4095))
-> 
-> to reduce its rate to 256 (with idx++ removed from the for loop) ?
-> 
-> 	Netfilter has no such logic for nf_conntrack because
-> it has limit of 16384 rows.
+This series also updates the two ip_vs functions mentioned above
+to use the helper.
 
-We seem to be supporting over that limit via module_param and sysfs:
+As suggested by Eric Dumazet.
 
-/sys/module/nf_conntrack/parameters/hashsize
+Simon Horman (2):
+  sched: Add cond_resched_rcu_lock() helper
+  ipvs: Use cond_resched_rcu_lock() helper when dumping connections
 
-Regards.
+ include/linux/sched.h           | 9 +++++++++
+ net/netfilter/ipvs/ip_vs_conn.c | 6 ++----
+ 2 files changed, 11 insertions(+), 4 deletions(-)
+
+-- 
+1.8.2.1
