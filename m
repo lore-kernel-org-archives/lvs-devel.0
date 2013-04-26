@@ -1,72 +1,54 @@
-From: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>
-Subject: Re: [PATCH ipvs 1/1] ipvs: ip_vs_sip_fill_param() BUG: bad check
- of return value
-Date: Fri, 26 Apr 2013 14:48:53 +0400
-Message-ID: <517A5B95.8020605@cogentembedded.com>
-References: <1366941190-12135-1-git-send-email-horms@verge.net.au> <1366941190-12135-2-git-send-email-horms@verge.net.au>
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/2] ipvs: Use cond_resched_rcu_lock() helper when
+ dumping connections
+Date: Fri, 26 Apr 2013 08:45:47 -0700
+Message-ID: <20130426154547.GC3860@linux.vnet.ibm.com>
+References: <1366940708-10180-1-git-send-email-horms@verge.net.au>
+ <1366940708-10180-3-git-send-email-horms@verge.net.au>
+ <20130426080313.GC8669@dyad.programming.kicks-ass.net>
+Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1366941190-12135-2-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130426080313.GC8669@dyad.programming.kicks-ass.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Simon Horman <horms@verge.net.au>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Peter Zijlstra <peterz@infradead.org>
+Cc: Simon Horman <horms@verge.net.au>, Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Ingo Molnar <mingo@redhat.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Dipankar Sarma <dipankar@in.ibm.com>, dhaval.giani@gmail.com
 
-Hello.
+On Fri, Apr 26, 2013 at 10:03:13AM +0200, Peter Zijlstra wrote:
+> On Fri, Apr 26, 2013 at 10:45:08AM +0900, Simon Horman wrote:
+> 
+> > @@ -975,8 +975,7 @@ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
+> >  				return cp;
+> >  			}
+> >  		}
+> > -		rcu_read_unlock();
+> > -		rcu_read_lock();
+> > +		cond_resched_rcu_lock();
+> >  	}
+> 
+> 
+> While I agree with the sentiment I do find it a somewhat dangerous construct in
+> that it might become far too easy to keep an RCU reference over this break and
+> thus violate the RCU premise.
+> 
+> Is there anything that can detect this? Sparse / cocinelle / smatch? If so it
+> would be great to add this to these checkers.
 
-On 26-04-2013 5:53, Simon Horman wrote:
+I have done some crude coccinelle patterns in the past, but they are
+subject to false positives (from when you transfer the pointer from
+RCU protection to reference-count protection) and also false negatives
+(when you atomically increment some statistic unrelated to protection).
 
-> From: Hans Schillstrom <hans@schillstrom.com>
+I could imagine maintaining a per-thread count of the number of outermost
+RCU read-side critical sections at runtime, and then associating that
+counter with a given pointer at rcu_dereference() time, but this would
+require either compiler magic or an API for using a pointer returned
+by rcu_dereference().  This API could in theory be enforced by sparse.
 
-> The reason for this patch is crash in kmemdup
-> caused by returning from get_callid with uniialized
+Dhaval Giani might have some ideas as well, adding him to CC.
 
-   s/uniialized/uninitialized/?
-
-> matchoff and matchlen.
-
-> Removing Zero check of matchlen since it's done by ct_sip_get_header()
-
-> BUG: unable to handle kernel paging request at ffff880457b5763f
-> IP: [<ffffffff810df7fc>] kmemdup+0x2e/0x35
-> PGD 27f6067 PUD 0
-> Oops: 0000 [#1] PREEMPT SMP
-> Modules linked in: xt_state xt_helper nf_conntrack_ipv6 nf_defrag_ipv6 ip6table_mangle xt_connmark xt_conntrack ip6_tables nf_conntrack_ftp ip_vs_ftp nf_nat xt_tcpudp iptable_mangle xt_mark ip_tables x_tables ip_vs_rr ip_vs_lblcr ip_vs_pe_sip ip_vs nf_conntrack_sip nf_conntrack bonding igb i2c_algo_bit i2c_core
-> CPU 5
-> Pid: 0, comm: swapper/5 Not tainted 3.9.0-rc5+ #5                  /S1200KP
-> RIP: 0010:[<ffffffff810df7fc>]  [<ffffffff810df7fc>] kmemdup+0x2e/0x35
-> RSP: 0018:ffff8803fea03648  EFLAGS: 00010282
-> RAX: ffff8803d61063e0 RBX: 0000000000000003 RCX: 0000000000000003
-> RDX: 0000000000000003 RSI: ffff880457b5763f RDI: ffff8803d61063e0
-> RBP: ffff8803fea03658 R08: 0000000000000008 R09: 0000000000000011
-> R10: 0000000000000011 R11: 00ffffffff81a8a3 R12: ffff880457b5763f
-> R13: ffff8803d67f786a R14: ffff8803fea03730 R15: ffffffffa0098e90
-> FS:  0000000000000000(0000) GS:ffff8803fea00000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: ffff880457b5763f CR3: 0000000001a0c000 CR4: 00000000001407e0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process swapper/5 (pid: 0, threadinfo ffff8803ee18c000, task ffff8803ee18a480)
-> Stack:
->   ffff8803d822a080 000000000000001c ffff8803fea036c8 ffffffffa000937a
->   ffffffff81f0d8a0 000000038135fdd5 ffff880300000014 ffff880300110000
->   ffffffff150118ac ffff8803d7e8a000 ffff88031e0118ac 0000000000000000
-> Call Trace:
->   <IRQ>
-
->   [<ffffffffa000937a>] ip_vs_sip_fill_param+0x13a/0x187 [ip_vs_pe_sip]
->   [<ffffffffa007b209>] ip_vs_sched_persist+0x2c6/0x9c3 [ip_vs]
->   [<ffffffff8107dc53>] ? __lock_acquire+0x677/0x1697
->   [<ffffffff8100972e>] ? native_sched_clock+0x3c/0x7d
->   [<ffffffff8100972e>] ? native_sched_clock+0x3c/0x7d
->   [<ffffffff810649bc>] ? sched_clock_cpu+0x43/0xcf
->   [<ffffffffa007bb1e>] ip_vs_schedule+0x181/0x4ba [ip_vs]
-> ...
-
-> Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
-> Acked-by: Julian Anastasov <ja@ssi.bg>
-> Signed-off-by: Simon Horman <horms@verge.net.au>
-
-WBR, Sergei
+							Thanx, Paul
