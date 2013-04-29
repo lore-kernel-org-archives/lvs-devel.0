@@ -1,36 +1,55 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL ipvs] ipvs fixes for v3.9 #2
-Date: Sat, 27 Apr 2013 20:00:50 +0200
-Message-ID: <20130427180050.GA7622@localhost>
-References: <1366941190-12135-1-git-send-email-horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 2/2] ipvs: Use cond_resched_rcu_lock() helper when dumping
+ connections
+Date: Tue, 30 Apr 2013 00:08:18 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1304292356220.1822@ja.ssi.bg>
+References: <1366940708-10180-1-git-send-email-horms@verge.net.au> <1366940708-10180-3-git-send-email-horms@verge.net.au> <20130426080313.GC8669@dyad.programming.kicks-ass.net> <20130426154547.GC3860@linux.vnet.ibm.com> <20130426171948.GA31467@dyad.programming.kicks-ass.net>
+ <20130426174815.GI3860@linux.vnet.ibm.com> <1367000815.8964.243.camel@edumazet-glaptop> <alpine.LFD.2.00.1304271342260.1633@ja.ssi.bg> <20130427162049.GB3780@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1366941190-12135-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20130427162049.GB3780@linux.vnet.ibm.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>
+To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>, Peter Zijlstra <peterz@infradead.org>, Simon Horman <horms@verge.net.au>, Ingo Molnar <mingo@redhat.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Dipankar Sarma <dipankar@in.ibm.com>, dhaval.giani@gmail.com
 
-On Fri, Apr 26, 2013 at 10:53:09AM +0900, Simon Horman wrote:
-> Hi Pablo,
+
+	Hello,
+
+On Sat, 27 Apr 2013, Paul E. McKenney wrote:
+
+> On Sat, Apr 27, 2013 at 02:32:48PM +0300, Julian Anastasov wrote:
+> > 
+> > 	So, I assume, to help realtime kernels and rcu_barrier
+> > it is not a good idea to guard rcu_read_unlock with checks.
+> > I see that rcu_read_unlock will try to reschedule in the 
+> > !CONFIG_PREEMPT_RCU case (via preempt_enable), can we
+> > use ifdefs to avoid double TIF_NEED_RESCHED check?:
+> > 
+> > 	rcu_read_unlock();
+> > #if !defined(CONFIG_PREEMPT) || defined(CONFIG_PREEMPT_RCU)
 > 
-> I guess that it is too late in the cycle to get this fix into v3.9.
-> If so could you please consider it for v3.10.
-
-Pulled, thanks Simon.
-
-Will try to get this into 3.9, this is fixing a hard crash after all.
-
-> I would also like the patch considered for stable. It seems to be applicable
-> to all kernel releases since the sip persistence engine was added
-> by my in v2.6.37. In particular I have checked that it applies cleanly to:
+> I would instead suggest something like:
 > 
-> 3.8.8 stable
-> 3.4.41 longterm
-> 3.2.43 longterm
-> 3.0.74 longterm
+> #ifndef CONFIG_PREEMPT_RCU
+> 
+> But yes, in the CONFIG_PREEMPT_RCU case, the cond_resched() is not
+> needed.
 
-Will do once the merge window closes and thing calm down a bit.
+	Hm, is this correct? If I follow the ifdefs
+preempt_schedule is called when CONFIG_PREEMPT is
+defined _and_ CONFIG_PREEMPT_RCU is not defined.
+Your example for CONFIG_PREEMPT_RCU is the opposite to this?
+
+> 							Thanx, Paul
+> 
+> > 	cond_resched();
+> > #endif
+> > 	rcu_read_lock();
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
