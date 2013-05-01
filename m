@@ -1,59 +1,63 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH v3 2/2] ipvs: Use cond_resched_rcu_lock() helper when dumping connections
-Date: Wed,  1 May 2013 17:57:53 +0900
-Message-ID: <1367398673-1253-3-git-send-email-horms@verge.net.au>
-References: <1367398673-1253-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <1367398673-1253-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [PATCH v2 1/2] sched: Add cond_resched_rcu_lock() helper
+Date: Wed, 1 May 2013 11:10:12 +0200
+Message-ID: <20130501091012.GB28253@dyad.programming.kicks-ass.net>
+References: <1367290378-29224-1-git-send-email-horms@verge.net.au>
+ <1367290378-29224-2-git-send-email-horms@verge.net.au>
+ <alpine.LFD.2.00.1304301011310.1700@ja.ssi.bg>
+ <20130430072944.GA13959@verge.net.au>
+ <alpine.LFD.2.00.1304301051260.1700@ja.ssi.bg>
+Mime-Version: 1.0
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1304301051260.1700@ja.ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Dipankar Sarma <dipankar@in.ibm.com>, Simon Horman <horms@verge.net.au>, Ingo Molnar <mingo@kernel.org>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Simon Horman <horms@verge.net.au>, Eric Dumazet <eric.dumazet@gmail.com>, Ingo Molnar <mingo@redhat.com>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Dipankar Sarma <dipankar@in.ibm.com>
 
-This avoids the situation where a dump of a large number of connections
-may prevent scheduling for a long time while also avoiding excessive
-calls to rcu_read_unlock() and rcu_read_lock().
+On Tue, Apr 30, 2013 at 10:52:38AM +0300, Julian Anastasov wrote:
+> 
+> 	Hello,
+> 
+> On Tue, 30 Apr 2013, Simon Horman wrote:
+> 
+> > > > +static void inline cond_resched_rcu_lock(void)
+> > > > +{
+> > > > +	if (need_resched()) {
+> > > 
+> > > 	Ops, it should be without above need_resched.
+> > 
+> > Thanks, to clarify, just this:
+> > 
+> > static void inline cond_resched_rcu_lock(void)
+> > {
+> > 	rcu_read_unlock();
+> > #ifndef CONFIG_PREEMPT_RCU
+> > 	cond_resched();
+> > #endif
+> > 	rcu_read_lock();
+> > }
+> 
+> 	Yes, thanks!
 
-Note that in the case of !CONFIG_PREEMPT_RCU this will
-add a call to cond_resched().
+OK, now I'm confused.. PREEMPT_RCU would preempt in any case, so why bother
+dropping rcu_read_lock() at all?
 
-Compile tested only.
+That is; the thing that makes sense to me is:
 
-Cc: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Julian Anastasov <ja@ssi.bg>
-Cc: Ingo Molnar <mingo@kernel.org>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_conn.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+static void inline cond_resched_rcu_lock(void)
+{
+#ifdef CONFIG_PREEMPT_RCU
+	if (need_resched()) {
+		rcu_read_unlock();
+		cond_resched();
+		rcu_read_lock();
+	}
+#endif /* CONFIG_PREEMPT_RCU */
+}
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index a083bda..42a7b33 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -975,8 +975,7 @@ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
- 				return cp;
- 			}
- 		}
--		rcu_read_unlock();
--		rcu_read_lock();
-+		cond_resched_rcu_lock();
- 	}
- 
- 	return NULL;
-@@ -1015,8 +1014,7 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- 			iter->l = &ip_vs_conn_tab[idx];
- 			return cp;
- 		}
--		rcu_read_unlock();
--		rcu_read_lock();
-+		cond_resched_rcu_lock();
- 	}
- 	iter->l = NULL;
- 	return NULL;
--- 
-1.8.2.1
-
+That would have an rcu_read_lock() break and voluntary preemption point for
+non-preemptible RCU and not bother with the stuff for preemptible RCU.
