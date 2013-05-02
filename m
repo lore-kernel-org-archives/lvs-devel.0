@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH v2 1/2] sched: Add cond_resched_rcu_lock() helper
-Date: Thu, 2 May 2013 13:06:30 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1305021108430.1676@ja.ssi.bg>
+Date: Thu, 2 May 2013 18:54:05 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1305021848450.31548@ja.ssi.bg>
 References: <1367290378-29224-1-git-send-email-horms@verge.net.au> <1367290378-29224-2-git-send-email-horms@verge.net.au> <alpine.LFD.2.00.1304301011310.1700@ja.ssi.bg> <20130430072944.GA13959@verge.net.au> <alpine.LFD.2.00.1304301051260.1700@ja.ssi.bg>
  <20130501091012.GB28253@dyad.programming.kicks-ass.net> <alpine.LFD.2.00.1305011344320.1603@ja.ssi.bg> <20130501155501.GB7521@dyad.programming.kicks-ass.net> <alpine.LFD.2.00.1305012004360.3397@ja.ssi.bg>
  <20130502072623.GE7521@dyad.programming.kicks-ass.net>
@@ -44,28 +44,123 @@ On Thu, 2 May 2013, Peter Zijlstra wrote:
 > 
 > Should work I think..
 
-	Looks like CONFIG_DEBUG_ATOMIC_SLEEP selects
-CONFIG_PREEMPT_COUNT, so PREEMPT_RCU_OFFSET should be
-1 in all cases because preempt_disable() adds 1, while
-for CONFIG_PREEMPT_RCU case rcu_preempt_depth() should
-return 1:
+	I implemented your idea.
 
-#ifdef CONFIG_PREEMPT_RCU
-#define PREEMPT_RCU_OFFSET 1
-#else
-#define PREEMPT_RCU_OFFSET PREEMPT_CHECK_OFFSET
-#endif
+	I tested the following patch in 2 variants,
+TINY_RCU and CONFIG_TREE_PREEMPT_RCU. I see the
+error if extra rcu_read_lock is added for testing.
 
-	Now the remaining part is to fix rcu_sleep_check() for
-the non-preempt case. As there are no nesting depths in this
-case, I don't see a solution so far. We can provide
-some argument to rcu_preempt_sleep_check to compare
-depth with preempt_count() but currently I don't know
-how to differentiate cond_resched_lock() from cond_resched_rcu()
-when calling __might_sleep, in both cases we provide
-PREEMPT_OFFSET. May be some trick is needed here without
-adding new arg to __might_sleep, so that we can properly
-check for rcu_lock_map.
+	I'm using the PREEMPT_ACTIVE flag to indicate
+that we are already under lock. It should work because
+__might_sleep is not called with such bit. I also tried to
+add new flag in include/linux/hardirq.h but PREEMPT_ACTIVE
+depends on the arch, so this alternative looked difficult to
+implement.
+
+ include/linux/rcupdate.h |    7 ++++---
+ include/linux/sched.h    |   14 ++++++++++++++
+ kernel/sched/core.c      |   20 ++++++++++++++++++--
+ 3 files changed, 36 insertions(+), 5 deletions(-)
+
+diff --git a/include/linux/rcupdate.h b/include/linux/rcupdate.h
+index b758ce1..b594759 100644
+--- a/include/linux/rcupdate.h
++++ b/include/linux/rcupdate.h
+@@ -480,9 +480,10 @@ static inline void rcu_preempt_sleep_check(void)
+ }
+ #endif /* #else #ifdef CONFIG_PROVE_RCU */
+ 
+-#define rcu_sleep_check()						\
++#define rcu_sleep_check(locked)						\
+ 	do {								\
+-		rcu_preempt_sleep_check();				\
++		if (!(locked))						\
++			rcu_preempt_sleep_check();			\
+ 		rcu_lockdep_assert(!lock_is_held(&rcu_bh_lock_map),	\
+ 				   "Illegal context switch in RCU-bh"	\
+ 				   " read-side critical section");	\
+@@ -494,7 +495,7 @@ static inline void rcu_preempt_sleep_check(void)
+ #else /* #ifdef CONFIG_PROVE_RCU */
+ 
+ #define rcu_lockdep_assert(c, s) do { } while (0)
+-#define rcu_sleep_check() do { } while (0)
++#define rcu_sleep_check(locked) do { } while (0)
+ 
+ #endif /* #else #ifdef CONFIG_PROVE_RCU */
+ 
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index e692a02..027deea 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -2608,6 +2608,20 @@ extern int __cond_resched_softirq(void);
+ 	__cond_resched_softirq();					\
+ })
+ 
++#ifdef CONFIG_PREEMPT_RCU
++#define PREEMPT_RCU_OFFSET	1
++#else
++#define PREEMPT_RCU_OFFSET	PREEMPT_CHECK_OFFSET
++#endif
++
++extern int __cond_resched_rcu(void);
++
++#define cond_resched_rcu() ({					\
++	__might_sleep(__FILE__, __LINE__, PREEMPT_ACTIVE |	\
++					  PREEMPT_RCU_OFFSET);	\
++	__cond_resched_rcu();					\
++})
++
+ /*
+  * Does a critical section need to be broken due to another
+  * task waiting?: (technically does not depend on CONFIG_PREEMPT,
+diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+index 67d0465..2724be7 100644
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -2793,7 +2793,7 @@ static inline void schedule_debug(struct task_struct *prev)
+ 	 */
+ 	if (unlikely(in_atomic_preempt_off() && !prev->exit_state))
+ 		__schedule_bug(prev);
+-	rcu_sleep_check();
++	rcu_sleep_check(0);
+ 
+ 	profile_hit(SCHED_PROFILING, __builtin_return_address(0));
+ 
+@@ -4364,6 +4364,20 @@ int __sched __cond_resched_softirq(void)
+ }
+ EXPORT_SYMBOL(__cond_resched_softirq);
+ 
++int __sched __cond_resched_rcu(void)
++{
++#ifndef CONFIG_PREEMPT_RCU
++	if (should_resched()) {
++		rcu_read_unlock();
++		__cond_resched();
++		rcu_read_lock();
++		return 1;
++	}
++#endif
++	return 0;
++}
++EXPORT_SYMBOL(__cond_resched_rcu);
++
+ /**
+  * yield - yield the current processor to other threads.
+  *
+@@ -7062,7 +7076,9 @@ void __might_sleep(const char *file, int line, int preempt_offset)
+ {
+ 	static unsigned long prev_jiffy;	/* ratelimiting */
+ 
+-	rcu_sleep_check(); /* WARN_ON_ONCE() by default, no rate limit reqd. */
++	/* WARN_ON_ONCE() by default, no rate limit reqd. */
++	rcu_sleep_check(preempt_offset & PREEMPT_ACTIVE);
++	preempt_offset &= ~PREEMPT_ACTIVE;
+ 	if ((preempt_count_equals(preempt_offset) && !irqs_disabled()) ||
+ 	    system_state != SYSTEM_RUNNING || oops_in_progress)
+ 		return;
+-- 
+1.7.3.4
+
 
 Regards
 
