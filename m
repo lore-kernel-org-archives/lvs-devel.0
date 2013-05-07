@@ -1,59 +1,71 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [PATCH v2 1/2] sched: Add cond_resched_rcu_lock() helper
-Date: Sat, 4 May 2013 11:03:16 -0700
-Message-ID: <20130504180315.GB3659@linux.vnet.ibm.com>
-References: <20130502072623.GE7521@dyad.programming.kicks-ass.net>
- <alpine.LFD.2.00.1305021848450.31548@ja.ssi.bg>
- <20130502173257.GX3780@linux.vnet.ibm.com>
- <alpine.LFD.2.00.1305022140020.31548@ja.ssi.bg>
- <20130502193409.GA3780@linux.vnet.ibm.com>
- <alpine.LFD.2.00.1305022249010.25417@ja.ssi.bg>
- <20130502223107.GB3780@linux.vnet.ibm.com>
- <alpine.LFD.2.00.1305031024080.1657@ja.ssi.bg>
- <20130503163045.GE3780@linux.vnet.ibm.com>
- <alpine.LFD.2.00.1305041018520.1645@ja.ssi.bg>
-Reply-To: paulmck@linux.vnet.ibm.com
-Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1305041018520.1645@ja.ssi.bg>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Grzegorz Lyczba <grzegorz.lyczba@gmail.com>
+Subject: [PATCH] ipvs: Fix reuse connection if real server is dead
+Date: Tue,  7 May 2013 23:54:40 +0200
+Message-ID: <1367963680-5213-1-git-send-email-grzegorz.lyczba@gmail.com>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=x-received:from:to:cc:subject:date:message-id:x-mailer;
+        bh=ADicO2kZbgqc4RMWrB8R+qYszW4sEs1cDXESCxP12iM=;
+        b=yF01IceXx0xoBNphVWpcoq/SKEhh/RAnnhY7AiZuHzcVjtki5qOC7TmkXBbNuXybAL
+         FklxTcMkgS2QkqvW0TdroIsHlllEecKKqBgwiWjpcFsBAB+T4iXK7cA2gnlM659TsHoX
+         zK78sBny73wWeNay6Pzg2nNvjzNFdCJsQJIGh9REmBkcWsXhZ5ciGJXRb6OOeY5dhEJA
+         OIlgU8DB02hQYjgnWdeqbgFRm1THotqBWveJvVlXDzPgCSg4SUlc+/aEdd2SOrWlHfXL
+         4Z4hYVypWa5xZ0zbr5s18AbWg5BepWqXI4eTMuPeRJ0QItgfzhMI0njgdM6xE4F0X4mC
+         ENaw==
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Peter Zijlstra <peterz@infradead.org>, Simon Horman <horms@verge.net.au>, Eric Dumazet <eric.dumazet@gmail.com>, Ingo Molnar <mingo@redhat.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Dipankar Sarma <dipankar@in.ibm.com>
+To: lvs-devel@vger.kernel.org
+Cc: Grzegorz Lyczba <grzegorz.lyczba@gmail.com>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Sat, May 04, 2013 at 10:23:31AM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Fri, 3 May 2013, Paul E. McKenney wrote:
-> 
-> > static inline int cond_resched_rcu(void)
-> > {
-> > #if defined(CONFIG_DEBUG_ATOMIC_SLEEP) || !defined(CONFIG_PREEMPT_RCU)
-> > 	rcu_read_unlock();
-> > 	cond_resched();
-> > 	rcu_read_lock();
-> > #endif
-> > }
-> > 
-> > This adds absolutely no overhead in non-debug builds of CONFIG_PREEMPT_RCU,
-> > does the checking in debug builds, and allows voluntary preemption in
-> > !CONFIG_PREEMPT_RCU builds.  CONFIG_PROVE_RCU builds will check for an
-> > (illegal) outer rcu_read_lock() in CONFIG_PREEMPT_RCU builds, and you
-> > will get "scheduling while atomic" in response to an outer rcu_read_lock()
-> > in !CONFIG_PREEMPT_RCU builds.
-> > 
-> > It also seems to me a lot simpler.
-> > 
-> > Does this work, or am I still missing something?
-> 
-> 	Works perfectly. Thanks! Tested CONFIG_PREEMPT_RCU=y/n,
-> the errors messages with extra RCU lock.
+Expire cached connection for new TCP connection if real server is down
 
-Very good!  Please send the patch along, and I will ack it.
+Signed-off-by: Grzegorz Lyczba <grzegorz.lyczba@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_core.c |   20 ++++++++++++++++++++
+ 1 files changed, 20 insertions(+), 0 deletions(-)
 
-						Thanx, Paul
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 47edf5a..7c5f083 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1002,6 +1002,17 @@ static inline int is_tcp_reset(const struct sk_buff *skb, int nh_len)
+ 	return th->rst;
+ }
+ 
++static inline int is_tcp_syn(const struct sk_buff *skb, int nh_len)
++{
++    struct tcphdr _tcph, *th;
++
++    th = skb_header_pointer(skb, nh_len, sizeof(_tcph), &_tcph);
++    if (th == NULL)
++        return 0;
++    return th->syn;
++}
++
++
+ /* Handle response packets: rewrite addresses and send away...
+  */
+ static unsigned int
+@@ -1627,6 +1638,15 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	 * Check if the packet belongs to an existing connection entry
+ 	 */
+ 	cp = pp->conn_in_get(af, skb, &iph, 0);
++
++	if (likely(cp) && likely(cp->dest) &&
++	    unlikely(!atomic_read(&cp->dest->weight)) &&
++	    iph.protocol == IPPROTO_TCP && is_tcp_syn(skb, iph.len)) {
++		ip_vs_conn_expire_now(cp);
++		__ip_vs_conn_put(cp);
++		cp = NULL;
++	}
++
+ 	if (unlikely(!cp) && !iph.fragoffs) {
+ 		/* No (second) fragments need to enter here, as nf_defrag_ipv6
+ 		 * replayed fragment zero will already have created the cp
+-- 
+1.7.5.4
 
