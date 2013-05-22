@@ -1,82 +1,76 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 2/2] ipvs: Fix reuse connection if real server is dead
-Date: Wed, 22 May 2013 14:56:49 +0900
-Message-ID: <1369202209-18570-3-git-send-email-horms@verge.net.au>
-References: <1369202209-18570-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1369202209-18570-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: activeconns * weight overflowing 32-bit int
+Date: Wed, 22 May 2013 09:18:03 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1305220915480.1953@ja.ssi.bg>
+References: <20130413064355.GB24319@hostway.ca> <alpine.LFD.2.00.1304131736430.1662@ja.ssi.bg>
+Mime-Version: 1.0
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1304131736430.1662@ja.ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Grzegorz Lyczba <grzegorz.lyczba@gmail.com>, Simon Horman <horms@verge.net.au>
+To: Simon Kirby <sim@hostway.ca>
+Cc: lvs-devel@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>
 
-From: Grzegorz Lyczba <grzegorz.lyczba@gmail.com>
 
-Expire cached connection for new TCP/SCTP connection if real server is down
+	Hello,
 
-Signed-off-by: Grzegorz Lyczba <grzegorz.lyczba@gmail.com>
-Acked-by Hans Schillstrom <hans@schillstrom.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_core.c | 36 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
+On Sat, 13 Apr 2013, Julian Anastasov wrote:
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 085b588..7967d12 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1001,6 +1001,33 @@ static inline int is_tcp_reset(const struct sk_buff *skb, int nh_len)
- 	return th->rst;
- }
- 
-+static inline bool is_new_conn(const struct sk_buff *skb,
-+			       struct ip_vs_iphdr *iph)
-+{
-+	switch (iph->protocol) {
-+	case IPPROTO_TCP: {
-+		struct tcphdr _tcph, *th;
-+
-+		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
-+		if (th == NULL)
-+			return false;
-+		return th->syn;
-+	}
-+	case IPPROTO_SCTP: {
-+		sctp_chunkhdr_t *sch, schunk;
-+
-+		sch = skb_header_pointer(skb, iph->len + sizeof(sctp_sctphdr_t),
-+				sizeof(schunk), &schunk);
-+		if (sch == NULL)
-+			return false;
-+		return (sch->type == SCTP_CID_INIT);
-+	}
-+	default:
-+		return false;
-+	}
-+}
-+
-+
- /* Handle response packets: rewrite addresses and send away...
-  */
- static unsigned int
-@@ -1612,6 +1639,15 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	 * Check if the packet belongs to an existing connection entry
- 	 */
- 	cp = pp->conn_in_get(af, skb, &iph, 0);
-+
-+	if (unlikely(sysctl_expire_nodest_conn(ipvs)) && cp && cp->dest &&
-+	    unlikely(!atomic_read(&cp->dest->weight)) && !iph.fragoffs &&
-+	    is_new_conn(skb, &iph)) {
-+		ip_vs_conn_expire_now(cp);
-+		__ip_vs_conn_put(cp);
-+		cp = NULL;
-+	}
-+
- 	if (unlikely(!cp) && !iph.fragoffs) {
- 		/* No (second) fragments need to enter here, as nf_defrag_ipv6
- 		 * replayed fragment zero will already have created the cp
--- 
-1.8.2.1
+> On Fri, 12 Apr 2013, Simon Kirby wrote:
+> 
+> > Hello!
+> > 
+> > We use lblc in some environments to try to maintain some cache locality.
+> > 
+> > We recently had some problems upgrading beyond 2.6.38 in one environment.
+> > The cluster kept overloading real servers and showed flapping that didn't
+> > occur on 2.6.38 and older. I was never able to figure this out, but I
+> > think now I see the reason.
+> > 
+> > We need to use fairly high weights, since lblc requires this in order to
+> > do rescheduling in the event of overload. In the event that we have 3000
+> > activeconns to a real server and a weight of 3000, the next connection
+> > will check to see if any other real server has 2*activeconns less than
+> > its weight, and if so, reschedule by wlc.
+> > 
+> > With b552f7e3a9524abcbcdf86f0a99b2be58e55a9c6, which "git tag --contains"
+> > says appeared in 2.6.39-rc, the open-coded activeconns * 50 + inactconns
+> > was changed to ip_vs_dest_conn_overhead() that matches the implementation
+> > in ip_vs_wlc.c and others. The problem for us is that ip_vs_lblc.c uses
+> > "int" (and wlc uses "unsigned int") for "loh" and "doh" variables that
+> > the ip_vs_dest_conn_overhead() result is stored in, and then these are
+> > multiplied by the weight.
+> > 
+> > ip_vs_dest_conn_overhead() uses (activeconns << 8) + inactconns (* 256
+> > instead of * 50), so before where 3000 * 3000 * 50 would fit in an int,
+> > 3000 * 3000 * 256 does not.
+> 
+> 	There is no big difference between 50 and 256.
+> 
+> > We really don't care about inactconns, so removing the "<< 8" and just
+> > using activeconns would work for us, but I suspect it must be there for a
+> > raeason. "unsigned long" would fix the problem only for 64-bit arches.
+> > Using __u64 would work everywhere, but perhaps be slow on 32-bit arches.
+> > Thoughts?
+> 
+> 	May be we can avoid 64-bit multiply with a
+> 32*32=>64 optimization, for example:
+> 
+> -               if (loh * atomic_read(&dest->weight) >
+> -                   doh * atomic_read(&least->weight)) {
+> +               if ((__u64) loh * atomic_read(&dest->weight) >
+> +                   (__u64) doh * atomic_read(&least->weight)) {
+> 
+> 	May be __s64/__u64 does not matter here. Can you
+> create and test such patch for lblc and lblcr against
+> ipvs-next or net-next tree? Such change should be also
+> applied to other schedulers but it does not look so critical.
+
+	Any progress on this problem?
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
