@@ -1,66 +1,44 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH ipvs-next v3 1/2] sched: add cond_resched_rcu() helper
-Date: Wed, 22 May 2013 14:50:31 +0900
-Message-ID: <1369201832-17163-2-git-send-email-horms@verge.net.au>
-References: <1369201832-17163-1-git-send-email-horms@verge.net.au>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1369201832-17163-1-git-send-email-horms@verge.net.au>
-Sender: linux-kernel-owner@vger.kernel.org
+Subject: [GIT PULL nf-next] IPVS for v3.11
+Date: Wed, 22 May 2013 14:56:47 +0900
+Message-ID: <1369202209-18570-1-git-send-email-horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>, Julian Anastasov <ja@ssi.bg>, Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Dipankar Sarma <dipankar@in.ibm.com>, Simon Horman <horms@verge.net.au>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-This is intended for use in loops which read data protected by RCU and may
-have a large number of iterations.  Such an example is dumping the list of
-connections known to IPVS: ip_vs_conn_array() and ip_vs_conn_seq_next().
+Hi Pablo,
 
-The benefits are for CONFIG_PREEMPT_RCU=y where we save CPU cycles
-by moving rcu_read_lock and rcu_read_unlock out of large loops
-but still allowing the current task to be preempted after every
-loop iteration for the CONFIG_PREEMPT_RCU=n case.
+The following changes since commit eee1d5a14780b9391ec51f3feaf4cffb521ddbb1:
 
-The call to cond_resched() is not needed when CONFIG_PREEMPT_RCU=y.
-Thanks to Paul E. McKenney for explaining this and for the
-final version that checks the context with CONFIG_DEBUG_ATOMIC_SLEEP=y
-for all possible configurations.
+  sctp: Correct type and usage of sctp_end_cksum() (2013-04-29 20:09:08 +0200)
 
-The function can be empty in the CONFIG_PREEMPT_RCU case,
-rcu_read_lock and rcu_read_unlock are not needed in this case
-because the task can be preempted on indication from scheduler.
-Thanks to Peter Zijlstra for catching this and for his help
-in trying a solution that changes __might_sleep.
+are available in the git repository at:
 
-Initial cond_resched_rcu_lock() function suggested by Eric Dumazet.
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.11
 
-Tested-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- include/linux/sched.h | 9 +++++++++
- 1 file changed, 9 insertions(+)
+for you to fetch changes up to fc889767fc2e51e43787408e3ff9fb34e5312c74:
 
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index e692a02..2080446 100644
---- a/include/linux/sched.h
-+++ b/include/linux/sched.h
-@@ -2608,6 +2608,15 @@ extern int __cond_resched_softirq(void);
- 	__cond_resched_softirq();					\
- })
- 
-+static inline void cond_resched_rcu(void)
-+{
-+#if defined(CONFIG_DEBUG_ATOMIC_SLEEP) || !defined(CONFIG_PREEMPT_RCU)
-+	rcu_read_unlock();
-+	cond_resched();
-+	rcu_read_lock();
-+#endif
-+}
-+
- /*
-  * Does a critical section need to be broken due to another
-  * task waiting?: (technically does not depend on CONFIG_PREEMPT,
--- 
-1.8.2.1
+  ipvs: Fix reuse connection if real server is dead (2013-05-22 14:43:11 +0900)
+
+----------------------------------------------------------------
+Two enhancements to IPVS for v3.11
+
+* Correct connection reuse for TCP and SCTP
+* Tidy up type of sysctl_sync_qlen_max member of struct netns_ipvs
+
+----------------------------------------------------------------
+Grzegorz Lyczba (1):
+      ipvs: Fix reuse connection if real server is dead
+
+Zhang Yanfei (1):
+      ipvs: change type of netns_ipvs->sysctl_sync_qlen_max
+
+ include/net/ip_vs.h             |  8 ++++----
+ net/netfilter/ipvs/ip_vs_core.c | 36 ++++++++++++++++++++++++++++++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c  |  4 ++--
+ 3 files changed, 42 insertions(+), 6 deletions(-)
