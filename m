@@ -1,94 +1,27 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH] ipvs: change type of netns_ipvs->sysctl_sync_qlen_max
-Date: Sun, 26 May 2013 08:41:17 +0900
-Message-ID: <1369525277-2687-2-git-send-email-horms@verge.net.au>
-References: <1369525277-2687-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1369525277-2687-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH] ipvs: Fix reuse connection if real server is dead
+Date: Mon, 27 May 2013 13:49:11 +0200
+Message-ID: <20130527114911.GA30491@localhost>
+References: <1369523799-27082-1-git-send-email-horms@verge.net.au>
+ <1369523799-27082-2-git-send-email-horms@verge.net.au>
+Mime-Version: 1.0
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1369523799-27082-2-git-send-email-horms@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Zhang Yanfei <zhangyanfei@cn.fujitsu.com>, David Miller <davem@davemloft.net>, Andrew Morton <akpm@linux-foundation.org>, Simon Horman <horms@verge.net.au>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Grzegorz Lyczba <grzegorz.lyczba@gmail.com>
 
-From: Zhang Yanfei <zhangyanfei@cn.fujitsu.com>
+On Sun, May 26, 2013 at 08:16:39AM +0900, Simon Horman wrote:
+> From: Grzegorz Lyczba <grzegorz.lyczba@gmail.com>
+> 
+> Expire cached connection for new TCP/SCTP connection if real server is down
 
-This member of struct netns_ipvs is calculated from nr_free_buffer_pages
-so change its type to unsigned long in case of overflow.  Also, type of
-its related proc var sync_qlen_max and the return type of function
-sysctl_sync_qlen_max() should be changed to unsigned long, too.
+Applied, thanks Simon.
 
-Besides, the type of ipvs_master_sync_state->sync_queue_len should be
-changed to unsigned long accordingly.
-
-Signed-off-by: Zhang Yanfei <zhangyanfei@cn.fujitsu.com>
-Cc: Julian Anastasov <ja@ssi.bg>
-Cc: David Miller <davem@davemloft.net>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- include/net/ip_vs.h            |    8 ++++----
- net/netfilter/ipvs/ip_vs_ctl.c |    4 ++--
- 2 files changed, 6 insertions(+), 6 deletions(-)
-
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 4c062cc..4405886 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -905,7 +905,7 @@ struct ip_vs_app {
- struct ipvs_master_sync_state {
- 	struct list_head	sync_queue;
- 	struct ip_vs_sync_buff	*sync_buff;
--	int			sync_queue_len;
-+	unsigned long		sync_queue_len;
- 	unsigned int		sync_queue_delay;
- 	struct task_struct	*master_thread;
- 	struct delayed_work	master_wakeup_work;
-@@ -998,7 +998,7 @@ struct netns_ipvs {
- 	int			sysctl_snat_reroute;
- 	int			sysctl_sync_ver;
- 	int			sysctl_sync_ports;
--	int			sysctl_sync_qlen_max;
-+	unsigned long		sysctl_sync_qlen_max;
- 	int			sysctl_sync_sock_size;
- 	int			sysctl_cache_bypass;
- 	int			sysctl_expire_nodest_conn;
-@@ -1085,7 +1085,7 @@ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
- 	return ACCESS_ONCE(ipvs->sysctl_sync_ports);
- }
- 
--static inline int sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
-+static inline unsigned long sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
- {
- 	return ipvs->sysctl_sync_qlen_max;
- }
-@@ -1138,7 +1138,7 @@ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
- 	return 1;
- }
- 
--static inline int sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
-+static inline unsigned long sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
- {
- 	return IPVS_SYNC_QLEN_MAX;
- }
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 5b142fb..7014649 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1716,9 +1716,9 @@ static struct ctl_table vs_vars[] = {
- 	},
- 	{
- 		.procname	= "sync_qlen_max",
--		.maxlen		= sizeof(int),
-+		.maxlen		= sizeof(unsigned long),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
-+		.proc_handler	= proc_doulongvec_minmax,
- 	},
- 	{
- 		.procname	= "sync_sock_size",
--- 
-1.7.10.4
-
+I have mangled the description to insist on the fact that newly
+(reused) connections break as they will be directed to the dead
+server.
