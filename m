@@ -1,65 +1,65 @@
-From: Ingo Molnar <mingo@kernel.org>
-Subject: Re: [PATCH ipvs-next v3 0/2] sched: Add cond_resched_rcu_lock()
- helper
-Date: Tue, 28 May 2013 10:51:36 +0200
-Message-ID: <20130528085136.GB30172@gmail.com>
-References: <1369201832-17163-1-git-send-email-horms@verge.net.au>
- <20130522075438.GO26912@twins.programming.kicks-ass.net>
- <20130522.013108.58504645261021804.davem@davemloft.net>
+From: Aleksey Chudov <aleksey.chudov@gmail.com>
+Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
+Date: Tue, 28 May 2013 16:41:01 +0300
+Message-ID: <51A4B3ED.4070809@gmail.com>
+References: <20130524120935.GL264@eldamar.org.uk> <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg> <20130524151408.GM264@eldamar.org.uk> <519F92EB.4080509@gmail.com> <alpine.LFD.2.00.1305280011490.1728@ja.ssi.bg>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20120113;
-        h=sender:date:from:to:cc:subject:message-id:references:mime-version
-         :content-type:content-disposition:in-reply-to:user-agent;
-        bh=fUVqTY3vlvHBe9Blc+N41PnUn8PU6KaJc4IlNs94NpY=;
-        b=fDKow1HxA80DAdtkOGMD6lAGkEta3QExDffo2vgH71/Vh5CpKs2XZ0SarBf76d6YRy
-         YP9ks2p2fiLKYdOfApOfZ6R2jGZ6SoL95zcxo7F7+J1RIke4jJcOOkqsO9YI7oe2UtUM
-         izr/U+QtiZN6UiBEGQnnTPk6Qnj57tHvZLJWfOso4DDWQDnQOVv3It1V8oJCvEsyL7Jj
-         1TXEvD+WkddugMz2tho2hZXTAUVnHTAEVKVsiUUb8ukuQu7xrnoSKPQVQ8HJLZ4uYxsS
-         9cxdSY5B3tLruDNYm5TX0p8UGvdH4u9ATOpvHs/9u6P3S02xN3f6+XvC5DZSau8/W2bJ
-         bm+w==
-Content-Disposition: inline
-In-Reply-To: <20130522.013108.58504645261021804.davem@davemloft.net>
+        h=message-id:date:from:user-agent:mime-version:to:cc:subject
+         :references:in-reply-to:content-type:content-transfer-encoding;
+        bh=MP7vG95NJx5Vz+X8FcRiNRgYIoozzOYKRH9TKNTrtN0=;
+        b=fk0pFQv39e3kaj/+53x3aex9oX052AvYeCudy+Bv6rrcwMWgsa5DGfnQ3Mb6emZiqC
+         f7LIZEY4A/7A3r5rLgmM22ucNWcG9cRK5hXds6XQ7SRjCsoiWHMz8MA8HnQNVnBAE7iC
+         D8GtksT0Gv8td/l1tH6zACUoitK3zdFvM7x26/jcYyc4FhwdXO75kXOXEPMXkToQrdd8
+         S1+raIsO42jxoBhfM7A49hZY+0OI5UtVl5SnraoHZ7dqEC5sWDyRJ5dVxgGGo1p4inEI
+         bIDtT+IDeNvT23eNxeQIYKUAeF6/Wu1q9Qfbl6+7BUGImp86G5FhIMM1bzmepRixPpSX
+         Pfng==
+In-Reply-To: <alpine.LFD.2.00.1305280011490.1728@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: peterz@infradead.org, horms@verge.net.au, eric.dumazet@gmail.com, ja@ssi.bg, mingo@redhat.com, paulmck@linux.vnet.ibm.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, pablo@netfilter.org, dipankar@in.ibm.com
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org
+
+On 28.05.2013 0:31, Julian Anastasov wrote:
+> On Fri, 24 May 2013, Aleksey Chudov wrote:
+>
+>> May be better to modify the sync algorithm to synchronize only persistence
+>> templates for these specific cases? Is it possible at all?
+> 	May be, with some flag and also sloppy_tcp. Then the
+> parametrized SH with netmask will do the same - we can avoid
+> the sync messages. Of course, with SH there is more risk
+> for imbalance and it can be exploited. Also SH requires
+> equal configuration for the real servers.
+>
+
+Currently we are using multiple active / standby server pairs and 
+synchronize them with each other. So half of the servers are constantly 
+doing nothing. We are searching how to use all the servers in active / 
+active mode while maintaining high availability and sessions persistence 
+in case of failure of one of the load balancers. Unfortunately the 
+proposed stateless scheme with SH scheduler and Sloppy TCP is not 
+suitable for as since we are using WLC and WRR schedulers. As you 
+mentioned SH scheduler has several drawbacks because of which we can not 
+use it. Also, we can not synchronize all connections between all 
+servers, since it would require a lot of memory and the search for such 
+a huge connection table is likely to be slower.
+
+But we can solve the sync problem in such a way as done in the 
+conntrackd which allows filtering by flow state. The easiest option is 
+to make the filter only for IP_VS_CONN_F_TEMPLATE state. Thus if all the 
+load balancers will sync persistent templates with each other then even 
+if one of the load balancers fails most users will remain on the same 
+real servers. Of course without the full sync clients must reestablish 
+TCP connections, but for this case we can use Sloppy TCP to create a TCP 
+connection state on any TCP packet.
+
+What do you think of this idea?
 
 
-* David Miller <davem@davemloft.net> wrote:
 
-> From: Peter Zijlstra <peterz@infradead.org>
-> Date: Wed, 22 May 2013 09:54:38 +0200
-> 
-> > On Wed, May 22, 2013 at 02:50:30PM +0900, Simon Horman wrote:
-> >> Add a helper that for use in loops which read data protected by RCU and
-> >> may have a large number of iterations.  Such an example is dumping the list
-> >> of connections known to IPVS: ip_vs_conn_array() and ip_vs_conn_seq_next().
-> >> 
-> >> This series also updates IPVS to use the helper.
-> >> 
-> >> Simon Horman (2):
-> >>   sched: add cond_resched_rcu() helper
-> >>   ipvs: use cond_resched_rcu() helper when walking connections
-> >> 
-> >>  include/linux/sched.h           |  9 +++++++++
-> >>  net/netfilter/ipvs/ip_vs_conn.c | 23 ++++++++---------------
-> >>  2 files changed, 17 insertions(+), 15 deletions(-)
-> > 
-> > Acked-by: Peter Zijlstra <peterz@infradead.org>
-> > 
-> > How do you want to go about merging this? Do you want to route it
-> > through the net tree or through -tip?
-> 
-> I think we can have Pablo merge it into his netfilter tree.
-
-Yeah, that's what we agreed upon earlier during the review of these 
-patches.
-
-Thanks,
-
-	Ingo
-
+Regards,
+Aleksey
