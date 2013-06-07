@@ -1,46 +1,49 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [patch] ipvs: info leak in __ip_vs_get_dest_entries()
-Date: Tue, 4 Jun 2013 10:03:27 +0900
-Message-ID: <20130604010327.GA23054@verge.net.au>
-References: <20130603090049.GA16171@debian>
+From: Alexander Frolkin <avf@eldamar.org.uk>
+Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
+Date: Fri, 7 Jun 2013 08:53:04 +0100
+Message-ID: <20130607075304.GB11902@eldamar.org.uk>
+References: <20130524120935.GL264@eldamar.org.uk>
+ <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg>
+ <20130524151408.GM264@eldamar.org.uk>
+ <519F92EB.4080509@gmail.com>
+ <alpine.LFD.2.00.1305280011490.1728@ja.ssi.bg>
+ <51A4B3ED.4070809@gmail.com>
+ <alpine.LFD.2.00.1305300830100.1671@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130603090049.GA16171@debian>
+In-Reply-To: <alpine.LFD.2.00.1305300830100.1671@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, kernel-janitors@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Aleksey Chudov <aleksey.chudov@gmail.com>, lvs-devel@vger.kernel.org
 
-On Mon, Jun 03, 2013 at 12:00:49PM +0300, Dan Carpenter wrote:
-> The entry struct has a 2 byte hole after ->port and another 4 byte
-> hole after ->stats.outpkts.  You must have CAP_NET_ADMIN in your
-> namespace to hit this information leak.
+Hi,
 
-Hi Dan,
+> 	May be the patch for Sloppy TCP mode should be
+> extended to assume that old state is sSR if packet that
+> creates the connection has no RST flag. This will allow
+> connection to enter sES state if need, it will not stay
+> always in sCL state.
 
-can I verify that it is actually possible to hit this and
-thus the patch is a -stable candidate?
+I'll have to read the code a bit more to completely understand that, but
+it seems to make sense!
 
-> 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index df05c1c..e336535 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -2542,6 +2542,7 @@ __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
->  		struct ip_vs_dest *dest;
->  		struct ip_vs_dest_entry entry;
->  
-> +		memset(&entry, 0, sizeof(entry));
->  		list_for_each_entry(dest, &svc->destinations, n_list) {
->  			if (count >= get->num_dests)
->  				break;
-> --
-> To unsubscribe from this list: send the line "unsubscribe netfilter-devel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> As for the initial check, it should be:
+> 	if ((sysctl_sloppy_tcp(net_ipvs(net)) || th->syn) &&
+> +	    !th->rst &&
+
+Make sense.
+
+> 	Also, one can enable Sloppy TCP mode for short
+> time during switchover, it should be safer to run with
+> disabled mode.
+
+The problem is that switchover won't necessarily be controlled if a
+server fails.
+
+
+Alex
+
