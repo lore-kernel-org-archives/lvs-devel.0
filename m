@@ -1,34 +1,241 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [patch] ipvs: info leak in __ip_vs_get_dest_entries()
-Date: Mon, 10 Jun 2013 14:58:22 +0200
-Message-ID: <20130610125822.GA4968@localhost>
-References: <20130603090049.GA16171@debian>
- <20130610083849.GD1563@verge.net.au>
+From: Alexander Frolkin <avf@eldamar.org.uk>
+Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
+Date: Mon, 10 Jun 2013 16:12:57 +0100
+Message-ID: <20130610151257.GB19108@eldamar.org.uk>
+References: <20130524120935.GL264@eldamar.org.uk>
+ <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg>
+ <20130524151408.GM264@eldamar.org.uk>
+ <alpine.LFD.2.00.1305272251170.1728@ja.ssi.bg>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="pWyiEgJYm5f9v55/"
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130610083849.GD1563@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+In-Reply-To: <alpine.LFD.2.00.1305272251170.1728@ja.ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Dan Carpenter <dan.carpenter@oracle.com>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, kernel-janitors@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org
 
-On Mon, Jun 10, 2013 at 05:38:50PM +0900, Simon Horman wrote:
-> On Mon, Jun 03, 2013 at 12:00:49PM +0300, Dan Carpenter wrote:
-> > The entry struct has a 2 byte hole after ->port and another 4 byte
-> > hole after ->stats.outpkts.  You must have CAP_NET_ADMIN in your
-> > namespace to hit this information leak.
-> > 
-> > Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> 
-> Signed-off-by: Simon Horman <horms@verge.net.au>
-> 
-> Pablo, could you take this directly into your tree.
 
-Applied, thanks Simon.
+--pWyiEgJYm5f9v55/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> If possible for v3.10. It also appears to be relevant for stable.
+Hi,
 
-Sure, will do.
+Attached is a patch for sloppy TCP and SCTP against the upstream kernel.
+
+checkpatch.pl throws up errors, but they refer to stuff that was there
+before, not my changes.
+
+I've added a bit of code to set the initial state for a sloppy TCP
+connection.  I have a template (in the patch) for a similar bit of code
+for SCTP, but I'm hoping that someone can help me work out what the
+initial state should be, since I know next to nothing about SCTP...
+
+
+Alex
+
+
+--pWyiEgJYm5f9v55/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="sloppy.patch"
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 4c062cc..49a93bb 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1002,6 +1002,8 @@ struct netns_ipvs {
+ 	int			sysctl_sync_sock_size;
+ 	int			sysctl_cache_bypass;
+ 	int			sysctl_expire_nodest_conn;
++	int			sysctl_sloppy_tcp;
++	int			sysctl_sloppy_sctp;
+ 	int			sysctl_expire_quiescent_template;
+ 	int			sysctl_sync_threshold[2];
+ 	unsigned int		sysctl_sync_refresh_period;
+@@ -1044,6 +1046,8 @@ struct netns_ipvs {
+ #define DEFAULT_SYNC_THRESHOLD	3
+ #define DEFAULT_SYNC_PERIOD	50
+ #define DEFAULT_SYNC_VER	1
++#define DEFAULT_SLOPPY_TCP	0
++#define DEFAULT_SLOPPY_SCTP	0
+ #define DEFAULT_SYNC_REFRESH_PERIOD	(0U * HZ)
+ #define DEFAULT_SYNC_RETRIES		0
+ #define IPVS_SYNC_WAKEUP_RATE	8
+@@ -1080,6 +1084,16 @@ static inline int sysctl_sync_ver(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_sync_ver;
+ }
+ 
++static inline int sysctl_sloppy_tcp(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_sloppy_tcp;
++}
++
++static inline int sysctl_sloppy_sctp(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_sloppy_sctp;
++}
++
+ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
+ {
+ 	return ACCESS_ONCE(ipvs->sysctl_sync_ports);
+@@ -1133,6 +1147,16 @@ static inline int sysctl_sync_ver(struct netns_ipvs *ipvs)
+ 	return DEFAULT_SYNC_VER;
+ }
+ 
++static inline int sysctl_sloppy_tcp(struct netns_ipvs *ipvs)
++{
++	return DEFAULT_SLOPPY_TCP;
++}
++
++static inline int sysctl_sloppy_sctp(struct netns_ipvs *ipvs)
++{
++	return DEFAULT_SLOPPY_SCTP;
++}
++
+ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
+ {
+ 	return 1;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 5b142fb..1e68c4f 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1739,6 +1739,18 @@ static struct ctl_table vs_vars[] = {
+ 		.proc_handler	= proc_dointvec,
+ 	},
+ 	{
++		.procname	= "sloppy_tcp",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
++	{
++		.procname	= "sloppy_sctp",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
++	{
+ 		.procname	= "expire_quiescent_template",
+ 		.maxlen		= sizeof(int),
+ 		.mode		= 0644,
+@@ -3722,6 +3734,8 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	tbl[idx++].data = &ipvs->sysctl_sync_sock_size;
+ 	tbl[idx++].data = &ipvs->sysctl_cache_bypass;
+ 	tbl[idx++].data = &ipvs->sysctl_expire_nodest_conn;
++	tbl[idx++].data = &ipvs->sysctl_sloppy_tcp;
++	tbl[idx++].data = &ipvs->sysctl_sloppy_sctp;
+ 	tbl[idx++].data = &ipvs->sysctl_expire_quiescent_template;
+ 	ipvs->sysctl_sync_threshold[0] = DEFAULT_SYNC_THRESHOLD;
+ 	ipvs->sysctl_sync_threshold[1] = DEFAULT_SYNC_PERIOD;
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 8646488..c7f6e98 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -15,6 +15,7 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ {
+ 	struct net *net;
+ 	struct ip_vs_service *svc;
++	struct netns_ipvs *ipvs;
+ 	sctp_chunkhdr_t _schunkh, *sch;
+ 	sctp_sctphdr_t *sh, _sctph;
+ 
+@@ -27,13 +28,15 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	if (sch == NULL)
+ 		return 0;
+ 	net = skb_net(skb);
++	ipvs = net_ipvs(net);
+ 	rcu_read_lock();
+-	if ((sch->type == SCTP_CID_INIT) &&
++	if ((sysctl_sloppy_sctp(ipvs) ||
++	    (sch->type == SCTP_CID_INIT)) &&
+ 	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
+ 				      &iph->daddr, sh->dest))) {
+ 		int ignored;
+ 
+-		if (ip_vs_todrop(net_ipvs(net))) {
++		if (ip_vs_todrop(ipvs)) {
+ 			/*
+ 			 * It seems that we are very loaded.
+ 			 * We have to drop this packet :(
+@@ -55,6 +58,21 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 			rcu_read_unlock();
+ 			return 0;
+ 		}
++
++		/* If we create the state in the middle of a conversation
++		 * (sloppy SCTP mode), then set the initial state to ...?
++		 */
++		if (sch->type != SCTP_CID_INIT) {
++			/* (*cpp)->state = IP_VS_SCTP_S_...?; */
++
++			IP_VS_DBG_BUF(8, "%s  %s:%d->"
++				"%s:%d new sloppy state\n"
++				pd->pp->name,
++				IP_VS_DBG_ADDR((*cpp)->af, &(*cpp)->daddr),
++				ntohs((*cpp)->dport),
++				IP_VS_DBG_ADDR((*cpp)->af, &(*cpp)->caddr),
++				ntohs((*cpp)->cport));
++		}
+ 	}
+ 	rcu_read_unlock();
+ 	/* NF_ACCEPT */
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 50a1594..e75bfff 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -39,6 +39,7 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct net *net;
+ 	struct ip_vs_service *svc;
+ 	struct tcphdr _tcph, *th;
++	struct netns_ipvs *ipvs;
+ 
+ 	th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
+ 	if (th == NULL) {
+@@ -46,14 +47,15 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 		return 0;
+ 	}
+ 	net = skb_net(skb);
++	ipvs = net_ipvs(net);
+ 	/* No !th->ack check to allow scheduling on SYN+ACK for Active FTP */
+ 	rcu_read_lock();
+-	if (th->syn &&
++	if ((sysctl_sloppy_tcp(ipvs) || th->syn) && !th->rst &&
+ 	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
+ 				      &iph->daddr, th->dest))) {
+ 		int ignored;
+ 
+-		if (ip_vs_todrop(net_ipvs(net))) {
++		if (ip_vs_todrop(ipvs)) {
+ 			/*
+ 			 * It seems that we are very loaded.
+ 			 * We have to drop this packet :(
+@@ -76,6 +78,25 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 			rcu_read_unlock();
+ 			return 0;
+ 		}
++
++		/* If we create the state in the middle of a conversation
++		 * (sloppy TCP mode), then set the initial state to sSR
++		 */
++		if (!th->syn) {
++			(*cpp)->state = IP_VS_TCP_S_SYN_RECV;
++
++			IP_VS_DBG_BUF(8, "%s [%c%c%c%c] %s:%d->"
++				"%s:%d: new sloppy state\n",
++				pd->pp->name,
++				th->syn ? 'S' : '.',
++				th->fin ? 'F' : '.',
++				th->ack ? 'A' : '.',
++				th->rst ? 'R' : '.',
++				IP_VS_DBG_ADDR((*cpp)->af, &(*cpp)->daddr),
++				ntohs((*cpp)->dport),
++				IP_VS_DBG_ADDR((*cpp)->af, &(*cpp)->caddr),
++				ntohs((*cpp)->cport));
++		}
+ 	}
+ 	rcu_read_unlock();
+ 	/* NF_ACCEPT */
+
+--pWyiEgJYm5f9v55/--
