@@ -1,43 +1,38 @@
 From: Alexander Frolkin <avf@eldamar.org.uk>
 Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
-Date: Mon, 10 Jun 2013 16:12:57 +0100
-Message-ID: <20130610151257.GB19108@eldamar.org.uk>
+Date: Mon, 10 Jun 2013 17:03:34 +0100
+Message-ID: <20130610160333.GA25485@eldamar.org.uk>
 References: <20130524120935.GL264@eldamar.org.uk>
  <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg>
  <20130524151408.GM264@eldamar.org.uk>
  <alpine.LFD.2.00.1305272251170.1728@ja.ssi.bg>
+ <20130610151257.GB19108@eldamar.org.uk>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="pWyiEgJYm5f9v55/"
+Content-Type: multipart/mixed; boundary="d6Gm4EdcadzBjdND"
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1305272251170.1728@ja.ssi.bg>
+In-Reply-To: <20130610151257.GB19108@eldamar.org.uk>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 To: Julian Anastasov <ja@ssi.bg>
 Cc: lvs-devel@vger.kernel.org
 
 
---pWyiEgJYm5f9v55/
+--d6Gm4EdcadzBjdND
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
 Hi,
 
-Attached is a patch for sloppy TCP and SCTP against the upstream kernel.
+> Attached is a patch for sloppy TCP and SCTP against the upstream kernel.
 
-checkpatch.pl throws up errors, but they refer to stuff that was there
-before, not my changes.
-
-I've added a bit of code to set the initial state for a sloppy TCP
-connection.  I have a template (in the patch) for a similar bit of code
-for SCTP, but I'm hoping that someone can help me work out what the
-initial state should be, since I know next to nothing about SCTP...
+Oops, fixed patch attached.
 
 
 Alex
 
 
---pWyiEgJYm5f9v55/
+--d6Gm4EdcadzBjdND
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="sloppy.patch"
 
@@ -171,7 +166,7 @@ index 8646488..c7f6e98 100644
 +			/* (*cpp)->state = IP_VS_SCTP_S_...?; */
 +
 +			IP_VS_DBG_BUF(8, "%s  %s:%d->"
-+				"%s:%d new sloppy state\n"
++				"%s:%d new sloppy state\n",
 +				pd->pp->name,
 +				IP_VS_DBG_ADDR((*cpp)->af, &(*cpp)->daddr),
 +				ntohs((*cpp)->dport),
@@ -238,4 +233,4 @@ index 50a1594..e75bfff 100644
  	rcu_read_unlock();
  	/* NF_ACCEPT */
 
---pWyiEgJYm5f9v55/--
+--d6Gm4EdcadzBjdND--
