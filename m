@@ -1,12 +1,12 @@
 From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
-Date: Tue, 11 Jun 2013 22:57:07 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1306112240280.1709@ja.ssi.bg>
-References: <20130524120935.GL264@eldamar.org.uk> <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg> <20130524151408.GM264@eldamar.org.uk> <alpine.LFD.2.00.1305272251170.1728@ja.ssi.bg> <20130607081252.GC11902@eldamar.org.uk> <alpine.LFD.2.00.1306102222380.1773@ja.ssi.bg>
- <20130611083806.GA25531@eldamar.org.uk>
+Date: Tue, 11 Jun 2013 23:13:39 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1306112257160.1709@ja.ssi.bg>
+References: <20130524120935.GL264@eldamar.org.uk> <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg> <20130524151408.GM264@eldamar.org.uk> <alpine.LFD.2.00.1305272251170.1728@ja.ssi.bg> <20130610151257.GB19108@eldamar.org.uk> <alpine.LFD.2.00.1306102247410.1972@ja.ssi.bg>
+ <20130611123824.GC25531@eldamar.org.uk>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20130611083806.GA25531@eldamar.org.uk>
+In-Reply-To: <20130611123824.GC25531@eldamar.org.uk>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
@@ -19,47 +19,80 @@ Cc: lvs-devel@vger.kernel.org
 
 On Tue, 11 Jun 2013, Alexander Frolkin wrote:
 
-> Hi,
-> 
-> > > Is there a reason why the SH fallback behaviour shouldn't be default?
-> > > That is, is there a reason why the current behaviour (client connection
-> > > gets reset if it is directed to a realserver with weight 0) is
-> > > desirable?
-> > I don't know, the authors preferred this behaviour.
-> 
-> Is it worth looking at changing this?  Or is this going to be too
-> difficult a change to push through?
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> index 8646488..9b1867b 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> @@ -15,6 +15,7 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+>  {
+>  	struct net *net;
+>  	struct ip_vs_service *svc;
+> +	struct netns_ipvs *ipvs;
+>  	sctp_chunkhdr_t _schunkh, *sch;
+>  	sctp_sctphdr_t *sh, _sctph;
+>  
+> @@ -27,13 +28,15 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+>  	if (sch == NULL)
+>  		return 0;
+>  	net = skb_net(skb);
+> +	ipvs = net_ipvs(net);
+>  	rcu_read_lock();
+> -	if ((sch->type == SCTP_CID_INIT) &&
+> +	if ((sysctl_sloppy_sctp(ipvs) ||
+> +	    (sch->type == SCTP_CID_INIT)) &&
 
-	I'm not sure how SH is used, may be failed
-dests are removed from the list to avoid connection
-failures.
+	Above change can be (all on same line):
 
-> I just don't understand why rejecting a client connection when there are
-> servers available is desirable behaviour.
+-	if ((sch->type == SCTP_CID_INIT) &&
++	if ((sysctl_sloppy_sctp(ipvs) || sch->type == SCTP_CID_INIT) &&
 
-	The problem is that every move leads to problems:
+> I haven't touched the SCTP state tables yet.
 
-- add/remove destination => mapping is changed for all dests
+	Here is the SCTP part we can use:
 
-- set weight to 0 and allow fallback => mapping is changed for
-	two connections from same IP
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 8646488..ae61212 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -232,21 +234,21 @@ static struct ipvs_sctp_nextstate
+ 	 * STATE : IP_VS_SCTP_S_NONE
+ 	 */
+ 	/*next state *//*event */
+-	{{IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_DATA_CLI */ },
++	{{IP_VS_SCTP_S_ESTABLISHED /* IP_VS_SCTP_EVE_DATA_CLI */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_DATA_SER */ },
+ 	 {IP_VS_SCTP_S_INIT_CLI /* IP_VS_SCTP_EVE_INIT_CLI */ },
+ 	 {IP_VS_SCTP_S_INIT_SER /* IP_VS_SCTP_EVE_INIT_SER */ },
+-	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_INIT_ACK_CLI */ },
++	 {IP_VS_SCTP_S_INIT_ACK_CLI /* IP_VS_SCTP_EVE_INIT_ACK_CLI */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_INIT_ACK_SER */ },
+-	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_COOKIE_ECHO_CLI */ },
++	 {IP_VS_SCTP_S_ECHO_CLI /* IP_VS_SCTP_EVE_COOKIE_ECHO_CLI */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_COOKIE_ECHO_SER */ },
+-	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_COOKIE_ACK_CLI */ },
++	 {IP_VS_SCTP_S_ESTABLISHED /* IP_VS_SCTP_EVE_COOKIE_ACK_CLI */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_COOKIE_ACK_SER */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_ABORT_CLI */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_ABORT_SER */ },
+-	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_SHUT_CLI */ },
++	 {IP_VS_SCTP_S_SHUT_CLI /* IP_VS_SCTP_EVE_SHUT_CLI */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_SHUT_SER */ },
+-	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_SHUT_ACK_CLI */ },
++	 {IP_VS_SCTP_S_SHUT_ACK_CLI /* IP_VS_SCTP_EVE_SHUT_ACK_CLI */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_SHUT_ACK_SER */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_SHUT_COM_CLI */ },
+ 	 {IP_VS_SCTP_S_CLOSED /* IP_VS_SCTP_EVE_SHUT_COM_SER */ },
+ 
+	You can continue with an official submission with
+all these changes. Subject should be in such format:
 
-	As result, it is a bad idea to remove dests that are
-failed. In such case, without fallback some clients are not
-served, forever. But with fallback we can break the
-implicit persistence. I see two kinds of uses:
+[PATCH] ipvs: ...
 
-- persistence implemented with SH => fallback is risky. Usually,
-we use expire_quiescent_template for such cases when persistence
-is used.
+	You can check Documentation/SubmittingPatches
 
-- same mapping for many directors => fallback is desired when
-config is same on all directors and persistence behaviour is
-not desired.
+	For example:
 
-	So, it really depends what are our goals when using SH.
-Not sure if we can apply the expire_quiescent_template flag to
-the SH scheduler to control fallback.
+[PATCH] ipvs: sloppy TCP and SCTP
 
 Regards
 
