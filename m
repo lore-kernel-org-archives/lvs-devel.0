@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
-Date: Mon, 17 Jun 2013 12:00:00 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1306171157090.10360@ja.ssi.bg>
+Date: Mon, 17 Jun 2013 12:04:43 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1306171202330.10428@ja.ssi.bg>
 References: <20130607081252.GC11902@eldamar.org.uk> <alpine.LFD.2.00.1306102222380.1773@ja.ssi.bg> <20130611083806.GA25531@eldamar.org.uk> <alpine.LFD.2.00.1306112240280.1709@ja.ssi.bg> <20130612141018.GC29327@eldamar.org.uk> <alpine.LFD.2.00.1306122244020.1773@ja.ssi.bg>
  <20130613141804.GB31356@eldamar.org.uk> <alpine.LFD.2.00.1306132250560.1810@ja.ssi.bg> <20130614102210.GA31800@eldamar.org.uk> <alpine.LFD.2.00.1306160911001.1579@ja.ssi.bg> <20130617083204.GA13101@eldamar.org.uk>
 Mime-Version: 1.0
@@ -19,6 +19,8 @@ Cc: lvs-devel@vger.kernel.org
 
 On Mon, 17 Jun 2013, Alexander Frolkin wrote:
 
+> Hi,
+> 
 > > 	Add 'break' for this case when dest is NULL (no
 > > dests). Then we have to add {} for all branches as per
 > > CodingStyle:
@@ -35,7 +37,9 @@ On Mon, 17 Jun 2013, Alexander Frolkin wrote:
 > So if dest is NULL, there is no point trying to choose a different
 > server?
 
-	Yes, you will find 256 NULLs there.
+	Wait, it seems is_unavailable() can succeed for other
+reasons, so the 'if (!dest) ... break;' check should be first,
+may be out of is_unavailable().
 
 Regards
 
