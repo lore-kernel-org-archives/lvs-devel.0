@@ -1,21 +1,21 @@
 From: Alexander Frolkin <avf@eldamar.org.uk>
 Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
-Date: Mon, 17 Jun 2013 11:35:32 +0100
-Message-ID: <20130617103532.GB13101@eldamar.org.uk>
-References: <20130607081252.GC11902@eldamar.org.uk>
- <alpine.LFD.2.00.1306102222380.1773@ja.ssi.bg>
- <20130611083806.GA25531@eldamar.org.uk>
+Date: Mon, 17 Jun 2013 12:11:13 +0100
+Message-ID: <20130617111113.GC13101@eldamar.org.uk>
+References: <20130611083806.GA25531@eldamar.org.uk>
  <alpine.LFD.2.00.1306112240280.1709@ja.ssi.bg>
  <20130612141018.GC29327@eldamar.org.uk>
  <alpine.LFD.2.00.1306122244020.1773@ja.ssi.bg>
  <20130613141804.GB31356@eldamar.org.uk>
  <alpine.LFD.2.00.1306132250560.1810@ja.ssi.bg>
- <20130614114711.GB31800@eldamar.org.uk>
- <alpine.LFD.2.00.1306161054590.1579@ja.ssi.bg>
+ <20130614102210.GA31800@eldamar.org.uk>
+ <alpine.LFD.2.00.1306160911001.1579@ja.ssi.bg>
+ <20130617083204.GA13101@eldamar.org.uk>
+ <alpine.LFD.2.00.1306171202330.10428@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1306161054590.1579@ja.ssi.bg>
+In-Reply-To: <alpine.LFD.2.00.1306171202330.10428@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -25,290 +25,17 @@ Cc: lvs-devel@vger.kernel.org
 
 Hi,
 
-> 	Moving the following parsing in separate
-> function parse_sched_flags(sched, optarg) will look better:
-> 
-> 	ce->svc.flags |= parse_sched_flags(ce->svc.sched_name, optarg);
-> 
-> 	By this way we can restrict sh-fallback and sh-port
-> to the "sh" scheduler. It seems ce->svc.sched_name is
-> empty initially (DEF_SCHED).
+> 	Wait, it seems is_unavailable() can succeed for other
+> reasons, so the 'if (!dest) ... break;' check should be first,
+> may be out of is_unavailable().
 
-I've moved the code to parse the scheduler flags to the end of the
-function, when the scheduler is known:
+I've moved things around a bit:
 
-diff --git a/ipvsadm.8 b/ipvsadm.8
-index 001ae74..9a9e9b3 100644
---- a/ipvsadm.8
-+++ b/ipvsadm.8
-@@ -37,7 +37,7 @@ ipvsadm \- Linux Virtual Server administration
- .SH SYNOPSIS
- .B ipvsadm -A|E -t|u|f \fIservice-address\fP [-s \fIscheduler\fP]
- .ti 15
--.B [-p [\fItimeout\fP]] [-M \fInetmask\fP]
-+.B [-p [\fItimeout\fP]] [-M \fInetmask\fP] [-b \fIsched-flags\fP]
- .br
- .B ipvsadm -D -t|u|f \fIservice-address\fP
- .br
-@@ -248,6 +248,9 @@ addresses.
- .sp
- \fBsh\fR - Source Hashing: assigns jobs to servers through looking up
- a statically assigned hash table by their source IP addresses.
-+This scheduler has two flags: sh-fallback, which enables fallback to a
-+different server if the selected server was unavailable, and sh-port,
-+which adds the source port number to the hash computation.
- .sp
- \fBsed\fR - Shortest Expected Delay: assigns an incoming job to the
- server with the shortest expected delay. The expected delay that the
-@@ -286,6 +289,11 @@ resolve problems with non-persistent cache clusters on the client side.
- IPv6 netmasks should be specified as a prefix length between 1 and 128.
- The default prefix length is 128.
- .TP
-+.B -b, --sched-flags \fIsched-flags\fP
-+Set scheduler flags for this virtual server.  \fIsched-flags\fP is a
-+comma-separated list of flags.  See the scheduler descriptions for
-+valid scheduler flags.
-+.TP
- .B -r, --real-server \fIserver-address\fP
- Real server that an associated request for service may be assigned to.
- The \fIserver-address\fP is the \fIhost\fP address of a real server,
-diff --git a/ipvsadm.c b/ipvsadm.c
-index 0197515..968c3b7 100644
---- a/ipvsadm.c
-+++ b/ipvsadm.c
-@@ -182,7 +182,8 @@ static const char* cmdnames[] = {
- #define OPT_EXACT		0x100000
- #define OPT_ONEPACKET		0x200000
- #define OPT_PERSISTENCE_ENGINE  0x400000
--#define NUMBER_OF_OPT		23
-+#define OPT_SCHED_FLAGS		0x800000
-+#define NUMBER_OF_OPT		24
- 
- static const char* optnames[] = {
- 	"numeric",
-@@ -208,6 +209,7 @@ static const char* optnames[] = {
- 	"exact",
- 	"ops",
- 	"pe",
-+	"sched-flags",
- };
- 
- /*
-@@ -220,21 +222,21 @@ static const char* optnames[] = {
-  */
- static const char commands_v_options[NUMBER_OF_CMD][NUMBER_OF_OPT] =
- {
--	/*   -n   -c   svc  -s   -p   -M   -r   fwd  -w   -x   -y   -mc  tot  dmn  -st  -rt  thr  -pc  srt  sid  -ex  ops  -pe */
--/*ADD*/     {'x', 'x', '+', ' ', ' ', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', ' '},
--/*EDIT*/    {'x', 'x', '+', ' ', ' ', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', ' '},
--/*DEL*/     {'x', 'x', '+', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
--/*FLUSH*/   {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
--/*LIST*/    {' ', '1', '1', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', '1', '1', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'x', 'x'},
--/*ADDSRV*/  {'x', 'x', '+', 'x', 'x', 'x', '+', ' ', ' ', ' ', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
--/*DELSRV*/  {'x', 'x', '+', 'x', 'x', 'x', '+', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
--/*EDITSRV*/ {'x', 'x', '+', 'x', 'x', 'x', '+', ' ', ' ', ' ', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
--/*TIMEOUT*/ {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
--/*STARTD*/  {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', 'x', 'x', 'x'},
--/*STOPD*/   {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', 'x', 'x', 'x'},
--/*RESTORE*/ {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
--/*SAVE*/    {' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
--/*ZERO*/    {'x', 'x', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+	/*   -n   -c   svc  -s   -p   -M   -r   fwd  -w   -x   -y   -mc  tot  dmn  -st  -rt  thr  -pc  srt  sid  -ex  ops  -pe  -b */
-+/*ADD*/     {'x', 'x', '+', ' ', ' ', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', ' ', ' '},
-+/*EDIT*/    {'x', 'x', '+', ' ', ' ', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', ' ', ' '},
-+/*DEL*/     {'x', 'x', '+', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+/*FLUSH*/   {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+/*LIST*/    {' ', '1', '1', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', '1', '1', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'x', 'x', 'x'},
-+/*ADDSRV*/  {'x', 'x', '+', 'x', 'x', 'x', '+', ' ', ' ', ' ', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+/*DELSRV*/  {'x', 'x', '+', 'x', 'x', 'x', '+', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+/*EDITSRV*/ {'x', 'x', '+', 'x', 'x', 'x', '+', ' ', ' ', ' ', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+/*TIMEOUT*/ {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+/*STARTD*/  {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', 'x', 'x', 'x', 'x'},
-+/*STOPD*/   {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', ' ', 'x', 'x', 'x', 'x'},
-+/*RESTORE*/ {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+/*SAVE*/    {' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
-+/*ZERO*/    {'x', 'x', ' ', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'},
- };
- 
- /* printing format flags */
-@@ -302,6 +304,7 @@ static int parse_service(char *buf, ipvs_service_t *svc);
- static int parse_netmask(char *buf, u_int32_t *addr);
- static int parse_timeout(char *buf, int min, int max);
- static unsigned int parse_fwmark(char *buf);
-+static unsigned int parse_sched_flags(const char *sched, char *optarg);
- 
- /* check the options based on the commands_v_options table */
- static void generic_opt_check(int command, int options);
-@@ -363,7 +366,7 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
- {
- 	int c, parse;
- 	poptContext context;
--	char *optarg=NULL;
-+	char *optarg=NULL, sched_flags_arg[128];
- 	struct poptOption options_table[] = {
- 		{ "add-service", 'A', POPT_ARG_NONE, NULL, 'A', NULL, NULL },
- 		{ "edit-service", 'E', POPT_ARG_NONE, NULL, 'E', NULL, NULL },
-@@ -426,9 +429,12 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
- 		{ "ops", 'o', POPT_ARG_NONE, NULL, 'o', NULL, NULL },
- 		{ "pe", '\0', POPT_ARG_STRING, &optarg, TAG_PERSISTENCE_ENGINE,
- 		  NULL, NULL },
-+		{ "sched-flags", 'b', POPT_ARG_STRING, &optarg, 'b', NULL, NULL },
- 		{ NULL, 0, 0, NULL, 0, NULL, NULL }
- 	};
- 
-+	sched_flags_arg[0] = '\0';
-+
- 	context = poptGetContext("ipvsadm", argc, (const char **)argv,
- 				 options_table, 0);
- 
-@@ -656,6 +662,10 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
- 			set_option(options, OPT_PERSISTENCE_ENGINE);
- 			strncpy(ce->svc.pe_name, optarg, IP_VS_PENAME_MAXLEN);
- 			break;
-+		case 'b':
-+			set_option(options, OPT_SCHED_FLAGS);
-+			strncpy(sched_flags_arg, optarg, sizeof(sched_flags_arg));
-+			break;
- 		default:
- 			fail(2, "invalid option `%s'",
- 			     poptBadOption(context, POPT_BADOPTION_NOALIAS));
-@@ -690,6 +700,14 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
- 	if ((optarg=(char *)poptGetArg(context)))
- 		fail(2, "unexpected argument %s", optarg);
- 
-+	if (sched_flags_arg[0]) {
-+		ce->svc.flags &= ~(IP_VS_SVC_F_SCHED1 |
-+				   IP_VS_SVC_F_SCHED2 |
-+				   IP_VS_SVC_F_SCHED3);
-+		ce->svc.flags |= parse_sched_flags(ce->svc.sched_name,
-+						   sched_flags_arg);
-+	}
-+
- 	poptFreeContext(context);
- 
- 	return 0;
-@@ -989,6 +1007,37 @@ parse_service(char *buf, ipvs_service_t *svc)
- 	return result;
- }
- 
-+static unsigned int parse_sched_flags(const char *sched, char *optarg)
-+{
-+	unsigned int flags = 0;
-+	char *flag;
-+	const char *scheduler = (sched && *sched) ? sched : DEF_SCHED;
-+
-+	flag = strtok(optarg, ",");
-+	do {
-+		if (!strcmp(flag, "flag-1")) {
-+			flags |= IP_VS_SVC_F_SCHED1;
-+		} else if (!strcmp(flag, "flag-2")) {
-+			flags |= IP_VS_SVC_F_SCHED2;
-+		} else if (!strcmp(flag, "flag-3")) {
-+			flags |= IP_VS_SVC_F_SCHED3;
-+		} else if (!strcmp(flag, "sh-fallback")) {
-+			flags |= IP_VS_SVC_F_SCHED_SH_FALLBACK;
-+			if (strcmp(scheduler, "sh"))
-+				fail(2, "incompatible scheduler flag `%s'",
-+				     flag);
-+		} else if (!strcmp(flag, "sh-port")) {
-+			flags |= IP_VS_SVC_F_SCHED_SH_PORT;
-+			if (strcmp(scheduler, "sh"))
-+				fail(2, "incompatible scheduler flag `%s'",
-+				     flag);
-+		} else {
-+			fail(2, "invalid scheduler flag `%s'", flag);
-+		}
-+	} while ((flag = strtok(NULL, ",")) != NULL);
-+
-+	return flags;
-+}
- 
- static void
- generic_opt_check(int command, int options)
-@@ -1070,7 +1119,7 @@ static void usage_exit(const char *program, const int exit_status)
- 	version(stream);
- 	fprintf(stream,
- 		"Usage:\n"
--		"  %s -A|E -t|u|f service-address [-s scheduler] [-p [timeout]] [-M netmask] [--pe persistence_engine]\n"
-+		"  %s -A|E -t|u|f service-address [-s scheduler] [-p [timeout]] [-M netmask] [--pe persistence_engine] [-b sched-flags]\n"
- 		"  %s -D -t|u|f service-address\n"
- 		"  %s -C\n"
- 		"  %s -R\n"
-@@ -1139,7 +1188,8 @@ static void usage_exit(const char *program, const int exit_status)
- 		"  --nosort                            disable sorting output of service/server entries\n"
- 		"  --sort                              does nothing, for backwards compatibility\n"
- 		"  --ops          -o                   one-packet scheduling\n"
--		"  --numeric      -n                   numeric output of addresses and ports\n",
-+		"  --numeric      -n                   numeric output of addresses and ports\n"
-+		"  --sched-flags  -b flags             scheduler flags (comma-separated)\n",
- 		DEF_SCHED);
- 
- 	exit(exit_status);
-@@ -1396,6 +1446,32 @@ static void print_largenum(unsigned long long i, unsigned int format)
- 		printf("%8lluT", i / 1000000000000ULL);
- }
- 
-+static void print_sched_flags(ipvs_service_entry_t *se) {
-+	char flags[64];
-+
-+	flags[0] = '\0';
-+
-+	if (!strcmp(se->sched_name, "sh")) {
-+		if (se->flags & IP_VS_SVC_F_SCHED_SH_FALLBACK)
-+			strcat(flags, "sh-fallback,");
-+		if (se->flags & IP_VS_SVC_F_SCHED_SH_PORT)
-+			strcat(flags, "sh-port,");
-+		if (se->flags & IP_VS_SVC_F_SCHED3)
-+			strcat(flags, "flag-3,");
-+	} else {
-+		if (se->flags & IP_VS_SVC_F_SCHED1)
-+			strcat(flags, "flag-1,");
-+		if (se->flags & IP_VS_SVC_F_SCHED2)
-+			strcat(flags, "flag-2,");
-+		if (se->flags & IP_VS_SVC_F_SCHED3)
-+			strcat(flags, "flag-3,");
-+	}
-+
-+	if (flags[0]) {
-+		flags[strlen(flags)-1] = '\0';
-+		printf("%s", flags);
-+	}
-+}
- 
- static void print_title(unsigned int format)
- {
-@@ -1488,6 +1564,12 @@ print_service_entry(ipvs_service_entry_t *se, unsigned int format)
- 			printf(" pe %s", se->pe_name);
- 		if (se->flags & IP_VS_SVC_F_ONEPACKET)
- 			printf(" -o");
-+		if (se->flags & (IP_VS_SVC_F_SCHED1 |
-+				 IP_VS_SVC_F_SCHED2 |
-+				 IP_VS_SVC_F_SCHED3)) {
-+			printf(" -b ");
-+			print_sched_flags(se);
-+		}
- 	} else if (format & FMT_STATS) {
- 		printf("%-33s", svc_name);
- 		print_largenum(se->stats.conns, format);
-@@ -1504,6 +1586,13 @@ print_service_entry(ipvs_service_entry_t *se, unsigned int format)
- 		print_largenum(se->stats.outbps, format);
- 	} else {
- 		printf("%s %s", svc_name, se->sched_name);
-+		if (se->flags & (IP_VS_SVC_F_SCHED1 |
-+				 IP_VS_SVC_F_SCHED2 |
-+				 IP_VS_SVC_F_SCHED3)) {
-+			printf(" (");
-+			print_sched_flags(se);
-+			printf(")");
-+		}
- 		if (se->flags & IP_VS_SVC_F_PERSISTENT) {
- 			printf(" persistent %u", se->timeout);
- 			if (se->af == AF_INET)
-diff --git a/libipvs/ip_vs.h b/libipvs/ip_vs.h
-index 5e1d544..4db14ff 100644
---- a/libipvs/ip_vs.h
-+++ b/libipvs/ip_vs.h
-@@ -29,6 +29,13 @@
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index a245377..2945822 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -20,6 +20,12 @@
  #define IP_VS_SVC_F_PERSISTENT	0x0001		/* persistent port */
  #define IP_VS_SVC_F_HASHED	0x0002		/* hashed entry */
  #define IP_VS_SVC_F_ONEPACKET	0x0004		/* one-packet scheduling */
@@ -318,10 +45,169 @@ index 5e1d544..4db14ff 100644
 +
 +#define IP_VS_SVC_F_SCHED_SH_FALLBACK	IP_VS_SVC_F_SCHED1 /* SH fallback */
 +#define IP_VS_SVC_F_SCHED_SH_PORT	IP_VS_SVC_F_SCHED2 /* SH use port */
+ 
+ /*
+  *      Destination Server Flags
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index e0130f8..2f52129 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -48,6 +48,10 @@
+ 
+ #include <net/ip_vs.h>
+ 
++#include <net/tcp.h>
++#include <linux/udp.h>
++#include <linux/sctp.h>
 +
  
  /*
-  *      IPVS sync daemon states
+  *      IPVS SH bucket
+@@ -71,10 +75,20 @@ struct ip_vs_sh_state {
+ 	struct rcu_head			rcu_head;
+ };
+ 
++/* Helper function to determine if server is unavailable
++ */
++static inline bool is_unavailable(struct ip_vs_dest *dest)
++{
++	return atomic_read(&dest->weight) <= 0 ||
++	       dest->flags & IP_VS_DEST_F_OVERLOAD;
++}
++
+ /*
+  *	Returns hash value for IPVS SH entry
+  */
+-static inline unsigned int ip_vs_sh_hashkey(int af, const union nf_inet_addr *addr)
++static inline unsigned int
++ip_vs_sh_hashkey(int af, const union nf_inet_addr *addr,
++		 __be16 port, unsigned int offset)
+ {
+ 	__be32 addr_fold = addr->ip;
+ 
+@@ -83,7 +97,8 @@ static inline unsigned int ip_vs_sh_hashkey(int af, const union nf_inet_addr *ad
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
+ #endif
+-	return (ntohl(addr_fold)*2654435761UL) & IP_VS_SH_TAB_MASK;
++	return (offset + (ntohs(port) + ntohl(addr_fold))*2654435761UL) &
++		IP_VS_SH_TAB_MASK;
+ }
+ 
+ 
+@@ -91,12 +106,43 @@ static inline unsigned int ip_vs_sh_hashkey(int af, const union nf_inet_addr *ad
+  *      Get ip_vs_dest associated with supplied parameters.
+  */
+ static inline struct ip_vs_dest *
+-ip_vs_sh_get(int af, struct ip_vs_sh_state *s, const union nf_inet_addr *addr)
++ip_vs_sh_get(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
++	     const union nf_inet_addr *addr, __be16 port)
+ {
+-	return rcu_dereference(s->buckets[ip_vs_sh_hashkey(af, addr)].dest);
++	unsigned int hash = ip_vs_sh_hashkey(svc->af, addr, port, 0);
++	struct ip_vs_dest *dest = rcu_dereference(s->buckets[hash].dest);
++
++	return (!dest || is_unavailable(dest)) ? NULL : dest;
+ }
+ 
+ 
++/* As ip_vs_sh_get, but with fallback if selected server is unavailable
++ */
++static inline struct ip_vs_dest *
++ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
++		      const union nf_inet_addr *addr, __be16 port)
++{
++	unsigned int offset;
++	unsigned int hash;
++	struct ip_vs_dest *dest;
++
++	for (offset = 0; offset < IP_VS_SH_TAB_SIZE; offset++) {
++		hash = ip_vs_sh_hashkey(svc->af, addr, port, offset);
++		dest = rcu_dereference(s->buckets[hash].dest);
++		if (!dest)
++			break;
++		else if (is_unavailable(dest))
++			IP_VS_DBG_BUF(6, "SH: selected unavailable server "
++				      "%s:%d (offset %d)",
++				      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++				      ntohs(dest->port), offset);
++		else
++			return dest;
++	}
++
++	return NULL;
++}
++
+ /*
+  *      Assign all the hash buckets of the specified table with the service.
+  */
+@@ -213,13 +259,34 @@ static int ip_vs_sh_dest_changed(struct ip_vs_service *svc,
+ }
+ 
+ 
+-/*
+- *      If the dest flags is set with IP_VS_DEST_F_OVERLOAD,
+- *      consider that the server is overloaded here.
++/* Helper function to get port number
+  */
+-static inline int is_overloaded(struct ip_vs_dest *dest)
++static inline __be16
++ip_vs_sh_get_port(const struct sk_buff *skb, struct ip_vs_iphdr *iph)
+ {
+-	return dest->flags & IP_VS_DEST_F_OVERLOAD;
++	__be16 port;
++	struct tcphdr _tcph, *th;
++	struct udphdr _udph, *uh;
++	sctp_sctphdr_t _sctph, *sh;
++
++	switch (iph->protocol) {
++	case IPPROTO_TCP:
++		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
++		port = th->source;
++		break;
++	case IPPROTO_UDP:
++		uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
++		port = uh->source;
++		break;
++	case IPPROTO_SCTP:
++		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
++		port = sh->source;
++		break;
++	default:
++		port = 0;
++	}
++
++	return port;
+ }
+ 
+ 
+@@ -232,15 +299,21 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ {
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_sh_state *s;
++	__be16 port = 0;
+ 
+ 	IP_VS_DBG(6, "ip_vs_sh_schedule(): Scheduling...\n");
+ 
++	if (svc->flags & IP_VS_SVC_F_SCHED_SH_PORT)
++		port = ip_vs_sh_get_port(skb, &iph);
++
+ 	s = (struct ip_vs_sh_state *) svc->sched_data;
+-	dest = ip_vs_sh_get(svc->af, s, &iph->saddr);
+-	if (!dest
+-	    || !(dest->flags & IP_VS_DEST_F_AVAILABLE)
+-	    || atomic_read(&dest->weight) <= 0
+-	    || is_overloaded(dest)) {
++
++	if (svc->flags & IP_VS_SVC_F_SCHED_SH_FALLBACK)
++		dest = ip_vs_sh_get_fallback(svc, s, &iph->saddr, port);
++	else
++		dest = ip_vs_sh_get(svc, s, &iph->saddr, port);
++
++	if (!dest) {
+ 		ip_vs_scheduler_err(svc, "no destination available");
+ 		return NULL;
+ 	}
 
 
 Alex
