@@ -1,73 +1,58 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvsadm: support for scheduler flags
-Date: Wed, 19 Jun 2013 23:05:00 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1306192254500.1823@ja.ssi.bg>
-References: <20130619100701.GA20258@eldamar.org.uk>
+From: Aleksey Chudov <aleksey.chudov@gmail.com>
+Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
+Date: Wed, 19 Jun 2013 23:44:51 +0300
+Message-ID: <51C21843.80304@gmail.com>
+References: <20130524120935.GL264@eldamar.org.uk> <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg> <20130524151408.GM264@eldamar.org.uk> <519F92EB.4080509@gmail.com> <alpine.LFD.2.00.1305280011490.1728@ja.ssi.bg> <51A4B3ED.4070809@gmail.com> <alpine.LFD.2.00.1306191153590.2077@ja.ssi.bg>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20130619100701.GA20258@eldamar.org.uk>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=message-id:date:from:user-agent:mime-version:to:cc:subject
+         :references:in-reply-to:content-type:content-transfer-encoding;
+        bh=ITwGc7eMUI4S5hN7P/DdiWocnIBb/jpXouR/m1DKOtk=;
+        b=1C2ObVh8gfQgV7H274Xkjf5yAFcY7WkdsnoFUsDGkRhRLU8z/Kyv/7D/bJy4OIrDnB
+         iFRUQh4Xv486ycKMU260ohYzMwmW1hpPr2AnqtVBqW4Tuwf34XowClFMmXyxV/8DAfww
+         jkW5NEhITVM4a6qZCq8pdjAd+c68arHBFqAjWvL6hLvh0504lNQcR0dtXktaQwRNu4FC
+         eaJoyHOLmukKIensBFa7K3yML9UVCLJMgAATTgzA8J3o3P/3Ldkiu3z10JcB/kt3ysDR
+         Hzn9/WPcbZNXO6jzoXVDLHtMnZbCknqxbtkMoBhPFqZJpDHQ7siB0v0dEhHrNEu89lLY
+         uRWA==
+In-Reply-To: <alpine.LFD.2.00.1306191153590.2077@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Alexander Frolkin <avf@eldamar.org.uk>
-Cc: lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, lvs-users@linuxvirtualserver.org
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org
+
+Hello,
+
+On 19.06.2013 12:03, Julian Anastasov wrote:
+> 	Here is something that is compile-tested. You
+> will need the "ipvs: sloppy TCP and SCTP" patch by
+> Alexander Frolkin posted on 13 Jun. Let me know if
+> you need more help in applying and testing such patches,
+> so that we can be more confident when releasing such
+> optimization officially.
+>
+> From: Julian Anastasov <ja@ssi.bg>
+> [PATCH] ipvs: add sync_persist_mode flag
+>
+> Add sync_persist_mode flag to reduce sync traffic
+> by syncing only persistent templates.
+>
+>
+
+On 19.06.2013 22:25, Julian Anastasov wrote:
+> On Wed, 19 Jun 2013, Julian Anastasov wrote:
+>
+>> >+static inline bool in_peristence(struct ip_vs_conn *cp)
+> 	Ops
+>
+> s/in_peristence/in_persistence/
 
 
-	Hello,
+Thanks for the implementation. I applied sloppy_tcp and persist_mode 
+patches manually to our kernel 2.6.39 considering your last ops :) Plan 
+to start testing tomorrow.
 
-On Wed, 19 Jun 2013, Alexander Frolkin wrote:
-
-> This patch adds support for scheduler flags, necessary to make use of
-> the "SH fallback and L4 hashing" kernel patch.
-> 
-> The flags are set per service (so using -A or -E) using -b <flags> or
-> --sched-flags <flags>.  <flags> is a comma-separated list of scheduler
-> flags.  The currently supported flags are sh-port, sh-fallback, and
-> generic flag-1, flag-2, flag-3 for future-proofing.
-> 
-> This patch will work with older versions of IPVS, although setting the
-> flags will have no effect.
-> 
-> Signed-off-by: Alexander Frolkin <avf@eldamar.org.uk>
-
-	Change looks correct:
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	but we forgot some minor issues, see below...
-
-> @@ -426,9 +429,12 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
->  		{ "ops", 'o', POPT_ARG_NONE, NULL, 'o', NULL, NULL },
->  		{ "pe", '\0', POPT_ARG_STRING, &optarg, TAG_PERSISTENCE_ENGINE,
->  		  NULL, NULL },
-> +		{ "sched-flags", 'b', POPT_ARG_STRING, &optarg, 'b', NULL, NULL },
-
-	You have to split this long line
-
-> @@ -656,6 +662,10 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
->  			set_option(options, OPT_PERSISTENCE_ENGINE);
->  			strncpy(ce->svc.pe_name, optarg, IP_VS_PENAME_MAXLEN);
->  			break;
-> +		case 'b':
-> +			set_option(options, OPT_SCHED_FLAGS);
-> +			snprintf(sched_flags_arg, sizeof(sched_flags_arg), "%s", optarg);
-
-	This too
-
-> +static void print_sched_flags(ipvs_service_entry_t *se) {
-
-{	<<< start func on new line
-
-	checkpatch.pl shows also this one:
-
-ERROR: spaces required around that '=' (ctx:VxV)
-#121: FILE: ipvsadm.c:369:
-+       char *optarg=NULL, sched_flags_arg[128];
-                    ^
-	May be you can send a fixed version to Simon.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Aleksey
