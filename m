@@ -1,184 +1,206 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
-Date: Wed, 19 Jun 2013 12:03:22 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1306191153590.2077@ja.ssi.bg>
-References: <20130524120935.GL264@eldamar.org.uk> <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg> <20130524151408.GM264@eldamar.org.uk> <519F92EB.4080509@gmail.com> <alpine.LFD.2.00.1305280011490.1728@ja.ssi.bg> <51A4B3ED.4070809@gmail.com>
+From: Alexander Frolkin <avf@eldamar.org.uk>
+Subject: [PATCH] ipvs: SH fallback and L4 hashing
+Date: Wed, 19 Jun 2013 10:54:25 +0100
+Message-ID: <20130619095425.GA20145@eldamar.org.uk>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <51A4B3ED.4070809@gmail.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Aleksey Chudov <aleksey.chudov@gmail.com>
-Cc: lvs-devel@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
+By default the SH scheduler rejects connections that are hashed onto a
+realserver of weight 0.  This patch adds a flag to make SH choose a
+different realserver in this case, instead of rejecting the connection.
 
-	Hello,
+The patch also adds a flag to make SH include the source port (TCP, UDP,
+SCTP) in the hash as well as the source address.  This basically allows
+for deterministic round-robin load balancing (i.e., where any director
+in a cluster of directors with identical config will send the same
+packet the same way).
 
-On Tue, 28 May 2013, Aleksey Chudov wrote:
+The flags are service flags (IP_VS_SVC_F_SCHED*) so that these options
+can be set per service.  They are set using a new option to ipvsadm.
 
-> Currently we are using multiple active / standby server pairs and synchronize
-> them with each other. So half of the servers are constantly doing nothing. We
-> are searching how to use all the servers in active / active mode while
-> maintaining high availability and sessions persistence in case of failure of
-> one of the load balancers. Unfortunately the proposed stateless scheme with SH
-> scheduler and Sloppy TCP is not suitable for as since we are using WLC and WRR
-> schedulers. As you mentioned SH scheduler has several drawbacks because of
-> which we can not use it. Also, we can not synchronize all connections between
-> all servers, since it would require a lot of memory and the search for such a
-> huge connection table is likely to be slower.
-> 
-> But we can solve the sync problem in such a way as done in the conntrackd
-> which allows filtering by flow state. The easiest option is to make the filter
-> only for IP_VS_CONN_F_TEMPLATE state. Thus if all the load balancers will sync
-> persistent templates with each other then even if one of the load balancers
-> fails most users will remain on the same real servers. Of course without the
-> full sync clients must reestablish TCP connections, but for this case we can
-> use Sloppy TCP to create a TCP connection state on any TCP packet.
-> 
-> What do you think of this idea?
-
-	Here is something that is compile-tested. You
-will need the "ipvs: sloppy TCP and SCTP" patch by
-Alexander Frolkin posted on 13 Jun. Let me know if
-you need more help in applying and testing such patches,
-so that we can be more confident when releasing such
-optimization officially.
-
-From: Julian Anastasov <ja@ssi.bg>
-[PATCH] ipvs: add sync_persist_mode flag
-
-Add sync_persist_mode flag to reduce sync traffic
-by syncing only persistent templates.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Alexander Frolkin <avf@eldamar.org.uk>
 ---
- Documentation/networking/ipvs-sysctl.txt |   13 +++++++++++++
- include/net/ip_vs.h                      |   11 +++++++++++
- net/netfilter/ipvs/ip_vs_ctl.c           |    7 +++++++
- net/netfilter/ipvs/ip_vs_sync.c          |   12 ++++++++++++
- 4 files changed, 43 insertions(+), 0 deletions(-)
+The patch is against the ipvs-next tree.
 
-diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
-index 9573d0c..7a3c047 100644
---- a/Documentation/networking/ipvs-sysctl.txt
-+++ b/Documentation/networking/ipvs-sysctl.txt
-@@ -181,6 +181,19 @@ snat_reroute - BOOLEAN
- 	always be the same as the original route so it is an optimisation
- 	to disable snat_reroute and avoid the recalculation.
- 
-+sync_persist_mode - INTEGER
-+	default 0
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index a245377..2945822 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -20,6 +20,12 @@
+ #define IP_VS_SVC_F_PERSISTENT	0x0001		/* persistent port */
+ #define IP_VS_SVC_F_HASHED	0x0002		/* hashed entry */
+ #define IP_VS_SVC_F_ONEPACKET	0x0004		/* one-packet scheduling */
++#define IP_VS_SVC_F_SCHED1	0x0008		/* scheduler flag 1 */
++#define IP_VS_SVC_F_SCHED2	0x0010		/* scheduler flag 2 */
++#define IP_VS_SVC_F_SCHED3	0x0020		/* scheduler flag 3 */
 +
-+	Controls the synchronisation of connections when using persistence
-+
-+	0: All types of connections are synchronised
-+	1: Attempt to reduce the synchronisation traffic depending on
-+	the connection type. For persistent services avoid synchronisation
-+	for normal connections, do it only for persistence templates.
-+	In such case, for TCP and SCTP it may need enabling sloppy_tcp and
-+	sloppy_sctp flags on backup servers. For non-persistent services
-+	such optimization is not applied, mode 0 is assumed.
-+
- sync_version - INTEGER
- 	default 1
++#define IP_VS_SVC_F_SCHED_SH_FALLBACK	IP_VS_SVC_F_SCHED1 /* SH fallback */
++#define IP_VS_SVC_F_SCHED_SH_PORT	IP_VS_SVC_F_SCHED2 /* SH use port */
  
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index e667df1..f0d70f0 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -975,6 +975,7 @@ struct netns_ipvs {
- 	int			sysctl_snat_reroute;
- 	int			sysctl_sync_ver;
- 	int			sysctl_sync_ports;
-+	int			sysctl_sync_persist_mode;
- 	unsigned long		sysctl_sync_qlen_max;
- 	int			sysctl_sync_sock_size;
- 	int			sysctl_cache_bypass;
-@@ -1076,6 +1077,11 @@ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
- 	return ACCESS_ONCE(ipvs->sysctl_sync_ports);
- }
+ /*
+  *      Destination Server Flags
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index e0130f8..b7e2c5a 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -48,6 +48,10 @@
  
-+static inline int sysctl_sync_persist_mode(struct netns_ipvs *ipvs)
+ #include <net/ip_vs.h>
+ 
++#include <net/tcp.h>
++#include <linux/udp.h>
++#include <linux/sctp.h>
++
+ 
+ /*
+  *      IPVS SH bucket
+@@ -71,10 +75,19 @@ struct ip_vs_sh_state {
+ 	struct rcu_head			rcu_head;
+ };
+ 
++/* Helper function to determine if server is unavailable */
++static inline bool is_unavailable(struct ip_vs_dest *dest)
 +{
-+	return ipvs->sysctl_sync_persist_mode;
++	return atomic_read(&dest->weight) <= 0 ||
++	       dest->flags & IP_VS_DEST_F_OVERLOAD;
 +}
 +
- static inline unsigned long sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
+ /*
+  *	Returns hash value for IPVS SH entry
+  */
+-static inline unsigned int ip_vs_sh_hashkey(int af, const union nf_inet_addr *addr)
++static inline unsigned int
++ip_vs_sh_hashkey(int af, const union nf_inet_addr *addr,
++		 __be16 port, unsigned int offset)
  {
- 	return ipvs->sysctl_sync_qlen_max;
-@@ -1139,6 +1145,11 @@ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
- 	return 1;
+ 	__be32 addr_fold = addr->ip;
+ 
+@@ -83,7 +96,8 @@ static inline unsigned int ip_vs_sh_hashkey(int af, const union nf_inet_addr *ad
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
+ #endif
+-	return (ntohl(addr_fold)*2654435761UL) & IP_VS_SH_TAB_MASK;
++	return (offset + (ntohs(port) + ntohl(addr_fold))*2654435761UL) &
++		IP_VS_SH_TAB_MASK;
  }
  
-+static inline int sysctl_sync_persist_mode(struct netns_ipvs *ipvs)
-+{
-+	return 0;
-+}
+ 
+@@ -91,12 +105,42 @@ static inline unsigned int ip_vs_sh_hashkey(int af, const union nf_inet_addr *ad
+  *      Get ip_vs_dest associated with supplied parameters.
+  */
+ static inline struct ip_vs_dest *
+-ip_vs_sh_get(int af, struct ip_vs_sh_state *s, const union nf_inet_addr *addr)
++ip_vs_sh_get(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
++	     const union nf_inet_addr *addr, __be16 port)
+ {
+-	return rcu_dereference(s->buckets[ip_vs_sh_hashkey(af, addr)].dest);
++	unsigned int hash = ip_vs_sh_hashkey(svc->af, addr, port, 0);
++	struct ip_vs_dest *dest = rcu_dereference(s->buckets[hash].dest);
 +
- static inline unsigned long sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
- {
- 	return IPVS_SYNC_QLEN_MAX;
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 1b14abb..0c129cc 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1715,6 +1715,12 @@ static struct ctl_table vs_vars[] = {
- 		.proc_handler	= &proc_do_sync_ports,
- 	},
- 	{
-+		.procname	= "sync_persist_mode",
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+	{
- 		.procname	= "sync_qlen_max",
- 		.maxlen		= sizeof(unsigned long),
- 		.mode		= 0644,
-@@ -3728,6 +3734,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
- 	tbl[idx++].data = &ipvs->sysctl_sync_ver;
- 	ipvs->sysctl_sync_ports = 1;
- 	tbl[idx++].data = &ipvs->sysctl_sync_ports;
-+	tbl[idx++].data = &ipvs->sysctl_sync_persist_mode;
- 	ipvs->sysctl_sync_qlen_max = nr_free_buffer_pages() / 32;
- 	tbl[idx++].data = &ipvs->sysctl_sync_qlen_max;
- 	ipvs->sysctl_sync_sock_size = 0;
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 2fc6639..03c43c0 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -425,6 +425,16 @@ ip_vs_sync_buff_create_v0(struct netns_ipvs *ipvs)
- 	return sb;
++	return (!dest || is_unavailable(dest)) ? NULL : dest;
  }
  
-+/* Check if connection is controlled by persistence */
-+static inline bool in_peristence(struct ip_vs_conn *cp)
+ 
++/* As ip_vs_sh_get, but with fallback if selected server is unavailable */
++static inline struct ip_vs_dest *
++ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
++		      const union nf_inet_addr *addr, __be16 port)
 +{
-+	for (cp = cp->control; cp; cp = cp->control) {
-+		if (cp->flags & IP_VS_CONN_F_TEMPLATE)
-+			return true;
++	unsigned int offset;
++	unsigned int hash;
++	struct ip_vs_dest *dest;
++
++	for (offset = 0; offset < IP_VS_SH_TAB_SIZE; offset++) {
++		hash = ip_vs_sh_hashkey(svc->af, addr, port, offset);
++		dest = rcu_dereference(s->buckets[hash].dest);
++		if (!dest)
++			break;
++		if (is_unavailable(dest))
++			IP_VS_DBG_BUF(6, "SH: selected unavailable server "
++				      "%s:%d (offset %d)",
++				      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++				      ntohs(dest->port), offset);
++		else
++			return dest;
 +	}
-+	return false;
++
++	return NULL;
 +}
 +
- /* Check if conn should be synced.
-  * pkts: conn packets, use sysctl_sync_threshold to avoid packet check
-  * - (1) sync_refresh_period: reduce sync rate. Additionally, retry
-@@ -447,6 +457,8 @@ static int ip_vs_sync_conn_needed(struct netns_ipvs *ipvs,
- 	/* Check if we sync in current state */
- 	if (unlikely(cp->flags & IP_VS_CONN_F_TEMPLATE))
- 		force = 0;
-+	else if (unlikely(sysctl_sync_persist_mode(ipvs) && in_peristence(cp)))
-+		return 0;
- 	else if (likely(cp->protocol == IPPROTO_TCP)) {
- 		if (!((1 << cp->state) &
- 		      ((1 << IP_VS_TCP_S_ESTABLISHED) |
--- 
-1.7.3.4
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+ /*
+  *      Assign all the hash buckets of the specified table with the service.
+  */
+@@ -213,13 +257,33 @@ static int ip_vs_sh_dest_changed(struct ip_vs_service *svc,
+ }
+ 
+ 
+-/*
+- *      If the dest flags is set with IP_VS_DEST_F_OVERLOAD,
+- *      consider that the server is overloaded here.
+- */
+-static inline int is_overloaded(struct ip_vs_dest *dest)
++/* Helper function to get port number */
++static inline __be16
++ip_vs_sh_get_port(const struct sk_buff *skb, struct ip_vs_iphdr *iph)
+ {
+-	return dest->flags & IP_VS_DEST_F_OVERLOAD;
++	__be16 port;
++	struct tcphdr _tcph, *th;
++	struct udphdr _udph, *uh;
++	sctp_sctphdr_t _sctph, *sh;
++
++	switch (iph->protocol) {
++	case IPPROTO_TCP:
++		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
++		port = th->source;
++		break;
++	case IPPROTO_UDP:
++		uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
++		port = uh->source;
++		break;
++	case IPPROTO_SCTP:
++		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
++		port = sh->source;
++		break;
++	default:
++		port = 0;
++	}
++
++	return port;
+ }
+ 
+ 
+@@ -232,15 +296,21 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ {
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_sh_state *s;
++	__be16 port = 0;
+ 
+ 	IP_VS_DBG(6, "ip_vs_sh_schedule(): Scheduling...\n");
+ 
++	if (svc->flags & IP_VS_SVC_F_SCHED_SH_PORT)
++		port = ip_vs_sh_get_port(skb, iph);
++
+ 	s = (struct ip_vs_sh_state *) svc->sched_data;
+-	dest = ip_vs_sh_get(svc->af, s, &iph->saddr);
+-	if (!dest
+-	    || !(dest->flags & IP_VS_DEST_F_AVAILABLE)
+-	    || atomic_read(&dest->weight) <= 0
+-	    || is_overloaded(dest)) {
++
++	if (svc->flags & IP_VS_SVC_F_SCHED_SH_FALLBACK)
++		dest = ip_vs_sh_get_fallback(svc, s, &iph->saddr, port);
++	else
++		dest = ip_vs_sh_get(svc, s, &iph->saddr, port);
++
++	if (!dest) {
+ 		ip_vs_scheduler_err(svc, "no destination available");
+ 		return NULL;
+ 	}
