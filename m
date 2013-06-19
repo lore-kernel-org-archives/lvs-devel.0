@@ -1,65 +1,182 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH net-next 2/3] ipvs: replace the SCTP state machine
-Date: Wed, 19 Jun 2013 07:49:35 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1306190740080.1632@ja.ssi.bg>
-References: <1371539288-5036-1-git-send-email-ja@ssi.bg> <1371539288-5036-3-git-send-email-ja@ssi.bg> <20130619005256.GA19345@verge.net.au>
+Subject: Re: [PATCH] Sloppy TCP, SH rebalancing, SHP scheduling
+Date: Wed, 19 Jun 2013 12:03:22 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1306191153590.2077@ja.ssi.bg>
+References: <20130524120935.GL264@eldamar.org.uk> <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg> <20130524151408.GM264@eldamar.org.uk> <519F92EB.4080509@gmail.com> <alpine.LFD.2.00.1305280011490.1728@ja.ssi.bg> <51A4B3ED.4070809@gmail.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20130619005256.GA19345@verge.net.au>
+In-Reply-To: <51A4B3ED.4070809@gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
+To: Aleksey Chudov <aleksey.chudov@gmail.com>
 Cc: lvs-devel@vger.kernel.org
 
 
 	Hello,
 
-On Wed, 19 Jun 2013, Simon Horman wrote:
+On Tue, 28 May 2013, Aleksey Chudov wrote:
 
-> On Tue, Jun 18, 2013 at 10:08:07AM +0300, Julian Anastasov wrote:
-> > Convert the SCTP state table, so that it is more readable.
-> > Change the states to be according to the diagram in RFC 2960
-> > and add more states suitable for middle box. Still, such
-> > change in states adds incompatibility if systems in sync
-> > setup include this change and others do not include it.
-> > 
-> > With this change we also have proper transitions in INPUT-ONLY
-> > mode (DR/TUN) where we see packets only from client. Now
-> > we should not switch to 10-second CLOSED state at a time
-> > when we should stay in ESTABLISHED state.
-> > 
-> > The short names for states are because we have 16-char space
-> > in ipvsadm and 11-char limit for the connection list format.
-> > It is a sequence of the TCP implementation where the longest
-> > state name is ESTABLISHED.
-> > 
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> Currently we are using multiple active / standby server pairs and synchronize
+> them with each other. So half of the servers are constantly doing nothing. We
+> are searching how to use all the servers in active / active mode while
+> maintaining high availability and sessions persistence in case of failure of
+> one of the load balancers. Unfortunately the proposed stateless scheme with SH
+> scheduler and Sloppy TCP is not suitable for as since we are using WLC and WRR
+> schedulers. As you mentioned SH scheduler has several drawbacks because of
+> which we can not use it. Also, we can not synchronize all connections between
+> all servers, since it would require a lot of memory and the search for such a
+> huge connection table is likely to be slower.
 > 
-> Hi Julian,
+> But we can solve the sync problem in such a way as done in the conntrackd
+> which allows filtering by flow state. The easiest option is to make the filter
+> only for IP_VS_CONN_F_TEMPLATE state. Thus if all the load balancers will sync
+> persistent templates with each other then even if one of the load balancers
+> fails most users will remain on the same real servers. Of course without the
+> full sync clients must reestablish TCP connections, but for this case we can
+> use Sloppy TCP to create a TCP connection state on any TCP packet.
 > 
-> I am having trouble applying the first ip_vs_proto_sctp.c hunk.
-> 
-> I have tried against net-next, nf-next and ipvs-next.
-> Could you rebase it on the later and repost it with the second patch of
-> this series?
+> What do you think of this idea?
 
-	I forgot to mention that this patchset follows the
-"ipvs: sloppy TCP and SCTP" change from Alexander Frolkin
-posted on June 13. Our plans are for following list:
+	Here is something that is compile-tested. You
+will need the "ipvs: sloppy TCP and SCTP" patch by
+Alexander Frolkin posted on 13 Jun. Let me know if
+you need more help in applying and testing such patches,
+so that we can be more confident when releasing such
+optimization officially.
 
-1. ipvs: sloppy TCP and SCTP (posted by Alexander and acked by me)
-2. ipvs: provide iph to schedulers (just applied by you)
-3. SH changes by Alexander (to be posted officially) depend
-on 1 and 2 while SCTP patchset by me depends only on 1.
-4. Changes to sync only persistent conns (only in my head - TODO)
+From: Julian Anastasov <ja@ssi.bg>
+[PATCH] ipvs: add sync_persist_mode flag
 
-	Let me know if you can apply (1) to -next before the
-SCTP patchset (its patch 2+3), it does not collide with (2),
-I think.
+Add sync_persist_mode flag to reduce sync traffic
+by syncing only persistent templates.
 
-> I will take the first patch and see about getting it included in v3.10.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ Documentation/networking/ipvs-sysctl.txt |   13 +++++++++++++
+ include/net/ip_vs.h                      |   11 +++++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c           |    7 +++++++
+ net/netfilter/ipvs/ip_vs_sync.c          |   12 ++++++++++++
+ 4 files changed, 43 insertions(+), 0 deletions(-)
+
+diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
+index 9573d0c..7a3c047 100644
+--- a/Documentation/networking/ipvs-sysctl.txt
++++ b/Documentation/networking/ipvs-sysctl.txt
+@@ -181,6 +181,19 @@ snat_reroute - BOOLEAN
+ 	always be the same as the original route so it is an optimisation
+ 	to disable snat_reroute and avoid the recalculation.
+ 
++sync_persist_mode - INTEGER
++	default 0
++
++	Controls the synchronisation of connections when using persistence
++
++	0: All types of connections are synchronised
++	1: Attempt to reduce the synchronisation traffic depending on
++	the connection type. For persistent services avoid synchronisation
++	for normal connections, do it only for persistence templates.
++	In such case, for TCP and SCTP it may need enabling sloppy_tcp and
++	sloppy_sctp flags on backup servers. For non-persistent services
++	such optimization is not applied, mode 0 is assumed.
++
+ sync_version - INTEGER
+ 	default 1
+ 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index e667df1..f0d70f0 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -975,6 +975,7 @@ struct netns_ipvs {
+ 	int			sysctl_snat_reroute;
+ 	int			sysctl_sync_ver;
+ 	int			sysctl_sync_ports;
++	int			sysctl_sync_persist_mode;
+ 	unsigned long		sysctl_sync_qlen_max;
+ 	int			sysctl_sync_sock_size;
+ 	int			sysctl_cache_bypass;
+@@ -1076,6 +1077,11 @@ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
+ 	return ACCESS_ONCE(ipvs->sysctl_sync_ports);
+ }
+ 
++static inline int sysctl_sync_persist_mode(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_sync_persist_mode;
++}
++
+ static inline unsigned long sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
+ {
+ 	return ipvs->sysctl_sync_qlen_max;
+@@ -1139,6 +1145,11 @@ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
+ 	return 1;
+ }
+ 
++static inline int sysctl_sync_persist_mode(struct netns_ipvs *ipvs)
++{
++	return 0;
++}
++
+ static inline unsigned long sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
+ {
+ 	return IPVS_SYNC_QLEN_MAX;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 1b14abb..0c129cc 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1715,6 +1715,12 @@ static struct ctl_table vs_vars[] = {
+ 		.proc_handler	= &proc_do_sync_ports,
+ 	},
+ 	{
++		.procname	= "sync_persist_mode",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
++	{
+ 		.procname	= "sync_qlen_max",
+ 		.maxlen		= sizeof(unsigned long),
+ 		.mode		= 0644,
+@@ -3728,6 +3734,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	tbl[idx++].data = &ipvs->sysctl_sync_ver;
+ 	ipvs->sysctl_sync_ports = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_ports;
++	tbl[idx++].data = &ipvs->sysctl_sync_persist_mode;
+ 	ipvs->sysctl_sync_qlen_max = nr_free_buffer_pages() / 32;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_qlen_max;
+ 	ipvs->sysctl_sync_sock_size = 0;
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 2fc6639..03c43c0 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -425,6 +425,16 @@ ip_vs_sync_buff_create_v0(struct netns_ipvs *ipvs)
+ 	return sb;
+ }
+ 
++/* Check if connection is controlled by persistence */
++static inline bool in_peristence(struct ip_vs_conn *cp)
++{
++	for (cp = cp->control; cp; cp = cp->control) {
++		if (cp->flags & IP_VS_CONN_F_TEMPLATE)
++			return true;
++	}
++	return false;
++}
++
+ /* Check if conn should be synced.
+  * pkts: conn packets, use sysctl_sync_threshold to avoid packet check
+  * - (1) sync_refresh_period: reduce sync rate. Additionally, retry
+@@ -447,6 +457,8 @@ static int ip_vs_sync_conn_needed(struct netns_ipvs *ipvs,
+ 	/* Check if we sync in current state */
+ 	if (unlikely(cp->flags & IP_VS_CONN_F_TEMPLATE))
+ 		force = 0;
++	else if (unlikely(sysctl_sync_persist_mode(ipvs) && in_peristence(cp)))
++		return 0;
+ 	else if (likely(cp->protocol == IPPROTO_TCP)) {
+ 		if (!((1 << cp->state) &
+ 		      ((1 << IP_VS_TCP_S_ESTABLISHED) |
+-- 
+1.7.3.4
 
 Regards
 
