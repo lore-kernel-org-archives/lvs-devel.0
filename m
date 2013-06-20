@@ -1,61 +1,73 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: SH fallback and L4 hashing
-Date: Thu, 20 Jun 2013 22:20:03 +0900
-Message-ID: <20130620132003.GD24993@verge.net.au>
-References: <20130619095425.GA20145@eldamar.org.uk>
- <alpine.LFD.2.00.1306192239510.1823@ja.ssi.bg>
+Subject: Re: [PATCH] ipvsadm: support for scheduler flags
+Date: Thu, 20 Jun 2013 22:20:28 +0900
+Message-ID: <20130620132028.GE24993@verge.net.au>
+References: <20130619100701.GA20258@eldamar.org.uk>
+ <alpine.LFD.2.00.1306192254500.1823@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1306192239510.1823@ja.ssi.bg>
+In-Reply-To: <alpine.LFD.2.00.1306192254500.1823@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
-Cc: Alexander Frolkin <avf@eldamar.org.uk>, lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Alexander Frolkin <avf@eldamar.org.uk>, lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, lvs-users@linuxvirtualserver.org
 
-On Wed, Jun 19, 2013 at 10:45:43PM +0300, Julian Anastasov wrote:
+On Wed, Jun 19, 2013 at 11:05:00PM +0300, Julian Anastasov wrote:
 > 
 > 	Hello,
 > 
 > On Wed, 19 Jun 2013, Alexander Frolkin wrote:
 > 
-> > By default the SH scheduler rejects connections that are hashed onto a
-> > realserver of weight 0.  This patch adds a flag to make SH choose a
-> > different realserver in this case, instead of rejecting the connection.
+> > This patch adds support for scheduler flags, necessary to make use of
+> > the "SH fallback and L4 hashing" kernel patch.
 > > 
-> > The patch also adds a flag to make SH include the source port (TCP, UDP,
-> > SCTP) in the hash as well as the source address.  This basically allows
-> > for deterministic round-robin load balancing (i.e., where any director
-> > in a cluster of directors with identical config will send the same
-> > packet the same way).
+> > The flags are set per service (so using -A or -E) using -b <flags> or
+> > --sched-flags <flags>.  <flags> is a comma-separated list of scheduler
+> > flags.  The currently supported flags are sh-port, sh-fallback, and
+> > generic flag-1, flag-2, flag-3 for future-proofing.
 > > 
-> > The flags are service flags (IP_VS_SVC_F_SCHED*) so that these options
-> > can be set per service.  They are set using a new option to ipvsadm.
+> > This patch will work with older versions of IPVS, although setting the
+> > flags will have no effect.
 > > 
 > > Signed-off-by: Alexander Frolkin <avf@eldamar.org.uk>
 > 
-> 	Thanks! Looks good to me.
+> 	Change looks correct:
 > 
 > Acked-by: Julian Anastasov <ja@ssi.bg>
 > 
-> > ---
-> > The patch is against the ipvs-next tree.
+> 	but we forgot some minor issues, see below...
 > 
-> 	Still, I see one warning:
+> > @@ -426,9 +429,12 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+> >  		{ "ops", 'o', POPT_ARG_NONE, NULL, 'o', NULL, NULL },
+> >  		{ "pe", '\0', POPT_ARG_STRING, &optarg, TAG_PERSISTENCE_ENGINE,
+> >  		  NULL, NULL },
+> > +		{ "sched-flags", 'b', POPT_ARG_STRING, &optarg, 'b', NULL, NULL },
 > 
-> patching file include/uapi/linux/ip_vs.h
-> patching file net/netfilter/ipvs/ip_vs_sh.c
-> Hunk #2 succeeded at 75 with fuzz 1.
+> 	You have to split this long line
 > 
-> 	May be because you are missing the
-> "ipvs: ip_vs_sh: fix build" change, not sure where is
-> the fault, may be the change is not in ipvs-next,
-> Simon can tell how to proceed with applying this patch.
+> > @@ -656,6 +662,10 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+> >  			set_option(options, OPT_PERSISTENCE_ENGINE);
+> >  			strncpy(ce->svc.pe_name, optarg, IP_VS_PENAME_MAXLEN);
+> >  			break;
+> > +		case 'b':
+> > +			set_option(options, OPT_SCHED_FLAGS);
+> > +			snprintf(sched_flags_arg, sizeof(sched_flags_arg), "%s", optarg);
+> 
+> 	This too
+> 
+> > +static void print_sched_flags(ipvs_service_entry_t *se) {
+> 
+> {	<<< start func on new line
+> 
+> 	checkpatch.pl shows also this one:
+> 
+> ERROR: spaces required around that '=' (ctx:VxV)
+> #121: FILE: ipvsadm.c:369:
+> +       char *optarg=NULL, sched_flags_arg[128];
+>                     ^
+> 	May be you can send a fixed version to Simon.
 
-Thanks, applied and pushed to ipvs-next.
-
-I also noticed some fuzz.
-Alexander, could you double-check ipvs-next to make sure
-that I applied the patch correctly?
+Yes, please do.
