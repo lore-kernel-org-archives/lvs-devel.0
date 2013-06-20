@@ -1,39 +1,40 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf] IPVS fix for v3.10
-Date: Thu, 20 Jun 2013 11:47:36 +0200
-Message-ID: <20130620094736.GA18950@localhost>
-References: <1371606963-30548-1-git-send-email-horms@verge.net.au>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH] ipvs: sloppy TCP and SCTP
+Date: Thu, 20 Jun 2013 22:12:32 +0900
+Message-ID: <20130620131232.GB24993@verge.net.au>
+References: <20130612104754.GA29327@eldamar.org.uk>
+ <20130613075615.GA29773@eldamar.org.uk>
+ <alpine.LFD.2.00.1306131121470.1680@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1371606963-30548-1-git-send-email-horms@verge.net.au>
+In-Reply-To: <alpine.LFD.2.00.1306131121470.1680@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Alexander Frolkin <avf@eldamar.org.uk>, lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
 
-On Wed, Jun 19, 2013 at 10:56:01AM +0900, Simon Horman wrote:
-> Hi Pablo,
+On Thu, Jun 13, 2013 at 11:32:11AM +0300, Julian Anastasov wrote:
 > 
-> I realise this is rather late in the cycle, so please feel free
-> to push back on this. We can add it to v3.11 and then -stable.
+> 	Hello,
 > 
-> This fix appears to resolve a long-standing problem that has
-> existed since SCTP support was added to IPVS in v2.6.32.
-> I believe it is relevant to -stable all the way back until then.
+> On Thu, 13 Jun 2013, Alexander Frolkin wrote:
 > 
-> The following changes since commit b396966c4688522863572927cb30aa874b3ec504:
+> > This adds support for sloppy TCP and SCTP modes to IPVS.
+> > 
+> > When enabled (sysctls net.ipv4.vs.sloppy_tcp and
+> > net.ipv4.vs.sloppy_sctp), allows IPVS to create connection state on any
+> > packet, not just a TCP SYN (or SCTP INIT).
+> > 
+> > This allows connections to fail over from one IPVS director to another
+> > mid-flight.
+> > 
+> > Signed-off-by: Alexander Frolkin <avf@eldamar.org.uk>
 > 
->   netfilter: xt_TCPMSS: Fix missing fragmentation handling (2013-06-12 11:06:19 +0200)
-> 
-> are available in the git repository at:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.10
-> 
-> for you to fetch changes up to 06f3d7f973ec04290d86b7dd91b48d38d90433dc:
-> 
->   ipvs: SCTP ports should be writable in ICMP packets (2013-06-19 09:53:52 +0900)
+> 	Thanks! Simon, please apply to ipvs-next tree!
 
-Pulled, thanks Simon.
+Done :)
+
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
