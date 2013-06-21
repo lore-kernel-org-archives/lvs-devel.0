@@ -1,60 +1,46 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 1/2] kernel: remove unnecessary head file
-Date: Fri, 21 Jun 2013 09:40:12 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1306210937180.1707@ja.ssi.bg>
-References: <1371781157-16743-1-git-send-email-junwei.zhang@6wind.com>
+From: Alexander Frolkin <avf@eldamar.org.uk>
+Subject: Re: [PATCH] ipvs: SH fallback and L4 hashing
+Date: Fri, 21 Jun 2013 09:24:08 +0100
+Message-ID: <20130621082408.GB23366@eldamar.org.uk>
+References: <20130619095425.GA20145@eldamar.org.uk>
+ <alpine.LFD.2.00.1306192239510.1823@ja.ssi.bg>
+ <20130620132003.GD24993@verge.net.au>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1371781157-16743-1-git-send-email-junwei.zhang@6wind.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130620132003.GD24993@verge.net.au>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: JunweiZhang <junwei.zhang@6wind.com>
-Cc: wensong@linux-vs.org, horms@verge.net.au, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>
+To: Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+
+Hi,
+
+> I also noticed some fuzz.
+> Alexander, could you double-check ipvs-next to make sure
+> that I applied the patch correctly?
+
+I diff'ed my local dev branch with upstream, and the only thing I can
+see that has any relation to my patches is:
+
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index b7e2c5a..f16c027 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -71,8 +71,8 @@ struct ip_vs_sh_bucket {
+ #define IP_VS_SH_TAB_MASK               (IP_VS_SH_TAB_SIZE - 1)
+ 
+ struct ip_vs_sh_state {
+-       struct ip_vs_sh_bucket          buckets[IP_VS_SH_TAB_SIZE];
+        struct rcu_head                 rcu_head;
++       struct ip_vs_sh_bucket          buckets[IP_VS_SH_TAB_SIZE];
+ };
+ 
+ /* Helper function to determine if server is unavailable */
+
+Not sure when or why this changed, but maybe it accounts for the fuzz?
 
 
-	Hello,
-
-On Fri, 21 Jun 2013, junwei.zhang@6wind.com wrote:
-
-> From: JunweiZhang <junwei.zhang@6wind.com>
-> 
-> ip_vs.h is not necessary for sysctl_binary.c.
-> 
-> prepare for the next patch to avoid compile issue.
-> 
-> Signed-off-by: JunweiZhang <junwei.zhang@6wind.com>
-> Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-
-	Both patches look good to me:
-
-Reviewed-by: Julian Anastasov <ja@ssi.bg>
-
-	Please use version descriptor in future, for example:
-
-[PATCHv2 ...] ...
-
-> ---
->  kernel/sysctl_binary.c | 1 -
->  1 file changed, 1 deletion(-)
-> 
-> diff --git a/kernel/sysctl_binary.c b/kernel/sysctl_binary.c
-> index aea4a9e..b609213 100644
-> --- a/kernel/sysctl_binary.c
-> +++ b/kernel/sysctl_binary.c
-> @@ -3,7 +3,6 @@
->  #include "../fs/xfs/xfs_sysctl.h"
->  #include <linux/sunrpc/debug.h>
->  #include <linux/string.h>
-> -#include <net/ip_vs.h>
->  #include <linux/syscalls.h>
->  #include <linux/namei.h>
->  #include <linux/mount.h>
-> -- 
-> 1.8.1.2
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Alex
