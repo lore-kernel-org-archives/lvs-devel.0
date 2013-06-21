@@ -1,48 +1,35 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net-next 2/3] ipvs: replace the SCTP state machine
-Date: Fri, 21 Jun 2013 09:43:32 +0900
-Message-ID: <20130621004331.GB18705@verge.net.au>
-References: <1371539288-5036-1-git-send-email-ja@ssi.bg>
- <1371539288-5036-3-git-send-email-ja@ssi.bg>
- <20130619005256.GA19345@verge.net.au>
- <alpine.LFD.2.00.1306190740080.1632@ja.ssi.bg>
- <20130620131658.GC24993@verge.net.au>
- <alpine.LFD.2.00.1306202312380.1818@ja.ssi.bg>
-Mime-Version: 1.0
+From: junwei.zhang@6wind.com
+Subject: [PATCH 1/2] kernel: remove unnecessary head file
+Date: Fri, 21 Jun 2013 10:05:26 +0800
+Message-ID: <1371780327-16054-1-git-send-email-junwei.zhang@6wind.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1306202312380.1818@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org
+To: wensong@linux-vs.org
+Cc: horms@verge.net.au, ja@ssi.bg, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, JunweiZhang <junwei.zhang@6wind.com>
 
-On Thu, Jun 20, 2013 at 11:33:06PM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Thu, 20 Jun 2013, Simon Horman wrote:
-> 
-> > Thanks, and sorry for being a bit slow.
-> 
-> 	Thanks, no problem.
-> 
-> > Pablo has accepted patch 1 into his nf tree via my ipvs tree.
-> > At this stage I expect it to show up in net and v3.10.
-> > 
-> > I have queued-up the remaining patches that you list above to
-> > ipvs-next and pushed it. I'll send a pull request to Pablo in
-> > the not to distant future.
-> 
-> 	OK. In the next days after tests by Aleksey Chudov
-> we will know about the last patch from me:
-> "ipvs: add sync_persist_mode flag". I'll post an official
-> version on success. I don't know if we have time for
-> all these patches, I guess we have to wait the merge window.
+From: JunweiZhang <junwei.zhang@6wind.com>
 
-Thanks.
+Signed-off-by: JunweiZhang <junwei.zhang@6wind.com>
+---
+ kernel/sysctl_binary.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-I think it would be best to send the changes that we have so far
-and then send another batch when new patches are ready.
+diff --git a/kernel/sysctl_binary.c b/kernel/sysctl_binary.c
+index aea4a9e..b609213 100644
+--- a/kernel/sysctl_binary.c
++++ b/kernel/sysctl_binary.c
+@@ -3,7 +3,6 @@
+ #include "../fs/xfs/xfs_sysctl.h"
+ #include <linux/sunrpc/debug.h>
+ #include <linux/string.h>
+-#include <net/ip_vs.h>
+ #include <linux/syscalls.h>
+ #include <linux/namei.h>
+ #include <linux/mount.h>
+-- 
+1.8.1.2
+
