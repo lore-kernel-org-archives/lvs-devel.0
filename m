@@ -1,42 +1,143 @@
-From: Aleksey Chudov <aleksey.chudov@gmail.com>
-Subject: Re: [PATCH] ipvs: add sync_persist_mode flag
-Date: Mon, 24 Jun 2013 17:37:09 +0300
-Message-ID: <51C85995.1060500@gmail.com>
-References: <20130524120935.GL264@eldamar.org.uk> <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg> <20130524151408.GM264@eldamar.org.uk> <519F92EB.4080509@gmail.com> <alpine.LFD.2.00.1305280011490.1728@ja.ssi.bg> <51A4B3ED.4070809@gmail.com> <alpine.LFD.2.00.1306191153590.2077@ja.ssi.bg> <51C5887A.1070301@gmail.com> <alpine.LFD.2.00.1306221510100.1577@ja.ssi.bg> <51C612F2.6080500@gmail.com> <alpine.LFD.2.00.1306231108450.1584@ja.ssi.bg>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCH net-next] ipvs: add sync_persist_mode flag
+Date: Mon, 24 Jun 2013 22:44:41 +0300
+Message-ID: <1372103081-1818-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20120113;
-        h=message-id:date:from:user-agent:mime-version:to:cc:subject
-         :references:in-reply-to:content-type:content-transfer-encoding;
-        bh=wAYm/zlE0lVo33MkGaZCn4/Pzy1TkGCnnB73H81lUvQ=;
-        b=qug0dWEE5MCe7HO9th5LzbAZ/s1PBUZ3FooD5HqYOO6dtQxgHRB2FMnSkwX9F4Q/58
-         iDPDY7QT5nglissQm+fmrkc9ZBUSYfSxe9bOsplimb7L11NT0M8WKP8Ju9OrKyiGvRqJ
-         pqO2C7P6MaYW2o0Cr3EabO/ZFrOXwOZnkwHvHmNlRvG/qdY8xEU/LEtfh98gnT7U/xIq
-         LzNH5WUgpCKEbXAesRN6jNLa/VKHuotgMB5owOTBvgRSIh9CYSo4xjU/aaxQSjtBvJ5z
-         gMvLEqDn6KJJrd6O6pauXh+ZOe7F8j1IK8D/G7gpZmjHc8M8pkLO9xGtAeJQlk4qRs5n
-         OhtA==
-In-Reply-To: <alpine.LFD.2.00.1306231108450.1584@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Julian Anastasov <ja@ssi.bg>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org
 
-Hello,
+Add sync_persist_mode flag to reduce sync traffic
+by syncing only persistent templates.
 
-Pair of LVS servers with a modified kernel worked under load for several 
-days without any problems.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Tested-by: Aleksey Chudov <aleksey.chudov@gmail.com>
+---
+ Documentation/networking/ipvs-sysctl.txt |   13 +++++++++++++
+ include/net/ip_vs.h                      |   11 +++++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c           |    7 +++++++
+ net/netfilter/ipvs/ip_vs_sync.c          |   12 ++++++++++++
+ 4 files changed, 43 insertions(+), 0 deletions(-)
 
-I completed several additional tests. I analyzed the traffic to the LVS 
-servers using tcpdump. There is not SYN or RST packets spike at the time 
-of migration of IP address. Thus, most of the connections have continued 
-to operate normally. I also once again made sure that most of clients 
-remain on the same real servers.
+diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
+index 9573d0c..7a3c047 100644
+--- a/Documentation/networking/ipvs-sysctl.txt
++++ b/Documentation/networking/ipvs-sysctl.txt
+@@ -181,6 +181,19 @@ snat_reroute - BOOLEAN
+ 	always be the same as the original route so it is an optimisation
+ 	to disable snat_reroute and avoid the recalculation.
+ 
++sync_persist_mode - INTEGER
++	default 0
++
++	Controls the synchronisation of connections when using persistence
++
++	0: All types of connections are synchronised
++	1: Attempt to reduce the synchronisation traffic depending on
++	the connection type. For persistent services avoid synchronisation
++	for normal connections, do it only for persistence templates.
++	In such case, for TCP and SCTP it may need enabling sloppy_tcp and
++	sloppy_sctp flags on backup servers. For non-persistent services
++	such optimization is not applied, mode 0 is assumed.
++
+ sync_version - INTEGER
+ 	default 1
+ 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index e667df1..f0d70f0 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -975,6 +975,7 @@ struct netns_ipvs {
+ 	int			sysctl_snat_reroute;
+ 	int			sysctl_sync_ver;
+ 	int			sysctl_sync_ports;
++	int			sysctl_sync_persist_mode;
+ 	unsigned long		sysctl_sync_qlen_max;
+ 	int			sysctl_sync_sock_size;
+ 	int			sysctl_cache_bypass;
+@@ -1076,6 +1077,11 @@ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
+ 	return ACCESS_ONCE(ipvs->sysctl_sync_ports);
+ }
+ 
++static inline int sysctl_sync_persist_mode(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_sync_persist_mode;
++}
++
+ static inline unsigned long sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
+ {
+ 	return ipvs->sysctl_sync_qlen_max;
+@@ -1139,6 +1145,11 @@ static inline int sysctl_sync_ports(struct netns_ipvs *ipvs)
+ 	return 1;
+ }
+ 
++static inline int sysctl_sync_persist_mode(struct netns_ipvs *ipvs)
++{
++	return 0;
++}
++
+ static inline unsigned long sysctl_sync_qlen_max(struct netns_ipvs *ipvs)
+ {
+ 	return IPVS_SYNC_QLEN_MAX;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 1b14abb..0c129cc 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1715,6 +1715,12 @@ static struct ctl_table vs_vars[] = {
+ 		.proc_handler	= &proc_do_sync_ports,
+ 	},
+ 	{
++		.procname	= "sync_persist_mode",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
++	{
+ 		.procname	= "sync_qlen_max",
+ 		.maxlen		= sizeof(unsigned long),
+ 		.mode		= 0644,
+@@ -3728,6 +3734,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	tbl[idx++].data = &ipvs->sysctl_sync_ver;
+ 	ipvs->sysctl_sync_ports = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_ports;
++	tbl[idx++].data = &ipvs->sysctl_sync_persist_mode;
+ 	ipvs->sysctl_sync_qlen_max = nr_free_buffer_pages() / 32;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_qlen_max;
+ 	ipvs->sysctl_sync_sock_size = 0;
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 2fc6639..03c43c0 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -425,6 +425,16 @@ ip_vs_sync_buff_create_v0(struct netns_ipvs *ipvs)
+ 	return sb;
+ }
+ 
++/* Check if connection is controlled by persistence */
++static inline bool in_persistence(struct ip_vs_conn *cp)
++{
++	for (cp = cp->control; cp; cp = cp->control) {
++		if (cp->flags & IP_VS_CONN_F_TEMPLATE)
++			return true;
++	}
++	return false;
++}
++
+ /* Check if conn should be synced.
+  * pkts: conn packets, use sysctl_sync_threshold to avoid packet check
+  * - (1) sync_refresh_period: reduce sync rate. Additionally, retry
+@@ -447,6 +457,8 @@ static int ip_vs_sync_conn_needed(struct netns_ipvs *ipvs,
+ 	/* Check if we sync in current state */
+ 	if (unlikely(cp->flags & IP_VS_CONN_F_TEMPLATE))
+ 		force = 0;
++	else if (unlikely(sysctl_sync_persist_mode(ipvs) && in_persistence(cp)))
++		return 0;
+ 	else if (likely(cp->protocol == IPPROTO_TCP)) {
+ 		if (!((1 << cp->state) &
+ 		      ((1 << IP_VS_TCP_S_ESTABLISHED) |
+-- 
+1.7.3.4
 
-Seems like sync_persist_mode combined with sloppy_tcp works fine.
-
-
-Regards,
-Aleksey
