@@ -1,30 +1,54 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH v2 net-next 2/2] netns: exclude ipvs from struct net when
- IPVS disabled
-Date: Wed, 26 Jun 2013 17:59:36 +0900
-Message-ID: <20130626085935.GC24362@verge.net.au>
-References: <20130624.002401.1459814761780281188.davem@davemloft.net>
- <1372236006-16683-1-git-send-email-junwei.zhang@6wind.com>
- <1372236006-16683-2-git-send-email-junwei.zhang@6wind.com>
-Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1372236006-16683-2-git-send-email-junwei.zhang@6wind.com>
-Sender: netdev-owner@vger.kernel.org
+Subject: [PATCH 4/8] ipvs: drop SCTP connections depending on state
+Date: Wed, 26 Jun 2013 18:11:26 +0900
+Message-ID: <1372237890-28211-5-git-send-email-horms@verge.net.au>
+References: <1372237890-28211-1-git-send-email-horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1372237890-28211-1-git-send-email-horms@verge.net.au>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: junwei.zhang@6wind.com
-Cc: davem@davemloft.net, wensong@linux-vs.org, ja@ssi.bg, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, nicolas.dichtel@6wind.com
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Wed, Jun 26, 2013 at 04:40:06PM +0800, junwei.zhang@6wind.com wrote:
-> From: JunweiZhang <junwei.zhang@6wind.com>
-> 
-> no real problem is fixed, just save a few bytes in
-> net_namespace structure.
-> 
-> Signed-off-by: JunweiZhang <junwei.zhang@6wind.com>
-> Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-> Reviewed-by: Julian Anastasov <ja@ssi.bg>
+From: Julian Anastasov <ja@ssi.bg>
 
-Thanks, applied to ipvs-next.
+Drop SCTP connections under load (dropentry context) depending
+on the protocol state, just like for TCP: INIT conns are
+dropped immediately, established are dropped randomly while
+connections in progress or shutdown are skipped.
+
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_conn.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index c8c52a9..4c8e5c0 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1231,6 +1231,18 @@ void ip_vs_random_dropentry(struct net *net)
+ 				default:
+ 					continue;
+ 				}
++			} else if (cp->protocol == IPPROTO_SCTP) {
++				switch (cp->state) {
++				case IP_VS_SCTP_S_INIT1:
++				case IP_VS_SCTP_S_INIT:
++					break;
++				case IP_VS_SCTP_S_ESTABLISHED:
++					if (todrop_entry(cp))
++						break;
++					continue;
++				default:
++					continue;
++				}
+ 			} else {
+ 				if (!todrop_entry(cp))
+ 					continue;
+-- 
+1.8.2.1
+
