@@ -1,40 +1,44 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: add sync_persist_mode flag
-Date: Mon, 24 Jun 2013 22:57:03 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1306242246140.1593@ja.ssi.bg>
-References: <20130524120935.GL264@eldamar.org.uk> <alpine.LFD.2.00.1305241633430.1636@ja.ssi.bg> <20130524151408.GM264@eldamar.org.uk> <519F92EB.4080509@gmail.com> <alpine.LFD.2.00.1305280011490.1728@ja.ssi.bg> <51A4B3ED.4070809@gmail.com>
- <alpine.LFD.2.00.1306191153590.2077@ja.ssi.bg> <51C5887A.1070301@gmail.com> <alpine.LFD.2.00.1306221510100.1577@ja.ssi.bg> <51C612F2.6080500@gmail.com> <alpine.LFD.2.00.1306231108450.1584@ja.ssi.bg> <51C85995.1060500@gmail.com>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <51C85995.1060500@gmail.com>
-Sender: lvs-devel-owner@vger.kernel.org
+From: junwei.zhang@6wind.com
+Subject: [PATCH v2 net-next 1/2] kernel: remove unnecessary head file
+Date: Wed, 26 Jun 2013 16:40:05 +0800
+Message-ID: <1372236006-16683-1-git-send-email-junwei.zhang@6wind.com>
+References: <20130624.002401.1459814761780281188.davem@davemloft.net>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20130624.002401.1459814761780281188.davem@davemloft.net>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Aleksey Chudov <aleksey.chudov@gmail.com>
-Cc: lvs-devel@vger.kernel.org
+To: davem@davemloft.net
+Cc: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, nicolas.dichtel@6wind.com, JunweiZhang <junwei.zhang@6wind.com>
 
+From: JunweiZhang <junwei.zhang@6wind.com>
 
-	Hello,
+ip_vs.h is not necessary for sysctl_binary.c.
 
-On Mon, 24 Jun 2013, Aleksey Chudov wrote:
+prepare for the next patch to avoid compile issue.
 
-> Hello,
-> 
-> Pair of LVS servers with a modified kernel worked under load for several days
-> without any problems.
-> 
-> I completed several additional tests. I analyzed the traffic to the LVS
-> servers using tcpdump. There is not SYN or RST packets spike at the time of
-> migration of IP address. Thus, most of the connections have continued to
-> operate normally. I also once again made sure that most of clients remain on
-> the same real servers.
-> 
-> Seems like sync_persist_mode combined with sloppy_tcp works fine.
+Signed-off-by: JunweiZhang <junwei.zhang@6wind.com>
+Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Reviewed-by: Julian Anastasov <ja@ssi.bg>
 
-	Thanks! I just posted the patch.
+---
+v2: rebase on net-next
+ kernel/sysctl_binary.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+diff --git a/kernel/sysctl_binary.c b/kernel/sysctl_binary.c
+index aea4a9e..b609213 100644
+--- a/kernel/sysctl_binary.c
++++ b/kernel/sysctl_binary.c
+@@ -3,7 +3,6 @@
+ #include "../fs/xfs/xfs_sysctl.h"
+ #include <linux/sunrpc/debug.h>
+ #include <linux/string.h>
+-#include <net/ip_vs.h>
+ #include <linux/syscalls.h>
+ #include <linux/namei.h>
+ #include <linux/mount.h>
+-- 
+1.8.1.2
