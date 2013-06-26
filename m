@@ -1,30 +1,23 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net-next] ipvs: add sync_persist_mode flag
-Date: Wed, 26 Jun 2013 17:57:11 +0900
-Message-ID: <20130626085711.GA23429@verge.net.au>
-References: <1372103081-1818-1-git-send-email-ja@ssi.bg>
+Subject: Re: [PATCH 1/2] kernel: remove unnecessary head file
+Date: Wed, 26 Jun 2013 17:58:29 +0900
+Message-ID: <20130626085829.GA24362@verge.net.au>
+References: <1371781157-16743-1-git-send-email-junwei.zhang@6wind.com>
+ <20130624.002401.1459814761780281188.davem@davemloft.net>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1372103081-1818-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <20130624.002401.1459814761780281188.davem@davemloft.net>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: junwei.zhang@6wind.com, wensong@linux-vs.org, ja@ssi.bg, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, nicolas.dichtel@6wind.com
 
-On Mon, Jun 24, 2013 at 10:44:41PM +0300, Julian Anastasov wrote:
-> Add sync_persist_mode flag to reduce sync traffic
-> by syncing only persistent templates.
+On Mon, Jun 24, 2013 at 12:24:01AM -0700, David Miller wrote:
+> 
+> These two patches do not apply to net-next.
 
-Thanks, I have applied this to ipvs-next.
-
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> Tested-by: Aleksey Chudov <aleksey.chudov@gmail.com>
-> ---
->  Documentation/networking/ipvs-sysctl.txt |   13 +++++++++++++
->  include/net/ip_vs.h                      |   11 +++++++++++
->  net/netfilter/ipvs/ip_vs_ctl.c           |    7 +++++++
->  net/netfilter/ipvs/ip_vs_sync.c          |   12 ++++++++++++
->  4 files changed, 43 insertions(+), 0 deletions(-)
+The reposted versions seem to apply to ipvs-next.
+I'll take them through there.
