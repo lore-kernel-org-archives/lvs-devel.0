@@ -1,125 +1,149 @@
-From: Dragos Foianu <dragos.foianu@gmail.com>
-Subject: [PATCH] ipvs: fixed style errors and warnings in ip_vs_conn
-Date: Thu, 11 Jul 2013 22:41:35 +0300
-Message-ID: <1373571695-24933-1-git-send-email-dragos.foianu@gmail.com>
+From: Joe Stringer <joe@wand.net.nz>
+Subject: [net-next] net/sctp: Refactor SCTP skb checksum computation
+Date: Tue, 23 Jul 2013 13:30:58 +0900
+Message-ID: <1374553858-9963-1-git-send-email-joe@wand.net.nz>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20120113;
-        h=from:to:cc:subject:date:message-id:x-mailer;
-        bh=vtfXouqvaL1LCEVZexjVA4FN5DV2Cdew3op0gQOQpBY=;
-        b=IQWqAEpiyLZp9zD109rDvTyNYP0zEg+xk6VWBmJ5BhjxGESJ/Yxg3Ywq4QooRxcH3R
-         4uvE5hu050ir6J0pjsNnaxJjM1WPxCQJjyOx4CY8TOL95EhnWvXiouLSyw51woJkUZkU
-         E08W2/hJ6RIyqQbXiiGP57S+jgsdb2VHr9ExZkyaGKq4AOv48BTWi88l5nFz21tmfeyY
-         32QzfdzUSgHbuXn2w3xlCHnRG4v97O8qZyalkMQnObehz6bEEq2vtX7PNzegCAvcaDPx
-         KsoLV1PrZD2/cu950stj07uTdEmwlQxBf6TzfbajwUfvPOpqj+58rokgq1//531NmwJF
-         dvLA==
+        h=sender:from:to:cc:subject:date:message-id:x-mailer;
+        bh=RAlOb6K5FzkMrNPZUz/p0j/1fUxnifhIo3efS1bgxSI=;
+        b=y5nLJamMuVpVugVYSUWp1Ru2lvtnCv+l0nOiewfC1mz/UhwVl5f/ztJ2HKP/iZDq5F
+         6HDY8WYW2jPEZ/YRRK/UBhYXi9KKGVByzOgylcX80KGmtxCo+PT0cceM0OmwhH7/hdzv
+         lBBD2FECcv2Hp0SzV5qvUwCI167QwwfpLKGkulZTRGBK4/bi143zUX+C08qQcrcQM4PT
+         VaalglXbLtK6/ELy3KT9qfgIookSIVQxJM9Y/J+seaM1p0DTNCNSZd+rG2pEzxdK8sKu
+         ukNniEiNlijipR/+MfQ4mFmCLRAq3eamtzD+JBtlcPfISKMEFKmFudKnQAGfrt1NMIkw
+         zmpA==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: wensong@linux-vs.org
-Cc: horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kaber@trash.net, kadlec@blackhole.kfki.hu, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, Dragos Foianu <dragos.foianu@gmail.com>
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, pablo@netfilter.org, ja@ssi.bg, horms@verge.net.au, jesse@nicira.com, Joe Stringer <joe@wand.net.nz>
 
-found with the help of checkpatch.pl
+This patch consolidates the SCTP checksum calculation code from various
+places to a single new function, sctp_compute_cksum(skb, offset).
 
-Signed-off-by: Dragos Foianu <dragos.foianu@gmail.com>
+Signed-off-by: Joe Stringer <joe@wand.net.nz>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |   28 ++++++++++++++--------------
- 1 file changed, 14 insertions(+), 14 deletions(-)
+ include/net/sctp/checksum.h           |   15 +++++++++++++++
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |   23 ++++-------------------
+ net/netfilter/nf_nat_proto_sctp.c     |    8 +-------
+ net/sctp/input.c                      |   10 +---------
+ 4 files changed, 21 insertions(+), 35 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 4c8e5c0..4927a52 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -77,8 +77,7 @@ static unsigned int ip_vs_conn_rnd __read_mostly;
- #define CT_LOCKARRAY_SIZE  (1<<CT_LOCKARRAY_BITS)
- #define CT_LOCKARRAY_MASK  (CT_LOCKARRAY_SIZE-1)
- 
--struct ip_vs_aligned_lock
--{
-+struct ip_vs_aligned_lock {
- 	spinlock_t	l;
- } __attribute__((__aligned__(SMP_CACHE_BYTES)));
- 
-@@ -395,7 +394,7 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
- struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
- {
- 	unsigned int hash;
--	struct ip_vs_conn *cp, *ret=NULL;
-+	struct ip_vs_conn *cp, *ret = NULL;
- 
- 	/*
- 	 *	Check for "full" addressed entries
-@@ -680,11 +679,10 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
- 	if (!(cp->flags & IP_VS_CONN_F_TEMPLATE)) {
- 		/* It is a normal connection, so decrease the inactconns
- 		   or activeconns counter */
--		if (cp->flags & IP_VS_CONN_F_INACTIVE) {
-+		if (cp->flags & IP_VS_CONN_F_INACTIVE)
- 			atomic_dec(&dest->inactconns);
--		} else {
-+		else
- 			atomic_dec(&dest->activeconns);
--		}
- 	} else {
- 		/* It is a persistent connection/template, so decrease
- 		   the persistent connection counter */
-@@ -817,7 +815,7 @@ static void ip_vs_conn_expire(unsigned long data)
- 		return;
- 	}
- 
--  expire_later:
-+expire_later:
- 	IP_VS_DBG(7, "delayed: conn->refcnt=%d conn->n_control=%d\n",
- 		  atomic_read(&cp->refcnt),
- 		  atomic_read(&cp->n_control));
-@@ -988,7 +986,7 @@ static void *ip_vs_conn_seq_start(struct seq_file *seq, loff_t *pos)
- 
- 	iter->l = NULL;
- 	rcu_read_lock();
--	return *pos ? ip_vs_conn_array(seq, *pos - 1) :SEQ_START_TOKEN;
-+	return *pos ? ip_vs_conn_array(seq, *pos - 1) : SEQ_START_TOKEN;
+diff --git a/include/net/sctp/checksum.h b/include/net/sctp/checksum.h
+index 0cb08e6..8675564 100644
+--- a/include/net/sctp/checksum.h
++++ b/include/net/sctp/checksum.h
+@@ -85,4 +85,19 @@ static inline __le32 sctp_end_cksum(__u32 crc32)
+ 	return cpu_to_le32(~crc32);
  }
  
- static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
-@@ -1189,10 +1187,13 @@ static inline int todrop_entry(struct ip_vs_conn *cp)
- 	/* Don't drop the entry if its number of incoming packets is not
- 	   located in [0, 8] */
- 	i = atomic_read(&cp->in_pkts);
--	if (i > 8 || i < 0) return 0;
-+	if (i > 8 || i < 0)
-+		return 0;
++/* Calculate the CRC32C checksum of an SCTP packet.  */
++static inline __le32 sctp_compute_cksum(const struct sk_buff *skb,
++					unsigned int offset)
++{
++	const struct sk_buff *iter;
++
++	__u32 crc32 = sctp_start_cksum((__u8 *)sctp_hdr(skb),
++				       skb_headlen(skb) - offset);
++	skb_walk_frags(skb, iter)
++		crc32 = sctp_update_cksum((__u8 *) iter->data,
++					  skb_headlen(iter), crc32);
++
++	return sctp_end_cksum(crc32);
++}
++
+ #endif /* __sctp_checksum_h__ */
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 3c0da87..b2e422d 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -66,15 +66,9 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ static void sctp_nat_csum(struct sk_buff *skb, sctp_sctphdr_t *sctph,
+ 			  unsigned int sctphoff)
+ {
+-	__u32 crc32;
+-	struct sk_buff *iter;
+-
+-	crc32 = sctp_start_cksum((__u8 *)sctph, skb_headlen(skb) - sctphoff);
+-	skb_walk_frags(skb, iter)
+-		crc32 = sctp_update_cksum((u8 *) iter->data,
+-					  skb_headlen(iter), crc32);
+-	sctph->checksum = sctp_end_cksum(crc32);
++	__le32 crc32 = sctp_compute_cksum(skb, sctphoff);
  
--	if (!todrop_rate[i]) return 0;
--	if (--todrop_counter[i] > 0) return 0;
-+	if (!todrop_rate[i])
-+		return 0;
-+	if (--todrop_counter[i] > 0)
-+		return 0;
++	sctph->checksum = crc32;
+ 	skb->ip_summed = CHECKSUM_UNNECESSARY;
+ }
  
- 	todrop_counter[i] = todrop_rate[i];
- 	return 1;
-@@ -1218,7 +1219,7 @@ void ip_vs_random_dropentry(struct net *net)
- 			if (!ip_vs_conn_net_eq(cp, net))
- 				continue;
- 			if (cp->protocol == IPPROTO_TCP) {
--				switch(cp->state) {
-+				switch (cp->state) {
- 				case IP_VS_TCP_S_SYN_RECV:
- 				case IP_VS_TCP_S_SYNACK:
- 					break;
-@@ -1357,9 +1358,8 @@ int __init ip_vs_conn_init(void)
- 	for (idx = 0; idx < ip_vs_conn_tab_size; idx++)
- 		INIT_HLIST_HEAD(&ip_vs_conn_tab[idx]);
+@@ -151,10 +145,7 @@ sctp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp)
+ {
+ 	unsigned int sctphoff;
+ 	struct sctphdr *sh, _sctph;
+-	struct sk_buff *iter;
+-	__le32 cmp;
+-	__le32 val;
+-	__u32 tmp;
++	__le32 cmp, val;
  
--	for (idx = 0; idx < CT_LOCKARRAY_SIZE; idx++)  {
-+	for (idx = 0; idx < CT_LOCKARRAY_SIZE; idx++) 
- 		spin_lock_init(&__ip_vs_conntbl_lock_array[idx].l);
--	}
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (af == AF_INET6)
+@@ -168,13 +159,7 @@ sctp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp)
+ 		return 0;
  
- 	/* calculate the random value for connection hash */
- 	get_random_bytes(&ip_vs_conn_rnd, sizeof(ip_vs_conn_rnd));
--- 
-1.7.10.4
-
+ 	cmp = sh->checksum;
+-
+-	tmp = sctp_start_cksum((__u8 *) sh, skb_headlen(skb));
+-	skb_walk_frags(skb, iter)
+-		tmp = sctp_update_cksum((__u8 *) iter->data,
+-					skb_headlen(iter), tmp);
+-
+-	val = sctp_end_cksum(tmp);
++	val = sctp_compute_cksum(skb, 0);
+ 
+ 	if (val != cmp) {
+ 		/* CRC failure, dump it. */
+diff --git a/net/netfilter/nf_nat_proto_sctp.c b/net/netfilter/nf_nat_proto_sctp.c
+index 396e55d..754536f 100644
+--- a/net/netfilter/nf_nat_proto_sctp.c
++++ b/net/netfilter/nf_nat_proto_sctp.c
+@@ -34,9 +34,7 @@ sctp_manip_pkt(struct sk_buff *skb,
+ 	       const struct nf_conntrack_tuple *tuple,
+ 	       enum nf_nat_manip_type maniptype)
+ {
+-	struct sk_buff *frag;
+ 	sctp_sctphdr_t *hdr;
+-	__u32 crc32;
+ 
+ 	if (!skb_make_writable(skb, hdroff + sizeof(*hdr)))
+ 		return false;
+@@ -51,11 +49,7 @@ sctp_manip_pkt(struct sk_buff *skb,
+ 		hdr->dest = tuple->dst.u.sctp.port;
+ 	}
+ 
+-	crc32 = sctp_start_cksum((u8 *)hdr, skb_headlen(skb) - hdroff);
+-	skb_walk_frags(skb, frag)
+-		crc32 = sctp_update_cksum((u8 *)frag->data, skb_headlen(frag),
+-					  crc32);
+-	hdr->checksum = sctp_end_cksum(crc32);
++	hdr->checksum = sctp_compute_cksum(skb, hdroff);
+ 
+ 	return true;
+ }
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 3fa4d85..944f70e 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -87,15 +87,7 @@ static inline int sctp_rcv_checksum(struct net *net, struct sk_buff *skb)
+ {
+ 	struct sctphdr *sh = sctp_hdr(skb);
+ 	__le32 cmp = sh->checksum;
+-	struct sk_buff *list;
+-	__le32 val;
+-	__u32 tmp = sctp_start_cksum((__u8 *)sh, skb_headlen(skb));
+-
+-	skb_walk_frags(skb, list)
+-		tmp = sctp_update_cksum((__u8 *)list->data, skb_headlen(list),
+-					tmp);
