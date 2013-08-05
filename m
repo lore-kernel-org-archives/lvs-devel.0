@@ -1,25 +1,104 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH v2 net-next] net/sctp: Refactor SCTP skb checksum
- computation
-Date: Sat, 27 Jul 2013 20:07:35 -0700 (PDT)
-Message-ID: <20130727.200735.1581680270448959358.davem@davemloft.net>
-References: <1374717125-28969-1-git-send-email-joe@wand.net.nz>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: activeconns * weight overflowing 32-bit int
+Date: Mon, 5 Aug 2013 09:10:24 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1308050905100.1734@ja.ssi.bg>
+References: <20130413064355.GB24319@hostway.ca> <alpine.LFD.2.00.1304131736430.1662@ja.ssi.bg> <alpine.LFD.2.00.1305220915480.1953@ja.ssi.bg> <20130523165836.GC436@hostway.ca> <alpine.LFD.2.00.1305232243220.1810@ja.ssi.bg> <20130524004318.GB14587@hostway.ca>
+ <alpine.LFD.2.00.1305241013130.1636@ja.ssi.bg>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1374717125-28969-1-git-send-email-joe@wand.net.nz>
+In-Reply-To: <alpine.LFD.2.00.1305241013130.1636@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: joe@wand.net.nz
-Cc: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, pablo@netfilter.org, ja@ssi.bg, horms@verge.net.au, jesse@nicira.com
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Simon Kirby <sim@hostway.ca>
+Cc: lvs-devel@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>
 
-From: Joe Stringer <joe@wand.net.nz>
-Date: Thu, 25 Jul 2013 10:52:05 +0900
 
-> This patch consolidates the SCTP checksum calculation code from various
-> places to a single new function, sctp_compute_cksum(skb, offset).
+	Hello,
+
+On Fri, 24 May 2013, Julian Anastasov wrote:
+
+> On Thu, 23 May 2013, Simon Kirby wrote:
+
+> > Hmm, I was comparing atomic_t being s32 versus u32, not u64 being u64. :)
+> > Anyway, the .s results are much easier to read, and (closer to) reality!
+> > I did a comparison with (__u64)loh * atomic_read(dest->weight) versus
+> > (__u64)loh * (__u32)atomic_read(dest->weight) on both arches and uploaded
+> > them to http://0x.ca/sim/ref/3.9-ipvs/. It's not a huge difference, but I
+> > prefer the shorter/faster version. ;)
 > 
-> Signed-off-by: Joe Stringer <joe@wand.net.nz>
+> 	I now see why your patch shows difference compared
+> to my tests month ago. This change is the culprit:
+> 
+> -       int loh, doh;
+> +       unsigned int loh, doh;
+> 
+> 	It effectively changes the operation from:
+> 
+> (__u64/__s64) int * int
+> 
+> 	into
+> 
+> (__u64) unsigned int * int
+> 
+> 	that is why you fix it by using __u32:
+> 
+> (__u64) unsigned int * unsigned int
+> 
+> 	so that both operands are from same 4-byte signedness.
+> 
+> 	I think, we should keep loh and doh to be int, may be
+> the following both solutions should generate 32x32 multiply:
+> 
+> 1. same as my first email:
+> 
+> int loh, doh;
+> 
+> (__u64/__s64) loh * atomic_read(&dest->weight)
+> 
+> 	In this case I see only one difference between
+> __u64 and __s64:
+> 
+> -       jb      .L41    #,
+> -       ja      .L79    #,
+> +       jl      .L41    #,
+> +       jg      .L79    #,
+> 
+> 2. Your patch:
+> 
+> unsigned int loh, doh;
+> 
+> (__u64) loh * (__u32) atomic_read(&dest->weight)
+> or
+> (__s64) loh * (__u32) atomic_read(&dest->weight)
+> 
+> 	Both solutions generate code that differs only
+> in imul vs. mul. In internet I see that imul is
+> preferred/faster than mul. That is why I prefer solution 1,
+> it has less casts.
+> 
+> 	So, I think you can change your patch as follows:
+> 
+> 1. Use int for loh, doh. Note that some schedulers
+> use 'unsigned int' and should be patched for this
+> definition: NQ, SED, WLC
+> 
+> 2. Use (__u64) prefix only, no (__u32) before atomic_read:
+> LBLC, LBLCR, NQ, SED, WLC
+> 
+> 	(__u64) loh * atomic_read(&dest->weight) ...
+> 	(__u64) doh * ...
+> 
+> 3. Explain in commit message that we find the
+> result64=int32*int32 faster than result64=uint32*uint32
+> and far better than using 64*64 multiply which is
+> a bit slower on older CPUs.
 
-Applied, thanks.
+	Simon, any progress on this change? I can
+continue and finish it if you prefer so?
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
