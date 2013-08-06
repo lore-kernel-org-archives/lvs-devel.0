@@ -1,26 +1,56 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Simon Kirby <sim@hostway.ca>
 Subject: Re: activeconns * weight overflowing 32-bit int
-Date: Mon, 5 Aug 2013 09:10:24 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1308050905100.1734@ja.ssi.bg>
-References: <20130413064355.GB24319@hostway.ca> <alpine.LFD.2.00.1304131736430.1662@ja.ssi.bg> <alpine.LFD.2.00.1305220915480.1953@ja.ssi.bg> <20130523165836.GC436@hostway.ca> <alpine.LFD.2.00.1305232243220.1810@ja.ssi.bg> <20130524004318.GB14587@hostway.ca>
+Date: Mon, 5 Aug 2013 19:41:50 -0700
+Message-ID: <20130806024150.GA2393@hostway.ca>
+References: <20130413064355.GB24319@hostway.ca>
+ <alpine.LFD.2.00.1304131736430.1662@ja.ssi.bg>
+ <alpine.LFD.2.00.1305220915480.1953@ja.ssi.bg>
+ <20130523165836.GC436@hostway.ca>
+ <alpine.LFD.2.00.1305232243220.1810@ja.ssi.bg>
+ <20130524004318.GB14587@hostway.ca>
  <alpine.LFD.2.00.1305241013130.1636@ja.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <alpine.LFD.2.00.1305241013130.1636@ja.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Kirby <sim@hostway.ca>
+To: Julian Anastasov <ja@ssi.bg>
 Cc: lvs-devel@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>
 
+Hello!
 
-	Hello,
-
-On Fri, 24 May 2013, Julian Anastasov wrote:
+On Fri, May 24, 2013 at 11:11:35AM +0300, Julian Anastasov wrote:
 
 > On Thu, 23 May 2013, Simon Kirby wrote:
-
+> 
+> > > 	Last time I also checked the assembler output from x86-32
+> > > and it looked good. I used 'make net/netfilter/ipvs/ip_vs_wlc.s'
+> > > to generate asm output, note the 's' extension.
+> > > 
+> > > 	May be problem in your ipvs.c file comes from the
+> > > fact that __u64 is unsigned long long for 32-bit platforms.
+> > > I changed the code to use 'unsigned long' as follows:
+> > > 
+> > > #if 0
+> > > typedef unsigned long long __u64;
+> > > #else
+> > > typedef unsigned long __u64;
+> > > #endif
+> > > 
+> > > 	and the x86-32 platform works correctly.
+> > > x86-64 works for both cases: 'unsigned long long' and
+> > > 'unsigned long' but x86-32 generates many mul operations
+> > > for the 'unsigned long long' case which is not used in
+> > > the kernel. That is why I didn't noticed such problem.
+> > > 
+> > > 	So, I think we should be safe by adding
+> > > (__u64) without any (__u32), next days I'll check again
+> > > the asm output. May be (__u32) before weight ensures
+> > > 32x32 multiply but it should not be needed.
+> > 
 > > Hmm, I was comparing atomic_t being s32 versus u32, not u64 being u64. :)
 > > Anyway, the .s results are much easier to read, and (closer to) reality!
 > > I did a comparison with (__u64)loh * atomic_read(dest->weight) versus
@@ -72,7 +102,12 @@ On Fri, 24 May 2013, Julian Anastasov wrote:
 > (__u64) loh * (__u32) atomic_read(&dest->weight)
 > or
 > (__s64) loh * (__u32) atomic_read(&dest->weight)
-> 
+
+Did you mean here "(__s64) loh * (__s32) atomic_read(&dest->sweight)"?
+
+If not, the results for me on GCC 4.7.2 were what I posted at
+http://0x.ca/sim/ref/3.9-ipvs/.
+
 > 	Both solutions generate code that differs only
 > in imul vs. mul. In internet I see that imul is
 > preferred/faster than mul. That is why I prefer solution 1,
@@ -95,10 +130,12 @@ On Fri, 24 May 2013, Julian Anastasov wrote:
 > and far better than using 64*64 multiply which is
 > a bit slower on older CPUs.
 
-	Simon, any progress on this change? I can
-continue and finish it if you prefer so?
+I found that u64*u32 was faster than u64*s32, but I didn't check s64*s32.
+I checked now and found that u64*u32 and s64*s32 have the same number of
+output instructions on i386, with just the different signedness tests.
+Both actually use imul since it's the comparison after which it cares
+about for signedness.
 
-Regards
+But what actually makes sense? Do negative weights ever make sense?
 
---
-Julian Anastasov <ja@ssi.bg>
+Simon-
