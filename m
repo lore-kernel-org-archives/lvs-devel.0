@@ -1,141 +1,75 @@
-From: Simon Kirby <sim@hostway.ca>
-Subject: Re: activeconns * weight overflowing 32-bit int
-Date: Mon, 5 Aug 2013 19:41:50 -0700
-Message-ID: <20130806024150.GA2393@hostway.ca>
-References: <20130413064355.GB24319@hostway.ca>
- <alpine.LFD.2.00.1304131736430.1662@ja.ssi.bg>
- <alpine.LFD.2.00.1305220915480.1953@ja.ssi.bg>
- <20130523165836.GC436@hostway.ca>
- <alpine.LFD.2.00.1305232243220.1810@ja.ssi.bg>
- <20130524004318.GB14587@hostway.ca>
- <alpine.LFD.2.00.1305241013130.1636@ja.ssi.bg>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH] ipvs: fixed spacing at for statements
+Date: Tue, 6 Aug 2013 15:12:17 +0900
+Message-ID: <20130806061217.GD18246@verge.net.au>
+References: <1373525142-9099-1-git-send-email-dragos.foianu@gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1305241013130.1636@ja.ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <1373525142-9099-1-git-send-email-dragos.foianu@gmail.com>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>
+To: Dragos Foianu <dragos.foianu@gmail.com>
+Cc: wensong@linux-vs.org, linux-kernel@vger.kernel.org, coreteam@netfilter.org, netfilter@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, davem@davemloft.net, kadlec@blackhole.kfki.hu, kaber@trash.net, pablo@netfilter.org, ja@ssi.bg
 
-Hello!
+On Thu, Jul 11, 2013 at 09:45:42AM +0300, Dragos Foianu wrote:
+> found using checkpatch.pl
 
-On Fri, May 24, 2013 at 11:11:35AM +0300, Julian Anastasov wrote:
+This seems reasonable to me. I will queue it up in the ipvs-next tree.
 
-> On Thu, 23 May 2013, Simon Kirby wrote:
 > 
-> > > 	Last time I also checked the assembler output from x86-32
-> > > and it looked good. I used 'make net/netfilter/ipvs/ip_vs_wlc.s'
-> > > to generate asm output, note the 's' extension.
-> > > 
-> > > 	May be problem in your ipvs.c file comes from the
-> > > fact that __u64 is unsigned long long for 32-bit platforms.
-> > > I changed the code to use 'unsigned long' as follows:
-> > > 
-> > > #if 0
-> > > typedef unsigned long long __u64;
-> > > #else
-> > > typedef unsigned long __u64;
-> > > #endif
-> > > 
-> > > 	and the x86-32 platform works correctly.
-> > > x86-64 works for both cases: 'unsigned long long' and
-> > > 'unsigned long' but x86-32 generates many mul operations
-> > > for the 'unsigned long long' case which is not used in
-> > > the kernel. That is why I didn't noticed such problem.
-> > > 
-> > > 	So, I think we should be safe by adding
-> > > (__u64) without any (__u32), next days I'll check again
-> > > the asm output. May be (__u32) before weight ensures
-> > > 32x32 multiply but it should not be needed.
-> > 
-> > Hmm, I was comparing atomic_t being s32 versus u32, not u64 being u64. :)
-> > Anyway, the .s results are much easier to read, and (closer to) reality!
-> > I did a comparison with (__u64)loh * atomic_read(dest->weight) versus
-> > (__u64)loh * (__u32)atomic_read(dest->weight) on both arches and uploaded
-> > them to http://0x.ca/sim/ref/3.9-ipvs/. It's not a huge difference, but I
-> > prefer the shorter/faster version. ;)
+> Signed-off-by: Dragos Foianu <dragos.foianu@gmail.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_lblcr.c |    8 ++++----
+>  1 file changed, 4 insertions(+), 4 deletions(-)
 > 
-> 	I now see why your patch shows difference compared
-> to my tests month ago. This change is the culprit:
+> diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+> index 3cd85b2..5199448 100644
+> --- a/net/netfilter/ipvs/ip_vs_lblcr.c
+> +++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+> @@ -414,7 +414,7 @@ static void ip_vs_lblcr_flush(struct ip_vs_service *svc)
+>  
+>  	spin_lock_bh(&svc->sched_lock);
+>  	tbl->dead = 1;
+> -	for (i=0; i<IP_VS_LBLCR_TAB_SIZE; i++) {
+> +	for (i = 0; i < IP_VS_LBLCR_TAB_SIZE; i++) {
+>  		hlist_for_each_entry_safe(en, next, &tbl->bucket[i], list) {
+>  			ip_vs_lblcr_free(en);
+>  		}
+> @@ -440,7 +440,7 @@ static inline void ip_vs_lblcr_full_check(struct ip_vs_service *svc)
+>  	struct ip_vs_lblcr_entry *en;
+>  	struct hlist_node *next;
+>  
+> -	for (i=0, j=tbl->rover; i<IP_VS_LBLCR_TAB_SIZE; i++) {
+> +	for (i = 0, j = tbl->rover; i < IP_VS_LBLCR_TAB_SIZE; i++) {
+>  		j = (j + 1) & IP_VS_LBLCR_TAB_MASK;
+>  
+>  		spin_lock(&svc->sched_lock);
+> @@ -495,7 +495,7 @@ static void ip_vs_lblcr_check_expire(unsigned long data)
+>  	if (goal > tbl->max_size/2)
+>  		goal = tbl->max_size/2;
+>  
+> -	for (i=0, j=tbl->rover; i<IP_VS_LBLCR_TAB_SIZE; i++) {
+> +	for (i = 0, j = tbl->rover; i < IP_VS_LBLCR_TAB_SIZE; i++) {
+>  		j = (j + 1) & IP_VS_LBLCR_TAB_MASK;
+>  
+>  		spin_lock(&svc->sched_lock);
+> @@ -536,7 +536,7 @@ static int ip_vs_lblcr_init_svc(struct ip_vs_service *svc)
+>  	/*
+>  	 *    Initialize the hash buckets
+>  	 */
+> -	for (i=0; i<IP_VS_LBLCR_TAB_SIZE; i++) {
+> +	for (i = 0; i < IP_VS_LBLCR_TAB_SIZE; i++) {
+>  		INIT_HLIST_HEAD(&tbl->bucket[i]);
+>  	}
+>  	tbl->max_size = IP_VS_LBLCR_TAB_SIZE*16;
+> -- 
+> 1.7.10.4
 > 
-> -       int loh, doh;
-> +       unsigned int loh, doh;
+> --
+> To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> 	It effectively changes the operation from:
-> 
-> (__u64/__s64) int * int
-> 
-> 	into
-> 
-> (__u64) unsigned int * int
-> 
-> 	that is why you fix it by using __u32:
-> 
-> (__u64) unsigned int * unsigned int
-> 
-> 	so that both operands are from same 4-byte signedness.
-> 
-> 	I think, we should keep loh and doh to be int, may be
-> the following both solutions should generate 32x32 multiply:
-> 
-> 1. same as my first email:
-> 
-> int loh, doh;
-> 
-> (__u64/__s64) loh * atomic_read(&dest->weight)
-> 
-> 	In this case I see only one difference between
-> __u64 and __s64:
-> 
-> -       jb      .L41    #,
-> -       ja      .L79    #,
-> +       jl      .L41    #,
-> +       jg      .L79    #,
-> 
-> 2. Your patch:
-> 
-> unsigned int loh, doh;
-> 
-> (__u64) loh * (__u32) atomic_read(&dest->weight)
-> or
-> (__s64) loh * (__u32) atomic_read(&dest->weight)
-
-Did you mean here "(__s64) loh * (__s32) atomic_read(&dest->sweight)"?
-
-If not, the results for me on GCC 4.7.2 were what I posted at
-http://0x.ca/sim/ref/3.9-ipvs/.
-
-> 	Both solutions generate code that differs only
-> in imul vs. mul. In internet I see that imul is
-> preferred/faster than mul. That is why I prefer solution 1,
-> it has less casts.
-> 
-> 	So, I think you can change your patch as follows:
-> 
-> 1. Use int for loh, doh. Note that some schedulers
-> use 'unsigned int' and should be patched for this
-> definition: NQ, SED, WLC
-> 
-> 2. Use (__u64) prefix only, no (__u32) before atomic_read:
-> LBLC, LBLCR, NQ, SED, WLC
-> 
-> 	(__u64) loh * atomic_read(&dest->weight) ...
-> 	(__u64) doh * ...
-> 
-> 3. Explain in commit message that we find the
-> result64=int32*int32 faster than result64=uint32*uint32
-> and far better than using 64*64 multiply which is
-> a bit slower on older CPUs.
-
-I found that u64*u32 was faster than u64*s32, but I didn't check s64*s32.
-I checked now and found that u64*u32 and s64*s32 have the same number of
-output instructions on i386, with just the different signedness tests.
-Both actually use imul since it's the comparison after which it cares
-about for signedness.
-
-But what actually makes sense? Do negative weights ever make sense?
-
-Simon-
