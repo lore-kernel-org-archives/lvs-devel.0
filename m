@@ -1,22 +1,24 @@
-From: Simon Horman <horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH ipvs-next] ipvs: ip_vs_sh: ip_vs_sh_get_port: check
  skb_header_pointer for NULL
-Date: Tue, 6 Aug 2013 18:26:48 +0900
-Message-ID: <20130806092646.GA22281@verge.net.au>
-References: <cover.1375780430.git.dborkman@redhat.com>
- <416f7af019bf82342eee08dcb3fc3ca8b4931e6a.1375780430.git.dborkman@redhat.com>
+Date: Tue, 6 Aug 2013 22:27:55 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1308062214370.1796@ja.ssi.bg>
+References: <cover.1375780430.git.dborkman@redhat.com> <416f7af019bf82342eee08dcb3fc3ca8b4931e6a.1375780430.git.dborkman@redhat.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
 In-Reply-To: <416f7af019bf82342eee08dcb3fc3ca8b4931e6a.1375780430.git.dborkman@redhat.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Daniel Borkmann <dborkman@redhat.com>
-Cc: lvs-devel@vger.kernel.org
+Cc: horms@verge.net.au, lvs-devel@vger.kernel.org
 
-On Tue, Aug 06, 2013 at 11:20:23AM +0200, Daniel Borkmann wrote:
+
+	Hello,
+
+On Tue, 6 Aug 2013, Daniel Borkmann wrote:
+
 > skb_header_pointer could return NULL, so check for it as we do it
 > everywhere else in ipvs code. This fixes a coverity warning.
 > 
@@ -25,9 +27,15 @@ On Tue, Aug 06, 2013 at 11:20:23AM +0200, Daniel Borkmann wrote:
 >  I'd consider the case of NULL quite unlikely, therefore ipvs-next should
 >  be sufficient.
 
-Thanks, I have queued-this patch up in ipvs-next as you suggested.
+	Agreed, to avoid confusion...
 
-> 
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+	At the time when SH patch was submitted I ignored
+it as problem because this code is part of the scheduling
+lookup and we already passed such skb_header_pointer()
+checks at top of tcp_conn_schedule().
+
 >  net/netfilter/ipvs/ip_vs_sh.c | 6 ++++++
 >  1 file changed, 6 insertions(+)
 > 
@@ -58,4 +66,8 @@ Thanks, I have queued-this patch up in ipvs-next as you suggested.
 >  	default:
 > -- 
 > 1.7.11.7
-> 
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
