@@ -1,80 +1,52 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH ipvs-next] ipvs: ip_vs_sh: ip_vs_sh_get_port: check
- skb_header_pointer for NULL
-Date: Wed, 7 Aug 2013 08:59:14 +0900
-Message-ID: <20130806235911.GA5813@verge.net.au>
-References: <cover.1375780430.git.dborkman@redhat.com>
- <416f7af019bf82342eee08dcb3fc3ca8b4931e6a.1375780430.git.dborkman@redhat.com>
- <alpine.LFD.2.00.1308062214370.1796@ja.ssi.bg>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1308062214370.1796@ja.ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [GIT PULL 0/2] IPVS enhancement for v3.12
+Date: Wed,  7 Aug 2013 17:40:27 +0900
+Message-ID: <1375864829-19840-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Daniel Borkmann <dborkman@redhat.com>, lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Tue, Aug 06, 2013 at 10:27:55PM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Tue, 6 Aug 2013, Daniel Borkmann wrote:
-> 
-> > skb_header_pointer could return NULL, so check for it as we do it
-> > everywhere else in ipvs code. This fixes a coverity warning.
-> > 
-> > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> > ---
-> >  I'd consider the case of NULL quite unlikely, therefore ipvs-next should
-> >  be sufficient.
-> 
-> 	Agreed, to avoid confusion...
-> 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
+Hi Pablo,
 
-Thanks, I have added your ack and forcibly re-pushed the change into ipvs-next.
+please consider the following IPVS enhancement for v3.12.
 
-> 	At the time when SH patch was submitted I ignored
-> it as problem because this code is part of the scheduling
-> lookup and we already passed such skb_header_pointer()
-> checks at top of tcp_conn_schedule().
-> 
-> >  net/netfilter/ipvs/ip_vs_sh.c | 6 ++++++
-> >  1 file changed, 6 insertions(+)
-> > 
-> > diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-> > index f16c027..3588fae 100644
-> > --- a/net/netfilter/ipvs/ip_vs_sh.c
-> > +++ b/net/netfilter/ipvs/ip_vs_sh.c
-> > @@ -269,14 +269,20 @@ ip_vs_sh_get_port(const struct sk_buff *skb, struct ip_vs_iphdr *iph)
-> >  	switch (iph->protocol) {
-> >  	case IPPROTO_TCP:
-> >  		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
-> > +		if (unlikely(th == NULL))
-> > +			return 0;
-> >  		port = th->source;
-> >  		break;
-> >  	case IPPROTO_UDP:
-> >  		uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
-> > +		if (unlikely(uh == NULL))
-> > +			return 0;
-> >  		port = uh->source;
-> >  		break;
-> >  	case IPPROTO_SCTP:
-> >  		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
-> > +		if (unlikely(sh == NULL))
-> > +			return 0;
-> >  		port = sh->source;
-> >  		break;
-> >  	default:
-> > -- 
-> > 1.7.11.7
-> 
-> Regards
-> 
-> --
-> Julian Anastasov <ja@ssi.bg>
-> 
+It looks like v3.12 is going to be pretty quiet for IPVS
+as at this stage I'm not expecting anything more than a few more cleanup
+patches. And I'm not even sure if they will come through.
+
+
+The following changes since commit d8b3bfc253d8063fcce9c447ecc4cf3b1735b13a:
+
+  netfilter: tproxy: fix build with IP6_NF_IPTABLES=n (2013-08-05 12:57:38 +0200)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.12
+
+for you to fetch changes up to 54e35cc52346149a7bce8a2f622e215ed17bb56d:
+
+  ipvs: ip_vs_sh: ip_vs_sh_get_port: check skb_header_pointer for NULL (2013-08-07 08:57:57 +0900)
+
+----------------------------------------------------------------
+IPVS enhancement for v3.12
+
+* NULL pointer check in ip_vs_sh_get_port()
+  - This sounds worse than it is, it seems to be only a theoretical problem
+
+* Whitepsace cleanup
+
+----------------------------------------------------------------
+Daniel Borkmann (1):
+      ipvs: ip_vs_sh: ip_vs_sh_get_port: check skb_header_pointer for NULL
+
+Dragos Foianu (1):
+      ipvs: fixed spacing at for statements
+
+ net/netfilter/ipvs/ip_vs_lblcr.c | 8 ++++----
+ net/netfilter/ipvs/ip_vs_sh.c    | 6 ++++++
+ 2 files changed, 10 insertions(+), 4 deletions(-)
