@@ -1,52 +1,39 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Subject: Re: [PATCH] Allow override of CFLAGS
-Date: Thu, 08 Aug 2013 09:47:30 +0200
-Message-ID: <52034D12.4070100@redhat.com>
+From: Jesper Dangaard Brouer <jbrouer@redhat.com>
+Subject: ipvsadm git head not compiling on RHEL6
+Date: Thu, 8 Aug 2013 10:19:24 +0200
+Message-ID: <20130808101924.7b363a4e@redhat.com>
 References: <1375937999-11660-1-git-send-email-horms@verge.net.au>
+	<52034D12.4070100@redhat.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1375937999-11660-1-git-send-email-horms@verge.net.au>
+In-Reply-To: <52034D12.4070100@redhat.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Jesper Dangaard Brouer <jbrouer@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-On 08/08/2013 06:59 AM, Simon Horman wrote:
-> When building ipvsadm this allows make to add to CFLAGS supplied
-> on the command line.
->
-> This seems to make sense as Makefile and libipvs/Makefile
-> add different CFLAGS but it may be desirable to supply supplementary
-> flags when building ipvsadm.
->
-> In particular the following may be useful when building ipvsadm
-> on Debian Jessie.
->
-> make CFLAGS='-I/usr/include/libnl3' LIBS='-lnl-3 -lnl-genl-3 -lnl-3 -lpopt'
 
-For libnl3, what about ...
+I noticed that I get an compile error, when compiling ipvsadm
+git HEAD 1ea1f41f4 on RHEL6.4.
 
-cflags: $(shell pkg-config --cflags libnl-3.0) $(shell pkg-config --cflags libnl-3.0)
-libs:   $(shell pkg-config --libs libnl-3.0) $(shell pkg-config --libs libnl-genl-3.0)
+Compile Error:
 
-> Signed-off-by: Simon Horman <horms@verge.net.au>
-> ---
->   Makefile | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/Makefile b/Makefile
-> index 6e36d79..c8c1eec 100644
-> --- a/Makefile
-> +++ b/Makefile
-> @@ -48,7 +48,7 @@ STATIC_LIBS	= libipvs/libipvs.a
->   ifeq "${ARCH}" "sparc64"
->       CFLAGS = -Wall -Wunused -Wstrict-prototypes -g -m64 -pipe -mcpu=ultrasparc -mcmodel=medlow
->   else
-> -    CFLAGS = -Wall -Wunused -Wstrict-prototypes -g
-> +    CFLAGS = -I/usr/include/libnl3 -Wall -Wunused -Wstrict-prototypes -g
->   endif
->
->
->
+gcc -Wall -Wunused -Wstrict-prototypes -g -o ipvsadm ipvsadm.o config_stream.o dynamic_array.o libipvs/libipvs.a -lpopt -lnl
+libipvs/libipvs.a(libipvs.o): In function `ipvs_nl_send_message':
+/home/jbrouer/git/ipvsadm/libipvs/libipvs.c:76: undefined reference to `nl_socket_alloc'
+/home/jbrouer/git/ipvsadm/libipvs/libipvs.c:91: undefined reference to `nl_socket_free'
+/home/jbrouer/git/ipvsadm/libipvs/libipvs.c:107: undefined reference to `nl_socket_free'
+/home/jbrouer/git/ipvsadm/libipvs/libipvs.c:112: undefined reference to `nl_socket_free'
+collect2: ld returned 1 exit status
+make: *** [ipvsadm] Error 1
+
+I'll investigate, but hints would be appreciated ;-)
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Sr. Network Kernel Developer at Red Hat
+  Author of http://www.iptv-analyzer.org
+  LinkedIn: http://www.linkedin.com/in/brouer
