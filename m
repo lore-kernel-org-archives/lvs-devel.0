@@ -1,26 +1,46 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL 0/2] IPVS enhancement for v3.12
-Date: Wed, 7 Aug 2013 11:09:02 +0200
-Message-ID: <20130807090902.GA7852@localhost>
-References: <1375864829-19840-1-git-send-email-horms@verge.net.au>
-Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1375864829-19840-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Simon Horman <horms@verge.net.au>
+Subject: [PATCH] Allow override of CFLAGS
+Date: Thu,  8 Aug 2013 13:59:59 +0900
+Message-ID: <1375937999-11660-1-git-send-email-horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: lvs-devel@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Jesper Dangaard Brouer <jbrouer@redhat.com>, Simon Horman <horms@verge.net.au>
 
-On Wed, Aug 07, 2013 at 05:40:27PM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider the following IPVS enhancement for v3.12.
-> 
-> It looks like v3.12 is going to be pretty quiet for IPVS
-> as at this stage I'm not expecting anything more than a few more cleanup
-> patches. And I'm not even sure if they will come through.
+When building ipvsadm this allows make to add to CFLAGS supplied
+on the command line.
 
-I see, thanks for the information Simon. Pulled these two patches.
+This seems to make sense as Makefile and libipvs/Makefile
+add different CFLAGS but it may be desirable to supply supplementary
+flags when building ipvsadm.
+
+In particular the following may be useful when building ipvsadm
+on Debian Jessie.
+
+make CFLAGS='-I/usr/include/libnl3' LIBS='-lnl-3 -lnl-genl-3 -lnl-3 -lpopt'
+
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 6e36d79..c8c1eec 100644
+--- a/Makefile
++++ b/Makefile
+@@ -48,7 +48,7 @@ STATIC_LIBS	= libipvs/libipvs.a
+ ifeq "${ARCH}" "sparc64"
+     CFLAGS = -Wall -Wunused -Wstrict-prototypes -g -m64 -pipe -mcpu=ultrasparc -mcmodel=medlow
+ else
+-    CFLAGS = -Wall -Wunused -Wstrict-prototypes -g
++    CFLAGS = -I/usr/include/libnl3 -Wall -Wunused -Wstrict-prototypes -g
+ endif
+ 
+ 
+-- 
+1.8.3.2
+
