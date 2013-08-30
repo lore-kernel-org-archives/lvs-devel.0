@@ -1,9 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf 0/5] IPVS fixes for v3.11
-Date: Fri, 30 Aug 2013 18:14:23 +0900
-Message-ID: <1377854068-22340-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [PATCH nf 4/5] ipvs: stats should not depend on CPU 0
+Date: Fri, 30 Aug 2013 18:14:27 +0900
+Message-ID: <1377854068-22340-5-git-send-email-horms@verge.net.au>
+References: <1377854068-22340-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1377854068-22340-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,89 +13,47 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Julian Anastasov <ja@ssi.bg>
 
-I'm not sure if it is too late in the cycle but
-if not could you please consider these fixes for v3.11?
+When reading percpu stats we need to properly reset
+the sum when CPU 0 is not present in the possible mask.
 
-In my opinion these all seem to be -stable candidates.
-I would appreciate your opinion on that.
+This problem was introduced by 17fc9963f837ef1
+("IPVS: netns, ip_vs_stats and its procfs").
 
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Acked-by: Hans Schillstrom <hans@schillstrom.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_est.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-The following changes since commit e75dc677ff8d06ffa61bef6fee436227ae5440c6:
-
-  hso: Fix stack corruption on some architectures (2013-08-21 20:47:59 -0700)
-
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.11
-
-for you to fetch changes up to d5af9df3233d4cb2e7c9011af86ed53cdd12a136:
-
-  ipvs: fix overflow on dest weight multiply (2013-08-30 17:52:03 +0900)
-
-----------------------------------------------------------------
-Fixes for IPVS for v3.11
-
-* Fix overflow in LBLC and LBLCR schedulers.
-
-  This resolves a regression introduced by commit b552f7e3a9524abcbcdf
-  ("ipvs: unify the formula to estimate the overhead of processing
-  connections").
-
-  This problem was introduced in v2.6.38
-
-* Correct stats calculation in the absence of CPU 0 in the possible mask
-
-  This resolves a regression introduced by commit 17fc9963f837ef1
-  ("IPVS: netns, ip_vs_stats and its procfs").
-
-  This problem was introduced in v2.6.38
-
-* Make the service replacement more robust
-
-  This resolves a regression introduced by commit 578bc3ef1e473a
-  ("ipvs: reorganize dest trash")
-
-  This problem was introduced in 3.9
-
-* Do not use dest after ip_vs_dest_put in LBLCR
-
-  This resolves a regression introduced by commit c5549571f975ab
-  ("ipvs: convert lblcr scheduler to rcu")
-
-  This problem was introduced in 3.9
-
-* Do not use dest after ip_vs_dest_put in LBLC
-
-  This resolves a regression introduced by commit 2a4ffb70eef39
-  ("ipvs: convert lblc scheduler to rcu")
-
-  This problem was introduced in 3.9
-
-----------------------------------------------------------------
-Julian Anastasov (4):
-      ipvs: do not use dest after ip_vs_dest_put in LBLC
-      ipvs: do not use dest after ip_vs_dest_put in LBLCR
-      ipvs: make the service replacement more robust
-      ipvs: stats should not depend on CPU 0
-
-Simon Kirby (1):
-      ipvs: fix overflow on dest weight multiply
-
- include/net/ip_vs.h              |  8 ++--
- net/netfilter/ipvs/ip_vs_core.c  | 12 +++++-
- net/netfilter/ipvs/ip_vs_ctl.c   | 90 ++++++++++++++++------------------------
- net/netfilter/ipvs/ip_vs_est.c   |  4 +-
- net/netfilter/ipvs/ip_vs_lblc.c  | 72 +++++++++++++++-----------------
- net/netfilter/ipvs/ip_vs_lblcr.c | 62 ++++++++++++---------------
- net/netfilter/ipvs/ip_vs_nq.c    |  8 ++--
- net/netfilter/ipvs/ip_vs_sed.c   |  8 ++--
- net/netfilter/ipvs/ip_vs_wlc.c   |  6 +--
- 9 files changed, 121 insertions(+), 149 deletions(-)
-
-
-
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 6bee6d0..1425e9a 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -59,12 +59,13 @@ static void ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
+ 				 struct ip_vs_cpu_stats __percpu *stats)
+ {
+ 	int i;
++	bool add = false;
+ 
+ 	for_each_possible_cpu(i) {
+ 		struct ip_vs_cpu_stats *s = per_cpu_ptr(stats, i);
+ 		unsigned int start;
+ 		__u64 inbytes, outbytes;
+-		if (i) {
++		if (add) {
+ 			sum->conns += s->ustats.conns;
+ 			sum->inpkts += s->ustats.inpkts;
+ 			sum->outpkts += s->ustats.outpkts;
+@@ -76,6 +77,7 @@ static void ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
+ 			sum->inbytes += inbytes;
+ 			sum->outbytes += outbytes;
+ 		} else {
++			add = true;
+ 			sum->conns = s->ustats.conns;
+ 			sum->inpkts = s->ustats.inpkts;
+ 			sum->outpkts = s->ustats.outpkts;
 -- 
 1.8.4
-
