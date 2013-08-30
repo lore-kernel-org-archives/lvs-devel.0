@@ -1,36 +1,65 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH] ipvs: fix the IPVS_CMD_ATTR_MAX definition
-Date: Wed, 28 Aug 2013 19:31:22 +0300
-Message-ID: <1377707482-4420-1-git-send-email-ja@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH net 4/4] ipvs: stats should not depend on CPU 0
+Date: Fri, 30 Aug 2013 10:17:51 +0900
+Message-ID: <20130830011751.GB8360@verge.net.au>
+References: <1377707376-4362-1-git-send-email-ja@ssi.bg>
+ <1377707376-4362-5-git-send-email-ja@ssi.bg>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1377707376-4362-5-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, Hans Schillstrom <hans@schillstrom.com>
 
-It was wrong (bigger) but problem is harmless.
+[ Cc: Hans Schillstrom ]
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- include/uapi/linux/ip_vs.h |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+On Wed, Aug 28, 2013 at 07:29:36PM +0300, Julian Anastasov wrote:
+> When reading percpu stats we need to properly reset
+> the sum when CPU 0 is not present in the possible mask.
 
-diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-index 2945822..fbcffe8 100644
---- a/include/uapi/linux/ip_vs.h
-+++ b/include/uapi/linux/ip_vs.h
-@@ -334,7 +334,7 @@ enum {
- 	__IPVS_CMD_ATTR_MAX,
- };
- 
--#define IPVS_CMD_ATTR_MAX (__IPVS_SVC_ATTR_MAX - 1)
-+#define IPVS_CMD_ATTR_MAX (__IPVS_CMD_ATTR_MAX - 1)
- 
- /*
-  * Attributes used to describe a service
--- 
-1.7.3.4
+It seems reasonable to me that this condition could occur,
+though I am not aware of a specific case where that is so.
 
+Can I confirm that this problem was introduced by
+b17fc9963f837ef1 ("IPVS: netns, ip_vs_stats and its procfs")?
+
+> 
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> ---
+>  net/netfilter/ipvs/ip_vs_est.c |    4 +++-
+>  1 files changed, 3 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+> index 6bee6d0..1425e9a 100644
+> --- a/net/netfilter/ipvs/ip_vs_est.c
+> +++ b/net/netfilter/ipvs/ip_vs_est.c
+> @@ -59,12 +59,13 @@ static void ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
+>  				 struct ip_vs_cpu_stats __percpu *stats)
+>  {
+>  	int i;
+> +	bool add = false;
+>  
+>  	for_each_possible_cpu(i) {
+>  		struct ip_vs_cpu_stats *s = per_cpu_ptr(stats, i);
+>  		unsigned int start;
+>  		__u64 inbytes, outbytes;
+> -		if (i) {
+> +		if (add) {
+>  			sum->conns += s->ustats.conns;
+>  			sum->inpkts += s->ustats.inpkts;
+>  			sum->outpkts += s->ustats.outpkts;
+> @@ -76,6 +77,7 @@ static void ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
+>  			sum->inbytes += inbytes;
+>  			sum->outbytes += outbytes;
+>  		} else {
+> +			add = true;
+>  			sum->conns = s->ustats.conns;
+>  			sum->inpkts = s->ustats.inpkts;
+>  			sum->outpkts = s->ustats.outpkts;
+> -- 
+> 1.7.3.4
+> 
