@@ -1,42 +1,54 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH nf 0/5] IPVS fixes for v3.11
-Date: Sat, 31 Aug 2013 13:40:50 +0900
-Message-ID: <20130831044049.GM27935@verge.net.au>
-References: <1377854068-22340-1-git-send-email-horms@verge.net.au>
- <20130830192653.GA8350@localhost>
- <20130831012424.GA27935@verge.net.au>
+Subject: Ipvsadm pre v1.27 on Debian 7.1 (wheezy update 1)
+Date: Thu, 5 Sep 2013 09:43:02 +0900
+Message-ID: <20130905004302.GP25209@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130831012424.GA27935@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: lvs-devel@vger.kernel.org
+Cc: Jesper Dangaard Brouer <jbrouer@redhat.com>, Wensong Zhang <wensong@linux-vs.org>
 
-On Sat, Aug 31, 2013 at 10:24:25AM +0900, Simon Horman wrote:
-> On Fri, Aug 30, 2013 at 09:26:53PM +0200, Pablo Neira Ayuso wrote:
-> > Hi Simon,
-> > 
-> > On Fri, Aug 30, 2013 at 06:14:23PM +0900, Simon Horman wrote:
-> > > Hi Pablo,
-> > > 
-> > > I'm not sure if it is too late in the cycle but
-> > > if not could you please consider these fixes for v3.11?
-> > > 
-> > > In my opinion these all seem to be -stable candidates.
-> > > I would appreciate your opinion on that.
-> > 
-> > We're fairly late in the -rc cycle. I prefer to ask David to take
-> > these once 3.11 is released, then ask for -stable inclusion.
-> 
-> Sure, that is completely fine by me.
-> 
-> Let me know if you would like me to rebase and/or
-> send a fresh pull-request at that time.
+Hi,
 
-Julian pointed out that there is an error in one the changelogs.
-Accordingly, I'Ll fix that and send a fresh pull-request
-once 3.11 is released.
+in preparation for releasing ipvsadm v1.27 I have
+tested building the code on Debian 7.1 (wheezy update 1).
+The result was success.
+
+Details
+-------
+
+Revision tested:
+3141694cb0d873adc8ef9b09ff71d510957ef640
+("ipvsadm: support for scheduler flags")
+
+Test:
+# apt-get build-dep ipvsadm
+# apt-get install pkg-config
+$ make clean
+$ make
+make -C libipvs
+make[1]: Entering directory `/home/horms/projects/ipvsadm/git/ipvsadm/libipvs'
+gcc -Wall -Wunused -Wstrict-prototypes -g -fPIC -DLIBIPVS_USE_NL    -DHAVE_NET_IP_VS_H -DFALLBACK_LIBNL1 -c -o libipvs.o libipvs.c
+gcc -Wall -Wunused -Wstrict-prototypes -g -fPIC -DLIBIPVS_USE_NL    -DHAVE_NET_IP_VS_H -DFALLBACK_LIBNL1 -c -o ip_vs_nl_policy.o ip_vs_nl_policy.c
+ar rv libipvs.a libipvs.o ip_vs_nl_policy.o
+ar: creating libipvs.a
+a - libipvs.o
+a - ip_vs_nl_policy.o
+gcc -shared -Wl,-soname,libipvs.so -o libipvs.so libipvs.o ip_vs_nl_policy.o
+make[1]: Leaving directory `/home/horms/projects/ipvsadm/git/ipvsadm/libipvs'
+gcc -Wall -Wunused -Wstrict-prototypes -g  -DVERSION=\"1.26\" -DSCHEDULERS=\""rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq"\" -DPE_LIST=\""sip"\"  -DHAVE_NET_IP_VS_H -c -o ipvsadm.o ipvsadm.c
+ipvsadm.c: In function 'modprobe_ipvs':
+ipvsadm.c:1243:6: warning: variable 'rc' set but not used [-Wunused-but-set-variable]
+ipvsadm.c: In function 'print_largenum':
+ipvsadm.c:1436:3: warning: field width specifier '*' expects argument of type 'int', but argument 2 has type 'size_t' [-Wformat]
+gcc -Wall -Wunused -Wstrict-prototypes -g  -DVERSION=\"1.26\" -DSCHEDULERS=\""rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq"\" -DPE_LIST=\""sip"\"  -DHAVE_NET_IP_VS_H -c -o config_stream.o config_stream.c
+gcc -Wall -Wunused -Wstrict-prototypes -g  -DVERSION=\"1.26\" -DSCHEDULERS=\""rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq"\" -DPE_LIST=\""sip"\"  -DHAVE_NET_IP_VS_H -c -o dynamic_array.o dynamic_array.c
+gcc -Wall -Wunused -Wstrict-prototypes -g -o ipvsadm ipvsadm.o config_stream.o dynamic_array.o libipvs/libipvs.a -lpopt -lnl  
+$ echo $?
+0
+
+
