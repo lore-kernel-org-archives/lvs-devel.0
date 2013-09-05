@@ -1,166 +1,51 @@
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: [ipvsadm PATCH 3/3] Maintainer script for releasing tarballs
-Date: Thu, 05 Sep 2013 13:23:19 +0200
-Message-ID: <20130905112319.5071.69455.stgit@localhost>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [ipvsadm PATCH 0/3] Patchset in preparation for ipvsadm release
+ v1.27
+Date: Thu, 5 Sep 2013 22:33:10 +0300 (EEST)
+Message-ID: <alpine.LFD.2.00.1309052231370.1774@ja.ssi.bg>
 References: <20130905112303.5071.14612.stgit@localhost>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <20130905112303.5071.14612.stgit@localhost>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Ryan O'Hara <rohara@redhat.com>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Ryan O'Hara <rohara@redhat.com>
 
-Adding a script (release-tarball.sh) for making a release
-tarball, where we avoid including files not related to the git
-repository, by using git archive to a temp dir (mktemp).
 
-You need to create a git tag corrosponding with the version in the
-file VERSION, before you can make a release.  For testing purposes,
-its possible to give a commit id on the command line via "-c" option.
+	Hello,
 
-The script also creates a GPG signed file output of the uncompressed
-tarball (which is needed by kernel.org upload utility).  A specific
-GPGKEY ID can be specified on the command line via "-g" option.
+On Thu, 5 Sep 2013, Jesper Dangaard Brouer wrote:
 
-The release tarballs and GPG signing files are placed in the
-directory "release/".
+> Here are some patches in preparation for the upcomming ipvsadm release
+> v1.27.  No real coded changes to ipvsadm, just maintainer related
+> updates and changes.
+> 
+> If nobody objects and when Simon ACKs, I'm going to apply this
+> patchset myself to the ipvsadm git tree:
+> 
+>   https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git
 
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
----
- release-tarball.sh |  123 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 123 insertions(+)
- create mode 100755 release-tarball.sh
+	Patchset looks ok to me.
 
-diff --git a/release-tarball.sh b/release-tarball.sh
-new file mode 100755
-index 0000000..2333fde
---- /dev/null
-+++ b/release-tarball.sh
-@@ -0,0 +1,123 @@
-+#!/bin/bash
-+#
-+# Script for making a release tarball, where we avoid including files
-+# not related to the git repository, by using git archive to a temp
-+# dir (mktemp).
-+#
-+# You need to create a git tag corrosponding with the version in the
-+# file VERSION, before you can make a release.  For testing purposes,
-+# its possible to give a commit id on the command line via "-c" option.
-+#
-+# The script also creates a GPG signed file output of the uncompressed
-+# tarball (which is needed by kernel.org upload utility).  A specific
-+# GPGKEY ID can be specified on the command line via "-g" option.
-+#
-+# The release tarballs and GPG signing files are placed in the
-+# directory "release/".
-+#
-+set -e
-+NAME=ipvsadm
-+#PREV_VERSION=1.xx # disabled in script
-+
-+if [ -e VERSION ]; then
-+    export VERSION=$(cat VERSION)
-+else
-+    echo "ERROR - Cannot find version file"
-+    exit 1
-+fi
-+VERSION_TAG="v${VERSION}"
-+# Notice VERSION can be overridden by command line arg -c
-+
-+##  --- Parse command line arguments ---
-+while getopts "c:g:" option; do
-+    case $option in
-+	c)
-+	    COMMIT=$OPTARG
-+	    echo "[WARNING] using git commit/id ($COMMIT) instead of release tag"
-+	    VERSION=$COMMIT
-+	    VERSION_TAG=$COMMIT
-+	    git show $COMMIT > /dev/null
-+	    ;;
-+	g)
-+	    SPECIFIC_GPGKEY=$OPTARG
-+	    echo "[NOTICE] Using GPG signing key: $SPECIFIC_GPGKEY"
-+	    gpg --list-key "$SPECIFIC_GPGKEY" > /dev/null
-+	    ;;
-+	?|*)
-+	    echo ""
-+	    echo "[ERROR] Unknown parameter \"$OPTARG\""
-+	    exit 2
-+    esac
-+done
-+shift $[ OPTIND - 1 ]
-+
-+if [ -n "$SPECIFIC_GPGKEY" ]; then
-+    GPGKEY="-u $SPECIFIC_GPGKEY"
-+fi
-+
-+echo "Creating tarball for release tag: $VERSION_TAG"
-+echo "================================="
-+
-+read -p "Are you sure, you want to create a release tarball (y/n)? " -n 1 -r
-+echo ""
-+if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-+    exit 1
-+fi
-+
-+# Create a unique tempdir, to avoid leftovers from older release builds
-+TMPDIR=`mktemp -dt $NAME.XXXXXXXXXX`
-+trap 'rm -rf $TMPDIR' EXIT
-+#echo "TMPDIR:$TMPDIR"
-+PKGDIR="$TMPDIR/${NAME}-${VERSION}"
-+#echo PKGDIR:$PKGDIR
-+RELDIR=release
-+if [ ! -d $RELDIR ]; then
-+    mkdir -p $RELDIR
-+fi
-+
-+# Compression packer tool
-+packer=gzip
-+packext=gz
-+
-+TARBALL="$RELDIR/$NAME-$VERSION.tar";
-+#CHANGES="$RELDIR/changes-$NAME-$PREV_VERSION-$VERSION.txt";
-+
-+#mkdir -p "$TMPDIR"
-+#echo " -- Git shortlog v$PREV_VERSION..$VERSION_TAG"
-+#git shortlog "v$PREV_VERSION..$VERSION_TAG" > "$CHANGES"
-+
-+echo " -- Git archiving version tag $VERSION_TAG"
-+git archive --prefix="$NAME-$VERSION/" "$VERSION_TAG" | tar -xC "$TMPDIR/"
-+
-+#pushd "$PKGDIR" > /dev/null && {
-+#    echo " -- Generating configure scripts..."
-+#    sh autogen.sh
-+#    popd > /dev/null
-+#}
-+
-+# Create .spec file
-+export RELEASE=1
-+if [ -f ipvsadm.spec.in ]; then
-+    echo " -- Creating .spec file"
-+    sed -e "s/@@VERSION@@/${VERSION}/g" \
-+	-e "s/@@RELEASE@@/${RELEASE}/g" \
-+	< ipvsadm.spec.in > ${PKGDIR}/ipvsadm.spec
-+fi
-+
-+echo " -- Creating tarball $TARBALL"
-+#tar --use=${packer} -C "$TMPDIR" -cf "$TARBALL" "$NAME-$VERSION";
-+tar -C "$TMPDIR" -cf "$TARBALL" "$NAME-$VERSION";
-+
-+#(Disabled checksums are auto created by kernel.org kup scripts)
-+#echo " -- Calculating checksums"
-+#md5sum "$TARBALL"  > "${TARBALL}.md5sum";
-+#sha1sum "$TARBALL" > "${TARBALL}.sha1sum";
-+
-+echo " -- You need to sign the tarball (uncompressed)"
-+gpg  $GPGKEY --armor --detach-sign "$TARBALL";
-+
-+echo " -- Compress tarball to ${TARBALL}.${packext}"
-+${packer} "$TARBALL"
-+
-+echo "MANUAL: Upload to kernel.org, via command:"
-+echo kup put ${TARBALL}.${packext} ${TARBALL}.asc /pub/linux/utils/kernel/ipvsadm/
+> ---
+> 
+> Jesper Dangaard Brouer (3):
+>       Make README more generic and reference new kernel.org location
+>       Add MAINTAINERS style file
+>       Maintainer script for releasing tarballs
+> 
+> 
+>  MAINTAINERS        |   33 ++++++++++++++
+>  README             |   26 ++++++++---
+>  release-tarball.sh |  123 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 174 insertions(+), 8 deletions(-)
+>  create mode 100644 MAINTAINERS
+>  create mode 100755 release-tarball.sh
 
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
