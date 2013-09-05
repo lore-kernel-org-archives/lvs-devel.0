@@ -1,54 +1,45 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Ipvsadm pre v1.27 on Debian 7.1 (wheezy update 1)
-Date: Thu, 5 Sep 2013 09:43:02 +0900
-Message-ID: <20130905004302.GP25209@verge.net.au>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: [ipvsadm PATCH 0/3] Patchset in preparation for ipvsadm release
+ v1.27
+Date: Thu, 05 Sep 2013 13:23:03 +0200
+Message-ID: <20130905112303.5071.14612.stgit@localhost>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org
-Cc: Jesper Dangaard Brouer <jbrouer@redhat.com>, Wensong Zhang <wensong@linux-vs.org>
+To: lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>, Ryan O'Hara <rohara@redhat.com>
 
-Hi,
+Here are some patches in preparation for the upcomming ipvsadm release
+v1.27.  No real coded changes to ipvsadm, just maintainer related
+updates and changes.
 
-in preparation for releasing ipvsadm v1.27 I have
-tested building the code on Debian 7.1 (wheezy update 1).
-The result was success.
+If nobody objects and when Simon ACKs, I'm going to apply this
+patchset myself to the ipvsadm git tree:
 
-Details
--------
+  https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git
 
-Revision tested:
-3141694cb0d873adc8ef9b09ff71d510957ef640
-("ipvsadm: support for scheduler flags")
+---
 
-Test:
-# apt-get build-dep ipvsadm
-# apt-get install pkg-config
-$ make clean
-$ make
-make -C libipvs
-make[1]: Entering directory `/home/horms/projects/ipvsadm/git/ipvsadm/libipvs'
-gcc -Wall -Wunused -Wstrict-prototypes -g -fPIC -DLIBIPVS_USE_NL    -DHAVE_NET_IP_VS_H -DFALLBACK_LIBNL1 -c -o libipvs.o libipvs.c
-gcc -Wall -Wunused -Wstrict-prototypes -g -fPIC -DLIBIPVS_USE_NL    -DHAVE_NET_IP_VS_H -DFALLBACK_LIBNL1 -c -o ip_vs_nl_policy.o ip_vs_nl_policy.c
-ar rv libipvs.a libipvs.o ip_vs_nl_policy.o
-ar: creating libipvs.a
-a - libipvs.o
-a - ip_vs_nl_policy.o
-gcc -shared -Wl,-soname,libipvs.so -o libipvs.so libipvs.o ip_vs_nl_policy.o
-make[1]: Leaving directory `/home/horms/projects/ipvsadm/git/ipvsadm/libipvs'
-gcc -Wall -Wunused -Wstrict-prototypes -g  -DVERSION=\"1.26\" -DSCHEDULERS=\""rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq"\" -DPE_LIST=\""sip"\"  -DHAVE_NET_IP_VS_H -c -o ipvsadm.o ipvsadm.c
-ipvsadm.c: In function 'modprobe_ipvs':
-ipvsadm.c:1243:6: warning: variable 'rc' set but not used [-Wunused-but-set-variable]
-ipvsadm.c: In function 'print_largenum':
-ipvsadm.c:1436:3: warning: field width specifier '*' expects argument of type 'int', but argument 2 has type 'size_t' [-Wformat]
-gcc -Wall -Wunused -Wstrict-prototypes -g  -DVERSION=\"1.26\" -DSCHEDULERS=\""rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq"\" -DPE_LIST=\""sip"\"  -DHAVE_NET_IP_VS_H -c -o config_stream.o config_stream.c
-gcc -Wall -Wunused -Wstrict-prototypes -g  -DVERSION=\"1.26\" -DSCHEDULERS=\""rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq"\" -DPE_LIST=\""sip"\"  -DHAVE_NET_IP_VS_H -c -o dynamic_array.o dynamic_array.c
-gcc -Wall -Wunused -Wstrict-prototypes -g -o ipvsadm ipvsadm.o config_stream.o dynamic_array.o libipvs/libipvs.a -lpopt -lnl  
-$ echo $?
-0
+Jesper Dangaard Brouer (3):
+      Make README more generic and reference new kernel.org location
+      Add MAINTAINERS style file
+      Maintainer script for releasing tarballs
 
 
+ MAINTAINERS        |   33 ++++++++++++++
+ README             |   26 ++++++++---
+ release-tarball.sh |  123 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 174 insertions(+), 8 deletions(-)
+ create mode 100644 MAINTAINERS
+ create mode 100755 release-tarball.sh
+
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Sr. Network Kernel Developer at Red Hat
+  Author of http://www.iptv-analyzer.org
+  LinkedIn: http://www.linkedin.com/in/brouer
