@@ -1,40 +1,53 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net 3/4] ipvs: make the service replacement more robust
-Date: Wed, 11 Sep 2013 12:58:58 +0900
-Message-ID: <20130911035858.GF23073@verge.net.au>
-References: <1377707376-4362-1-git-send-email-ja@ssi.bg>
- <1377707376-4362-4-git-send-email-ja@ssi.bg>
- <alpine.LFD.2.00.1309102214530.1691@ja.ssi.bg>
-Mime-Version: 1.0
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCHv2 net 4/4] ipvs: stats should not depend on CPU 0
+Date: Thu, 12 Sep 2013 11:21:10 +0300
+Message-ID: <1378974070-9372-5-git-send-email-ja@ssi.bg>
+References: <1378974070-9372-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1309102214530.1691@ja.ssi.bg>
+In-Reply-To: <1378974070-9372-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
+To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org
 
-On Tue, Sep 10, 2013 at 10:28:13PM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Wed, 28 Aug 2013, Julian Anastasov wrote:
-> 
-> > -	/* Some dest can be in grace period even before cleanup, we have to
-> > -	 * defer ip_vs_trash_cleanup until ip_vs_dest_wait_readers is called.
-> > -	 */
-> > -	rcu_barrier();
-> >  	ip_vs_trash_cleanup(net);
-> >  	ip_vs_stop_estimator(net, &ipvs->tot_stats);
-> >  	ip_vs_control_net_cleanup_sysctl(net);
-> 
-> 	Simon, I have to update this patch. rcu_barrier
-> can not simply disappear because LBLC[R] use RCU callbacks
-> and we have to wait them to put the final reference to dest
-> before calling ip_vs_trash_cleanup(). It needs different
-> solution, if possible without rcu_barrier. I'll send updated
-> patchset in next days.
+When reading percpu stats we need to properly reset
+the sum when CPU 0 is not present in the possible mask.
 
-Thanks, noted.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ net/netfilter/ipvs/ip_vs_est.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 6bee6d0..1425e9a 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -59,12 +59,13 @@ static void ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
+ 				 struct ip_vs_cpu_stats __percpu *stats)
+ {
+ 	int i;
++	bool add = false;
+ 
+ 	for_each_possible_cpu(i) {
+ 		struct ip_vs_cpu_stats *s = per_cpu_ptr(stats, i);
+ 		unsigned int start;
+ 		__u64 inbytes, outbytes;
+-		if (i) {
++		if (add) {
+ 			sum->conns += s->ustats.conns;
+ 			sum->inpkts += s->ustats.inpkts;
+ 			sum->outpkts += s->ustats.outpkts;
+@@ -76,6 +77,7 @@ static void ip_vs_read_cpu_stats(struct ip_vs_stats_user *sum,
+ 			sum->inbytes += inbytes;
+ 			sum->outbytes += outbytes;
+ 		} else {
++			add = true;
+ 			sum->conns = s->ustats.conns;
+ 			sum->inpkts = s->ustats.inpkts;
+ 			sum->outpkts = s->ustats.outpkts;
+-- 
+1.7.3.4
+
