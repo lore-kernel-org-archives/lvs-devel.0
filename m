@@ -1,36 +1,76 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCHv2 net-next 0/2] Future changes
-Date: Sat, 21 Sep 2013 00:49:07 +0300 (EEST)
-Message-ID: <alpine.LFD.2.00.1309210047020.1889@ja.ssi.bg>
-References: <1378974126-9427-1-git-send-email-ja@ssi.bg> <20130919212513.GM2918@verge.net.au>
+From: Alexander Frolkin <avf@eldamar.org.uk>
+Subject: [PATCH] ipvs: improved SH fallback strategy
+Date: Mon, 23 Sep 2013 12:51:39 +0100
+Message-ID: <20130923115139.GA15034@eldamar.org.uk>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20130919212513.GM2918@verge.net.au>
+Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
+Improve the SH fallback realserver selection strategy.
 
-	Hello,
+With sh and sh-fallback, if a realserver is down, this attempts to
+distribute the traffic that would have gone to that server evenly
+among the remaining servers.
 
-On Thu, 19 Sep 2013, Simon Horman wrote:
+Signed-off-by: Alexander Frolkin <avf@eldamar.org.uk>
+---
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index f16c027..1676354 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -120,22 +120,35 @@ static inline struct ip_vs_dest *
+ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
+ 		      const union nf_inet_addr *addr, __be16 port)
+ {
+-	unsigned int offset;
+-	unsigned int hash;
++	unsigned int offset, roffset;
++	unsigned int hash, ihash;
+ 	struct ip_vs_dest *dest;
+ 
+-	for (offset = 0; offset < IP_VS_SH_TAB_SIZE; offset++) {
+-		hash = ip_vs_sh_hashkey(svc->af, addr, port, offset);
+-		dest = rcu_dereference(s->buckets[hash].dest);
+-		if (!dest)
+-			break;
+-		if (is_unavailable(dest))
+-			IP_VS_DBG_BUF(6, "SH: selected unavailable server "
+-				      "%s:%d (offset %d)",
++	ihash = ip_vs_sh_hashkey(svc->af, addr, port, 0);
++	dest = rcu_dereference(s->buckets[ihash].dest);
++
++	if (!dest)
++		return NULL;
++
++	if (is_unavailable(dest)) {
++		IP_VS_DBG_BUF(6, "SH: selected unavailable server "
++		      "%s:%d, reselecting",
++		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++		      ntohs(dest->port));
++		for (offset = 0; offset < IP_VS_SH_TAB_SIZE; offset++) {
++			roffset = (offset + ihash) % IP_VS_SH_TAB_SIZE;
++			hash = ip_vs_sh_hashkey(svc->af, addr, port, roffset);
++			dest = rcu_dereference(s->buckets[hash].dest);
++			if (is_unavailable(dest))
++				IP_VS_DBG_BUF(6, "SH: selected unavailable "
++				      "server %s:%d (offset %d), reselecting",
+ 				      IP_VS_DBG_ADDR(svc->af, &dest->addr),
+-				      ntohs(dest->port), offset);
+-		else
+-			return dest;
++				      ntohs(dest->port), roffset);
++			else
++				return dest;
++		}
++	} else {
++		return dest;
+ 	}
+ 
+ 	return NULL;
 
-> On Thu, Sep 12, 2013 at 11:22:04AM +0300, Julian Anastasov wrote:
-> > 	This patchset contains my pending patches when
-> > net-next opens. While first patch does not depend on
-> > recent commits, the second patch depends on some fixes
-> > we will add after 3.12: "ipvs: make the service replacement more robust".
-> > So, the second patch should wait some -rc releases.
-> > I'll resend it later if needed.
-> 
-> Please resent it once you would like it accepted.
-
-	That is what I'll do when net changes reach in net-next
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
