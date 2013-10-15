@@ -1,37 +1,45 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCHv2 net-next] ipvs: avoid rcu_barrier during netns cleanup
-Date: Tue, 15 Oct 2013 10:37:51 +0900
-Message-ID: <20131015013750.GB6317@verge.net.au>
-References: <1381299867-4929-1-git-send-email-ja@ssi.bg>
- <20131011050558.GC4624@verge.net.au>
- <20131011085713.GA4166@localhost>
+Subject: Re: [PATCHv2] ipvs: improved SH fallback strategy
+Date: Tue, 15 Oct 2013 10:55:18 +0900
+Message-ID: <20131015015518.GC6317@verge.net.au>
+References: <20130923115139.GA15034@eldamar.org.uk>
+ <524099BA.5020303@cogentembedded.com>
+ <20130924093238.GD18494@eldamar.org.uk>
+ <20130925003033.GG26081@verge.net.au>
+ <20130925092638.GD19768@eldamar.org.uk>
+ <alpine.LFD.2.00.1309260817290.1640@ja.ssi.bg>
+ <20130926100540.GB27583@eldamar.org.uk>
+ <alpine.LFD.2.00.1309262255400.1949@ja.ssi.bg>
+ <20130927100622.GC28974@eldamar.org.uk>
+ <alpine.LFD.2.00.1309272218180.1725@ja.ssi.bg>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20131011085713.GA4166@localhost>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <alpine.LFD.2.00.1309272218180.1725@ja.ssi.bg>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Alexander Frolkin <avf@eldamar.org.uk>, Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>, lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Fri, Oct 11, 2013 at 10:57:13AM +0200, Pablo Neira Ayuso wrote:
-> On Fri, Oct 11, 2013 at 02:05:58PM +0900, Simon Horman wrote:
-> > Thanks Julian.
-> > 
-> > Pablo, could you merge net-next into nf-next so that
-> > I can apply this patch on top of the later?
-> > 
-> > In particular I believe I need the following commit
-> > to allow Julian's patch to apply cleanly (at all).
-> > 
-> > bcbde4c ("ipvs: make the service replacement more robust")
+On Fri, Sep 27, 2013 at 10:20:42PM +0300, Julian Anastasov wrote:
 > 
-> Just refreshed my nf-next tree.
+> 	Hello,
 > 
-> Please, let me know if you still need any further action from my side,
-> it may require pinging David to merge net into net-next.
+> On Fri, 27 Sep 2013, Alexander Frolkin wrote:
+> 
+> > Improve the SH fallback realserver selection strategy.
+> > 
+> > With sh and sh-fallback, if a realserver is down, this attempts to
+> > distribute the traffic that would have gone to that server evenly
+> > among the remaining servers.
+> > 
+> > Signed-off-by: Alexander Frolkin <avf@eldamar.org.uk>
+> 
+> 	Thanks! Looks good to me.
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
 
-Thanks, it looks good.
-I plan to send a pull-request after a final build-test.
+Sorry for letting this one slip.
+I have queued it up.
