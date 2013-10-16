@@ -1,52 +1,36 @@
-From: Hannes Frederic Sowa <hannes@stressinduktion.org>
-Subject: Re: [RFC net-next] ipv6: Use destination address determined by IPVS
-Date: Wed, 16 Oct 2013 16:32:46 +0200
-Message-ID: <20131016143246.GB18135@order.stressinduktion.org>
-References: <1381881751-6719-1-git-send-email-horms@verge.net.au> <alpine.LFD.2.03.1310161015550.1560@ssi.bg>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 2/3] ipvs: avoid rcu_barrier during netns cleanup
+Date: Wed, 16 Oct 2013 22:52:14 +0300 (EEST)
+Message-ID: <alpine.LFD.2.03.1310162231380.1917@ssi.bg>
+References: <1381802507-7934-1-git-send-email-horms@verge.net.au> <1381802507-7934-3-git-send-email-horms@verge.net.au> <20131016104306.GA10288@localhost>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.03.1310161015550.1560@ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20131016104306.GA10288@localhost>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, YOSHIFUJI Hideaki / =?utf-8?B?5ZCJ6Jek6Iux5piO?= <yoshfuji@linux-ipv6.org>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Mark Brooks <mark@loadbalancer.org>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>
 
-On Wed, Oct 16, 2013 at 10:27:47AM +0300, Julian Anastasov wrote:
+
+	Hello,
+
+On Wed, 16 Oct 2013, Pablo Neira Ayuso wrote:
+
+> I can enqueue this fix to nf if you like. No need to resend, I can
+> manually apply.
 > 
-> 	Hello,
-> 
-> On Wed, 16 Oct 2013, Simon Horman wrote:
-> 
-> > In v3.9 6fd6ce2056de2709 ("ipv6: Do not depend on rt->n in
-> > ip6_finish_output2()") changed the behaviour of ip6_finish_output2()
-> > such that it creates and uses a neigh entry if none is found.
-> > Subsequently the 'n' field was removed from struct rt6_info.
-> 
-> 	Similar change in IPv4 opened the Pandora box:
-> IPVS, xt_TEE, raw.c (IP_HDRINCL). May be the corrsponding
-> places in IPv6 have the same problem.
-> 
-> 	I don't know the IPv6 routing but if we find a way
-> to keep the desired nexthop in rt6i_gateway and to add
-> RTF_GATEWAY checks here and there such solution would be more
-> general. FLOWI_FLAG_KNOWN_NH flag can help, if needed.
+> Let me know.
 
-I thought about this yesterday but did not see an easy way. How does the IPv4
-implementation accomplish this?
+	It is not critical. I waited weeks the net tree to be
+copied into net-next because it collides with the recent
+"ipvs: make the service replacement more robust" change in
+net tree :) But if a rcu_barrier in the netns cleanup looks
+scary enough you can push it to nf. IMHO, it just adds
+unneeded delay there.
 
-ipvs caches the dst in its own infrastructure, so we need to be sure we don't
-disconnect this dst from the ipv6 routing table, otherwise ip6_dst_check won't
-recognize when relookups should be done. Playing games with RTF_GATEWAY seems
-dangerous then.
+Regards
 
-I am currently thinking about using a new flag to replace the nexthop
-information with rt6i_dst in these circumstances. The flag would have
-to be included in the skb somewhere.
-
-Greetings,
-
-  Hannes
-
+--
+Julian Anastasov <ja@ssi.bg>
