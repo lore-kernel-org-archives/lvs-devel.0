@@ -1,93 +1,115 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 3/3] ipvs: improved SH fallback strategy
-Date: Tue, 15 Oct 2013 11:01:47 +0900
-Message-ID: <1381802507-7934-4-git-send-email-horms@verge.net.au>
-References: <1381802507-7934-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1381802507-7934-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Subject: [RFC net-next] ipv6: Use destination address determined by IPVS
+Date: Wed, 16 Oct 2013 09:02:31 +0900
+Message-ID: <1381881751-6719-1-git-send-email-horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Alexander Frolkin <avf@eldamar.org.uk>, Simon Horman <horms@verge.net.au>
+To: =?UTF-8?q?YOSHIFUJI=20Hideaki=20/=20=E5=90=89=E8=97=A4=E8=8B=B1=E6=98=8E?= <yoshfuji@linux-ipv6.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Mark Brooks <mark@loadbalancer.org>, Simon Horman <horms@verge.net.au>
 
-From: Alexander Frolkin <avf@eldamar.org.uk>
+In v3.9 6fd6ce2056de2709 ("ipv6: Do not depend on rt->n in
+ip6_finish_output2()") changed the behaviour of ip6_finish_output2()
+such that it creates and uses a neigh entry if none is found.
+Subsequently the 'n' field was removed from struct rt6_info.
 
-Improve the SH fallback realserver selection strategy.
+Unfortunately my analysis is that in the case of IPVS direct routing this
+change leads to incorrect behaviour as in this case packets may be output
+to a destination other than where they would be output according to the
+route table. In particular, the destination address may actually be a local
+address and empirically a neighbour lookup seems to result in it becoming
+unreachable.
 
-With sh and sh-fallback, if a realserver is down, this attempts to
-distribute the traffic that would have gone to that server evenly
-among the remaining servers.
+This patch resolves the problem by providing the destination address
+determined by IPVS to ip6_finish_output2() in the skb callback.  Although
+this seems to work I can see several problems with this approach:
 
-Signed-off-by: Alexander Frolkin <avf@eldamar.org.uk>
-Acked-by: Julian Anastasov <ja@ssi.bg>
+* It is rather ugly, stuffing an IPVS exception right in
+  the middle of IPv6 code. The overhead could be eliminated for many users
+  by using a staic key. But none the less it is not attractive.
+
+* The use of the skb callback is may not be valid
+  as it crosses from IPVS to IPv6 code. A possible, though unpleasant,
+  alternative is to add a new field to struct sk_buff.
+
+* This covers all IPv6 packets output by IPVS but actually
+  only those output using IPVS Direct-Routing need this.  One way to
+  resolve this would be to add a more fine-grained ipvs_property to
+  struct sk_buff.
+
+Reported-by: Mark Brooks <mark@loadbalancer.org>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_sh.c | 39 +++++++++++++++++++++++++++++----------
- 1 file changed, 29 insertions(+), 10 deletions(-)
+ include/net/ip_vs.h             | 6 ++++++
+ net/ipv6/ip6_output.c           | 9 +++++++--
+ net/netfilter/ipvs/ip_vs_xmit.c | 2 ++
+ 3 files changed, 15 insertions(+), 2 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-index 3588fae..cc65b2f 100644
---- a/net/netfilter/ipvs/ip_vs_sh.c
-+++ b/net/netfilter/ipvs/ip_vs_sh.c
-@@ -115,27 +115,46 @@ ip_vs_sh_get(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 1c2e1b9..11d90a6 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1649,4 +1649,10 @@ ip_vs_dest_conn_overhead(struct ip_vs_dest *dest)
+ 		atomic_read(&dest->inactconns);
  }
  
- 
--/* As ip_vs_sh_get, but with fallback if selected server is unavailable */
-+/* As ip_vs_sh_get, but with fallback if selected server is unavailable
-+ *
-+ * The fallback strategy loops around the table starting from a "random"
-+ * point (in fact, it is chosen to be the original hash value to make the
-+ * algorithm deterministic) to find a new server.
-+ */
- static inline struct ip_vs_dest *
- ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 		      const union nf_inet_addr *addr, __be16 port)
- {
--	unsigned int offset;
--	unsigned int hash;
-+	unsigned int offset, roffset;
-+	unsigned int hash, ihash;
- 	struct ip_vs_dest *dest;
- 
-+	/* first try the dest it's supposed to go to */
-+	ihash = ip_vs_sh_hashkey(svc->af, addr, port, 0);
-+	dest = rcu_dereference(s->buckets[ihash].dest);
-+	if (!dest)
-+		return NULL;
-+	if (!is_unavailable(dest))
-+		return dest;
++struct ipvs_skb_cb {
++	struct in6_addr *daddr;
++};
 +
-+	IP_VS_DBG_BUF(6, "SH: selected unavailable server %s:%d, reselecting",
-+		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
++#define IP_VS_SKB_CB(skb) ((struct ipvs_skb_cb *)&(skb)->cb)
 +
-+	/* if the original dest is unavailable, loop around the table
-+	 * starting from ihash to find a new dest
-+	 */
- 	for (offset = 0; offset < IP_VS_SH_TAB_SIZE; offset++) {
--		hash = ip_vs_sh_hashkey(svc->af, addr, port, offset);
-+		roffset = (offset + ihash) % IP_VS_SH_TAB_SIZE;
-+		hash = ip_vs_sh_hashkey(svc->af, addr, port, roffset);
- 		dest = rcu_dereference(s->buckets[hash].dest);
- 		if (!dest)
- 			break;
--		if (is_unavailable(dest))
--			IP_VS_DBG_BUF(6, "SH: selected unavailable server "
--				      "%s:%d (offset %d)",
--				      IP_VS_DBG_ADDR(svc->af, &dest->addr),
--				      ntohs(dest->port), offset);
--		else
-+		if (!is_unavailable(dest))
- 			return dest;
-+		IP_VS_DBG_BUF(6, "SH: selected unavailable "
-+			      "server %s:%d (offset %d), reselecting",
-+			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+			      ntohs(dest->port), roffset);
+ #endif	/* _NET_IP_VS_H */
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index a54c45c..a340180 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -52,6 +52,7 @@
+ #include <net/addrconf.h>
+ #include <net/rawv6.h>
+ #include <net/icmp.h>
++#include <net/ip_vs.h>
+ #include <net/xfrm.h>
+ #include <net/checksum.h>
+ #include <linux/mroute6.h>
+@@ -61,7 +62,7 @@ static int ip6_finish_output2(struct sk_buff *skb)
+ 	struct dst_entry *dst = skb_dst(skb);
+ 	struct net_device *dev = dst->dev;
+ 	struct neighbour *neigh;
+-	struct in6_addr *nexthop;
++	struct in6_addr *nexthop, *daddr;
+ 	int ret;
+ 
+ 	skb->protocol = htons(ETH_P_IPV6);
+@@ -105,7 +106,11 @@ static int ip6_finish_output2(struct sk_buff *skb)
  	}
  
- 	return NULL;
+ 	rcu_read_lock_bh();
+-	nexthop = rt6_nexthop((struct rt6_info *)dst, &ipv6_hdr(skb)->daddr);
++	if (unlikely(IS_ENABLED(CONFIG_IP_VS) && skb->ipvs_property))
++		daddr = IP_VS_SKB_CB(skb)->daddr;
++	else
++		daddr = &ipv6_hdr(skb)->daddr;
++	nexthop = rt6_nexthop((struct rt6_info *)dst, daddr);
+ 	neigh = __ipv6_neigh_lookup_noref(dst->dev, nexthop);
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&nd_tbl, nexthop, dst->dev, false);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index c47444e..054b679 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -391,6 +391,8 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		rt = (struct rt6_info *) dst;
+ 	}
+ 
++	IP_VS_SKB_CB(skb)->daddr = daddr;
++
+ 	local = __ip_vs_is_local_route6(rt);
+ 	if (!((local ? IP_VS_RT_MODE_LOCAL : IP_VS_RT_MODE_NON_LOCAL) &
+ 	      rt_mode)) {
 -- 
 1.8.4
+
