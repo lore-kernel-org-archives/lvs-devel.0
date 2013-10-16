@@ -1,39 +1,45 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [RFC net-next] ipv6: Use destination address determined by
- IPVS
-Date: Wed, 16 Oct 2013 10:27:47 +0300 (EEST)
-Message-ID: <alpine.LFD.2.03.1310161015550.1560@ssi.bg>
-References: <1381881751-6719-1-git-send-email-horms@verge.net.au>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH 2/3] ipvs: avoid rcu_barrier during netns cleanup
+Date: Wed, 16 Oct 2013 12:43:06 +0200
+Message-ID: <20131016104306.GA10288@localhost>
+References: <1381802507-7934-1-git-send-email-horms@verge.net.au>
+ <1381802507-7934-3-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1381881751-6719-1-git-send-email-horms@verge.net.au>
+Content-Disposition: inline
+In-Reply-To: <1381802507-7934-3-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: =?UTF-8?Q?YOSHIFUJI_Hideaki_=2F_=E5=90=89=E8=97=A4=E8=8B=B1=E6=98=8E?= <yoshfuji@linux-ipv6.org>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Mark Brooks <mark@loadbalancer.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
+On Tue, Oct 15, 2013 at 11:01:46AM +0900, Simon Horman wrote:
+> From: Julian Anastasov <ja@ssi.bg>
+> 
+> commit 578bc3ef1e473a ("ipvs: reorganize dest trash") added
+> rcu_barrier() on cleanup to wait dest users and schedulers
+> like LBLC and LBLCR to put their last dest reference.
+> Using rcu_barrier with many namespaces is problematic.
+> 
+> Trying to fix it by freeing dest with kfree_rcu is not
+> a solution, RCU callbacks can run in parallel and execution
+> order is random.
+> 
+> Fix it by creating new function ip_vs_dest_put_and_free()
+> which is heavier than ip_vs_dest_put(). We will use it just
+> for schedulers like LBLC, LBLCR that can delay their dest
+> release.
+> 
+> By default, dests reference is above 0 if they are present in
+> service and it is 0 when deleted but still in trash list.
+> Change the dest trash code to use ip_vs_dest_put_and_free(),
+> so that refcnt -1 can be used for freeing. As result,
+> such checks remain in slow path and the rcu_barrier() from
+> netns cleanup can be removed.
 
-	Hello,
+I can enqueue this fix to nf if you like. No need to resend, I can
+manually apply.
 
-On Wed, 16 Oct 2013, Simon Horman wrote:
-
-> In v3.9 6fd6ce2056de2709 ("ipv6: Do not depend on rt->n in
-> ip6_finish_output2()") changed the behaviour of ip6_finish_output2()
-> such that it creates and uses a neigh entry if none is found.
-> Subsequently the 'n' field was removed from struct rt6_info.
-
-	Similar change in IPv4 opened the Pandora box:
-IPVS, xt_TEE, raw.c (IP_HDRINCL). May be the corrsponding
-places in IPv6 have the same problem.
-
-	I don't know the IPv6 routing but if we find a way
-to keep the desired nexthop in rt6i_gateway and to add
-RTF_GATEWAY checks here and there such solution would be more
-general. FLOWI_FLAG_KNOWN_NH flag can help, if needed.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Let me know.
