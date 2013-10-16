@@ -1,53 +1,56 @@
-From: Simon Horman <horms@verge.net.au>
+From: Eric Dumazet <eric.dumazet@gmail.com>
 Subject: Re: [RFC net-next] ipv6: Use destination address determined by IPVS
-Date: Wed, 16 Oct 2013 11:14:49 +0900
-Message-ID: <20131016021449.GB17801@verge.net.au>
+Date: Tue, 15 Oct 2013 19:40:59 -0700
+Message-ID: <1381891259.2045.100.camel@edumazet-glaptop.roam.corp.google.com>
 References: <1381881751-6719-1-git-send-email-horms@verge.net.au>
- <20131016005322.GA18135@order.stressinduktion.org>
+	 <1381882426.2045.85.camel@edumazet-glaptop.roam.corp.google.com>
+	 <20131016002807.GM22321@verge.net.au>
+	 <1381883949.2045.97.camel@edumazet-glaptop.roam.corp.google.com>
+	 <20131016021304.GA17801@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20131016005322.GA18135@order.stressinduktion.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=message-id:subject:from:to:cc:date:in-reply-to:references
+         :content-type:content-transfer-encoding:mime-version;
+        bh=CuYfYM1x/Vt8YsdJz2QstUZ6ufI4mhTzELTLKNDjrb0=;
+        b=XD5//2MOvRPjMPt9aGPbDdx3e/lLn84cro/tlhgZo/FGo+yNOVcevs5V6gGOyZsElW
+         FtHUvWewrMuDEow6LA8dYTV+gH3V/34HngL70KqUUjaw4ow3bvjDG1h/QLiSAy9bXYXv
+         Yikk74a8CVnG6UpWKQZCXe5asXkyfNS7QuZQDsWPNV06uaV47G7BcZBERfT/1dWdsZds
+         PNuqvJATdJuVjVZixWF4V9XSdlAXHqYHYJXBqxz7wkHLVLtkQJiJEX+CBoL9QNeMNetF
+         yL3H2hlz1UfA1THLIN5voIncgUOzWI2xiUH9ANpnmQBNGyzRHMTz0p4SE+dWEOWnM7KK
+         9oMg==
+In-Reply-To: <20131016021304.GA17801@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: YOSHIFUJI Hideaki / =?utf-8?B?5ZCJ6Jek6Iux5piO?= <yoshfuji@linux-ipv6.org>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Mark Brooks <mark@loadbalancer.org>
+To: Simon Horman <horms@verge.net.au>
+Cc: YOSHIFUJI Hideaki / =?UTF-8?Q?=E5=90=89=E8=97=A4=E8=8B=B1=E6=98=8E?= <yoshfuji@linux-ipv6.org>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Mark Brooks <mark@loadbalancer.org>
 
-On Wed, Oct 16, 2013 at 02:53:22AM +0200, Hannes Frederic Sowa wrote:
-> On Wed, Oct 16, 2013 at 09:02:31AM +0900, Simon Horman wrote:
-> > In v3.9 6fd6ce2056de2709 ("ipv6: Do not depend on rt->n in
-> > ip6_finish_output2()") changed the behaviour of ip6_finish_output2()
-> > such that it creates and uses a neigh entry if none is found.
-> > Subsequently the 'n' field was removed from struct rt6_info.
-> > 
-> > Unfortunately my analysis is that in the case of IPVS direct routing this
-> > change leads to incorrect behaviour as in this case packets may be output
-> > to a destination other than where they would be output according to the
-> > route table. In particular, the destination address may actually be a local
-> > address and empirically a neighbour lookup seems to result in it becoming
-> > unreachable.
-> > 
-> > This patch resolves the problem by providing the destination address
-> > determined by IPVS to ip6_finish_output2() in the skb callback.  Although
-> > this seems to work I can see several problems with this approach:
-> > 
-> > * It is rather ugly, stuffing an IPVS exception right in
-> >   the middle of IPv6 code. The overhead could be eliminated for many users
-> >   by using a staic key. But none the less it is not attractive.
-> > 
-> > * The use of the skb callback is may not be valid
-> >   as it crosses from IPVS to IPv6 code. A possible, though unpleasant,
-> >   alternative is to add a new field to struct sk_buff.
-> > 
-> > * This covers all IPv6 packets output by IPVS but actually
-> >   only those output using IPVS Direct-Routing need this.  One way to
-> >   resolve this would be to add a more fine-grained ipvs_property to
-> >   struct sk_buff.
+On Wed, 2013-10-16 at 11:13 +0900, Simon Horman wrote:
+
+> That does seem very promising but while implementing it
+> I hit a problem.
 > 
-> Hmm, that reminds me on the following bug report which would be nice we could
-> solve in one go, too: http://www.spinics.net/lists/netdev/msg250785.html
+> struct tcp_skb_cb includes a field of type struct inet6_skb_parm.  And
+> expanding struct inet6_skb_parm by 16 bytes means that struct tcp_skb_cb is
+> now larger than 48 bytes and no longer fits in skb->cb.
+> 
+> Is it appropriate to grow skb->cb as the comment above struct tcp_skb_cb
+> suggests?
 
-I think it should be possible to solve that using the
-IP6CB() approach that Eric suggested. Hopefully we can make
-that approach fly.
+Ah well...
+
+No, its not appropriate to grow sk_buff by 16 bytes, sorry.
+
+You could not change struct inet6_skb_parm, but define IP6CB as
+a compound 
+
+struct ip6cb {
+   struct inet6_skb_parm foo;
+   struct in6_addr       bar;
+};
+
+
+
