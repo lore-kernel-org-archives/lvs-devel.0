@@ -1,12 +1,12 @@
 From: Hannes Frederic Sowa <hannes@stressinduktion.org>
-Subject: Re: [PATCH net 2/3] ipv6: fill rt6i_gateway with nexthop address
-Date: Sun, 20 Oct 2013 20:33:04 +0200
-Message-ID: <20131020183304.GG27787@order.stressinduktion.org>
-References: <1382272985-1528-1-git-send-email-ja@ssi.bg> <1382272985-1528-3-git-send-email-ja@ssi.bg>
+Subject: Re: [PATCH net 1/3] ipv6: always prefer rt6i_gateway if present
+Date: Mon, 21 Oct 2013 07:00:36 +0200
+Message-ID: <20131021050036.GD28333@order.stressinduktion.org>
+References: <1382272985-1528-1-git-send-email-ja@ssi.bg> <1382272985-1528-2-git-send-email-ja@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1382272985-1528-3-git-send-email-ja@ssi.bg>
+In-Reply-To: <1382272985-1528-2-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -14,48 +14,33 @@ Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
 Cc: David Miller <davem@davemloft.net>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
 
-On Sun, Oct 20, 2013 at 03:43:04PM +0300, Julian Anastasov wrote:
-> Make sure rt6i_gateway contains nexthop information in
-> all routes returned from lookup or when routes are directly
-> attached to skb for generated ICMP packets.
+On Sun, Oct 20, 2013 at 03:43:03PM +0300, Julian Anastasov wrote:
+> In v3.9 6fd6ce2056de2709 ("ipv6: Do not depend on rt->n in
+> ip6_finish_output2()." changed the behaviour of ip6_finish_output2()
+> such that the recently introduced rt6_nexthop() is used
+> instead of an assigned neighbor.
 > 
-> The effect of this patch should be a faster version of
-> rt6_nexthop() and the consideration of local addresses as
-> nexthop.
+> As rt6_nexthop() prefers rt6i_gateway only for gatewayed
+> routes this causes a problem for users like IPVS, xt_TEE and
+> RAW(hdrincl) if they want to use different address for routing
+> compared to the destination address.
 > 
+> Another case is when redirect can create RTF_DYNAMIC
+> route without RTF_GATEWAY flag, we ignore the rt6i_gateway
+> in rt6_nexthop().
+> 
+> Fix the above problems by considering the rt6i_gateway if
+> present, so that traffic routed to address on local subnet is
+> not wrongly diverted to the destination address.
+> 
+> Thanks to Simon Horman and Phil Oester for spotting the
+> problematic commit.
+> 
+> Thanks to Hannes Frederic Sowa for his review and help in testing.
+> 
+> Reported-by: Phil Oester <kernel@linuxace.com>
+> Reported-by: Mark Brooks <mark@loadbalancer.org>
 > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
->  include/net/ip6_route.h | 6 ++----
->  net/ipv6/ip6_output.c   | 4 ++--
->  net/ipv6/route.c        | 8 ++++++--
->  3 files changed, 10 insertions(+), 8 deletions(-)
-> 
-> diff --git a/include/net/ip6_route.h b/include/net/ip6_route.h
-> index 481404a..2b786b7 100644
-> --- a/include/net/ip6_route.h
-> +++ b/include/net/ip6_route.h
-> @@ -194,11 +194,9 @@ static inline int ip6_skb_dst_mtu(struct sk_buff *skb)
->  	       skb_dst(skb)->dev->mtu : dst_mtu(skb_dst(skb));
->  }
->  
-> -static inline struct in6_addr *rt6_nexthop(struct rt6_info *rt, struct in6_addr *dest)
-> +static inline struct in6_addr *rt6_nexthop(struct rt6_info *rt)
->  {
-> -	if (rt->rt6i_flags & RTF_GATEWAY || !ipv6_addr_any(&rt->rt6i_gateway))
-> -		return &rt->rt6i_gateway;
-> -	return dest;
-> +	return &rt->rt6i_gateway;
->  }
->  
 
-Hm, looks good. Will test is soon.
-
-One small remark:
-
-Maybe we can kill rt6_nexthop completly and use rt6i_gateway directly so a
-reader does not have to lookup this function.
-
-Thanks,
-
-  Hannes
+Acked-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
 
