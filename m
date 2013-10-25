@@ -1,45 +1,38 @@
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH ipvs 2/2] net: ipvs: sctp: do not recalc sctp checksum
- when not needed
-Date: Fri, 25 Oct 2013 11:48:13 +0200
-Message-ID: <20131025114813.6a227df3@redhat.com>
-References: <1af1d5e1aae9df91683625f0cb120b329e8d2f10.1382689350.git.dborkman@redhat.com>
-	<8390127344501c35ed3c23f3690b8a671d353870.1382689350.git.dborkman@redhat.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH ipvs 1/2] net: ipvs: sctp: add missing verdict
+ assignments in sctp_conn_schedule
+Date: Fri, 25 Oct 2013 10:55:35 +0100
+Message-ID: <20131025095534.GI17127@verge.net.au>
+References: <cover.1382689350.git.dborkman@redhat.com>
+ <1af1d5e1aae9df91683625f0cb120b329e8d2f10.1382689350.git.dborkman@redhat.com>
+ <20131025113902.2d8dd9d0@redhat.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <8390127344501c35ed3c23f3690b8a671d353870.1382689350.git.dborkman@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <20131025113902.2d8dd9d0@redhat.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, linux-sctp@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: Daniel Borkmann <dborkman@redhat.com>, lvs-devel@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Fri, 25 Oct 2013 11:05:05 +0200
-Daniel Borkmann <dborkman@redhat.com> wrote:
-
-> Unlike UDP or TCP, we do not take the pseudo-header into account
-> in SCTP checksums [1]. So in case port mapping is the very same, we
-> do not need to recalculate the whole SCTP checksum in software, which
-> is expensive.
+On Fri, Oct 25, 2013 at 11:39:02AM +0200, Jesper Dangaard Brouer wrote:
+> On Fri, 25 Oct 2013 11:05:04 +0200
+> Daniel Borkmann <dborkman@redhat.com> wrote:
 > 
-> Also, similarly as in IPVS/TCP, take into account when a private
-> helper mangled the packet. In that case, we also need to recalculate
-> the checksum even if ports might be same.
+> > If skb_header_pointer() fails, we need to assign a verdict, that is
+> > NF_DROP in this case, otherwise, we would leave the verdict from
+> > conn_schedule() uninitialized when returning.
+> > 
+> > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+> > ---
 > 
->  [1] http://tools.ietf.org/html/rfc4960#section-6.8
+> Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
 > 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> ---
+> It looks like a good ide, and resembles how we handle these situations
+> else were in the IPVS code (e.g. for TCP and UDP).
 
-Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Likeiwse.
 
-Thanks Daniel, this will hopefully increase SCTP performance as we
-avoid recalculating the checksum when not necessary :-)
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Sr. Network Kernel Developer at Red Hat
-  Author of http://www.iptv-analyzer.org
-  LinkedIn: http://www.linkedin.com/in/brouer
+I am wondering if this resolves a but and if so how severe it is.
