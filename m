@@ -1,47 +1,112 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net 0/3] ipv6: use rt6i_gateway as nexthop
-Date: Mon, 28 Oct 2013 10:28:15 +0900
-Message-ID: <20131028012815.GL849@verge.net.au>
-References: <1382272985-1528-1-git-send-email-ja@ssi.bg>
- <20131021.184057.328665907625927061.davem@davemloft.net>
+Subject: Re: [PATCH ipvs 2/2] net: ipvs: sctp: do not recalc sctp checksum
+ when not needed
+Date: Mon, 28 Oct 2013 10:39:20 +0900
+Message-ID: <20131028013920.GO849@verge.net.au>
+References: <1af1d5e1aae9df91683625f0cb120b329e8d2f10.1382689350.git.dborkman@redhat.com>
+ <8390127344501c35ed3c23f3690b8a671d353870.1382689350.git.dborkman@redhat.com>
+ <alpine.LFD.2.03.1310252306230.1600@ssi.bg>
+ <526C102C.9040306@redhat.com>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20131021.184057.328665907625927061.davem@davemloft.net>
-Sender: netfilter-devel-owner@vger.kernel.org
+In-Reply-To: <526C102C.9040306@redhat.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: ja@ssi.bg, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, yoshfuji@linux-ipv6.org
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Mon, Oct 21, 2013 at 06:40:57PM -0400, David Miller wrote:
-> From: Julian Anastasov <ja@ssi.bg>
-> Date: Sun, 20 Oct 2013 15:43:02 +0300
+On Sat, Oct 26, 2013 at 08:55:40PM +0200, Daniel Borkmann wrote:
+> On 10/25/2013 11:00 PM, Julian Anastasov wrote:
+> >
+> >	Hello,
+> >
+> >On Fri, 25 Oct 2013, Daniel Borkmann wrote:
+> >
+> >>Unlike UDP or TCP, we do not take the pseudo-header into account
+> >>in SCTP checksums [1]. So in case port mapping is the very same, we
+> >>do not need to recalculate the whole SCTP checksum in software, which
+> >>is expensive.
+> >>
+> >>Also, similarly as in IPVS/TCP, take into account when a private
+> >>helper mangled the packet. In that case, we also need to recalculate
+> >>the checksum even if ports might be same.
+> >>
+> >>  [1] http://tools.ietf.org/html/rfc4960#section-6.8
+> >>
+> >>Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+> >>---
+> >>  net/netfilter/ipvs/ip_vs_proto_sctp.c | 30 ++++++++++++++++++++++++------
+> >>  1 file changed, 24 insertions(+), 6 deletions(-)
+> >>
+> >>diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> >>index 9ca7aa0..e56661e 100644
+> >>--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> >>+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> >>@@ -81,6 +81,7 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+> >>  {
+> >>  	sctp_sctphdr_t *sctph;
+> >>  	unsigned int sctphoff = iph->len;
+> >>+	bool payload_csum = false;
+> >>
+> >>  #ifdef CONFIG_IP_VS_IPV6
+> >>  	if (cp->af == AF_INET6 && iph->fragoffs)
+> >>@@ -92,19 +93,27 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+> >
+> >...
+> >
+> >>-	sctp_nat_csum(skb, sctph, sctphoff);
+> >>+	/* Only update csum if we really have to */
+> >>+	if (sctph->source != cp->vport || payload_csum) {
+> >
+> >	The above check should be little more complicated
+> >because local SCTP can decide to avoid setting ->checksum,
+> >there is a case when we can see CHECKSUM_PARTIAL for
+> >locally generated packets. And it happens both for
+> >requests (dnat_handler) and replies (snat_handler).
+> >
+> >	I mean both places should be fixed because you can
+> >see in ip_vs_ops[] that in NF_INET_LOCAL_OUT we can call both
+> >snat_handler and dnat_handler.
+> >
+> >	May be the simplest change can be to add check for
+> >!skb->dev to catch the LOCAL_OUT hook, so that we can
+> >perform full recalculation. We can further optimize this
+> >check for dnat_handler because the dnat_handler can look
+> >at the skb_dst()->dev->features as done by sctp_packet_transmit().
+> >The idea is that SCTP decides to avoid csum calculation
+> >if hardware supports offloading. IPVS can change the
+> >device after rerouting to real server but we can preserve
+> >the CHECKSUM_PARTIAL mode if the new device supports
+> >offloading too. This works because skb dst is changed
+> >before dnat_handler and we see the new device.
+> >
+> >	For snat_handler it is more complex. skb contains
+> >the original route and ip_vs_route_me_harder() can change
+> >the route after snat_handler. So, for locally generated
+> >replies from local server we can not preserve the
+> >CHECKSUM_PARTIAL mode. It is an chicken or egg dilemma:
+> >snat_handler needs the device after rerouting (to
+> >check for NETIF_F_SCTP_CSUM), while ip_route_me_harder() wants
+> >the snat_handler() to put the new saddr for proper rerouting.
+> >So, for snat_handler we need just the !skb->dev check,
+> >sort of:
+> >
+> >	if (sctph->source != cp->vport || payload_csum ||
+> >	    (!skb->dev && skb->ip_summed == CHECKSUM_PARTIAL)) {
+> >
+> >	But I have to think more whether we can preserve
+> >the ip_summed value in other cases, see skb_forward_csum()
+> >for reference.
 > 
-> > 	I see the following two alternatives for applying these
-> > patches:
-> > 
-> > 1. Linger patch 2 in net-next to avoid surprises in the upcoming
-> > release. In this case patch 3 can be reworked not to depend on
-> > the new rt6_nexthop() definition in patch 2. I guess this is a
-> > better option, so that patch 2 can be reviewed and tested for
-> > longer time.
-> > 
-> > 2. Include all 3 patches in net tree - more risky because this
-> > is my first attempt to change IPv6.
+> Thanks for all your feedback Julian !
 > 
-> I have decided to merge all three patches into -net right now.
-> I've reviewed these patches several times and they look good
-> to me.
-> 
-> I'll let them cook upstream for at least a week before submitting them
-> to -stable to let any last minute errors show themselves and
-> subsequently get resolved.
+> Let me think about this, and come back to you w/ a 2nd version
+> of the set at latest on Monday.
 
-Thanks Dave,
+Hi Daniel,
 
-FWIW, I have verified that these changes resolve the problem
-that I reported with IPVS that I believe prompted Julian to write
-these changes. That is IPv6 IPVS-DR once again works with these
-changes in place.
+I am happy to take the 1st patch of the series as-is.
+Let me know if that works for you.
