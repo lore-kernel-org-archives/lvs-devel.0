@@ -1,44 +1,58 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH ipvs 2/2] net: ipvs: sctp: do not recalc sctp checksum
- when not needed
-Date: Mon, 28 Oct 2013 18:38:21 +0900
-Message-ID: <20131028093821.GA11662@verge.net.au>
-References: <1af1d5e1aae9df91683625f0cb120b329e8d2f10.1382689350.git.dborkman@redhat.com>
- <8390127344501c35ed3c23f3690b8a671d353870.1382689350.git.dborkman@redhat.com>
- <alpine.LFD.2.03.1310252306230.1600@ssi.bg>
- <526C102C.9040306@redhat.com>
- <20131028013920.GO849@verge.net.au>
- <526E1C3D.1080800@redhat.com>
- <20131028085024.GA26154@verge.net.au>
- <alpine.LFD.2.03.1310281058410.1490@ssi.bg>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH v2 ipvs-next] net: ipvs: sctp: do not recalc sctp csum
+ when ports didn't change
+Date: Mon, 28 Oct 2013 11:44:51 +0200 (EET)
+Message-ID: <alpine.LFD.2.03.1310281136300.1490@ssi.bg>
+References: <1382951695-7759-1-git-send-email-dborkman@redhat.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.03.1310281058410.1490@ssi.bg>
+In-Reply-To: <1382951695-7759-1-git-send-email-dborkman@redhat.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Daniel Borkmann <dborkman@redhat.com>, lvs-devel@vger.kernel.org, linux-sctp@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, linux-sctp@vger.kernel.org
 
-[ Cc: Pablo ]
 
-On Mon, Oct 28, 2013 at 11:00:37AM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 28 Oct 2013, Simon Horman wrote:
-> 
-> > Thanks, I have pushed it to ipvs-next.
-> > 
-> > I will hold off on sending a pull-request to Pablo until you send
-> > the 2nd patch.
-> 
-> 	First patch is a bugfix, it should go to stable
-> kernels. The second patch looks like an optimization.
+	Hello,
 
-Good point.
+On Mon, 28 Oct 2013, Daniel Borkmann wrote:
 
-Pablo, what is the best way to handle this?
-Should I send the fix as a pull-request for nf or nf-next?
+>  		/* Call application helper if needed */
+> -		if (!ip_vs_app_pkt_out(cp, skb))
+> +		if (!(ret = ip_vs_app_pkt_out(cp, skb)))
+>  			return 0;
+
+> -		if (!ip_vs_app_pkt_in(cp, skb))
+> +		if (!(ret = ip_vs_app_pkt_in(cp, skb)))
+>  			return 0;
+
+	Sorry, just now noticed the errors from
+scripts/checkpatch.pl:
+
+ERROR: do not use assignment in if condition
+#78: FILE: net/netfilter/ipvs/ip_vs_proto_sctp.c:103:
++               if (!(ret = ip_vs_app_pkt_out(cp, skb)))
+
+ERROR: do not use assignment in if condition
+#120: FILE: net/netfilter/ipvs/ip_vs_proto_sctp.c:149:
++               if (!(ret = ip_vs_app_pkt_in(cp, skb)))
+
+total: 2 errors, 0 warnings, 81 lines checked
+
+	I know that you copied the TCP logic that was
+added by me but now we should split the complex conditions
+at both places:
+
+	ret = ...
+	if (!ret)
+		return 0;
+
+	Otherwise patch looks good and I'll ack v3 with
+the above changes.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
