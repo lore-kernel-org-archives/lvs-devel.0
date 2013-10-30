@@ -1,76 +1,58 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH v3 ipvs-next] net: ipvs: sctp: do not recalc sctp csum
- when ports didn't change
-Date: Wed, 30 Oct 2013 09:48:46 +0900
-Message-ID: <20131030004846.GN21262@verge.net.au>
-References: <1382954180-8264-1-git-send-email-dborkman@redhat.com>
- <alpine.LFD.2.03.1310281242130.2984@ssi.bg>
-Mime-Version: 1.0
+Subject: [PATCH nf-next 1/2] net: ipvs: sctp: add missing verdict assignments in sctp_conn_schedule
+Date: Wed, 30 Oct 2013 10:11:25 +0900
+Message-ID: <1383095486-5215-2-git-send-email-horms@verge.net.au>
+References: <1383095486-5215-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.03.1310281242130.2984@ssi.bg>
+In-Reply-To: <1383095486-5215-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Daniel Borkmann <dborkman@redhat.com>, lvs-devel@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Daniel Borkmann <dborkman@redhat.com>, Simon Horman <horms@verge.net.au>
 
-On Mon, Oct 28, 2013 at 12:43:26PM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 28 Oct 2013, Daniel Borkmann wrote:
-> 
-> > Unlike UDP or TCP, we do not take the pseudo-header into
-> > account in SCTP checksums. So in case port mapping is the
-> > very same, we do not need to recalculate the whole SCTP
-> > checksum in software, which is very expensive.
-> > 
-> > Also, similarly as in TCP, take into account when a private
-> > helper mangled the packet. In that case, we also need to
-> > recalculate the checksum even if ports might be same.
-> > 
-> > Thanks for feedback regarding skb->ip_summed checks from
-> > Julian Anastasov; here's a discussion on these checks for
-> > snat and dnat:
-> > 
-> > * For snat_handler(), we can see CHECKSUM_PARTIAL from
-> >   virtual devices, and from LOCAL_OUT, otherwise it
-> >   should be CHECKSUM_UNNECESSARY. In general, in snat it
-> >   is more complex. skb contains the original route and
-> >   ip_vs_route_me_harder() can change the route after
-> >   snat_handler. So, for locally generated replies from
-> >   local server we can not preserve the CHECKSUM_PARTIAL
-> >   mode. It is an chicken or egg dilemma: snat_handler
-> >   needs the device after rerouting (to check for
-> >   NETIF_F_SCTP_CSUM), while ip_route_me_harder() wants
-> >   the snat_handler() to put the new saddr for proper
-> >   rerouting.
-> > 
-> > * For dnat_handler(), we should not see CHECKSUM_COMPLETE
-> >   for SCTP, in fact the small set of drivers that support
-> >   SCTP offloading return CHECKSUM_UNNECESSARY on correctly
-> >   received SCTP csum. We can see CHECKSUM_PARTIAL from
-> >   local stack or received from virtual drivers. The idea is
-> >   that SCTP decides to avoid csum calculation if hardware
-> >   supports offloading. IPVS can change the device after
-> >   rerouting to real server but we can preserve the
-> >   CHECKSUM_PARTIAL mode if the new device supports
-> >   offloading too. This works because skb dst is changed
-> >   before dnat_handler and we see the new device. So, checks
-> >   in the 'if' part will decide whether it is ok to keep
-> >   CHECKSUM_PARTIAL for the output. If the packet was with
-> >   CHECKSUM_NONE, hence we deal with unknown checksum. As we
-> >   recalculate the sum for IP header in all cases, it should
-> >   be safe to use CHECKSUM_UNNECESSARY. We can forward wrong
-> >   checksum in this case (without cp->app). In case of
-> >   CHECKSUM_UNNECESSARY, the csum was valid on receive.
-> > 
-> > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> 
-> 	Looks good, thanks!
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+From: Daniel Borkmann <dborkman@redhat.com>
 
-Thanks, I have queued this up.
+If skb_header_pointer() fails, we need to assign a verdict, that is
+NF_DROP in this case, otherwise, we would leave the verdict from
+conn_schedule() uninitialized when returning.
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 23e596e..9ca7aa0 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -20,13 +20,18 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	sctp_sctphdr_t *sh, _sctph;
+ 
+ 	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+-	if (sh == NULL)
++	if (sh == NULL) {
++		*verdict = NF_DROP;
+ 		return 0;
++	}
+ 
+ 	sch = skb_header_pointer(skb, iph->len + sizeof(sctp_sctphdr_t),
+ 				 sizeof(_schunkh), &_schunkh);
+-	if (sch == NULL)
++	if (sch == NULL) {
++		*verdict = NF_DROP;
+ 		return 0;
++	}
++
+ 	net = skb_net(skb);
+ 	ipvs = net_ipvs(net);
+ 	rcu_read_lock();
+-- 
+1.8.4
+
