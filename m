@@ -1,7 +1,7 @@
 From: Patrick Schaaf <netdev@bof.de>
-Subject: coloring LVS-NAT connections internally using TOS/DSCP - reliable?
-Date: Sun, 10 Nov 2013 11:56:51 +0100
-Message-ID: <3806745.XY2Vn3PIF7@rofl>
+Subject: fwmark based ipvs with state transfer / failover: sufficient to mark --syn?
+Date: Sun, 10 Nov 2013 18:16:08 +0100
+Message-ID: <1499037.fTyOdEoQK4@rofl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7Bit
@@ -10,33 +10,28 @@ Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 To: lvs-devel@vger.kernel.org
 
-Dear LVS developers.
+Dear LVS developers,
 
-(resending to lvs-devel because of lack of reaction on lvs-users...)
+(sorry if this seems silly - I prefer asking around over getting bitten some 
+time down the road...)
 
-I came across an idea today, which even appears to work, that could
-potentially reduce the number of ipvs realserver entries in an LVS-NAT
-scenario where multiple ports need to be passed through to the realservers.
+we run ipvs in LVS-NAT mode on two loadbalancers in an active/standby setup, 
+with ipvssync threads (and conntrackd) syncing state between the balancers.
+This is running kernel 2.6.36 at the moment.
 
-Right now I have a separate (fwmark) virtualserver for port 80, and several
-SSL ports that need different certificates on the realservers. The usual
-mangle/PREROUTING marking selects which one to use.
+Most of the ipvs services we run are fwmark based. Until now, we mark all 
+relevant packets. Now I had the idea, that it would be sufficient to only mark 
+--syn packets - potentially saving a number of iptables rule checks for the 
+more frequent case of non-syn packets.
 
-Now the idea is to reduce the LVS setup itself to the port 80 server entry,
-always select the same fwmark for that, but use rules in mangle/PREROUTING
-like -j TOS --set-tos 0x1c/0xfc, with different TOS values.
+This seems to work for initial tests, but I am a bit worried whether it would 
+still work in a failover case, thus my question:
 
-All SSL connections then arrive at the realservers with dport 80, but there
-I have nat/PREROUTING rules matching the TOS values, using -j REDIRECT
---to-port 44X to internally let the connection flow to the right SSL port.
-
-This appears to work quite nicely in a prototype setup. The TOS value
-arrives intact in the SYN packet on the realserver, all is well.
-
-My question would be: we run this on kernel 2.6.32 right now. That's a
-little bit ancient, and will eventually be upgraded. Was there anything
-changed in LVS kernel code since then that would make this TOS/DSCP marking
-scheme fail due to the TOS value not being forwarded to the realservers?
+Upon takeover on the standby balancer, will new, UNmarked frames of existing 
+connections, be properly matched up to previously synced state, so that these 
+connections continue to work? In other words, is the IP header information 
+(IP/port four-tuple) sufficient for connection pickup, and independant of the 
+fwmark value on the packets?
 
 best regards
   Patrick
