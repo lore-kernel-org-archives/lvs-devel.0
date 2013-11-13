@@ -1,104 +1,49 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: fwmark based ipvs with state transfer / failover: sufficient to
- mark --syn?
-Date: Sun, 10 Nov 2013 20:10:11 +0200 (EET)
-Message-ID: <alpine.LFD.2.03.1311101925020.1377@ssi.bg>
-References: <1499037.fTyOdEoQK4@rofl>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: coloring LVS-NAT connections internally using TOS/DSCP -
+ reliable?
+Date: Wed, 13 Nov 2013 12:01:16 +0900
+Message-ID: <20131113030116.GC22484@verge.net.au>
+References: <3806745.XY2Vn3PIF7@rofl>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1499037.fTyOdEoQK4@rofl>
+Content-Disposition: inline
+In-Reply-To: <3806745.XY2Vn3PIF7@rofl>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Patrick Schaaf <netdev@bof.de>
 Cc: lvs-devel@vger.kernel.org
 
-
-	Hello,
-
-On Sun, 10 Nov 2013, Patrick Schaaf wrote:
-
-> Dear LVS developers,
+On Sun, Nov 10, 2013 at 11:56:51AM +0100, Patrick Schaaf wrote:
+> Dear LVS developers.
 > 
-> (sorry if this seems silly - I prefer asking around over getting bitten some 
-> time down the road...)
+> (resending to lvs-devel because of lack of reaction on lvs-users...)
 > 
-> we run ipvs in LVS-NAT mode on two loadbalancers in an active/standby setup, 
-> with ipvssync threads (and conntrackd) syncing state between the balancers.
-> This is running kernel 2.6.36 at the moment.
+> I came across an idea today, which even appears to work, that could
+> potentially reduce the number of ipvs realserver entries in an LVS-NAT
+> scenario where multiple ports need to be passed through to the realservers.
 > 
-> Most of the ipvs services we run are fwmark based. Until now, we mark all 
-> relevant packets. Now I had the idea, that it would be sufficient to only mark 
-> --syn packets - potentially saving a number of iptables rule checks for the 
-> more frequent case of non-syn packets.
-
-	IIRC, fwmark is used by IPVS only for scheduling, it happens
-only when no existing connection is found. So, it looks safe
-to mark only SYN packets. Only for FTP we create connection
-on SYN+ACK. If you worry you can use CONNMARK to copy fwmark
-from netfilter conntrack to every non-SYN packet, it has a
-save+restore feature.
-
-> This seems to work for initial tests, but I am a bit worried whether it would 
-> still work in a failover case, thus my question:
+> Right now I have a separate (fwmark) virtualserver for port 80, and several
+> SSL ports that need different certificates on the realservers. The usual
+> mangle/PREROUTING marking selects which one to use.
 > 
-> Upon takeover on the standby balancer, will new, UNmarked frames of existing 
-> connections, be properly matched up to previously synced state, so that these 
-> connections continue to work? In other words, is the IP header information 
-> (IP/port four-tuple) sufficient for connection pickup, and independant of the 
-> fwmark value on the packets?
+> Now the idea is to reduce the LVS setup itself to the port 80 server entry,
+> always select the same fwmark for that, but use rules in mangle/PREROUTING
+> like -j TOS --set-tos 0x1c/0xfc, with different TOS values.
+> 
+> All SSL connections then arrive at the realservers with dport 80, but there
+> I have nat/PREROUTING rules matching the TOS values, using -j REDIRECT
+> --to-port 44X to internally let the connection flow to the right SSL port.
+> 
+> This appears to work quite nicely in a prototype setup. The TOS value
+> arrives intact in the SYN packet on the realserver, all is well.
+> 
+> My question would be: we run this on kernel 2.6.32 right now. That's a
+> little bit ancient, and will eventually be upgraded. Was there anything
+> changed in LVS kernel code since then that would make this TOS/DSCP marking
+> scheme fail due to the TOS value not being forwarded to the realservers?
 
-	The fwmark was not present in the sync messages.
-This was changed with version 1 of the IPVS sync protocol,
-may be in 2.6.39. It allows to find the right real server
-from the parameters in the sync message when creating
-connection in backup server. Once the connection is created
-and its real server is assigned, the fwmark is not used anymore.
-
-	May be you'll be also interested to check some
-recent changes that avoid the sync protocol:
-
-http://www.spinics.net/lists/lvs-devel/msg03067.html
-
-	They are based on using SH scheduler and a new
-sloppy_tcp flag that allows backup server to create conns
-from non-SYN packets. I don't know if they are suitable
-for your setup, for example, the SH scheduler requires
-equal IPVS rules (order of dests in virtual server) in
-master and backup to guarantee a working failover.
-
-commit c6c96c188336b2b95d5f14facd101f1e4165a9d3
-Author: Alexander Frolkin <avf@eldamar.org.uk>
-Date:   Thu Jun 13 08:56:15 2013 +0100
-
-    ipvs: sloppy TCP and SCTP
-    
-    This adds support for sloppy TCP and SCTP modes to IPVS.
-    
-    When enabled (sysctls net.ipv4.vs.sloppy_tcp and
-    net.ipv4.vs.sloppy_sctp), allows IPVS to create connection state on any
-    packet, not just a TCP SYN (or SCTP INIT).
-    
-    This allows connections to fail over from one IPVS director to another
-    mid-flight.
-
-commit eba3b5a78799d21dea05118b294524958f0ab592
-Author: Alexander Frolkin <avf@eldamar.org.uk>
-Date:   Wed Jun 19 10:54:25 2013 +0100
-
-    ipvs: SH fallback and L4 hashing
-
-commit 4d0c875dcc4923476f364e83912d134da2df224c
-Author: Julian Anastasov <ja@ssi.bg>
-Date:   Mon Jun 24 22:44:41 2013 +0300
-
-    ipvs: add sync_persist_mode flag
-    
-    Add sync_persist_mode flag to reduce sync traffic
-    by syncing only persistent templates.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+I am not aware of any changes to LVS that would break this scheme.
+And I would be somewhat surprised if there were any in netfilter
+or other parts of the kernel.
