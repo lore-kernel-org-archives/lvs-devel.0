@@ -1,34 +1,53 @@
-From: Graeme Fowler <graeme@graemef.net>
-Subject: Re: Configuring keepalived + ipvs with persistence: doesn't balance
- to other node if initial persistent node fails.
-Date: Wed, 11 Dec 2013 16:08:25 +0000
-Message-ID: <52A88DF9.5060306@graemef.net>
-References: <CAO2+3OzZ-XK7X0vto7sgh4VULGT7FTep5ot_pqPqb1mB=gO6rQ@mail.gmail.com>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: [PATCH] ipvs: avoid oops in nf_ct_seqadj_set when called from
+	ip_vs_ftp helper
+Date: Fri, 13 Dec 2013 22:37:48 +0100
+Message-ID: <20131213214023.14478.74738.stgit@dragon>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <CAO2+3OzZ-XK7X0vto7sgh4VULGT7FTep5ot_pqPqb1mB=gO6rQ@mail.gmail.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, Patrick McHardy <kaber@trash.net>
 
-On 11/12/2013 15:26, Jose Luis Godoy wrote:
-> real_server 192.168.58.201 443 {
->      weight 1
->      inhibit_on_failure
+The IPVS FTP helper ip_vs_ftp can trigger an OOPS in nf_ct_seqadj_set,
+after commit 41d73ec053d2 (netfilter: nf_conntrack: make sequence
+number adjustments usuable without NAT).
 
-Remove inhibit_on_failure.
+We can avoid the oops in nf_ct_seqadj_set() by in ip_vs_ftp_out()
+instead of calling nf_nat_mangle_tcp_packet() we simply call
+__nf_nat_mangle_tcp_packet() with a "false" last parameter, which
+indicate not invoking the seqadj code.
 
-That keeps the server in the pool but with weight 0, meaning no *new* 
-connections go to it. Existing persistent connections remain.
+After this fix, I've tested that FTP over IPVS, with module ip_vs_ftp
+loaded, works for both passive and active FTP.
 
-Alternatively, if you don't want to do that, set the sysctl 
-net.ipv4.vs.expire_quiescent_template to 1, and keep inhibit_on_failure.
+Fixes: 41d73ec053d2 (netfilter: nf_conntrack: make sequence number adjustments usuable without NAT)
+Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 
-Both options are in effect synonyms, meaning in both cases that the 
-persistence templates are removed for the VS in question when either it 
-is removed from the pool (removing inhibit_on_failure) or quiesced 
-(weight set to 0).
+---
+I'm uncertain if this is the correct fix.  Perhaps the ip_vs_ftp
+helper need to allocate/init the seqadj extension instead?
 
-Graeme
+ net/netfilter/ipvs/ip_vs_ftp.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 77c1732..b8f9573 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -268,10 +268,10 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 			 * packet.
+ 			 */
+ 			rcu_read_lock();
+-			ret = nf_nat_mangle_tcp_packet(skb, ct, ctinfo,
++			ret = __nf_nat_mangle_tcp_packet(skb, ct, ctinfo,
+ 						       iph->ihl * 4,
+ 						       start-data, end-start,
+-						       buf, buf_len);
++						       buf, buf_len, false);
+ 			rcu_read_unlock();
+ 			if (ret) {
+ 				ip_vs_nfct_expect_related(skb, ct, n_cp,
