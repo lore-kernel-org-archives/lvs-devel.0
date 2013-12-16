@@ -1,48 +1,55 @@
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: [net PATCH 1/2] netfilter: WARN about wrong usage of sequence number
-	adjustments
-Date: Mon, 16 Dec 2013 17:09:41 +0100
-Message-ID: <20131216160941.22853.46561.stgit@dragon>
+Subject: [net PATCH 2/2] ipvs: correct usage/allocation of seqadj ext in ipvs
+Date: Mon, 16 Dec 2013 17:09:47 +0100
+Message-ID: <20131216160947.22853.1454.stgit@dragon>
 References: <20131216160840.22853.39918.stgit@dragon>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <20131216160840.22853.39918.stgit@dragon>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: Jesper Dangaard Brouer <brouer@redhat.com>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
 
-Since commit 41d73ec053d2 (netfilter: nf_conntrack: make sequence
-number adjustments usuable without NAT), the sequence number extension
-is dynamically allocated.
+The IPVS FTP helper ip_vs_ftp could trigger an OOPS in nf_ct_seqadj_set,
+after commit 41d73ec053d2 (netfilter: nf_conntrack: make sequence number
+adjustments usuable without NAT).
 
-Instead of dying, give a WARN splash, in case of wrong usage of the
-seqadj code, e.g. when forgetting to allocate via nfct_seqadj_ext_add().
+This is because, the seqadj ext is now allocated dynamically, and the
+IPVS code didn't handle this situation.  Fix this in the IPVS nfct
+code by invoking the alloc function nfct_seqadj_ext_add().
 
-Wrong usage have been seen in the IPVS code path.
-
+Fixes: 41d73ec053d2 (netfilter: nf_conntrack: make sequence number adjustments usuable without NAT)
+Suggested-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 ---
 
- net/netfilter/nf_conntrack_seqadj.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ net/netfilter/ipvs/ip_vs_nfct.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-diff --git a/net/netfilter/nf_conntrack_seqadj.c b/net/netfilter/nf_conntrack_seqadj.c
-index 17c1bcb..b2d38da 100644
---- a/net/netfilter/nf_conntrack_seqadj.c
-+++ b/net/netfilter/nf_conntrack_seqadj.c
-@@ -36,6 +36,11 @@ int nf_ct_seqadj_set(struct nf_conn *ct, enum ip_conntrack_info ctinfo,
- 	if (off == 0)
- 		return 0;
+diff --git a/net/netfilter/ipvs/ip_vs_nfct.c b/net/netfilter/ipvs/ip_vs_nfct.c
+index d5f4151..5882bbf 100644
+--- a/net/netfilter/ipvs/ip_vs_nfct.c
++++ b/net/netfilter/ipvs/ip_vs_nfct.c
+@@ -62,6 +62,7 @@
+ #include <net/ip_vs.h>
+ #include <net/netfilter/nf_conntrack_core.h>
+ #include <net/netfilter/nf_conntrack_expect.h>
++#include <net/netfilter/nf_conntrack_seqadj.h>
+ #include <net/netfilter/nf_conntrack_helper.h>
+ #include <net/netfilter/nf_conntrack_zones.h>
  
-+	if (unlikely(!seqadj)) {
-+		WARN(1, "Wrong seqadj usage, missing nfct_seqadj_ext_add()\n");
-+		return 0;
-+	}
+@@ -96,6 +97,11 @@ ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp, int outin)
+ 	if (CTINFO2DIR(ctinfo) != IP_CT_DIR_ORIGINAL)
+ 		return;
+ 
++	/* Applications may adjust TCP seqs */
++	if (cp->app && nf_ct_protonum(ct) == IPPROTO_TCP &&
++	    !nfct_seqadj(ct) && !nfct_seqadj_ext_add(ct))
++		return;
 +
- 	set_bit(IPS_SEQ_ADJUST_BIT, &ct->status);
- 
- 	spin_lock_bh(&ct->lock);
-
+ 	/*
+ 	 * The connection is not yet in the hashtable, so we update it.
+ 	 * CIP->VIP will remain the same, so leave the tuple in
