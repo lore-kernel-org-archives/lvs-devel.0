@@ -1,53 +1,60 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf 0/2] IPVS Fixes for v3.13
-Date: Fri, 27 Dec 2013 12:37:35 +0900
-Message-ID: <1388115457-9873-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Subject: [PATCH nf 2/2] ipvs: correct usage/allocation of seqadj ext in ipvs
+Date: Fri, 27 Dec 2013 12:37:37 +0900
+Message-ID: <1388115457-9873-3-git-send-email-horms@verge.net.au>
+References: <1388115457-9873-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1388115457-9873-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Jesper Dangaard Brouer <brouer@redhat.com>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Jesper Dangaard Brouer <brouer@redhat.com>
 
-please consider the following fixes for IPVS for v3.13.
-Or alternatively for v3.14.
+The IPVS FTP helper ip_vs_ftp could trigger an OOPS in nf_ct_seqadj_set,
+after commit 41d73ec053d2 (netfilter: nf_conntrack: make sequence number
+adjustments usuable without NAT).
 
-This pull-request consists of two patches from Jesper Dangaard Brouer to
-resolve sequence number problems introduced by 41d73ec053d2 (netfilter:
-nf_conntrack: make sequence number adjustments usuable without NAT) in
-v3.11-rc7.
+This is because, the seqadj ext is now allocated dynamically, and the
+IPVS code didn't handle this situation.  Fix this in the IPVS nfct
+code by invoking the alloc function nfct_seqadj_ext_add().
 
-I believe they are -stable candidates back to v3.11.
+Fixes: 41d73ec053d2 (netfilter: nf_conntrack: make sequence number adjustments usuable without NAT)
+Suggested-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_nfct.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-
-The following changes since commit 443d20fd188208aa4df2118ad49f9168e411016d:
-
-  netfilter: nf_ct_timestamp: Fix BUG_ON after netns deletion (2013-12-20 14:58:29 +0100)
-
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.13
-
-for you to fetch changes up to b25adce1606427fd88da08f5203714cada7f6a98:
-
-  ipvs: correct usage/allocation of seqadj ext in ipvs (2013-12-27 12:30:02 +0900)
-
-----------------------------------------------------------------
-IPVS Fixes for v3.13
-
-Two patches from Jesper Dangaard Brouer to resolve sequence number problems
-introduced by 41d73ec053d2 (netfilter: nf_conntrack: make sequence number
-adjustments usuable without NAT) in v3.11-rc7.
-
-----------------------------------------------------------------
-Jesper Dangaard Brouer (2):
-      netfilter: WARN about wrong usage of sequence number adjustments
-      ipvs: correct usage/allocation of seqadj ext in ipvs
-
- net/netfilter/ipvs/ip_vs_nfct.c     | 6 ++++++
- net/netfilter/nf_conntrack_seqadj.c | 5 +++++
- 2 files changed, 11 insertions(+)
+diff --git a/net/netfilter/ipvs/ip_vs_nfct.c b/net/netfilter/ipvs/ip_vs_nfct.c
+index c8beafd..5a355a4 100644
+--- a/net/netfilter/ipvs/ip_vs_nfct.c
++++ b/net/netfilter/ipvs/ip_vs_nfct.c
+@@ -63,6 +63,7 @@
+ #include <net/ip_vs.h>
+ #include <net/netfilter/nf_conntrack_core.h>
+ #include <net/netfilter/nf_conntrack_expect.h>
++#include <net/netfilter/nf_conntrack_seqadj.h>
+ #include <net/netfilter/nf_conntrack_helper.h>
+ #include <net/netfilter/nf_conntrack_zones.h>
+ 
+@@ -97,6 +98,11 @@ ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp, int outin)
+ 	if (CTINFO2DIR(ctinfo) != IP_CT_DIR_ORIGINAL)
+ 		return;
+ 
++	/* Applications may adjust TCP seqs */
++	if (cp->app && nf_ct_protonum(ct) == IPPROTO_TCP &&
++	    !nfct_seqadj(ct) && !nfct_seqadj_ext_add(ct))
++		return;
++
+ 	/*
+ 	 * The connection is not yet in the hashtable, so we update it.
+ 	 * CIP->VIP will remain the same, so leave the tuple in
+-- 
+1.8.4
