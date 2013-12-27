@@ -1,47 +1,53 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [net PATCH 0/2] Fixing OOPSes in seqadj code
-Date: Fri, 27 Dec 2013 12:23:27 +0900
-Message-ID: <20131227032326.GC3795@verge.net.au>
-References: <20131213214023.14478.74738.stgit@dragon>
- <20131216160840.22853.39918.stgit@dragon>
- <alpine.LFD.2.11.1312162308120.2063@ja.home.ssi.bg>
- <20131217013637.GI27171@verge.net.au>
-Mime-Version: 1.0
+Subject: [GIT PULL nf 0/2] IPVS Fixes for v3.13
+Date: Fri, 27 Dec 2013 12:37:35 +0900
+Message-ID: <1388115457-9873-1-git-send-email-horms@verge.net.au>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20131217013637.GI27171@verge.net.au>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Tue, Dec 17, 2013 at 10:36:37AM +0900, Simon Horman wrote:
-> On Mon, Dec 16, 2013 at 11:11:51PM +0200, Julian Anastasov wrote:
-> > 
-> > 	Hello,
-> > 
-> > On Mon, 16 Dec 2013, Jesper Dangaard Brouer wrote:
-> > 
-> > > The following series address issues with netfilter conntrack sequence
-> > > number adjustments, introduced with commit 41d73ec053d2 (netfilter:
-> > > nf_conntrack: make sequence number adjustments usuable without NAT).
-> > > 
-> > >  Patch1: give us a WARN splash when using seqadj incorrectly
-> > > 
-> > >  Patch2: fixes a wrong usage of seqadj in IPVS code
-> > 
-> > 	Both patches look good to me,
-> > 
-> > Acked-by: Julian Anastasov <ja@ssi.bg>
-> > 
-> > > I'm not sure, which maintainer will take these fixes?!?
-> > 
-> > 	I think, Simon can take them, if there are no
-> > objections...
-> 
-> I have no objections.
-> I'll wait a day to see if anyone else does.
+Hi Pablo,
 
-It was much more than a day but I have taken these changes now.
+please consider the following fixes for IPVS for v3.13.
+Or alternatively for v3.14.
+
+This pull-request consists of two patches from Jesper Dangaard Brouer to
+resolve sequence number problems introduced by 41d73ec053d2 (netfilter:
+nf_conntrack: make sequence number adjustments usuable without NAT) in
+v3.11-rc7.
+
+I believe they are -stable candidates back to v3.11.
+
+
+The following changes since commit 443d20fd188208aa4df2118ad49f9168e411016d:
+
+  netfilter: nf_ct_timestamp: Fix BUG_ON after netns deletion (2013-12-20 14:58:29 +0100)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.13
+
+for you to fetch changes up to b25adce1606427fd88da08f5203714cada7f6a98:
+
+  ipvs: correct usage/allocation of seqadj ext in ipvs (2013-12-27 12:30:02 +0900)
+
+----------------------------------------------------------------
+IPVS Fixes for v3.13
+
+Two patches from Jesper Dangaard Brouer to resolve sequence number problems
+introduced by 41d73ec053d2 (netfilter: nf_conntrack: make sequence number
+adjustments usuable without NAT) in v3.11-rc7.
+
+----------------------------------------------------------------
+Jesper Dangaard Brouer (2):
+      netfilter: WARN about wrong usage of sequence number adjustments
+      ipvs: correct usage/allocation of seqadj ext in ipvs
+
+ net/netfilter/ipvs/ip_vs_nfct.c     | 6 ++++++
+ net/netfilter/nf_conntrack_seqadj.c | 5 +++++
+ 2 files changed, 11 insertions(+)
