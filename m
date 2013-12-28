@@ -1,61 +1,39 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next] ipvs: Remove unused variable ret from sync_thread_master()
-Date: Fri, 27 Dec 2013 12:46:12 +0900
-Message-ID: <1388115972-11861-2-git-send-email-horms@verge.net.au>
-References: <1388115972-11861-1-git-send-email-horms@verge.net.au>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [GIT PULL nf 0/2] IPVS Fixes for v3.13
+Date: Sat, 28 Dec 2013 12:16:43 +0100
+Message-ID: <20131228111643.GA4451@localhost>
+References: <1388115457-9873-1-git-send-email-horms@verge.net.au>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1388115972-11861-1-git-send-email-horms@verge.net.au>
+Content-Disposition: inline
+In-Reply-To: <1388115457-9873-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Geert Uytterhoeven <geert@linux-m68k.org>, Simon Horman <horms@verge.net.au>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-From: Geert Uytterhoeven <geert@linux-m68k.org>
+On Fri, Dec 27, 2013 at 12:37:35PM +0900, Simon Horman wrote:
+> Hi Pablo,
+> 
+> please consider the following fixes for IPVS for v3.13.
+> Or alternatively for v3.14.
+> 
+> This pull-request consists of two patches from Jesper Dangaard Brouer to
+> resolve sequence number problems introduced by 41d73ec053d2 (netfilter:
+> nf_conntrack: make sequence number adjustments usuable without NAT) in
+> v3.11-rc7.
+> 
+> I believe they are -stable candidates back to v3.11.
+> 
+> 
+> The following changes since commit 443d20fd188208aa4df2118ad49f9168e411016d:
+> 
+>   netfilter: nf_ct_timestamp: Fix BUG_ON after netns deletion (2013-12-20 14:58:29 +0100)
+> 
+> are available in the git repository at:
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.13
 
-net/netfilter/ipvs/ip_vs_sync.c: In function 'sync_thread_master':
-net/netfilter/ipvs/ip_vs_sync.c:1640:8: warning: unused variable 'ret' [-Wunused-variable]
-
-Commit 35a2af94c7ce7130ca292c68b1d27fcfdb648f6b ("sched/wait: Make the
-__wait_event*() interface more friendly") changed how the interruption
-state is returned. However, sync_thread_master() ignores this state,
-now causing a compile warning.
-
-According to Julian Anastasov <ja@ssi.bg>, this behavior is OK:
-
-    "Yes, your patch looks ok to me. In the past we used ssleep() but IPVS
-     users were confused why IPVS threads increase the load average. So, we
-     switched to _interruptible calls and later the socket polling was
-     added."
-
-Document this, as requested by Peter Zijlstra, to avoid precious developers
-disappearing in this pitfall in the future.
-
-Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
-Acked-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_sync.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index f63c238..db80126 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1637,7 +1637,10 @@ static int sync_thread_master(void *data)
- 			continue;
- 		}
- 		while (ip_vs_send_sync_msg(tinfo->sock, sb->mesg) < 0) {
--			int ret = __wait_event_interruptible(*sk_sleep(sk),
-+			/* (Ab)use interruptible sleep to avoid increasing
-+			 * the load avg.
-+			 */
-+			__wait_event_interruptible(*sk_sleep(sk),
- 						   sock_writeable(sk) ||
- 						   kthread_should_stop());
- 			if (unlikely(kthread_should_stop()))
--- 
-1.8.4
-
+Pulled, thanks Simon.
