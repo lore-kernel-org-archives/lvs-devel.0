@@ -1,24 +1,24 @@
 From: Tingwei Liu <tingw.liu@gmail.com>
-Subject: [PATCH] ipvs: Reduce checkpatch noise in ip_vs_lblc.c
-Date: Tue, 11 Feb 2014 17:17:21 +0800
-Message-ID: <1392110241-14437-1-git-send-email-tingw.liu@gmail.com>
+Subject: [PATCH ipvs-next] ipvs: Reduce checkpatch noise in ip_vs_lblc.c
+Date: Tue, 11 Feb 2014 17:31:25 +0800
+Message-ID: <1392111085-14551-1-git-send-email-tingw.liu@gmail.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20120113;
         h=from:to:cc:subject:date:message-id;
         bh=E71jngG63OJNgCawYKSt//JeWAU8VXs999eQ5el53/o=;
-        b=izhbC7ZItdKlx09wbreabk0FrGqvLPnXbuyq1HnzZr8gk08JukPw3QHcrrV72vqxC1
-         UYwJHivjvmUz10QB1qBhk37C6+fnMUBUY7PUaV5xbifRwsU7LuMfWlVJLssLtGikTBVz
-         X1NZ9nGBL3tplCe6aVtURcUb6XXf9XS/bDifxYo/NJ7hZzQGCtvvvlPmxx9z56S3aeuv
-         clHK9CFIKCFUfeZ2NhTzdCvI7Fx5Dx0yzNfUJTsW1MDwgJRK5aXtsGLo0YC2uwydnrVV
-         OSz/Cdla613GbP8gaqbQllYnvi7BUpdPRS0vpDThX2yfNKyp2bBH52f0vY+m/GfwntBe
-         PtJA==
+        b=Z7nlFNsJkPX4i/fPOjt7CqTmq01aV5LmDAFanM3126WDdw2jR+QYDpy7xHCiQ+owsd
+         q2ujQgcSZMfvzw9ixSvizOusDLkMLkSPmCRiRD1pWgUkAxc/64SXuVz2RLPhkznMY08P
+         lZW5J0rwl+07EiAzw1m5ozu7B8I7CE+zBLZ4pWwVBaPe4OpJpU1XhZ7vhB5/n0+/ijHv
+         AzeaBVrHy+CsvSYVEftvUNGN7wd7CQlM1Eg8UeE705Zek0yzvo/hOQAVRhSBY72Zm30e
+         GnPJdz7nxAYzkZjuZkL/x5O0mA/XjXPomLU8wRK8y/9CBbIAZhoQkSbxaI4zljZmSPiF
+         eD5g==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wensong Zhang <wensong@linux-vs.org>
+To: Simon Horman <horms@verge.net.au>
 Cc: Tingwei Liu <tingw.liu@gmail.com>, Tingwei Liu <liutingwei@hisense.com>, lvs-devel@vger.kernel.org
 
 Add whitespace after operator and put open brace { on the previous line
