@@ -1,108 +1,121 @@
 From: Hans Schillstrom <hans@schillstrom.com>
 Subject: Re: [PATCH] ipvs: fix ipv6 icmp forwarding in natted services
-Date: Wed, 19 Feb 2014 22:46:49 +0100
-Message-ID: <1392846409.5821.465.camel@hawk.mlab.se>
-References: <20140217161601.GD18029@telegraafnet.nl>
-	 <alpine.LFD.2.11.1402172321200.2420@ja.home.ssi.bg>
-	 <20140218100533.GE18029@telegraafnet.nl>
-	 <20140218133725.GA20771@telegraafnet.nl>
-	 <20140218135439.GB20771@telegraafnet.nl>
+Date: Wed, 19 Feb 2014 23:08:43 +0100
+Message-ID: <1392847723.5821.474.camel@hawk.mlab.se>
+References: <20140217153206.GC18029@telegraafnet.nl>
+	  <20140217161601.GD18029@telegraafnet.nl>
+	  <alpine.LFD.2.11.1402172321200.2420@ja.home.ssi.bg>
+	  <20140218100533.GE18029@telegraafnet.nl>
+	  <20140218133725.GA20771@telegraafnet.nl>
+	  <20140218135439.GB20771@telegraafnet.nl>
 	 <alpine.LFD.2.11.1402182225560.2011@ja.home.ssi.bg>
-	 <20140219102751.GD20771@telegraafnet.nl>
+	  <20140219102751.GD20771@telegraafnet.nl>
 	 <1392825857.5821.422.camel@hawk.mlab.se>
-	 <20140219175335.GJ20771@telegraafnet.nl>
-	 <20140219180232.GK20771@telegraafnet.nl>
-	 <20140219182103.GL20771@telegraafnet.nl>
-	 <CAA=3Oq=gG9rbDcidNzwrKj=E=kGa1Fr16YwypDkj-+Spr2P8UQ@mail.gmail.com>
+	 <alpine.LFD.2.11.1402192254040.1889@ja.home.ssi.bg>
 Reply-To: hans@schillstrom.com
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg="sha256";
 	protocol="application/x-pkcs7-signature";
-	boundary="=-0Rq42ur7xnm9ccQgePHv"
+	boundary="=-lhLAbFV9duZI01b0jFtE"
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <CAA=3Oq=gG9rbDcidNzwrKj=E=kGa1Fr16YwypDkj-+Spr2P8UQ@mail.gmail.com>
+In-Reply-To: <alpine.LFD.2.11.1402192254040.1889@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: Ansis Atteka <aatteka@nicira.com>, kaber@trash.net
-Cc: Art -kwaak- van Breemen <ard@telegraafnet.nl>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, Jesper Dangaard Brouer <brouer@redhat.com>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Art -kwaak- van Breemen <ard@telegraafnet.nl>, Ansis Atteka <aatteka@nicira.com>, lvs-devel@vger.kernel.org, Jesper Dangaard Brouer <brouer@redhat.com>, Patrick McHardy <kaber@trash.net>
 
 
---=-0Rq42ur7xnm9ccQgePHv
+--=-lhLAbFV9duZI01b0jFtE
 Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ansis & Patrick
+Hi Julian
 
-On Wed, 2014-02-19 at 12:32 -0800, Ansis Atteka wrote:
-> On Wed, Feb 19, 2014 at 10:21 AM, Art -kwaak- van Breemen
-> <ard@telegraafnet.nl> wrote:
-> >
-> > Hans,
-> > I want to keep the patch as is, but change the description:
-> >
-> > =3D=3D=3D=3D
-> > [PATCH] ipvs: fix wrong icmp_offset in ip_vs_nat_icmp_v6
-> > From: Ard van Breemen <ard@telegraafnet.nl>
-> >
-> >
-> > Fix regression introduced in 3.8 with commit 9195bb8e381d81
-> > ("ipv6: improve ipv6_find_hdr() to skip empty routing headers")
-> > which broke commit 63dca2c0b0e7a9
-> > ("ipvs: Fix faulty IPv6 extension header handling in IPVS").
-> > by a small change in ipv6_find_hdr: finding specific protocols is not
-> > supported anymore, use -1 instead. Solves (pmtud) problems caused by
-> > damaged IPv6 headers in NAT-ed ICMP packets.
-> >
-> > Signed-off-by: Ard van Breemen <ard@telegraafnet.nl>
-> > CC: Jesper Dangaard Brouer <brouer@redhat.com>
-> > CC: Hans Schillstrom <hans@schillstrom.com>
-> >
-> > ---
-> >
-> > Do you and Ansis agree with me?
-> My changes to this function were necessary for the Open vSwitch
-> set_ipv6() action implementation so that checksums would be correctly
-> recalculated.
+As usual I'm to quick to send the mail...
+
+On Wed, 2014-02-19 at 23:34 +0200, Julian Anastasov wrote:
+> 	Hello,
 >=20
-> I introduced IP6_FH_F_SKIP_RH flag that skips all Routing Headers,
-> where segments_left=3D=3D0. This flag allows Open vSwitch kernel module t=
-o
-> figure out whether it needs to recalculate checksum after changing
-> destination IP address in IPv6 header. In ipv6 the checkum is
-> calculated over final destination IP address that could also be in
-> Routing Header intead of ipv6 header (see rfc2460 section 8.1 for more
-> details).
+> On Wed, 19 Feb 2014, Hans Schillstrom wrote:
 >=20
-> I believe your patch would break meaning of IP6_FH_F_SKIP_RH flag,
-> because it would exit early when it saw Routing Header where segments
-> left =3D=3D 0.
+> > The problem is if icmp6 is not the first header it will not work...
+> > i.e. it can be other headers before icmp and if you have -1 you will no=
+t
+> > always get the icmp header.
+> >=20
+> >=20
+> > The patch that broke it was:
+> > commit 9195bb8e381d81d5a315f911904cdf0cfcc919b8
+> > Author: Ansis Atteka <aatteka@nicira.com>
+> >=20
+> > Before there was a=20
+> > while (nexthdr !=3D target) {
+> > ..
+> > }
+> >=20
+> > now it's =20
+> >=20
+> > do {
+> > ..
+> > } while (!found)
+> >=20
+> > which doesn't work for ipvs, when target is !=3D -1
+> >=20
+> > If you specify a target and it's the first header you should break.
+> >=20
+> > I need to look deeper into the other users also to see that it doesn't
+> > break anything.
+> >=20
+> > Ansis, I don't think it will break your patch or ?
+> >=20
+> >=20
+> > --- a/net/ipv6/exthdrs_core.c     2014-02-19 16:36:22.031686037 +0100
+> > +++ b/net/ipv6/exthdrs_core.c     2014-02-19 16:37:28.838082168 +0100
+> > @@ -211,6 +211,9 @@ int ipv6_find_hdr(const struct sk_buff *
+> >                 unsigned int hdrlen;
+> >                 found =3D (nexthdr =3D=3D target);
+> > =20
+> > +               if (found && (target > 0))
+> > +                       break;
+> > +
+>=20
+> 	This is against the goal of the above commit.
+>=20
+> >                 if ((!ipv6_ext_hdr(nexthdr)) || nexthdr =3D=3D NEXTHDR_=
+NONE)
+> > {
+> >                         if (target < 0)
+> >                                 break;
+>=20
+> 	May be above check should be:
+>=20
+> 	if (target < 0 || found)
+> 		break;
 
-I saw that too in openvswitch/actions.c, i.e it will break your patch
+It will work for hmark and it looks like it will work for others,
+with -1=20
 
-But if you want to find a specific header ex. NEXTHDR_GRE,
-that is not in ipv6_ext_hdr() ipv6_find_hdr() will fail to do that
-it will return -ENOENT
+Maybe Patrick have another opinion...
 
-I still think ipv6_find_hdr is broken for nft_exthdr_eval() after
-commit 9195bb8e381d81d5a315f911904cdf0cfcc919b8
+> We have to check some callers with -1, may be some
+> need check for NEXTHDR_NONE, for example, tproxy_tg6_v1(),
+> also the second call in hmark_pkt_set_htuple_ipv6().=20
 
-Patrick,
-I guess the intention with nft_exthdr_eval() is to be able to find any
-extension header or ?
 
-I might be wrong here ...
+> Not sure
+> about nft_set_pktinfo_ipv6 and its callers.
+
+> Regards
+>=20
+> --
+> Julian Anastasov <ja@ssi.bg>
+
 
 Regards
 Hans
 
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---=-0Rq42ur7xnm9ccQgePHv
+--=-lhLAbFV9duZI01b0jFtE
 Content-Type: application/x-pkcs7-signature; name="smime.p7s"
 Content-Disposition: attachment; filename="smime.p7s"
 Content-Transfer-Encoding: base64
@@ -195,20 +208,20 @@ sYJQG2EdJCB6luQ57GEnTA/yKZSTKI8dDQa8Sd3zfXb19mOgSF0bBdXbuKhEpuP9wirslFe6fQ1t
 FAYDVQQKEw1TdGFydENvbSBMdGQuMSswKQYDVQQLEyJTZWN1cmUgRGlnaXRhbCBDZXJ0aWZpY2F0
 ZSBTaWduaW5nMTgwNgYDVQQDEy9TdGFydENvbSBDbGFzcyAxIFByaW1hcnkgSW50ZXJtZWRpYXRl
 IENsaWVudCBDQQIDB56FMA0GCWCGSAFlAwQCAQUAoIIBuzAYBgkqhkiG9w0BCQMxCwYJKoZIhvcN
-AQcBMBwGCSqGSIb3DQEJBTEPFw0xNDAyMTkyMTQ2NDlaMC8GCSqGSIb3DQEJBDEiBCByiyWy9UTs
-Vc/1WeJoAQVU6zhZWJxxFpA/wRF5XKSOTjCBpQYJKwYBBAGCNxAEMYGXMIGUMIGMMQswCQYDVQQG
+AQcBMBwGCSqGSIb3DQEJBTEPFw0xNDAyMTkyMjA4NDNaMC8GCSqGSIb3DQEJBDEiBCBXszFaOJEw
+Bocy62At6hOfHJnOSFFFv8Dgm7pePn8tVjCBpQYJKwYBBAGCNxAEMYGXMIGUMIGMMQswCQYDVQQG
 EwJJTDEWMBQGA1UEChMNU3RhcnRDb20gTHRkLjErMCkGA1UECxMiU2VjdXJlIERpZ2l0YWwgQ2Vy
 dGlmaWNhdGUgU2lnbmluZzE4MDYGA1UEAxMvU3RhcnRDb20gQ2xhc3MgMSBQcmltYXJ5IEludGVy
 bWVkaWF0ZSBDbGllbnQgQ0ECAweehTCBpwYLKoZIhvcNAQkQAgsxgZeggZQwgYwxCzAJBgNVBAYT
 AklMMRYwFAYDVQQKEw1TdGFydENvbSBMdGQuMSswKQYDVQQLEyJTZWN1cmUgRGlnaXRhbCBDZXJ0
 aWZpY2F0ZSBTaWduaW5nMTgwNgYDVQQDEy9TdGFydENvbSBDbGFzcyAxIFByaW1hcnkgSW50ZXJt
-ZWRpYXRlIENsaWVudCBDQQIDB56FMA0GCSqGSIb3DQEBAQUABIIBAIE0fgt5r+rD4KnV2yOLRN4q
-0Djl8JG+iIn36WCMj+G2rCQXdFfUuhMzKVubYhXAF5psXFsQU+t/pjHfBuAuSuRHu14feAxGTlgl
-U6i8EH0IAbNctCPdvMtP0wlspXI7wiqhlqaFzLC6LECvd3e3lgbwOlod6Cb0ZlZlDnAu0MEZ+gn8
-su3RB5AW6ry/jzfTTkiip0IIPQzruxXZzIHG+yVu5/fTPo5youBy6z3yid08MiKtsORaeAUBBLHm
-pDIYfY9Ebuc2+yN/vzW4/iDtyWDYmp57pmVkYKdifK2xxvp/VIsK6onXQ3VpBbgr4liQrOo4OqV5
-+givV2XLg1PyfaQAAAAAAAA=
+ZWRpYXRlIENsaWVudCBDQQIDB56FMA0GCSqGSIb3DQEBAQUABIIBADe4URUQ19ryrAMDLolhltzj
+T3CCqG57MglpcipKwoS9XS3/xw5g5h0mExQusoHmNSj8cT4nDJCZ4br5kd+R7WrpbLaIMhlIsATZ
+vahhR+itqLcGfO98GSM5TXj5LDMKWFVI4UG6SvSB9Vp4akTef/SUcmd7mEnMlMtaGsI31lxgI5gV
+EKQ2e0fjRjMy6oI4nD2d3UVqG5AhGnM3smin0yB8LnlK+rK+RyB/4PjjDqOSK97opjrBziW7CCVt
+3mmmhaEJl5mmqzVWTQ0Khv6Z3xgDKEZwwrok0YaQIWKpiRnX0iavH1KMZWnMTsjrt23DI0eqnhif
+g6a4WcTLjPyDUEIAAAAAAAA=
 
 
---=-0Rq42ur7xnm9ccQgePHv--
+--=-lhLAbFV9duZI01b0jFtE--
 
