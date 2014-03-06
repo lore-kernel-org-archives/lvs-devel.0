@@ -1,35 +1,77 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH net] ipv6: ipv6_find_hdr restore prev functionality
-Date: Thu, 27 Feb 2014 18:28:03 -0500 (EST)
-Message-ID: <20140227.182803.2159868180417685841.davem@davemloft.net>
-References: <1393502278-32297-1-git-send-email-hans@schillstrom.com>
+From: Jesper Dangaard Brouer <jbrouer@redhat.com>
+Subject: Re: [PATCH] libipvs: Initialize ipvs_service_t variable
+Date: Thu, 6 Mar 2014 11:05:24 +0100
+Message-ID: <20140306110524.2d1bc674@redhat.com>
+References: <1389981226-6668-1-git-send-email-rohara@redhat.com>
+	<alpine.LFD.2.11.1401172253420.2244@ja.home.ssi.bg>
+	<20140117211517.GB7772@redhat.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1393502278-32297-1-git-send-email-hans@schillstrom.com>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20140117211517.GB7772@redhat.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: hans@schillstrom.com
-Cc: netdev@vger.kernel.org, ja@ssi.bg, aatteka@nicira.com, kaber@trash.net, ard@telegraafnet.nl, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: Ryan O'Hara <rohara@redhat.com>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
 
-From: Hans Schillstrom <hans@schillstrom.com>
-Date: Thu, 27 Feb 2014 12:57:58 +0100
+On Fri, 17 Jan 2014 15:15:17 -0600
+"Ryan O'Hara" <rohara@redhat.com> wrote:
 
-> The commit 9195bb8e381d81d5a315f911904cdf0cfcc919b8 ("ipv6: improve 
-> ipv6_find_hdr() to skip empty routing headers") broke ipv6_find_hdr().
+> On Fri, Jan 17, 2014 at 11:03:43PM +0200, Julian Anastasov wrote:
+> > 
+> > 	Hello,
+> > 
+> > On Fri, 17 Jan 2014, Ryan O'Hara wrote:
+> > 
+> > > The ipvs_get_service function declares an ipvs_service_t type variable
+> > > and initializes some of the values, but should really start by
+> > > initializing the entire structure.
+> > > 
+> > > Signed-off-by: Ryan O'Hara <rohara@redhat.com>
+> > > ---
+> > >  libipvs/libipvs.c | 1 +
+> > >  1 file changed, 1 insertion(+)
+> > > 
+> > > diff --git a/libipvs/libipvs.c b/libipvs/libipvs.c
+> > > index d2fec49..8baafed 100644
+> > > --- a/libipvs/libipvs.c
+> > > +++ b/libipvs/libipvs.c
+> > > @@ -942,6 +942,7 @@ ipvs_get_service(__u32 fwmark, __u16 af, __u16 protocol, union nf_inet_addr addr
+> > >  		if (!svc)
+> > >  			return NULL;
+> > >  
+> > > +		memset(&tsvc, 0, sizeof(tsvc));
+> > >  		tsvc.fwmark = fwmark;
+> > >  		tsvc.af = af;
+> > >  		tsvc.protocol= protocol;
+> > > -- 
+> > > 1.8.1.4
+> > 
+> > 	Yes, it is a good idea. Another variant is to
+> > change malloc to calloc. May be ipvs_nl_fill_service_attr()
+> > can not crash in all cases when reading svc->pe_name[].
+> > As for the kernel part, ip_vs_genl_parse_service() uses just 
+> > the initialized fields when full_entry=0 for IPVS_CMD_GET_SERVICE
+> > but it is better to avoid problems in the future.
 > 
-> When a target is specified like IPPROTO_ICMPV6 ipv6_find_hdr()
-> returns -ENOENT when it's found, not the header as expected.
-> 
-> A part of IPVS is broken and possible also nft_exthdr_eval().
-> When target is -1 which it is most cases, it works.
-> 
-> This patch exits the do while loop if the specific header is found
-> so the nexthdr could be returned as expected.
-> 
-> Reported-by: Art -kwaak- van Breemen <ard@telegraafnet.nl>
-> Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
-> CC:Ansis Atteka <aatteka@nicira.com>
+> Right. This 'bug' was found while running the code through a static
+> analyzer, which finds all sorts of nit-picks. Since the variable in
+> question here is on the stack, a simple memset seems sufficient. Sorry
+> for trivial patches, just trying to get rid of the complaints from the
+> analyzer.
 
-Looks good, applied and queued up for -stable, thanks!
+Thanks Ryan,
+Applied the patch.
+
+More followup patches to address more areas are welcome.
+
+Git tree for ipvsadm avail at:
+ https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git/
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Sr. Network Kernel Developer at Red Hat
+  Author of http://www.iptv-analyzer.org
+  LinkedIn: http://www.linkedin.com/in/brouer
