@@ -1,77 +1,53 @@
-From: Jesper Dangaard Brouer <jbrouer@redhat.com>
-Subject: Re: [PATCH] libipvs: Initialize ipvs_service_t variable
-Date: Thu, 6 Mar 2014 11:05:24 +0100
-Message-ID: <20140306110524.2d1bc674@redhat.com>
-References: <1389981226-6668-1-git-send-email-rohara@redhat.com>
-	<alpine.LFD.2.11.1401172253420.2244@ja.home.ssi.bg>
-	<20140117211517.GB7772@redhat.com>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20140117211517.GB7772@redhat.com>
-Sender: lvs-devel-owner@vger.kernel.org
+From: Simon Horman <horms@verge.net.au>
+Subject: [GIT PULL nf-next 0/2] IPVS Updates for v3.15
+Date: Fri,  7 Mar 2014 12:46:12 +0900
+Message-ID: <1394163974-25877-1-git-send-email-horms@verge.net.au>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Ryan O'Hara <rohara@redhat.com>
-Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Fri, 17 Jan 2014 15:15:17 -0600
-"Ryan O'Hara" <rohara@redhat.com> wrote:
+Hi Pablo,
 
-> On Fri, Jan 17, 2014 at 11:03:43PM +0200, Julian Anastasov wrote:
-> > 
-> > 	Hello,
-> > 
-> > On Fri, 17 Jan 2014, Ryan O'Hara wrote:
-> > 
-> > > The ipvs_get_service function declares an ipvs_service_t type variable
-> > > and initializes some of the values, but should really start by
-> > > initializing the entire structure.
-> > > 
-> > > Signed-off-by: Ryan O'Hara <rohara@redhat.com>
-> > > ---
-> > >  libipvs/libipvs.c | 1 +
-> > >  1 file changed, 1 insertion(+)
-> > > 
-> > > diff --git a/libipvs/libipvs.c b/libipvs/libipvs.c
-> > > index d2fec49..8baafed 100644
-> > > --- a/libipvs/libipvs.c
-> > > +++ b/libipvs/libipvs.c
-> > > @@ -942,6 +942,7 @@ ipvs_get_service(__u32 fwmark, __u16 af, __u16 protocol, union nf_inet_addr addr
-> > >  		if (!svc)
-> > >  			return NULL;
-> > >  
-> > > +		memset(&tsvc, 0, sizeof(tsvc));
-> > >  		tsvc.fwmark = fwmark;
-> > >  		tsvc.af = af;
-> > >  		tsvc.protocol= protocol;
-> > > -- 
-> > > 1.8.1.4
-> > 
-> > 	Yes, it is a good idea. Another variant is to
-> > change malloc to calloc. May be ipvs_nl_fill_service_attr()
-> > can not crash in all cases when reading svc->pe_name[].
-> > As for the kernel part, ip_vs_genl_parse_service() uses just 
-> > the initialized fields when full_entry=0 for IPVS_CMD_GET_SERVICE
-> > but it is better to avoid problems in the future.
-> 
-> Right. This 'bug' was found while running the code through a static
-> analyzer, which finds all sorts of nit-picks. Since the variable in
-> question here is on the stack, a simple memset seems sufficient. Sorry
-> for trivial patches, just trying to get rid of the complaints from the
-> analyzer.
+please consider the following updates for IPVS for v3.15.
 
-Thanks Ryan,
-Applied the patch.
+It consists of two cleanups.
+* Whitespace cleanup from Tingwei Liu
+* Section conflict cleanup from Andi Kleen
 
-More followup patches to address more areas are welcome.
+Please feel free to put Andi's patch into nf instead of nf-next if
+you think that is appropriate.
 
-Git tree for ipvsadm avail at:
- https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git/
 
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Sr. Network Kernel Developer at Red Hat
-  Author of http://www.iptv-analyzer.org
-  LinkedIn: http://www.linkedin.com/in/brouer
+The following changes since commit 0768b3b3d228c5acf2075f40f3d25cda30011d4f:
+
+  netfilter: nf_tables: add optional user data area to rules (2014-02-27 16:56:00 +0100)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.15
+
+for you to fetch changes up to 411fd527bc3f8357b499c760f7cd03633a0c7de2:
+
+  ipvs: Reduce checkpatch noise in ip_vs_lblc.c (2014-03-07 12:36:21 +0900)
+
+----------------------------------------------------------------
+IPVS Updates for v3.15
+
+* Cleanup from Tingwei Liu to correct whitespace
+* Cleanup from Andi Kleen to avoid a LTO section conflict compile problem
+
+----------------------------------------------------------------
+Andi Kleen (1):
+      sections, ipvs: Remove useless __read_mostly for ipvs genl_ops
+
+Tingwei Liu (1):
+      ipvs: Reduce checkpatch noise in ip_vs_lblc.c
+
+ net/netfilter/ipvs/ip_vs_ctl.c  |  2 +-
+ net/netfilter/ipvs/ip_vs_lblc.c | 13 ++++++-------
+ 2 files changed, 7 insertions(+), 8 deletions(-)
