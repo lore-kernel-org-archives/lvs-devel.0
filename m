@@ -1,26 +1,53 @@
-From: Hatt Tom <net.study.sea@gmail.com>
-Subject: is the lvs virtual ip a public ip ?
-Date: Wed, 9 Apr 2014 14:16:22 +0800
-Message-ID: <CAHvbk5NnjpAjKU=_qdyt6BrCF1bOy_3=ouf+rhJ2cjHU1eXjxg@mail.gmail.com>
+From: isabelle <contact_claude@isabelle.de>
+Subject: spende /Donation
+Date: Tue, 15 Apr 2014 21:47:38 +0200
+Message-ID: <yx4Sef42JyeoopbQKx5pAipXLBt1prSNuXPiRcWu1Nis__17404.3605490171$1397596694$gmane$org@isabelle.de>
+Reply-To: isabelle.claude654@laposte.net
 Mime-Version: 1.0
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20120113;
-        h=mime-version:date:message-id:subject:from:to:content-type;
-        bh=E6TekXKRmOdhIQOTZaiHLYoaLv5sWoIHQ19AJs8GMIU=;
-        b=t7yuNDx5gAuqGkusEeDT8/ZVoOPVMDmLfvS7W3TJOkomayDIrBha5ghRcW4/+zqPYy
-         sjKJVLq08/b5S7jXxQfKNO/pvI5awtXjWlmKBN0n1KiOaWvplPjxspvwbJY7wPw/MsVp
-         4++KOScvsE+1lSh40uoJosyRVoZSiJcz+1F4B4HKD0izW/QCXMrmYCymlTBQ61G0J62t
-         +B/T8ryLTn1VMvgmO+4zr4f04+I4MPnllTu7hGPr9Lkk5aOqe2ZgkZSXl4OOxBNF8BhH
-         qcUA+uc3at/oHjKlb0ebzpPGF5/y3USwGUmYzrEgBLNcDOTUUOj+zAft8t9rsGq2wxNZ
-         2Fdw==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"; format="flowed"
+To: 
 
-is the lvs virtual ip a public ip ? which can be accessed from remote host ?
+Hallo
+Wenn ich diese Nachricht zu senden wollte, ist dies nicht einfach Zufal=
+l. Dies ist, weil Ihre e-Mail vom elektronischen Roboter gesichert mein=
+e WX.7AR BW ausgew=E4hlt wurde.
+Zun=E4chst m=F6chte ich mich f=FCr dieses Eindringen in Ihr Leben zu en=
+tschuldigen, obwohl ich zugeben, dass es mir sehr wichtig. Ich bin Isab=
+elle Vasudev. Ich leide an Krebs im Hals seit nun mehr als 3 Jahre und =
+eine halbe und es leider, mein Arzt hat gerade informiert mich, dass ic=
+h bin voller unheilbar und, dass meine Tage, wegen meinen etwas gez=E4h=
+lt sind abgebaut Zustand. Ich bin eine Witwe und ich habe keine Kind, d=
+as ich beginne zu bedauern.
+In der Tat ist der Grund, warum ich Sie kontaktieren bin, m=F6chte ich =
+einen Teil von meinem Grundst=FCck zu spenden, weil ich niemand, wer di=
+e Erben konnte. Ich habe fast mein ganzes Zeug, darunter ein Unternehme=
+n der Export von Holz, Gummi und Stahl-Industrie in Afrika, wo ich wohn=
+e nun mehr 10 Jahren, verkauft. Ein gro=DFer Teil der Gelder gesammelt =
+wurde mit unterschiedlichen Verb=E4nden humanit=E4ren Charakter =FCbera=
+ll in der Welt, aber besonders hier in Afrika bezahlt.
+Im Hinblick auf den Rest der Summe genau in H=F6he von 750.000, 00euros=
+ (sieben hundert und f=FCnfzig tausend Euro) auf eine gesperrte Mitarbe=
+iter-Account, meine letzte w=FCnschen w=FCrde Sie es spenden, so dass S=
+ie in Ihrer Branche und vor allem den humanit=E4ren investieren k=F6nne=
+n. Ich bin ganz bewusst was ich zu tun beabsichtigen, und ich denke, tr=
+otz der Tatsache, die wir nicht wissen, werdet ihr diese Summe gut nutz=
+en. Ich bitte Sie, bitte dieses Erbe zu akzeptieren, ohne jedoch Fragen=
+ Sie alles, was in zur=FCckgeben wenn es nicht immer denken, gutes zu t=
+un, um dich herum, was ich nicht getan habe, in meiner Existenz.
+Das hei=DFt, wird auf einer verantwortlichen Person und besonders gutem=
+ Glauben fallen zu lassen beruhigt, ich m=F6chte bitten, dass Sie bitte=
+ mich bei den meisten schnell kontaktieren, um weitere Erkl=E4rung =FCb=
+er die Gr=FCnde f=FCr meine Geste und den Verlauf der Dinge zu geben. B=
+itte kontaktieren Sie mich so bald wie m=F6glich, wenn Sie mein Angebot=
+ akzeptieren.
+Gott m=F6ge mit dir sein!
+Ich fordere Sie auf, mich =FCber meine pers=F6nliche e-Mail-Adresse zu =
+kontaktieren:
+Isabelle.claude654@laposte.net
+Der Frieden und Barmherzigkeit Gottes m=F6ge mit dir sein.
+Mrs Isabelle
 
--- 
-Best Regards!
