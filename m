@@ -1,41 +1,39 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next] netfilter: Fix format string mismatch in ip_vs_proto_name()
-Date: Mon, 21 Apr 2014 09:16:47 +0900
-Message-ID: <1398039407-12060-2-git-send-email-horms@verge.net.au>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [GIT PULL nf-next] IPVS Updates for v3.16
+Date: Wed, 23 Apr 2014 14:17:15 +0200
+Message-ID: <20140423121715.GA12169@localhost>
 References: <1398039407-12060-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Mime-Version: 1.0
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <1398039407-12060-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Masanari Iida <standby24x7@gmail.com>, Simon Horman <horms@verge.net.au>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-From: Masanari Iida <standby24x7@gmail.com>
+Hi Simon,
 
-Fix string mismatch in ip_vs_proto_name()
+On Mon, Apr 21, 2014 at 09:16:46AM +0900, Simon Horman wrote:
+> Hi Pablo,
+> 
+> please consider the following updates for IPVS for v3.16.
+> 
+> It consists of a format string fix from Masanari Iida.
+> 
+> 
+> The following changes since commit 6125c94e6972fca79214809a43eb60e27feff3ee:
+> 
+>   netfilter: nft_ct: split nft_ct_init() into two functions for get/set (2014-03-30 13:31:44 +0200)
+> 
+> are available in the git repository at:
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.16
 
-Signed-off-by: Masanari Iida <standby24x7@gmail.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I'm going to manually apply this small patch.
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 4f26ee4..d9da8c4 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -97,7 +97,7 @@ const char *ip_vs_proto_name(unsigned int proto)
- 		return "ICMPv6";
- #endif
- 	default:
--		sprintf(buf, "IP_%d", proto);
-+		sprintf(buf, "IP_%u", proto);
- 		return buf;
- 	}
- }
--- 
-1.8.5.2
-
+There was a small cleanup for nfnetlink that has reached David's tree
+in a bigger batch that I already applied in my tree, so I needed to
+REbase to avoid problems. You'll also have to rebase as well. Sorry.
