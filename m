@@ -1,39 +1,40 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH v2] ipvs: Fix panic due to non-linear skb
-Date: Mon, 26 May 2014 10:37:36 +0900
-Message-ID: <20140526013735.GG31096@verge.net.au>
-References: <1400960412-12830-1-git-send-email-pch@ordbogen.com>
- <alpine.LFD.2.11.1405250010210.1539@ja.home.ssi.bg>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [GIT PULL nf] Fixes for v3.15
+Date: Thu, 29 May 2014 23:00:43 +0200
+Message-ID: <20140529210043.GA5730@localhost>
+References: <1401068235-6730-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.11.1405250010210.1539@ja.home.ssi.bg>
+In-Reply-To: <1401068235-6730-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Peter Christensen <pch@ordbogen.com>, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-On Sun, May 25, 2014 at 12:16:31AM +0300, Julian Anastasov wrote:
+On Mon, May 26, 2014 at 10:37:14AM +0900, Simon Horman wrote:
+> Hi Pablo,
 > 
-> 	Hello,
+> I realise this is extremely late in the v3.15 cycle so please don't hesitate
+> to push it back to v3.16. I am more than happy to rebase/resubmit if that
+> is what you decided on.
 > 
-> On Sat, 24 May 2014, Peter Christensen wrote:
+> This fix resolves a panic due to non-linear skb.
 > 
-> > Receiving a ICMP response to an IPIP packet in a non-linear skb could
-> > cause a kernel panic in __skb_pull.
-> > 
-> > The problem was introduced in
-> > commit f2edb9f7706dcb2c0d9a362b2ba849efe3a97f5e ("ipvs: implement
-> > passive PMTUD for IPIP packets").
-> > 
-> > Signed-off-by: Peter Christensen <pch@ordbogen.com>
+> It has been present since v3.6-rc1.
 > 
-> 	Thanks!
+> I would like this fix considered for -stable and I have checked that it
+> applies cleanly on top of v3.10.40, v3.12.20 and v3.14.4.
 > 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
 > 
-> 	Simon, please apply to ipvs tree!
+> The following changes since commit 3b084e99a3fabaeb0f9c65a0806cde30f0b2835e:
+> 
+>   netfilter: nf_tables: fix trace of matching non-terminal rule (2014-05-15 19:44:20 +0200)
+> 
+> are available in the git repository at:
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.15
 
-Thanks, done.
+Pulled, thanks Simon.
