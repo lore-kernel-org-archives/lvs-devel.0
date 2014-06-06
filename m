@@ -1,40 +1,57 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf] Fixes for v3.15
-Date: Thu, 29 May 2014 23:00:43 +0200
-Message-ID: <20140529210043.GA5730@localhost>
-References: <1401068235-6730-1-git-send-email-horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH] ipvsadm: Fix list daemon to show backup daemon
+Date: Fri, 6 Jun 2014 10:24:09 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1406061018180.12067@ja.home.ssi.bg>
+References: <1400642071-10408-1-git-send-email-rohara@redhat.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1401068235-6730-1-git-send-email-horms@verge.net.au>
+In-Reply-To: <1400642071-10408-1-git-send-email-rohara@redhat.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: Ryan O'Hara <rohara@redhat.com>
+Cc: lvs-devel@vger.kernel.org
 
-On Mon, May 26, 2014 at 10:37:14AM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> I realise this is extremely late in the v3.15 cycle so please don't hesitate
-> to push it back to v3.16. I am more than happy to rebase/resubmit if that
-> is what you decided on.
-> 
-> This fix resolves a panic due to non-linear skb.
-> 
-> It has been present since v3.6-rc1.
-> 
-> I would like this fix considered for -stable and I have checked that it
-> applies cleanly on top of v3.10.40, v3.12.20 and v3.14.4.
-> 
-> 
-> The following changes since commit 3b084e99a3fabaeb0f9c65a0806cde30f0b2835e:
-> 
->   netfilter: nf_tables: fix trace of matching non-terminal rule (2014-05-15 19:44:20 +0200)
-> 
-> are available in the git repository at:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.15
 
-Pulled, thanks Simon.
+	Hello,
+
+On Tue, 20 May 2014, Ryan O'Hara wrote:
+
+> The list_daemon function in ipvsadm.c will show the master daemon
+> twice, but never the backup daemon. This patch replaces the redundant
+> check for IP_VS_STATE_MASTER with a check for IP_VS_STATE_BACKUP, then
+> prints the appropriate message.
+> 
+> Signed-off-by: Ryan O'Hara <rohara@redhat.com>
+
+	In case you still wait for ack:
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+> ---
+>  ipvsadm.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/ipvsadm.c b/ipvsadm.c
+> index 4c83a8b..755827f 100644
+> --- a/ipvsadm.c
+> +++ b/ipvsadm.c
+> @@ -1732,8 +1732,8 @@ static void list_daemon(void)
+>  		if (u[i].state & IP_VS_STATE_MASTER)
+>  			printf("master sync daemon (mcast=%s, syncid=%d)\n",
+>  			       u[i].mcast_ifn, u[i].syncid);
+> -		if (u[i].state & IP_VS_STATE_MASTER)
+> -			printf("master sync daemon (mcast=%s, syncid=%d)\n",
+> +		if (u[i].state & IP_VS_STATE_BACKUP)
+> +			printf("backup sync daemon (mcast=%s, syncid=%d)\n",
+>  			       u[i].mcast_ifn, u[i].syncid);
+>  	}
+>  	free(u);
+> -- 
+> 1.9.0
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
