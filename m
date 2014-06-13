@@ -1,51 +1,51 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net] ipvs: stop tot_stats estimator only under CONFIG_SYSCTL
-Date: Thu, 12 Jun 2014 09:17:55 +0300
-Message-ID: <1402553875-3046-1-git-send-email-ja@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
+Subject: [GIT PULL nf] IPVS Fixes for v3.16
+Date: Fri, 13 Jun 2014 16:37:08 +0900
+Message-ID: <1402645029-21756-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, Jet Chen <jet.chen@intel.com>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-The tot_stats estimator is started only when CONFIG_SYSCTL
-is defined. But it is stopped without checking CONFIG_SYSCTL.
-Fix the crash by moving ip_vs_stop_estimator into
-ip_vs_control_net_cleanup_sysctl.
+Hi Pablo,
 
-The change is needed after commit 14e405461e664b
-("IPVS: Add __ip_vs_control_{init,cleanup}_sysctl()") from 2.6.39.
+Please consider this IPVS fix for v3.16.
 
-Reported-by: Jet Chen <jet.chen@intel.com>
-Tested-by: Jet Chen <jet.chen@intel.com>
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
+Fix for panic due use of tot_stats estimator outside of CONFIG_SYSCTL
+
+It has been present since v3.6.39.
+
+I would like this fix considered for -stable and I have checked that it
+applies cleanly on top of v3.15, v3.14.7, v3.12.22, v3.10.43 and v3.2.60.
+
+
+The following changes since commit f44a5f45f544561302e855e7bd104e5f506ec01b:
+
+  ipvs: Fix panic due to non-linear skb (2014-05-26 10:22:46 +0900)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git ipvs-fixes-for-v3.16
+
+for you to fetch changes up to 9802d21e7a0b0d2167ef745edc1f4ea7a0fc6ea3:
+
+  ipvs: stop tot_stats estimator only under CONFIG_SYSCTL (2014-06-13 16:22:25 +0900)
+
+----------------------------------------------------------------
+IPVS Fixes for v3.16
+
+Fix for panic due use of tot_stats estimator outside of CONFIG_SYSCTL
+
+This resolves a bug introduced in v3.6.39 by 14e405461e664b
+("IPVS: Add __ip_vs_control_{init,cleanup}_sysctl()").
+
+----------------------------------------------------------------
+Julian Anastasov (1):
+      ipvs: stop tot_stats estimator only under CONFIG_SYSCTL
+
  net/netfilter/ipvs/ip_vs_ctl.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index c42e83d..581a658 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3778,6 +3778,7 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
- 	cancel_delayed_work_sync(&ipvs->defense_work);
- 	cancel_work_sync(&ipvs->defense_work.work);
- 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
-+	ip_vs_stop_estimator(net, &ipvs->tot_stats);
- }
- 
- #else
-@@ -3840,7 +3841,6 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	ip_vs_trash_cleanup(net);
--	ip_vs_stop_estimator(net, &ipvs->tot_stats);
- 	ip_vs_control_net_cleanup_sysctl(net);
- 	remove_proc_entry("ip_vs_stats_percpu", net->proc_net);
- 	remove_proc_entry("ip_vs_stats", net->proc_net);
--- 
-1.9.0
-
