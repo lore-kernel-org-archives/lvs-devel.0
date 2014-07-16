@@ -1,23 +1,39 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: Remove dead debug code
-Date: Wed, 16 Jul 2014 09:34:05 +0900
-Message-ID: <20140716003405.GD25244@verge.net.au>
-References: <1403835026-5506-1-git-send-email-scientist@fb.com>
+Subject: Re: [PATCH net] ipvs: avoid netns exit crash on
+ ip_vs_conn_drop_conntrack
+Date: Wed, 16 Jul 2014 09:39:46 +0900
+Message-ID: <20140716003946.GE25244@verge.net.au>
+References: <1404973441-8989-1-git-send-email-ja@ssi.bg>
+ <1404979400.16647.34.camel@hawk.mlab.se>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1403835026-5506-1-git-send-email-scientist@fb.com>
+In-Reply-To: <1404979400.16647.34.camel@hawk.mlab.se>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Yannick Brosseau <scientist@fb.com>
-Cc: wensong@linux-vs.org, ja@ssi.bg, lvs-devel@vger.kernel.org
+To: Hans Schillstrom <hans@schillstrom.com>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
 
-On Thu, Jun 26, 2014 at 07:10:26PM -0700, Yannick Brosseau wrote:
-> This code section cannot compile as it refer to non existing variable
-> It also pre-date git history.
+On Thu, Jul 10, 2014 at 10:03:20AM +0200, Hans Schillstrom wrote:
+> Hi Julian
 > 
-> Signed-off-by: Yannick Brosseau <scientist@fb.com>
+> 
+> On Thu, 2014-07-10 at 09:24 +0300, Julian Anastasov wrote: 
+> > commit 8f4e0a18682d91 ("IPVS netns exit causes crash in conntrack")
+> > added second ip_vs_conn_drop_conntrack call instead of just adding
+> > the needed check. As result, the first call still can cause
+> > crash on netns exit. Remove it.
+> > 
+> 
+> Oops must have forgot to take that row away
+> 
+> 
+> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> 
+> Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
 
 Thanks, applied.
+
+
