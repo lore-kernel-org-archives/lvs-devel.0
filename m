@@ -1,47 +1,42 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next 0/2] IPVS Updates for v3.17
-Date: Wed, 16 Jul 2014 10:11:28 +0900
-Message-ID: <1405473090-10432-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Subject: [PATCH 1/2] ipvs: remove null test before kfree
+Date: Wed, 16 Jul 2014 10:11:29 +0900
+Message-ID: <1405473090-10432-2-git-send-email-horms@verge.net.au>
+References: <1405473090-10432-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1405473090-10432-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Fabian Frederick <fabf@skynet.be>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Fabian Frederick <fabf@skynet.be>
 
-please consider these IPVS Updates for v3.17.
+Fix checkpatch warning:
+WARNING: kfree(NULL) is safe this check is probably not required
 
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_sync.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-The following changes since commit 24de3d377539e384621c5b8f8f8d8d01852dddc8:
-
-  netfilter: use IS_ENABLED() macro (2014-06-30 11:38:03 +0200)
-
-are available in the git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.17
-
-for you to fetch changes up to 16ea4c6b9dde2ff44b2bd8bb459daa283cf3a46e:
-
-  ipvs: Remove dead debug code (2014-07-16 10:07:11 +0900)
-
-----------------------------------------------------------------
-IPVS Updates for v3.17
-
-Some clean-ups:
-* Remove unnecessary NULL check before call to kfree
-* Remove dead debug code
-
-----------------------------------------------------------------
-Fabian Frederick (1):
-      ipvs: remove null test before kfree
-
-Yannick Brosseau (1):
-      ipvs: Remove dead debug code
-
- net/netfilter/ipvs/ip_vs_ctl.c  | 86 -----------------------------------------
- net/netfilter/ipvs/ip_vs_sync.c |  3 +-
- 2 files changed, 1 insertion(+), 88 deletions(-)
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index db80126..eadffb2 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -886,8 +886,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+ 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
+ 		rcu_read_unlock();
+ 		if (!cp) {
+-			if (param->pe_data)
+-				kfree(param->pe_data);
++			kfree(param->pe_data);
+ 			IP_VS_DBG(2, "BACKUP, add new conn. failed\n");
+ 			return;
+ 		}
+-- 
+2.0.0
