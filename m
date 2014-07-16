@@ -1,43 +1,47 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH] ipvs: avoid netns exit crash on ip_vs_conn_drop_conntrack
-Date: Wed, 16 Jul 2014 09:56:08 +0900
-Message-ID: <1405472168-25192-2-git-send-email-horms@verge.net.au>
-References: <1405472168-25192-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1405472168-25192-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Subject: [GIT PULL nf-next 0/2] IPVS Updates for v3.17
+Date: Wed, 16 Jul 2014 10:11:28 +0900
+Message-ID: <1405473090-10432-1-git-send-email-horms@verge.net.au>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans@schillstrom.com>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-From: Julian Anastasov <ja@ssi.bg>
+Hi Pablo,
 
-commit 8f4e0a18682d91 ("IPVS netns exit causes crash in conntrack")
-added second ip_vs_conn_drop_conntrack call instead of just adding
-the needed check. As result, the first call still can cause
-crash on netns exit. Remove it.
+please consider these IPVS Updates for v3.17.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Hans Schillstrom <hans@schillstrom.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_conn.c | 1 -
- 1 file changed, 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index a8eb0a8..610e19c 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -797,7 +797,6 @@ static void ip_vs_conn_expire(unsigned long data)
- 			ip_vs_control_del(cp);
- 
- 		if (cp->flags & IP_VS_CONN_F_NFCT) {
--			ip_vs_conn_drop_conntrack(cp);
- 			/* Do not access conntracks during subsys cleanup
- 			 * because nf_conntrack_find_get can not be used after
- 			 * conntrack cleanup for the net.
--- 
-2.0.0
+The following changes since commit 24de3d377539e384621c5b8f8f8d8d01852dddc8:
+
+  netfilter: use IS_ENABLED() macro (2014-06-30 11:38:03 +0200)
+
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.17
+
+for you to fetch changes up to 16ea4c6b9dde2ff44b2bd8bb459daa283cf3a46e:
+
+  ipvs: Remove dead debug code (2014-07-16 10:07:11 +0900)
+
+----------------------------------------------------------------
+IPVS Updates for v3.17
+
+Some clean-ups:
+* Remove unnecessary NULL check before call to kfree
+* Remove dead debug code
+
+----------------------------------------------------------------
+Fabian Frederick (1):
+      ipvs: remove null test before kfree
+
+Yannick Brosseau (1):
+      ipvs: Remove dead debug code
+
+ net/netfilter/ipvs/ip_vs_ctl.c  | 86 -----------------------------------------
+ net/netfilter/ipvs/ip_vs_sync.c |  3 +-
+ 2 files changed, 1 insertion(+), 88 deletions(-)
