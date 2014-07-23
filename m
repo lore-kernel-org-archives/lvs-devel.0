@@ -1,82 +1,74 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: RE: [PATCH ipvs 1/2] ipvs: Do tcp/udp checksumming prior to tunnel
- xmit
-Date: Wed, 23 Jul 2014 19:16:07 +0000
-Message-ID: <B3481EE3D901EA4983A2D2CFBA42F3AA700E2782@PRN-MBX01-3.TheFacebook.com>
-References: <1406097465-8180-1-git-send-email-agartrell@fb.com>,<alpine.LFD.2.11.1407231054180.5114@ja.home.ssi.bg>
+Subject: [PATCH ipvs] ipvs: invoke skb_checksum_help prior to encapsulation in tunnel xmit
+Date: Wed, 23 Jul 2014 12:16:27 -0700
+Message-ID: <1406142987-30436-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : references : in-reply-to : content-type :
- content-transfer-encoding : mime-version; s=facebook;
- bh=bGknzQAyQ98sPoNBHOVTbo0MX7ZhUfnez4Jp1I9o4j8=;
- b=eSpChZPwXFYcwv2l+T/UEt58ilDNYCMk8SLONt5Gft7F0cvw/+tftxveFQODhfrm3Cqe
- ccvJO4luM/CuK1oD/NvdxQuyn5mgPUetGM1ZWYIXCyObYvbdHnsbLUvV9KQ9EzSm2B5+
- oIVjS/vK3C4wbmcFvaXuNDdMf+biNK8MnJU= 
-In-Reply-To: <alpine.LFD.2.11.1407231054180.5114@ja.home.ssi.bg>
-Content-Language: en-US
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=Fel/D8Jfdqs4Ef69iZoJESVP+/yYhSnUkid5VWgB2tY=;
+ b=GL+syQhyl5lBA7zibcOISH1hyQRJ6i/2rGxl0+TgX9QweupKQwfnVVE0uF2fZY/2ul6r
+ icH5V18LIWj5SH+dkl5UYuEN0/dP4SGsnzhn/gko6sZPV9j60el+hjeV9MOEWHSvraXs
+ +onBjlUKtVnrZ1TCo18vk+lXFyUCdQ3k2qk= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: Julian Anastasov <ja@ssi.bg>
-Cc: "horms@verge.net.au" <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, kernel-team <Kernel-team@fb.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: horms@verge.net.au
+Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, agartrell@fb.com, kernel-team@fb.com
 
-Thank you for the review!
+If we don't do this and we have hardware checksumming enabled, we'll simply
+never actually checksum NF_INET_LOCAL_OUT tcp packets.  This is due to the
+fact that the partially checksummed packet is plucked on it's way out of
+the system and thrown through the ipvs machinery.  While the expectation
+was that the NIC would be able to checksum the packet as it was, once we
+place the packet into an ipip packet, the NIC can no longer fulfill that
+expectation.  Thus, we send out random garbage, which is dropped by the
+real server.
 
-> 
-> 	Hello,
-> 
-> On Tue, 22 Jul 2014, Alex Gartrell wrote:
-> 
-> > The combination of NF_INET_LOCAL_OUT and hardware checksum offload
-> > results in picking the packet out of the send path before it gets
-> > proper checksums. Our NICs (most NICs?) cannot do the checksumming
-> > in ipip packets, so these faulty tcp/udp headers arrive at their
-> > destination and are discarded.
-> > 
-> > Instead, checksum the tcp/udp packets in the tunnel transmit path.
-> > Right now we do this for all packets, but a subsequent patch will
-> > limit this to the NF_INET_LOCAL_OUT hook.
-> 
-> 	After the support for hardware-offloaded encapsulation
-> went in we may lack some support, like playing with
-> skb->encapsulation, etc. I'm not sure calculating the checksums in all
-> cases (ip_summed) is the right thing to do.
-> 
-> 	For DR and TUN we tried to avoid checking and
-> calculating checksum because we do not mangle the payload.
-> But CHECKSUM_PARTIAL in ip_summed is a special case.
-> We call skb_forward_csum() from ip_vs_tunnel_xmit_prepare
-> but may be it is not enough. Such interesting case is
-> local TCP client (CHECKSUM_PARTIAL) forwarded via TUN.
+skb_checksum_help does the right things insofar as checking to see if the
+checksum is only partial and then completing the checksum if it is, so we
+can blindly call it on every packet and let it figure things out.
 
-Yes, it appears that skb_checksum_help was the magic function I was hoping
-for.  I'll put up a new patch that invokes this function, as it seems to
-fix the problem by itself (and by checking the ip_summed field, it .
+There's no reason to keep ip_send check either.
 
-> 	Can you give more information, eg. what
-> value you see in ip_summed, leading to these problems?
-> And whether packet to IPVS comes from local stack or
-> from remote client. Is TCP/UDP checksum offload running?
-> 
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+---
+ net/netfilter/ipvs/ip_vs_xmit.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-Three tests:
-* From a remote server: CHECKSUM_UNNECESSARY
-* From the local server with hardware checksum offload enabled:
-  CHECKSUM_PARTIAL
-* From the local server with hardware checksum offload disabled:
-  CHECKSUM_PARTIAL
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 6f70bdd..9c68089 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -862,10 +862,12 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		old_iph = ip_hdr(skb);
+ 	}
+ 
+-	skb->transport_header = skb->network_header;
++	/* We are about to encapsulate the ip header, which breaks hardware
++	 * checksum offload.  Let's call skb_checksum_help to finish up any
++	 * partial checksums */
++	skb_checksum_help(skb);
+ 
+-	/* fix old IP header checksum */
+-	ip_send_check(old_iph);
++	skb->transport_header = skb->network_header;
+ 
+ 	skb_push(skb, sizeof(struct iphdr));
+ 	skb_reset_network_header(skb);
+@@ -953,6 +955,11 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		old_iph = ipv6_hdr(skb);
+ 	}
+ 
++	/* We are about to encapsulate the ip header, which breaks hardware
++	 * checksum offload.  Let's call skb_checksum_help to finish up any
++	 * partial checksums */
++	skb_checksum_help(skb);
++
+ 	skb->transport_header = skb->network_header;
+ 
+ 	skb_push(skb, sizeof(struct ipv6hdr));
+-- 
+1.8.1
 
-I was mildly surprised by the last one.  In general I think that ip_summed
-is a better way to figure out whether or not we should checksum though.
-
-
-
-In any event, given that the skb_checksum_helper function is way more
-likely to "just work," I'll put out a patch that adds this invocation
-instead.
-
-
-Thanks,
-Alex
