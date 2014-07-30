@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs 2/7] ipvs: Supply destination addr family to ip_vs_{lookup_dest,find_dest}
-Date: Tue, 29 Jul 2014 21:10:50 -0700
-Message-ID: <1406693455-915-3-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs 7/7] ipvs: support ipv4 in ipv6 and ipv6 in ipv4 tunnel forwarding
+Date: Tue, 29 Jul 2014 21:10:55 -0700
+Message-ID: <1406693455-915-8-git-send-email-agartrell@fb.com>
 References: <1406693455-915-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=IEOzJWHiPQSkTaD/mdPrVvwajEMmzAwpbP8YeniGKFE=;
- b=eMzkY0BVV8d0THkmTccsPd/jPuvHTNZln47BFQdwuIWVzzhQjhY7tzguRZdLPYQq7Kpo
- hH2PK+i8Jn8pYbNkVW12UhV7OigrMdWc2NNhtBtgEtwFshO1Y2JY2+AQc3EhXQOJNnpM
- G87pLhE19Ug2ZkCY3EacWWOT2u7yNpL2IvI= 
+ content-type; s=facebook; bh=gPunhzAGV9HizxQwcrXIaJalvddZNVd4NDX2MeGJiZc=;
+ b=m1AyJzFsYnQSlk1/djOPi/eDVwgB7asDtXoJPZPPUUgOWN6fD48NJWE5pjhLhCAcz5SF
+ kTNE7J0kL6y9KnIFFtrXqHLDCQUcVqmJBFAYTXpacUaAxP3DBUfU055CFNIjxsFyWO7k
+ n+HMe5NtN/b9ApYk4BM1+M2+/qTwldpUqE4= 
 In-Reply-To: <1406693455-915-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,161 +19,248 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, agartrell@fb.com, kernel-team@fb.com
 
-We need to remove the assumption that virtual address family is the same as
-real address family in order to support heterogeneous services (that is,
-services with v4 vips and v6 backends or the opposite).
+Pull the common logic for preparing an skb to prepend the header into a
+single function and then set fields such that they can be used in either
+case (generalize tos and tclass to dscp, hop_limit and ttl to ttl, etc)
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- include/net/ip_vs.h             |  5 +++--
- net/netfilter/ipvs/ip_vs_conn.c |  7 ++++++-
- net/netfilter/ipvs/ip_vs_ctl.c  | 24 ++++++++++++------------
- net/netfilter/ipvs/ip_vs_sync.c |  9 +++++++--
- 4 files changed, 28 insertions(+), 17 deletions(-)
+ net/netfilter/ipvs/ip_vs_conn.c |  12 +++-
+ net/netfilter/ipvs/ip_vs_xmit.c | 135 ++++++++++++++++++++++++++--------------
+ 2 files changed, 100 insertions(+), 47 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b7e2b62..2fa1155 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1399,8 +1399,9 @@ void ip_vs_unregister_nl_ioctl(void);
- int ip_vs_control_init(void);
- void ip_vs_control_cleanup(void);
- struct ip_vs_dest *
--ip_vs_find_dest(struct net *net, int af, const union nf_inet_addr *daddr,
--		__be16 dport, const union nf_inet_addr *vaddr, __be16 vport,
-+ip_vs_find_dest(struct net *net, int svc_af, int dest_af,
-+		const union nf_inet_addr *daddr, __be16 dport,
-+		const union nf_inet_addr *vaddr, __be16 vport,
- 		__u16 protocol, __u32 fwmark, __u32 flags);
- void ip_vs_try_bind_dest(struct ip_vs_conn *cp);
- 
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 610e19c..2a59564 100644
+index 22c72da..86ecb14 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -616,7 +616,12 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- 	struct ip_vs_dest *dest;
+@@ -488,7 +488,12 @@ static inline void ip_vs_bind_xmit(struct ip_vs_conn *cp)
+ 		break;
  
- 	rcu_read_lock();
--	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, &cp->daddr,
-+
-+	/* This function is only invoked by the synchronization code. We do
-+	 * not currently support heterogeneous pools with synchronization,
-+	 * so we can make the assumption that the svc_af is the same as the
-+	 * dest_af */
-+	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, cp->af, &cp->daddr,
- 			       cp->dport, &cp->vaddr, cp->vport,
- 			       cp->protocol, cp->fwmark, cp->flags);
- 	if (dest) {
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 63a6c2e..72d8add 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -574,8 +574,8 @@ bool ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
-  * Called under RCU lock.
-  */
- static struct ip_vs_dest *
--ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
--		  __be16 dport)
-+ip_vs_lookup_dest(struct ip_vs_service *svc, int dest_af,
-+		  const union nf_inet_addr *daddr, __be16 dport)
- {
- 	struct ip_vs_dest *dest;
+ 	case IP_VS_CONN_F_TUNNEL:
+-		cp->packet_xmit = ip_vs_tunnel_xmit;
++#ifdef CONFIG_IP_VS_IPV6
++		if (cp->dest->af == AF_INET6)
++			cp->packet_xmit = ip_vs_tunnel_xmit_v6;
++		else
++#endif
++			cp->packet_xmit = ip_vs_tunnel_xmit;
+ 		break;
  
-@@ -583,8 +583,8 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
- 	 * Find the destination for the given service
- 	 */
- 	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
--		if ((dest->af == svc->af)
--		    && ip_vs_addr_equal(svc->af, &dest->addr, daddr)
-+		if ((dest->af == dest_af)
-+		    && ip_vs_addr_equal(dest_af, &dest->addr, daddr)
- 		    && (dest->port == dport)) {
- 			/* HIT */
- 			return dest;
-@@ -602,7 +602,7 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
-  * on the backup.
-  * Called under RCU lock, no refcnt is returned.
-  */
--struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
-+struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int svc_af, int dest_af,
- 				   const union nf_inet_addr *daddr,
- 				   __be16 dport,
- 				   const union nf_inet_addr *vaddr,
-@@ -613,14 +613,14 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
- 	struct ip_vs_service *svc;
- 	__be16 port = dport;
+ 	case IP_VS_CONN_F_DROUTE:
+@@ -514,7 +519,10 @@ static inline void ip_vs_bind_xmit_v6(struct ip_vs_conn *cp)
+ 		break;
  
--	svc = ip_vs_service_find(net, af, fwmark, protocol, vaddr, vport);
-+	svc = ip_vs_service_find(net, svc_af, fwmark, protocol, vaddr, vport);
- 	if (!svc)
- 		return NULL;
- 	if (fwmark && (flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ)
- 		port = 0;
--	dest = ip_vs_lookup_dest(svc, daddr, port);
-+	dest = ip_vs_lookup_dest(svc, dest_af, daddr, port);
- 	if (!dest)
--		dest = ip_vs_lookup_dest(svc, daddr, port ^ dport);
-+		dest = ip_vs_lookup_dest(svc, dest_af, daddr, port ^ dport);
- 	return dest;
+ 	case IP_VS_CONN_F_TUNNEL:
+-		cp->packet_xmit = ip_vs_tunnel_xmit_v6;
++		if (cp->dest->af == AF_INET6)
++			cp->packet_xmit = ip_vs_tunnel_xmit_v6;
++		else
++			cp->packet_xmit = ip_vs_tunnel_xmit;
+ 		break;
+ 
+ 	case IP_VS_CONN_F_DROUTE:
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 9c68089..2c5097f 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -790,6 +790,66 @@ tx_error:
  }
+ #endif
  
-@@ -816,7 +816,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	dest->u_threshold = udest->u_threshold;
- 	dest->l_threshold = udest->l_threshold;
++/* When forwarding a packet, we must ensure that we've got enough headroom
++ * for the encapsulation packet in the skb.  This also gives us an
++ * opportunity to figure out what the payload_len, dsfield, ttl, and df
++ * values should be, so that we won't need to look at the old ip header
++ * again */
++static struct sk_buff *
++ip_vs_prepare_tunneled_skb(struct sk_buff *skb, unsigned int max_headroom,
++			   __u8 *next_protocol, __u32 *payload_len, __u8 *dsfield,
++			   __u8 *ttl, __be16 *df)
++{
++	struct sk_buff *out_skb = NULL;
++	__u8 version = ip_hdr(skb)->version;
++	struct iphdr *old_iph = NULL;
++#ifdef CONFIG_IP_VS_IPV6
++	struct ipv6hdr *old_ipv6h = NULL;
++#endif
++
++	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
++		out_skb = skb_realloc_headroom(skb, max_headroom);
++		if (!out_skb)
++			return NULL;
++		consume_skb(skb);
++	} else
++		out_skb = skb;
++
++#ifdef CONFIG_IP_VS_IPV6
++	if (version == 6) {
++		old_ipv6h = ipv6_hdr(skb);
++		*next_protocol = IPPROTO_IPV6;
++		if (payload_len)
++			*payload_len =
++				ntohs(old_ipv6h->payload_len) + sizeof(*old_ipv6h);
++		*dsfield = ipv6_get_dsfield(old_ipv6h);
++		*ttl = old_ipv6h->hop_limit;
++		if (df)
++			*df = 0;
++	} else
++#endif
++	{
++		old_iph = ip_hdr(out_skb);
++		/* Copy DF, reset fragment offset and MF */
++		if (df)
++			*df = (old_iph->frag_off & htons(IP_DF));
++		*next_protocol = IPPROTO_IPIP;
++
++		/* fix old IP header checksum */
++		ip_send_check(old_iph);
++		*dsfield = ipv4_get_dsfield(old_iph);
++		*ttl = old_iph->ttl;
++		if (payload_len)
++			*payload_len = ntohs(old_iph->tot_len);
++	}
++
++	/* We are about to encapsulate the ip header, which breaks hardware
++	 * checksum offload.  Let's call skb_checksum_help to finish up any
++	 * partial checksums */
++	skb_checksum_help(skb);
++
++	return out_skb;
++}
  
--	dest->af = udest.af;
-+	dest->af = udest->af;
+ /*
+  *   IP Tunneling transmitter
+@@ -818,11 +878,14 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	struct rtable *rt;			/* Route to the other host */
+ 	__be32 saddr;				/* Source for tunnel */
+ 	struct net_device *tdev;		/* Device to other host */
+-	struct iphdr  *old_iph = ip_hdr(skb);
+-	u8     tos = old_iph->tos;
+-	__be16 df;
++	__u8 next_protocol = 0;
++	__u8 dsfield = 0;
++	__u8 ttl = 0;
++	__be16 df = 0;
++	__be16 *dfp = NULL;
+ 	struct iphdr  *iph;			/* Our new IP header */
+ 	unsigned int max_headroom;		/* The extra header space needed */
++	struct sk_buff *out_skb = NULL;
+ 	int ret, local;
  
- 	spin_lock_bh(&dest->dst_lock);
- 	__ip_vs_dst_cache_reset(dest);
-@@ -938,7 +938,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 	EnterFunction(10);
+@@ -843,29 +906,18 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	rt = skb_rtable(skb);
+ 	tdev = rt->dst.dev;
  
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
--	dest = ip_vs_lookup_dest(svc, &daddr, dport);
-+	dest = ip_vs_lookup_dest(svc, udest->af, &daddr, dport);
- 	rcu_read_unlock();
+-	/* Copy DF, reset fragment offset and MF */
+-	df = sysctl_pmtu_disc(ipvs) ? old_iph->frag_off & htons(IP_DF) : 0;
+-
+ 	/*
+ 	 * Okay, now see if we can stuff it in the buffer as-is.
+ 	 */
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
  
- 	if (dest != NULL) {
-@@ -1002,7 +1002,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+-	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+-		struct sk_buff *new_skb =
+-			skb_realloc_headroom(skb, max_headroom);
+-
+-		if (!new_skb)
+-			goto tx_error;
+-		consume_skb(skb);
+-		skb = new_skb;
+-		old_iph = ip_hdr(skb);
+-	}
+-
+-	/* We are about to encapsulate the ip header, which breaks hardware
+-	 * checksum offload.  Let's call skb_checksum_help to finish up any
+-	 * partial checksums */
+-	skb_checksum_help(skb);
++	/* We only care about the df field is sysctl_pmtu_disc(ipvs) is set */
++	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
++	out_skb = ip_vs_prepare_tunneled_skb(skb, max_headroom, &next_protocol,
++					     NULL, &dsfield, &ttl, dfp);
++	if (!out_skb)
++		goto tx_error;
++	skb = out_skb;
  
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
--	dest = ip_vs_lookup_dest(svc, &daddr, dport);
-+	dest = ip_vs_lookup_dest(svc, udest->af, &daddr, dport);
- 	rcu_read_unlock();
+ 	skb->transport_header = skb->network_header;
  
- 	if (dest == NULL) {
-@@ -1084,7 +1084,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+@@ -880,11 +932,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	iph->version		=	4;
+ 	iph->ihl		=	sizeof(struct iphdr)>>2;
+ 	iph->frag_off		=	df;
+-	iph->protocol		=	IPPROTO_IPIP;
+-	iph->tos		=	tos;
++	iph->protocol		=	next_protocol;
++	iph->tos		=	dsfield;
+ 	iph->daddr		=	cp->daddr.ip;
+ 	iph->saddr		=	saddr;
+-	iph->ttl		=	old_iph->ttl;
++	iph->ttl		=	ttl;
+ 	ip_select_ident(skb, NULL);
  
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
--	dest = ip_vs_lookup_dest(svc, &udest->addr, dport);
-+	dest = ip_vs_lookup_dest(svc, udest->af, &udest->addr, dport);
- 	rcu_read_unlock();
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+@@ -916,9 +968,13 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	struct rt6_info *rt;		/* Route to the other host */
+ 	struct in6_addr saddr;		/* Source for tunnel */
+ 	struct net_device *tdev;	/* Device to other host */
+-	struct ipv6hdr  *old_iph = ipv6_hdr(skb);
++	__u8 next_protocol = 0;
++	__u32 payload_len = 0;
++	__u8 dsfield = 0;
++	__u8 ttl = 0;
+ 	struct ipv6hdr  *iph;		/* Our new IP header */
+ 	unsigned int max_headroom;	/* The extra header space needed */
++	struct sk_buff *out_skb = NULL;
+ 	int ret, local;
  
- 	if (dest == NULL) {
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index db80126..392f687 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -880,8 +880,13 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 		 * but still handled.
- 		 */
- 		rcu_read_lock();
--		dest = ip_vs_find_dest(net, type, daddr, dport, param->vaddr,
--				       param->vport, protocol, fwmark, flags);
-+		/* This function is only invoked by the synchronization
-+		 * code. We do not currently support heterogeneous pools
-+		 * with synchronization, so we can make the assumption that
-+		 * the svc_af is the same as the dest_af */
-+		dest = ip_vs_find_dest(net, type, type, daddr, dport,
-+				       param->vaddr, param->vport, protocol,
-+				       fwmark, flags);
+ 	EnterFunction(10);
+@@ -944,21 +1000,11 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	 */
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
  
- 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
- 		rcu_read_unlock();
+-	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+-		struct sk_buff *new_skb =
+-			skb_realloc_headroom(skb, max_headroom);
+-
+-		if (!new_skb)
+-			goto tx_error;
+-		consume_skb(skb);
+-		skb = new_skb;
+-		old_iph = ipv6_hdr(skb);
+-	}
+-
+-	/* We are about to encapsulate the ip header, which breaks hardware
+-	 * checksum offload.  Let's call skb_checksum_help to finish up any
+-	 * partial checksums */
+-	skb_checksum_help(skb);
++	out_skb = ip_vs_prepare_tunneled_skb(skb, max_headroom, &next_protocol,
++					     &payload_len, &dsfield, &ttl, NULL);
++	if (!out_skb)
++		goto tx_error;
++	skb = out_skb;
+ 
+ 	skb->transport_header = skb->network_header;
+ 
+@@ -971,14 +1017,13 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	 */
+ 	iph			=	ipv6_hdr(skb);
+ 	iph->version		=	6;
+-	iph->nexthdr		=	IPPROTO_IPV6;
+-	iph->payload_len	=	old_iph->payload_len;
+-	be16_add_cpu(&iph->payload_len, sizeof(*old_iph));
++	iph->nexthdr		=	next_protocol;
++	iph->payload_len	=	ntohs(payload_len);
+ 	memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
+-	ipv6_change_dsfield(iph, 0, ipv6_get_dsfield(old_iph));
++	ipv6_change_dsfield(iph, 0, dsfield);
+ 	iph->daddr = cp->daddr.in6;
+ 	iph->saddr = saddr;
+-	iph->hop_limit		=	old_iph->hop_limit;
++	iph->hop_limit		=	ttl;
+ 
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->ignore_df = 1;
 -- 
 1.8.1
 
