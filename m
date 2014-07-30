@@ -1,17 +1,15 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs 4/7] ipvs: Supply destination address family to ip_vs_conn_new
-Date: Tue, 29 Jul 2014 21:10:52 -0700
-Message-ID: <1406693455-915-5-git-send-email-agartrell@fb.com>
-References: <1406693455-915-1-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs 0/7] Support v6 real servers in v4 pools and vice versa
+Date: Tue, 29 Jul 2014 21:10:48 -0700
+Message-ID: <1406693455-915-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=BvZrrWDJEBUlwrXwAIK6JAigg4+Y7uUpWisMbfCLTRc=;
- b=OCBOl21yCcsOGxNabvWlWLf26AR/PSbBnR3GdONINpsOPK1o8J+PzeF8cJu0H2B/rQc+
- srU0P3ZOFiH10ByxwZeendMkZ686la+L5n7IPytnlQ8i/TMDhNgD92SFG3rH2VmcAXO/
- lL8cTd2Sk/pnGY6yUO/R3D2LVzzVAdsECUM= 
-In-Reply-To: <1406693455-915-1-git-send-email-agartrell@fb.com>
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=rTnCDXRxy6OfpKPg+ylnDPxA6NSElTSzLfrsY8zV8I0=;
+ b=dlb1ZMSkHECz9sCWtXgFwpGrZLQdTy3j+B5mZzQxWPBTY/JV5CEOQluMTNkBbbricBVU
+ dAlU1t2/vJOIkx01dRP8QGfyfXXMBm3GnvZ3yHn93/ta6W8nUwGFJai3m8l3XvXlxLNh
+ gH62Hs97KU0Pnj0Iq5pS2d3iKnghF6Gg99M= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -19,112 +17,41 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, agartrell@fb.com, kernel-team@fb.com
 
-The assumption that dest af is equal to service af is now unreliable, so we
-must specify it manually so as not to copy just the first 4 bytes of a v6
-address or doing an illegal read of 16 butes on a v6 address.
+At Facebook we use ipip forwarding to deliver packets from our layer 4 ipvs
+load balancers to our layer 7 proxies.  Today these layer 7 proxies are all
+dual stacked, so we can simply send v4 over v4 and v6 over v6.  In the
+future, we're going to have v6-only layer 7 load balancers (no internal v4
+address).  To deal with this, we'll forward v4 packets in v6 tunnels.  This
+patchset introduces the necessary functionality into ipvs.
 
-We "lie" in two places: for synchronization (which we will explicitly
-disallow from happening when we have heterogeneous pools) and for black
-hole addresses where there's no real dest.
+The noteworthy limitation of this is that it is not compatible with state
+synchronization, so great care is taken to keep these things mutually
+exclusive.
 
-Signed-off-by: Alex Gartrell <agartrell@fb.com>
----
- include/net/ip_vs.h             | 2 +-
- net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
- net/netfilter/ipvs/ip_vs_core.c | 9 +++++----
- net/netfilter/ipvs/ip_vs_sync.c | 3 ++-
- 4 files changed, 10 insertions(+), 8 deletions(-)
+This patchset includes changes that add an additional netlink attribute to
+destinations and changes that plumb the destination address family through
+parts of the code where it was assumed that it was the same as the service.
+Finally, there's a change that updates the transmit functions for tunneling
+to share common code and support v4 in v6 and vice versa.
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 2fa1155..72698b1 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1213,7 +1213,7 @@ static inline void __ip_vs_conn_put(struct ip_vs_conn *cp)
- void ip_vs_conn_put(struct ip_vs_conn *cp);
- void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport);
- 
--struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p,
-+struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
- 				  const union nf_inet_addr *daddr,
- 				  __be16 dport, unsigned int flags,
- 				  struct ip_vs_dest *dest, __u32 fwmark);
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 2a59564..22c72da 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -853,7 +853,7 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp)
-  *	Create a new connection entry and hash it into the ip_vs_conn_tab
-  */
- struct ip_vs_conn *
--ip_vs_conn_new(const struct ip_vs_conn_param *p,
-+ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
- 	       const union nf_inet_addr *daddr, __be16 dport, unsigned int flags,
- 	       struct ip_vs_dest *dest, __u32 fwmark)
- {
-@@ -879,7 +879,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
- 	ip_vs_addr_set(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
- 		       &cp->vaddr, p->vaddr);
- 	cp->vport	   = p->vport;
--	ip_vs_addr_set(p->af, &cp->daddr, daddr);
-+	ip_vs_addr_set(dest_af, &cp->daddr, daddr);
- 	cp->dport          = dport;
- 	cp->flags	   = flags;
- 	cp->fwmark         = fwmark;
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index e683675..0cf952a 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -328,7 +328,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 		 * This adds param.pe_data to the template,
- 		 * and thus param.pe_data will be destroyed
- 		 * when the template expires */
--		ct = ip_vs_conn_new(&param, &dest->addr, dport,
-+		ct = ip_vs_conn_new(&param, dest->af, &dest->addr, dport,
- 				    IP_VS_CONN_F_TEMPLATE, dest, skb->mark);
- 		if (ct == NULL) {
- 			kfree(param.pe_data);
-@@ -357,7 +357,8 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol, &iph->saddr,
- 			      src_port, &iph->daddr, dst_port, &param);
- 
--	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest, skb->mark);
-+	cp = ip_vs_conn_new(&param, dest->af, &dest->addr, dport, flags, dest,
-+			    skb->mark);
- 	if (cp == NULL) {
- 		ip_vs_conn_put(ct);
- 		*ignored = -1;
-@@ -479,7 +480,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 		ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
- 				      &iph->saddr, pptr[0], &iph->daddr,
- 				      pptr[1], &p);
--		cp = ip_vs_conn_new(&p, &dest->addr,
-+		cp = ip_vs_conn_new(&p, dest->af, &dest->addr,
- 				    dest->port ? dest->port : pptr[1],
- 				    flags, dest, skb->mark);
- 		if (!cp) {
-@@ -550,7 +551,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 			ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
- 					      &iph->saddr, pptr[0],
- 					      &iph->daddr, pptr[1], &p);
--			cp = ip_vs_conn_new(&p, &daddr, 0,
-+			cp = ip_vs_conn_new(&p, svc->af, &daddr, 0,
- 					    IP_VS_CONN_F_BYPASS | flags,
- 					    NULL, skb->mark);
- 			if (!cp)
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 392f687..9b1c936 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -888,7 +888,8 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 				       param->vaddr, param->vport, protocol,
- 				       fwmark, flags);
- 
--		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
-+		cp = ip_vs_conn_new(param, type, daddr, dport, flags, dest,
-+				    fwmark);
- 		rcu_read_unlock();
- 		if (!cp) {
- 			if (param->pe_data)
+Alex Gartrell (7):
+  ipvs: Add destination address family to netlink interface
+  ipvs: Supply destination addr family to ip_vs_{lookup_dest,find_dest}
+  ipvs: Pass destination address family to ip_vs_trash_get_dest
+  ipvs: Supply destination address family to ip_vs_conn_new
+  ipvs: maintain a mixed_address_family_dest count
+  ipvs: prevent mixing heterogeneous pools and synchronization
+  ipvs: support ipv4 in ipv6 and ipv6 in ipv4 tunnel forwarding
+
+ include/net/ip_vs.h             |  14 ++++-
+ include/uapi/linux/ip_vs.h      |   3 +
+ net/netfilter/ipvs/ip_vs_conn.c |  23 +++++--
+ net/netfilter/ipvs/ip_vs_core.c |   9 +--
+ net/netfilter/ipvs/ip_vs_ctl.c  | 109 +++++++++++++++++++++++++-------
+ net/netfilter/ipvs/ip_vs_sync.c |  14 +++--
+ net/netfilter/ipvs/ip_vs_xmit.c | 135 ++++++++++++++++++++++++++--------------
+ 7 files changed, 222 insertions(+), 85 deletions(-)
+
 -- 
 1.8.1
 
