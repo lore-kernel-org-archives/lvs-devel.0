@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs 1/7] ipvs: Add destination address family to netlink interface
-Date: Tue, 29 Jul 2014 21:10:49 -0700
-Message-ID: <1406693455-915-2-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs 5/7] ipvs: maintain a mixed_address_family_dest count
+Date: Tue, 29 Jul 2014 21:10:53 -0700
+Message-ID: <1406693455-915-6-git-send-email-agartrell@fb.com>
 References: <1406693455-915-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=omXQ0ZEB+iWYaMIBu5pqjPzWMYcP3r3KRyRUGPGMkLU=;
- b=VWjdCGY7qhl9dnGr3lV45Lm29wZpOAtpKRMgyAWAyekKE5F+sqOBEZ8hKJmxZhpZJZKe
- h262Tp0xeb9G+aklnlpl48B8TKLQCI7mvy6nGfZuRTTiSrdGHgcgjEsQ14CRGNT/9jiO
- y9u5Va7XUxjyWnTJx9VENjAZAqx8Sojn0+Q= 
+ content-type; s=facebook; bh=BOdH2ndjyyW02vPRk0se3sxAEr+c1cznLtkDVHRNeXA=;
+ b=rPAdmBh4rTiOpxjGv6hdCxmxT3o5sI5NEeZW8BNiIJNOZ98UkEGKxpvfyXFLHV0cssXg
+ SKsSxlmMQpacjgz83n1XQ+iQQ37Wmg0iVLLp62u1SZdH1EMEwsA5rBXalaMjiHvboSa+
+ o0dVsIdVleLopRRbGOky2JeCc5Xtc+/Bfdw= 
 In-Reply-To: <1406693455-915-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,185 +19,101 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, agartrell@fb.com, kernel-team@fb.com
 
-This is necessary to support heterogeneous pools.  For example, if you have
-an ipv6 addressed network, you'll want to be able to forward ipv4 traffic
-into it.
-
-This patch enforces that destination address family is the same as service
-family, as none of the forwarding mechanisms support anything else.
-
-For the old setsockopt mechanism, we simply set the dest address family to
-AF_INET as we do with the service.
+This is necessary to validate that we're not accidentally enabling
+heterogeneous pool incompatible features like syncing.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- include/net/ip_vs.h            |  3 +++
- include/uapi/linux/ip_vs.h     |  3 +++
- net/netfilter/ipvs/ip_vs_ctl.c | 37 ++++++++++++++++++++++++++++++-------
- 3 files changed, 36 insertions(+), 7 deletions(-)
+ include/net/ip_vs.h            |  4 ++++
+ net/netfilter/ipvs/ip_vs_ctl.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 46 insertions(+)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 624a8a5..b7e2b62 100644
+index 72698b1..69d8722 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -648,6 +648,9 @@ struct ip_vs_dest_user_kern {
- 	/* thresholds for active connections */
- 	u32			u_threshold;	/* upper threshold */
- 	u32			l_threshold;	/* lower threshold */
-+
-+	/* Address family of addr */
-+	u16			af;
+@@ -989,6 +989,10 @@ struct netns_ipvs {
+ 	char			backup_mcast_ifn[IP_VS_IFNAME_MAXLEN];
+ 	/* net name space ptr */
+ 	struct net		*net;            /* Needed by timer routines */
++	/* Number of heterogeneous destinations, needed because
++	 * heterogeneous are not supported when synchronization is
++	 * enabled */
++	unsigned int 		mixed_address_family_dests;
  };
  
- 
-diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-index fbcffe8..cabe95d 100644
---- a/include/uapi/linux/ip_vs.h
-+++ b/include/uapi/linux/ip_vs.h
-@@ -384,6 +384,9 @@ enum {
- 	IPVS_DEST_ATTR_PERSIST_CONNS,	/* persistent connections */
- 
- 	IPVS_DEST_ATTR_STATS,		/* nested attribute for dest stats */
-+
-+	IPVS_DEST_ATTR_ADDR_FAMILY,	/* Address family of address */
-+
- 	__IPVS_DEST_ATTR_MAX,
- };
- 
+ #define DEFAULT_SYNC_THRESHOLD	3
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 581a658..63a6c2e 100644
+index 6702cf8..1c0621b 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -816,6 +816,8 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	dest->u_threshold = udest->u_threshold;
- 	dest->l_threshold = udest->l_threshold;
- 
-+	dest->af = udest.af;
+@@ -778,6 +778,21 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+ 	struct ip_vs_service *old_svc;
+ 	struct ip_vs_scheduler *sched;
+ 	int conn_flags;
++	u16 old_af, new_af;
 +
- 	spin_lock_bh(&dest->dst_lock);
- 	__ip_vs_dst_cache_reset(dest);
- 	spin_unlock_bh(&dest->dst_lock);
-@@ -846,8 +848,12 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
++	new_af = udest->af;
++	old_af = dest->af;
++
++	/* If we're adding a new dest or changing from the old one and the
++	 * af has changed */
++	if ((add || new_af != old_af) && new_af != svc->af) {
++		ipvs->mixed_address_family_dests++;
++	}
++	/* If we're editing an old dest, the af's have changed, and the af
++	 * is now the same as the service */
++	else if (!add && new_af != old_af && new_af == svc->af) {
++		ipvs->mixed_address_family_dests--;
++	}
  
- 	EnterFunction(2);
+ 	/* set the weight and the flags */
+ 	atomic_set(&dest->weight, udest->weight);
+@@ -1061,6 +1076,9 @@ static void __ip_vs_unlink_dest(struct ip_vs_service *svc,
+ 	list_del_rcu(&dest->n_list);
+ 	svc->num_dests--;
  
-+	/* Temporary for consistency */
-+	if (udest->af != svc->af)
++	if (dest->af != svc->af)
++		net_ipvs(svc->net)->mixed_address_family_dests--;
++
+ 	if (svcupd) {
+ 		struct ip_vs_scheduler *sched;
+ 
+@@ -3336,6 +3354,11 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
+ 	      attrs[IPVS_DAEMON_ATTR_SYNC_ID]))
+ 		return -EINVAL;
+ 
++	/* The synchronization protocol is incompatible with mixed family
++	 * services */
++	if (net_ipvs(net)->mixed_address_family_dests > 0)
 +		return -EINVAL;
 +
- #ifdef CONFIG_IP_VS_IPV6
--	if (svc->af == AF_INET6) {
-+	if (udest->af == AF_INET6) {
- 		atype = ipv6_addr_type(&udest->addr.in6);
- 		if ((!(atype & IPV6_ADDR_UNICAST) ||
- 			atype & IPV6_ADDR_LINKLOCAL) &&
-@@ -875,12 +881,12 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- 		u64_stats_init(&ip_vs_dest_stats->syncp);
- 	}
- 
--	dest->af = svc->af;
-+	dest->af = udest->af;
- 	dest->protocol = svc->protocol;
- 	dest->vaddr = svc->addr;
- 	dest->vport = svc->port;
- 	dest->vfwmark = svc->fwmark;
--	ip_vs_addr_copy(svc->af, &dest->addr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &dest->addr, &udest->addr);
- 	dest->port = udest->port;
- 
- 	atomic_set(&dest->activeconns, 0);
-@@ -928,7 +934,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 		return -ERANGE;
- 	}
- 
--	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &daddr, &udest->addr);
- 
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
-@@ -949,7 +955,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 	if (dest != NULL) {
- 		IP_VS_DBG_BUF(3, "Get destination %s:%u from trash, "
- 			      "dest->refcnt=%d, service %u/%s:%u\n",
--			      IP_VS_DBG_ADDR(svc->af, &daddr), ntohs(dport),
-+			      IP_VS_DBG_ADDR(udest->af, &daddr), ntohs(dport),
- 			      atomic_read(&dest->refcnt),
- 			      dest->vfwmark,
- 			      IP_VS_DBG_ADDR(svc->af, &dest->vaddr),
-@@ -992,7 +998,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 		return -ERANGE;
- 	}
- 
--	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &daddr, &udest->addr);
- 
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
-@@ -2318,6 +2324,7 @@ static void ip_vs_copy_udest_compat(struct ip_vs_dest_user_kern *udest,
- 	udest->weight		= udest_compat->weight;
- 	udest->u_threshold	= udest_compat->u_threshold;
- 	udest->l_threshold	= udest_compat->l_threshold;
-+	udest->af		= AF_INET;
- }
- 
- static int
-@@ -2863,6 +2870,7 @@ static const struct nla_policy ip_vs_dest_policy[IPVS_DEST_ATTR_MAX + 1] = {
- 	[IPVS_DEST_ATTR_INACT_CONNS]	= { .type = NLA_U32 },
- 	[IPVS_DEST_ATTR_PERSIST_CONNS]	= { .type = NLA_U32 },
- 	[IPVS_DEST_ATTR_STATS]		= { .type = NLA_NESTED },
-+	[IPVS_DEST_ATTR_ADDR_FAMILY]	= { .type = NLA_U16 },
- };
- 
- static int ip_vs_genl_fill_stats(struct sk_buff *skb, int container_type,
-@@ -3118,7 +3126,8 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_INACT_CONNS,
- 			atomic_read(&dest->inactconns)) ||
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_PERSIST_CONNS,
--			atomic_read(&dest->persistconns)))
-+			atomic_read(&dest->persistconns)) ||
-+	    nla_put_u16(skb, IPVS_DEST_ATTR_ADDR_FAMILY, dest->af))
- 		goto nla_put_failure;
- 	if (ip_vs_genl_fill_stats(skb, IPVS_DEST_ATTR_STATS, &dest->stats))
- 		goto nla_put_failure;
-@@ -3199,6 +3208,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- {
- 	struct nlattr *attrs[IPVS_DEST_ATTR_MAX + 1];
- 	struct nlattr *nla_addr, *nla_port;
-+	struct nlattr *nla_addr_family;
- 
- 	/* Parse mandatory identifying destination fields first */
- 	if (nla == NULL ||
-@@ -3207,6 +3217,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- 
- 	nla_addr	= attrs[IPVS_DEST_ATTR_ADDR];
- 	nla_port	= attrs[IPVS_DEST_ATTR_PORT];
-+	nla_addr_family	= attrs[IPVS_DEST_ATTR_ADDR_FAMILY];
- 
- 	if (!(nla_addr && nla_port))
- 		return -EINVAL;
-@@ -3216,6 +3227,11 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- 	nla_memcpy(&udest->addr, nla_addr, sizeof(udest->addr));
- 	udest->port = nla_get_be16(nla_port);
- 
-+	if (nla_addr_family)
-+		udest->af = nla_get_u16(nla_addr_family);
-+	else
-+		udest->af = 0;
+ 	return start_sync_thread(net,
+ 				 nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]),
+ 				 nla_data(attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
+@@ -3466,6 +3489,25 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 		 * this will have the same address family as the service. */
+ 		if (udest.af == 0)
+ 			udest.af = svc->af;
 +
- 	/* If a full entry was requested, check for the additional fields */
- 	if (full_entry) {
- 		struct nlattr *nla_fwd, *nla_weight, *nla_u_thresh,
-@@ -3443,6 +3459,13 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 					    need_full_dest);
- 		if (ret)
- 			goto out;
++		if (udest.af != svc->af) {
++			/* The synchronization protocol is incompatible
++			 * with mixed family services */
++			if (net_ipvs(net)->sync_state) {
++				ret = -EINVAL;
++				goto out;
++			}
 +
-+		/* Old protocols did not allow the user to specify address family,
-+		 * so we set it to zero instead.  We also didn't allow
-+		 * heterogeneous pools in the old code, so it's safe to assume that
-+		 * this will have the same address family as the service. */
-+		if (udest.af == 0)
-+			udest.af = svc->af;
++			/* Which connection types do we support? */
++			switch (udest.conn_flags) {
++			case IP_VS_CONN_F_TUNNEL:
++				/* We are able to forward this */
++				break;
++			default:
++				ret = -EINVAL;
++				goto out;
++			}
++		}
  	}
  
  	switch (cmd) {
