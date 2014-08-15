@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v2 04/18] ipvs: prevent mixing heterogeneous pools and synchronization
-Date: Thu, 14 Aug 2014 20:23:27 -0700
-Message-ID: <1408073021-24007-5-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v2 18/18] ipvs: use correct address family in WLC logs
+Date: Thu, 14 Aug 2014 20:23:41 -0700
+Message-ID: <1408073021-24007-19-git-send-email-agartrell@fb.com>
 References: <1408073021-24007-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=BtAGa5nTOrvLnJc2B1/faaIKMmFhya67kaCUS/pfXLU=;
- b=J9IogFKvm3iUXRUXBpWw8AUrym41lnzF1w41PCtfQZcILnFhj52WsFVL8lPvkVIaSDne
- /1FxbW8SxsfnEzdDgOzc/9l0oXWhZOJqQCKJJu1qCplKlKDERLQcAIBXBIMaeu1P17CU
- ZSqS47YU0uwFQYvbpfWN1QwiiWPYSRK/eKA= 
+ content-type; s=facebook; bh=iNtjgo5kwJA1j6vr+OuwzBwifEmTkU69BtDbAmkAFpI=;
+ b=UN6+HyBLre588oxpmBUMxf1e2ImiaP56b/KtiDFbXx6Q4hT2GYS93kcHDDc6TQQsp0/Q
+ rogx2kQpOt8ZuYRnUdM3+1bSKRqcFs0UTmzz2F0IqdaYWj1u46H3sjEhzogR10cCaigv
+ idJcQ90cKWHmAo+jvq7XOrMZ1jDnuVTnq8s= 
 In-Reply-To: <1408073021-24007-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,72 +19,30 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-The synchronization protocol is not compatible with heterogeneous pools, so
-we need to verify that we're not turning both on at the same time.
+From: Julian Anastasov <ja@ssi.bg>
 
-This also introduces a switch statement that we'll use to turn on
-forwarding types on a case by case basis.
+Needed to support svc->af != dest->af.
 
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 30 ++++++++++++++++++++++++++----
- 1 file changed, 26 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_wlc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 2356f1d..6d07a51 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -858,10 +858,6 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
+diff --git a/net/netfilter/ipvs/ip_vs_wlc.c b/net/netfilter/ipvs/ip_vs_wlc.c
+index b5b4650..6b366fd 100644
+--- a/net/netfilter/ipvs/ip_vs_wlc.c
++++ b/net/netfilter/ipvs/ip_vs_wlc.c
+@@ -80,7 +80,8 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
  
- 	EnterFunction(2);
- 
--	/* Temporary for consistency */
--	if (udest->af != svc->af)
--		return -EINVAL;
--
- #ifdef CONFIG_IP_VS_IPV6
- 	if (udest->af == AF_INET6) {
- 		atype = ipv6_addr_type(&udest->addr.in6);
-@@ -3355,6 +3351,12 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
- 	      attrs[IPVS_DAEMON_ATTR_SYNC_ID]))
- 		return -EINVAL;
- 
-+	/* The synchronization protocol is incompatible with mixed family
-+	 * services
-+	 */
-+	if (net_ipvs(net)->mixed_address_family_dests > 0)
-+		return -EINVAL;
-+
- 	return start_sync_thread(net,
- 				 nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]),
- 				 nla_data(attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
-@@ -3487,6 +3489,26 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 		 */
- 		if (udest.af == 0)
- 			udest.af = svc->af;
-+
-+		if (udest.af != svc->af) {
-+			/* The synchronization protocol is incompatible
-+			 * with mixed family services
-+			 */
-+			if (net_ipvs(net)->sync_state) {
-+				ret = -EINVAL;
-+				goto out;
-+			}
-+
-+			/* Which connection types do we support? */
-+			switch (udest.conn_flags) {
-+			case IP_VS_CONN_F_TUNNEL:
-+				/* We are able to forward this */
-+				break;
-+			default:
-+				ret = -EINVAL;
-+				goto out;
-+			}
-+		}
- 	}
- 
- 	switch (cmd) {
+ 	IP_VS_DBG_BUF(6, "WLC: server %s:%u "
+ 		      "activeconns %d refcnt %d weight %d overhead %d\n",
+-		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
++		      IP_VS_DBG_ADDR(least->af, &least->addr),
++		      ntohs(least->port),
+ 		      atomic_read(&least->activeconns),
+ 		      atomic_read(&least->refcnt),
+ 		      atomic_read(&least->weight), loh);
 -- 
 1.8.1
 
