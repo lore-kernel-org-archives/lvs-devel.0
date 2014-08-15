@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v2 02/18] ipvs: Supply destination address family to ip_vs_conn_new
-Date: Thu, 14 Aug 2014 20:23:25 -0700
-Message-ID: <1408073021-24007-3-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v2 05/18] ipvs: Supply skb_af to out_rt* functions
+Date: Thu, 14 Aug 2014 20:23:28 -0700
+Message-ID: <1408073021-24007-6-git-send-email-agartrell@fb.com>
 References: <1408073021-24007-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=mvTHQATogcgTYPnSd8msgPQoKii+fyAR2JAm+sdqQPQ=;
- b=Yfs6biWoQuVZywHdtQx1ub2yxSr8lPiuYHDSonJ0QXimEyMTq9Xd/AcYl9O/XcyvMxbu
- zhDaKzgtUUtpyyqvKD0Pj9ojrbN0ie69PdJm82igsGM6/6KdH0oWNrm0NxxDMhIlFP5x
- fFISzBbfQWNhxMgdXsdnUE49cFrsyjc8tUI= 
+ content-type; s=facebook; bh=tZO7e79lPcswDKkhc9BTSeAgYFsuuX32yBvWwefBqOY=;
+ b=ADbgucRc6GZ0f1v3oRfqRXE3uLKTy4ynhWYELD6FU5mhEym9F7Nl7kWskqyEyaC4k9uf
+ ZZvUCKc5tquBit+X/SPKbgfd9JHpOBZ+Z77m6KKGvXDNNjLGwKlm0HxWX7Ox4kKO6A/h
+ M9XmpsMp3r16SN80scg+JptEhAOwwGcdQ78= 
 In-Reply-To: <1408073021-24007-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,153 +19,141 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-The assumption that dest af is equal to service af is now unreliable, so we
-must specify it manually so as not to copy just the first 4 bytes of a v6
-address or doing an illegal read of 16 butes on a v6 address.
+The out_rt functions inspect the skb's to ensure that we aren't breaking
+any rules by crossing local/external boundaries.  Right now, they assume
+that the address family of the skb packets is the same as they are, but
+that assumption will no longer be true.
 
-We "lie" in two places: for synchronization (which we will explicitly
-disallow from happening when we have heterogeneous pools) and for black
-hole addresses where there's no real dest.
+This patch introduces an additional parameter to the out route functions so
+that we can make more intelligent decisions based upon the actual skb
+address family later.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- include/net/ip_vs.h             | 3 ++-
- net/netfilter/ipvs/ip_vs_conn.c | 5 +++--
- net/netfilter/ipvs/ip_vs_core.c | 9 +++++----
- net/netfilter/ipvs/ip_vs_ftp.c  | 6 ++++--
- net/netfilter/ipvs/ip_vs_sync.c | 3 ++-
- 5 files changed, 16 insertions(+), 10 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 33 +++++++++++++++++----------------
+ 1 file changed, 17 insertions(+), 16 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 2fa1155..7600dbe 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -535,6 +535,7 @@ struct ip_vs_conn {
- 	union nf_inet_addr      daddr;          /* destination address */
- 	volatile __u32          flags;          /* status flags */
- 	__u16                   protocol;       /* Which protocol (TCP/UDP) */
-+	__u16			daf;		/* Address family of the dest */
- #ifdef CONFIG_NET_NS
- 	struct net              *net;           /* Name space */
- #endif
-@@ -1213,7 +1214,7 @@ static inline void __ip_vs_conn_put(struct ip_vs_conn *cp)
- void ip_vs_conn_put(struct ip_vs_conn *cp);
- void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 56896a4..94c7466 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -159,7 +159,7 @@ retry:
  
--struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p,
-+struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
- 				  const union nf_inet_addr *daddr,
- 				  __be16 dport, unsigned int flags,
- 				  struct ip_vs_dest *dest, __u32 fwmark);
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 8f4c602..fdb4880 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -854,7 +854,7 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp)
-  *	Create a new connection entry and hash it into the ip_vs_conn_tab
-  */
- struct ip_vs_conn *
--ip_vs_conn_new(const struct ip_vs_conn_param *p,
-+ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
- 	       const union nf_inet_addr *daddr, __be16 dport, unsigned int flags,
- 	       struct ip_vs_dest *dest, __u32 fwmark)
+ /* Get route to destination or remote server */
+ static int
+-__ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
++__ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		   __be32 daddr, int rt_mode, __be32 *ret_saddr)
  {
-@@ -873,6 +873,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
- 	setup_timer(&cp->timer, ip_vs_conn_expire, (unsigned long)cp);
- 	ip_vs_conn_net_set(cp, p->net);
- 	cp->af		   = p->af;
-+	cp->daf		   = dest_af;
- 	cp->protocol	   = p->protocol;
- 	ip_vs_addr_set(p->af, &cp->caddr, p->caddr);
- 	cp->cport	   = p->cport;
-@@ -880,7 +881,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
- 	ip_vs_addr_set(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
- 		       &cp->vaddr, p->vaddr);
- 	cp->vport	   = p->vport;
--	ip_vs_addr_set(p->af, &cp->daddr, daddr);
-+	ip_vs_addr_set(cp->daf, &cp->daddr, daddr);
- 	cp->dport          = dport;
- 	cp->flags	   = flags;
- 	cp->fwmark         = fwmark;
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index e683675..0cf952a 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -328,7 +328,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 		 * This adds param.pe_data to the template,
- 		 * and thus param.pe_data will be destroyed
- 		 * when the template expires */
--		ct = ip_vs_conn_new(&param, &dest->addr, dport,
-+		ct = ip_vs_conn_new(&param, dest->af, &dest->addr, dport,
- 				    IP_VS_CONN_F_TEMPLATE, dest, skb->mark);
- 		if (ct == NULL) {
- 			kfree(param.pe_data);
-@@ -357,7 +357,8 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol, &iph->saddr,
- 			      src_port, &iph->daddr, dst_port, &param);
+ 	struct net *net = dev_net(skb_dst(skb)->dev);
+@@ -339,7 +339,7 @@ out_err:
+  * Get route to destination or remote server
+  */
+ static int
+-__ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
++__ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		      struct in6_addr *daddr, struct in6_addr *ret_saddr,
+ 		      struct ip_vs_iphdr *ipvsh, int do_xfrm, int rt_mode)
+ {
+@@ -556,8 +556,8 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
  
--	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest, skb->mark);
-+	cp = ip_vs_conn_new(&param, dest->af, &dest->addr, dport, flags, dest,
-+			    skb->mark);
- 	if (cp == NULL) {
- 		ip_vs_conn_put(ct);
- 		*ignored = -1;
-@@ -479,7 +480,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 		ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
- 				      &iph->saddr, pptr[0], &iph->daddr,
- 				      pptr[1], &p);
--		cp = ip_vs_conn_new(&p, &dest->addr,
-+		cp = ip_vs_conn_new(&p, dest->af, &dest->addr,
- 				    dest->port ? dest->port : pptr[1],
- 				    flags, dest, skb->mark);
- 		if (!cp) {
-@@ -550,7 +551,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 			ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
- 					      &iph->saddr, pptr[0],
- 					      &iph->daddr, pptr[1], &p);
--			cp = ip_vs_conn_new(&p, &daddr, 0,
-+			cp = ip_vs_conn_new(&p, svc->af, &daddr, 0,
- 					    IP_VS_CONN_F_BYPASS | flags,
- 					    NULL, skb->mark);
- 			if (!cp)
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 77c1732..a64fa15 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -233,7 +233,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 			ip_vs_conn_fill_param(ip_vs_conn_net(cp),
- 					      AF_INET, IPPROTO_TCP, &cp->caddr,
- 					      0, &cp->vaddr, port, &p);
--			n_cp = ip_vs_conn_new(&p, &from, port,
-+			/* As above, this is ipv4 only */
-+			n_cp = ip_vs_conn_new(&p, AF_INET, &from, port,
- 					      IP_VS_CONN_F_NO_CPORT |
- 					      IP_VS_CONN_F_NFCT,
- 					      cp->dest, skb->mark);
-@@ -396,7 +397,8 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 				      htons(ntohs(cp->vport)-1), &p);
- 		n_cp = ip_vs_conn_in_get(&p);
- 		if (!n_cp) {
--			n_cp = ip_vs_conn_new(&p, &cp->daddr,
-+			/* This is ipv4 only */
-+			n_cp = ip_vs_conn_new(&p, AF_INET, &cp->daddr,
- 					      htons(ntohs(cp->dport)-1),
- 					      IP_VS_CONN_F_NFCT, cp->dest,
- 					      skb->mark);
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 61701ed..da7e0a2 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -889,7 +889,8 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 				       param->vaddr, param->vport, protocol,
- 				       fwmark, flags);
+ 	rcu_read_lock();
+-	if (__ip_vs_get_out_rt(skb, NULL, iph->daddr, IP_VS_RT_MODE_NON_LOCAL,
+-			       NULL) < 0)
++	if (__ip_vs_get_out_rt(cp->af, skb, NULL, iph->daddr,
++			       IP_VS_RT_MODE_NON_LOCAL, NULL) < 0)
+ 		goto tx_error;
  
--		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
-+		cp = ip_vs_conn_new(param, type, daddr, dport, flags, dest,
-+				    fwmark);
- 		rcu_read_unlock();
- 		if (!cp) {
- 			if (param->pe_data)
+ 	ip_send_check(iph);
+@@ -586,7 +586,7 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	if (__ip_vs_get_out_rt_v6(skb, NULL, &ipvsh->daddr.in6, NULL,
++	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &ipvsh->daddr.in6, NULL,
+ 				  ipvsh, 0, IP_VS_RT_MODE_NON_LOCAL) < 0)
+ 		goto tx_error;
+ 
+@@ -633,7 +633,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	}
+ 
+ 	was_input = rt_is_input_route(skb_rtable(skb));
+-	local = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_RDR, NULL);
+@@ -721,8 +721,8 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
+ 	}
+ 
+-	local = __ip_vs_get_out_rt_v6(skb, cp->dest, &cp->daddr.in6, NULL,
+-				      ipvsh, 0,
++	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++				      NULL, ipvsh, 0,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+ 				      IP_VS_RT_MODE_RDR);
+@@ -829,7 +829,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_CONNECT |
+@@ -928,7 +928,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(skb, cp->dest, &cp->daddr.in6,
++	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
+ 				      &saddr, ipvsh, 1,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+@@ -1021,7 +1021,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_KNOWN_NH, NULL);
+@@ -1060,8 +1060,8 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(skb, cp->dest, &cp->daddr.in6, NULL,
+-				      ipvsh, 0,
++	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++				      NULL, ipvsh, 0,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL);
+ 	if (local < 0)
+@@ -1128,7 +1128,8 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip, rt_mode, NULL);
++	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
++				   NULL);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	rt = skb_rtable(skb);
+@@ -1219,8 +1220,8 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(skb, cp->dest, &cp->daddr.in6, NULL,
+-				      ipvsh, 0, rt_mode);
++	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++				      NULL, ipvsh, 0, rt_mode);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	rt = (struct rt6_info *) skb_dst(skb);
 -- 
 1.8.1
 
