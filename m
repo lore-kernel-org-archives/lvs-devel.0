@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v2 11/18] ipvs: address family of LBLCR entry depends on svc family
-Date: Thu, 14 Aug 2014 20:23:34 -0700
-Message-ID: <1408073021-24007-12-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v2 16/18] ipvs: use correct address family in SED logs
+Date: Thu, 14 Aug 2014 20:23:39 -0700
+Message-ID: <1408073021-24007-17-git-send-email-agartrell@fb.com>
 References: <1408073021-24007-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=cVwzNXPUoE6XSoWspsTR6Yny/jFTR52bR0W03Fv6rR0=;
- b=Tu2UVf41guOfuUoFXbI03GDAXr9oZJ+xAejMuT2UESUvMHaHMJsorDnxKFVZHPO30jPR
- dK+0NpgrDECVgvrD57DupxhTKgcAAZbg9q8HXvWwBB+qDLkuEISGDxx+LC03rKH7dBja
- Stn2HRrzyx4JV3VaiuZNG1wIkdVqbguw/zY= 
+ content-type; s=facebook; bh=1mnIlqXcr6TZNyLu5MYKLd9/AOGPK4oQiZHF4PJBTQ4=;
+ b=IXhoXmpAd8RrsOkgHeuJ7HBCMl8Mxh5mmvNQ7oTkxmuLKF8dmAzkdj3W9iuBYQZJ/T2E
+ TUoXt+pfMVTk9bymbNXTdB0k6eHdrtXqGbxChvORyR/EYqSac7Ev6vkexmVkOXQZ72cf
+ vcR/+pvjpxYl6ufnlDXWqD/tzDuB2LkqsjA= 
 In-Reply-To: <1408073021-24007-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -21,58 +21,28 @@ Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <aga
 
 From: Julian Anastasov <ja@ssi.bg>
 
-The LBLCR entries should use svc->af, not dest->af.
 Needed to support svc->af != dest->af.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_lblcr.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ net/netfilter/ipvs/ip_vs_sed.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
-index 3f21a2f..2229d2d 100644
---- a/net/netfilter/ipvs/ip_vs_lblcr.c
-+++ b/net/netfilter/ipvs/ip_vs_lblcr.c
-@@ -362,18 +362,18 @@ ip_vs_lblcr_get(int af, struct ip_vs_lblcr_table *tbl,
-  */
- static inline struct ip_vs_lblcr_entry *
- ip_vs_lblcr_new(struct ip_vs_lblcr_table *tbl, const union nf_inet_addr *daddr,
--		struct ip_vs_dest *dest)
-+		u16 af, struct ip_vs_dest *dest)
- {
- 	struct ip_vs_lblcr_entry *en;
+diff --git a/net/netfilter/ipvs/ip_vs_sed.c b/net/netfilter/ipvs/ip_vs_sed.c
+index e446b9f..f8e2d00 100644
+--- a/net/netfilter/ipvs/ip_vs_sed.c
++++ b/net/netfilter/ipvs/ip_vs_sed.c
+@@ -108,7 +108,8 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
  
--	en = ip_vs_lblcr_get(dest->af, tbl, daddr);
-+	en = ip_vs_lblcr_get(af, tbl, daddr);
- 	if (!en) {
- 		en = kmalloc(sizeof(*en), GFP_ATOMIC);
- 		if (!en)
- 			return NULL;
- 
--		en->af = dest->af;
--		ip_vs_addr_copy(dest->af, &en->addr, daddr);
-+		en->af = af;
-+		ip_vs_addr_copy(af, &en->addr, daddr);
- 		en->lastuse = jiffies;
- 
- 		/* initialize its dest set */
-@@ -706,13 +706,13 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 	/* If we fail to create a cache entry, we'll just use the valid dest */
- 	spin_lock_bh(&svc->sched_lock);
- 	if (!tbl->dead)
--		ip_vs_lblcr_new(tbl, &iph->daddr, dest);
-+		ip_vs_lblcr_new(tbl, &iph->daddr, svc->af, dest);
- 	spin_unlock_bh(&svc->sched_lock);
- 
- out:
- 	IP_VS_DBG_BUF(6, "LBLCR: destination IP address %s --> server %s:%d\n",
- 		      IP_VS_DBG_ADDR(svc->af, &iph->daddr),
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
- 
- 	return dest;
- }
+ 	IP_VS_DBG_BUF(6, "SED: server %s:%u "
+ 		      "activeconns %d refcnt %d weight %d overhead %d\n",
+-		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
++		      IP_VS_DBG_ADDR(least->af, &least->addr),
++		      ntohs(least->port),
+ 		      atomic_read(&least->activeconns),
+ 		      atomic_read(&least->refcnt),
+ 		      atomic_read(&least->weight), loh);
 -- 
 1.8.1
 
