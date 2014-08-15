@@ -1,17 +1,15 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v2 08/18] ipvs: Only do ip_hdr operations in *out_rt when skb_af is AF_INET
-Date: Thu, 14 Aug 2014 20:23:31 -0700
-Message-ID: <1408073021-24007-9-git-send-email-agartrell@fb.com>
-References: <1408073021-24007-1-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v2 00/18] Support v6 real servers in v4 pools and vice versa
+Date: Thu, 14 Aug 2014 20:23:23 -0700
+Message-ID: <1408073021-24007-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=8FDx7gCKOzXD1rLhNXQL5bRo47A6TG1j7Un0GlRLZO0=;
- b=PmoFclb3h9l22t90HZdAG94jKINHmaAHD1QwsziQhYATVSNBsQ54mEIzJYxZNgZfw1tr
- oKNEL0BUXeRkoG2SBebgtAY4uArtb6KPZTEI5EKyFGxRe3FVC9H4solQpB1pZvw9cJEz
- SWR07noqLwkRoHZxHSReMTDwojiXfC0PIJY= 
-In-Reply-To: <1408073021-24007-1-git-send-email-agartrell@fb.com>
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=kcC7GL+q20Xj90Z7Eu0mXu9zgqq9WUvIAOSRlchgdRk=;
+ b=To6iKfD8HkrnTB70WYiGPFZ0qdDwkV7jPKTwLN0JWJ5Pa0uspy7kJNt3li7Srb7zVi5m
+ wEhkrZKPdABkysoOx9cyjGNnDm7/yqzaWtFQMVXuJjsguwfPaKe4+7F/pxtxEMImKuzO
+ revPVBUvxwDWMS/hZ8E8BkFuBRfQK6Vdj4E= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -19,63 +17,71 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-We can no longer count on always being able to access a v4 ip header, so
-just drop the local variable and use ip_hdr only when skb_af is AF_INET.
+At Facebook we use ipip forwarding to deliver packets from our layer 4 ipvs
+load balancers to our layer 7 proxies.  Today these layer 7 proxies are all
+dual stacked, so we can simply send v4 over v4 and v6 over v6.  In the
+future, we're going to have v6-only layer 7 load balancers (no internal v4
+address).  To deal with this, we'll forward v4 packets in v6 tunnels.  This
+patchset introduces the necessary functionality into ipvs.
 
-Signed-off-by: Alex Gartrell <agartrell@fb.com>
----
- net/netfilter/ipvs/ip_vs_xmit.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+The noteworthy limitation of this is that it is not compatible with state
+synchronization, so great care is taken to keep these things mutually
+exclusive.
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 193ad01..7990641 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -228,8 +228,7 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rtable *rt;			/* Route to the other host */
--	struct iphdr *iph;
--	__be16 df;
-+	__be16 df = 0;
- 	int mtu;
- 	int local, noref = 1;
- 
-@@ -284,7 +283,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 		IP_VS_DBG_RL("We are crossing local and non-local addresses\n");
- 		goto err_put;
- 	}
--	iph = ip_hdr(skb);
- 
- 	if (unlikely(local)) {
- 		/* skb to local stack, preserve old route */
-@@ -295,7 +293,8 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 
- 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL))) {
- 		mtu = dst_mtu(&rt->dst);
--		df = iph->frag_off & htons(IP_DF);
-+		if (skb_af == AF_INET)
-+			df = ip_hdr(skb)->frag_off & htons(IP_DF);
- 	} else {
- 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
- 		if (mtu < 68) {
-@@ -304,13 +303,14 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 		}
- 		maybe_update_pmtu(skb_af, skb, mtu);
- 		/* MTU check allowed? */
--		df = sysctl_pmtu_disc(ipvs) ? iph->frag_off & htons(IP_DF) : 0;
-+		if (skb_af == AF_INET && sysctl_pmtu_disc(ipvs))
-+			df = ip_hdr(skb)->frag_off & htons(IP_DF);
- 	}
- 
- 	/* MTU checking */
- 	if (unlikely(df && skb->len > mtu && !skb_is_gso(skb))) {
- 		icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED, htonl(mtu));
--		IP_VS_DBG(1, "frag needed for %pI4\n", &iph->saddr);
-+		IP_VS_DBG(1, "frag needed for %pI4\n", &ip_hdr(skb)->saddr);
- 		goto err_put;
- 	}
- 
+This patchset includes changes that add an additional netlink attribute to
+destinations and changes that plumb the destination address family through
+parts of the code where it was assumed that it was the same as the service.
+Finally, there's a change that updates the transmit functions for tunneling
+to share common code and support v4 in v6 and vice versa.
+
+Changes for v2:
+
+Introduced crosses_local_route_boundary and update_pmtu functions and
+conditionally do the ip_hdr operations.  The latter means that df will be
+effectively zero when we forward an ipv6 packet over an ipv4 tunnel.
+
+Additionally, I addressed Julian's other statements.
+
+Alex Gartrell (9):
+  ipvs: Pass destination address family to ip_vs_trash_get_dest
+  ipvs: Supply destination address family to ip_vs_conn_new
+  ipvs: maintain a mixed_address_family_dest count
+  ipvs: prevent mixing heterogeneous pools and synchronization
+  ipvs: Supply skb_af to out_rt* functions
+  ipvs: Pull out crosses_local_route_boundary logic
+  ipvs: Pull out update_pmtu code
+  ipvs: Only do ip_hdr operations in *out_rt when skb_af is AF_INET
+  ipvs: support ipv4 in ipv6 and ipv6 in ipv4 tunnel forwarding
+
+Julian Anastasov (9):
+  ipvs: address family of LBLC entry depends on svc family
+  ipvs: address family of LBLCR entry depends on svc family
+  ipvs: use correct address family in DH logs
+  ipvs: use correct address family in LC logs
+  ipvs: use correct address family in NQ logs
+  ipvs: use correct address family in RR logs
+  ipvs: use correct address family in SED logs
+  ipvs: use correct address family in SH logs
+  ipvs: use correct address family in WLC logs
+
+ include/net/ip_vs.h              |   7 +-
+ net/netfilter/ipvs/ip_vs_conn.c  |  17 +-
+ net/netfilter/ipvs/ip_vs_core.c  |   9 +-
+ net/netfilter/ipvs/ip_vs_ctl.c   |  55 +++++--
+ net/netfilter/ipvs/ip_vs_dh.c    |   2 +-
+ net/netfilter/ipvs/ip_vs_ftp.c   |   6 +-
+ net/netfilter/ipvs/ip_vs_lblc.c  |  12 +-
+ net/netfilter/ipvs/ip_vs_lblcr.c |  12 +-
+ net/netfilter/ipvs/ip_vs_lc.c    |   2 +-
+ net/netfilter/ipvs/ip_vs_nq.c    |   3 +-
+ net/netfilter/ipvs/ip_vs_rr.c    |   2 +-
+ net/netfilter/ipvs/ip_vs_sed.c   |   3 +-
+ net/netfilter/ipvs/ip_vs_sh.c    |   8 +-
+ net/netfilter/ipvs/ip_vs_sync.c  |   3 +-
+ net/netfilter/ipvs/ip_vs_wlc.c   |   3 +-
+ net/netfilter/ipvs/ip_vs_xmit.c  | 329 ++++++++++++++++++++++++---------------
+ 16 files changed, 304 insertions(+), 169 deletions(-)
+
 -- 
 1.8.1
 
