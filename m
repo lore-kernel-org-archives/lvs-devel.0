@@ -1,205 +1,136 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net-next] ipvs: reduce stack usage for sockopt data
-Date: Mon, 25 Aug 2014 10:16:08 +0900
-Message-ID: <20140825011608.GA31233@verge.net.au>
-References: <1406100646-4830-1-git-send-email-ja@ssi.bg>
+Subject: Re: [PATCH net] ipvs: properly declare tunnel encapsulation
+Date: Mon, 25 Aug 2014 10:18:52 +0900
+Message-ID: <20140825011852.GB31233@verge.net.au>
+References: <1406878577-4506-1-git-send-email-ja@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1406100646-4830-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1406878577-4506-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Dan Carpenter <dan.carpenter@oracle.com>, Andrey Utkin <andrey.krieger.utkin@gmail.com>, David Binderman <dcb314@hotmail.com>
+Cc: lvs-devel@vger.kernel.org, Alex Gartrell <agartrell@fb.com>, kernel-team <Kernel-team@fb.com>
 
-On Wed, Jul 23, 2014 at 10:30:46AM +0300, Julian Anastasov wrote:
-> Use macros and union to reserve the required stack space for
-> sockopt data. Now the tables for commands should be more safe
-> to extend. The checks added for readability are optimized by
-> compiler, others warn at compile time if command uses too much
-> stack or exceeds the storage of set_arglen and get_arglen.
+On Fri, Aug 01, 2014 at 10:36:17AM +0300, Julian Anastasov wrote:
+> The tunneling method should properly use tunnel encapsulation.
+> Fixes problem with CHECKSUM_PARTIAL packets when TCP/UDP csum
+> offload is supported.
 > 
-> As Dan Carpenter points out, we can run for unprivileged user,
-> so we can silent some error messages.
+> Thanks to Alex Gartrell for reporting the problem, providing
+> solution and for all suggestions.
+
+With this patch is Alex's patch "[PATCH ipvs] ipvs: invoke
+skb_checksum_help prior to encapsulation in tunnel xmit " also needed?
+
 > 
+> Reported-by: Alex Gartrell <agartrell@fb.com>
 > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> CC: Dan Carpenter <dan.carpenter@oracle.com>
-> CC: Andrey Utkin <andrey.krieger.utkin@gmail.com>
-> CC: David Binderman <dcb314@hotmail.com>
-
-Thanks, I have queued this up in the ipvs-next tree.
-
+> Signed-off-by: Alex Gartrell <agartrell@fb.com>
 > ---
->  net/netfilter/ipvs/ip_vs_ctl.c | 102 +++++++++++++++++++++++------------------
->  1 file changed, 57 insertions(+), 45 deletions(-)
+>  net/netfilter/ipvs/ip_vs_xmit.c | 20 ++++++++++++++++----
+>  1 file changed, 16 insertions(+), 4 deletions(-)
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index 581a658..9d6ed75 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -2266,28 +2266,34 @@ static int ip_vs_set_timeout(struct net *net, struct ip_vs_timeout_user *u)
->  }
->  
->  
-> -#define SET_CMDID(cmd)		(cmd - IP_VS_BASE_CTL)
-> -#define SERVICE_ARG_LEN		(sizeof(struct ip_vs_service_user))
-> -#define SVCDEST_ARG_LEN		(sizeof(struct ip_vs_service_user) +	\
-> -				 sizeof(struct ip_vs_dest_user))
-> -#define TIMEOUT_ARG_LEN		(sizeof(struct ip_vs_timeout_user))
-> -#define DAEMON_ARG_LEN		(sizeof(struct ip_vs_daemon_user))
-> -#define MAX_ARG_LEN		SVCDEST_ARG_LEN
-> +#define SET_CMDID(cmd)			(cmd - IP_VS_BASE_CTL)
-> +#define IP_VS_SET_CMDID(c, t)		[SET_CMDID(c)] = sizeof(t),
-> +#define IP_VS_SET_CMDID_LEN(c, t)	t field_ ## c;
-> +
-> +struct ip_vs_svcdest_user {
-> +	struct ip_vs_service_user	s;
-> +	struct ip_vs_dest_user		d;
-> +};
-> +
-> +#define IP_VS_SET_CMDID_TABLE(e)					\
-> +	e(IP_VS_SO_SET_ADD,		struct ip_vs_service_user)	\
-> +	e(IP_VS_SO_SET_EDIT,		struct ip_vs_service_user)	\
-> +	e(IP_VS_SO_SET_DEL,		struct ip_vs_service_user)	\
-> +	e(IP_VS_SO_SET_ADDDEST,		struct ip_vs_svcdest_user)	\
-> +	e(IP_VS_SO_SET_DELDEST,		struct ip_vs_svcdest_user)	\
-> +	e(IP_VS_SO_SET_EDITDEST,	struct ip_vs_svcdest_user)	\
-> +	e(IP_VS_SO_SET_TIMEOUT,		struct ip_vs_timeout_user)	\
-> +	e(IP_VS_SO_SET_STARTDAEMON,	struct ip_vs_daemon_user)	\
-> +	e(IP_VS_SO_SET_STOPDAEMON,	struct ip_vs_daemon_user)	\
-> +	e(IP_VS_SO_SET_ZERO,		struct ip_vs_service_user)
->  
->  static const unsigned char set_arglen[SET_CMDID(IP_VS_SO_SET_MAX)+1] = {
-> -	[SET_CMDID(IP_VS_SO_SET_ADD)]		= SERVICE_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_EDIT)]		= SERVICE_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_DEL)]		= SERVICE_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_FLUSH)]		= 0,
-> -	[SET_CMDID(IP_VS_SO_SET_ADDDEST)]	= SVCDEST_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_DELDEST)]	= SVCDEST_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_EDITDEST)]	= SVCDEST_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_TIMEOUT)]	= TIMEOUT_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_STARTDAEMON)]	= DAEMON_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_STOPDAEMON)]	= DAEMON_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_ZERO)]		= SERVICE_ARG_LEN,
-> +	IP_VS_SET_CMDID_TABLE(IP_VS_SET_CMDID)
->  };
->  
-> +union ip_vs_set_arglen { IP_VS_SET_CMDID_TABLE(IP_VS_SET_CMDID_LEN) };
-> +#define MAX_SET_ARGLEN	sizeof(union ip_vs_set_arglen)
-> +
->  static void ip_vs_copy_usvc_compat(struct ip_vs_service_user_kern *usvc,
->  				  struct ip_vs_service_user *usvc_compat)
->  {
-> @@ -2325,7 +2331,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
->  {
->  	struct net *net = sock_net(sk);
->  	int ret;
-> -	unsigned char arg[MAX_ARG_LEN];
-> +	unsigned char arg[MAX_SET_ARGLEN];
->  	struct ip_vs_service_user *usvc_compat;
->  	struct ip_vs_service_user_kern usvc;
->  	struct ip_vs_service *svc;
-> @@ -2333,16 +2339,15 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
->  	struct ip_vs_dest_user_kern udest;
->  	struct netns_ipvs *ipvs = net_ipvs(net);
->  
-> +	BUILD_BUG_ON(sizeof(arg) > 255);
->  	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
->  		return -EPERM;
->  
->  	if (cmd < IP_VS_BASE_CTL || cmd > IP_VS_SO_SET_MAX)
->  		return -EINVAL;
-> -	if (len < 0 || len >  MAX_ARG_LEN)
-> -		return -EINVAL;
->  	if (len != set_arglen[SET_CMDID(cmd)]) {
-> -		pr_err("set_ctl: len %u != %u\n",
-> -		       len, set_arglen[SET_CMDID(cmd)]);
-> +		IP_VS_DBG(1, "set_ctl: len %u != %u\n",
-> +			  len, set_arglen[SET_CMDID(cmd)]);
->  		return -EINVAL;
+> I'm not sure if TUN mode worked with HW csum enabled, one with
+> such hardware can check if the breakage happens after some kernel
+> version.
+> 
+> Here is what I found for skb->encapsulation and support in drivers
+> 
+> - GRO started to use CHECKSUM_PARTIAL for TCP long time ago
+> 
+> - the skb->encapsulation support is added in 3.8
+> 
+> - BNX2 started to use inner header depending on skb->encapsulation
+> in 3.10
+> 
+> - i40e appears in 3.12 and started to use inner header depending on
+> skb->encapsulation
+> 
+> - iptunnel_handle_offloads() is added in 3.13. This patch
+> uses this function.
+> 
+> - mlx4 started to use inner header depending on skb->encapsulation
+> in 3.14
+> 
+> - benet started to use inner header depending on skb->encapsulation
+> in 3.14
+> 
+> As result, I'm not sure that all devices support tunneled TCP/UDP,
+> I see some drivers supported csum offload (CHECKSUM_PARTIAL) only
+> if not tunneled. In the future if problem happens with csum
+> offload we should check if the driver has support for tunneled
+> TCP/UDP. Otherwise, user can disable the csum offload for device
+> or as alternative we can add sysctl var in IPVS to call
+> iptunnel_handle_offloads with csum_help = true.
+> 
+> For now I don't know which stable kernels wihout
+> iptunnel_handle_offloads() function may need some alternative fix.
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+> index 73ba1cc..5371654 100644
+> --- a/net/netfilter/ipvs/ip_vs_xmit.c
+> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
+> @@ -38,6 +38,7 @@
+>  #include <net/route.h>                  /* for ip_route_output */
+>  #include <net/ipv6.h>
+>  #include <net/ip6_route.h>
+> +#include <net/ip_tunnels.h>
+>  #include <net/addrconf.h>
+>  #include <linux/icmpv6.h>
+>  #include <linux/netfilter.h>
+> @@ -862,11 +863,15 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+>  		old_iph = ip_hdr(skb);
 >  	}
 >  
-> @@ -2606,49 +2611,56 @@ __ip_vs_get_timeouts(struct net *net, struct ip_vs_timeout_user *u)
->  }
->  
->  
-> -#define GET_CMDID(cmd)		(cmd - IP_VS_BASE_CTL)
-> -#define GET_INFO_ARG_LEN	(sizeof(struct ip_vs_getinfo))
-> -#define GET_SERVICES_ARG_LEN	(sizeof(struct ip_vs_get_services))
-> -#define GET_SERVICE_ARG_LEN	(sizeof(struct ip_vs_service_entry))
-> -#define GET_DESTS_ARG_LEN	(sizeof(struct ip_vs_get_dests))
-> -#define GET_TIMEOUT_ARG_LEN	(sizeof(struct ip_vs_timeout_user))
-> -#define GET_DAEMON_ARG_LEN	(sizeof(struct ip_vs_daemon_user) * 2)
-> +#define GET_CMDID(cmd)			(cmd - IP_VS_BASE_CTL)
-> +#define IP_VS_GET_CMDID(c, t)		[GET_CMDID(c)] = sizeof(t),
-> +#define IP_VS_GET_CMDID_LEN(c, t)	t field_ ## c;
-> +
-> +struct ip_vs_version_user {
-> +	char	v[64];
-> +};
-> +
-> +struct ip_vs_daemon_user2 {
-> +	struct ip_vs_daemon_user	d1, d2;
-> +};
-> +
-> +#define IP_VS_GET_CMDID_TABLE(e)					\
-> +	e(IP_VS_SO_GET_VERSION,		struct ip_vs_version_user)	\
-> +	e(IP_VS_SO_GET_INFO,		struct ip_vs_getinfo)		\
-> +	e(IP_VS_SO_GET_SERVICES,	struct ip_vs_get_services)	\
-> +	e(IP_VS_SO_GET_SERVICE,		struct ip_vs_service_entry)	\
-> +	e(IP_VS_SO_GET_DESTS,		struct ip_vs_get_dests)		\
-> +	e(IP_VS_SO_GET_TIMEOUT,		struct ip_vs_timeout_user)	\
-> +	e(IP_VS_SO_GET_DAEMON,		struct ip_vs_daemon_user2)
->  
->  static const unsigned char get_arglen[GET_CMDID(IP_VS_SO_GET_MAX)+1] = {
-> -	[GET_CMDID(IP_VS_SO_GET_VERSION)]	= 64,
-> -	[GET_CMDID(IP_VS_SO_GET_INFO)]		= GET_INFO_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_SERVICES)]	= GET_SERVICES_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_SERVICE)]	= GET_SERVICE_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_DESTS)]		= GET_DESTS_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_TIMEOUT)]	= GET_TIMEOUT_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_DAEMON)]	= GET_DAEMON_ARG_LEN,
-> +	IP_VS_GET_CMDID_TABLE(IP_VS_GET_CMDID)
->  };
->  
-> +union ip_vs_get_arglen { IP_VS_GET_CMDID_TABLE(IP_VS_GET_CMDID_LEN) };
-> +#define MAX_GET_ARGLEN	sizeof(union ip_vs_get_arglen)
-> +
->  static int
->  do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
->  {
-> -	unsigned char arg[128];
-> +	unsigned char arg[MAX_GET_ARGLEN];
->  	int ret = 0;
->  	unsigned int copylen;
->  	struct net *net = sock_net(sk);
->  	struct netns_ipvs *ipvs = net_ipvs(net);
->  
->  	BUG_ON(!net);
-> +	BUILD_BUG_ON(sizeof(arg) > 255);
->  	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
->  		return -EPERM;
->  
->  	if (cmd < IP_VS_BASE_CTL || cmd > IP_VS_SO_GET_MAX)
->  		return -EINVAL;
->  
-> -	if (*len < get_arglen[GET_CMDID(cmd)]) {
-> -		pr_err("get_ctl: len %u < %u\n",
-> -		       *len, get_arglen[GET_CMDID(cmd)]);
-> -		return -EINVAL;
-> -	}
+> -	skb->transport_header = skb->network_header;
 > -
->  	copylen = get_arglen[GET_CMDID(cmd)];
-> -	if (copylen > 128)
-> +	if (*len < (int) copylen || *len < 0) {
-> +		IP_VS_DBG(1, "get_ctl: len %d < %u\n", *len, copylen);
->  		return -EINVAL;
-> +	}
+>  	/* fix old IP header checksum */
+>  	ip_send_check(old_iph);
 >  
->  	if (copy_from_user(arg, user, copylen) != 0)
->  		return -EFAULT;
+> +	skb = iptunnel_handle_offloads(skb, false, SKB_GSO_IPIP);
+> +	if (IS_ERR(skb))
+> +		goto tx_error;
+> +
+> +	skb->transport_header = skb->network_header;
+> +
+>  	skb_push(skb, sizeof(struct iphdr));
+>  	skb_reset_network_header(skb);
+>  	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
+> @@ -900,7 +905,8 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+>  	return NF_STOLEN;
+>  
+>    tx_error:
+> -	kfree_skb(skb);
+> +	if (!IS_ERR(skb))
+> +		kfree_skb(skb);
+>  	rcu_read_unlock();
+>  	LeaveFunction(10);
+>  	return NF_STOLEN;
+> @@ -953,6 +959,11 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+>  		old_iph = ipv6_hdr(skb);
+>  	}
+>  
+> +	/* GSO: we need to provide proper SKB_GSO_ value for IPv6 */
+> +	skb = iptunnel_handle_offloads(skb, false, 0); /* SKB_GSO_SIT/IPV6 */
+> +	if (IS_ERR(skb))
+> +		goto tx_error;
+> +
+>  	skb->transport_header = skb->network_header;
+>  
+>  	skb_push(skb, sizeof(struct ipv6hdr));
+> @@ -988,7 +999,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+>  	return NF_STOLEN;
+>  
+>  tx_error:
+> -	kfree_skb(skb);
+> +	if (!IS_ERR(skb))
+> +		kfree_skb(skb);
+>  	rcu_read_unlock();
+>  	LeaveFunction(10);
+>  	return NF_STOLEN;
 > -- 
 > 1.9.0
 > 
