@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v3 18/20] ipvs: use correct address family in SH logs
-Date: Wed, 27 Aug 2014 22:43:52 -0700
-Message-ID: <1409204634-1123-19-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v3 11/20] ipvs: address family of LBLC entry depends on svc family
+Date: Wed, 27 Aug 2014 22:43:45 -0700
+Message-ID: <1409204634-1123-12-git-send-email-agartrell@fb.com>
 References: <1409204634-1123-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=mS9+bcZ+6nx86e0p1cS8kIIhA8kNCSEcFBSuxkoeqcw=;
- b=FxXuUShTE4iMOs92FIqilAw/5q5pDZ9yN+PUibmQLRdkugIntN8AWGsvUVNbZITeNGh2
- hYqtjQGuhvGXXxvAwpORU3/JeAEQxV3RVQEvHILrDoEJurUkLQoVs5+bFOVh/N+MioKl
- zECknzqj7yuqnykfbSbuVhljdXRQG5WJg9s= 
+ content-type; s=facebook; bh=28jNh8uC4B7E4EKsprdrvANZp6kXrXFQyKiSj21TYYg=;
+ b=nviKfQ+LDI0Hznr3UdpkF1l2LkYVT8NHmyb/lMiAeBIa36rxkXbwXl+ixsEtmORLx0dn
+ 276+voFiF77gBuCSa6h0Ll+uWW6ndVSSKPAgTTeobFKvfcskfuHsV1a0SzEpZkcVMcbg
+ vKfPL6Cg5u8aj6YZgT4y12Q0YUrfqKaNi28= 
 In-Reply-To: <1409204634-1123-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -21,54 +21,60 @@ Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <aga
 
 From: Julian Anastasov <ja@ssi.bg>
 
+The LBLC entries should use svc->af, not dest->af.
 Needed to support svc->af != dest->af.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_sh.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_lblc.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-index cc65b2f..98a1343 100644
---- a/net/netfilter/ipvs/ip_vs_sh.c
-+++ b/net/netfilter/ipvs/ip_vs_sh.c
-@@ -138,7 +138,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 		return dest;
+diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+index 547ff33..127f140 100644
+--- a/net/netfilter/ipvs/ip_vs_lblc.c
++++ b/net/netfilter/ipvs/ip_vs_lblc.c
+@@ -199,11 +199,11 @@ ip_vs_lblc_get(int af, struct ip_vs_lblc_table *tbl,
+  */
+ static inline struct ip_vs_lblc_entry *
+ ip_vs_lblc_new(struct ip_vs_lblc_table *tbl, const union nf_inet_addr *daddr,
+-	       struct ip_vs_dest *dest)
++	       u16 af, struct ip_vs_dest *dest)
+ {
+ 	struct ip_vs_lblc_entry *en;
  
- 	IP_VS_DBG_BUF(6, "SH: selected unavailable server %s:%d, reselecting",
+-	en = ip_vs_lblc_get(dest->af, tbl, daddr);
++	en = ip_vs_lblc_get(af, tbl, daddr);
+ 	if (en) {
+ 		if (en->dest == dest)
+ 			return en;
+@@ -213,8 +213,8 @@ ip_vs_lblc_new(struct ip_vs_lblc_table *tbl, const union nf_inet_addr *daddr,
+ 	if (!en)
+ 		return NULL;
+ 
+-	en->af = dest->af;
+-	ip_vs_addr_copy(dest->af, &en->addr, daddr);
++	en->af = af;
++	ip_vs_addr_copy(af, &en->addr, daddr);
+ 	en->lastuse = jiffies;
+ 
+ 	ip_vs_dest_hold(dest);
+@@ -521,13 +521,13 @@ ip_vs_lblc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	/* If we fail to create a cache entry, we'll just use the valid dest */
+ 	spin_lock_bh(&svc->sched_lock);
+ 	if (!tbl->dead)
+-		ip_vs_lblc_new(tbl, &iph->daddr, dest);
++		ip_vs_lblc_new(tbl, &iph->daddr, svc->af, dest);
+ 	spin_unlock_bh(&svc->sched_lock);
+ 
+ out:
+ 	IP_VS_DBG_BUF(6, "LBLC: destination IP address %s --> server %s:%d\n",
+ 		      IP_VS_DBG_ADDR(svc->af, &iph->daddr),
 -		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
 +		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
  
- 	/* if the original dest is unavailable, loop around the table
- 	 * starting from ihash to find a new dest
-@@ -153,7 +153,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 			return dest;
- 		IP_VS_DBG_BUF(6, "SH: selected unavailable "
- 			      "server %s:%d (offset %d), reselecting",
--			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 			      ntohs(dest->port), roffset);
- 	}
- 
-@@ -192,7 +192,7 @@ ip_vs_sh_reassign(struct ip_vs_sh_state *s, struct ip_vs_service *svc)
- 			RCU_INIT_POINTER(b->dest, dest);
- 
- 			IP_VS_DBG_BUF(6, "assigned i: %d dest: %s weight: %d\n",
--				      i, IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+				      i, IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 				      atomic_read(&dest->weight));
- 
- 			/* Don't move to next dest until filling weight */
-@@ -342,7 +342,7 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 
- 	IP_VS_DBG_BUF(6, "SH: source IP address %s --> server %s:%d\n",
- 		      IP_VS_DBG_ADDR(svc->af, &iph->saddr),
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 		      ntohs(dest->port));
- 
  	return dest;
+ }
 -- 
 1.8.1
 
