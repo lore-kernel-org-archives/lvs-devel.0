@@ -1,55 +1,48 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net] ipvs: fix ipv6 hook registration for local replies
-Date: Thu, 28 Aug 2014 10:55:34 +0900
-Message-ID: <20140828015534.GE5936@verge.net.au>
-References: <1408719221-8042-1-git-send-email-ja@ssi.bg>
-Mime-Version: 1.0
+Subject: [GIT PULL nf] Second round of IPVS fixes for v3.17
+Date: Thu, 28 Aug 2014 11:04:27 +0900
+Message-ID: <1409191468-28013-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1408719221-8042-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Chris J Arges <chris.j.arges@canonical.com>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Fri, Aug 22, 2014 at 05:53:41PM +0300, Julian Anastasov wrote:
-> commit fc604767613b6d2036cdc35b660bc39451040a47
-> ("ipvs: changes for local real server") from 2.6.37
-> introduced DNAT support to local real server but the
-> IPv6 LOCAL_OUT handler ip_vs_local_reply6() is
-> registered incorrectly as IPv4 hook causing any outgoing
-> IPv4 traffic to be dropped depending on the IP header values.
-> 
-> Chris tracked down the problem to CONFIG_IP_VS_IPV6=y
-> Bug report: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1349768
-> 
-> Reported-by: Chris J Arges <chris.j.arges@canonical.com>
-> Tested-by: Chris J Arges <chris.j.arges@canonical.com>
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Hi Pablo,
 
-Thanks, and sorry for the delay.
-I have queued this up in the ipvs tree as a fix for v3.17.
-I also plan to ask for it to be considered for -stable.
+please consider this fix IPVS fix for v3.17.
 
-> ---
->  net/netfilter/ipvs/ip_vs_core.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index e683675..5c34e8d 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1906,7 +1906,7 @@ static struct nf_hook_ops ip_vs_ops[] __read_mostly = {
->  	{
->  		.hook		= ip_vs_local_reply6,
->  		.owner		= THIS_MODULE,
-> -		.pf		= NFPROTO_IPV4,
-> +		.pf		= NFPROTO_IPV6,
->  		.hooknum	= NF_INET_LOCAL_OUT,
->  		.priority	= NF_IP6_PRI_NAT_DST + 1,
->  	},
-> -- 
-> 1.9.0
-> 
+This pull request is based on the first round of fixes for IPVS for v3.17,
+tagged as ipvs-fixes2-for-v3.17, which I sent yesterday.
+
+
+This fix resolves a problem with conflicting hooks whereby DNAT support for
+the local server would drop outgoing IPv4 packets if the kernel was
+compiled CONFIG_IP_VS_IPV6=y.
+
+This problem dates back to v3.6.37 when the feature in question was added.
+
+I would like this fix considered for -stable.
+
+
+The following changes since commit ea1d5d7755a3e556de78cc757d1895d5c7180548:
+
+  ipvs: properly declare tunnel encapsulation (2014-08-27 14:31:56 +0900)
+
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes2-for-v3.17
+
+for you to fetch changes up to eb90b0c734ad793d5f5bf230a9e9a4dcc48df8aa:
+
+  ipvs: fix ipv6 hook registration for local replies (2014-08-28 10:52:37 +0900)
+
+----------------------------------------------------------------
+Julian Anastasov (1):
+      ipvs: fix ipv6 hook registration for local replies
+
+ net/netfilter/ipvs/ip_vs_core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
