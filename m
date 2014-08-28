@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v3 11/20] ipvs: address family of LBLC entry depends on svc family
-Date: Wed, 27 Aug 2014 22:43:45 -0700
-Message-ID: <1409204634-1123-12-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v3 06/20] ipvs: prevent mixing heterogeneous pools and synchronization
+Date: Wed, 27 Aug 2014 22:43:40 -0700
+Message-ID: <1409204634-1123-7-git-send-email-agartrell@fb.com>
 References: <1409204634-1123-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=28jNh8uC4B7E4EKsprdrvANZp6kXrXFQyKiSj21TYYg=;
- b=nviKfQ+LDI0Hznr3UdpkF1l2LkYVT8NHmyb/lMiAeBIa36rxkXbwXl+ixsEtmORLx0dn
- 276+voFiF77gBuCSa6h0Ll+uWW6ndVSSKPAgTTeobFKvfcskfuHsV1a0SzEpZkcVMcbg
- vKfPL6Cg5u8aj6YZgT4y12Q0YUrfqKaNi28= 
+ content-type; s=facebook; bh=qq4VJvVv1zg04TvxyuS97nEF3Mcvdo4QjXdH6yjbGcM=;
+ b=mPLVqsXZ0zyAjpu9CsED8jO7YJIdd6w55aysjNI5KtawYwNuBO1qggsxorzSEEox6GpI
+ YFm1YOno4Yaw1nK1jsCgvpiOevTP0DHxSHzXETLGuAQDtzqAUUa2LXJCwSQINesT6xSS
+ rbH552gnPZO1AG/s0536GhEmijvkFrZX1L8= 
 In-Reply-To: <1409204634-1123-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,62 +19,31 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-From: Julian Anastasov <ja@ssi.bg>
+The synchronization protocol is not compatible with heterogeneous pools, so
+we need to verify that we're not turning both on at the same time.
 
-The LBLC entries should use svc->af, not dest->af.
-Needed to support svc->af != dest->af.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_lblc.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
-index 547ff33..127f140 100644
---- a/net/netfilter/ipvs/ip_vs_lblc.c
-+++ b/net/netfilter/ipvs/ip_vs_lblc.c
-@@ -199,11 +199,11 @@ ip_vs_lblc_get(int af, struct ip_vs_lblc_table *tbl,
-  */
- static inline struct ip_vs_lblc_entry *
- ip_vs_lblc_new(struct ip_vs_lblc_table *tbl, const union nf_inet_addr *daddr,
--	       struct ip_vs_dest *dest)
-+	       u16 af, struct ip_vs_dest *dest)
- {
- 	struct ip_vs_lblc_entry *en;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index beffb8f..c374ebb 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3351,6 +3351,12 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
+ 	      attrs[IPVS_DAEMON_ATTR_SYNC_ID]))
+ 		return -EINVAL;
  
--	en = ip_vs_lblc_get(dest->af, tbl, daddr);
-+	en = ip_vs_lblc_get(af, tbl, daddr);
- 	if (en) {
- 		if (en->dest == dest)
- 			return en;
-@@ -213,8 +213,8 @@ ip_vs_lblc_new(struct ip_vs_lblc_table *tbl, const union nf_inet_addr *daddr,
- 	if (!en)
- 		return NULL;
- 
--	en->af = dest->af;
--	ip_vs_addr_copy(dest->af, &en->addr, daddr);
-+	en->af = af;
-+	ip_vs_addr_copy(af, &en->addr, daddr);
- 	en->lastuse = jiffies;
- 
- 	ip_vs_dest_hold(dest);
-@@ -521,13 +521,13 @@ ip_vs_lblc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 	/* If we fail to create a cache entry, we'll just use the valid dest */
- 	spin_lock_bh(&svc->sched_lock);
- 	if (!tbl->dead)
--		ip_vs_lblc_new(tbl, &iph->daddr, dest);
-+		ip_vs_lblc_new(tbl, &iph->daddr, svc->af, dest);
- 	spin_unlock_bh(&svc->sched_lock);
- 
- out:
- 	IP_VS_DBG_BUF(6, "LBLC: destination IP address %s --> server %s:%d\n",
- 		      IP_VS_DBG_ADDR(svc->af, &iph->daddr),
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
- 
- 	return dest;
- }
++	/* The synchronization protocol is incompatible with mixed family
++	 * services
++	 */
++	if (net_ipvs(net)->mixed_address_family_dests > 0)
++		return -EINVAL;
++
+ 	return start_sync_thread(net,
+ 				 nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]),
+ 				 nla_data(attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
 -- 
 1.8.1
 
