@@ -1,48 +1,267 @@
-From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v3 17/20] ipvs: use correct address family in SED logs
-Date: Wed, 27 Aug 2014 22:43:51 -0700
-Message-ID: <1409204634-1123-18-git-send-email-agartrell@fb.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH ipvs,v3 00/20] Support v6 real servers in v4 pools and
+ vice versa
+Date: Thu, 28 Aug 2014 18:15:30 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1408281759150.1956@ja.home.ssi.bg>
 References: <1409204634-1123-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="-1463811672-890456840-1409238937=:1956"
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=1mnIlqXcr6TZNyLu5MYKLd9/AOGPK4oQiZHF4PJBTQ4=;
- b=ISTCTqvA3nVzZy5whMFSs1xphMTahqDB1vIQroDHHlj4SmMSQmqEW4HFKKI7apRh85VE
- Xwg49U7HM5sk2iPtMWF7Sp/rllyuo1TYHcvhxvyBQcwf7jRePdumMH+N09EZwi60rMMy
- jCQX+b/DdHVdwMSoLXibBUcbfFzXBW75ulg= 
 In-Reply-To: <1409204634-1123-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au
-Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
+To: Alex Gartrell <agartrell@fb.com>
+Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
 
-From: Julian Anastasov <ja@ssi.bg>
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Needed to support svc->af != dest->af.
+---1463811672-890456840-1409238937=:1956
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Alex Gartrell <agartrell@fb.com>
----
- net/netfilter/ipvs/ip_vs_sed.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sed.c b/net/netfilter/ipvs/ip_vs_sed.c
-index e446b9f..f8e2d00 100644
---- a/net/netfilter/ipvs/ip_vs_sed.c
-+++ b/net/netfilter/ipvs/ip_vs_sed.c
-@@ -108,7 +108,8 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 
- 	IP_VS_DBG_BUF(6, "SED: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d overhead %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      IP_VS_DBG_ADDR(least->af, &least->addr),
-+		      ntohs(least->port),
- 		      atomic_read(&least->activeconns),
- 		      atomic_read(&least->refcnt),
- 		      atomic_read(&least->weight), loh);
--- 
-1.8.1
+	Hello,
 
+On Wed, 27 Aug 2014, Alex Gartrell wrote:
+
+> At Facebook we use ipip forwarding to deliver packets from our layer 4 ipvs
+> load balancers to our layer 7 proxies.  Today these layer 7 proxies are all
+> dual stacked, so we can simply send v4 over v4 and v6 over v6.  In the
+> future, we're going to have v6-only layer 7 load balancers (no internal v4
+> address).  To deal with this, we'll forward v4 packets in v6 tunnels.  This
+> patchset introduces the necessary functionality into ipvs.
+> 
+> The noteworthy limitation of this is that it is not compatible with state
+> synchronization, so great care is taken to keep these things mutually
+> exclusive.
+> 
+> This patchset includes changes that add an additional netlink attribute to
+> destinations and changes that plumb the destination address family through
+> parts of the code where it was assumed that it was the same as the service.
+> Finally, there's a change that updates the transmit functions for tunneling
+> to share common code and support v4 in v6 and vice versa.
+> 
+> Changes for v2:
+> 
+> Introduced crosses_local_route_boundary and update_pmtu functions and
+> conditionally do the ip_hdr operations.  The latter means that df will be
+> effectively zero when we forward an ipv6 packet over an ipv4 tunnel.
+> 
+> Additionally, I addressed Julian's other statements.
+> 
+> Changes for v3:
+> 
+> added back the first two patches
+> checkpatch.pl all of the things
+> pull out the mtu changes
+> other previously detailed fixes
+
+	I think, we are almost at the final:
+
+Patch 5:
+	- we can mix patch 5 and 6?
+
+Patch 7:
+	- I guess addr_type var should be in the
+	'if (skb_af == AF_INET6) {' block. So, do not
+	forget to compile next time with CONFIG_IP_VS_IPV6=n
+
+Patch 9:
+	- for ensure_mtu_is_adequate():
+		- move 'struct netns_ipvs *ipvs' below, where ipvs is
+		assigned
+		- move 'struct net *net' below, where net is assigned
+
+Patch 10:
+	- 'is'->'if' in
+	/* We only care about the df field is sysctl_pmtu_disc(ipvs) is set */
+
+
+	After checking the cp->daddr usage I prepared
+a patch that we should insert somewhere before the last one.
+Attached. Later we have to wait
+"ipvs: properly declare tunnel encapsulation" to appear in net-next.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+---1463811672-890456840-1409238937=:1956
+Content-Type: TEXT/plain; name=0001-ipvs-use-the-new-dest-addr-family-field.txt
+Content-Transfer-Encoding: BASE64
+Content-ID: <alpine.LFD.2.11.1408281815300.1956@ja.home.ssi.bg>
+Content-Description: Use daf
+Content-Disposition: attachment; filename=0001-ipvs-use-the-new-dest-addr-family-field.txt
+
+RnJvbSBlYmZiZTVjZDdkYzkyOWEwM2VmMDc4ZDc2ZmE4NTkyMzEyNzNjMjJk
+IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogSnVsaWFuIEFuYXN0
+YXNvdiA8amFAc3NpLmJnPg0KRGF0ZTogVGh1LCAyOCBBdWcgMjAxNCAxNzo1
+MTowMyArMDMwMA0KU3ViamVjdDogW1BBVENIXSBpcHZzOiB1c2UgdGhlIG5l
+dyBkZXN0IGFkZHIgZmFtaWx5IGZpZWxkDQoNClVzZSB0aGUgbmV3IGFkZHJl
+c3MgZmFtaWx5IGZpZWxkIGNwLT5kYWYgd2hlbiBwcmludGluZw0KY3AtPmRh
+ZGRyIGluIGxvZ3Mgb3IgY29ubmVjdGlvbiBsaXN0aW5nLg0KDQpTaWduZWQt
+b2ZmLWJ5OiBKdWxpYW4gQW5hc3Rhc292IDxqYUBzc2kuYmc+DQotLS0NCiBu
+ZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfY29ubi5jICAgICAgIHwgNDYgKysr
+KysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0NCiBuZXQvbmV0Zmls
+dGVyL2lwdnMvaXBfdnNfY29yZS5jICAgICAgIHwgIDYgKystLS0NCiBuZXQv
+bmV0ZmlsdGVyL2lwdnMvaXBfdnNfcHJvdG9fc2N0cC5jIHwgIDIgKy0NCiBu
+ZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfcHJvdG9fdGNwLmMgIHwgIDIgKy0N
+CiA0IGZpbGVzIGNoYW5nZWQsIDQwIGluc2VydGlvbnMoKyksIDE2IGRlbGV0
+aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvbmV0L25ldGZpbHRlci9pcHZzL2lw
+X3ZzX2Nvbm4uYyBiL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb25uLmMN
+CmluZGV4IDEzZTljZWUuLjkwNjdjMWUgMTAwNjQ0DQotLS0gYS9uZXQvbmV0
+ZmlsdGVyL2lwdnMvaXBfdnNfY29ubi5jDQorKysgYi9uZXQvbmV0ZmlsdGVy
+L2lwdnMvaXBfdnNfY29ubi5jDQpAQCAtMjcsNiArMjcsNyBAQA0KIA0KICNp
+bmNsdWRlIDxsaW51eC9pbnRlcnJ1cHQuaD4NCiAjaW5jbHVkZSA8bGludXgv
+aW4uaD4NCisjaW5jbHVkZSA8bGludXgvaW5ldC5oPg0KICNpbmNsdWRlIDxs
+aW51eC9uZXQuaD4NCiAjaW5jbHVkZSA8bGludXgva2VybmVsLmg+DQogI2lu
+Y2x1ZGUgPGxpbnV4L21vZHVsZS5oPg0KQEAgLTU4OCw3ICs1ODksNyBAQCBp
+cF92c19iaW5kX2Rlc3Qoc3RydWN0IGlwX3ZzX2Nvbm4gKmNwLCBzdHJ1Y3Qg
+aXBfdnNfZGVzdCAqZGVzdCkNCiAJCSAgICAgIGlwX3ZzX3Byb3RvX25hbWUo
+Y3AtPnByb3RvY29sKSwNCiAJCSAgICAgIElQX1ZTX0RCR19BRERSKGNwLT5h
+ZiwgJmNwLT5jYWRkciksIG50b2hzKGNwLT5jcG9ydCksDQogCQkgICAgICBJ
+UF9WU19EQkdfQUREUihjcC0+YWYsICZjcC0+dmFkZHIpLCBudG9ocyhjcC0+
+dnBvcnQpLA0KLQkJICAgICAgSVBfVlNfREJHX0FERFIoY3AtPmFmLCAmY3At
+PmRhZGRyKSwgbnRvaHMoY3AtPmRwb3J0KSwNCisJCSAgICAgIElQX1ZTX0RC
+R19BRERSKGNwLT5kYWYsICZjcC0+ZGFkZHIpLCBudG9ocyhjcC0+ZHBvcnQp
+LA0KIAkJICAgICAgaXBfdnNfZndkX3RhZyhjcCksIGNwLT5zdGF0ZSwNCiAJ
+CSAgICAgIGNwLT5mbGFncywgYXRvbWljX3JlYWQoJmNwLT5yZWZjbnQpLA0K
+IAkJICAgICAgYXRvbWljX3JlYWQoJmRlc3QtPnJlZmNudCkpOw0KQEAgLTY4
+NSw3ICs2ODYsNyBAQCBzdGF0aWMgaW5saW5lIHZvaWQgaXBfdnNfdW5iaW5k
+X2Rlc3Qoc3RydWN0IGlwX3ZzX2Nvbm4gKmNwKQ0KIAkJICAgICAgaXBfdnNf
+cHJvdG9fbmFtZShjcC0+cHJvdG9jb2wpLA0KIAkJICAgICAgSVBfVlNfREJH
+X0FERFIoY3AtPmFmLCAmY3AtPmNhZGRyKSwgbnRvaHMoY3AtPmNwb3J0KSwN
+CiAJCSAgICAgIElQX1ZTX0RCR19BRERSKGNwLT5hZiwgJmNwLT52YWRkciks
+IG50b2hzKGNwLT52cG9ydCksDQotCQkgICAgICBJUF9WU19EQkdfQUREUihj
+cC0+YWYsICZjcC0+ZGFkZHIpLCBudG9ocyhjcC0+ZHBvcnQpLA0KKwkJICAg
+ICAgSVBfVlNfREJHX0FERFIoY3AtPmRhZiwgJmNwLT5kYWRkciksIG50b2hz
+KGNwLT5kcG9ydCksDQogCQkgICAgICBpcF92c19md2RfdGFnKGNwKSwgY3At
+PnN0YXRlLA0KIAkJICAgICAgY3AtPmZsYWdzLCBhdG9taWNfcmVhZCgmY3At
+PnJlZmNudCksDQogCQkgICAgICBhdG9taWNfcmVhZCgmZGVzdC0+cmVmY250
+KSk7DQpAQCAtNzU0LDcgKzc1NSw3IEBAIGludCBpcF92c19jaGVja190ZW1w
+bGF0ZShzdHJ1Y3QgaXBfdnNfY29ubiAqY3QpDQogCQkJICAgICAgbnRvaHMo
+Y3QtPmNwb3J0KSwNCiAJCQkgICAgICBJUF9WU19EQkdfQUREUihjdC0+YWYs
+ICZjdC0+dmFkZHIpLA0KIAkJCSAgICAgIG50b2hzKGN0LT52cG9ydCksDQot
+CQkJICAgICAgSVBfVlNfREJHX0FERFIoY3QtPmFmLCAmY3QtPmRhZGRyKSwN
+CisJCQkgICAgICBJUF9WU19EQkdfQUREUihjdC0+ZGFmLCAmY3QtPmRhZGRy
+KSwNCiAJCQkgICAgICBudG9ocyhjdC0+ZHBvcnQpKTsNCiANCiAJCS8qDQpA
+QCAtMTA1MSw2ICsxMDUyLDkgQEAgc3RhdGljIGludCBpcF92c19jb25uX3Nl
+cV9zaG93KHN0cnVjdCBzZXFfZmlsZSAqc2VxLCB2b2lkICp2KQ0KIAkJc3Ry
+dWN0IG5ldCAqbmV0ID0gc2VxX2ZpbGVfbmV0KHNlcSk7DQogCQljaGFyIHBl
+X2RhdGFbSVBfVlNfUEVOQU1FX01BWExFTiArIElQX1ZTX1BFREFUQV9NQVhM
+RU4gKyAzXTsNCiAJCXNpemVfdCBsZW4gPSAwOw0KKyNpZmRlZiBDT05GSUdf
+SVBfVlNfSVBWNg0KKwkJY2hhciBkYnVmW0lORVQ2X0FERFJTVFJMRU5dOw0K
+KyNlbmRpZg0KIA0KIAkJaWYgKCFpcF92c19jb25uX25ldF9lcShjcCwgbmV0
+KSkNCiAJCQlyZXR1cm4gMDsNCkBAIC0xMDY1LDI0ICsxMDY5LDMyIEBAIHN0
+YXRpYyBpbnQgaXBfdnNfY29ubl9zZXFfc2hvdyhzdHJ1Y3Qgc2VxX2ZpbGUg
+KnNlcSwgdm9pZCAqdikNCiAJCXBlX2RhdGFbbGVuXSA9ICdcMCc7DQogDQog
+I2lmZGVmIENPTkZJR19JUF9WU19JUFY2DQorCQlpZiAoY3AtPmRhZiA9PSBB
+Rl9JTkVUNikNCisJCQlzbnByaW50ZihkYnVmLCBzaXplb2YoZGJ1ZiksICIl
+cEk2IiwgJmNwLT5kYWRkci5pbjYpOw0KKwkJZWxzZQ0KKyNlbmRpZg0KKwkJ
+CXNucHJpbnRmKGRidWYsIHNpemVvZihkYnVmKSwgIiUwOFgiLA0KKwkJCQkg
+bnRvaGwoY3AtPmRhZGRyLmlwKSk7DQorDQorI2lmZGVmIENPTkZJR19JUF9W
+U19JUFY2DQogCQlpZiAoY3AtPmFmID09IEFGX0lORVQ2KQ0KIAkJCXNlcV9w
+cmludGYoc2VxLCAiJS0zcyAlcEk2ICUwNFggJXBJNiAlMDRYICINCi0JCQkJ
+IiVwSTYgJTA0WCAlLTExcyAlN2x1JXNcbiIsDQorCQkJCSIlcyAlMDRYICUt
+MTFzICU3bHUlc1xuIiwNCiAJCQkJaXBfdnNfcHJvdG9fbmFtZShjcC0+cHJv
+dG9jb2wpLA0KIAkJCQkmY3AtPmNhZGRyLmluNiwgbnRvaHMoY3AtPmNwb3J0
+KSwNCiAJCQkJJmNwLT52YWRkci5pbjYsIG50b2hzKGNwLT52cG9ydCksDQot
+CQkJCSZjcC0+ZGFkZHIuaW42LCBudG9ocyhjcC0+ZHBvcnQpLA0KKwkJCQlk
+YnVmLCBudG9ocyhjcC0+ZHBvcnQpLA0KIAkJCQlpcF92c19zdGF0ZV9uYW1l
+KGNwLT5wcm90b2NvbCwgY3AtPnN0YXRlKSwNCiAJCQkJKGNwLT50aW1lci5l
+eHBpcmVzLWppZmZpZXMpL0haLCBwZV9kYXRhKTsNCiAJCWVsc2UNCiAjZW5k
+aWYNCiAJCQlzZXFfcHJpbnRmKHNlcSwNCiAJCQkJIiUtM3MgJTA4WCAlMDRY
+ICUwOFggJTA0WCINCi0JCQkJIiAlMDhYICUwNFggJS0xMXMgJTdsdSVzXG4i
+LA0KKwkJCQkiICVzICUwNFggJS0xMXMgJTdsdSVzXG4iLA0KIAkJCQlpcF92
+c19wcm90b19uYW1lKGNwLT5wcm90b2NvbCksDQogCQkJCW50b2hsKGNwLT5j
+YWRkci5pcCksIG50b2hzKGNwLT5jcG9ydCksDQogCQkJCW50b2hsKGNwLT52
+YWRkci5pcCksIG50b2hzKGNwLT52cG9ydCksDQotCQkJCW50b2hsKGNwLT5k
+YWRkci5pcCksIG50b2hzKGNwLT5kcG9ydCksDQorCQkJCWRidWYsIG50b2hz
+KGNwLT5kcG9ydCksDQogCQkJCWlwX3ZzX3N0YXRlX25hbWUoY3AtPnByb3Rv
+Y29sLCBjcC0+c3RhdGUpLA0KIAkJCQkoY3AtPnRpbWVyLmV4cGlyZXMtamlm
+ZmllcykvSFosIHBlX2RhdGEpOw0KIAl9DQpAQCAtMTEyMCw2ICsxMTMyLDkg
+QEAgc3RhdGljIGNvbnN0IGNoYXIgKmlwX3ZzX29yaWdpbl9uYW1lKHVuc2ln
+bmVkIGludCBmbGFncykNCiANCiBzdGF0aWMgaW50IGlwX3ZzX2Nvbm5fc3lu
+Y19zZXFfc2hvdyhzdHJ1Y3Qgc2VxX2ZpbGUgKnNlcSwgdm9pZCAqdikNCiB7
+DQorI2lmZGVmIENPTkZJR19JUF9WU19JUFY2DQorCWNoYXIgZGJ1ZltJTkVU
+Nl9BRERSU1RSTEVOXTsNCisjZW5kaWYNCiANCiAJaWYgKHYgPT0gU0VRX1NU
+QVJUX1RPS0VOKQ0KIAkJc2VxX3B1dHMoc2VxLA0KQEAgLTExMzIsMTIgKzEx
+NDcsMjEgQEAgc3RhdGljIGludCBpcF92c19jb25uX3N5bmNfc2VxX3Nob3co
+c3RydWN0IHNlcV9maWxlICpzZXEsIHZvaWQgKnYpDQogCQkJcmV0dXJuIDA7
+DQogDQogI2lmZGVmIENPTkZJR19JUF9WU19JUFY2DQorCQlpZiAoY3AtPmRh
+ZiA9PSBBRl9JTkVUNikNCisJCQlzbnByaW50ZihkYnVmLCBzaXplb2YoZGJ1
+ZiksICIlcEk2IiwgJmNwLT5kYWRkci5pbjYpOw0KKwkJZWxzZQ0KKyNlbmRp
+Zg0KKwkJCXNucHJpbnRmKGRidWYsIHNpemVvZihkYnVmKSwgIiUwOFgiLA0K
+KwkJCQkgbnRvaGwoY3AtPmRhZGRyLmlwKSk7DQorDQorI2lmZGVmIENPTkZJ
+R19JUF9WU19JUFY2DQogCQlpZiAoY3AtPmFmID09IEFGX0lORVQ2KQ0KLQkJ
+CXNlcV9wcmludGYoc2VxLCAiJS0zcyAlcEk2ICUwNFggJXBJNiAlMDRYICVw
+STYgJTA0WCAlLTExcyAlLTZzICU3bHVcbiIsDQorCQkJc2VxX3ByaW50Zihz
+ZXEsICIlLTNzICVwSTYgJTA0WCAlcEk2ICUwNFggIg0KKwkJCQkiJXMgJTA0
+WCAlLTExcyAlLTZzICU3bHVcbiIsDQogCQkJCWlwX3ZzX3Byb3RvX25hbWUo
+Y3AtPnByb3RvY29sKSwNCiAJCQkJJmNwLT5jYWRkci5pbjYsIG50b2hzKGNw
+LT5jcG9ydCksDQogCQkJCSZjcC0+dmFkZHIuaW42LCBudG9ocyhjcC0+dnBv
+cnQpLA0KLQkJCQkmY3AtPmRhZGRyLmluNiwgbnRvaHMoY3AtPmRwb3J0KSwN
+CisJCQkJZGJ1ZiwgbnRvaHMoY3AtPmRwb3J0KSwNCiAJCQkJaXBfdnNfc3Rh
+dGVfbmFtZShjcC0+cHJvdG9jb2wsIGNwLT5zdGF0ZSksDQogCQkJCWlwX3Zz
+X29yaWdpbl9uYW1lKGNwLT5mbGFncyksDQogCQkJCShjcC0+dGltZXIuZXhw
+aXJlcy1qaWZmaWVzKS9IWik7DQpAQCAtMTE0NSwxMSArMTE2OSwxMSBAQCBz
+dGF0aWMgaW50IGlwX3ZzX2Nvbm5fc3luY19zZXFfc2hvdyhzdHJ1Y3Qgc2Vx
+X2ZpbGUgKnNlcSwgdm9pZCAqdikNCiAjZW5kaWYNCiAJCQlzZXFfcHJpbnRm
+KHNlcSwNCiAJCQkJIiUtM3MgJTA4WCAlMDRYICUwOFggJTA0WCAiDQotCQkJ
+CSIlMDhYICUwNFggJS0xMXMgJS02cyAlN2x1XG4iLA0KKwkJCQkiJXMgJTA0
+WCAlLTExcyAlLTZzICU3bHVcbiIsDQogCQkJCWlwX3ZzX3Byb3RvX25hbWUo
+Y3AtPnByb3RvY29sKSwNCiAJCQkJbnRvaGwoY3AtPmNhZGRyLmlwKSwgbnRv
+aHMoY3AtPmNwb3J0KSwNCiAJCQkJbnRvaGwoY3AtPnZhZGRyLmlwKSwgbnRv
+aHMoY3AtPnZwb3J0KSwNCi0JCQkJbnRvaGwoY3AtPmRhZGRyLmlwKSwgbnRv
+aHMoY3AtPmRwb3J0KSwNCisJCQkJZGJ1ZiwgbnRvaHMoY3AtPmRwb3J0KSwN
+CiAJCQkJaXBfdnNfc3RhdGVfbmFtZShjcC0+cHJvdG9jb2wsIGNwLT5zdGF0
+ZSksDQogCQkJCWlwX3ZzX29yaWdpbl9uYW1lKGNwLT5mbGFncyksDQogCQkJ
+CShjcC0+dGltZXIuZXhwaXJlcy1qaWZmaWVzKS9IWik7DQpkaWZmIC0tZ2l0
+IGEvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYyBiL25ldC9uZXRm
+aWx0ZXIvaXB2cy9pcF92c19jb3JlLmMNCmluZGV4IDBjZjk1MmEuLjVjYzJk
+YzM2IDEwMDY0NA0KLS0tIGEvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2Nv
+cmUuYw0KKysrIGIvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYw0K
+QEAgLTQ5Miw5ICs0OTIsOSBAQCBpcF92c19zY2hlZHVsZShzdHJ1Y3QgaXBf
+dnNfc2VydmljZSAqc3ZjLCBzdHJ1Y3Qgc2tfYnVmZiAqc2tiLA0KIAlJUF9W
+U19EQkdfQlVGKDYsICJTY2hlZHVsZSBmd2Q6JWMgYzolczoldSB2OiVzOiV1
+ICINCiAJCSAgICAgICJkOiVzOiV1IGNvbm4tPmZsYWdzOiVYIGNvbm4tPnJl
+ZmNudDolZFxuIiwNCiAJCSAgICAgIGlwX3ZzX2Z3ZF90YWcoY3ApLA0KLQkJ
+ICAgICAgSVBfVlNfREJHX0FERFIoc3ZjLT5hZiwgJmNwLT5jYWRkciksIG50
+b2hzKGNwLT5jcG9ydCksDQotCQkgICAgICBJUF9WU19EQkdfQUREUihzdmMt
+PmFmLCAmY3AtPnZhZGRyKSwgbnRvaHMoY3AtPnZwb3J0KSwNCi0JCSAgICAg
+IElQX1ZTX0RCR19BRERSKHN2Yy0+YWYsICZjcC0+ZGFkZHIpLCBudG9ocyhj
+cC0+ZHBvcnQpLA0KKwkJICAgICAgSVBfVlNfREJHX0FERFIoY3AtPmFmLCAm
+Y3AtPmNhZGRyKSwgbnRvaHMoY3AtPmNwb3J0KSwNCisJCSAgICAgIElQX1ZT
+X0RCR19BRERSKGNwLT5hZiwgJmNwLT52YWRkciksIG50b2hzKGNwLT52cG9y
+dCksDQorCQkgICAgICBJUF9WU19EQkdfQUREUihjcC0+ZGFmLCAmY3AtPmRh
+ZGRyKSwgbnRvaHMoY3AtPmRwb3J0KSwNCiAJCSAgICAgIGNwLT5mbGFncywg
+YXRvbWljX3JlYWQoJmNwLT5yZWZjbnQpKTsNCiANCiAJaXBfdnNfY29ubl9z
+dGF0cyhjcCwgc3ZjKTsNCmRpZmYgLS1naXQgYS9uZXQvbmV0ZmlsdGVyL2lw
+dnMvaXBfdnNfcHJvdG9fc2N0cC5jIGIvbmV0L25ldGZpbHRlci9pcHZzL2lw
+X3ZzX3Byb3RvX3NjdHAuYw0KaW5kZXggMmY3ZWE3NS4uNWI4NGMwYiAxMDA2
+NDQNCi0tLSBhL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19wcm90b19zY3Rw
+LmMNCisrKyBiL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19wcm90b19zY3Rw
+LmMNCkBAIC00MzIsNyArNDMyLDcgQEAgc2V0X3NjdHBfc3RhdGUoc3RydWN0
+IGlwX3ZzX3Byb3RvX2RhdGEgKnBkLCBzdHJ1Y3QgaXBfdnNfY29ubiAqY3As
+DQogCQkJCXBkLT5wcC0+bmFtZSwNCiAJCQkJKChkaXJlY3Rpb24gPT0gSVBf
+VlNfRElSX09VVFBVVCkgPw0KIAkJCQkgIm91dHB1dCAiIDogImlucHV0ICIp
+LA0KLQkJCQlJUF9WU19EQkdfQUREUihjcC0+YWYsICZjcC0+ZGFkZHIpLA0K
+KwkJCQlJUF9WU19EQkdfQUREUihjcC0+ZGFmLCAmY3AtPmRhZGRyKSwNCiAJ
+CQkJbnRvaHMoY3AtPmRwb3J0KSwNCiAJCQkJSVBfVlNfREJHX0FERFIoY3At
+PmFmLCAmY3AtPmNhZGRyKSwNCiAJCQkJbnRvaHMoY3AtPmNwb3J0KSwNCmRp
+ZmYgLS1naXQgYS9uZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfcHJvdG9fdGNw
+LmMgYi9uZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfcHJvdG9fdGNwLmMNCmlu
+ZGV4IGUzYTY5NzIuLjhlOTJiZWIgMTAwNjQ0DQotLS0gYS9uZXQvbmV0Zmls
+dGVyL2lwdnMvaXBfdnNfcHJvdG9fdGNwLmMNCisrKyBiL25ldC9uZXRmaWx0
+ZXIvaXB2cy9pcF92c19wcm90b190Y3AuYw0KQEAgLTUxMCw3ICs1MTAsNyBA
+QCBzZXRfdGNwX3N0YXRlKHN0cnVjdCBpcF92c19wcm90b19kYXRhICpwZCwg
+c3RydWN0IGlwX3ZzX2Nvbm4gKmNwLA0KIAkJCSAgICAgIHRoLT5maW4gPyAn
+RicgOiAnLicsDQogCQkJICAgICAgdGgtPmFjayA/ICdBJyA6ICcuJywNCiAJ
+CQkgICAgICB0aC0+cnN0ID8gJ1InIDogJy4nLA0KLQkJCSAgICAgIElQX1ZT
+X0RCR19BRERSKGNwLT5hZiwgJmNwLT5kYWRkciksDQorCQkJICAgICAgSVBf
+VlNfREJHX0FERFIoY3AtPmRhZiwgJmNwLT5kYWRkciksDQogCQkJICAgICAg
+bnRvaHMoY3AtPmRwb3J0KSwNCiAJCQkgICAgICBJUF9WU19EQkdfQUREUihj
+cC0+YWYsICZjcC0+Y2FkZHIpLA0KIAkJCSAgICAgIG50b2hzKGNwLT5jcG9y
+dCksDQotLSANCjEuOS4wDQoNCg==
+
+---1463811672-890456840-1409238937=:1956--
