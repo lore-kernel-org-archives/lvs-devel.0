@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 17/20] ipvs: use correct address family in SH logs
-Date: Fri, 29 Aug 2014 01:39:06 -0700
-Message-ID: <1409301549-5284-18-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v4 08/20] ipvs: Add generic ensure_mtu_is_adequate to handle mixed pools
+Date: Fri, 29 Aug 2014 01:38:57 -0700
+Message-ID: <1409301549-5284-9-git-send-email-agartrell@fb.com>
 References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=mS9+bcZ+6nx86e0p1cS8kIIhA8kNCSEcFBSuxkoeqcw=;
- b=OVtWyOe64PmcsN7XUbngzuA3iZx4MGctY/sj1VIUCHk6ahtGxsYHoqP9p/1/SCEAt8w7
- TLofV/oW1aKBjc/7oZ+S24h1Sw/YR5+a/EyuCLUt/F3u6irqBHNvR0nF4YbIirkb+sEU
- txhf+70XeunGP11me3vzvGt8VZcXpZjwhRU= 
+ content-type; s=facebook; bh=EA2nkPVfh4QpxopQCEUEAn5tVOzud2xT2rrx1xu93tQ=;
+ b=SMJOhlmz8MnIG0wOSpyWlRxKsvLQSvexcDmidFHb/GbJZNkQ58aTJrd1Zuz0rLnUy7Tl
+ SXD1asxk9YzJEc284TNbondLzLC0snVlVDB+bKeLY7CROLBDxi14RRJsZvw+nSG1b9XP
+ ybvDmlm4j0QizazI+sgaimEU+I2+XnGLMUE= 
 In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,56 +19,179 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-From: Julian Anastasov <ja@ssi.bg>
+The out_rt functions check to see if the mtu is large enough for the packet
+and, if not, send icmp messages (TOOBIG or DEST_UNREACH) to the source and
+bail out.  We needed the ability to send ICMP from the out_rt_v6 function
+and DEST_UNREACH from the out_rt function, so we just pulled it out into a
+common function.
 
-Needed to support svc->af != dest->af.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_sh.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 77 +++++++++++++++++++++++++++--------------
+ 1 file changed, 51 insertions(+), 26 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-index cc65b2f..98a1343 100644
---- a/net/netfilter/ipvs/ip_vs_sh.c
-+++ b/net/netfilter/ipvs/ip_vs_sh.c
-@@ -138,7 +138,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 		return dest;
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 034a282..fa2fdd7 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -213,17 +213,57 @@ static inline void maybe_update_pmtu(int skb_af, struct sk_buff *skb, int mtu)
+ 		ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
+ }
  
- 	IP_VS_DBG_BUF(6, "SH: selected unavailable server %s:%d, reselecting",
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
++static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
++					  struct ip_vs_iphdr *ipvsh,
++					  struct sk_buff *skb, int mtu)
++{
++#ifdef CONFIG_IP_VS_IPV6
++	if (skb_af == AF_INET6) {
++		struct net *net = dev_net(skb_dst(skb)->dev);
++
++		if (unlikely(__mtu_check_toobig_v6(skb, mtu))) {
++			if (!skb->dev)
++				skb->dev = net->loopback_dev;
++			/* only send ICMP too big on first fragment */
++			if (!ipvsh->fragoffs)
++				icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu);
++			IP_VS_DBG(1, "frag needed for %pI6c\n",
++				  &ipv6_hdr(skb)->saddr);
++			return false;
++		}
++	} else
++#endif
++	{
++		struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
++
++		/* If we're going to tunnel the packet and pmtu discovery
++		 * is disabled, we'll just fragment it anyway
++		 */
++		if ((rt_mode & IP_VS_RT_MODE_TUNNEL) && !sysctl_pmtu_disc(ipvs))
++			return true;
++
++		if (unlikely(ip_hdr(skb)->frag_off & htons(IP_DF) &&
++			     skb->len > mtu && !skb_is_gso(skb))) {
++			icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED,
++				  htonl(mtu));
++			IP_VS_DBG(1, "frag needed for %pI4\n",
++				  &ip_hdr(skb)->saddr);
++			return false;
++		}
++	}
++
++	return true;
++}
++
+ /* Get route to destination or remote server */
+ static int
+ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+-		   __be32 daddr, int rt_mode, __be32 *ret_saddr)
++		   __be32 daddr, int rt_mode, __be32 *ret_saddr,
++		   struct ip_vs_iphdr *ipvsh)
+ {
+ 	struct net *net = dev_net(skb_dst(skb)->dev);
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rtable *rt;			/* Route to the other host */
+-	struct iphdr *iph;
+-	__be16 df;
+ 	int mtu;
+ 	int local, noref = 1;
  
- 	/* if the original dest is unavailable, loop around the table
- 	 * starting from ihash to find a new dest
-@@ -153,7 +153,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 			return dest;
- 		IP_VS_DBG_BUF(6, "SH: selected unavailable "
- 			      "server %s:%d (offset %d), reselecting",
--			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 			      ntohs(dest->port), roffset);
+@@ -279,7 +319,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 			     " daddr=%pI4\n", &dest->addr.ip);
+ 		goto err_put;
+ 	}
+-	iph = ip_hdr(skb);
+ 
+ 	if (unlikely(local)) {
+ 		/* skb to local stack, preserve old route */
+@@ -290,7 +329,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 
+ 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL))) {
+ 		mtu = dst_mtu(&rt->dst);
+-		df = iph->frag_off & htons(IP_DF);
+ 	} else {
+ 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
+ 		if (mtu < 68) {
+@@ -298,16 +336,10 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 			goto err_put;
+ 		}
+ 		maybe_update_pmtu(skb_af, skb, mtu);
+-		/* MTU check allowed? */
+-		df = sysctl_pmtu_disc(ipvs) ? iph->frag_off & htons(IP_DF) : 0;
  	}
  
-@@ -192,7 +192,7 @@ ip_vs_sh_reassign(struct ip_vs_sh_state *s, struct ip_vs_service *svc)
- 			RCU_INIT_POINTER(b->dest, dest);
+-	/* MTU checking */
+-	if (unlikely(df && skb->len > mtu && !skb_is_gso(skb))) {
+-		icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED, htonl(mtu));
+-		IP_VS_DBG(1, "frag needed for %pI4\n", &iph->saddr);
++	if (!ensure_mtu_is_adequate(skb_af, rt_mode, ipvsh, skb, mtu))
+ 		goto err_put;
+-	}
  
- 			IP_VS_DBG_BUF(6, "assigned i: %d dest: %s weight: %d\n",
--				      i, IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+				      i, IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 				      atomic_read(&dest->weight));
+ 	skb_dst_drop(skb);
+ 	if (noref) {
+@@ -450,15 +482,8 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		maybe_update_pmtu(skb_af, skb, mtu);
+ 	}
  
- 			/* Don't move to next dest until filling weight */
-@@ -342,7 +342,7 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+-	if (unlikely(__mtu_check_toobig_v6(skb, mtu))) {
+-		if (!skb->dev)
+-			skb->dev = net->loopback_dev;
+-		/* only send ICMP too big on first fragment */
+-		if (!ipvsh->fragoffs)
+-			icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu);
+-		IP_VS_DBG(1, "frag needed for %pI6c\n", &ipv6_hdr(skb)->saddr);
++	if (!ensure_mtu_is_adequate(skb_af, rt_mode, ipvsh, skb, mtu))
+ 		goto err_put;
+-	}
  
- 	IP_VS_DBG_BUF(6, "SH: source IP address %s --> server %s:%d\n",
- 		      IP_VS_DBG_ADDR(svc->af, &iph->saddr),
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 		      ntohs(dest->port));
+ 	skb_dst_drop(skb);
+ 	if (noref) {
+@@ -565,7 +590,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  
- 	return dest;
+ 	rcu_read_lock();
+ 	if (__ip_vs_get_out_rt(cp->af, skb, NULL, iph->daddr,
+-			       IP_VS_RT_MODE_NON_LOCAL, NULL) < 0)
++			       IP_VS_RT_MODE_NON_LOCAL, NULL, ipvsh) < 0)
+ 		goto tx_error;
+ 
+ 	ip_send_check(iph);
+@@ -644,7 +669,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+-				   IP_VS_RT_MODE_RDR, NULL);
++				   IP_VS_RT_MODE_RDR, NULL, ipvsh);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	rt = skb_rtable(skb);
+@@ -841,7 +866,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_CONNECT |
+-				   IP_VS_RT_MODE_TUNNEL, &saddr);
++				   IP_VS_RT_MODE_TUNNEL, &saddr, ipvsh);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	if (local) {
+@@ -1032,7 +1057,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+-				   IP_VS_RT_MODE_KNOWN_NH, NULL);
++				   IP_VS_RT_MODE_KNOWN_NH, NULL, ipvsh);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	if (local) {
+@@ -1137,7 +1162,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	rcu_read_lock();
+ 	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
+-				   NULL);
++				   NULL, iph);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	rt = skb_rtable(skb);
 -- 
 1.8.1
 
