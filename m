@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 16/20] ipvs: use correct address family in SED logs
-Date: Fri, 29 Aug 2014 01:39:05 -0700
-Message-ID: <1409301549-5284-17-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v4 03/20] ipvs: Pass destination address family to ip_vs_trash_get_dest
+Date: Fri, 29 Aug 2014 01:38:52 -0700
+Message-ID: <1409301549-5284-4-git-send-email-agartrell@fb.com>
 References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=1mnIlqXcr6TZNyLu5MYKLd9/AOGPK4oQiZHF4PJBTQ4=;
- b=cwiuC/WEmB1lle3ovSj0zaFRx8g9xPIgh0SVeSSWi18iCcANlt+CGg0ltSaAIddISIWm
- 1Y3FRdK72aQJRFUpl2IPfTwKR0oFCXlbHjDDqf4HkJb8cX35dlOOL2q2Kdz5wqjAGSar
- hJpfLq8Z0qKECFTFBUQ420sOTxnhRHcXg9M= 
+ content-type; s=facebook; bh=gTgTKri8jJOjkFA8eTcxsxSg7+jbRjH1pa3eU2A2tW8=;
+ b=NjGOwV903mHq+u04F0CodMvsfUzl1R4WhHOoYuZQ3KqZycJpHBtVaX/gkgPRp5niAGOE
+ dxBJKlf2HhFQIThUPkpwaJABYPdEcKv8uemy8pA3Mx9MCFURXRb+q/PGVfBx2L98Txv5
+ DQ1yusw0oF0/jYp82EVuING0+BY89kZd2BY= 
 In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,30 +19,54 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-From: Julian Anastasov <ja@ssi.bg>
+Part of a series of diffs to tease out destination family from virtual
+family.  This diff just adds a parameter to ip_vs_trash_get and then uses
+it for comparison rather than svc->af.
 
-Needed to support svc->af != dest->af.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_sed.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sed.c b/net/netfilter/ipvs/ip_vs_sed.c
-index e446b9f..f8e2d00 100644
---- a/net/netfilter/ipvs/ip_vs_sed.c
-+++ b/net/netfilter/ipvs/ip_vs_sed.c
-@@ -108,7 +108,8 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index a8589df..33d04ee 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -657,8 +657,8 @@ static void __ip_vs_dst_cache_reset(struct ip_vs_dest *dest)
+  *  scheduling.
+  */
+ static struct ip_vs_dest *
+-ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+-		     __be16 dport)
++ip_vs_trash_get_dest(struct ip_vs_service *svc, int dest_af,
++		     const union nf_inet_addr *daddr, __be16 dport)
+ {
+ 	struct ip_vs_dest *dest;
+ 	struct netns_ipvs *ipvs = net_ipvs(svc->net);
+@@ -671,11 +671,11 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+ 		IP_VS_DBG_BUF(3, "Destination %u/%s:%u still in trash, "
+ 			      "dest->refcnt=%d\n",
+ 			      dest->vfwmark,
+-			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 			      ntohs(dest->port),
+ 			      atomic_read(&dest->refcnt));
+-		if (dest->af == svc->af &&
+-		    ip_vs_addr_equal(svc->af, &dest->addr, daddr) &&
++		if (dest->af == dest_af &&
++		    ip_vs_addr_equal(dest_af, &dest->addr, daddr) &&
+ 		    dest->port == dport &&
+ 		    dest->vfwmark == svc->fwmark &&
+ 		    dest->protocol == svc->protocol &&
+@@ -950,7 +950,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 	 * Check if the dest already exists in the trash and
+ 	 * is from the same service
+ 	 */
+-	dest = ip_vs_trash_get_dest(svc, &daddr, dport);
++	dest = ip_vs_trash_get_dest(svc, udest->af, &daddr, dport);
  
- 	IP_VS_DBG_BUF(6, "SED: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d overhead %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      IP_VS_DBG_ADDR(least->af, &least->addr),
-+		      ntohs(least->port),
- 		      atomic_read(&least->activeconns),
- 		      atomic_read(&least->refcnt),
- 		      atomic_read(&least->weight), loh);
+ 	if (dest != NULL) {
+ 		IP_VS_DBG_BUF(3, "Get destination %s:%u from trash, "
 -- 
 1.8.1
 
