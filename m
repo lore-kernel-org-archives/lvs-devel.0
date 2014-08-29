@@ -1,45 +1,47 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH ipvs,v3 00/20] Support v6 real servers in v4 pools and
- vice versa
-Date: Fri, 29 Aug 2014 10:36:46 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1408291027230.1520@ja.home.ssi.bg>
-References: <1409204634-1123-1-git-send-email-agartrell@fb.com> <alpine.LFD.2.11.1408281759150.1956@ja.home.ssi.bg> <540026C2.9050209@fb.com>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: [PATCH ipvs,v4 12/20] ipvs: use correct address family in DH logs
+Date: Fri, 29 Aug 2014 01:39:01 -0700
+Message-ID: <1409301549-5284-13-git-send-email-agartrell@fb.com>
+References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <540026C2.9050209@fb.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : in-reply-to : references : mime-version :
+ content-type; s=facebook; bh=dNtG/58HrYFsN88Wt7pxQPgPQafTrUQOpL+7AY5432g=;
+ b=T5uqhhY8Ec82tg6TgMUkkQkxlknt3Dpvi6BBs/JMCljkyMFhqlFuuZj5N3hjE8QtOBst
+ NQ/TKdE7YC3kj6EogMpf36jHxe8oF1K4Dw/FZZ0pcJnvDs9b9fK+wGO57tlMwKVbll5K
+ fh5jXvv5zbueJYSVA9yRq6B31t8tEXSX2NQ= 
+In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alex Gartrell <agartrell@fb.com>
-Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
+To: horms@verge.net.au
+Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
+From: Julian Anastasov <ja@ssi.bg>
 
-	Hello,
+Needed to support svc->af != dest->af.
 
-On Fri, 29 Aug 2014, Alex Gartrell wrote:
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+---
+ net/netfilter/ipvs/ip_vs_dh.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> > Patch 7:
-> >  - I guess addr_type var should be in the
-> >  'if (skb_af == AF_INET6) {' block. So, do not
-> >  forget to compile next time with CONFIG_IP_VS_IPV6=n
-> 
-> I'll make sure I compile each patch with this option.
+diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
+index c3b8454..6be5c53 100644
+--- a/net/netfilter/ipvs/ip_vs_dh.c
++++ b/net/netfilter/ipvs/ip_vs_dh.c
+@@ -234,7 +234,7 @@ ip_vs_dh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 
+ 	IP_VS_DBG_BUF(6, "DH: destination IP address %s --> server %s:%d\n",
+ 		      IP_VS_DBG_ADDR(svc->af, &iph->daddr),
+-		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 		      ntohs(dest->port));
+ 
+ 	return dest;
+-- 
+1.8.1
 
-	One final compile will be enough to detect
-a problem :)
-
-> > 	After checking the cp->daddr usage I prepared
-> > a patch that we should insert somewhere before the last one.
-> > Attached.
-> 
-> I'm just going to make one small change: dbuf isn't declared without
-> CONFIG_IP_VS_IPV6.
-
-	Yes, that is what I thought this morning, the
-same mistake :)
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
