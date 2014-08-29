@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 03/20] ipvs: Pass destination address family to ip_vs_trash_get_dest
-Date: Fri, 29 Aug 2014 01:38:52 -0700
-Message-ID: <1409301549-5284-4-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v4 02/20] ipvs: Supply destination addr family to ip_vs_{lookup_dest,find_dest}
+Date: Fri, 29 Aug 2014 01:38:51 -0700
+Message-ID: <1409301549-5284-3-git-send-email-agartrell@fb.com>
 References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=gTgTKri8jJOjkFA8eTcxsxSg7+jbRjH1pa3eU2A2tW8=;
- b=NjGOwV903mHq+u04F0CodMvsfUzl1R4WhHOoYuZQ3KqZycJpHBtVaX/gkgPRp5niAGOE
- dxBJKlf2HhFQIThUPkpwaJABYPdEcKv8uemy8pA3Mx9MCFURXRb+q/PGVfBx2L98Txv5
- DQ1yusw0oF0/jYp82EVuING0+BY89kZd2BY= 
+ content-type; s=facebook; bh=yoUewXgOzQESRxBt2szF3YxoJ4khIm4Ue9DhPryy2qw=;
+ b=oKMLBFfCucT5olpZzMibgqudnjV0fiJXG8yu1Ot5/np6UdNkncVpFl7Y1yS59XYMpmtQ
+ RYP62CuKdojLbjuZQSAhOikdNmiRPkjGPk++/vjrL7FJKyeP1YthgrSHvntT4Igagpt5
+ r4of2N3XKCCcsy++XYvGlc4Op2DC6wS1aFg= 
 In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,54 +19,156 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-Part of a series of diffs to tease out destination family from virtual
-family.  This diff just adds a parameter to ip_vs_trash_get and then uses
-it for comparison rather than svc->af.
+We need to remove the assumption that virtual address family is the same as
+real address family in order to support heterogeneous services (that is,
+services with v4 vips and v6 backends or the opposite).
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ include/net/ip_vs.h             |  5 +++--
+ net/netfilter/ipvs/ip_vs_conn.c |  8 +++++++-
+ net/netfilter/ipvs/ip_vs_ctl.c  | 24 ++++++++++++------------
+ net/netfilter/ipvs/ip_vs_sync.c | 10 ++++++++--
+ 4 files changed, 30 insertions(+), 17 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index b7e2b62..2fa1155 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1399,8 +1399,9 @@ void ip_vs_unregister_nl_ioctl(void);
+ int ip_vs_control_init(void);
+ void ip_vs_control_cleanup(void);
+ struct ip_vs_dest *
+-ip_vs_find_dest(struct net *net, int af, const union nf_inet_addr *daddr,
+-		__be16 dport, const union nf_inet_addr *vaddr, __be16 vport,
++ip_vs_find_dest(struct net *net, int svc_af, int dest_af,
++		const union nf_inet_addr *daddr, __be16 dport,
++		const union nf_inet_addr *vaddr, __be16 vport,
+ 		__u16 protocol, __u32 fwmark, __u32 flags);
+ void ip_vs_try_bind_dest(struct ip_vs_conn *cp);
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 610e19c..8f4c602 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -616,7 +616,13 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
+ 	struct ip_vs_dest *dest;
+ 
+ 	rcu_read_lock();
+-	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, &cp->daddr,
++
++	/* This function is only invoked by the synchronization code. We do
++	 * not currently support heterogeneous pools with synchronization,
++	 * so we can make the assumption that the svc_af is the same as the
++	 * dest_af
++	 */
++	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, cp->af, &cp->daddr,
+ 			       cp->dport, &cp->vaddr, cp->vport,
+ 			       cp->protocol, cp->fwmark, cp->flags);
+ 	if (dest) {
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index a8589df..33d04ee 100644
+index 5a94927..a8589df 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -657,8 +657,8 @@ static void __ip_vs_dst_cache_reset(struct ip_vs_dest *dest)
-  *  scheduling.
+@@ -574,8 +574,8 @@ bool ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
+  * Called under RCU lock.
   */
  static struct ip_vs_dest *
--ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
--		     __be16 dport)
-+ip_vs_trash_get_dest(struct ip_vs_service *svc, int dest_af,
-+		     const union nf_inet_addr *daddr, __be16 dport)
+-ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+-		  __be16 dport)
++ip_vs_lookup_dest(struct ip_vs_service *svc, int dest_af,
++		  const union nf_inet_addr *daddr, __be16 dport)
  {
  	struct ip_vs_dest *dest;
- 	struct netns_ipvs *ipvs = net_ipvs(svc->net);
-@@ -671,11 +671,11 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
- 		IP_VS_DBG_BUF(3, "Destination %u/%s:%u still in trash, "
- 			      "dest->refcnt=%d\n",
- 			      dest->vfwmark,
--			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 			      ntohs(dest->port),
- 			      atomic_read(&dest->refcnt));
--		if (dest->af == svc->af &&
--		    ip_vs_addr_equal(svc->af, &dest->addr, daddr) &&
-+		if (dest->af == dest_af &&
-+		    ip_vs_addr_equal(dest_af, &dest->addr, daddr) &&
- 		    dest->port == dport &&
- 		    dest->vfwmark == svc->fwmark &&
- 		    dest->protocol == svc->protocol &&
-@@ -950,7 +950,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 	 * Check if the dest already exists in the trash and
- 	 * is from the same service
+ 
+@@ -583,9 +583,9 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+ 	 * Find the destination for the given service
  	 */
--	dest = ip_vs_trash_get_dest(svc, &daddr, dport);
-+	dest = ip_vs_trash_get_dest(svc, udest->af, &daddr, dport);
+ 	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
+-		if ((dest->af == svc->af)
+-		    && ip_vs_addr_equal(svc->af, &dest->addr, daddr)
+-		    && (dest->port == dport)) {
++		if ((dest->af == dest_af) &&
++		    ip_vs_addr_equal(dest_af, &dest->addr, daddr) &&
++		    (dest->port == dport)) {
+ 			/* HIT */
+ 			return dest;
+ 		}
+@@ -602,7 +602,7 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+  * on the backup.
+  * Called under RCU lock, no refcnt is returned.
+  */
+-struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
++struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int svc_af, int dest_af,
+ 				   const union nf_inet_addr *daddr,
+ 				   __be16 dport,
+ 				   const union nf_inet_addr *vaddr,
+@@ -613,14 +613,14 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
+ 	struct ip_vs_service *svc;
+ 	__be16 port = dport;
+ 
+-	svc = ip_vs_service_find(net, af, fwmark, protocol, vaddr, vport);
++	svc = ip_vs_service_find(net, svc_af, fwmark, protocol, vaddr, vport);
+ 	if (!svc)
+ 		return NULL;
+ 	if (fwmark && (flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ)
+ 		port = 0;
+-	dest = ip_vs_lookup_dest(svc, daddr, port);
++	dest = ip_vs_lookup_dest(svc, dest_af, daddr, port);
+ 	if (!dest)
+-		dest = ip_vs_lookup_dest(svc, daddr, port ^ dport);
++		dest = ip_vs_lookup_dest(svc, dest_af, daddr, port ^ dport);
+ 	return dest;
+ }
+ 
+@@ -938,7 +938,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 
+ 	/* We use function that requires RCU lock */
+ 	rcu_read_lock();
+-	dest = ip_vs_lookup_dest(svc, &daddr, dport);
++	dest = ip_vs_lookup_dest(svc, udest->af, &daddr, dport);
+ 	rcu_read_unlock();
  
  	if (dest != NULL) {
- 		IP_VS_DBG_BUF(3, "Get destination %s:%u from trash, "
+@@ -1002,7 +1002,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 
+ 	/* We use function that requires RCU lock */
+ 	rcu_read_lock();
+-	dest = ip_vs_lookup_dest(svc, &daddr, dport);
++	dest = ip_vs_lookup_dest(svc, udest->af, &daddr, dport);
+ 	rcu_read_unlock();
+ 
+ 	if (dest == NULL) {
+@@ -1084,7 +1084,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 
+ 	/* We use function that requires RCU lock */
+ 	rcu_read_lock();
+-	dest = ip_vs_lookup_dest(svc, &udest->addr, dport);
++	dest = ip_vs_lookup_dest(svc, udest->af, &udest->addr, dport);
+ 	rcu_read_unlock();
+ 
+ 	if (dest == NULL) {
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index eadffb2..edd2664 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -880,8 +880,14 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+ 		 * but still handled.
+ 		 */
+ 		rcu_read_lock();
+-		dest = ip_vs_find_dest(net, type, daddr, dport, param->vaddr,
+-				       param->vport, protocol, fwmark, flags);
++		/* This function is only invoked by the synchronization
++		 * code. We do not currently support heterogeneous pools
++		 * with synchronization, so we can make the assumption that
++		 * the svc_af is the same as the dest_af
++		 */
++		dest = ip_vs_find_dest(net, type, type, daddr, dport,
++				       param->vaddr, param->vport, protocol,
++				       fwmark, flags);
+ 
+ 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
+ 		rcu_read_unlock();
 -- 
 1.8.1
 
