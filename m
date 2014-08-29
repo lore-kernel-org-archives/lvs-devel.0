@@ -1,48 +1,64 @@
-From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 18/20] ipvs: use correct address family in WLC logs
-Date: Fri, 29 Aug 2014 01:39:07 -0700
-Message-ID: <1409301549-5284-19-git-send-email-agartrell@fb.com>
-References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH ipvs,v4 19/20] ipvs: use the new dest addr family field
+Date: Fri, 29 Aug 2014 13:32:13 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1408291259510.4876@ja.home.ssi.bg>
+References: <1409301549-5284-1-git-send-email-agartrell@fb.com> <1409301549-5284-20-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=iNtjgo5kwJA1j6vr+OuwzBwifEmTkU69BtDbAmkAFpI=;
- b=aRxt8G+lAdKAg85UecQeTWPkaplvX2WIqCmnCw+C3tP0GwAYITI4aSpcMKEr2v3PEHN+
- 56l/u7Fx6KktwEIeqyX3FzGwXKxSffAJa1Ie1rC7By3LheRWsSwjyWU5xopXjusneNn1
- b9vzDs89CvjLW5+65Z3gJMRxb8I/JUUV7Tw= 
-In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
+In-Reply-To: <1409301549-5284-20-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au
-Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
+To: Alex Gartrell <agartrell@fb.com>
+Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
 
-From: Julian Anastasov <ja@ssi.bg>
 
-Needed to support svc->af != dest->af.
+	Hello,
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Alex Gartrell <agartrell@fb.com>
----
- net/netfilter/ipvs/ip_vs_wlc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+On Fri, 29 Aug 2014, Alex Gartrell wrote:
 
-diff --git a/net/netfilter/ipvs/ip_vs_wlc.c b/net/netfilter/ipvs/ip_vs_wlc.c
-index b5b4650..6b366fd 100644
---- a/net/netfilter/ipvs/ip_vs_wlc.c
-+++ b/net/netfilter/ipvs/ip_vs_wlc.c
-@@ -80,7 +80,8 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 
- 	IP_VS_DBG_BUF(6, "WLC: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d overhead %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      IP_VS_DBG_ADDR(least->af, &least->addr),
-+		      ntohs(least->port),
- 		      atomic_read(&least->activeconns),
- 		      atomic_read(&least->refcnt),
- 		      atomic_read(&least->weight), loh);
--- 
-1.8.1
+> From: Julian Anastasov <ja@ssi.bg>
+> 
+> Use the new address family field cp->daf when printing
+> cp->daddr in logs or connection listing.
+> 
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> Signed-off-by: Alex Gartrell <agartrell@fb.com>
 
+...
+
+> --- a/net/netfilter/ipvs/ip_vs_conn.c
+> +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> @@ -27,6 +27,7 @@
+>  
+>  #include <linux/interrupt.h>
+>  #include <linux/in.h>
+> +#include <linux/inet.h>
+>  #include <linux/net.h>
+>  #include <linux/kernel.h>
+>  #include <linux/module.h>
+> @@ -77,6 +78,13 @@ static unsigned int ip_vs_conn_rnd __read_mostly;
+>  #define CT_LOCKARRAY_SIZE  (1<<CT_LOCKARRAY_BITS)
+>  #define CT_LOCKARRAY_MASK  (CT_LOCKARRAY_SIZE-1)
+>  
+> +/* We need an addrstrlen that works with or without v6 */
+> +#ifdef CONFIG_IP_VS_IPV6
+> +#define IP_VS_ADDRSTRLEN INET6_ADDRSTRLEN
+> +#else
+> +#define IP_VS_ADDRSTRLEN INET_ADDRSTRLEN
+> +#endif
+
+	Thanks! Note that for v4 we use 8+1 (hex).
+All other patches look ok. It is early to ack them,
+right? We need to post them again at the right time.
+I hope "ipvs: properly declare tunnel encapsulation"
+will be moved further soon.
+
+	For now we have to find a way to support sync
+protocol and to update ipvsadm.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
