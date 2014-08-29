@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 08/20] ipvs: Add generic ensure_mtu_is_adequate to handle mixed pools
-Date: Fri, 29 Aug 2014 01:38:57 -0700
-Message-ID: <1409301549-5284-9-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v4 01/20] ipvs: Add destination address family to netlink interface
+Date: Fri, 29 Aug 2014 01:38:50 -0700
+Message-ID: <1409301549-5284-2-git-send-email-agartrell@fb.com>
 References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=EA2nkPVfh4QpxopQCEUEAn5tVOzud2xT2rrx1xu93tQ=;
- b=SMJOhlmz8MnIG0wOSpyWlRxKsvLQSvexcDmidFHb/GbJZNkQ58aTJrd1Zuz0rLnUy7Tl
- SXD1asxk9YzJEc284TNbondLzLC0snVlVDB+bKeLY7CROLBDxi14RRJsZvw+nSG1b9XP
- ybvDmlm4j0QizazI+sgaimEU+I2+XnGLMUE= 
+ content-type; s=facebook; bh=SdvlFaZgfTaAdAHWOdxLC5Vnb4LYsm2v4nDveVcOi38=;
+ b=dbaC8MLmdZyU4oQwVsh5vnPhB/v0cpUOKSgrZ8sXOFSDC08qmA+JqXcGCAfMpml/wuUD
+ GdlvwR8q1A+EyLQ58n4FS1X4pCCQvA7yBqR+8KscUlLYI4czpX+doQ78ea6d6lCdV4u/
+ DrLc+uz2aIytd4ABnVvO6ouuRc3y25ljfKY= 
 In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,179 +19,203 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-The out_rt functions check to see if the mtu is large enough for the packet
-and, if not, send icmp messages (TOOBIG or DEST_UNREACH) to the source and
-bail out.  We needed the ability to send ICMP from the out_rt_v6 function
-and DEST_UNREACH from the out_rt function, so we just pulled it out into a
-common function.
+This is necessary to support heterogeneous pools.  For example, if you have
+an ipv6 addressed network, you'll want to be able to forward ipv4 traffic
+into it.
+
+This patch enforces that destination address family is the same as service
+family, as none of the forwarding mechanisms support anything else.
+
+For the old setsockopt mechanism, we simply set the dest address family to
+AF_INET as we do with the service.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 77 +++++++++++++++++++++++++++--------------
- 1 file changed, 51 insertions(+), 26 deletions(-)
+ include/net/ip_vs.h            |  3 +++
+ include/uapi/linux/ip_vs.h     |  3 +++
+ net/netfilter/ipvs/ip_vs_ctl.c | 45 +++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 44 insertions(+), 7 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 034a282..fa2fdd7 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -213,17 +213,57 @@ static inline void maybe_update_pmtu(int skb_af, struct sk_buff *skb, int mtu)
- 		ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 624a8a5..b7e2b62 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -648,6 +648,9 @@ struct ip_vs_dest_user_kern {
+ 	/* thresholds for active connections */
+ 	u32			u_threshold;	/* upper threshold */
+ 	u32			l_threshold;	/* lower threshold */
++
++	/* Address family of addr */
++	u16			af;
+ };
+ 
+ 
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index fbcffe8..cabe95d 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -384,6 +384,9 @@ enum {
+ 	IPVS_DEST_ATTR_PERSIST_CONNS,	/* persistent connections */
+ 
+ 	IPVS_DEST_ATTR_STATS,		/* nested attribute for dest stats */
++
++	IPVS_DEST_ATTR_ADDR_FAMILY,	/* Address family of address */
++
+ 	__IPVS_DEST_ATTR_MAX,
+ };
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index fd3f444..5a94927 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -816,6 +816,8 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+ 	dest->u_threshold = udest->u_threshold;
+ 	dest->l_threshold = udest->l_threshold;
+ 
++	dest->af = udest->af;
++
+ 	spin_lock_bh(&dest->dst_lock);
+ 	__ip_vs_dst_cache_reset(dest);
+ 	spin_unlock_bh(&dest->dst_lock);
+@@ -846,8 +848,12 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
+ 
+ 	EnterFunction(2);
+ 
++	/* Temporary for consistency */
++	if (udest->af != svc->af)
++		return -EINVAL;
++
+ #ifdef CONFIG_IP_VS_IPV6
+-	if (svc->af == AF_INET6) {
++	if (udest->af == AF_INET6) {
+ 		atype = ipv6_addr_type(&udest->addr.in6);
+ 		if ((!(atype & IPV6_ADDR_UNICAST) ||
+ 			atype & IPV6_ADDR_LINKLOCAL) &&
+@@ -875,12 +881,12 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
+ 		u64_stats_init(&ip_vs_dest_stats->syncp);
+ 	}
+ 
+-	dest->af = svc->af;
++	dest->af = udest->af;
+ 	dest->protocol = svc->protocol;
+ 	dest->vaddr = svc->addr;
+ 	dest->vport = svc->port;
+ 	dest->vfwmark = svc->fwmark;
+-	ip_vs_addr_copy(svc->af, &dest->addr, &udest->addr);
++	ip_vs_addr_copy(udest->af, &dest->addr, &udest->addr);
+ 	dest->port = udest->port;
+ 
+ 	atomic_set(&dest->activeconns, 0);
+@@ -928,7 +934,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 		return -ERANGE;
+ 	}
+ 
+-	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
++	ip_vs_addr_copy(udest->af, &daddr, &udest->addr);
+ 
+ 	/* We use function that requires RCU lock */
+ 	rcu_read_lock();
+@@ -949,7 +955,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 	if (dest != NULL) {
+ 		IP_VS_DBG_BUF(3, "Get destination %s:%u from trash, "
+ 			      "dest->refcnt=%d, service %u/%s:%u\n",
+-			      IP_VS_DBG_ADDR(svc->af, &daddr), ntohs(dport),
++			      IP_VS_DBG_ADDR(udest->af, &daddr), ntohs(dport),
+ 			      atomic_read(&dest->refcnt),
+ 			      dest->vfwmark,
+ 			      IP_VS_DBG_ADDR(svc->af, &dest->vaddr),
+@@ -992,7 +998,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 		return -ERANGE;
+ 	}
+ 
+-	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
++	ip_vs_addr_copy(udest->af, &daddr, &udest->addr);
+ 
+ 	/* We use function that requires RCU lock */
+ 	rcu_read_lock();
+@@ -2232,6 +2238,7 @@ static void ip_vs_copy_udest_compat(struct ip_vs_dest_user_kern *udest,
+ 	udest->weight		= udest_compat->weight;
+ 	udest->u_threshold	= udest_compat->u_threshold;
+ 	udest->l_threshold	= udest_compat->l_threshold;
++	udest->af		= AF_INET;
  }
  
-+static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
-+					  struct ip_vs_iphdr *ipvsh,
-+					  struct sk_buff *skb, int mtu)
-+{
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (skb_af == AF_INET6) {
-+		struct net *net = dev_net(skb_dst(skb)->dev);
-+
-+		if (unlikely(__mtu_check_toobig_v6(skb, mtu))) {
-+			if (!skb->dev)
-+				skb->dev = net->loopback_dev;
-+			/* only send ICMP too big on first fragment */
-+			if (!ipvsh->fragoffs)
-+				icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu);
-+			IP_VS_DBG(1, "frag needed for %pI6c\n",
-+				  &ipv6_hdr(skb)->saddr);
-+			return false;
-+		}
-+	} else
-+#endif
-+	{
-+		struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
-+
-+		/* If we're going to tunnel the packet and pmtu discovery
-+		 * is disabled, we'll just fragment it anyway
-+		 */
-+		if ((rt_mode & IP_VS_RT_MODE_TUNNEL) && !sysctl_pmtu_disc(ipvs))
-+			return true;
-+
-+		if (unlikely(ip_hdr(skb)->frag_off & htons(IP_DF) &&
-+			     skb->len > mtu && !skb_is_gso(skb))) {
-+			icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED,
-+				  htonl(mtu));
-+			IP_VS_DBG(1, "frag needed for %pI4\n",
-+				  &ip_hdr(skb)->saddr);
-+			return false;
-+		}
-+	}
-+
-+	return true;
-+}
-+
- /* Get route to destination or remote server */
  static int
- __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
--		   __be32 daddr, int rt_mode, __be32 *ret_saddr)
-+		   __be32 daddr, int rt_mode, __be32 *ret_saddr,
-+		   struct ip_vs_iphdr *ipvsh)
+@@ -2469,6 +2476,12 @@ __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
+ 			if (count >= get->num_dests)
+ 				break;
+ 
++			/* Cannot expose heterogeneous members via sockopt
++			 * interface
++			 */
++			if (dest->af != svc->af)
++				continue;
++
+ 			entry.addr = dest->addr.ip;
+ 			entry.port = dest->port;
+ 			entry.conn_flags = atomic_read(&dest->conn_flags);
+@@ -2766,6 +2779,7 @@ static const struct nla_policy ip_vs_dest_policy[IPVS_DEST_ATTR_MAX + 1] = {
+ 	[IPVS_DEST_ATTR_INACT_CONNS]	= { .type = NLA_U32 },
+ 	[IPVS_DEST_ATTR_PERSIST_CONNS]	= { .type = NLA_U32 },
+ 	[IPVS_DEST_ATTR_STATS]		= { .type = NLA_NESTED },
++	[IPVS_DEST_ATTR_ADDR_FAMILY]	= { .type = NLA_U16 },
+ };
+ 
+ static int ip_vs_genl_fill_stats(struct sk_buff *skb, int container_type,
+@@ -3021,7 +3035,8 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
+ 	    nla_put_u32(skb, IPVS_DEST_ATTR_INACT_CONNS,
+ 			atomic_read(&dest->inactconns)) ||
+ 	    nla_put_u32(skb, IPVS_DEST_ATTR_PERSIST_CONNS,
+-			atomic_read(&dest->persistconns)))
++			atomic_read(&dest->persistconns)) ||
++	    nla_put_u16(skb, IPVS_DEST_ATTR_ADDR_FAMILY, dest->af))
+ 		goto nla_put_failure;
+ 	if (ip_vs_genl_fill_stats(skb, IPVS_DEST_ATTR_STATS, &dest->stats))
+ 		goto nla_put_failure;
+@@ -3102,6 +3117,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
  {
- 	struct net *net = dev_net(skb_dst(skb)->dev);
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rtable *rt;			/* Route to the other host */
--	struct iphdr *iph;
--	__be16 df;
- 	int mtu;
- 	int local, noref = 1;
+ 	struct nlattr *attrs[IPVS_DEST_ATTR_MAX + 1];
+ 	struct nlattr *nla_addr, *nla_port;
++	struct nlattr *nla_addr_family;
  
-@@ -279,7 +319,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 			     " daddr=%pI4\n", &dest->addr.ip);
- 		goto err_put;
- 	}
--	iph = ip_hdr(skb);
+ 	/* Parse mandatory identifying destination fields first */
+ 	if (nla == NULL ||
+@@ -3110,6 +3126,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
  
- 	if (unlikely(local)) {
- 		/* skb to local stack, preserve old route */
-@@ -290,7 +329,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	nla_addr	= attrs[IPVS_DEST_ATTR_ADDR];
+ 	nla_port	= attrs[IPVS_DEST_ATTR_PORT];
++	nla_addr_family	= attrs[IPVS_DEST_ATTR_ADDR_FAMILY];
  
- 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL))) {
- 		mtu = dst_mtu(&rt->dst);
--		df = iph->frag_off & htons(IP_DF);
- 	} else {
- 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
- 		if (mtu < 68) {
-@@ -298,16 +336,10 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 			goto err_put;
- 		}
- 		maybe_update_pmtu(skb_af, skb, mtu);
--		/* MTU check allowed? */
--		df = sysctl_pmtu_disc(ipvs) ? iph->frag_off & htons(IP_DF) : 0;
- 	}
+ 	if (!(nla_addr && nla_port))
+ 		return -EINVAL;
+@@ -3119,6 +3136,11 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
+ 	nla_memcpy(&udest->addr, nla_addr, sizeof(udest->addr));
+ 	udest->port = nla_get_be16(nla_port);
  
--	/* MTU checking */
--	if (unlikely(df && skb->len > mtu && !skb_is_gso(skb))) {
--		icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED, htonl(mtu));
--		IP_VS_DBG(1, "frag needed for %pI4\n", &iph->saddr);
-+	if (!ensure_mtu_is_adequate(skb_af, rt_mode, ipvsh, skb, mtu))
- 		goto err_put;
--	}
- 
- 	skb_dst_drop(skb);
- 	if (noref) {
-@@ -450,15 +482,8 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 		maybe_update_pmtu(skb_af, skb, mtu);
++	if (nla_addr_family)
++		udest->af = nla_get_u16(nla_addr_family);
++	else
++		udest->af = 0;
++
+ 	/* If a full entry was requested, check for the additional fields */
+ 	if (full_entry) {
+ 		struct nlattr *nla_fwd, *nla_weight, *nla_u_thresh,
+@@ -3346,6 +3368,15 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 					    need_full_dest);
+ 		if (ret)
+ 			goto out;
++
++		/* Old protocols did not allow the user to specify address
++		 * family, so we set it to zero instead.  We also didn't
++		 * allow heterogeneous pools in the old code, so it's safe
++		 * to assume that this will have the same address family as
++		 * the service.
++		 */
++		if (udest.af == 0)
++			udest.af = svc->af;
  	}
  
--	if (unlikely(__mtu_check_toobig_v6(skb, mtu))) {
--		if (!skb->dev)
--			skb->dev = net->loopback_dev;
--		/* only send ICMP too big on first fragment */
--		if (!ipvsh->fragoffs)
--			icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu);
--		IP_VS_DBG(1, "frag needed for %pI6c\n", &ipv6_hdr(skb)->saddr);
-+	if (!ensure_mtu_is_adequate(skb_af, rt_mode, ipvsh, skb, mtu))
- 		goto err_put;
--	}
- 
- 	skb_dst_drop(skb);
- 	if (noref) {
-@@ -565,7 +590,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 
- 	rcu_read_lock();
- 	if (__ip_vs_get_out_rt(cp->af, skb, NULL, iph->daddr,
--			       IP_VS_RT_MODE_NON_LOCAL, NULL) < 0)
-+			       IP_VS_RT_MODE_NON_LOCAL, NULL, ipvsh) < 0)
- 		goto tx_error;
- 
- 	ip_send_check(iph);
-@@ -644,7 +669,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
--				   IP_VS_RT_MODE_RDR, NULL);
-+				   IP_VS_RT_MODE_RDR, NULL, ipvsh);
- 	if (local < 0)
- 		goto tx_error;
- 	rt = skb_rtable(skb);
-@@ -841,7 +866,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
- 				   IP_VS_RT_MODE_CONNECT |
--				   IP_VS_RT_MODE_TUNNEL, &saddr);
-+				   IP_VS_RT_MODE_TUNNEL, &saddr, ipvsh);
- 	if (local < 0)
- 		goto tx_error;
- 	if (local) {
-@@ -1032,7 +1057,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
--				   IP_VS_RT_MODE_KNOWN_NH, NULL);
-+				   IP_VS_RT_MODE_KNOWN_NH, NULL, ipvsh);
- 	if (local < 0)
- 		goto tx_error;
- 	if (local) {
-@@ -1137,7 +1162,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
- 	rcu_read_lock();
- 	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
--				   NULL);
-+				   NULL, iph);
- 	if (local < 0)
- 		goto tx_error;
- 	rt = skb_rtable(skb);
+ 	switch (cmd) {
 -- 
 1.8.1
 
