@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 01/20] ipvs: Add destination address family to netlink interface
-Date: Fri, 29 Aug 2014 01:38:50 -0700
-Message-ID: <1409301549-5284-2-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v4 07/20] ipvs: Pull out update_pmtu code
+Date: Fri, 29 Aug 2014 01:38:56 -0700
+Message-ID: <1409301549-5284-8-git-send-email-agartrell@fb.com>
 References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=SdvlFaZgfTaAdAHWOdxLC5Vnb4LYsm2v4nDveVcOi38=;
- b=dbaC8MLmdZyU4oQwVsh5vnPhB/v0cpUOKSgrZ8sXOFSDC08qmA+JqXcGCAfMpml/wuUD
- GdlvwR8q1A+EyLQ58n4FS1X4pCCQvA7yBqR+8KscUlLYI4czpX+doQ78ea6d6lCdV4u/
- DrLc+uz2aIytd4ABnVvO6ouuRc3y25ljfKY= 
+ content-type; s=facebook; bh=ZacdhXMczlzCC2PiC5R0RtREXSVdBhEv0jtrQGB4dzk=;
+ b=IJ4f2IYZ5zR3Lk9oPfcZbbZKz99Ki4K3RgwAxO6I07cZ6vLGHuJeA7YHVx7M3inFWGi0
+ LhUzhL7uCqWAbAEZ12MbltZLkiHXYB9ZjNacpm5unO2ANwGx8TAMJNW3/nDG03ZCPXFa
+ s5TfIH1dbJ6jtYkeGv2ZfHm9+UrLl3yEpDk= 
 In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,203 +19,70 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-This is necessary to support heterogeneous pools.  For example, if you have
-an ipv6 addressed network, you'll want to be able to forward ipv4 traffic
-into it.
-
-This patch enforces that destination address family is the same as service
-family, as none of the forwarding mechanisms support anything else.
-
-For the old setsockopt mechanism, we simply set the dest address family to
-AF_INET as we do with the service.
+Another step toward heterogeneous pools, this removes another piece of
+functionality currently specific to each address family type.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- include/net/ip_vs.h            |  3 +++
- include/uapi/linux/ip_vs.h     |  3 +++
- net/netfilter/ipvs/ip_vs_ctl.c | 45 +++++++++++++++++++++++++++++++++++-------
- 3 files changed, 44 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 23 +++++++++++------------
+ 1 file changed, 11 insertions(+), 12 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 624a8a5..b7e2b62 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -648,6 +648,9 @@ struct ip_vs_dest_user_kern {
- 	/* thresholds for active connections */
- 	u32			u_threshold;	/* upper threshold */
- 	u32			l_threshold;	/* lower threshold */
-+
-+	/* Address family of addr */
-+	u16			af;
- };
- 
- 
-diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-index fbcffe8..cabe95d 100644
---- a/include/uapi/linux/ip_vs.h
-+++ b/include/uapi/linux/ip_vs.h
-@@ -384,6 +384,9 @@ enum {
- 	IPVS_DEST_ATTR_PERSIST_CONNS,	/* persistent connections */
- 
- 	IPVS_DEST_ATTR_STATS,		/* nested attribute for dest stats */
-+
-+	IPVS_DEST_ATTR_ADDR_FAMILY,	/* Address family of address */
-+
- 	__IPVS_DEST_ATTR_MAX,
- };
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index fd3f444..5a94927 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -816,6 +816,8 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	dest->u_threshold = udest->u_threshold;
- 	dest->l_threshold = udest->l_threshold;
- 
-+	dest->af = udest->af;
-+
- 	spin_lock_bh(&dest->dst_lock);
- 	__ip_vs_dst_cache_reset(dest);
- 	spin_unlock_bh(&dest->dst_lock);
-@@ -846,8 +848,12 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- 
- 	EnterFunction(2);
- 
-+	/* Temporary for consistency */
-+	if (udest->af != svc->af)
-+		return -EINVAL;
-+
- #ifdef CONFIG_IP_VS_IPV6
--	if (svc->af == AF_INET6) {
-+	if (udest->af == AF_INET6) {
- 		atype = ipv6_addr_type(&udest->addr.in6);
- 		if ((!(atype & IPV6_ADDR_UNICAST) ||
- 			atype & IPV6_ADDR_LINKLOCAL) &&
-@@ -875,12 +881,12 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- 		u64_stats_init(&ip_vs_dest_stats->syncp);
- 	}
- 
--	dest->af = svc->af;
-+	dest->af = udest->af;
- 	dest->protocol = svc->protocol;
- 	dest->vaddr = svc->addr;
- 	dest->vport = svc->port;
- 	dest->vfwmark = svc->fwmark;
--	ip_vs_addr_copy(svc->af, &dest->addr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &dest->addr, &udest->addr);
- 	dest->port = udest->port;
- 
- 	atomic_set(&dest->activeconns, 0);
-@@ -928,7 +934,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 		return -ERANGE;
- 	}
- 
--	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &daddr, &udest->addr);
- 
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
-@@ -949,7 +955,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 	if (dest != NULL) {
- 		IP_VS_DBG_BUF(3, "Get destination %s:%u from trash, "
- 			      "dest->refcnt=%d, service %u/%s:%u\n",
--			      IP_VS_DBG_ADDR(svc->af, &daddr), ntohs(dport),
-+			      IP_VS_DBG_ADDR(udest->af, &daddr), ntohs(dport),
- 			      atomic_read(&dest->refcnt),
- 			      dest->vfwmark,
- 			      IP_VS_DBG_ADDR(svc->af, &dest->vaddr),
-@@ -992,7 +998,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 		return -ERANGE;
- 	}
- 
--	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &daddr, &udest->addr);
- 
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
-@@ -2232,6 +2238,7 @@ static void ip_vs_copy_udest_compat(struct ip_vs_dest_user_kern *udest,
- 	udest->weight		= udest_compat->weight;
- 	udest->u_threshold	= udest_compat->u_threshold;
- 	udest->l_threshold	= udest_compat->l_threshold;
-+	udest->af		= AF_INET;
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index b3b54d7..034a282 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -204,6 +204,15 @@ static inline bool crosses_local_route_boundary(int skb_af, struct sk_buff *skb,
+ 	return false;
  }
  
++static inline void maybe_update_pmtu(int skb_af, struct sk_buff *skb, int mtu)
++{
++	struct sock *sk = skb->sk;
++	struct rtable *ort = skb_rtable(skb);
++
++	if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
++		ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
++}
++
+ /* Get route to destination or remote server */
  static int
-@@ -2469,6 +2476,12 @@ __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
- 			if (count >= get->num_dests)
- 				break;
- 
-+			/* Cannot expose heterogeneous members via sockopt
-+			 * interface
-+			 */
-+			if (dest->af != svc->af)
-+				continue;
-+
- 			entry.addr = dest->addr.ip;
- 			entry.port = dest->port;
- 			entry.conn_flags = atomic_read(&dest->conn_flags);
-@@ -2766,6 +2779,7 @@ static const struct nla_policy ip_vs_dest_policy[IPVS_DEST_ATTR_MAX + 1] = {
- 	[IPVS_DEST_ATTR_INACT_CONNS]	= { .type = NLA_U32 },
- 	[IPVS_DEST_ATTR_PERSIST_CONNS]	= { .type = NLA_U32 },
- 	[IPVS_DEST_ATTR_STATS]		= { .type = NLA_NESTED },
-+	[IPVS_DEST_ATTR_ADDR_FAMILY]	= { .type = NLA_U16 },
- };
- 
- static int ip_vs_genl_fill_stats(struct sk_buff *skb, int container_type,
-@@ -3021,7 +3035,8 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_INACT_CONNS,
- 			atomic_read(&dest->inactconns)) ||
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_PERSIST_CONNS,
--			atomic_read(&dest->persistconns)))
-+			atomic_read(&dest->persistconns)) ||
-+	    nla_put_u16(skb, IPVS_DEST_ATTR_ADDR_FAMILY, dest->af))
- 		goto nla_put_failure;
- 	if (ip_vs_genl_fill_stats(skb, IPVS_DEST_ATTR_STATS, &dest->stats))
- 		goto nla_put_failure;
-@@ -3102,6 +3117,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- {
- 	struct nlattr *attrs[IPVS_DEST_ATTR_MAX + 1];
- 	struct nlattr *nla_addr, *nla_port;
-+	struct nlattr *nla_addr_family;
- 
- 	/* Parse mandatory identifying destination fields first */
- 	if (nla == NULL ||
-@@ -3110,6 +3126,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- 
- 	nla_addr	= attrs[IPVS_DEST_ATTR_ADDR];
- 	nla_port	= attrs[IPVS_DEST_ATTR_PORT];
-+	nla_addr_family	= attrs[IPVS_DEST_ATTR_ADDR_FAMILY];
- 
- 	if (!(nla_addr && nla_port))
- 		return -EINVAL;
-@@ -3119,6 +3136,11 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- 	nla_memcpy(&udest->addr, nla_addr, sizeof(udest->addr));
- 	udest->port = nla_get_be16(nla_port);
- 
-+	if (nla_addr_family)
-+		udest->af = nla_get_u16(nla_addr_family);
-+	else
-+		udest->af = 0;
-+
- 	/* If a full entry was requested, check for the additional fields */
- 	if (full_entry) {
- 		struct nlattr *nla_fwd, *nla_weight, *nla_u_thresh,
-@@ -3346,6 +3368,15 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 					    need_full_dest);
- 		if (ret)
- 			goto out;
-+
-+		/* Old protocols did not allow the user to specify address
-+		 * family, so we set it to zero instead.  We also didn't
-+		 * allow heterogeneous pools in the old code, so it's safe
-+		 * to assume that this will have the same address family as
-+		 * the service.
-+		 */
-+		if (udest.af == 0)
-+			udest.af = svc->af;
+ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+@@ -213,7 +222,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rtable *rt;			/* Route to the other host */
+-	struct rtable *ort;			/* Original route */
+ 	struct iphdr *iph;
+ 	__be16 df;
+ 	int mtu;
+@@ -284,16 +292,12 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		mtu = dst_mtu(&rt->dst);
+ 		df = iph->frag_off & htons(IP_DF);
+ 	} else {
+-		struct sock *sk = skb->sk;
+-
+ 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
+ 		if (mtu < 68) {
+ 			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
+ 			goto err_put;
+ 		}
+-		ort = skb_rtable(skb);
+-		if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
+-			ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
++		maybe_update_pmtu(skb_af, skb, mtu);
+ 		/* MTU check allowed? */
+ 		df = sysctl_pmtu_disc(ipvs) ? iph->frag_off & htons(IP_DF) : 0;
  	}
- 
- 	switch (cmd) {
--- 
-1.8.1
-
+@@ -372,7 +376,6 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	struct net *net = dev_net(skb_dst(skb)->dev);
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rt6_info *rt;			/* Route to the other host */
+-	struct rt6_info *ort;			/* Original route */
+ 	struct dst_entry *dst;
+ 	int mtu;
+ 	int local, noref = 1;
+@@ -438,17 +441,13 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL)))
+ 		mtu = dst_mtu(&rt->dst);
+ 	else {
+-		struct sock *sk = skb->sk;
