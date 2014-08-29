@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 07/20] ipvs: Pull out update_pmtu code
-Date: Fri, 29 Aug 2014 01:38:56 -0700
-Message-ID: <1409301549-5284-8-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v4 06/20] ipvs: Pull out crosses_local_route_boundary logic
+Date: Fri, 29 Aug 2014 01:38:55 -0700
+Message-ID: <1409301549-5284-7-git-send-email-agartrell@fb.com>
 References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=ZacdhXMczlzCC2PiC5R0RtREXSVdBhEv0jtrQGB4dzk=;
- b=IJ4f2IYZ5zR3Lk9oPfcZbbZKz99Ki4K3RgwAxO6I07cZ6vLGHuJeA7YHVx7M3inFWGi0
- LhUzhL7uCqWAbAEZ12MbltZLkiHXYB9ZjNacpm5unO2ANwGx8TAMJNW3/nDG03ZCPXFa
- s5TfIH1dbJ6jtYkeGv2ZfHm9+UrLl3yEpDk= 
+ content-type; s=facebook; bh=603kdeF8RIvgIgcppQ1a6g4sUkuYFqBu5QhR6MXqtj0=;
+ b=ZbOHV8RyxbzsdZ6FHXW5m57lPfcQ0G675EcaJ93TxuauTmL8aaarAjwRM4MbHhtfP20B
+ YsMjzUfZ52QmcfXtdkmuWj09WeHi9ql2EptQaUU3AwGPbuYAK+uVGGuahRNzDzzKe5pl
+ +dyjVFpbqQTzY+oAlr1dOv488kfAHvBih2c= 
 In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,70 +19,278 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-Another step toward heterogeneous pools, this removes another piece of
-functionality currently specific to each address family type.
+This logic is repeated in both out_rt functions so it was redundant.
+Additionally, we'll need to be able to do checks to route v4 to v6 and vice
+versa in order to deal with heterogeneous pools.
+
+This patch also updates the callsites to add an additional parameter to the
+out route functions.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 23 +++++++++++------------
- 1 file changed, 11 insertions(+), 12 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 144 +++++++++++++++++++++-------------------
+ 1 file changed, 77 insertions(+), 67 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index b3b54d7..034a282 100644
+index 56896a4..b3b54d7 100644
 --- a/net/netfilter/ipvs/ip_vs_xmit.c
 +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -204,6 +204,15 @@ static inline bool crosses_local_route_boundary(int skb_af, struct sk_buff *skb,
- 	return false;
+@@ -157,9 +157,56 @@ retry:
+ 	return rt;
  }
  
-+static inline void maybe_update_pmtu(int skb_af, struct sk_buff *skb, int mtu)
++#ifdef CONFIG_IP_VS_IPV6
++static inline int __ip_vs_is_local_route6(struct rt6_info *rt)
 +{
-+	struct sock *sk = skb->sk;
-+	struct rtable *ort = skb_rtable(skb);
++	return rt->dst.dev && rt->dst.dev->flags & IFF_LOOPBACK;
++}
++#endif
 +
-+	if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
-+		ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
++static inline bool crosses_local_route_boundary(int skb_af, struct sk_buff *skb,
++						int rt_mode,
++						bool new_rt_is_local)
++{
++	bool rt_mode_allow_local = !!(rt_mode & IP_VS_RT_MODE_LOCAL);
++	bool rt_mode_allow_non_local = !!(rt_mode & IP_VS_RT_MODE_LOCAL);
++	bool rt_mode_allow_redirect = !!(rt_mode & IP_VS_RT_MODE_RDR);
++	bool source_is_loopback;
++	bool old_rt_is_local;
++
++#ifdef CONFIG_IP_VS_IPV6
++	if (skb_af == AF_INET6) {
++		int addr_type = ipv6_addr_type(&ipv6_hdr(skb)->saddr);
++
++		source_is_loopback =
++			(!skb->dev || skb->dev->flags & IFF_LOOPBACK) &&
++			(addr_type & IPV6_ADDR_LOOPBACK);
++		old_rt_is_local = __ip_vs_is_local_route6(
++			(struct rt6_info *)skb_dst(skb));
++	} else
++#endif
++	{
++		source_is_loopback = ipv4_is_loopback(ip_hdr(skb)->saddr);
++		old_rt_is_local = skb_rtable(skb)->rt_flags & RTCF_LOCAL;
++	}
++
++	if (unlikely(new_rt_is_local)) {
++		if (!rt_mode_allow_local)
++			return true;
++		if (!rt_mode_allow_redirect && !old_rt_is_local)
++			return true;
++	} else {
++		if (!rt_mode_allow_non_local)
++			return true;
++		if (source_is_loopback)
++			return true;
++	}
++	return false;
 +}
 +
  /* Get route to destination or remote server */
  static int
- __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
-@@ -213,7 +222,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rtable *rt;			/* Route to the other host */
--	struct rtable *ort;			/* Original route */
- 	struct iphdr *iph;
- 	__be16 df;
- 	int mtu;
-@@ -284,16 +292,12 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 		mtu = dst_mtu(&rt->dst);
- 		df = iph->frag_off & htons(IP_DF);
- 	} else {
--		struct sock *sk = skb->sk;
--
- 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
- 		if (mtu < 68) {
- 			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
- 			goto err_put;
- 		}
--		ort = skb_rtable(skb);
--		if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
--			ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
-+		maybe_update_pmtu(skb_af, skb, mtu);
- 		/* MTU check allowed? */
- 		df = sysctl_pmtu_disc(ipvs) ? iph->frag_off & htons(IP_DF) : 0;
- 	}
-@@ -372,7 +376,6 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+-__ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
++__ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		   __be32 daddr, int rt_mode, __be32 *ret_saddr)
+ {
  	struct net *net = dev_net(skb_dst(skb)->dev);
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rt6_info *rt;			/* Route to the other host */
--	struct rt6_info *ort;			/* Original route */
- 	struct dst_entry *dst;
- 	int mtu;
- 	int local, noref = 1;
-@@ -438,17 +441,13 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL)))
- 		mtu = dst_mtu(&rt->dst);
- 	else {
--		struct sock *sk = skb->sk;
+@@ -218,30 +265,15 @@ __ip_vs_get_out_rt(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	}
+ 
+ 	local = (rt->rt_flags & RTCF_LOCAL) ? 1 : 0;
+-	if (!((local ? IP_VS_RT_MODE_LOCAL : IP_VS_RT_MODE_NON_LOCAL) &
+-	      rt_mode)) {
+-		IP_VS_DBG_RL("Stopping traffic to %s address, dest: %pI4\n",
+-			     (rt->rt_flags & RTCF_LOCAL) ?
+-			     "local":"non-local", &daddr);
++	if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
++						  local))) {
++		IP_VS_DBG_RL("We are crossing local and non-local addresses"
++			     " daddr=%pI4\n", &dest->addr.ip);
+ 		goto err_put;
+ 	}
+ 	iph = ip_hdr(skb);
+-	if (likely(!local)) {
+-		if (unlikely(ipv4_is_loopback(iph->saddr))) {
+-			IP_VS_DBG_RL("Stopping traffic from loopback address "
+-				     "%pI4 to non-local address, dest: %pI4\n",
+-				     &iph->saddr, &daddr);
+-			goto err_put;
+-		}
+-	} else {
+-		ort = skb_rtable(skb);
+-		if (!(rt_mode & IP_VS_RT_MODE_RDR) &&
+-		    !(ort->rt_flags & RTCF_LOCAL)) {
+-			IP_VS_DBG_RL("Redirect from non-local address %pI4 to "
+-				     "local requires NAT method, dest: %pI4\n",
+-				     &iph->daddr, &daddr);
+-			goto err_put;
+-		}
++
++	if (unlikely(local)) {
+ 		/* skb to local stack, preserve old route */
+ 		if (!noref)
+ 			ip_rt_put(rt);
+@@ -295,12 +327,6 @@ err_unreach:
+ }
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+-
+-static inline int __ip_vs_is_local_route6(struct rt6_info *rt)
+-{
+-	return rt->dst.dev && rt->dst.dev->flags & IFF_LOOPBACK;
+-}
+-
+ static struct dst_entry *
+ __ip_vs_route_output_v6(struct net *net, struct in6_addr *daddr,
+ 			struct in6_addr *ret_saddr, int do_xfrm)
+@@ -339,7 +365,7 @@ out_err:
+  * Get route to destination or remote server
+  */
+ static int
+-__ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
++__ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		      struct in6_addr *daddr, struct in6_addr *ret_saddr,
+ 		      struct ip_vs_iphdr *ipvsh, int do_xfrm, int rt_mode)
+ {
+@@ -393,32 +419,15 @@ __ip_vs_get_out_rt_v6(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	}
+ 
+ 	local = __ip_vs_is_local_route6(rt);
+-	if (!((local ? IP_VS_RT_MODE_LOCAL : IP_VS_RT_MODE_NON_LOCAL) &
+-	      rt_mode)) {
+-		IP_VS_DBG_RL("Stopping traffic to %s address, dest: %pI6c\n",
+-			     local ? "local":"non-local", daddr);
++
++	if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
++						  local))) {
++		IP_VS_DBG_RL("We are crossing local and non-local addresses"
++			     " daddr=%pI6\n", &dest->addr.in6);
+ 		goto err_put;
+ 	}
+-	if (likely(!local)) {
+-		if (unlikely((!skb->dev || skb->dev->flags & IFF_LOOPBACK) &&
+-			     ipv6_addr_type(&ipv6_hdr(skb)->saddr) &
+-					    IPV6_ADDR_LOOPBACK)) {
+-			IP_VS_DBG_RL("Stopping traffic from loopback address "
+-				     "%pI6c to non-local address, "
+-				     "dest: %pI6c\n",
+-				     &ipv6_hdr(skb)->saddr, daddr);
+-			goto err_put;
+-		}
+-	} else {
+-		ort = (struct rt6_info *) skb_dst(skb);
+-		if (!(rt_mode & IP_VS_RT_MODE_RDR) &&
+-		    !__ip_vs_is_local_route6(ort)) {
+-			IP_VS_DBG_RL("Redirect from non-local address %pI6c "
+-				     "to local requires NAT method, "
+-				     "dest: %pI6c\n",
+-				     &ipv6_hdr(skb)->daddr, daddr);
+-			goto err_put;
+-		}
++
++	if (unlikely(local)) {
+ 		/* skb to local stack, preserve old route */
+ 		if (!noref)
+ 			dst_release(&rt->dst);
+@@ -556,8 +565,8 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	if (__ip_vs_get_out_rt(skb, NULL, iph->daddr, IP_VS_RT_MODE_NON_LOCAL,
+-			       NULL) < 0)
++	if (__ip_vs_get_out_rt(cp->af, skb, NULL, iph->daddr,
++			       IP_VS_RT_MODE_NON_LOCAL, NULL) < 0)
+ 		goto tx_error;
+ 
+ 	ip_send_check(iph);
+@@ -586,7 +595,7 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	if (__ip_vs_get_out_rt_v6(skb, NULL, &ipvsh->daddr.in6, NULL,
++	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &ipvsh->daddr.in6, NULL,
+ 				  ipvsh, 0, IP_VS_RT_MODE_NON_LOCAL) < 0)
+ 		goto tx_error;
+ 
+@@ -633,7 +642,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	}
+ 
+ 	was_input = rt_is_input_route(skb_rtable(skb));
+-	local = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_RDR, NULL);
+@@ -721,8 +730,8 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
+ 	}
+ 
+-	local = __ip_vs_get_out_rt_v6(skb, cp->dest, &cp->daddr.in6, NULL,
+-				      ipvsh, 0,
++	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++				      NULL, ipvsh, 0,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+ 				      IP_VS_RT_MODE_RDR);
+@@ -829,7 +838,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_CONNECT |
+@@ -928,7 +937,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(skb, cp->dest, &cp->daddr.in6,
++	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
+ 				      &saddr, ipvsh, 1,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+@@ -1021,7 +1030,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_KNOWN_NH, NULL);
+@@ -1060,8 +1069,8 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(skb, cp->dest, &cp->daddr.in6, NULL,
+-				      ipvsh, 0,
++	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++				      NULL, ipvsh, 0,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL);
+ 	if (local < 0)
+@@ -1128,7 +1137,8 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(skb, cp->dest, cp->daddr.ip, rt_mode, NULL);
++	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
++				   NULL);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	rt = skb_rtable(skb);
+@@ -1219,8 +1229,8 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(skb, cp->dest, &cp->daddr.in6, NULL,
+-				      ipvsh, 0, rt_mode);
++	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++				      NULL, ipvsh, 0, rt_mode);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	rt = (struct rt6_info *) skb_dst(skb);
+-- 
+1.8.1
+
