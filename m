@@ -1,87 +1,92 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: Re: [PATCH ipvs,v4 19/20] ipvs: use the new dest addr family field
-Date: Fri, 29 Aug 2014 14:19:04 -0700
-Message-ID: <5400EE48.5060007@fb.com>
-References: <1409301549-5284-1-git-send-email-agartrell@fb.com> <1409301549-5284-20-git-send-email-agartrell@fb.com> <alpine.LFD.2.11.1408291259510.4876@ja.home.ssi.bg>
+Subject: [PATCH] ipvsadm: specify real server address family to netlink socket
+Date: Fri, 29 Aug 2014 14:27:37 -0700
+Message-ID: <1409347657-6489-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=message-id : date : from :
- mime-version : to : cc : subject : references : in-reply-to : content-type
- : content-transfer-encoding; s=facebook;
- bh=aE7lV4k5OH0+Rja3EFX4wgTR7K1AVnhUH8JidkfCoEQ=;
- b=gJTYUjRlg/3kOabwgE05x1vXTJQjzGztV7bkj5GJLXoF7DN32uLeBf5meRrT1k95WLhJ
- OugxBtnxXCaVH3fy575+3MkMmWZ5GxUDavsqYsonrDoHo2Ka8CLyuIo+eYkMueFiudfE
- 5vRQaacGhd8MUDYaT/4G4NaqpudG37qJng4= 
-In-Reply-To: <alpine.LFD.2.11.1408291259510.4876@ja.home.ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=o3aSjBxaWAwcsSBRHlLK4pY21OvrpklOtyT6fYUFuvA=;
+ b=ileXQrGDqQ0hs41K/CDiNmqJQIuTKxioPB7dYWR7CA/Lbt531ad7TzND8VXMF5QTpJQS
+ MoegXfA8EZvCA/TwTyh0SiFqwIlGednuV1tMth95b/oURdfG7FUo95OztR5yy8w9AYgg
+ Kb2NkyOljvjTuc/9sNYsTfCmik4OODezxAc= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: horms@verge.net.au
+Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-Hey
+This is necessary for supporting heterogeneous pools (v4 and v6 mixed
+pools).
 
-On 8/29/14 3:32 AM, Julian Anastasov wrote:
->
-> 	Hello,
->
-> On Fri, 29 Aug 2014, Alex Gartrell wrote:
->
->> From: Julian Anastasov <ja@ssi.bg>
->>
->> Use the new address family field cp->daf when printing
->> cp->daddr in logs or connection listing.
->>
->> Signed-off-by: Julian Anastasov <ja@ssi.bg>
->> Signed-off-by: Alex Gartrell <agartrell@fb.com>
->
-> ...
->
->> --- a/net/netfilter/ipvs/ip_vs_conn.c
->> +++ b/net/netfilter/ipvs/ip_vs_conn.c
->> @@ -27,6 +27,7 @@
->>
->>   #include <linux/interrupt.h>
->>   #include <linux/in.h>
->> +#include <linux/inet.h>
->>   #include <linux/net.h>
->>   #include <linux/kernel.h>
->>   #include <linux/module.h>
->> @@ -77,6 +78,13 @@ static unsigned int ip_vs_conn_rnd __read_mostly;
->>   #define CT_LOCKARRAY_SIZE  (1<<CT_LOCKARRAY_BITS)
->>   #define CT_LOCKARRAY_MASK  (CT_LOCKARRAY_SIZE-1)
->>
->> +/* We need an addrstrlen that works with or without v6 */
->> +#ifdef CONFIG_IP_VS_IPV6
->> +#define IP_VS_ADDRSTRLEN INET6_ADDRSTRLEN
->> +#else
->> +#define IP_VS_ADDRSTRLEN INET_ADDRSTRLEN
->> +#endif
->
-> 	Thanks! Note that for v4 we use 8+1 (hex).
-> All other patches look ok. It is early to ack them,
-> right? We need to post them again at the right time.
-> I hope "ipvs: properly declare tunnel encapsulation"
-> will be moved further soon.
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+---
+ ipvsadm.c         | 2 +-
+ libipvs/ip_vs.h   | 3 +++
+ libipvs/libipvs.c | 8 +++++++-
+ 3 files changed, 11 insertions(+), 2 deletions(-)
 
-I updated this patch
+diff --git a/ipvsadm.c b/ipvsadm.c
+index 602bcf6..d12070e 100644
+--- a/ipvsadm.c
++++ b/ipvsadm.c
+@@ -1624,7 +1624,7 @@ print_service_entry(ipvs_service_entry_t *se, unsigned int format)
+ 		char *dname;
+ 		ipvs_dest_entry_t *e = &d->entrytable[i];
+ 
+-		if (!(dname = addrport_to_anyname(se->af, &(e->addr), ntohs(e->port),
++		if (!(dname = addrport_to_anyname(e->af, &(e->addr), ntohs(e->port),
+ 						  se->protocol, format))) {
+ 			fprintf(stderr, "addrport_to_anyname fails\n");
+ 			exit(1);
+diff --git a/libipvs/ip_vs.h b/libipvs/ip_vs.h
+index 4db14ff..5a42a0c 100644
+--- a/libipvs/ip_vs.h
++++ b/libipvs/ip_vs.h
+@@ -470,6 +470,9 @@ enum {
+ 	IPVS_DEST_ATTR_PERSIST_CONNS,	/* persistent connections */
+ 
+ 	IPVS_DEST_ATTR_STATS,		/* nested attribute for dest stats */
++
++	IPVS_DEST_ATTR_ADDR_FAMILY,	/* Address family of address */
++
+ 	__IPVS_DEST_ATTR_MAX,
+ };
+ 
+diff --git a/libipvs/libipvs.c b/libipvs/libipvs.c
+index 8baafed..0bfb428 100644
+--- a/libipvs/libipvs.c
++++ b/libipvs/libipvs.c
+@@ -350,6 +350,7 @@ static int ipvs_nl_fill_dest_attr(struct nl_msg *msg, ipvs_dest_t *dst)
+ 	if (!nl_dest)
+ 		return -1;
+ 
++	NLA_PUT_U16(msg, IPVS_DEST_ATTR_ADDR_FAMILY, dst->af);
+ 	NLA_PUT(msg, IPVS_DEST_ATTR_ADDR, sizeof(dst->addr), &(dst->addr));
+ 	NLA_PUT_U16(msg, IPVS_DEST_ATTR_PORT, dst->port);
+ 	NLA_PUT_U32(msg, IPVS_DEST_ATTR_FWD_METHOD, dst->conn_flags & IP_VS_CONN_F_FWD_MASK);
+@@ -751,6 +752,7 @@ static int ipvs_dests_parse_cb(struct nl_msg *msg, void *arg)
+ 	struct nlmsghdr *nlh = nlmsg_hdr(msg);
+ 	struct nlattr *attrs[IPVS_CMD_ATTR_MAX + 1];
+ 	struct nlattr *dest_attrs[IPVS_DEST_ATTR_MAX + 1];
++	struct nlattr *attr_addr_family = NULL;
+ 	struct ip_vs_get_dests **dp = (struct ip_vs_get_dests **)arg;
+ 	struct ip_vs_get_dests *d = (struct ip_vs_get_dests *)*dp;
+ 	int i = d->num_dests;
+@@ -788,7 +790,11 @@ static int ipvs_dests_parse_cb(struct nl_msg *msg, void *arg)
+ 	d->entrytable[i].activeconns = nla_get_u32(dest_attrs[IPVS_DEST_ATTR_ACTIVE_CONNS]);
+ 	d->entrytable[i].inactconns = nla_get_u32(dest_attrs[IPVS_DEST_ATTR_INACT_CONNS]);
+ 	d->entrytable[i].persistconns = nla_get_u32(dest_attrs[IPVS_DEST_ATTR_PERSIST_CONNS]);
+-	d->entrytable[i].af = d->af;
++	attr_addr_family = dest_attrs[IPVS_DEST_ATTR_ADDR_FAMILY];
++	if (attr_addr_family)
++		d->entrytable[i].af = nla_get_u16(attr_addr_family);
++	else
++		d->entrytable[i].af = d->af;
+ 
+ 	if (ipvs_parse_stats(&(d->entrytable[i].stats),
+ 			     dest_attrs[IPVS_DEST_ATTR_STATS]) != 0)
+-- 
+1.8.1
 
--#define IP_VS_ADDRSTRLEN INET_ADDRSTRLEN
-+#define IP_VS_ADDRSTRLEN (8+1)
-
-I'll spare the mailing list another 20 emails though.
-
-So, if I understand correctly, we'll wait until it lands in net-next and 
-then I'll submit these patches to netdev?
-
-
->
-> 	For now we have to find a way to support sync
-> protocol and to update ipvsadm.
-
-I'll mail the ipvsadm change right away.  I haven't begun to think about 
-sync protocol though :)
-
-Thanks,
-Alex
