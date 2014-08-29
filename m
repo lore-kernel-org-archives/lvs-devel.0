@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 14/20] ipvs: use correct address family in NQ logs
-Date: Fri, 29 Aug 2014 01:39:03 -0700
-Message-ID: <1409301549-5284-15-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v4 19/20] ipvs: use the new dest addr family field
+Date: Fri, 29 Aug 2014 01:39:08 -0700
+Message-ID: <1409301549-5284-20-git-send-email-agartrell@fb.com>
 References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=EyPiliRxfFT0bWGVPTudFwz/EjIAW7hjvsalaQbWX2A=;
- b=oDjG3Va2UcGylTJoRv+TRCJ789VaFmOouak7HySGlOIi1UI+lWxUBHnfgt6vi//lYCy2
- CtMmLqjQ8dBbyNA/V6GshNAz3lfRiNIKUvo2htX5/IexdK+2XJ18U+4A3ZocvDVbHtFN
- ZJB5KeSmzdgxCjsdk7XFxb+GmKRVhzlzPsg= 
+ content-type; s=facebook; bh=TnAVHihoJOj28PZ7+guFy6zirBFo1YVxygkvYvyHdoo=;
+ b=eP7HEvEE24U8gIyvGxnvZhxhvKZn4ZTLlbX73bXr+r9eGN6sk7gxgpeBnAtxNXes5/P8
+ 9lzvSgPd5H5Df7fexSkvwu2f87PnKvZiXNWCoEHsTXsvvav+TtLQvBFb+Rd3CXuedLDy
+ /pVN6O6TVCwLw8mRcpR23VddRpxfcDrCBtk= 
 In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -21,28 +21,205 @@ Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <aga
 
 From: Julian Anastasov <ja@ssi.bg>
 
-Needed to support svc->af != dest->af.
+Use the new address family field cp->daf when printing
+cp->daddr in logs or connection listing.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_nq.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_conn.c       | 49 +++++++++++++++++++++++++++--------
+ net/netfilter/ipvs/ip_vs_core.c       |  6 ++---
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |  2 +-
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  |  2 +-
+ 4 files changed, 43 insertions(+), 16 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_nq.c b/net/netfilter/ipvs/ip_vs_nq.c
-index 961a6de..a8b6340 100644
---- a/net/netfilter/ipvs/ip_vs_nq.c
-+++ b/net/netfilter/ipvs/ip_vs_nq.c
-@@ -107,7 +107,8 @@ ip_vs_nq_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
-   out:
- 	IP_VS_DBG_BUF(6, "NQ: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d overhead %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      IP_VS_DBG_ADDR(least->af, &least->addr),
-+		      ntohs(least->port),
- 		      atomic_read(&least->activeconns),
- 		      atomic_read(&least->refcnt),
- 		      atomic_read(&least->weight), loh);
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 13e9cee..325a242 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -27,6 +27,7 @@
+ 
+ #include <linux/interrupt.h>
+ #include <linux/in.h>
++#include <linux/inet.h>
+ #include <linux/net.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+@@ -77,6 +78,13 @@ static unsigned int ip_vs_conn_rnd __read_mostly;
+ #define CT_LOCKARRAY_SIZE  (1<<CT_LOCKARRAY_BITS)
+ #define CT_LOCKARRAY_MASK  (CT_LOCKARRAY_SIZE-1)
+ 
++/* We need an addrstrlen that works with or without v6 */
++#ifdef CONFIG_IP_VS_IPV6
++#define IP_VS_ADDRSTRLEN INET6_ADDRSTRLEN
++#else
++#define IP_VS_ADDRSTRLEN INET_ADDRSTRLEN
++#endif
++
+ struct ip_vs_aligned_lock
+ {
+ 	spinlock_t	l;
+@@ -588,7 +596,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 		      ip_vs_proto_name(cp->protocol),
+ 		      IP_VS_DBG_ADDR(cp->af, &cp->caddr), ntohs(cp->cport),
+ 		      IP_VS_DBG_ADDR(cp->af, &cp->vaddr), ntohs(cp->vport),
+-		      IP_VS_DBG_ADDR(cp->af, &cp->daddr), ntohs(cp->dport),
++		      IP_VS_DBG_ADDR(cp->daf, &cp->daddr), ntohs(cp->dport),
+ 		      ip_vs_fwd_tag(cp), cp->state,
+ 		      cp->flags, atomic_read(&cp->refcnt),
+ 		      atomic_read(&dest->refcnt));
+@@ -685,7 +693,7 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
+ 		      ip_vs_proto_name(cp->protocol),
+ 		      IP_VS_DBG_ADDR(cp->af, &cp->caddr), ntohs(cp->cport),
+ 		      IP_VS_DBG_ADDR(cp->af, &cp->vaddr), ntohs(cp->vport),
+-		      IP_VS_DBG_ADDR(cp->af, &cp->daddr), ntohs(cp->dport),
++		      IP_VS_DBG_ADDR(cp->daf, &cp->daddr), ntohs(cp->dport),
+ 		      ip_vs_fwd_tag(cp), cp->state,
+ 		      cp->flags, atomic_read(&cp->refcnt),
+ 		      atomic_read(&dest->refcnt));
+@@ -754,7 +762,7 @@ int ip_vs_check_template(struct ip_vs_conn *ct)
+ 			      ntohs(ct->cport),
+ 			      IP_VS_DBG_ADDR(ct->af, &ct->vaddr),
+ 			      ntohs(ct->vport),
+-			      IP_VS_DBG_ADDR(ct->af, &ct->daddr),
++			      IP_VS_DBG_ADDR(ct->daf, &ct->daddr),
+ 			      ntohs(ct->dport));
+ 
+ 		/*
+@@ -1051,6 +1059,7 @@ static int ip_vs_conn_seq_show(struct seq_file *seq, void *v)
+ 		struct net *net = seq_file_net(seq);
+ 		char pe_data[IP_VS_PENAME_MAXLEN + IP_VS_PEDATA_MAXLEN + 3];
+ 		size_t len = 0;
++		char dbuf[IP_VS_ADDRSTRLEN];
+ 
+ 		if (!ip_vs_conn_net_eq(cp, net))
+ 			return 0;
+@@ -1065,24 +1074,32 @@ static int ip_vs_conn_seq_show(struct seq_file *seq, void *v)
+ 		pe_data[len] = '\0';
+ 
+ #ifdef CONFIG_IP_VS_IPV6
++		if (cp->daf == AF_INET6)
++			snprintf(dbuf, sizeof(dbuf), "%pI6", &cp->daddr.in6);
++		else
++#endif
++			snprintf(dbuf, sizeof(dbuf), "%08X",
++				 ntohl(cp->daddr.ip));
++
++#ifdef CONFIG_IP_VS_IPV6
+ 		if (cp->af == AF_INET6)
+ 			seq_printf(seq, "%-3s %pI6 %04X %pI6 %04X "
+-				"%pI6 %04X %-11s %7lu%s\n",
++				"%s %04X %-11s %7lu%s\n",
+ 				ip_vs_proto_name(cp->protocol),
+ 				&cp->caddr.in6, ntohs(cp->cport),
+ 				&cp->vaddr.in6, ntohs(cp->vport),
+-				&cp->daddr.in6, ntohs(cp->dport),
++				dbuf, ntohs(cp->dport),
+ 				ip_vs_state_name(cp->protocol, cp->state),
+ 				(cp->timer.expires-jiffies)/HZ, pe_data);
+ 		else
+ #endif
+ 			seq_printf(seq,
+ 				"%-3s %08X %04X %08X %04X"
+-				" %08X %04X %-11s %7lu%s\n",
++				" %s %04X %-11s %7lu%s\n",
+ 				ip_vs_proto_name(cp->protocol),
+ 				ntohl(cp->caddr.ip), ntohs(cp->cport),
+ 				ntohl(cp->vaddr.ip), ntohs(cp->vport),
+-				ntohl(cp->daddr.ip), ntohs(cp->dport),
++				dbuf, ntohs(cp->dport),
+ 				ip_vs_state_name(cp->protocol, cp->state),
+ 				(cp->timer.expires-jiffies)/HZ, pe_data);
+ 	}
+@@ -1120,6 +1137,7 @@ static const char *ip_vs_origin_name(unsigned int flags)
+ 
+ static int ip_vs_conn_sync_seq_show(struct seq_file *seq, void *v)
+ {
++	char dbuf[IP_VS_ADDRSTRLEN];
+ 
+ 	if (v == SEQ_START_TOKEN)
+ 		seq_puts(seq,
+@@ -1132,12 +1150,21 @@ static int ip_vs_conn_sync_seq_show(struct seq_file *seq, void *v)
+ 			return 0;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
++		if (cp->daf == AF_INET6)
++			snprintf(dbuf, sizeof(dbuf), "%pI6", &cp->daddr.in6);
++		else
++#endif
++			snprintf(dbuf, sizeof(dbuf), "%08X",
++				 ntohl(cp->daddr.ip));
++
++#ifdef CONFIG_IP_VS_IPV6
+ 		if (cp->af == AF_INET6)
+-			seq_printf(seq, "%-3s %pI6 %04X %pI6 %04X %pI6 %04X %-11s %-6s %7lu\n",
++			seq_printf(seq, "%-3s %pI6 %04X %pI6 %04X "
++				"%s %04X %-11s %-6s %7lu\n",
+ 				ip_vs_proto_name(cp->protocol),
+ 				&cp->caddr.in6, ntohs(cp->cport),
+ 				&cp->vaddr.in6, ntohs(cp->vport),
+-				&cp->daddr.in6, ntohs(cp->dport),
++				dbuf, ntohs(cp->dport),
+ 				ip_vs_state_name(cp->protocol, cp->state),
+ 				ip_vs_origin_name(cp->flags),
+ 				(cp->timer.expires-jiffies)/HZ);
+@@ -1145,11 +1172,11 @@ static int ip_vs_conn_sync_seq_show(struct seq_file *seq, void *v)
+ #endif
+ 			seq_printf(seq,
+ 				"%-3s %08X %04X %08X %04X "
+-				"%08X %04X %-11s %-6s %7lu\n",
++				"%s %04X %-11s %-6s %7lu\n",
+ 				ip_vs_proto_name(cp->protocol),
+ 				ntohl(cp->caddr.ip), ntohs(cp->cport),
+ 				ntohl(cp->vaddr.ip), ntohs(cp->vport),
+-				ntohl(cp->daddr.ip), ntohs(cp->dport),
++				dbuf, ntohs(cp->dport),
+ 				ip_vs_state_name(cp->protocol, cp->state),
+ 				ip_vs_origin_name(cp->flags),
+ 				(cp->timer.expires-jiffies)/HZ);
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 1f6ecb7..990decb 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -492,9 +492,9 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	IP_VS_DBG_BUF(6, "Schedule fwd:%c c:%s:%u v:%s:%u "
+ 		      "d:%s:%u conn->flags:%X conn->refcnt:%d\n",
+ 		      ip_vs_fwd_tag(cp),
+-		      IP_VS_DBG_ADDR(svc->af, &cp->caddr), ntohs(cp->cport),
+-		      IP_VS_DBG_ADDR(svc->af, &cp->vaddr), ntohs(cp->vport),
+-		      IP_VS_DBG_ADDR(svc->af, &cp->daddr), ntohs(cp->dport),
++		      IP_VS_DBG_ADDR(cp->af, &cp->caddr), ntohs(cp->cport),
++		      IP_VS_DBG_ADDR(cp->af, &cp->vaddr), ntohs(cp->vport),
++		      IP_VS_DBG_ADDR(cp->daf, &cp->daddr), ntohs(cp->dport),
+ 		      cp->flags, atomic_read(&cp->refcnt));
+ 
+ 	ip_vs_conn_stats(cp, svc);
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 2f7ea75..5b84c0b 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -432,7 +432,7 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+ 				pd->pp->name,
+ 				((direction == IP_VS_DIR_OUTPUT) ?
+ 				 "output " : "input "),
+-				IP_VS_DBG_ADDR(cp->af, &cp->daddr),
++				IP_VS_DBG_ADDR(cp->daf, &cp->daddr),
+ 				ntohs(cp->dport),
+ 				IP_VS_DBG_ADDR(cp->af, &cp->caddr),
+ 				ntohs(cp->cport),
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index e3a6972..8e92beb 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -510,7 +510,7 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+ 			      th->fin ? 'F' : '.',
+ 			      th->ack ? 'A' : '.',
+ 			      th->rst ? 'R' : '.',
+-			      IP_VS_DBG_ADDR(cp->af, &cp->daddr),
++			      IP_VS_DBG_ADDR(cp->daf, &cp->daddr),
+ 			      ntohs(cp->dport),
+ 			      IP_VS_DBG_ADDR(cp->af, &cp->caddr),
+ 			      ntohs(cp->cport),
 -- 
 1.8.1
 
