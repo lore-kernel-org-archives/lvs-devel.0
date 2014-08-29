@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH ipvs,v4 09/20] ipvs: support ipv4 in ipv6 and ipv6 in ipv4 tunnel forwarding
-Date: Fri, 29 Aug 2014 01:38:58 -0700
-Message-ID: <1409301549-5284-10-git-send-email-agartrell@fb.com>
+Subject: [PATCH ipvs,v4 04/20] ipvs: Supply destination address family to ip_vs_conn_new
+Date: Fri, 29 Aug 2014 01:38:53 -0700
+Message-ID: <1409301549-5284-5-git-send-email-agartrell@fb.com>
 References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=d+Zn2R0hYhz+JQ7G8HMOLbzl2kMo7ZPG+86I4y6tbHs=;
- b=oMtx3lGEnMbCpyJ9FKr19NZntCBtzwRunD7wr04ffjvFtX42HHq4S19aQ9UNR9H3h+Wf
- Jd/OMmpbT0XipEGL3AlFjCzHaDqTJExK3c6si4rOyECOtitptA6U75hyxbKnOunfhBkp
- jjoxRGXe7hd2k3LxciD358xMITxkvKGQC/8= 
+ content-type; s=facebook; bh=4c9/kjQrCve2NzcRDM1YWdsdoasEpDGkA+K2hvd3xKQ=;
+ b=Kg9f6pLkYRTPvUp04cqXPc0UvhvWTvHJvWAunsOh3a0NQ8hY8Pd0LN3XdQtHopxba4/T
+ tD9zRX0HOJxiMRMuxTOfPOz6rxB9mEBBh4+fxMrxgsq3+TTM+S89nmhRSSM/A7ykCb9u
+ e/FnpCWCc1IyJlDRa+NJhDEoxGQSzAH8Ydw= 
 In-Reply-To: <1409301549-5284-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,259 +19,153 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au
 Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-Pull the common logic for preparing an skb to prepend the header into a
-single function and then set fields such that they can be used in either
-case (generalize tos and tclass to dscp, hop_limit and ttl to ttl, etc)
+The assumption that dest af is equal to service af is now unreliable, so we
+must specify it manually so as not to copy just the first 4 bytes of a v6
+address or doing an illegal read of 16 butes on a v6 address.
+
+We "lie" in two places: for synchronization (which we will explicitly
+disallow from happening when we have heterogeneous pools) and for black
+hole addresses where there's no real dest.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |  12 +++-
- net/netfilter/ipvs/ip_vs_xmit.c | 148 +++++++++++++++++++++++++++++-----------
- 2 files changed, 117 insertions(+), 43 deletions(-)
+ include/net/ip_vs.h             | 3 ++-
+ net/netfilter/ipvs/ip_vs_conn.c | 5 +++--
+ net/netfilter/ipvs/ip_vs_core.c | 9 +++++----
+ net/netfilter/ipvs/ip_vs_ftp.c  | 6 ++++--
+ net/netfilter/ipvs/ip_vs_sync.c | 3 ++-
+ 5 files changed, 16 insertions(+), 10 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 2fa1155..7600dbe 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -535,6 +535,7 @@ struct ip_vs_conn {
+ 	union nf_inet_addr      daddr;          /* destination address */
+ 	volatile __u32          flags;          /* status flags */
+ 	__u16                   protocol;       /* Which protocol (TCP/UDP) */
++	__u16			daf;		/* Address family of the dest */
+ #ifdef CONFIG_NET_NS
+ 	struct net              *net;           /* Name space */
+ #endif
+@@ -1213,7 +1214,7 @@ static inline void __ip_vs_conn_put(struct ip_vs_conn *cp)
+ void ip_vs_conn_put(struct ip_vs_conn *cp);
+ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport);
+ 
+-struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p,
++struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ 				  const union nf_inet_addr *daddr,
+ 				  __be16 dport, unsigned int flags,
+ 				  struct ip_vs_dest *dest, __u32 fwmark);
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index fdb4880..13e9cee 100644
+index 8f4c602..fdb4880 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -488,7 +488,12 @@ static inline void ip_vs_bind_xmit(struct ip_vs_conn *cp)
- 		break;
+@@ -854,7 +854,7 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp)
+  *	Create a new connection entry and hash it into the ip_vs_conn_tab
+  */
+ struct ip_vs_conn *
+-ip_vs_conn_new(const struct ip_vs_conn_param *p,
++ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ 	       const union nf_inet_addr *daddr, __be16 dport, unsigned int flags,
+ 	       struct ip_vs_dest *dest, __u32 fwmark)
+ {
+@@ -873,6 +873,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+ 	setup_timer(&cp->timer, ip_vs_conn_expire, (unsigned long)cp);
+ 	ip_vs_conn_net_set(cp, p->net);
+ 	cp->af		   = p->af;
++	cp->daf		   = dest_af;
+ 	cp->protocol	   = p->protocol;
+ 	ip_vs_addr_set(p->af, &cp->caddr, p->caddr);
+ 	cp->cport	   = p->cport;
+@@ -880,7 +881,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+ 	ip_vs_addr_set(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
+ 		       &cp->vaddr, p->vaddr);
+ 	cp->vport	   = p->vport;
+-	ip_vs_addr_set(p->af, &cp->daddr, daddr);
++	ip_vs_addr_set(cp->daf, &cp->daddr, daddr);
+ 	cp->dport          = dport;
+ 	cp->flags	   = flags;
+ 	cp->fwmark         = fwmark;
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 5c34e8d..1f6ecb7 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -328,7 +328,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 		 * This adds param.pe_data to the template,
+ 		 * and thus param.pe_data will be destroyed
+ 		 * when the template expires */
+-		ct = ip_vs_conn_new(&param, &dest->addr, dport,
++		ct = ip_vs_conn_new(&param, dest->af, &dest->addr, dport,
+ 				    IP_VS_CONN_F_TEMPLATE, dest, skb->mark);
+ 		if (ct == NULL) {
+ 			kfree(param.pe_data);
+@@ -357,7 +357,8 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol, &iph->saddr,
+ 			      src_port, &iph->daddr, dst_port, &param);
  
- 	case IP_VS_CONN_F_TUNNEL:
--		cp->packet_xmit = ip_vs_tunnel_xmit;
-+#ifdef CONFIG_IP_VS_IPV6
-+		if (cp->daf == AF_INET6)
-+			cp->packet_xmit = ip_vs_tunnel_xmit_v6;
-+		else
-+#endif
-+			cp->packet_xmit = ip_vs_tunnel_xmit;
- 		break;
+-	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest, skb->mark);
++	cp = ip_vs_conn_new(&param, dest->af, &dest->addr, dport, flags, dest,
++			    skb->mark);
+ 	if (cp == NULL) {
+ 		ip_vs_conn_put(ct);
+ 		*ignored = -1;
+@@ -479,7 +480,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+ 		ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
+ 				      &iph->saddr, pptr[0], &iph->daddr,
+ 				      pptr[1], &p);
+-		cp = ip_vs_conn_new(&p, &dest->addr,
++		cp = ip_vs_conn_new(&p, dest->af, &dest->addr,
+ 				    dest->port ? dest->port : pptr[1],
+ 				    flags, dest, skb->mark);
+ 		if (!cp) {
+@@ -550,7 +551,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 			ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
+ 					      &iph->saddr, pptr[0],
+ 					      &iph->daddr, pptr[1], &p);
+-			cp = ip_vs_conn_new(&p, &daddr, 0,
++			cp = ip_vs_conn_new(&p, svc->af, &daddr, 0,
+ 					    IP_VS_CONN_F_BYPASS | flags,
+ 					    NULL, skb->mark);
+ 			if (!cp)
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 77c1732..a64fa15 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -233,7 +233,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 			ip_vs_conn_fill_param(ip_vs_conn_net(cp),
+ 					      AF_INET, IPPROTO_TCP, &cp->caddr,
+ 					      0, &cp->vaddr, port, &p);
+-			n_cp = ip_vs_conn_new(&p, &from, port,
++			/* As above, this is ipv4 only */
++			n_cp = ip_vs_conn_new(&p, AF_INET, &from, port,
+ 					      IP_VS_CONN_F_NO_CPORT |
+ 					      IP_VS_CONN_F_NFCT,
+ 					      cp->dest, skb->mark);
+@@ -396,7 +397,8 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 				      htons(ntohs(cp->vport)-1), &p);
+ 		n_cp = ip_vs_conn_in_get(&p);
+ 		if (!n_cp) {
+-			n_cp = ip_vs_conn_new(&p, &cp->daddr,
++			/* This is ipv4 only */
++			n_cp = ip_vs_conn_new(&p, AF_INET, &cp->daddr,
+ 					      htons(ntohs(cp->dport)-1),
+ 					      IP_VS_CONN_F_NFCT, cp->dest,
+ 					      skb->mark);
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index edd2664..7162c86 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -889,7 +889,8 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+ 				       param->vaddr, param->vport, protocol,
+ 				       fwmark, flags);
  
- 	case IP_VS_CONN_F_DROUTE:
-@@ -514,7 +519,10 @@ static inline void ip_vs_bind_xmit_v6(struct ip_vs_conn *cp)
- 		break;
- 
- 	case IP_VS_CONN_F_TUNNEL:
--		cp->packet_xmit = ip_vs_tunnel_xmit_v6;
-+		if (cp->daf == AF_INET6)
-+			cp->packet_xmit = ip_vs_tunnel_xmit_v6;
-+		else
-+			cp->packet_xmit = ip_vs_tunnel_xmit;
- 		break;
- 
- 	case IP_VS_CONN_F_DROUTE:
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index fa2fdd7..91f17c1 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -824,6 +824,81 @@ tx_error:
- }
- #endif
- 
-+/* When forwarding a packet, we must ensure that we've got enough headroom
-+ * for the encapsulation packet in the skb.  This also gives us an
-+ * opportunity to figure out what the payload_len, dsfield, ttl, and df
-+ * values should be, so that we won't need to look at the old ip header
-+ * again
-+ */
-+static struct sk_buff *
-+ip_vs_prepare_tunneled_skb(struct sk_buff *skb, int skb_af,
-+			   unsigned int max_headroom, __u8 *next_protocol,
-+			   __u32 *payload_len, __u8 *dsfield, __u8 *ttl,
-+			   __be16 *df)
-+{
-+	struct sk_buff *new_skb = NULL;
-+	struct iphdr *old_iph = NULL;
-+#ifdef CONFIG_IP_VS_IPV6
-+	struct ipv6hdr *old_ipv6h = NULL;
-+#endif
-+
-+	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
-+		new_skb = skb_realloc_headroom(skb, max_headroom);
-+		if (!new_skb)
-+			goto error;
-+		consume_skb(skb);
-+		skb = new_skb;
-+	}
-+
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (skb_af == AF_INET6) {
-+		old_ipv6h = ipv6_hdr(skb);
-+		*next_protocol = IPPROTO_IPV6;
-+		if (payload_len)
-+			*payload_len =
-+				ntohs(old_ipv6h->payload_len) +
-+				sizeof(*old_ipv6h);
-+		*dsfield = ipv6_get_dsfield(old_ipv6h);
-+		*ttl = old_ipv6h->hop_limit;
-+		if (df)
-+			*df = 0;
-+	} else
-+#endif
-+	{
-+		old_iph = ip_hdr(skb);
-+		/* Copy DF, reset fragment offset and MF */
-+		if (df)
-+			*df = (old_iph->frag_off & htons(IP_DF));
-+		*next_protocol = IPPROTO_IPIP;
-+
-+		/* fix old IP header checksum */
-+		ip_send_check(old_iph);
-+		*dsfield = ipv4_get_dsfield(old_iph);
-+		*ttl = old_iph->ttl;
-+		if (payload_len)
-+			*payload_len = ntohs(old_iph->tot_len);
-+	}
-+
-+	return skb;
-+error:
-+	kfree_skb(skb);
-+	return ERR_PTR(-ENOMEM);
-+}
-+
-+static inline int __tun_gso_type_mask(int encaps_af, int orig_af)
-+{
-+	if (encaps_af == AF_INET) {
-+		if (orig_af == AF_INET)
-+			return SKB_GSO_IPIP;
-+
-+		return SKB_GSO_SIT;
-+	}
-+
-+	/* GSO: we need to provide proper SKB_GSO_ value for IPv6:
-+	 * SKB_GSO_SIT/IPV6
-+	 */
-+	return 0;
-+}
- 
- /*
-  *   IP Tunneling transmitter
-@@ -852,9 +927,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	struct rtable *rt;			/* Route to the other host */
- 	__be32 saddr;				/* Source for tunnel */
- 	struct net_device *tdev;		/* Device to other host */
--	struct iphdr  *old_iph = ip_hdr(skb);
--	u8     tos = old_iph->tos;
--	__be16 df;
-+	__u8 next_protocol = 0;
-+	__u8 dsfield = 0;
-+	__u8 ttl = 0;
-+	__be16 df = 0;
-+	__be16 *dfp = NULL;
- 	struct iphdr  *iph;			/* Our new IP header */
- 	unsigned int max_headroom;		/* The extra header space needed */
- 	int ret, local;
-@@ -877,29 +954,21 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	rt = skb_rtable(skb);
- 	tdev = rt->dst.dev;
- 
--	/* Copy DF, reset fragment offset and MF */
--	df = sysctl_pmtu_disc(ipvs) ? old_iph->frag_off & htons(IP_DF) : 0;
--
- 	/*
- 	 * Okay, now see if we can stuff it in the buffer as-is.
- 	 */
- 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
- 
--	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
--		struct sk_buff *new_skb =
--			skb_realloc_headroom(skb, max_headroom);
--
--		if (!new_skb)
--			goto tx_error;
--		consume_skb(skb);
--		skb = new_skb;
--		old_iph = ip_hdr(skb);
--	}
--
--	/* fix old IP header checksum */
--	ip_send_check(old_iph);
-+	/* We only care about the df field if sysctl_pmtu_disc(ipvs) is set */
-+	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
-+	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
-+					 &next_protocol, NULL, &dsfield,
-+					 &ttl, dfp);
-+	if (IS_ERR(skb))
-+		goto tx_error;
- 
--	skb = iptunnel_handle_offloads(skb, false, SKB_GSO_IPIP);
-+	skb = iptunnel_handle_offloads(
-+		skb, false, __tun_gso_type_mask(AF_INET, cp->af));
- 	if (IS_ERR(skb))
- 		goto tx_error;
- 
-@@ -916,11 +985,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	iph->version		=	4;
- 	iph->ihl		=	sizeof(struct iphdr)>>2;
- 	iph->frag_off		=	df;
--	iph->protocol		=	IPPROTO_IPIP;
--	iph->tos		=	tos;
-+	iph->protocol		=	next_protocol;
-+	iph->tos		=	dsfield;
- 	iph->daddr		=	cp->daddr.ip;
- 	iph->saddr		=	saddr;
--	iph->ttl		=	old_iph->ttl;
-+	iph->ttl		=	ttl;
- 	ip_select_ident(skb, NULL);
- 
- 	/* Another hack: avoid icmp_send in ip_fragment */
-@@ -953,7 +1022,10 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	struct rt6_info *rt;		/* Route to the other host */
- 	struct in6_addr saddr;		/* Source for tunnel */
- 	struct net_device *tdev;	/* Device to other host */
--	struct ipv6hdr  *old_iph = ipv6_hdr(skb);
-+	__u8 next_protocol = 0;
-+	__u32 payload_len = 0;
-+	__u8 dsfield = 0;
-+	__u8 ttl = 0;
- 	struct ipv6hdr  *iph;		/* Our new IP header */
- 	unsigned int max_headroom;	/* The extra header space needed */
- 	int ret, local;
-@@ -981,19 +1053,14 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	 */
- 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
- 
--	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
--		struct sk_buff *new_skb =
--			skb_realloc_headroom(skb, max_headroom);
--
--		if (!new_skb)
--			goto tx_error;
--		consume_skb(skb);
--		skb = new_skb;
--		old_iph = ipv6_hdr(skb);
--	}
-+	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
-+					 &next_protocol, &payload_len,
-+					 &dsfield, &ttl, NULL);
-+	if (IS_ERR(skb))
-+		goto tx_error;
- 
--	/* GSO: we need to provide proper SKB_GSO_ value for IPv6 */
--	skb = iptunnel_handle_offloads(skb, false, 0); /* SKB_GSO_SIT/IPV6 */
-+	skb = iptunnel_handle_offloads(
-+		skb, false, __tun_gso_type_mask(AF_INET6, cp->af));
- 	if (IS_ERR(skb))
- 		goto tx_error;
- 
-@@ -1008,14 +1075,13 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	 */
- 	iph			=	ipv6_hdr(skb);
- 	iph->version		=	6;
--	iph->nexthdr		=	IPPROTO_IPV6;
--	iph->payload_len	=	old_iph->payload_len;
--	be16_add_cpu(&iph->payload_len, sizeof(*old_iph));
-+	iph->nexthdr		=	next_protocol;
-+	iph->payload_len	=	htons(payload_len);
- 	memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
--	ipv6_change_dsfield(iph, 0, ipv6_get_dsfield(old_iph));
-+	ipv6_change_dsfield(iph, 0, dsfield);
- 	iph->daddr = cp->daddr.in6;
- 	iph->saddr = saddr;
--	iph->hop_limit		=	old_iph->hop_limit;
-+	iph->hop_limit		=	ttl;
- 
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->ignore_df = 1;
+-		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
++		cp = ip_vs_conn_new(param, type, daddr, dport, flags, dest,
++				    fwmark);
+ 		rcu_read_unlock();
+ 		if (!cp) {
+ 			kfree(param->pe_data);
 -- 
 1.8.1
 
