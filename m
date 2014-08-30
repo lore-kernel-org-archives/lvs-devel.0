@@ -1,52 +1,45 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH ipvs,v4 19/20] ipvs: use the new dest addr family field
-Date: Sat, 30 Aug 2014 11:35:18 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1408301123020.1671@ja.home.ssi.bg>
-References: <1409301549-5284-1-git-send-email-agartrell@fb.com> <1409301549-5284-20-git-send-email-agartrell@fb.com> <alpine.LFD.2.11.1408291259510.4876@ja.home.ssi.bg> <5400EE48.5060007@fb.com>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [GIT PULL nf] IPVS fixes for v3.17
+Date: Sat, 30 Aug 2014 13:07:59 +0200
+Message-ID: <20140830110759.GA4601@salvia>
+References: <1409120115-32053-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <5400EE48.5060007@fb.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1409120115-32053-1-git-send-email-horms@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alex Gartrell <agartrell@fb.com>
-Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-
-	Hello,
-
-On Fri, 29 Aug 2014, Alex Gartrell wrote:
-
-> I updated this patch
+On Wed, Aug 27, 2014 at 03:15:14PM +0900, Simon Horman wrote:
+> Hi Pablo,
 > 
-> -#define IP_VS_ADDRSTRLEN INET_ADDRSTRLEN
-> +#define IP_VS_ADDRSTRLEN (8+1)
-
-	ok
-
-> I'll spare the mailing list another 20 emails though.
+> please consider this IPVS fix for v3.17.
 > 
-> So, if I understand correctly, we'll wait until it lands in net-next and then
-> I'll submit these patches to netdev?
-
-	Yes, we'll wait the patch but then post them again
-here, so that Simon can apply them to ipvs-next. Simon
-then adds netdev to CC list.
-
-	Simon can say if he agrees to keep them somewhere 
-until it is time to apply them, in case he follows our
-discussion :)
-
-> > 	For now we have to find a way to support sync
-> > protocol and to update ipvsadm.
+> It allows CHECKSUM_PARTIAL to work in conjunction with
+> TCP/UDP csum offlad and the tunnel forwarding mechanism
+> provided by IPVS.
 > 
-> I'll mail the ipvsadm change right away.  I haven't begun to think about sync
-> protocol though :)
+> I suspect that this problem has existed for as long
+> has IPVS has been present in the kernel: some time before
+> git epoch of the git history in Linus's tree.
+>
+> I would like this change considered for -stable.
 
-	I'll think about sync :)
+The generic iptunnel infrastructure is quite recent. For example,
+iptunnel_handle_offloads() is available since 3.13. You'll need to
+prepare a backport of this for -stable kernels.
 
-Regards
+[...]
+> The following changes since commit d1c85c2ebe7ffe1f1b27846bd1ba0944c513d822:
+> 
+>   netfilter: HAVE_JUMP_LABEL instead of CONFIG_JUMP_LABEL (2014-08-25 10:45:28 +0200)
+> 
+> are available in the git repository at:
+> 
+>   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.17
 
---
-Julian Anastasov <ja@ssi.bg>
+Pulled, thanks.
