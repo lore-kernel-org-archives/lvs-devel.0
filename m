@@ -1,92 +1,52 @@
-From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH] ipvsadm: specify real server address family to netlink socket
-Date: Fri, 29 Aug 2014 14:27:37 -0700
-Message-ID: <1409347657-6489-1-git-send-email-agartrell@fb.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH ipvs,v4 19/20] ipvs: use the new dest addr family field
+Date: Sat, 30 Aug 2014 11:35:18 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1408301123020.1671@ja.home.ssi.bg>
+References: <1409301549-5284-1-git-send-email-agartrell@fb.com> <1409301549-5284-20-git-send-email-agartrell@fb.com> <alpine.LFD.2.11.1408291259510.4876@ja.home.ssi.bg> <5400EE48.5060007@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : mime-version : content-type; s=facebook;
- bh=o3aSjBxaWAwcsSBRHlLK4pY21OvrpklOtyT6fYUFuvA=;
- b=ileXQrGDqQ0hs41K/CDiNmqJQIuTKxioPB7dYWR7CA/Lbt531ad7TzND8VXMF5QTpJQS
- MoegXfA8EZvCA/TwTyh0SiFqwIlGednuV1tMth95b/oURdfG7FUo95OztR5yy8w9AYgg
- Kb2NkyOljvjTuc/9sNYsTfCmik4OODezxAc= 
+In-Reply-To: <5400EE48.5060007@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au
-Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
+To: Alex Gartrell <agartrell@fb.com>
+Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
 
-This is necessary for supporting heterogeneous pools (v4 and v6 mixed
-pools).
 
-Signed-off-by: Alex Gartrell <agartrell@fb.com>
----
- ipvsadm.c         | 2 +-
- libipvs/ip_vs.h   | 3 +++
- libipvs/libipvs.c | 8 +++++++-
- 3 files changed, 11 insertions(+), 2 deletions(-)
+	Hello,
 
-diff --git a/ipvsadm.c b/ipvsadm.c
-index 602bcf6..d12070e 100644
---- a/ipvsadm.c
-+++ b/ipvsadm.c
-@@ -1624,7 +1624,7 @@ print_service_entry(ipvs_service_entry_t *se, unsigned int format)
- 		char *dname;
- 		ipvs_dest_entry_t *e = &d->entrytable[i];
- 
--		if (!(dname = addrport_to_anyname(se->af, &(e->addr), ntohs(e->port),
-+		if (!(dname = addrport_to_anyname(e->af, &(e->addr), ntohs(e->port),
- 						  se->protocol, format))) {
- 			fprintf(stderr, "addrport_to_anyname fails\n");
- 			exit(1);
-diff --git a/libipvs/ip_vs.h b/libipvs/ip_vs.h
-index 4db14ff..5a42a0c 100644
---- a/libipvs/ip_vs.h
-+++ b/libipvs/ip_vs.h
-@@ -470,6 +470,9 @@ enum {
- 	IPVS_DEST_ATTR_PERSIST_CONNS,	/* persistent connections */
- 
- 	IPVS_DEST_ATTR_STATS,		/* nested attribute for dest stats */
-+
-+	IPVS_DEST_ATTR_ADDR_FAMILY,	/* Address family of address */
-+
- 	__IPVS_DEST_ATTR_MAX,
- };
- 
-diff --git a/libipvs/libipvs.c b/libipvs/libipvs.c
-index 8baafed..0bfb428 100644
---- a/libipvs/libipvs.c
-+++ b/libipvs/libipvs.c
-@@ -350,6 +350,7 @@ static int ipvs_nl_fill_dest_attr(struct nl_msg *msg, ipvs_dest_t *dst)
- 	if (!nl_dest)
- 		return -1;
- 
-+	NLA_PUT_U16(msg, IPVS_DEST_ATTR_ADDR_FAMILY, dst->af);
- 	NLA_PUT(msg, IPVS_DEST_ATTR_ADDR, sizeof(dst->addr), &(dst->addr));
- 	NLA_PUT_U16(msg, IPVS_DEST_ATTR_PORT, dst->port);
- 	NLA_PUT_U32(msg, IPVS_DEST_ATTR_FWD_METHOD, dst->conn_flags & IP_VS_CONN_F_FWD_MASK);
-@@ -751,6 +752,7 @@ static int ipvs_dests_parse_cb(struct nl_msg *msg, void *arg)
- 	struct nlmsghdr *nlh = nlmsg_hdr(msg);
- 	struct nlattr *attrs[IPVS_CMD_ATTR_MAX + 1];
- 	struct nlattr *dest_attrs[IPVS_DEST_ATTR_MAX + 1];
-+	struct nlattr *attr_addr_family = NULL;
- 	struct ip_vs_get_dests **dp = (struct ip_vs_get_dests **)arg;
- 	struct ip_vs_get_dests *d = (struct ip_vs_get_dests *)*dp;
- 	int i = d->num_dests;
-@@ -788,7 +790,11 @@ static int ipvs_dests_parse_cb(struct nl_msg *msg, void *arg)
- 	d->entrytable[i].activeconns = nla_get_u32(dest_attrs[IPVS_DEST_ATTR_ACTIVE_CONNS]);
- 	d->entrytable[i].inactconns = nla_get_u32(dest_attrs[IPVS_DEST_ATTR_INACT_CONNS]);
- 	d->entrytable[i].persistconns = nla_get_u32(dest_attrs[IPVS_DEST_ATTR_PERSIST_CONNS]);
--	d->entrytable[i].af = d->af;
-+	attr_addr_family = dest_attrs[IPVS_DEST_ATTR_ADDR_FAMILY];
-+	if (attr_addr_family)
-+		d->entrytable[i].af = nla_get_u16(attr_addr_family);
-+	else
-+		d->entrytable[i].af = d->af;
- 
- 	if (ipvs_parse_stats(&(d->entrytable[i].stats),
- 			     dest_attrs[IPVS_DEST_ATTR_STATS]) != 0)
--- 
-1.8.1
+On Fri, 29 Aug 2014, Alex Gartrell wrote:
 
+> I updated this patch
+> 
+> -#define IP_VS_ADDRSTRLEN INET_ADDRSTRLEN
+> +#define IP_VS_ADDRSTRLEN (8+1)
+
+	ok
+
+> I'll spare the mailing list another 20 emails though.
+> 
+> So, if I understand correctly, we'll wait until it lands in net-next and then
+> I'll submit these patches to netdev?
+
+	Yes, we'll wait the patch but then post them again
+here, so that Simon can apply them to ipvs-next. Simon
+then adds netdev to CC list.
+
+	Simon can say if he agrees to keep them somewhere 
+until it is time to apply them, in case he follows our
+discussion :)
+
+> > 	For now we have to find a way to support sync
+> > protocol and to update ipvsadm.
+> 
+> I'll mail the ipvsadm change right away.  I haven't begun to think about sync
+> protocol though :)
+
+	I'll think about sync :)
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
