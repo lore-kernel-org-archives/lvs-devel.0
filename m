@@ -1,37 +1,62 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 0/2] More changes for different address family
-Date: Sat, 30 Aug 2014 16:07:41 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1408301605010.6204@ja.home.ssi.bg>
-References: <1409398549-5386-1-git-send-email-ja@ssi.bg> <20140830140159.345ee473@redhat.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH ipvs,v4 19/20] ipvs: use the new dest addr family field
+Date: Mon, 1 Sep 2014 10:17:14 +0900
+Message-ID: <20140901011714.GF32075@verge.net.au>
+References: <1409301549-5284-1-git-send-email-agartrell@fb.com>
+ <1409301549-5284-20-git-send-email-agartrell@fb.com>
+ <alpine.LFD.2.11.1408291259510.4876@ja.home.ssi.bg>
+ <5400EE48.5060007@fb.com>
+ <alpine.LFD.2.11.1408301123020.1671@ja.home.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20140830140159.345ee473@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.11.1408301123020.1671@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Alex Gartrell <agartrell@fb.com>, kernel-team@fb.com
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Alex Gartrell <agartrell@fb.com>, lvs-devel@vger.kernel.org, kernel-team@fb.com
 
-
-	Hello,
-
-On Sat, 30 Aug 2014, Jesper Dangaard Brouer wrote:
-
-> On Sat, 30 Aug 2014 14:35:47 +0300
-> Julian Anastasov <ja@ssi.bg> wrote:
+On Sat, Aug 30, 2014 at 11:35:18AM +0300, Julian Anastasov wrote:
 > 
-> > Following are 2 patches that support different address family
-> > for virtual and real server.
+> 	Hello,
+> 
+> On Fri, 29 Aug 2014, Alex Gartrell wrote:
+> 
+> > I updated this patch
 > > 
-> > Alex, please test them too.
+> > -#define IP_VS_ADDRSTRLEN INET_ADDRSTRLEN
+> > +#define IP_VS_ADDRSTRLEN (8+1)
 > 
-> Do you want me to apply these right away, or should we wait for Alex'es tests?
+> 	ok
+> 
+> > I'll spare the mailing list another 20 emails though.
+> > 
+> > So, if I understand correctly, we'll wait until it lands in net-next and then
+> > I'll submit these patches to netdev?
+> 
+> 	Yes, we'll wait the patch but then post them again
+> here, so that Simon can apply them to ipvs-next. Simon
+> then adds netdev to CC list.
+> 
+> 	Simon can say if he agrees to keep them somewhere 
+> until it is time to apply them, in case he follows our
+> discussion :)
 
-	Lets wait for the tests. I'll ping you again
-if needed.
+I'd prefer if Alex reposted them when the time comes to apply them.
 
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+> 
+> > > 	For now we have to find a way to support sync
+> > > protocol and to update ipvsadm.
+> > 
+> > I'll mail the ipvsadm change right away.  I haven't begun to think about sync
+> > protocol though :)
+> 
+> 	I'll think about sync :)
+> 
+> Regards
+> 
+> --
+> Julian Anastasov <ja@ssi.bg>
+> 
