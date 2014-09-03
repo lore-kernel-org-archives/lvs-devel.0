@@ -1,80 +1,50 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Dan Carpenter <dan.carpenter@oracle.com>
 Subject: Re: [PATCHv2 net-next] ipvs: reduce stack usage for sockopt data
-Date: Wed, 3 Sep 2014 21:17:38 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1409032055520.1750@ja.home.ssi.bg>
-References: <1409691769-4413-1-git-send-email-ja@ssi.bg> <20140903091121.GA3735@salvia>
+Date: Wed, 3 Sep 2014 22:03:00 +0300
+Message-ID: <20140903190300.GN6549@mwanda>
+References: <1409691769-4413-1-git-send-email-ja@ssi.bg>
+ <20140903091121.GA3735@salvia>
+ <alpine.LFD.2.11.1409032055520.1750@ja.home.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20140903091121.GA3735@salvia>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.11.1409032055520.1750@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, Dan Carpenter <dan.carpenter@oracle.com>, Andrey Utkin <andrey.krieger.utkin@gmail.com>, David Binderman <dcb314@hotmail.com>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, Andrey Utkin <andrey.krieger.utkin@gmail.com>, David Binderman <dcb314@hotmail.com>
 
-
-	Hello,
-
-On Wed, 3 Sep 2014, Pablo Neira Ayuso wrote:
-
-> Hi Julian,
-> 
-> On Wed, Sep 03, 2014 at 12:02:49AM +0300, Julian Anastasov wrote:
-> > Use union to reserve the required stack space for sockopt data
-> > which is less than the currently hardcoded value of 128.
-> > Now the tables for commands should be more readable.
-> > The checks added for readability are optimized by compiler,
-> > others warn at compile time if command uses too much
-> > stack or exceeds the storage of set_arglen and get_arglen.
+On Wed, Sep 03, 2014 at 09:17:38PM +0300, Julian Anastasov wrote:
+> > An another question, in do_ip_vs_get_ctl() I can see:
 > > 
-> > As Dan Carpenter points out, we can run for unprivileged user,
-> > so we can silent some error messages.
+> > +       copylen = get_arglen[CMDID(cmd)];
+> > +       if (*len < (int) copylen || *len < 0) {
 > > 
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > CC: Dan Carpenter <dan.carpenter@oracle.com>
-> > CC: Andrey Utkin <andrey.krieger.utkin@gmail.com>
-> > CC: David Binderman <dcb314@hotmail.com>
-> > ---
-> > 
-> > This is 2nd version. I removed the macros and tried to
-> > fit in 80 columns... Pablo, please check this version.
-> > Also, let us know if you are going to apply the final
-> > version directly or whether Simon should take it first.
-> > Thanks!
+> > len is signed, the casting also enforces signed arithmetics. copylen
+> > can be 0 at worst case for unused options. Perhaps I'm overlooking
+> > something but I think *len < 0 is redundant.
 > 
-> Thanks for spinning a second version. I took it over and made some
-> minor comestic changes. I noticed SET_CMDID() is equivalent to
-> GET_CMDID() so, while at it, I have merged them. This allowed me to
-> fit the structure in 80-chars per column by using spaces to pad the
-> initialization area (I remeber to have seen this trick in other parts
-> of the kernel code).
-
-	Thanks, it looks better now.
-
-> An another question, in do_ip_vs_get_ctl() I can see:
+> 	Yes, I added it for readability, it can be
+> removed, I checked that it does not generate code when
+> I added it. IIRC, Arjan van de Ven mentioned
+> about gcc reporting for missing range checks when
+> commit 04bcef2a83f40c6db24222b
+> ("ipvs: Add boundary check on ioctl arguments") was
+> discussed. This is his posting:
 > 
-> +       copylen = get_arglen[CMDID(cmd)];
-> +       if (*len < (int) copylen || *len < 0) {
+> http://marc.info/?l=linux-netdev&m=125443389131548&w=2
 > 
-> len is signed, the casting also enforces signed arithmetics. copylen
-> can be 0 at worst case for unused options. Perhaps I'm overlooking
-> something but I think *len < 0 is redundant.
+> 	But I don't know how to check for such warnings
+> and if they are still reported.
+> 
 
-	Yes, I added it for readability, it can be
-removed, I checked that it does not generate code when
-I added it. IIRC, Arjan van de Ven mentioned
-about gcc reporting for missing range checks when
-commit 04bcef2a83f40c6db24222b
-("ipvs: Add boundary check on ioctl arguments") was
-discussed. This is his posting:
+I think you mean CONFIG_DEBUG_STRICT_USER_COPY_CHECKS.  Unfortunately
+it's been turned off on recent versions of GCC since 2fb0815c9ee6
+('gcc4: disable __compiletime_object_size for GCC 4.6+')
 
-http://marc.info/?l=linux-netdev&m=125443389131548&w=2
+regards,
+dan carpenter
 
-	But I don't know how to check for such warnings
-and if they are still reported.
 
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
