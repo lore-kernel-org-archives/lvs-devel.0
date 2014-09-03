@@ -1,212 +1,94 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCHv2 net-next] ipvs: reduce stack usage for sockopt data
-Date: Wed, 3 Sep 2014 08:50:52 +0900
-Message-ID: <20140902235051.GC23704@verge.net.au>
-References: <1409691769-4413-1-git-send-email-ja@ssi.bg>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: ipvs ipv6 tunnel forwarding sets expires on local route
+Date: Wed, 3 Sep 2014 00:03:23 -0700
+Message-ID: <5406BD3B.7050600@fb.com>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1409691769-4413-1-git-send-email-ja@ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=message-id : date : from :
+ mime-version : to : cc : subject : content-type :
+ content-transfer-encoding; s=facebook;
+ bh=KouqS9+Xh6tKpYmN6DzFtMWSr2nWbalZY77LbnmhdiM=;
+ b=ZrKHBjn8Ay5Qcj8jeKn0sl5NRpoxBY0P8q62eocEy+99nmZQrJUF1hve9eMCsPz4bC6a
+ cPYWo+wSBkbU/4mZ29IPXnAQWYDXsQM8BOeB5u7XQAZfDr3xRrhNNDAdttfFakioUo7d
+ NiYjgji18fqNY44Qf7c7UqtAfurERvBglP4= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Dan Carpenter <dan.carpenter@oracle.com>, Andrey Utkin <andrey.krieger.utkin@gmail.com>, David Binderman <dcb314@hotmail.com>
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: netdev@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org, kernel-team <Kernel-team@fb.com>, ps@fb.com, traffic@fb.com
 
-On Wed, Sep 03, 2014 at 12:02:49AM +0300, Julian Anastasov wrote:
-> Use union to reserve the required stack space for sockopt data
-> which is less than the currently hardcoded value of 128.
-> Now the tables for commands should be more readable.
-> The checks added for readability are optimized by compiler,
-> others warn at compile time if command uses too much
-> stack or exceeds the storage of set_arglen and get_arglen.
-> 
-> As Dan Carpenter points out, we can run for unprivileged user,
-> so we can silent some error messages.
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> CC: Dan Carpenter <dan.carpenter@oracle.com>
-> CC: Andrey Utkin <andrey.krieger.utkin@gmail.com>
-> CC: David Binderman <dcb314@hotmail.com>
-> ---
-> 
-> This is 2nd version. I removed the macros and tried to
-> fit in 80 columns... Pablo, please check this version.
-> Also, let us know if you are going to apply the final
-> version directly or whether Simon should take it first.
+So we've been debugging a problem for a while in 3.10 stable (we're 
+currently upgrading from 3.2) and it appears that we're expiring and 
+ultimately garbage collecting the local route for an ip we're adding to 
+the loopback device, resulting in ICMPV6_NOROUTE errors for clients. 
+I'd like your advice on how to fix this.
 
-I am happy for Pablo to take this.
+Repro:
+"""
+ipvsadm -R <<EOF
+-A -t [face::1]:15213 -s ch
+-a -t [face::1]:15213 -r 2401:db00:20:c001:face:0:45:0 -i
+EOF
 
-> Thanks!
-> 
->  net/netfilter/ipvs/ip_vs_ctl.c | 101 +++++++++++++++++++++++------------------
->  1 file changed, 58 insertions(+), 43 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index 581a658..fb39f1c 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -2267,27 +2267,40 @@ static int ip_vs_set_timeout(struct net *net, struct ip_vs_timeout_user *u)
->  
->  
->  #define SET_CMDID(cmd)		(cmd - IP_VS_BASE_CTL)
-> -#define SERVICE_ARG_LEN		(sizeof(struct ip_vs_service_user))
-> -#define SVCDEST_ARG_LEN		(sizeof(struct ip_vs_service_user) +	\
-> -				 sizeof(struct ip_vs_dest_user))
-> -#define TIMEOUT_ARG_LEN		(sizeof(struct ip_vs_timeout_user))
-> -#define DAEMON_ARG_LEN		(sizeof(struct ip_vs_daemon_user))
-> -#define MAX_ARG_LEN		SVCDEST_ARG_LEN
-> +
-> +struct ip_vs_svcdest_user {
-> +	struct ip_vs_service_user	s;
-> +	struct ip_vs_dest_user		d;
-> +};
->  
->  static const unsigned char set_arglen[SET_CMDID(IP_VS_SO_SET_MAX)+1] = {
-> -	[SET_CMDID(IP_VS_SO_SET_ADD)]		= SERVICE_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_EDIT)]		= SERVICE_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_DEL)]		= SERVICE_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_FLUSH)]		= 0,
-> -	[SET_CMDID(IP_VS_SO_SET_ADDDEST)]	= SVCDEST_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_DELDEST)]	= SVCDEST_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_EDITDEST)]	= SVCDEST_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_TIMEOUT)]	= TIMEOUT_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_STARTDAEMON)]	= DAEMON_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_STOPDAEMON)]	= DAEMON_ARG_LEN,
-> -	[SET_CMDID(IP_VS_SO_SET_ZERO)]		= SERVICE_ARG_LEN,
-> +[SET_CMDID(IP_VS_SO_SET_ADD)] =		sizeof(struct ip_vs_service_user),
-> +[SET_CMDID(IP_VS_SO_SET_EDIT)] =	sizeof(struct ip_vs_service_user),
-> +[SET_CMDID(IP_VS_SO_SET_DEL)] =		sizeof(struct ip_vs_service_user),
-> +[SET_CMDID(IP_VS_SO_SET_ADDDEST)] =	sizeof(struct ip_vs_svcdest_user),
-> +[SET_CMDID(IP_VS_SO_SET_DELDEST)] =	sizeof(struct ip_vs_svcdest_user),
-> +[SET_CMDID(IP_VS_SO_SET_EDITDEST)] =	sizeof(struct ip_vs_svcdest_user),
-> +[SET_CMDID(IP_VS_SO_SET_TIMEOUT)] =	sizeof(struct ip_vs_timeout_user),
-> +[SET_CMDID(IP_VS_SO_SET_STARTDAEMON)] =	sizeof(struct ip_vs_daemon_user),
-> +[SET_CMDID(IP_VS_SO_SET_STOPDAEMON)] =	sizeof(struct ip_vs_daemon_user),
-> +[SET_CMDID(IP_VS_SO_SET_ZERO)] =	sizeof(struct ip_vs_service_user),
-> +};
-> +
-> +union ip_vs_set_arglen {
-> +	struct ip_vs_service_user	field_IP_VS_SO_SET_ADD;
-> +	struct ip_vs_service_user	field_IP_VS_SO_SET_EDIT;
-> +	struct ip_vs_service_user	field_IP_VS_SO_SET_DEL;
-> +	struct ip_vs_svcdest_user	field_IP_VS_SO_SET_ADDDEST;
-> +	struct ip_vs_svcdest_user	field_IP_VS_SO_SET_DELDEST;
-> +	struct ip_vs_svcdest_user	field_IP_VS_SO_SET_EDITDEST;
-> +	struct ip_vs_timeout_user	field_IP_VS_SO_SET_TIMEOUT;
-> +	struct ip_vs_daemon_user	field_IP_VS_SO_SET_STARTDAEMON;
-> +	struct ip_vs_daemon_user	field_IP_VS_SO_SET_STOPDAEMON;
-> +	struct ip_vs_service_user	field_IP_VS_SO_SET_ZERO;
->  };
->  
-> +#define MAX_SET_ARGLEN	sizeof(union ip_vs_set_arglen)
-> +
->  static void ip_vs_copy_usvc_compat(struct ip_vs_service_user_kern *usvc,
->  				  struct ip_vs_service_user *usvc_compat)
->  {
-> @@ -2325,7 +2338,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
->  {
->  	struct net *net = sock_net(sk);
->  	int ret;
-> -	unsigned char arg[MAX_ARG_LEN];
-> +	unsigned char arg[MAX_SET_ARGLEN];
->  	struct ip_vs_service_user *usvc_compat;
->  	struct ip_vs_service_user_kern usvc;
->  	struct ip_vs_service *svc;
-> @@ -2333,16 +2346,15 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
->  	struct ip_vs_dest_user_kern udest;
->  	struct netns_ipvs *ipvs = net_ipvs(net);
->  
-> +	BUILD_BUG_ON(sizeof(arg) > 255);
->  	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
->  		return -EPERM;
->  
->  	if (cmd < IP_VS_BASE_CTL || cmd > IP_VS_SO_SET_MAX)
->  		return -EINVAL;
-> -	if (len < 0 || len >  MAX_ARG_LEN)
-> -		return -EINVAL;
->  	if (len != set_arglen[SET_CMDID(cmd)]) {
-> -		pr_err("set_ctl: len %u != %u\n",
-> -		       len, set_arglen[SET_CMDID(cmd)]);
-> +		IP_VS_DBG(1, "set_ctl: len %u != %u\n",
-> +			  len, set_arglen[SET_CMDID(cmd)]);
->  		return -EINVAL;
->  	}
->  
-> @@ -2607,48 +2619,51 @@ __ip_vs_get_timeouts(struct net *net, struct ip_vs_timeout_user *u)
->  
->  
->  #define GET_CMDID(cmd)		(cmd - IP_VS_BASE_CTL)
-> -#define GET_INFO_ARG_LEN	(sizeof(struct ip_vs_getinfo))
-> -#define GET_SERVICES_ARG_LEN	(sizeof(struct ip_vs_get_services))
-> -#define GET_SERVICE_ARG_LEN	(sizeof(struct ip_vs_service_entry))
-> -#define GET_DESTS_ARG_LEN	(sizeof(struct ip_vs_get_dests))
-> -#define GET_TIMEOUT_ARG_LEN	(sizeof(struct ip_vs_timeout_user))
-> -#define GET_DAEMON_ARG_LEN	(sizeof(struct ip_vs_daemon_user) * 2)
->  
->  static const unsigned char get_arglen[GET_CMDID(IP_VS_SO_GET_MAX)+1] = {
-> -	[GET_CMDID(IP_VS_SO_GET_VERSION)]	= 64,
-> -	[GET_CMDID(IP_VS_SO_GET_INFO)]		= GET_INFO_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_SERVICES)]	= GET_SERVICES_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_SERVICE)]	= GET_SERVICE_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_DESTS)]		= GET_DESTS_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_TIMEOUT)]	= GET_TIMEOUT_ARG_LEN,
-> -	[GET_CMDID(IP_VS_SO_GET_DAEMON)]	= GET_DAEMON_ARG_LEN,
-> +[GET_CMDID(IP_VS_SO_GET_VERSION)] =	64,
-> +[GET_CMDID(IP_VS_SO_GET_INFO)] =	sizeof(struct ip_vs_getinfo),
-> +[GET_CMDID(IP_VS_SO_GET_SERVICES)] =	sizeof(struct ip_vs_get_services),
-> +[GET_CMDID(IP_VS_SO_GET_SERVICE)] =	sizeof(struct ip_vs_service_entry),
-> +[GET_CMDID(IP_VS_SO_GET_DESTS)] =	sizeof(struct ip_vs_get_dests),
-> +[GET_CMDID(IP_VS_SO_GET_TIMEOUT)] =	sizeof(struct ip_vs_timeout_user),
-> +[GET_CMDID(IP_VS_SO_GET_DAEMON)] =	2 * sizeof(struct ip_vs_daemon_user),
->  };
->  
-> +union ip_vs_get_arglen {
-> +	char				field_IP_VS_SO_GET_VERSION[64];
-> +	struct ip_vs_getinfo		field_IP_VS_SO_GET_INFO;
-> +	struct ip_vs_get_services	field_IP_VS_SO_GET_SERVICES;
-> +	struct ip_vs_service_entry	field_IP_VS_SO_GET_SERVICE;
-> +	struct ip_vs_get_dests		field_IP_VS_SO_GET_DESTS;
-> +	struct ip_vs_timeout_user	field_IP_VS_SO_GET_TIMEOUT;
-> +	struct ip_vs_daemon_user	field_IP_VS_SO_GET_DAEMON[2];
-> +};
-> +
-> +#define MAX_GET_ARGLEN	sizeof(union ip_vs_get_arglen)
-> +
->  static int
->  do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
->  {
-> -	unsigned char arg[128];
-> +	unsigned char arg[MAX_GET_ARGLEN];
->  	int ret = 0;
->  	unsigned int copylen;
->  	struct net *net = sock_net(sk);
->  	struct netns_ipvs *ipvs = net_ipvs(net);
->  
->  	BUG_ON(!net);
-> +	BUILD_BUG_ON(sizeof(arg) > 255);
->  	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
->  		return -EPERM;
->  
->  	if (cmd < IP_VS_BASE_CTL || cmd > IP_VS_SO_GET_MAX)
->  		return -EINVAL;
->  
-> -	if (*len < get_arglen[GET_CMDID(cmd)]) {
-> -		pr_err("get_ctl: len %u < %u\n",
-> -		       *len, get_arglen[GET_CMDID(cmd)]);
-> -		return -EINVAL;
-> -	}
-> -
->  	copylen = get_arglen[GET_CMDID(cmd)];
-> -	if (copylen > 128)
-> +	if (*len < (int) copylen || *len < 0) {
-> +		IP_VS_DBG(1, "get_ctl: len %d < %u\n", *len, copylen);
->  		return -EINVAL;
-> +	}
->  
->  	if (copy_from_user(arg, user, copylen) != 0)
->  		return -EFAULT;
-> -- 
-> 1.9.0
-> 
+ip addr add dev lo face::1/128 || true
+"""
+
+This simply sets up a v6 service in ipvs and adds a real server ip which 
+is tunneling over ipip.  This is important because this bug only affects 
+tunneling mode.
+
+Within ipvs, in tunneling mode, we do the following when checking the 
+MTU in tunneling mode
+
+         /* MTU checking */
+         if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL)))
+                 mtu = dst_mtu(&rt->dst);
+         else {
+                 struct sock *sk = skb->sk;
+
+                 mtu = dst_mtu(&rt->dst) - sizeof(struct ipv6hdr);
+                 if (mtu < IPV6_MIN_MTU) {
+                         IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
+                                      IPV6_MIN_MTU);
+                         goto err_put;
+                 }
+                 ort = (struct rt6_info *) skb_dst(skb);
+                 old_flags = ort->rt6i_flags;
+                 if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
+                         ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, 
+mtu);
+         }
+
+So if there's a socket associated with the skb and it's not in 
+TCP_TIME_WAIT, we'll invoke the update_pmtu to ensure we generate 
+appropriately sized packets.
+
+commit 81aded2 "ipv6: Handle PMTU in ICMP error handlers" introduces the 
+following.
+
+@@ -1058,9 +1061,39 @@ static void ip6_rt_update_pmtu(struct dst_entry 
+*dst, u32 mtu)
+  			dst_metric_set(dst, RTAX_FEATURES, features);
+  		}
+  		dst_metric_set(dst, RTAX_MTU, mtu);
++		rt6_update_expires(rt6, net->ipv6.sysctl.ip6_rt_mtu_expires);
+  	}
+  }
+
+The net result is that we end up setting an expiry on the local route. 
+When we hit ip6_rt_mtu_expires, the route expires (and is later GC'ed). 
+  From that point forward we start ICMPV6_NOROUTE'ing packets in 
+ip6_rcv_finish until the address is removed and reinstalled.
+
+I've got a couple of (bad?) ideas on how to fix it.  We could simply 
+check rt6i_flags for (RTF_EXPIRES | RTF_CACHE) before setting expires. 
+We could also check for RTF_LOCAL.  Alternatively, cloning the rt and 
+updating that might be an appropriate thing to do (in case the 
+tunneled-to route increases its MTU).  I'm *completely* open to 
+suggestions :)
+
+Thank you for your help,
+
+-- 
+Alex Gartrell <agartrell@fb.com>
