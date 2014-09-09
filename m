@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next 19/20] ipvs: use the new dest addr family field
-Date: Tue, 9 Sep 2014 16:40:38 -0700
-Message-ID: <1410306039-2977-20-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next 07/20] ipvs: Pull out update_pmtu code
+Date: Tue, 9 Sep 2014 16:40:26 -0700
+Message-ID: <1410306039-2977-8-git-send-email-agartrell@fb.com>
 References: <1410306039-2977-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=T51EdcnKR7x7uvZUwSTegxROOf6SRSqTrSArwM2/igo=;
- b=MDT7dC6TCk1kCIhZ7/fI6LZMOr2twu1yWC/UGymgqL+2YyRfbjCwv6jfQfPGieTRbcG7
- 4KL+3KZcs+UjBSELowej9F13I55M33QfDePxK60OwcYWuXYiVRiHYnHgT4z8P07TDdSS
- 1lfkckcNdMBhFyfA4Z75MnKKhTw5X1uB2GY= 
+ content-type; s=facebook; bh=ZacdhXMczlzCC2PiC5R0RtREXSVdBhEv0jtrQGB4dzk=;
+ b=dnlur0byY2YDOrHNsafv/4r7Q1lTYiKlkZNiYeWETDUoF7txIjzC4o6aSk6AZ3GMvFQE
+ XCBU3vbAKzRNUCHGzZ1aTVenHOaHzyL1XS3kZ8VjNHWrLVP6GpjwgJ/G+MF9CdMwEOdT
+ uwHZsvK50EuZohckqMGucEZ9GUXkq2NBLnY= 
 In-Reply-To: <1410306039-2977-1-git-send-email-agartrell@fb.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,206 +19,86 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, ps@fb.com, Alex Gartrell <agartrell@fb.com>
 
-From: Julian Anastasov <ja@ssi.bg>
+Another step toward heterogeneous pools, this removes another piece of
+functionality currently specific to each address family type.
 
-Use the new address family field cp->daf when printing
-cp->daddr in logs or connection listing.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_conn.c       | 49 +++++++++++++++++++++++++++--------
- net/netfilter/ipvs/ip_vs_core.c       |  6 ++---
- net/netfilter/ipvs/ip_vs_proto_sctp.c |  2 +-
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |  2 +-
- 4 files changed, 43 insertions(+), 16 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 23 +++++++++++------------
+ 1 file changed, 11 insertions(+), 12 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 13e9cee..b0f7b62 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -27,6 +27,7 @@
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index b3b54d7..034a282 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -204,6 +204,15 @@ static inline bool crosses_local_route_boundary(int skb_af, struct sk_buff *skb,
+ 	return false;
+ }
  
- #include <linux/interrupt.h>
- #include <linux/in.h>
-+#include <linux/inet.h>
- #include <linux/net.h>
- #include <linux/kernel.h>
- #include <linux/module.h>
-@@ -77,6 +78,13 @@ static unsigned int ip_vs_conn_rnd __read_mostly;
- #define CT_LOCKARRAY_SIZE  (1<<CT_LOCKARRAY_BITS)
- #define CT_LOCKARRAY_MASK  (CT_LOCKARRAY_SIZE-1)
- 
-+/* We need an addrstrlen that works with or without v6 */
-+#ifdef CONFIG_IP_VS_IPV6
-+#define IP_VS_ADDRSTRLEN INET6_ADDRSTRLEN
-+#else
-+#define IP_VS_ADDRSTRLEN (8+1)
-+#endif
++static inline void maybe_update_pmtu(int skb_af, struct sk_buff *skb, int mtu)
++{
++	struct sock *sk = skb->sk;
++	struct rtable *ort = skb_rtable(skb);
 +
- struct ip_vs_aligned_lock
- {
- 	spinlock_t	l;
-@@ -588,7 +596,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
- 		      ip_vs_proto_name(cp->protocol),
- 		      IP_VS_DBG_ADDR(cp->af, &cp->caddr), ntohs(cp->cport),
- 		      IP_VS_DBG_ADDR(cp->af, &cp->vaddr), ntohs(cp->vport),
--		      IP_VS_DBG_ADDR(cp->af, &cp->daddr), ntohs(cp->dport),
-+		      IP_VS_DBG_ADDR(cp->daf, &cp->daddr), ntohs(cp->dport),
- 		      ip_vs_fwd_tag(cp), cp->state,
- 		      cp->flags, atomic_read(&cp->refcnt),
- 		      atomic_read(&dest->refcnt));
-@@ -685,7 +693,7 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
- 		      ip_vs_proto_name(cp->protocol),
- 		      IP_VS_DBG_ADDR(cp->af, &cp->caddr), ntohs(cp->cport),
- 		      IP_VS_DBG_ADDR(cp->af, &cp->vaddr), ntohs(cp->vport),
--		      IP_VS_DBG_ADDR(cp->af, &cp->daddr), ntohs(cp->dport),
-+		      IP_VS_DBG_ADDR(cp->daf, &cp->daddr), ntohs(cp->dport),
- 		      ip_vs_fwd_tag(cp), cp->state,
- 		      cp->flags, atomic_read(&cp->refcnt),
- 		      atomic_read(&dest->refcnt));
-@@ -754,7 +762,7 @@ int ip_vs_check_template(struct ip_vs_conn *ct)
- 			      ntohs(ct->cport),
- 			      IP_VS_DBG_ADDR(ct->af, &ct->vaddr),
- 			      ntohs(ct->vport),
--			      IP_VS_DBG_ADDR(ct->af, &ct->daddr),
-+			      IP_VS_DBG_ADDR(ct->daf, &ct->daddr),
- 			      ntohs(ct->dport));
- 
- 		/*
-@@ -1051,6 +1059,7 @@ static int ip_vs_conn_seq_show(struct seq_file *seq, void *v)
- 		struct net *net = seq_file_net(seq);
- 		char pe_data[IP_VS_PENAME_MAXLEN + IP_VS_PEDATA_MAXLEN + 3];
- 		size_t len = 0;
-+		char dbuf[IP_VS_ADDRSTRLEN];
- 
- 		if (!ip_vs_conn_net_eq(cp, net))
- 			return 0;
-@@ -1065,24 +1074,32 @@ static int ip_vs_conn_seq_show(struct seq_file *seq, void *v)
- 		pe_data[len] = '\0';
- 
- #ifdef CONFIG_IP_VS_IPV6
-+		if (cp->daf == AF_INET6)
-+			snprintf(dbuf, sizeof(dbuf), "%pI6", &cp->daddr.in6);
-+		else
-+#endif
-+			snprintf(dbuf, sizeof(dbuf), "%08X",
-+				 ntohl(cp->daddr.ip));
++	if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
++		ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
++}
 +
-+#ifdef CONFIG_IP_VS_IPV6
- 		if (cp->af == AF_INET6)
- 			seq_printf(seq, "%-3s %pI6 %04X %pI6 %04X "
--				"%pI6 %04X %-11s %7lu%s\n",
-+				"%s %04X %-11s %7lu%s\n",
- 				ip_vs_proto_name(cp->protocol),
- 				&cp->caddr.in6, ntohs(cp->cport),
- 				&cp->vaddr.in6, ntohs(cp->vport),
--				&cp->daddr.in6, ntohs(cp->dport),
-+				dbuf, ntohs(cp->dport),
- 				ip_vs_state_name(cp->protocol, cp->state),
- 				(cp->timer.expires-jiffies)/HZ, pe_data);
- 		else
- #endif
- 			seq_printf(seq,
- 				"%-3s %08X %04X %08X %04X"
--				" %08X %04X %-11s %7lu%s\n",
-+				" %s %04X %-11s %7lu%s\n",
- 				ip_vs_proto_name(cp->protocol),
- 				ntohl(cp->caddr.ip), ntohs(cp->cport),
- 				ntohl(cp->vaddr.ip), ntohs(cp->vport),
--				ntohl(cp->daddr.ip), ntohs(cp->dport),
-+				dbuf, ntohs(cp->dport),
- 				ip_vs_state_name(cp->protocol, cp->state),
- 				(cp->timer.expires-jiffies)/HZ, pe_data);
+ /* Get route to destination or remote server */
+ static int
+ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+@@ -213,7 +222,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rtable *rt;			/* Route to the other host */
+-	struct rtable *ort;			/* Original route */
+ 	struct iphdr *iph;
+ 	__be16 df;
+ 	int mtu;
+@@ -284,16 +292,12 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		mtu = dst_mtu(&rt->dst);
+ 		df = iph->frag_off & htons(IP_DF);
+ 	} else {
+-		struct sock *sk = skb->sk;
+-
+ 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
+ 		if (mtu < 68) {
+ 			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
+ 			goto err_put;
+ 		}
+-		ort = skb_rtable(skb);
+-		if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
+-			ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
++		maybe_update_pmtu(skb_af, skb, mtu);
+ 		/* MTU check allowed? */
+ 		df = sysctl_pmtu_disc(ipvs) ? iph->frag_off & htons(IP_DF) : 0;
  	}
-@@ -1120,6 +1137,7 @@ static const char *ip_vs_origin_name(unsigned int flags)
+@@ -372,7 +376,6 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	struct net *net = dev_net(skb_dst(skb)->dev);
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rt6_info *rt;			/* Route to the other host */
+-	struct rt6_info *ort;			/* Original route */
+ 	struct dst_entry *dst;
+ 	int mtu;
+ 	int local, noref = 1;
+@@ -438,17 +441,13 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL)))
+ 		mtu = dst_mtu(&rt->dst);
+ 	else {
+-		struct sock *sk = skb->sk;
+-
+ 		mtu = dst_mtu(&rt->dst) - sizeof(struct ipv6hdr);
+ 		if (mtu < IPV6_MIN_MTU) {
+ 			IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
+ 				     IPV6_MIN_MTU);
+ 			goto err_put;
+ 		}
+-		ort = (struct rt6_info *) skb_dst(skb);
+-		if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
+-			ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
++		maybe_update_pmtu(skb_af, skb, mtu);
+ 	}
  
- static int ip_vs_conn_sync_seq_show(struct seq_file *seq, void *v)
- {
-+	char dbuf[IP_VS_ADDRSTRLEN];
- 
- 	if (v == SEQ_START_TOKEN)
- 		seq_puts(seq,
-@@ -1132,12 +1150,21 @@ static int ip_vs_conn_sync_seq_show(struct seq_file *seq, void *v)
- 			return 0;
- 
- #ifdef CONFIG_IP_VS_IPV6
-+		if (cp->daf == AF_INET6)
-+			snprintf(dbuf, sizeof(dbuf), "%pI6", &cp->daddr.in6);
-+		else
-+#endif
-+			snprintf(dbuf, sizeof(dbuf), "%08X",
-+				 ntohl(cp->daddr.ip));
-+
-+#ifdef CONFIG_IP_VS_IPV6
- 		if (cp->af == AF_INET6)
--			seq_printf(seq, "%-3s %pI6 %04X %pI6 %04X %pI6 %04X %-11s %-6s %7lu\n",
-+			seq_printf(seq, "%-3s %pI6 %04X %pI6 %04X "
-+				"%s %04X %-11s %-6s %7lu\n",
- 				ip_vs_proto_name(cp->protocol),
- 				&cp->caddr.in6, ntohs(cp->cport),
- 				&cp->vaddr.in6, ntohs(cp->vport),
--				&cp->daddr.in6, ntohs(cp->dport),
-+				dbuf, ntohs(cp->dport),
- 				ip_vs_state_name(cp->protocol, cp->state),
- 				ip_vs_origin_name(cp->flags),
- 				(cp->timer.expires-jiffies)/HZ);
-@@ -1145,11 +1172,11 @@ static int ip_vs_conn_sync_seq_show(struct seq_file *seq, void *v)
- #endif
- 			seq_printf(seq,
- 				"%-3s %08X %04X %08X %04X "
--				"%08X %04X %-11s %-6s %7lu\n",
-+				"%s %04X %-11s %-6s %7lu\n",
- 				ip_vs_proto_name(cp->protocol),
- 				ntohl(cp->caddr.ip), ntohs(cp->cport),
- 				ntohl(cp->vaddr.ip), ntohs(cp->vport),
--				ntohl(cp->daddr.ip), ntohs(cp->dport),
-+				dbuf, ntohs(cp->dport),
- 				ip_vs_state_name(cp->protocol, cp->state),
- 				ip_vs_origin_name(cp->flags),
- 				(cp->timer.expires-jiffies)/HZ);
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 1f6ecb7..990decb 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -492,9 +492,9 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	IP_VS_DBG_BUF(6, "Schedule fwd:%c c:%s:%u v:%s:%u "
- 		      "d:%s:%u conn->flags:%X conn->refcnt:%d\n",
- 		      ip_vs_fwd_tag(cp),
--		      IP_VS_DBG_ADDR(svc->af, &cp->caddr), ntohs(cp->cport),
--		      IP_VS_DBG_ADDR(svc->af, &cp->vaddr), ntohs(cp->vport),
--		      IP_VS_DBG_ADDR(svc->af, &cp->daddr), ntohs(cp->dport),
-+		      IP_VS_DBG_ADDR(cp->af, &cp->caddr), ntohs(cp->cport),
-+		      IP_VS_DBG_ADDR(cp->af, &cp->vaddr), ntohs(cp->vport),
-+		      IP_VS_DBG_ADDR(cp->daf, &cp->daddr), ntohs(cp->dport),
- 		      cp->flags, atomic_read(&cp->refcnt));
- 
- 	ip_vs_conn_stats(cp, svc);
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index 2f7ea75..5b84c0b 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -432,7 +432,7 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 				pd->pp->name,
- 				((direction == IP_VS_DIR_OUTPUT) ?
- 				 "output " : "input "),
--				IP_VS_DBG_ADDR(cp->af, &cp->daddr),
-+				IP_VS_DBG_ADDR(cp->daf, &cp->daddr),
- 				ntohs(cp->dport),
- 				IP_VS_DBG_ADDR(cp->af, &cp->caddr),
- 				ntohs(cp->cport),
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index e3a6972..8e92beb 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -510,7 +510,7 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 			      th->fin ? 'F' : '.',
- 			      th->ack ? 'A' : '.',
- 			      th->rst ? 'R' : '.',
--			      IP_VS_DBG_ADDR(cp->af, &cp->daddr),
-+			      IP_VS_DBG_ADDR(cp->daf, &cp->daddr),
- 			      ntohs(cp->dport),
- 			      IP_VS_DBG_ADDR(cp->af, &cp->caddr),
- 			      ntohs(cp->cport),
+ 	if (unlikely(__mtu_check_toobig_v6(skb, mtu))) {
 -- 
 1.8.1
