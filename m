@@ -1,63 +1,41 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
 Subject: Re: [PATCH] ipvsadm: do not truncate ipv6 members of v4 services
-Date: Wed, 10 Sep 2014 09:38:35 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1409100930500.22206@ja.home.ssi.bg>
+Date: Wed, 10 Sep 2014 09:00:20 +0200
+Message-ID: <20140910090020.1144a8b5@redhat.com>
 References: <1410329806-1840-1-git-send-email-agartrell@fb.com>
+	<alpine.LFD.2.11.1409100930500.22206@ja.home.ssi.bg>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1410329806-1840-1-git-send-email-agartrell@fb.com>
+In-Reply-To: <alpine.LFD.2.11.1409100930500.22206@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Alex Gartrell <agartrell@fb.com>
-Cc: brouer@redhat.com, horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com, ps@fb.com
+Content-Type: text/plain; charset="us-ascii"
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Alex Gartrell <agartrell@fb.com>, horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com, ps@fb.com, brouer@redhat.com
 
 
-	Hello,
+On Wed, 10 Sep 2014 09:38:35 +0300 (EEST) Julian Anastasov <ja@ssi.bg> wrote:
 
-On Tue, 9 Sep 2014, Alex Gartrell wrote:
-
-> We need to compare to the entry af instead of the service af or else we'll
-> pop a nul byte into the middle of a v6 real server address.
+> 	Jesper, I think you can now push all recent
+> changes to the ipvsadm tree. This includes:
+>
+> ipvsadm: specify real server address family to netlink socket
+> by Alex, from August 29
 > 
-> Signed-off-by: Alex Gartrell <agartrell@fb.com>
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	Jesper, I think you can now push all recent
-changes to the ipvsadm tree. This includes:
-
-ipvsadm: specify real server address family to netlink socket
-by Alex, from August 29
-
-ipvsadm: restrict different address family
-ipvsadm: allow different address family in connection listing
-by me, from August 30
-
-and finally this patch.
-
-> ---
->  ipvsadm.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> ipvsadm: restrict different address family
+> ipvsadm: allow different address family in connection listing
+> by me, from August 30
 > 
-> diff --git a/ipvsadm.c b/ipvsadm.c
-> index d12070e..ef19091 100644
-> --- a/ipvsadm.c
-> +++ b/ipvsadm.c
-> @@ -1629,7 +1629,7 @@ print_service_entry(ipvs_service_entry_t *se, unsigned int format)
->  			fprintf(stderr, "addrport_to_anyname fails\n");
->  			exit(1);
->  		}
-> -		if (!(format & FMT_RULE) && (se->af != AF_INET6))
-> +		if (!(format & FMT_RULE) && (e->af != AF_INET6))
->  			dname[28] = '\0';
->  
->  		if (format & FMT_RULE) {
-> -- 
-> 1.8.1
+> and finally this patch.
 
-Regards
+Sound good! -- Just applied an pushed patches to:
+ https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git/
 
---
-Julian Anastasov <ja@ssi.bg>
+Thanks every one!
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Sr. Network Kernel Developer at Red Hat
+  Author of http://www.iptv-analyzer.org
+  LinkedIn: http://www.linkedin.com/in/brouer
