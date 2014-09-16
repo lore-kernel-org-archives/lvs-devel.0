@@ -1,87 +1,153 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next 00/21] Second Round of IPVS Updates for v3.18
-Date: Tue, 16 Sep 2014 09:34:14 +0900
-Message-ID: <1410827675-3637-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Subject: [PATCH nf-next 01/21] ipvs: Add simple weighted failover scheduler
+Date: Tue, 16 Sep 2014 09:34:15 +0900
+Message-ID: <1410827675-3637-2-git-send-email-horms@verge.net.au>
+References: <1410827675-3637-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1410827675-3637-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Kenny Mathis <kmathis@chokepoint.net>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Kenny Mathis <kmathis@chokepoint.net>
 
-please consider these IPVS updates for v3.18.
+Add simple weighted IPVS failover support to the Linux kernel. All
+other scheduling modules implement some form of load balancing, while
+this offers a simple failover solution. Connections are directed to
+the appropriate server based solely on highest weight value and server
+availability. Tested functionality with keepalived.
 
-* Add simple weighted failover scheduler
-  - Thanks to Kenny Mathis
-* Support v6 real servers in v4 pools and vice versa
-  - Thanks to Alex Gartrell and Julian Anastasov
-
-
-The following changes since commit 0bbe80e571c7b866afd92a98edd32a969467a7a9:
-
-  netfilter: masquerading needs to be independent of x_tables in Kconfig (2014-09-12 09:40:18 +0200)
-
-are available in the git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs2-for-v3.18
-
-for you to fetch changes up to 87f2b83b77d6139a888af87352ff35894e5c5d69:
-
-  ipvs: Allow heterogeneous pools now that we support them (2014-09-16 09:03:43 +0900)
-
-----------------------------------------------------------------
-Alex Gartrell (10):
-      ipvs: Add destination address family to netlink interface
-      ipvs: Supply destination addr family to ip_vs_{lookup_dest,find_dest}
-      ipvs: Pass destination address family to ip_vs_trash_get_dest
-      ipvs: Supply destination address family to ip_vs_conn_new
-      ipvs: prevent mixing heterogeneous pools and synchronization
-      ipvs: Pull out crosses_local_route_boundary logic
-      ipvs: Pull out update_pmtu code
-      ipvs: Add generic ensure_mtu_is_adequate to handle mixed pools
-      ipvs: support ipv4 in ipv6 and ipv6 in ipv4 tunnel forwarding
-      ipvs: Allow heterogeneous pools now that we support them
-
-Julian Anastasov (10):
-      ipvs: address family of LBLC entry depends on svc family
-      ipvs: address family of LBLCR entry depends on svc family
-      ipvs: use correct address family in DH logs
-      ipvs: use correct address family in LC logs
-      ipvs: use correct address family in NQ logs
-      ipvs: use correct address family in RR logs
-      ipvs: use correct address family in SED logs
-      ipvs: use correct address family in SH logs
-      ipvs: use correct address family in WLC logs
-      ipvs: use the new dest addr family field
-
-Kenny Mathis (1):
-      ipvs: Add simple weighted failover scheduler
-
- include/net/ip_vs.h                   |  15 +-
- include/uapi/linux/ip_vs.h            |   3 +
- net/netfilter/ipvs/Kconfig            |  10 +
- net/netfilter/ipvs/Makefile           |   1 +
- net/netfilter/ipvs/ip_vs_conn.c       |  74 +++++--
- net/netfilter/ipvs/ip_vs_core.c       |  15 +-
- net/netfilter/ipvs/ip_vs_ctl.c        | 112 +++++++---
- net/netfilter/ipvs/ip_vs_dh.c         |   2 +-
- net/netfilter/ipvs/ip_vs_fo.c         |  79 +++++++
- net/netfilter/ipvs/ip_vs_ftp.c        |   6 +-
- net/netfilter/ipvs/ip_vs_lblc.c       |  12 +-
- net/netfilter/ipvs/ip_vs_lblcr.c      |  12 +-
- net/netfilter/ipvs/ip_vs_lc.c         |   2 +-
- net/netfilter/ipvs/ip_vs_nq.c         |   3 +-
- net/netfilter/ipvs/ip_vs_proto_sctp.c |   2 +-
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |   2 +-
- net/netfilter/ipvs/ip_vs_rr.c         |   2 +-
- net/netfilter/ipvs/ip_vs_sed.c        |   3 +-
- net/netfilter/ipvs/ip_vs_sh.c         |   8 +-
- net/netfilter/ipvs/ip_vs_sync.c       |  13 +-
- net/netfilter/ipvs/ip_vs_wlc.c        |   3 +-
- net/netfilter/ipvs/ip_vs_xmit.c       | 388 +++++++++++++++++++++-------------
- 22 files changed, 543 insertions(+), 224 deletions(-)
+Signed-off-by: Kenny Mathis <kmathis@chokepoint.net>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/Kconfig    | 10 ++++++
+ net/netfilter/ipvs/Makefile   |  1 +
+ net/netfilter/ipvs/ip_vs_fo.c | 79 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 90 insertions(+)
  create mode 100644 net/netfilter/ipvs/ip_vs_fo.c
+
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index 0c3b167..3b6929d 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -152,6 +152,16 @@ config	IP_VS_WLC
+ 	  If you want to compile it in kernel, say Y. To compile it as a
+ 	  module, choose M here. If unsure, say N.
+ 
++config  IP_VS_FO
++		tristate "weighted failover scheduling"
++	---help---
++	  The weighted failover scheduling algorithm directs network
++	  connections to the server with the highest weight that is
++	  currently available.
++
++	  If you want to compile it in kernel, say Y. To compile it as a
++	  module, choose M here. If unsure, say N.
++
+ config	IP_VS_LBLC
+ 	tristate "locality-based least-connection scheduling"
+ 	---help---
+diff --git a/net/netfilter/ipvs/Makefile b/net/netfilter/ipvs/Makefile
+index 34ee602..38b2723 100644
+--- a/net/netfilter/ipvs/Makefile
++++ b/net/netfilter/ipvs/Makefile
+@@ -26,6 +26,7 @@ obj-$(CONFIG_IP_VS_RR) += ip_vs_rr.o
+ obj-$(CONFIG_IP_VS_WRR) += ip_vs_wrr.o
+ obj-$(CONFIG_IP_VS_LC) += ip_vs_lc.o
+ obj-$(CONFIG_IP_VS_WLC) += ip_vs_wlc.o
++obj-$(CONFIG_IP_VS_FO) += ip_vs_fo.o
+ obj-$(CONFIG_IP_VS_LBLC) += ip_vs_lblc.o
+ obj-$(CONFIG_IP_VS_LBLCR) += ip_vs_lblcr.o
+ obj-$(CONFIG_IP_VS_DH) += ip_vs_dh.o
+diff --git a/net/netfilter/ipvs/ip_vs_fo.c b/net/netfilter/ipvs/ip_vs_fo.c
+new file mode 100644
+index 0000000..6a2647d
+--- /dev/null
++++ b/net/netfilter/ipvs/ip_vs_fo.c
+@@ -0,0 +1,79 @@
++/*
++ * IPVS:        Weighted Fail Over module
++ *
++ * Authors:     Kenny Mathis <kmathis@chokepoint.net>
++ *
++ *              This program is free software; you can redistribute it and/or
++ *              modify it under the terms of the GNU General Public License
++ *              as published by the Free Software Foundation; either version
++ *              2 of the License, or (at your option) any later version.
++ *
++ * Changes:
++ *     Kenny Mathis            :     added initial functionality based on weight
++ *
++ */
++
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++
++#include <net/ip_vs.h>
++
++/* Weighted Fail Over Module */
++static struct ip_vs_dest *
++ip_vs_fo_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
++		  struct ip_vs_iphdr *iph)
++{
++	struct ip_vs_dest *dest, *hweight = NULL;
++	int hw = 0; /* Track highest weight */
++
++	IP_VS_DBG(6, "ip_vs_fo_schedule(): Scheduling...\n");
++
++	/* Basic failover functionality
++	 * Find virtual server with highest weight and send it traffic
++	 */
++	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
++		if (!(dest->flags & IP_VS_DEST_F_OVERLOAD) &&
++		    atomic_read(&dest->weight) > hw) {
++			hweight = dest;
++			hw = atomic_read(&dest->weight);
++		}
++	}
++
++	if (hweight) {
++		IP_VS_DBG_BUF(6, "FO: server %s:%u activeconns %d weight %d\n",
++			      IP_VS_DBG_ADDR(svc->af, &hweight->addr),
++			      ntohs(hweight->port),
++			      atomic_read(&hweight->activeconns),
++			      atomic_read(&hweight->weight));
++		return hweight;
++	}
++
++	ip_vs_scheduler_err(svc, "no destination available");
++	return NULL;
++}
++
++static struct ip_vs_scheduler ip_vs_fo_scheduler = {
++	.name =			"fo",
++	.refcnt =		ATOMIC_INIT(0),
++	.module =		THIS_MODULE,
++	.n_list =		LIST_HEAD_INIT(ip_vs_fo_scheduler.n_list),
++	.schedule =		ip_vs_fo_schedule,
++};
++
++static int __init ip_vs_fo_init(void)
++{
++	return register_ip_vs_scheduler(&ip_vs_fo_scheduler);
++}
++
++static void __exit ip_vs_fo_cleanup(void)
++{
++	unregister_ip_vs_scheduler(&ip_vs_fo_scheduler);
++	synchronize_rcu();
++}
++
++module_init(ip_vs_fo_init);
++module_exit(ip_vs_fo_cleanup);
++MODULE_LICENSE("GPL");
+-- 
+2.0.1
