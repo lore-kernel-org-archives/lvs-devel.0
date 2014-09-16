@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 14/21] ipvs: use correct address family in LC logs
-Date: Tue, 16 Sep 2014 09:34:28 +0900
-Message-ID: <1410827675-3637-15-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 18/21] ipvs: use correct address family in SH logs
+Date: Tue, 16 Sep 2014 09:34:32 +0900
+Message-ID: <1410827675-3637-19-git-send-email-horms@verge.net.au>
 References: <1410827675-3637-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1410827675-3637-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -21,22 +21,48 @@ Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_lc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_sh.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_lc.c b/net/netfilter/ipvs/ip_vs_lc.c
-index 2bdcb1c..19a0769 100644
---- a/net/netfilter/ipvs/ip_vs_lc.c
-+++ b/net/netfilter/ipvs/ip_vs_lc.c
-@@ -59,7 +59,7 @@ ip_vs_lc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 	else
- 		IP_VS_DBG_BUF(6, "LC: server %s:%u activeconns %d "
- 			      "inactconns %d\n",
--			      IP_VS_DBG_ADDR(svc->af, &least->addr),
-+			      IP_VS_DBG_ADDR(least->af, &least->addr),
- 			      ntohs(least->port),
- 			      atomic_read(&least->activeconns),
- 			      atomic_read(&least->inactconns));
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index cc65b2f..98a1343 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -138,7 +138,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
+ 		return dest;
+ 
+ 	IP_VS_DBG_BUF(6, "SH: selected unavailable server %s:%d, reselecting",
+-		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
++		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
+ 
+ 	/* if the original dest is unavailable, loop around the table
+ 	 * starting from ihash to find a new dest
+@@ -153,7 +153,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
+ 			return dest;
+ 		IP_VS_DBG_BUF(6, "SH: selected unavailable "
+ 			      "server %s:%d (offset %d), reselecting",
+-			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 			      ntohs(dest->port), roffset);
+ 	}
+ 
+@@ -192,7 +192,7 @@ ip_vs_sh_reassign(struct ip_vs_sh_state *s, struct ip_vs_service *svc)
+ 			RCU_INIT_POINTER(b->dest, dest);
+ 
+ 			IP_VS_DBG_BUF(6, "assigned i: %d dest: %s weight: %d\n",
+-				      i, IP_VS_DBG_ADDR(svc->af, &dest->addr),
++				      i, IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 				      atomic_read(&dest->weight));
+ 
+ 			/* Don't move to next dest until filling weight */
+@@ -342,7 +342,7 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 
+ 	IP_VS_DBG_BUF(6, "SH: source IP address %s --> server %s:%d\n",
+ 		      IP_VS_DBG_ADDR(svc->af, &iph->saddr),
+-		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 		      ntohs(dest->port));
+ 
+ 	return dest;
 -- 
 2.0.1
-
