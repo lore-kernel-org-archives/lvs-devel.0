@@ -1,50 +1,87 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net-next 00/20] Support v6 real servers in v4 pools and
- vice versa
-Date: Thu, 11 Sep 2014 08:55:04 +0900
-Message-ID: <20140910235504.GB29858@verge.net.au>
-References: <1410306039-2977-1-git-send-email-agartrell@fb.com>
- <alpine.LFD.2.11.1409100853260.6338@ja.home.ssi.bg>
- <20140910062201.GA11468@verge.net.au>
- <20140910151617.GA4830@salvia>
-Mime-Version: 1.0
+Subject: [GIT PULL nf-next 00/21] Second Round of IPVS Updates for v3.18
+Date: Tue, 16 Sep 2014 09:34:14 +0900
+Message-ID: <1410827675-3637-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140910151617.GA4830@salvia>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Julian Anastasov <ja@ssi.bg>, Alex Gartrell <agartrell@fb.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, kernel-team@fb.com, ps@fb.com, David Miller <davem@davemloft.net>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Wed, Sep 10, 2014 at 05:16:17PM +0200, Pablo Neira Ayuso wrote:
-> On Wed, Sep 10, 2014 at 03:22:01PM +0900, Simon Horman wrote:
-> > [ CC Pablo, Dave M ]
-> > 
-> > On Wed, Sep 10, 2014 at 09:01:34AM +0300, Julian Anastasov wrote:
-> > > 
-> > > 	Hello,
-> > > 
-> > > On Tue, 9 Sep 2014, Alex Gartrell wrote:
-> > > 
-> > > > The following patch set has been iterated upon in the lvs-devel mailing
-> > > > list.  I am submitting it here per Julian's advice for inclusion in the
-> > > > net-next tree.
-> > > 
-> > > Acked-by: Julian Anastasov <ja@ssi.bg>
-> > > 
-> > > 	Simon, please apply the patchset to ipvs-next.
-> > > I guess ipvs-next and nf-next need to be updated
-> > > before that due to dependency on net-next commit ea1d5d7755a3e556
-> > > ("ipvs: properly declare tunnel encapsulation").
-> > 
-> > Thanks Julian, yes that does seem to be the case.
-> > 
-> > Pablo, could you merge nf into nf-next and push the result
-> > so that I can apply this series on top?
-> 
-> Let me flush out my nf-next queue first, many updates in it, I'll ping
-> to let you know once you can prepare your series. Thanks.
+Hi Pablo,
 
-Thanks, much appreciated.
+please consider these IPVS updates for v3.18.
+
+* Add simple weighted failover scheduler
+  - Thanks to Kenny Mathis
+* Support v6 real servers in v4 pools and vice versa
+  - Thanks to Alex Gartrell and Julian Anastasov
+
+
+The following changes since commit 0bbe80e571c7b866afd92a98edd32a969467a7a9:
+
+  netfilter: masquerading needs to be independent of x_tables in Kconfig (2014-09-12 09:40:18 +0200)
+
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs2-for-v3.18
+
+for you to fetch changes up to 87f2b83b77d6139a888af87352ff35894e5c5d69:
+
+  ipvs: Allow heterogeneous pools now that we support them (2014-09-16 09:03:43 +0900)
+
+----------------------------------------------------------------
+Alex Gartrell (10):
+      ipvs: Add destination address family to netlink interface
+      ipvs: Supply destination addr family to ip_vs_{lookup_dest,find_dest}
+      ipvs: Pass destination address family to ip_vs_trash_get_dest
+      ipvs: Supply destination address family to ip_vs_conn_new
+      ipvs: prevent mixing heterogeneous pools and synchronization
+      ipvs: Pull out crosses_local_route_boundary logic
+      ipvs: Pull out update_pmtu code
+      ipvs: Add generic ensure_mtu_is_adequate to handle mixed pools
+      ipvs: support ipv4 in ipv6 and ipv6 in ipv4 tunnel forwarding
+      ipvs: Allow heterogeneous pools now that we support them
+
+Julian Anastasov (10):
+      ipvs: address family of LBLC entry depends on svc family
+      ipvs: address family of LBLCR entry depends on svc family
+      ipvs: use correct address family in DH logs
+      ipvs: use correct address family in LC logs
+      ipvs: use correct address family in NQ logs
+      ipvs: use correct address family in RR logs
+      ipvs: use correct address family in SED logs
+      ipvs: use correct address family in SH logs
+      ipvs: use correct address family in WLC logs
+      ipvs: use the new dest addr family field
+
+Kenny Mathis (1):
+      ipvs: Add simple weighted failover scheduler
+
+ include/net/ip_vs.h                   |  15 +-
+ include/uapi/linux/ip_vs.h            |   3 +
+ net/netfilter/ipvs/Kconfig            |  10 +
+ net/netfilter/ipvs/Makefile           |   1 +
+ net/netfilter/ipvs/ip_vs_conn.c       |  74 +++++--
+ net/netfilter/ipvs/ip_vs_core.c       |  15 +-
+ net/netfilter/ipvs/ip_vs_ctl.c        | 112 +++++++---
+ net/netfilter/ipvs/ip_vs_dh.c         |   2 +-
+ net/netfilter/ipvs/ip_vs_fo.c         |  79 +++++++
+ net/netfilter/ipvs/ip_vs_ftp.c        |   6 +-
+ net/netfilter/ipvs/ip_vs_lblc.c       |  12 +-
+ net/netfilter/ipvs/ip_vs_lblcr.c      |  12 +-
+ net/netfilter/ipvs/ip_vs_lc.c         |   2 +-
+ net/netfilter/ipvs/ip_vs_nq.c         |   3 +-
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |   2 +-
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  |   2 +-
+ net/netfilter/ipvs/ip_vs_rr.c         |   2 +-
+ net/netfilter/ipvs/ip_vs_sed.c        |   3 +-
+ net/netfilter/ipvs/ip_vs_sh.c         |   8 +-
+ net/netfilter/ipvs/ip_vs_sync.c       |  13 +-
+ net/netfilter/ipvs/ip_vs_wlc.c        |   3 +-
+ net/netfilter/ipvs/ip_vs_xmit.c       | 388 +++++++++++++++++++++-------------
+ 22 files changed, 543 insertions(+), 224 deletions(-)
+ create mode 100644 net/netfilter/ipvs/ip_vs_fo.c
