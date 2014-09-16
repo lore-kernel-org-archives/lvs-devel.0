@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 02/21] ipvs: Add destination address family to netlink interface
-Date: Tue, 16 Sep 2014 09:34:16 +0900
-Message-ID: <1410827675-3637-3-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 05/21] ipvs: Supply destination address family to ip_vs_conn_new
+Date: Tue, 16 Sep 2014 09:34:19 +0900
+Message-ID: <1410827675-3637-6-git-send-email-horms@verge.net.au>
 References: <1410827675-3637-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1410827675-3637-1-git-send-email-horms@verge.net.au>
@@ -15,204 +15,154 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-This is necessary to support heterogeneous pools.  For example, if you have
-an ipv6 addressed network, you'll want to be able to forward ipv4 traffic
-into it.
+The assumption that dest af is equal to service af is now unreliable, so we
+must specify it manually so as not to copy just the first 4 bytes of a v6
+address or doing an illegal read of 16 butes on a v6 address.
 
-This patch enforces that destination address family is the same as service
-family, as none of the forwarding mechanisms support anything else.
-
-For the old setsockopt mechanism, we simply set the dest address family to
-AF_INET as we do with the service.
+We "lie" in two places: for synchronization (which we will explicitly
+disallow from happening when we have heterogeneous pools) and for black
+hole addresses where there's no real dest.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h            |  3 +++
- include/uapi/linux/ip_vs.h     |  3 +++
- net/netfilter/ipvs/ip_vs_ctl.c | 45 +++++++++++++++++++++++++++++++++++-------
- 3 files changed, 44 insertions(+), 7 deletions(-)
+ include/net/ip_vs.h             | 3 ++-
+ net/netfilter/ipvs/ip_vs_conn.c | 5 +++--
+ net/netfilter/ipvs/ip_vs_core.c | 9 +++++----
+ net/netfilter/ipvs/ip_vs_ftp.c  | 6 ++++--
+ net/netfilter/ipvs/ip_vs_sync.c | 3 ++-
+ 5 files changed, 16 insertions(+), 10 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 624a8a5..b7e2b62 100644
+index 2fa1155..7600dbe 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -648,6 +648,9 @@ struct ip_vs_dest_user_kern {
- 	/* thresholds for active connections */
- 	u32			u_threshold;	/* upper threshold */
- 	u32			l_threshold;	/* lower threshold */
-+
-+	/* Address family of addr */
-+	u16			af;
- };
+@@ -535,6 +535,7 @@ struct ip_vs_conn {
+ 	union nf_inet_addr      daddr;          /* destination address */
+ 	volatile __u32          flags;          /* status flags */
+ 	__u16                   protocol;       /* Which protocol (TCP/UDP) */
++	__u16			daf;		/* Address family of the dest */
+ #ifdef CONFIG_NET_NS
+ 	struct net              *net;           /* Name space */
+ #endif
+@@ -1213,7 +1214,7 @@ static inline void __ip_vs_conn_put(struct ip_vs_conn *cp)
+ void ip_vs_conn_put(struct ip_vs_conn *cp);
+ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport);
  
- 
-diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-index fbcffe8..cabe95d 100644
---- a/include/uapi/linux/ip_vs.h
-+++ b/include/uapi/linux/ip_vs.h
-@@ -384,6 +384,9 @@ enum {
- 	IPVS_DEST_ATTR_PERSIST_CONNS,	/* persistent connections */
- 
- 	IPVS_DEST_ATTR_STATS,		/* nested attribute for dest stats */
-+
-+	IPVS_DEST_ATTR_ADDR_FAMILY,	/* Address family of address */
-+
- 	__IPVS_DEST_ATTR_MAX,
- };
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index bd2b208..594cec7 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -816,6 +816,8 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	dest->u_threshold = udest->u_threshold;
- 	dest->l_threshold = udest->l_threshold;
- 
-+	dest->af = udest->af;
-+
- 	spin_lock_bh(&dest->dst_lock);
- 	__ip_vs_dst_cache_reset(dest);
- 	spin_unlock_bh(&dest->dst_lock);
-@@ -846,8 +848,12 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- 
- 	EnterFunction(2);
- 
-+	/* Temporary for consistency */
-+	if (udest->af != svc->af)
-+		return -EINVAL;
-+
- #ifdef CONFIG_IP_VS_IPV6
--	if (svc->af == AF_INET6) {
-+	if (udest->af == AF_INET6) {
- 		atype = ipv6_addr_type(&udest->addr.in6);
- 		if ((!(atype & IPV6_ADDR_UNICAST) ||
- 			atype & IPV6_ADDR_LINKLOCAL) &&
-@@ -875,12 +881,12 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- 		u64_stats_init(&ip_vs_dest_stats->syncp);
- 	}
- 
--	dest->af = svc->af;
-+	dest->af = udest->af;
- 	dest->protocol = svc->protocol;
- 	dest->vaddr = svc->addr;
- 	dest->vport = svc->port;
- 	dest->vfwmark = svc->fwmark;
--	ip_vs_addr_copy(svc->af, &dest->addr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &dest->addr, &udest->addr);
- 	dest->port = udest->port;
- 
- 	atomic_set(&dest->activeconns, 0);
-@@ -928,7 +934,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 		return -ERANGE;
- 	}
- 
--	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &daddr, &udest->addr);
- 
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
-@@ -949,7 +955,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 	if (dest != NULL) {
- 		IP_VS_DBG_BUF(3, "Get destination %s:%u from trash, "
- 			      "dest->refcnt=%d, service %u/%s:%u\n",
--			      IP_VS_DBG_ADDR(svc->af, &daddr), ntohs(dport),
-+			      IP_VS_DBG_ADDR(udest->af, &daddr), ntohs(dport),
- 			      atomic_read(&dest->refcnt),
- 			      dest->vfwmark,
- 			      IP_VS_DBG_ADDR(svc->af, &dest->vaddr),
-@@ -992,7 +998,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 		return -ERANGE;
- 	}
- 
--	ip_vs_addr_copy(svc->af, &daddr, &udest->addr);
-+	ip_vs_addr_copy(udest->af, &daddr, &udest->addr);
- 
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
-@@ -2244,6 +2250,7 @@ static void ip_vs_copy_udest_compat(struct ip_vs_dest_user_kern *udest,
- 	udest->weight		= udest_compat->weight;
- 	udest->u_threshold	= udest_compat->u_threshold;
- 	udest->l_threshold	= udest_compat->l_threshold;
-+	udest->af		= AF_INET;
- }
- 
- static int
-@@ -2480,6 +2487,12 @@ __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
- 			if (count >= get->num_dests)
- 				break;
- 
-+			/* Cannot expose heterogeneous members via sockopt
-+			 * interface
-+			 */
-+			if (dest->af != svc->af)
-+				continue;
-+
- 			entry.addr = dest->addr.ip;
- 			entry.port = dest->port;
- 			entry.conn_flags = atomic_read(&dest->conn_flags);
-@@ -2777,6 +2790,7 @@ static const struct nla_policy ip_vs_dest_policy[IPVS_DEST_ATTR_MAX + 1] = {
- 	[IPVS_DEST_ATTR_INACT_CONNS]	= { .type = NLA_U32 },
- 	[IPVS_DEST_ATTR_PERSIST_CONNS]	= { .type = NLA_U32 },
- 	[IPVS_DEST_ATTR_STATS]		= { .type = NLA_NESTED },
-+	[IPVS_DEST_ATTR_ADDR_FAMILY]	= { .type = NLA_U16 },
- };
- 
- static int ip_vs_genl_fill_stats(struct sk_buff *skb, int container_type,
-@@ -3032,7 +3046,8 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_INACT_CONNS,
- 			atomic_read(&dest->inactconns)) ||
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_PERSIST_CONNS,
--			atomic_read(&dest->persistconns)))
-+			atomic_read(&dest->persistconns)) ||
-+	    nla_put_u16(skb, IPVS_DEST_ATTR_ADDR_FAMILY, dest->af))
- 		goto nla_put_failure;
- 	if (ip_vs_genl_fill_stats(skb, IPVS_DEST_ATTR_STATS, &dest->stats))
- 		goto nla_put_failure;
-@@ -3113,6 +3128,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
+-struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p,
++struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ 				  const union nf_inet_addr *daddr,
+ 				  __be16 dport, unsigned int flags,
+ 				  struct ip_vs_dest *dest, __u32 fwmark);
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 8f4c602..fdb4880 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -854,7 +854,7 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp)
+  *	Create a new connection entry and hash it into the ip_vs_conn_tab
+  */
+ struct ip_vs_conn *
+-ip_vs_conn_new(const struct ip_vs_conn_param *p,
++ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ 	       const union nf_inet_addr *daddr, __be16 dport, unsigned int flags,
+ 	       struct ip_vs_dest *dest, __u32 fwmark)
  {
- 	struct nlattr *attrs[IPVS_DEST_ATTR_MAX + 1];
- 	struct nlattr *nla_addr, *nla_port;
-+	struct nlattr *nla_addr_family;
+@@ -873,6 +873,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+ 	setup_timer(&cp->timer, ip_vs_conn_expire, (unsigned long)cp);
+ 	ip_vs_conn_net_set(cp, p->net);
+ 	cp->af		   = p->af;
++	cp->daf		   = dest_af;
+ 	cp->protocol	   = p->protocol;
+ 	ip_vs_addr_set(p->af, &cp->caddr, p->caddr);
+ 	cp->cport	   = p->cport;
+@@ -880,7 +881,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
+ 	ip_vs_addr_set(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
+ 		       &cp->vaddr, p->vaddr);
+ 	cp->vport	   = p->vport;
+-	ip_vs_addr_set(p->af, &cp->daddr, daddr);
++	ip_vs_addr_set(cp->daf, &cp->daddr, daddr);
+ 	cp->dport          = dport;
+ 	cp->flags	   = flags;
+ 	cp->fwmark         = fwmark;
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 5c34e8d..1f6ecb7 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -328,7 +328,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 		 * This adds param.pe_data to the template,
+ 		 * and thus param.pe_data will be destroyed
+ 		 * when the template expires */
+-		ct = ip_vs_conn_new(&param, &dest->addr, dport,
++		ct = ip_vs_conn_new(&param, dest->af, &dest->addr, dport,
+ 				    IP_VS_CONN_F_TEMPLATE, dest, skb->mark);
+ 		if (ct == NULL) {
+ 			kfree(param.pe_data);
+@@ -357,7 +357,8 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol, &iph->saddr,
+ 			      src_port, &iph->daddr, dst_port, &param);
  
- 	/* Parse mandatory identifying destination fields first */
- 	if (nla == NULL ||
-@@ -3121,6 +3137,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
+-	cp = ip_vs_conn_new(&param, &dest->addr, dport, flags, dest, skb->mark);
++	cp = ip_vs_conn_new(&param, dest->af, &dest->addr, dport, flags, dest,
++			    skb->mark);
+ 	if (cp == NULL) {
+ 		ip_vs_conn_put(ct);
+ 		*ignored = -1;
+@@ -479,7 +480,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+ 		ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
+ 				      &iph->saddr, pptr[0], &iph->daddr,
+ 				      pptr[1], &p);
+-		cp = ip_vs_conn_new(&p, &dest->addr,
++		cp = ip_vs_conn_new(&p, dest->af, &dest->addr,
+ 				    dest->port ? dest->port : pptr[1],
+ 				    flags, dest, skb->mark);
+ 		if (!cp) {
+@@ -550,7 +551,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 			ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
+ 					      &iph->saddr, pptr[0],
+ 					      &iph->daddr, pptr[1], &p);
+-			cp = ip_vs_conn_new(&p, &daddr, 0,
++			cp = ip_vs_conn_new(&p, svc->af, &daddr, 0,
+ 					    IP_VS_CONN_F_BYPASS | flags,
+ 					    NULL, skb->mark);
+ 			if (!cp)
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 77c1732..a64fa15 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -233,7 +233,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 			ip_vs_conn_fill_param(ip_vs_conn_net(cp),
+ 					      AF_INET, IPPROTO_TCP, &cp->caddr,
+ 					      0, &cp->vaddr, port, &p);
+-			n_cp = ip_vs_conn_new(&p, &from, port,
++			/* As above, this is ipv4 only */
++			n_cp = ip_vs_conn_new(&p, AF_INET, &from, port,
+ 					      IP_VS_CONN_F_NO_CPORT |
+ 					      IP_VS_CONN_F_NFCT,
+ 					      cp->dest, skb->mark);
+@@ -396,7 +397,8 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 				      htons(ntohs(cp->vport)-1), &p);
+ 		n_cp = ip_vs_conn_in_get(&p);
+ 		if (!n_cp) {
+-			n_cp = ip_vs_conn_new(&p, &cp->daddr,
++			/* This is ipv4 only */
++			n_cp = ip_vs_conn_new(&p, AF_INET, &cp->daddr,
+ 					      htons(ntohs(cp->dport)-1),
+ 					      IP_VS_CONN_F_NFCT, cp->dest,
+ 					      skb->mark);
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index edd2664..7162c86 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -889,7 +889,8 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+ 				       param->vaddr, param->vport, protocol,
+ 				       fwmark, flags);
  
- 	nla_addr	= attrs[IPVS_DEST_ATTR_ADDR];
- 	nla_port	= attrs[IPVS_DEST_ATTR_PORT];
-+	nla_addr_family	= attrs[IPVS_DEST_ATTR_ADDR_FAMILY];
- 
- 	if (!(nla_addr && nla_port))
- 		return -EINVAL;
-@@ -3130,6 +3147,11 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- 	nla_memcpy(&udest->addr, nla_addr, sizeof(udest->addr));
- 	udest->port = nla_get_be16(nla_port);
- 
-+	if (nla_addr_family)
-+		udest->af = nla_get_u16(nla_addr_family);
-+	else
-+		udest->af = 0;
-+
- 	/* If a full entry was requested, check for the additional fields */
- 	if (full_entry) {
- 		struct nlattr *nla_fwd, *nla_weight, *nla_u_thresh,
-@@ -3357,6 +3379,15 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 					    need_full_dest);
- 		if (ret)
- 			goto out;
-+
-+		/* Old protocols did not allow the user to specify address
-+		 * family, so we set it to zero instead.  We also didn't
-+		 * allow heterogeneous pools in the old code, so it's safe
-+		 * to assume that this will have the same address family as
-+		 * the service.
-+		 */
-+		if (udest.af == 0)
-+			udest.af = svc->af;
- 	}
- 
- 	switch (cmd) {
+-		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
++		cp = ip_vs_conn_new(param, type, daddr, dport, flags, dest,
++				    fwmark);
+ 		rcu_read_unlock();
+ 		if (!cp) {
+ 			kfree(param->pe_data);
 -- 
 2.0.1
