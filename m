@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 16/21] ipvs: use correct address family in RR logs
-Date: Tue, 16 Sep 2014 09:34:30 +0900
-Message-ID: <1410827675-3637-17-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 17/21] ipvs: use correct address family in SED logs
+Date: Tue, 16 Sep 2014 09:34:31 +0900
+Message-ID: <1410827675-3637-18-git-send-email-horms@verge.net.au>
 References: <1410827675-3637-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1410827675-3637-1-git-send-email-horms@verge.net.au>
@@ -21,21 +21,22 @@ Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_rr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_sed.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_rr.c b/net/netfilter/ipvs/ip_vs_rr.c
-index 176b87c..58bacfc 100644
---- a/net/netfilter/ipvs/ip_vs_rr.c
-+++ b/net/netfilter/ipvs/ip_vs_rr.c
-@@ -95,7 +95,7 @@ stop:
- 	spin_unlock_bh(&svc->sched_lock);
- 	IP_VS_DBG_BUF(6, "RR: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port),
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port),
- 		      atomic_read(&dest->activeconns),
- 		      atomic_read(&dest->refcnt), atomic_read(&dest->weight));
+diff --git a/net/netfilter/ipvs/ip_vs_sed.c b/net/netfilter/ipvs/ip_vs_sed.c
+index e446b9f..f8e2d00 100644
+--- a/net/netfilter/ipvs/ip_vs_sed.c
++++ b/net/netfilter/ipvs/ip_vs_sed.c
+@@ -108,7 +108,8 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
  
+ 	IP_VS_DBG_BUF(6, "SED: server %s:%u "
+ 		      "activeconns %d refcnt %d weight %d overhead %d\n",
+-		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
++		      IP_VS_DBG_ADDR(least->af, &least->addr),
++		      ntohs(least->port),
+ 		      atomic_read(&least->activeconns),
+ 		      atomic_read(&least->refcnt),
+ 		      atomic_read(&least->weight), loh);
 -- 
 2.0.1
