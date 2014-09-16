@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 11/21] ipvs: address family of LBLC entry depends on svc family
-Date: Tue, 16 Sep 2014 09:34:25 +0900
-Message-ID: <1410827675-3637-12-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 13/21] ipvs: use correct address family in DH logs
+Date: Tue, 16 Sep 2014 09:34:27 +0900
+Message-ID: <1410827675-3637-14-git-send-email-horms@verge.net.au>
 References: <1410827675-3637-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1410827675-3637-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,61 +15,28 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Julian Anastasov <ja@ssi.bg>
 
-The LBLC entries should use svc->af, not dest->af.
 Needed to support svc->af != dest->af.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_lblc.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ net/netfilter/ipvs/ip_vs_dh.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
-index 547ff33..127f140 100644
---- a/net/netfilter/ipvs/ip_vs_lblc.c
-+++ b/net/netfilter/ipvs/ip_vs_lblc.c
-@@ -199,11 +199,11 @@ ip_vs_lblc_get(int af, struct ip_vs_lblc_table *tbl,
-  */
- static inline struct ip_vs_lblc_entry *
- ip_vs_lblc_new(struct ip_vs_lblc_table *tbl, const union nf_inet_addr *daddr,
--	       struct ip_vs_dest *dest)
-+	       u16 af, struct ip_vs_dest *dest)
- {
- 	struct ip_vs_lblc_entry *en;
+diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
+index c3b8454..6be5c53 100644
+--- a/net/netfilter/ipvs/ip_vs_dh.c
++++ b/net/netfilter/ipvs/ip_vs_dh.c
+@@ -234,7 +234,7 @@ ip_vs_dh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
  
--	en = ip_vs_lblc_get(dest->af, tbl, daddr);
-+	en = ip_vs_lblc_get(af, tbl, daddr);
- 	if (en) {
- 		if (en->dest == dest)
- 			return en;
-@@ -213,8 +213,8 @@ ip_vs_lblc_new(struct ip_vs_lblc_table *tbl, const union nf_inet_addr *daddr,
- 	if (!en)
- 		return NULL;
- 
--	en->af = dest->af;
--	ip_vs_addr_copy(dest->af, &en->addr, daddr);
-+	en->af = af;
-+	ip_vs_addr_copy(af, &en->addr, daddr);
- 	en->lastuse = jiffies;
- 
- 	ip_vs_dest_hold(dest);
-@@ -521,13 +521,13 @@ ip_vs_lblc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 	/* If we fail to create a cache entry, we'll just use the valid dest */
- 	spin_lock_bh(&svc->sched_lock);
- 	if (!tbl->dead)
--		ip_vs_lblc_new(tbl, &iph->daddr, dest);
-+		ip_vs_lblc_new(tbl, &iph->daddr, svc->af, dest);
- 	spin_unlock_bh(&svc->sched_lock);
- 
- out:
- 	IP_VS_DBG_BUF(6, "LBLC: destination IP address %s --> server %s:%d\n",
+ 	IP_VS_DBG_BUF(6, "DH: destination IP address %s --> server %s:%d\n",
  		      IP_VS_DBG_ADDR(svc->af, &iph->daddr),
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
+-		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 		      ntohs(dest->port));
  
  	return dest;
- }
 -- 
 2.0.1
 
