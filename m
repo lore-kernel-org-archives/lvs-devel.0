@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 18/21] ipvs: use correct address family in SH logs
-Date: Tue, 16 Sep 2014 09:34:32 +0900
-Message-ID: <1410827675-3637-19-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 21/21] ipvs: Allow heterogeneous pools now that we support them
+Date: Tue, 16 Sep 2014 09:34:35 +0900
+Message-ID: <1410827675-3637-22-git-send-email-horms@verge.net.au>
 References: <1410827675-3637-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1410827675-3637-1-git-send-email-horms@verge.net.au>
@@ -13,56 +13,59 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Alex Gartrell <agartrell@fb.com>, Simon Horman <horms@verge.net.au>
 
-From: Julian Anastasov <ja@ssi.bg>
+From: Alex Gartrell <agartrell@fb.com>
 
-Needed to support svc->af != dest->af.
+Remove the temporary consistency check and add a case statement to only
+allow ipip mixed dests.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_sh.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 24 ++++++++++++++++++++----
+ 1 file changed, 20 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-index cc65b2f..98a1343 100644
---- a/net/netfilter/ipvs/ip_vs_sh.c
-+++ b/net/netfilter/ipvs/ip_vs_sh.c
-@@ -138,7 +138,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 		return dest;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 462760e..ac7ba68 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -854,10 +854,6 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
  
- 	IP_VS_DBG_BUF(6, "SH: selected unavailable server %s:%d, reselecting",
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
+ 	EnterFunction(2);
  
- 	/* if the original dest is unavailable, loop around the table
- 	 * starting from ihash to find a new dest
-@@ -153,7 +153,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 			return dest;
- 		IP_VS_DBG_BUF(6, "SH: selected unavailable "
- 			      "server %s:%d (offset %d), reselecting",
--			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 			      ntohs(dest->port), roffset);
+-	/* Temporary for consistency */
+-	if (udest->af != svc->af)
+-		return -EINVAL;
+-
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (udest->af == AF_INET6) {
+ 		atype = ipv6_addr_type(&udest->addr.in6);
+@@ -3403,6 +3399,26 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 		 */
+ 		if (udest.af == 0)
+ 			udest.af = svc->af;
++
++		if (udest.af != svc->af) {
++			/* The synchronization protocol is incompatible
++			 * with mixed family services
++			 */
++			if (net_ipvs(net)->sync_state) {
++				ret = -EINVAL;
++				goto out;
++			}
++
++			/* Which connection types do we support? */
++			switch (udest.conn_flags) {
++			case IP_VS_CONN_F_TUNNEL:
++				/* We are able to forward this */
++				break;
++			default:
++				ret = -EINVAL;
++				goto out;
++			}
++		}
  	}
  
-@@ -192,7 +192,7 @@ ip_vs_sh_reassign(struct ip_vs_sh_state *s, struct ip_vs_service *svc)
- 			RCU_INIT_POINTER(b->dest, dest);
- 
- 			IP_VS_DBG_BUF(6, "assigned i: %d dest: %s weight: %d\n",
--				      i, IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+				      i, IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 				      atomic_read(&dest->weight));
- 
- 			/* Don't move to next dest until filling weight */
-@@ -342,7 +342,7 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 
- 	IP_VS_DBG_BUF(6, "SH: source IP address %s --> server %s:%d\n",
- 		      IP_VS_DBG_ADDR(svc->af, &iph->saddr),
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 		      ntohs(dest->port));
- 
- 	return dest;
+ 	switch (cmd) {
 -- 
 2.0.1
