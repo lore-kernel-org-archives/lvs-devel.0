@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 03/21] ipvs: Supply destination addr family to ip_vs_{lookup_dest,find_dest}
-Date: Tue, 16 Sep 2014 09:34:17 +0900
-Message-ID: <1410827675-3637-4-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 06/21] ipvs: prevent mixing heterogeneous pools and synchronization
+Date: Tue, 16 Sep 2014 09:34:20 +0900
+Message-ID: <1410827675-3637-7-git-send-email-horms@verge.net.au>
 References: <1410827675-3637-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1410827675-3637-1-git-send-email-horms@verge.net.au>
@@ -15,157 +15,71 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-We need to remove the assumption that virtual address family is the same as
-real address family in order to support heterogeneous services (that is,
-services with v4 vips and v6 backends or the opposite).
+The synchronization protocol is not compatible with heterogeneous pools, so
+we need to verify that we're not turning both on at the same time.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             |  5 +++--
- net/netfilter/ipvs/ip_vs_conn.c |  8 +++++++-
- net/netfilter/ipvs/ip_vs_ctl.c  | 24 ++++++++++++------------
- net/netfilter/ipvs/ip_vs_sync.c | 10 ++++++++--
- 4 files changed, 30 insertions(+), 17 deletions(-)
+ include/net/ip_vs.h            |  4 ++++
+ net/netfilter/ipvs/ip_vs_ctl.c | 15 +++++++++++++++
+ 2 files changed, 19 insertions(+)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b7e2b62..2fa1155 100644
+index 7600dbe..576d7f0 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1399,8 +1399,9 @@ void ip_vs_unregister_nl_ioctl(void);
- int ip_vs_control_init(void);
- void ip_vs_control_cleanup(void);
- struct ip_vs_dest *
--ip_vs_find_dest(struct net *net, int af, const union nf_inet_addr *daddr,
--		__be16 dport, const union nf_inet_addr *vaddr, __be16 vport,
-+ip_vs_find_dest(struct net *net, int svc_af, int dest_af,
-+		const union nf_inet_addr *daddr, __be16 dport,
-+		const union nf_inet_addr *vaddr, __be16 vport,
- 		__u16 protocol, __u32 fwmark, __u32 flags);
- void ip_vs_try_bind_dest(struct ip_vs_conn *cp);
+@@ -990,6 +990,10 @@ struct netns_ipvs {
+ 	char			backup_mcast_ifn[IP_VS_IFNAME_MAXLEN];
+ 	/* net name space ptr */
+ 	struct net		*net;            /* Needed by timer routines */
++	/* Number of heterogeneous destinations, needed because
++	 * heterogeneous are not supported when synchronization is
++	 * enabled */
++	unsigned int		mixed_address_family_dests;
+ };
  
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 610e19c..8f4c602 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -616,7 +616,13 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- 	struct ip_vs_dest *dest;
- 
- 	rcu_read_lock();
--	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, &cp->daddr,
-+
-+	/* This function is only invoked by the synchronization code. We do
-+	 * not currently support heterogeneous pools with synchronization,
-+	 * so we can make the assumption that the svc_af is the same as the
-+	 * dest_af
-+	 */
-+	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, cp->af, &cp->daddr,
- 			       cp->dport, &cp->vaddr, cp->vport,
- 			       cp->protocol, cp->fwmark, cp->flags);
- 	if (dest) {
+ #define DEFAULT_SYNC_THRESHOLD	3
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 594cec7..c840d89 100644
+index 6bd2cc6..462760e 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -574,8 +574,8 @@ bool ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
-  * Called under RCU lock.
-  */
- static struct ip_vs_dest *
--ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
--		  __be16 dport)
-+ip_vs_lookup_dest(struct ip_vs_service *svc, int dest_af,
-+		  const union nf_inet_addr *daddr, __be16 dport)
- {
- 	struct ip_vs_dest *dest;
+@@ -779,6 +779,12 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+ 	struct ip_vs_scheduler *sched;
+ 	int conn_flags;
  
-@@ -583,9 +583,9 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
- 	 * Find the destination for the given service
- 	 */
- 	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
--		if ((dest->af == svc->af)
--		    && ip_vs_addr_equal(svc->af, &dest->addr, daddr)
--		    && (dest->port == dport)) {
-+		if ((dest->af == dest_af) &&
-+		    ip_vs_addr_equal(dest_af, &dest->addr, daddr) &&
-+		    (dest->port == dport)) {
- 			/* HIT */
- 			return dest;
- 		}
-@@ -602,7 +602,7 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
-  * on the backup.
-  * Called under RCU lock, no refcnt is returned.
-  */
--struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
-+struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int svc_af, int dest_af,
- 				   const union nf_inet_addr *daddr,
- 				   __be16 dport,
- 				   const union nf_inet_addr *vaddr,
-@@ -613,14 +613,14 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int af,
- 	struct ip_vs_service *svc;
- 	__be16 port = dport;
++	/* We cannot modify an address and change the address family */
++	BUG_ON(!add && udest->af != dest->af);
++
++	if (add && udest->af != svc->af)
++		ipvs->mixed_address_family_dests++;
++
+ 	/* set the weight and the flags */
+ 	atomic_set(&dest->weight, udest->weight);
+ 	conn_flags = udest->conn_flags & IP_VS_CONN_F_DEST_MASK;
+@@ -1061,6 +1067,9 @@ static void __ip_vs_unlink_dest(struct ip_vs_service *svc,
+ 	list_del_rcu(&dest->n_list);
+ 	svc->num_dests--;
  
--	svc = ip_vs_service_find(net, af, fwmark, protocol, vaddr, vport);
-+	svc = ip_vs_service_find(net, svc_af, fwmark, protocol, vaddr, vport);
- 	if (!svc)
- 		return NULL;
- 	if (fwmark && (flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ)
- 		port = 0;
--	dest = ip_vs_lookup_dest(svc, daddr, port);
-+	dest = ip_vs_lookup_dest(svc, dest_af, daddr, port);
- 	if (!dest)
--		dest = ip_vs_lookup_dest(svc, daddr, port ^ dport);
-+		dest = ip_vs_lookup_dest(svc, dest_af, daddr, port ^ dport);
- 	return dest;
- }
++	if (dest->af != svc->af)
++		net_ipvs(svc->net)->mixed_address_family_dests--;
++
+ 	if (svcupd) {
+ 		struct ip_vs_scheduler *sched;
  
-@@ -938,7 +938,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+@@ -3256,6 +3265,12 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
+ 	      attrs[IPVS_DAEMON_ATTR_SYNC_ID]))
+ 		return -EINVAL;
  
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
--	dest = ip_vs_lookup_dest(svc, &daddr, dport);
-+	dest = ip_vs_lookup_dest(svc, udest->af, &daddr, dport);
- 	rcu_read_unlock();
- 
- 	if (dest != NULL) {
-@@ -1002,7 +1002,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
--	dest = ip_vs_lookup_dest(svc, &daddr, dport);
-+	dest = ip_vs_lookup_dest(svc, udest->af, &daddr, dport);
- 	rcu_read_unlock();
- 
- 	if (dest == NULL) {
-@@ -1084,7 +1084,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 
- 	/* We use function that requires RCU lock */
- 	rcu_read_lock();
--	dest = ip_vs_lookup_dest(svc, &udest->addr, dport);
-+	dest = ip_vs_lookup_dest(svc, udest->af, &udest->addr, dport);
- 	rcu_read_unlock();
- 
- 	if (dest == NULL) {
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index eadffb2..edd2664 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -880,8 +880,14 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 		 * but still handled.
- 		 */
- 		rcu_read_lock();
--		dest = ip_vs_find_dest(net, type, daddr, dport, param->vaddr,
--				       param->vport, protocol, fwmark, flags);
-+		/* This function is only invoked by the synchronization
-+		 * code. We do not currently support heterogeneous pools
-+		 * with synchronization, so we can make the assumption that
-+		 * the svc_af is the same as the dest_af
-+		 */
-+		dest = ip_vs_find_dest(net, type, type, daddr, dport,
-+				       param->vaddr, param->vport, protocol,
-+				       fwmark, flags);
- 
- 		cp = ip_vs_conn_new(param, daddr, dport, flags, dest, fwmark);
- 		rcu_read_unlock();
++	/* The synchronization protocol is incompatible with mixed family
++	 * services
++	 */
++	if (net_ipvs(net)->mixed_address_family_dests > 0)
++		return -EINVAL;
++
+ 	return start_sync_thread(net,
+ 				 nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]),
+ 				 nla_data(attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
 -- 
 2.0.1
