@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 13/15] ipvs: use correct address family in scheduler logs
-Date: Thu, 18 Sep 2014 09:25:59 +0900
-Message-ID: <1410999961-7975-14-git-send-email-horms@verge.net.au>
+Subject: [PATCH 10/15] ipvs: support ipv4 in ipv6 and ipv6 in ipv4 tunnel forwarding
+Date: Thu, 18 Sep 2014 09:25:56 +0900
+Message-ID: <1410999961-7975-11-git-send-email-horms@verge.net.au>
 References: <1410999961-7975-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1410999961-7975-1-git-send-email-horms@verge.net.au>
@@ -13,171 +13,262 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Alex Gartrell <agartrell@fb.com>, Simon Horman <horms@verge.net.au>
 
-From: Julian Anastasov <ja@ssi.bg>
+From: Alex Gartrell <agartrell@fb.com>
 
-Needed to support svc->af != dest->af.
+Pull the common logic for preparing an skb to prepend the header into a
+single function and then set fields such that they can be used in either
+case (generalize tos and tclass to dscp, hop_limit and ttl to ttl, etc)
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_dh.c  | 2 +-
- net/netfilter/ipvs/ip_vs_fo.c  | 2 +-
- net/netfilter/ipvs/ip_vs_lc.c  | 2 +-
- net/netfilter/ipvs/ip_vs_nq.c  | 3 ++-
- net/netfilter/ipvs/ip_vs_rr.c  | 2 +-
- net/netfilter/ipvs/ip_vs_sed.c | 3 ++-
- net/netfilter/ipvs/ip_vs_sh.c  | 8 ++++----
- net/netfilter/ipvs/ip_vs_wlc.c | 3 ++-
- net/netfilter/ipvs/ip_vs_wrr.c | 2 +-
- 9 files changed, 15 insertions(+), 12 deletions(-)
+ net/netfilter/ipvs/ip_vs_conn.c |  12 +++-
+ net/netfilter/ipvs/ip_vs_xmit.c | 148 +++++++++++++++++++++++++++++-----------
+ 2 files changed, 117 insertions(+), 43 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
-index c3b8454..6be5c53 100644
---- a/net/netfilter/ipvs/ip_vs_dh.c
-+++ b/net/netfilter/ipvs/ip_vs_dh.c
-@@ -234,7 +234,7 @@ ip_vs_dh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index fdb4880..13e9cee 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -488,7 +488,12 @@ static inline void ip_vs_bind_xmit(struct ip_vs_conn *cp)
+ 		break;
  
- 	IP_VS_DBG_BUF(6, "DH: destination IP address %s --> server %s:%d\n",
- 		      IP_VS_DBG_ADDR(svc->af, &iph->daddr),
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 		      ntohs(dest->port));
+ 	case IP_VS_CONN_F_TUNNEL:
+-		cp->packet_xmit = ip_vs_tunnel_xmit;
++#ifdef CONFIG_IP_VS_IPV6
++		if (cp->daf == AF_INET6)
++			cp->packet_xmit = ip_vs_tunnel_xmit_v6;
++		else
++#endif
++			cp->packet_xmit = ip_vs_tunnel_xmit;
+ 		break;
  
- 	return dest;
-diff --git a/net/netfilter/ipvs/ip_vs_fo.c b/net/netfilter/ipvs/ip_vs_fo.c
-index 6a2647d..e09874d 100644
---- a/net/netfilter/ipvs/ip_vs_fo.c
-+++ b/net/netfilter/ipvs/ip_vs_fo.c
-@@ -44,7 +44,7 @@ ip_vs_fo_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	case IP_VS_CONN_F_DROUTE:
+@@ -514,7 +519,10 @@ static inline void ip_vs_bind_xmit_v6(struct ip_vs_conn *cp)
+ 		break;
  
- 	if (hweight) {
- 		IP_VS_DBG_BUF(6, "FO: server %s:%u activeconns %d weight %d\n",
--			      IP_VS_DBG_ADDR(svc->af, &hweight->addr),
-+			      IP_VS_DBG_ADDR(hweight->af, &hweight->addr),
- 			      ntohs(hweight->port),
- 			      atomic_read(&hweight->activeconns),
- 			      atomic_read(&hweight->weight));
-diff --git a/net/netfilter/ipvs/ip_vs_lc.c b/net/netfilter/ipvs/ip_vs_lc.c
-index 2bdcb1c..19a0769 100644
---- a/net/netfilter/ipvs/ip_vs_lc.c
-+++ b/net/netfilter/ipvs/ip_vs_lc.c
-@@ -59,7 +59,7 @@ ip_vs_lc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 	else
- 		IP_VS_DBG_BUF(6, "LC: server %s:%u activeconns %d "
- 			      "inactconns %d\n",
--			      IP_VS_DBG_ADDR(svc->af, &least->addr),
-+			      IP_VS_DBG_ADDR(least->af, &least->addr),
- 			      ntohs(least->port),
- 			      atomic_read(&least->activeconns),
- 			      atomic_read(&least->inactconns));
-diff --git a/net/netfilter/ipvs/ip_vs_nq.c b/net/netfilter/ipvs/ip_vs_nq.c
-index 961a6de..a8b6340 100644
---- a/net/netfilter/ipvs/ip_vs_nq.c
-+++ b/net/netfilter/ipvs/ip_vs_nq.c
-@@ -107,7 +107,8 @@ ip_vs_nq_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
-   out:
- 	IP_VS_DBG_BUF(6, "NQ: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d overhead %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      IP_VS_DBG_ADDR(least->af, &least->addr),
-+		      ntohs(least->port),
- 		      atomic_read(&least->activeconns),
- 		      atomic_read(&least->refcnt),
- 		      atomic_read(&least->weight), loh);
-diff --git a/net/netfilter/ipvs/ip_vs_rr.c b/net/netfilter/ipvs/ip_vs_rr.c
-index 176b87c..58bacfc 100644
---- a/net/netfilter/ipvs/ip_vs_rr.c
-+++ b/net/netfilter/ipvs/ip_vs_rr.c
-@@ -95,7 +95,7 @@ stop:
- 	spin_unlock_bh(&svc->sched_lock);
- 	IP_VS_DBG_BUF(6, "RR: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port),
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port),
- 		      atomic_read(&dest->activeconns),
- 		      atomic_read(&dest->refcnt), atomic_read(&dest->weight));
+ 	case IP_VS_CONN_F_TUNNEL:
+-		cp->packet_xmit = ip_vs_tunnel_xmit_v6;
++		if (cp->daf == AF_INET6)
++			cp->packet_xmit = ip_vs_tunnel_xmit_v6;
++		else
++			cp->packet_xmit = ip_vs_tunnel_xmit;
+ 		break;
  
-diff --git a/net/netfilter/ipvs/ip_vs_sed.c b/net/netfilter/ipvs/ip_vs_sed.c
-index e446b9f..f8e2d00 100644
---- a/net/netfilter/ipvs/ip_vs_sed.c
-+++ b/net/netfilter/ipvs/ip_vs_sed.c
-@@ -108,7 +108,8 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	case IP_VS_CONN_F_DROUTE:
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index fa2fdd7..91f17c1 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -824,6 +824,81 @@ tx_error:
+ }
+ #endif
  
- 	IP_VS_DBG_BUF(6, "SED: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d overhead %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      IP_VS_DBG_ADDR(least->af, &least->addr),
-+		      ntohs(least->port),
- 		      atomic_read(&least->activeconns),
- 		      atomic_read(&least->refcnt),
- 		      atomic_read(&least->weight), loh);
-diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-index cc65b2f..98a1343 100644
---- a/net/netfilter/ipvs/ip_vs_sh.c
-+++ b/net/netfilter/ipvs/ip_vs_sh.c
-@@ -138,7 +138,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 		return dest;
++/* When forwarding a packet, we must ensure that we've got enough headroom
++ * for the encapsulation packet in the skb.  This also gives us an
++ * opportunity to figure out what the payload_len, dsfield, ttl, and df
++ * values should be, so that we won't need to look at the old ip header
++ * again
++ */
++static struct sk_buff *
++ip_vs_prepare_tunneled_skb(struct sk_buff *skb, int skb_af,
++			   unsigned int max_headroom, __u8 *next_protocol,
++			   __u32 *payload_len, __u8 *dsfield, __u8 *ttl,
++			   __be16 *df)
++{
++	struct sk_buff *new_skb = NULL;
++	struct iphdr *old_iph = NULL;
++#ifdef CONFIG_IP_VS_IPV6
++	struct ipv6hdr *old_ipv6h = NULL;
++#endif
++
++	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
++		new_skb = skb_realloc_headroom(skb, max_headroom);
++		if (!new_skb)
++			goto error;
++		consume_skb(skb);
++		skb = new_skb;
++	}
++
++#ifdef CONFIG_IP_VS_IPV6
++	if (skb_af == AF_INET6) {
++		old_ipv6h = ipv6_hdr(skb);
++		*next_protocol = IPPROTO_IPV6;
++		if (payload_len)
++			*payload_len =
++				ntohs(old_ipv6h->payload_len) +
++				sizeof(*old_ipv6h);
++		*dsfield = ipv6_get_dsfield(old_ipv6h);
++		*ttl = old_ipv6h->hop_limit;
++		if (df)
++			*df = 0;
++	} else
++#endif
++	{
++		old_iph = ip_hdr(skb);
++		/* Copy DF, reset fragment offset and MF */
++		if (df)
++			*df = (old_iph->frag_off & htons(IP_DF));
++		*next_protocol = IPPROTO_IPIP;
++
++		/* fix old IP header checksum */
++		ip_send_check(old_iph);
++		*dsfield = ipv4_get_dsfield(old_iph);
++		*ttl = old_iph->ttl;
++		if (payload_len)
++			*payload_len = ntohs(old_iph->tot_len);
++	}
++
++	return skb;
++error:
++	kfree_skb(skb);
++	return ERR_PTR(-ENOMEM);
++}
++
++static inline int __tun_gso_type_mask(int encaps_af, int orig_af)
++{
++	if (encaps_af == AF_INET) {
++		if (orig_af == AF_INET)
++			return SKB_GSO_IPIP;
++
++		return SKB_GSO_SIT;
++	}
++
++	/* GSO: we need to provide proper SKB_GSO_ value for IPv6:
++	 * SKB_GSO_SIT/IPV6
++	 */
++	return 0;
++}
  
- 	IP_VS_DBG_BUF(6, "SH: selected unavailable server %s:%d, reselecting",
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port));
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
+ /*
+  *   IP Tunneling transmitter
+@@ -852,9 +927,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	struct rtable *rt;			/* Route to the other host */
+ 	__be32 saddr;				/* Source for tunnel */
+ 	struct net_device *tdev;		/* Device to other host */
+-	struct iphdr  *old_iph = ip_hdr(skb);
+-	u8     tos = old_iph->tos;
+-	__be16 df;
++	__u8 next_protocol = 0;
++	__u8 dsfield = 0;
++	__u8 ttl = 0;
++	__be16 df = 0;
++	__be16 *dfp = NULL;
+ 	struct iphdr  *iph;			/* Our new IP header */
+ 	unsigned int max_headroom;		/* The extra header space needed */
+ 	int ret, local;
+@@ -877,29 +954,21 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	rt = skb_rtable(skb);
+ 	tdev = rt->dst.dev;
  
- 	/* if the original dest is unavailable, loop around the table
- 	 * starting from ihash to find a new dest
-@@ -153,7 +153,7 @@ ip_vs_sh_get_fallback(struct ip_vs_service *svc, struct ip_vs_sh_state *s,
- 			return dest;
- 		IP_VS_DBG_BUF(6, "SH: selected unavailable "
- 			      "server %s:%d (offset %d), reselecting",
--			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 			      ntohs(dest->port), roffset);
- 	}
+-	/* Copy DF, reset fragment offset and MF */
+-	df = sysctl_pmtu_disc(ipvs) ? old_iph->frag_off & htons(IP_DF) : 0;
+-
+ 	/*
+ 	 * Okay, now see if we can stuff it in the buffer as-is.
+ 	 */
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
  
-@@ -192,7 +192,7 @@ ip_vs_sh_reassign(struct ip_vs_sh_state *s, struct ip_vs_service *svc)
- 			RCU_INIT_POINTER(b->dest, dest);
+-	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+-		struct sk_buff *new_skb =
+-			skb_realloc_headroom(skb, max_headroom);
+-
+-		if (!new_skb)
+-			goto tx_error;
+-		consume_skb(skb);
+-		skb = new_skb;
+-		old_iph = ip_hdr(skb);
+-	}
+-
+-	/* fix old IP header checksum */
+-	ip_send_check(old_iph);
++	/* We only care about the df field if sysctl_pmtu_disc(ipvs) is set */
++	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
++	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
++					 &next_protocol, NULL, &dsfield,
++					 &ttl, dfp);
++	if (IS_ERR(skb))
++		goto tx_error;
  
- 			IP_VS_DBG_BUF(6, "assigned i: %d dest: %s weight: %d\n",
--				      i, IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+				      i, IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 				      atomic_read(&dest->weight));
+-	skb = iptunnel_handle_offloads(skb, false, SKB_GSO_IPIP);
++	skb = iptunnel_handle_offloads(
++		skb, false, __tun_gso_type_mask(AF_INET, cp->af));
+ 	if (IS_ERR(skb))
+ 		goto tx_error;
  
- 			/* Don't move to next dest until filling weight */
-@@ -342,7 +342,7 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+@@ -916,11 +985,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	iph->version		=	4;
+ 	iph->ihl		=	sizeof(struct iphdr)>>2;
+ 	iph->frag_off		=	df;
+-	iph->protocol		=	IPPROTO_IPIP;
+-	iph->tos		=	tos;
++	iph->protocol		=	next_protocol;
++	iph->tos		=	dsfield;
+ 	iph->daddr		=	cp->daddr.ip;
+ 	iph->saddr		=	saddr;
+-	iph->ttl		=	old_iph->ttl;
++	iph->ttl		=	ttl;
+ 	ip_select_ident(skb, NULL);
  
- 	IP_VS_DBG_BUF(6, "SH: source IP address %s --> server %s:%d\n",
- 		      IP_VS_DBG_ADDR(svc->af, &iph->saddr),
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr),
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
- 		      ntohs(dest->port));
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+@@ -953,7 +1022,10 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	struct rt6_info *rt;		/* Route to the other host */
+ 	struct in6_addr saddr;		/* Source for tunnel */
+ 	struct net_device *tdev;	/* Device to other host */
+-	struct ipv6hdr  *old_iph = ipv6_hdr(skb);
++	__u8 next_protocol = 0;
++	__u32 payload_len = 0;
++	__u8 dsfield = 0;
++	__u8 ttl = 0;
+ 	struct ipv6hdr  *iph;		/* Our new IP header */
+ 	unsigned int max_headroom;	/* The extra header space needed */
+ 	int ret, local;
+@@ -981,19 +1053,14 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	 */
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
  
- 	return dest;
-diff --git a/net/netfilter/ipvs/ip_vs_wlc.c b/net/netfilter/ipvs/ip_vs_wlc.c
-index b5b4650..6b366fd 100644
---- a/net/netfilter/ipvs/ip_vs_wlc.c
-+++ b/net/netfilter/ipvs/ip_vs_wlc.c
-@@ -80,7 +80,8 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+-	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+-		struct sk_buff *new_skb =
+-			skb_realloc_headroom(skb, max_headroom);
+-
+-		if (!new_skb)
+-			goto tx_error;
+-		consume_skb(skb);
+-		skb = new_skb;
+-		old_iph = ipv6_hdr(skb);
+-	}
++	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
++					 &next_protocol, &payload_len,
++					 &dsfield, &ttl, NULL);
++	if (IS_ERR(skb))
++		goto tx_error;
  
- 	IP_VS_DBG_BUF(6, "WLC: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d overhead %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &least->addr), ntohs(least->port),
-+		      IP_VS_DBG_ADDR(least->af, &least->addr),
-+		      ntohs(least->port),
- 		      atomic_read(&least->activeconns),
- 		      atomic_read(&least->refcnt),
- 		      atomic_read(&least->weight), loh);
-diff --git a/net/netfilter/ipvs/ip_vs_wrr.c b/net/netfilter/ipvs/ip_vs_wrr.c
-index 0546cd5..17e6d44 100644
---- a/net/netfilter/ipvs/ip_vs_wrr.c
-+++ b/net/netfilter/ipvs/ip_vs_wrr.c
-@@ -216,7 +216,7 @@ ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- found:
- 	IP_VS_DBG_BUF(6, "WRR: server %s:%u "
- 		      "activeconns %d refcnt %d weight %d\n",
--		      IP_VS_DBG_ADDR(svc->af, &dest->addr), ntohs(dest->port),
-+		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port),
- 		      atomic_read(&dest->activeconns),
- 		      atomic_read(&dest->refcnt),
- 		      atomic_read(&dest->weight));
+-	/* GSO: we need to provide proper SKB_GSO_ value for IPv6 */
+-	skb = iptunnel_handle_offloads(skb, false, 0); /* SKB_GSO_SIT/IPV6 */
++	skb = iptunnel_handle_offloads(
++		skb, false, __tun_gso_type_mask(AF_INET6, cp->af));
+ 	if (IS_ERR(skb))
+ 		goto tx_error;
+ 
+@@ -1008,14 +1075,13 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	 */
+ 	iph			=	ipv6_hdr(skb);
+ 	iph->version		=	6;
+-	iph->nexthdr		=	IPPROTO_IPV6;
+-	iph->payload_len	=	old_iph->payload_len;
+-	be16_add_cpu(&iph->payload_len, sizeof(*old_iph));
++	iph->nexthdr		=	next_protocol;
++	iph->payload_len	=	htons(payload_len);
+ 	memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
+-	ipv6_change_dsfield(iph, 0, ipv6_get_dsfield(old_iph));
++	ipv6_change_dsfield(iph, 0, dsfield);
+ 	iph->daddr = cp->daddr.in6;
+ 	iph->saddr = saddr;
+-	iph->hop_limit		=	old_iph->hop_limit;
++	iph->hop_limit		=	ttl;
+ 
+ 	/* Another hack: avoid icmp_send in ip_fragment */
+ 	skb->ignore_df = 1;
 -- 
 2.0.1
