@@ -1,60 +1,61 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL v2 00/15] Second Round of IPVS Updates for v3.18
-Date: Thu, 18 Sep 2014 11:03:31 +0200
-Message-ID: <20140918090331.GA24111@salvia>
-References: <1410999961-7975-1-git-send-email-horms@verge.net.au>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: IPVS Health Checking Best Practices
+Date: Thu, 18 Sep 2014 14:26:58 -0700
+Message-ID: <541B4E22.6080802@fb.com>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1410999961-7975-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=message-id : date : from :
+ mime-version : to : cc : subject : content-type :
+ content-transfer-encoding; s=facebook;
+ bh=1ixWox0JfirmUyeIfNISLtXMtEuMjsD9anGAfL4ugig=;
+ b=iOt7lGeEn/dxQ3dYIDDAiJroFy8waLF9ROUXnOws8UU0AN3UAozzzwQ6K1BZIayxfCPH
+ R9Iq97dTvoocqM/RMblSUb3YLUcAMtculR0Pc4uk/3VLqObK+Ps64NMpzYplL2TitNtU
+ uC1FU37s+t66Fa16c+XODbk0ZtLeR6l+/Mk= 
+Sender: lvs-devel-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: lvs-devel@vger.kernel.org
+Cc: dsp@fb.com, kernel-team <Kernel-team@fb.com>, ps@fb.com
 
-On Thu, Sep 18, 2014 at 09:25:46AM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider these IPVS updates for v3.18.
-> 
-> I hope that v2 of this pull request addresses the issues you raised
-> in v1. In particular "ipvs: use correct address family in scheduler logs"
-> patch consolidates what was previously 7 patches. And I have provided
-> a longer description: I hope the tone is closer to what you need.
-> 
-> This pull requests makes the following changes:
-> 
-> * Add simple weighted fail-over scheduler.
->   - Unlike other IPVS schedulers this offers fail-over rather than load
->     balancing. Connections are directed to the appropriate server based
->     solely on highest weight value and server availability.
->   - Thanks to Kenny Mathis
-> 
-> * Support IPv6 real servers in IPv4 virtual-services and vice versa
->   - This feature is supported in conjunction with the tunnel (IPIP)
->     forwarding mechanism. That is, IPv4 may be forwarded in IPv6 and
->     vice versa.
->   - The motivation for this is to allow more flexibility in the
->     choice of IP version offered by both virtual-servers and
->     real-servers as they no longer need to match: An IPv4 connection from an
->     end-user may be forwarded to a real-server using IPv6 and vice versa.
->   - Further work need to be done to support this feature in conjunction
->     with connection synchronisation. For now such configurations are
->     not allowed.
->   - This change includes update to netlink protocol, adding a new
->     destination address family attribute. And the necessary changes
->     to plumb this information throughout IPVS.
->   - Thanks to Alex Gartrell and Julian Anastasov
-> 
-> The following changes since commit 0bbe80e571c7b866afd92a98edd32a969467a7a9:
-> 
->   netfilter: masquerading needs to be independent of x_tables in Kconfig (2014-09-12 09:40:18 +0200)
-> 
-> are available in the git repository at:
-> 
->   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs2-for-v3.18
+Hello All,
 
-Pulled, thanks a lot Simon.
+Today, we run IPVS on a number of hosts.  Each of these hosts has a 
+python process responsible for ensuring the health of pool members and 
+then updating their weights as necessary.
 
+We do these health checks via IPVS for two reasons:
+1) Different VIPs have different listeners on our real servers, so we 
+can't just use the regular host address
+2) We want to ensure that decapsulation is happening appropriately.
+
+The way we do this today is a giant hack.  We have a scheduler that 
+we've not (yet) open sourced that does consistent hashing, and someone 
+just wired in a couple additional sysctls that will allow you to do the 
+following:
+
+If a request is from $MAGIC_IP and the source port is >= $MAGIC_PORT, 
+then send it to pool->members[($SRC_PORT - $MAGIC_PORT) % $N].
+
+I'd like to solve this problem more generally.
+
+The other solution I've heard of is using fwmarks, but that kind of 
+sucks from a configuration perspective (because you have to add in all 
+of the persistent vips and everything).
+
+Here are some other ideas:
+
+1) Map the socket itself to a particular pool with a netlink invocation 
+or something
+
+2) Provide a way to bind specific src addr, port tuples to specific 
+destination (though this is a bummer because you have to reserve port space)
+
+But I'm completely open to ideas and I think we're willing to do the 
+work to make this happen.
+
+
+Thanks,
+
+-- 
+Alex Gartrell <agartrell@fb.com>
