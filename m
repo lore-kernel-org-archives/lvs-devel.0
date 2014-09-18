@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 08/15] ipvs: Pull out update_pmtu code
-Date: Thu, 18 Sep 2014 09:25:54 +0900
-Message-ID: <1410999961-7975-9-git-send-email-horms@verge.net.au>
+Subject: [PATCH 04/15] ipvs: Pass destination address family to ip_vs_trash_get_dest
+Date: Thu, 18 Sep 2014 09:25:50 +0900
+Message-ID: <1410999961-7975-5-git-send-email-horms@verge.net.au>
 References: <1410999961-7975-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1410999961-7975-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,89 +15,55 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-Another step toward heterogeneous pools, this removes another piece of
-functionality currently specific to each address family type.
+Part of a series of diffs to tease out destination family from virtual
+family.  This diff just adds a parameter to ip_vs_trash_get and then uses
+it for comparison rather than svc->af.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 23 +++++++++++------------
- 1 file changed, 11 insertions(+), 12 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index b3b54d7..034a282 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -204,6 +204,15 @@ static inline bool crosses_local_route_boundary(int skb_af, struct sk_buff *skb,
- 	return false;
- }
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index c840d89..6bd2cc6 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -657,8 +657,8 @@ static void __ip_vs_dst_cache_reset(struct ip_vs_dest *dest)
+  *  scheduling.
+  */
+ static struct ip_vs_dest *
+-ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+-		     __be16 dport)
++ip_vs_trash_get_dest(struct ip_vs_service *svc, int dest_af,
++		     const union nf_inet_addr *daddr, __be16 dport)
+ {
+ 	struct ip_vs_dest *dest;
+ 	struct netns_ipvs *ipvs = net_ipvs(svc->net);
+@@ -671,11 +671,11 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, const union nf_inet_addr *daddr,
+ 		IP_VS_DBG_BUF(3, "Destination %u/%s:%u still in trash, "
+ 			      "dest->refcnt=%d\n",
+ 			      dest->vfwmark,
+-			      IP_VS_DBG_ADDR(svc->af, &dest->addr),
++			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 			      ntohs(dest->port),
+ 			      atomic_read(&dest->refcnt));
+-		if (dest->af == svc->af &&
+-		    ip_vs_addr_equal(svc->af, &dest->addr, daddr) &&
++		if (dest->af == dest_af &&
++		    ip_vs_addr_equal(dest_af, &dest->addr, daddr) &&
+ 		    dest->port == dport &&
+ 		    dest->vfwmark == svc->fwmark &&
+ 		    dest->protocol == svc->protocol &&
+@@ -950,7 +950,7 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 	 * Check if the dest already exists in the trash and
+ 	 * is from the same service
+ 	 */
+-	dest = ip_vs_trash_get_dest(svc, &daddr, dport);
++	dest = ip_vs_trash_get_dest(svc, udest->af, &daddr, dport);
  
-+static inline void maybe_update_pmtu(int skb_af, struct sk_buff *skb, int mtu)
-+{
-+	struct sock *sk = skb->sk;
-+	struct rtable *ort = skb_rtable(skb);
-+
-+	if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
-+		ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
-+}
-+
- /* Get route to destination or remote server */
- static int
- __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
-@@ -213,7 +222,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rtable *rt;			/* Route to the other host */
--	struct rtable *ort;			/* Original route */
- 	struct iphdr *iph;
- 	__be16 df;
- 	int mtu;
-@@ -284,16 +292,12 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 		mtu = dst_mtu(&rt->dst);
- 		df = iph->frag_off & htons(IP_DF);
- 	} else {
--		struct sock *sk = skb->sk;
--
- 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
- 		if (mtu < 68) {
- 			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
- 			goto err_put;
- 		}
--		ort = skb_rtable(skb);
--		if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
--			ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
-+		maybe_update_pmtu(skb_af, skb, mtu);
- 		/* MTU check allowed? */
- 		df = sysctl_pmtu_disc(ipvs) ? iph->frag_off & htons(IP_DF) : 0;
- 	}
-@@ -372,7 +376,6 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	struct net *net = dev_net(skb_dst(skb)->dev);
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rt6_info *rt;			/* Route to the other host */
--	struct rt6_info *ort;			/* Original route */
- 	struct dst_entry *dst;
- 	int mtu;
- 	int local, noref = 1;
-@@ -438,17 +441,13 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL)))
- 		mtu = dst_mtu(&rt->dst);
- 	else {
--		struct sock *sk = skb->sk;
--
- 		mtu = dst_mtu(&rt->dst) - sizeof(struct ipv6hdr);
- 		if (mtu < IPV6_MIN_MTU) {
- 			IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
- 				     IPV6_MIN_MTU);
- 			goto err_put;
- 		}
--		ort = (struct rt6_info *) skb_dst(skb);
--		if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
--			ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
-+		maybe_update_pmtu(skb_af, skb, mtu);
- 	}
- 
- 	if (unlikely(__mtu_check_toobig_v6(skb, mtu))) {
+ 	if (dest != NULL) {
+ 		IP_VS_DBG_BUF(3, "Get destination %s:%u from trash, "
 -- 
 2.0.1
-
