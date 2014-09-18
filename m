@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 10/15] ipvs: support ipv4 in ipv6 and ipv6 in ipv4 tunnel forwarding
-Date: Thu, 18 Sep 2014 09:25:56 +0900
-Message-ID: <1410999961-7975-11-git-send-email-horms@verge.net.au>
+Subject: [PATCH 08/15] ipvs: Pull out update_pmtu code
+Date: Thu, 18 Sep 2014 09:25:54 +0900
+Message-ID: <1410999961-7975-9-git-send-email-horms@verge.net.au>
 References: <1410999961-7975-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1410999961-7975-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,260 +15,89 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-Pull the common logic for preparing an skb to prepend the header into a
-single function and then set fields such that they can be used in either
-case (generalize tos and tclass to dscp, hop_limit and ttl to ttl, etc)
+Another step toward heterogeneous pools, this removes another piece of
+functionality currently specific to each address family type.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |  12 +++-
- net/netfilter/ipvs/ip_vs_xmit.c | 148 +++++++++++++++++++++++++++++-----------
- 2 files changed, 117 insertions(+), 43 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 23 +++++++++++------------
+ 1 file changed, 11 insertions(+), 12 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index fdb4880..13e9cee 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -488,7 +488,12 @@ static inline void ip_vs_bind_xmit(struct ip_vs_conn *cp)
- 		break;
- 
- 	case IP_VS_CONN_F_TUNNEL:
--		cp->packet_xmit = ip_vs_tunnel_xmit;
-+#ifdef CONFIG_IP_VS_IPV6
-+		if (cp->daf == AF_INET6)
-+			cp->packet_xmit = ip_vs_tunnel_xmit_v6;
-+		else
-+#endif
-+			cp->packet_xmit = ip_vs_tunnel_xmit;
- 		break;
- 
- 	case IP_VS_CONN_F_DROUTE:
-@@ -514,7 +519,10 @@ static inline void ip_vs_bind_xmit_v6(struct ip_vs_conn *cp)
- 		break;
- 
- 	case IP_VS_CONN_F_TUNNEL:
--		cp->packet_xmit = ip_vs_tunnel_xmit_v6;
-+		if (cp->daf == AF_INET6)
-+			cp->packet_xmit = ip_vs_tunnel_xmit_v6;
-+		else
-+			cp->packet_xmit = ip_vs_tunnel_xmit;
- 		break;
- 
- 	case IP_VS_CONN_F_DROUTE:
 diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index fa2fdd7..91f17c1 100644
+index b3b54d7..034a282 100644
 --- a/net/netfilter/ipvs/ip_vs_xmit.c
 +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -824,6 +824,81 @@ tx_error:
+@@ -204,6 +204,15 @@ static inline bool crosses_local_route_boundary(int skb_af, struct sk_buff *skb,
+ 	return false;
  }
- #endif
  
-+/* When forwarding a packet, we must ensure that we've got enough headroom
-+ * for the encapsulation packet in the skb.  This also gives us an
-+ * opportunity to figure out what the payload_len, dsfield, ttl, and df
-+ * values should be, so that we won't need to look at the old ip header
-+ * again
-+ */
-+static struct sk_buff *
-+ip_vs_prepare_tunneled_skb(struct sk_buff *skb, int skb_af,
-+			   unsigned int max_headroom, __u8 *next_protocol,
-+			   __u32 *payload_len, __u8 *dsfield, __u8 *ttl,
-+			   __be16 *df)
++static inline void maybe_update_pmtu(int skb_af, struct sk_buff *skb, int mtu)
 +{
-+	struct sk_buff *new_skb = NULL;
-+	struct iphdr *old_iph = NULL;
-+#ifdef CONFIG_IP_VS_IPV6
-+	struct ipv6hdr *old_ipv6h = NULL;
-+#endif
++	struct sock *sk = skb->sk;
++	struct rtable *ort = skb_rtable(skb);
 +
-+	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
-+		new_skb = skb_realloc_headroom(skb, max_headroom);
-+		if (!new_skb)
-+			goto error;
-+		consume_skb(skb);
-+		skb = new_skb;
-+	}
-+
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (skb_af == AF_INET6) {
-+		old_ipv6h = ipv6_hdr(skb);
-+		*next_protocol = IPPROTO_IPV6;
-+		if (payload_len)
-+			*payload_len =
-+				ntohs(old_ipv6h->payload_len) +
-+				sizeof(*old_ipv6h);
-+		*dsfield = ipv6_get_dsfield(old_ipv6h);
-+		*ttl = old_ipv6h->hop_limit;
-+		if (df)
-+			*df = 0;
-+	} else
-+#endif
-+	{
-+		old_iph = ip_hdr(skb);
-+		/* Copy DF, reset fragment offset and MF */
-+		if (df)
-+			*df = (old_iph->frag_off & htons(IP_DF));
-+		*next_protocol = IPPROTO_IPIP;
-+
-+		/* fix old IP header checksum */
-+		ip_send_check(old_iph);
-+		*dsfield = ipv4_get_dsfield(old_iph);
-+		*ttl = old_iph->ttl;
-+		if (payload_len)
-+			*payload_len = ntohs(old_iph->tot_len);
-+	}
-+
-+	return skb;
-+error:
-+	kfree_skb(skb);
-+	return ERR_PTR(-ENOMEM);
++	if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
++		ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
 +}
 +
-+static inline int __tun_gso_type_mask(int encaps_af, int orig_af)
-+{
-+	if (encaps_af == AF_INET) {
-+		if (orig_af == AF_INET)
-+			return SKB_GSO_IPIP;
-+
-+		return SKB_GSO_SIT;
-+	}
-+
-+	/* GSO: we need to provide proper SKB_GSO_ value for IPv6:
-+	 * SKB_GSO_SIT/IPV6
-+	 */
-+	return 0;
-+}
- 
- /*
-  *   IP Tunneling transmitter
-@@ -852,9 +927,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ /* Get route to destination or remote server */
+ static int
+ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+@@ -213,7 +222,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_dest_dst *dest_dst;
  	struct rtable *rt;			/* Route to the other host */
- 	__be32 saddr;				/* Source for tunnel */
- 	struct net_device *tdev;		/* Device to other host */
--	struct iphdr  *old_iph = ip_hdr(skb);
--	u8     tos = old_iph->tos;
--	__be16 df;
-+	__u8 next_protocol = 0;
-+	__u8 dsfield = 0;
-+	__u8 ttl = 0;
-+	__be16 df = 0;
-+	__be16 *dfp = NULL;
- 	struct iphdr  *iph;			/* Our new IP header */
- 	unsigned int max_headroom;		/* The extra header space needed */
- 	int ret, local;
-@@ -877,29 +954,21 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	rt = skb_rtable(skb);
- 	tdev = rt->dst.dev;
- 
--	/* Copy DF, reset fragment offset and MF */
--	df = sysctl_pmtu_disc(ipvs) ? old_iph->frag_off & htons(IP_DF) : 0;
+-	struct rtable *ort;			/* Original route */
+ 	struct iphdr *iph;
+ 	__be16 df;
+ 	int mtu;
+@@ -284,16 +292,12 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 		mtu = dst_mtu(&rt->dst);
+ 		df = iph->frag_off & htons(IP_DF);
+ 	} else {
+-		struct sock *sk = skb->sk;
 -
- 	/*
- 	 * Okay, now see if we can stuff it in the buffer as-is.
- 	 */
- 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
- 
--	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
--		struct sk_buff *new_skb =
--			skb_realloc_headroom(skb, max_headroom);
+ 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
+ 		if (mtu < 68) {
+ 			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
+ 			goto err_put;
+ 		}
+-		ort = skb_rtable(skb);
+-		if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
+-			ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
++		maybe_update_pmtu(skb_af, skb, mtu);
+ 		/* MTU check allowed? */
+ 		df = sysctl_pmtu_disc(ipvs) ? iph->frag_off & htons(IP_DF) : 0;
+ 	}
+@@ -372,7 +376,6 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	struct net *net = dev_net(skb_dst(skb)->dev);
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rt6_info *rt;			/* Route to the other host */
+-	struct rt6_info *ort;			/* Original route */
+ 	struct dst_entry *dst;
+ 	int mtu;
+ 	int local, noref = 1;
+@@ -438,17 +441,13 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL)))
+ 		mtu = dst_mtu(&rt->dst);
+ 	else {
+-		struct sock *sk = skb->sk;
 -
--		if (!new_skb)
--			goto tx_error;
--		consume_skb(skb);
--		skb = new_skb;
--		old_iph = ip_hdr(skb);
--	}
--
--	/* fix old IP header checksum */
--	ip_send_check(old_iph);
-+	/* We only care about the df field if sysctl_pmtu_disc(ipvs) is set */
-+	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
-+	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
-+					 &next_protocol, NULL, &dsfield,
-+					 &ttl, dfp);
-+	if (IS_ERR(skb))
-+		goto tx_error;
+ 		mtu = dst_mtu(&rt->dst) - sizeof(struct ipv6hdr);
+ 		if (mtu < IPV6_MIN_MTU) {
+ 			IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
+ 				     IPV6_MIN_MTU);
+ 			goto err_put;
+ 		}
+-		ort = (struct rt6_info *) skb_dst(skb);
+-		if (!skb->dev && sk && sk->sk_state != TCP_TIME_WAIT)
+-			ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
++		maybe_update_pmtu(skb_af, skb, mtu);
+ 	}
  
--	skb = iptunnel_handle_offloads(skb, false, SKB_GSO_IPIP);
-+	skb = iptunnel_handle_offloads(
-+		skb, false, __tun_gso_type_mask(AF_INET, cp->af));
- 	if (IS_ERR(skb))
- 		goto tx_error;
- 
-@@ -916,11 +985,11 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	iph->version		=	4;
- 	iph->ihl		=	sizeof(struct iphdr)>>2;
- 	iph->frag_off		=	df;
--	iph->protocol		=	IPPROTO_IPIP;
--	iph->tos		=	tos;
-+	iph->protocol		=	next_protocol;
-+	iph->tos		=	dsfield;
- 	iph->daddr		=	cp->daddr.ip;
- 	iph->saddr		=	saddr;
--	iph->ttl		=	old_iph->ttl;
-+	iph->ttl		=	ttl;
- 	ip_select_ident(skb, NULL);
- 
- 	/* Another hack: avoid icmp_send in ip_fragment */
-@@ -953,7 +1022,10 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	struct rt6_info *rt;		/* Route to the other host */
- 	struct in6_addr saddr;		/* Source for tunnel */
- 	struct net_device *tdev;	/* Device to other host */
--	struct ipv6hdr  *old_iph = ipv6_hdr(skb);
-+	__u8 next_protocol = 0;
-+	__u32 payload_len = 0;
-+	__u8 dsfield = 0;
-+	__u8 ttl = 0;
- 	struct ipv6hdr  *iph;		/* Our new IP header */
- 	unsigned int max_headroom;	/* The extra header space needed */
- 	int ret, local;
-@@ -981,19 +1053,14 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	 */
- 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
- 
--	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
--		struct sk_buff *new_skb =
--			skb_realloc_headroom(skb, max_headroom);
--
--		if (!new_skb)
--			goto tx_error;
--		consume_skb(skb);
--		skb = new_skb;
--		old_iph = ipv6_hdr(skb);
--	}
-+	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
-+					 &next_protocol, &payload_len,
-+					 &dsfield, &ttl, NULL);
-+	if (IS_ERR(skb))
-+		goto tx_error;
- 
--	/* GSO: we need to provide proper SKB_GSO_ value for IPv6 */
--	skb = iptunnel_handle_offloads(skb, false, 0); /* SKB_GSO_SIT/IPV6 */
-+	skb = iptunnel_handle_offloads(
-+		skb, false, __tun_gso_type_mask(AF_INET6, cp->af));
- 	if (IS_ERR(skb))
- 		goto tx_error;
- 
-@@ -1008,14 +1075,13 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	 */
- 	iph			=	ipv6_hdr(skb);
- 	iph->version		=	6;
--	iph->nexthdr		=	IPPROTO_IPV6;
--	iph->payload_len	=	old_iph->payload_len;
--	be16_add_cpu(&iph->payload_len, sizeof(*old_iph));
-+	iph->nexthdr		=	next_protocol;
-+	iph->payload_len	=	htons(payload_len);
- 	memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
--	ipv6_change_dsfield(iph, 0, ipv6_get_dsfield(old_iph));
-+	ipv6_change_dsfield(iph, 0, dsfield);
- 	iph->daddr = cp->daddr.in6;
- 	iph->saddr = saddr;
--	iph->hop_limit		=	old_iph->hop_limit;
-+	iph->hop_limit		=	ttl;
- 
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->ignore_df = 1;
+ 	if (unlikely(__mtu_check_toobig_v6(skb, mtu))) {
 -- 
 2.0.1
+
