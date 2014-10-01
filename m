@@ -1,62 +1,88 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net] ipvs: fix ipv6 hook registration for local replies
-Date: Tue, 30 Sep 2014 14:13:27 +0900
-Message-ID: <20140930051326.GJ16823@verge.net.au>
-References: <1408719221-8042-1-git-send-email-ja@ssi.bg>
- <20140828015534.GE5936@verge.net.au>
- <5422DB4F.5060900@canonical.com>
- <20140925002216.GB20466@verge.net.au>
- <20140925165757.GA13339@salvia>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: re: ipvs: Pull out crosses_local_route_boundary logic
+Date: Wed, 1 Oct 2014 20:45:26 +0300
+Message-ID: <20141001174526.GA16206@mwanda>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140925165757.GA13339@salvia>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Chris J Arges <chris.j.arges@canonical.com>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+To: agartrell@fb.com
+Cc: lvs-devel@vger.kernel.org
 
-On Thu, Sep 25, 2014 at 06:57:57PM +0200, Pablo Neira Ayuso wrote:
-> On Thu, Sep 25, 2014 at 09:22:16AM +0900, Simon Horman wrote:
-> > [CC Pablo]
-> > 
-> > On Wed, Sep 24, 2014 at 09:55:11AM -0500, Chris J Arges wrote:
-> > > On 08/27/2014 08:55 PM, Simon Horman wrote:
-> > > > On Fri, Aug 22, 2014 at 05:53:41PM +0300, Julian Anastasov wrote:
-> > > >> commit fc604767613b6d2036cdc35b660bc39451040a47
-> > > >> ("ipvs: changes for local real server") from 2.6.37
-> > > >> introduced DNAT support to local real server but the
-> > > >> IPv6 LOCAL_OUT handler ip_vs_local_reply6() is
-> > > >> registered incorrectly as IPv4 hook causing any outgoing
-> > > >> IPv4 traffic to be dropped depending on the IP header values.
-> > > >>
-> > > >> Chris tracked down the problem to CONFIG_IP_VS_IPV6=y
-> > > >> Bug report: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1349768
-> > > >>
-> > > >> Reported-by: Chris J Arges <chris.j.arges@canonical.com>
-> > > >> Tested-by: Chris J Arges <chris.j.arges@canonical.com>
-> > > >> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > > > 
-> > > > Thanks, and sorry for the delay.
-> > > > I have queued this up in the ipvs tree as a fix for v3.17.
-> > > > I also plan to ask for it to be considered for -stable.
-> > > > 
-> > > Julian,
-> > > Has this been queued up for netdev stable? Or should I send an email?
-> > > Thanks,
-> > 
-> > Pablo I'm not sure that this has been queued up for stable
-> > (possibly due to some error on my part). What is the best
-> > way forwards?
-> 
-> Just sent a batch with pending Netfilter/IPVS to -stable. The patch
-> authors has been Cc'ed. I didn't Cc'ed the mailing list to not
-> generate more load on redudant patches, but I can do it if you prefer
-> so.
-> 
-> Let me know if we don't get any feedback from -stable soon to get this
-> patches in. Thanks.
+Hello Alex Gartrell,
 
-Thanks Pablo.
+This is a semi-automatic email about new static checker warnings.
+
+The patch 4a4739d56b00: "ipvs: Pull out crosses_local_route_boundary
+logic" from Sep 9, 2014, leads to the following Smatch complaint:
+
+net/netfilter/ipvs/ip_vs_xmit.c:318 __ip_vs_get_out_rt()
+	 error: we previously assumed 'dest' could be null (see line 312)
+
+net/netfilter/ipvs/ip_vs_xmit.c
+   270          if (dest) {
+                    ^^^^
+Old check.
+
+   271                  dest_dst = __ip_vs_dst_check(dest);
+   272                  if (likely(dest_dst))
+   273                          rt = (struct rtable *) dest_dst->dst_cache;
+   274                  else {
+   275                          dest_dst = ip_vs_dest_dst_alloc();
+   276                          spin_lock_bh(&dest->dst_lock);
+   277                          if (!dest_dst) {
+   278                                  __ip_vs_dst_set(dest, NULL, NULL, 0);
+   279                                  spin_unlock_bh(&dest->dst_lock);
+   280                                  goto err_unreach;
+   281                          }
+   282                          rt = do_output_route4(net, dest->addr.ip, rt_mode,
+   283                                                &dest_dst->dst_saddr.ip);
+   284                          if (!rt) {
+   285                                  __ip_vs_dst_set(dest, NULL, NULL, 0);
+   286                                  spin_unlock_bh(&dest->dst_lock);
+   287                                  ip_vs_dest_dst_free(dest_dst);
+   288                                  goto err_unreach;
+   289                          }
+   290                          __ip_vs_dst_set(dest, dest_dst, &rt->dst, 0);
+   291                          spin_unlock_bh(&dest->dst_lock);
+   292                          IP_VS_DBG(10, "new dst %pI4, src %pI4, refcnt=%d\n",
+   293                                    &dest->addr.ip, &dest_dst->dst_saddr.ip,
+   294                                    atomic_read(&rt->dst.__refcnt));
+   295                  }
+   296                  daddr = dest->addr.ip;
+   297                  if (ret_saddr)
+   298                          *ret_saddr = dest_dst->dst_saddr.ip;
+   299          } else {
+   300                  __be32 saddr = htonl(INADDR_ANY);
+   301  
+   302                  noref = 0;
+   303  
+   304                  /* For such unconfigured boxes avoid many route lookups
+   305                   * for performance reasons because we do not remember saddr
+   306                   */
+   307                  rt_mode &= ~IP_VS_RT_MODE_CONNECT;
+   308                  rt = do_output_route4(net, daddr, rt_mode, &saddr);
+   309                  if (!rt)
+   310                          goto err_unreach;
+   311			if (ret_saddr)
+   312				*ret_saddr = saddr;
+   313		}
+   314	
+   315		local = (rt->rt_flags & RTCF_LOCAL) ? 1 : 0;
+   316		if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
+   317							  local))) {
+   318			IP_VS_DBG_RL("We are crossing local and non-local addresses"
+   319				     " daddr=%pI4\n", &dest->addr.ip);
+                                                       ^^^^^^^^^^^^^
+New unchecked dereference.
+
+   320			goto err_put;
+
+Also:
+net/netfilter/ipvs/ip_vs_xmit.c:460 __ip_vs_get_out_rt_v6() error: we previously assumed 'dest' could be null (see line 415)
+
+regards,
+dan carpenter
