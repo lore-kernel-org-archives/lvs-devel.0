@@ -1,51 +1,43 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH net-next] ipvs: Avoid null-pointer deref in debug code
-Date: Mon, 6 Oct 2014 22:13:07 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1410062201140.2258@ja.home.ssi.bg>
-References: <20141001174526.GA16206@mwanda> <1412556895-26891-1-git-send-email-agartrell@fb.com> <alpine.LFD.2.11.1410060940470.1738@ja.home.ssi.bg> <5432BBB8.9070206@fb.com>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: [PATCH net-next] ipvs: remove unnecessary assignment in __ip_vs_get_out_rt
+Date: Mon, 6 Oct 2014 13:30:08 -0700
+Message-ID: <1412627408-13766-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <5432BBB8.9070206@fb.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=XWVD8JF71seFYY9ONOFfArjLF/HexCHjCn7wqUGsltc=;
+ b=XjTBDlztsfatuaEViDOhTn9s/amaIezmQ++sLEIoxis3Sia+IdTSu/R2PH8ASTPIoZnq
+ KfoYBTmN90qADGp9Zvj65N+GHpaPNtrydOXuQVAJlUqAIkVQpc6WC9DLb+I8BBLTKFvB
+ oywkqJm+cD8YPB+IaVWoFNZFlqQKD2ZODro= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alex Gartrell <agartrell@fb.com>
-Cc: horms@verge.net.au, dan.carpenter@oracle.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, kernel-team@fb.com
+To: horms@verge.net.au
+Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
+It is a precondition of the function that daddr be equal to dest->addr.ip
+if dest is non-NULL, so this additional assignment is just confusing for
+stupid engineers like me.
 
-	Hello,
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+---
+ net/netfilter/ipvs/ip_vs_xmit.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-On Mon, 6 Oct 2014, Alex Gartrell wrote:
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 91f17c1..5efa597 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -293,7 +293,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+ 				  &dest->addr.ip, &dest_dst->dst_saddr.ip,
+ 				  atomic_read(&rt->dst.__refcnt));
+ 		}
+-		daddr = dest->addr.ip;
+ 		if (ret_saddr)
+ 			*ret_saddr = dest_dst->dst_saddr.ip;
+ 	} else {
+-- 
+Alex Gartrell <agartrell@fb.com>
 
-> Hey Julian,
-> 
-> I've sent an updated patch that does this but I have some questions about
-> other stuff that I find mildly confusing.  Specifically I didn't realize until
-> looking at the call sites that !dest || daddr = dest->addr.ip (but maybe I'm
-> wrong?)
-> 
-> If that's the case, why do we have the following line in __ip_vs_get_out_rt?
-> 
->                 daddr = dest->addr.ip;
-
-	Extra line that is not needed...
-
-> If that's /always/ true then we should add the following line or a comment to
-> the same effect to clarify
-> 
-> 	BUG_ON(dest && dest->addr.ip != daddr);
-
-	IMHO, BUG_ON is not needed.
-
-> If that's not intended to always be true, then should the patch be the
-> following?
-> 
-> 	...%pI4", dest ? &dest->addr.ip : &daddr);
-
-	Using daddr is fine.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
