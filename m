@@ -1,55 +1,62 @@
-From: Alex Gartrell <agartrell@fb.com>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH net-next] ipvs: Avoid null-pointer deref in debug code
-Date: Mon, 6 Oct 2014 08:56:40 -0700
-Message-ID: <5432BBB8.9070206@fb.com>
-References: <20141001174526.GA16206@mwanda> <1412556895-26891-1-git-send-email-agartrell@fb.com> <alpine.LFD.2.11.1410060940470.1738@ja.home.ssi.bg>
+Date: Mon, 6 Oct 2014 22:01:08 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1410062159290.2258@ja.home.ssi.bg>
+References: <20141006073232.GA10073@verge.net.au> <1412610379-6295-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=message-id : date : from :
- mime-version : to : cc : subject : references : in-reply-to : content-type
- : content-transfer-encoding; s=facebook;
- bh=A8AgJT2PNpfZ8HX8RCchCyfIsaAHaZlKOmOe10PfSLA=;
- b=crRtXQoumHh2a6/bLXeaKOtkz6iKXIsoRvRDxz2lT5FDTXo5m0mM1TjhXjPBDpV4bliE
- OVD2Q/ij3JuPGzdr0xJKfN5J5/J7mRKd3w2ngVTpIb1Juft/KfB3qy5iBKa/YOB3p6Zg
- +9j5c/qb80DnLmiNjrztZ0Z60g8TdEL1NZs= 
-In-Reply-To: <alpine.LFD.2.11.1410060940470.1738@ja.home.ssi.bg>
+In-Reply-To: <1412610379-6295-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Julian Anastasov <ja@ssi.bg>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Alex Gartrell <agartrell@fb.com>
 Cc: horms@verge.net.au, dan.carpenter@oracle.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, kernel-team@fb.com
 
-Hey Julian,
 
-On 10/05/2014 11:49 PM, Julian Anastasov wrote:
->
-> 	You have to print the "daddr" variable as
-> it was done before your patchset in the
-> "Stopping traffic to %s address, dest: %p..." message
-> because dest is not present in all cases, for example,
-> for *bypass_xmit. Other places provide cp->daddr but
-> for backup server some conns can live without cp->dest.
+	Hello,
 
-I've sent an updated patch that does this but I have some questions 
-about other stuff that I find mildly confusing.  Specifically I didn't 
-realize until looking at the call sites that !dest || daddr = 
-dest->addr.ip (but maybe I'm wrong?)
+On Mon, 6 Oct 2014, Alex Gartrell wrote:
 
-If that's the case, why do we have the following line in __ip_vs_get_out_rt?
+> Use daddr instead of reaching into dest.
+> 
+> Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+> Signed-off-by: Alex Gartrell <agartrell@fb.com>
 
-                 daddr = dest->addr.ip;
+	Thanks!
 
-If that's /always/ true then we should add the following line or a 
-comment to the same effect to clarify
+Acked-by: Julian Anastasov <ja@ssi.bg>
 
-	BUG_ON(dest && dest->addr.ip != daddr);
+> ---
+>  net/netfilter/ipvs/ip_vs_xmit.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+> index 91f17c1..437a366 100644
+> --- a/net/netfilter/ipvs/ip_vs_xmit.c
+> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
+> @@ -316,7 +316,7 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+>  	if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
+>  						  local))) {
+>  		IP_VS_DBG_RL("We are crossing local and non-local addresses"
+> -			     " daddr=%pI4\n", &dest->addr.ip);
+> +			     " daddr=%pI4\n", &daddr);
+>  		goto err_put;
+>  	}
+>  
+> @@ -458,7 +458,7 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
+>  	if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
+>  						  local))) {
+>  		IP_VS_DBG_RL("We are crossing local and non-local addresses"
+> -			     " daddr=%pI6\n", &dest->addr.in6);
+> +			     " daddr=%pI6\n", daddr);
+>  		goto err_put;
+>  	}
+>  
+> -- 
+> Alex Gartrell <agartrell@fb.com>
 
-If that's not intended to always be true, then should the patch be the 
-following?
+Regards
 
-	...%pI4", dest ? &dest->addr.ip : &daddr);
-
-Thanks,
--- 
-Alex Gartrell <agartrell@fb.com>
+--
+Julian Anastasov <ja@ssi.bg>
