@@ -1,54 +1,40 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next] ipvs: Avoid null-pointer deref in debug code
-Date: Mon, 6 Oct 2014 08:46:19 -0700
-Message-ID: <1412610379-6295-1-git-send-email-agartrell@fb.com>
-References: <20141006073232.GA10073@verge.net.au>
+Subject: Re: ipvs: Pull out crosses_local_route_boundary logic
+Date: Mon, 6 Oct 2014 08:45:38 -0700
+Message-ID: <5432B922.2030708@fb.com>
+References: <20141001174526.GA16206@mwanda> <alpine.LFD.2.11.1410012225530.3494@ja.home.ssi.bg> <5431D876.5020002@fb.com> <20141006073232.GA10073@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=b1JM8CANwDxk2oGQUtE6Gg22EvoDTBMUxWWsFktlAss=;
- b=fAf0323MkTk87jWbNyNCXe24UeTQ/TKdUlIzca7c4/MCOjuSF2El+nGg1ka6xHrd7eQC
- miXxn34g9VGM8ojqlq79/5sJgMlhSFJjmT1h0pbxdvJ5T7OVlfMtjyy8MknTFvk3Fs/J
- RGeKeWSDzocWmB69ueP8Zlt7v6pFYWeBKYs= 
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=message-id : date : from :
+ mime-version : to : cc : subject : references : in-reply-to : content-type
+ : content-transfer-encoding; s=facebook;
+ bh=Zs4iq13iNEo8wtZN9enlLXU9fxp/Lng7KjJAMX0CEME=;
+ b=eSkFtOpPFL9rtc/URa+IxvHGuxACA3WFaE3PzN2T014UCpLVKilniYSuJ/RIe2YHLNw9
+ 4vfW67e2Q0QFDzfSk7vBX20MfEp3gAYGjkGfq/sq3sOIaxI7lJEWdwF3u+mCkcvQC8xp
+ 9fVDvnRK4poP4yKfUgRGUF/OKHbELL2jTZY= 
 In-Reply-To: <20141006073232.GA10073@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au
-Cc: ja@ssi.bg, dan.carpenter@oracle.com, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>, Dan Carpenter <dan.carpenter@oracle.com>, lvs-devel@vger.kernel.org
 
-Use daddr instead of reaching into dest.
+Hey Simon,
 
-Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
-Signed-off-by: Alex Gartrell <agartrell@fb.com>
----
- net/netfilter/ipvs/ip_vs_xmit.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+On 10/06/2014 12:32 AM, Simon Horman wrote:
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 91f17c1..437a366 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -316,7 +316,7 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
- 						  local))) {
- 		IP_VS_DBG_RL("We are crossing local and non-local addresses"
--			     " daddr=%pI4\n", &dest->addr.ip);
-+			     " daddr=%pI4\n", &daddr);
- 		goto err_put;
- 	}
- 
-@@ -458,7 +458,7 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
- 						  local))) {
- 		IP_VS_DBG_RL("We are crossing local and non-local addresses"
--			     " daddr=%pI6\n", &dest->addr.in6);
-+			     " daddr=%pI6\n", daddr);
- 		goto err_put;
- 	}
- 
+> I am following this thread so its not a big deal but in general please CC
+> me as well as Julian and lvs-devel on any patches you want considered for
+> inclusion in IPVS kernel code.
+>
+
+Just double checking (due to previous mail-related issues), did you get 
+the patch I sent last night?  You were to'ed there.
+
+I've just mailed another patch using daddr that should address this issue.
+
+
+Thanks,
 -- 
 Alex Gartrell <agartrell@fb.com>
-
