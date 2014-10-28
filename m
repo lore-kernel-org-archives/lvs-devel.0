@@ -1,62 +1,41 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net-next] ipvs: remove unnecessary assignment in
- __ip_vs_get_out_rt
-Date: Fri, 17 Oct 2014 08:29:17 +0200
-Message-ID: <20141017062917.GC8618@verge.net.au>
-References: <1412627408-13766-1-git-send-email-agartrell@fb.com>
- <alpine.LFD.2.11.1410070112250.2258@ja.home.ssi.bg>
-Mime-Version: 1.0
+Subject: [GIT PULL nf-next] IPVS Updates for v3.19
+Date: Tue, 28 Oct 2014 09:59:19 +0900
+Message-ID: <1414457960-20864-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.11.1410070112250.2258@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Alex Gartrell <agartrell@fb.com>, lvs-devel@vger.kernel.org, kernel-team@fb.com
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Tue, Oct 07, 2014 at 01:22:00AM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 6 Oct 2014, Alex Gartrell wrote:
-> 
-> > It is a precondition of the function that daddr be equal to dest->addr.ip
-> > if dest is non-NULL, so this additional assignment is just confusing for
-> > stupid engineers like me.
-> > 
-> > Signed-off-by: Alex Gartrell <agartrell@fb.com>
-> 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
-> 
-> 	Looks like this line appeared unexpectedly
-> in commit "ipvs: Eliminate rt->rt_dst usage in __ip_vs_get_out_rt()."
+Hi Pablo,
 
-Thanks, I have applied this to ipvs-next and will see about
-getting it included in v3.18.
+please consider these IPVS updates for v3.19.
 
-> > ---
-> >  net/netfilter/ipvs/ip_vs_xmit.c | 1 -
-> >  1 file changed, 1 deletion(-)
-> > 
-> > diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-> > index 91f17c1..5efa597 100644
-> > --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> > +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> > @@ -293,7 +293,6 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
-> >  				  &dest->addr.ip, &dest_dst->dst_saddr.ip,
-> >  				  atomic_read(&rt->dst.__refcnt));
-> >  		}
-> > -		daddr = dest->addr.ip;
-> >  		if (ret_saddr)
-> >  			*ret_saddr = dest_dst->dst_saddr.ip;
-> >  	} else {
-> > -- 
-> > Alex Gartrell <agartrell@fb.com>
-> 
-> Regards
-> 
-> --
-> Julian Anastasov <ja@ssi.bg>
-> 
+The single patch in this series fixes some minor fallout from adding
+support IPv6 real servers in IPv4 virtual-services and vice versa.
+
+It should not have any run-time affect other than perhaps saving a few cycles.
+
+
+The following changes since commit 61ed53deb1c6a4386d8710dbbfcee8779c381931:
+
+  Merge tag 'ntb-3.18' of git://github.com/jonmason/ntb (2014-10-19 12:58:22 -0700)
+
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.19
+
+for you to fetch changes up to d7701089118d23bfed03bad0a6b5cc5115990c9e:
+
+  ipvs: remove unnecessary assignment in __ip_vs_get_out_rt (2014-10-28 09:50:06 +0900)
+
+----------------------------------------------------------------
+Alex Gartrell (1):
+      ipvs: remove unnecessary assignment in __ip_vs_get_out_rt
+
+ net/netfilter/ipvs/ip_vs_xmit.c | 1 -
+ 1 file changed, 1 deletion(-)
