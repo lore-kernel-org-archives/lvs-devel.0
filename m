@@ -1,51 +1,36 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf] ipvs: Avoid null-pointer deref in debug code
-Date: Tue, 28 Oct 2014 10:05:34 +0900
-Message-ID: <1414458334-22479-2-git-send-email-horms@verge.net.au>
-References: <1414458334-22479-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <1414458334-22479-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [GIT PULL nf-next] IPVS Updates for v3.19
+Date: Thu, 30 Oct 2014 17:30:39 +0100
+Message-ID: <20141030163039.GA2270@salvia>
+References: <1414457960-20864-1-git-send-email-horms@verge.net.au>
+Mime-Version: 1.0
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1414457960-20864-1-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Alex Gartrell <agartrell@fb.com>, Simon Horman <horms@verge.net.au>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
-From: Alex Gartrell <agartrell@fb.com>
+On Tue, Oct 28, 2014 at 09:59:19AM +0900, Simon Horman wrote:
+> Hi Pablo,
+> 
+> please consider these IPVS updates for v3.19.
+> 
+> The single patch in this series fixes some minor fallout from adding
+> support IPv6 real servers in IPv4 virtual-services and vice versa.
+> 
+> It should not have any run-time affect other than perhaps saving a few cycles.
+> 
+> 
+> The following changes since commit 61ed53deb1c6a4386d8710dbbfcee8779c381931:
+> 
+>   Merge tag 'ntb-3.18' of git://github.com/jonmason/ntb (2014-10-19 12:58:22 -0700)
+> 
+> are available in the git repository at:
+> 
+>   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.19
 
-Use daddr instead of reaching into dest.
-
-Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
-Signed-off-by: Alex Gartrell <agartrell@fb.com>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_xmit.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 91f17c1..437a366 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -316,7 +316,7 @@ __ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
- 						  local))) {
- 		IP_VS_DBG_RL("We are crossing local and non-local addresses"
--			     " daddr=%pI4\n", &dest->addr.ip);
-+			     " daddr=%pI4\n", &daddr);
- 		goto err_put;
- 	}
- 
-@@ -458,7 +458,7 @@ __ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
- 	if (unlikely(crosses_local_route_boundary(skb_af, skb, rt_mode,
- 						  local))) {
- 		IP_VS_DBG_RL("We are crossing local and non-local addresses"
--			     " daddr=%pI6\n", &dest->addr.in6);
-+			     " daddr=%pI6\n", daddr);
- 		goto err_put;
- 	}
- 
--- 
-2.1.1
-
+Pulled, thanks Simon.
