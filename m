@@ -1,45 +1,42 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH 1/1] netfilter: Deletion of unnecessary checks before two
- function calls
-Date: Wed, 19 Nov 2014 14:40:40 +0100
-Message-ID: <20141119134040.GA12270@salvia>
-References: <530C5E18.1020800@users.sourceforge.net>
- <alpine.DEB.2.10.1402251014170.2080@hadrien>
- <530CD2C4.4050903@users.sourceforge.net>
- <alpine.DEB.2.10.1402251840450.7035@hadrien>
- <530CF8FF.8080600@users.sourceforge.net>
- <alpine.DEB.2.02.1402252117150.2047@localhost6.localdomain6>
- <530DD06F.4090703@users.sourceforge.net>
- <alpine.DEB.2.02.1402262129250.2221@localhost6.localdomain6>
- <5317A59D.4@users.sourceforge.net>
- <546BA253.6030100@users.sourceforge.net>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH 1/1] netfilter: Deletion of unnecessary checks before
+ two function calls
+Date: Thu, 20 Nov 2014 00:26:56 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1411200024280.6497@ja.home.ssi.bg>
+References: <5307CAA2.8060406@users.sourceforge.net> <alpine.DEB.2.02.1402212321410.2043@localhost6.localdomain6> <530A086E.8010901@users.sourceforge.net> <alpine.DEB.2.02.1402231635510.1985@localhost6.localdomain6> <530A72AA.3000601@users.sourceforge.net>
+ <alpine.DEB.2.02.1402240658210.2090@localhost6.localdomain6> <530B5FB6.6010207@users.sourceforge.net> <alpine.DEB.2.10.1402241710370.2074@hadrien> <530C5E18.1020800@users.sourceforge.net> <alpine.DEB.2.10.1402251014170.2080@hadrien> <530CD2C4.4050903@users.sourceforge.net>
+ <alpine.DEB.2.10.1402251840450.7035@hadrien> <530CF8FF.8080600@users.sourceforge.net> <alpine.DEB.2.02.1402252117150.2047@localhost6.localdomain6> <530DD06F.4090703@users.sourceforge.net> <alpine.DEB.2.02.1402262129250.2221@localhost6.localdomain6>
+ <5317A59D.4@users.sourceforge.net> <546BA253.6030100@users.sourceforge.net>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <546BA253.6030100@users.sourceforge.net>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: SF Markus Elfring <elfring@users.sourceforge.net>
-Cc: "David S. Miller" <davem@davemloft.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Julian Anastasov <ja@ssi.bg>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org, Coccinelle <cocci@systeme.lip6.fr>
+Cc: "David S. Miller" <davem@davemloft.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org, Coccinelle <cocci@systeme.lip6.fr>
 
-On Tue, Nov 18, 2014 at 08:47:31PM +0100, SF Markus Elfring wrote:
+
+	Hello,
+
+On Tue, 18 Nov 2014, SF Markus Elfring wrote:
+
 > From: Markus Elfring <elfring@users.sourceforge.net>
 > Date: Tue, 18 Nov 2014 20:37:05 +0100
 > 
 > The functions free_percpu() and module_put() test whether their argument
 > is NULL and then return immediately. Thus the test around the call is
 > not needed.
-
-@IPVS folks: Since this involves a nf_tables specific chunk, ack your
-chunks and I'll put this into nf-next to speed up things.
-
-Thanks.
-
+> 
 > This issue was detected by using the Coccinelle software.
 > 
 > Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+
+	Pablo, the IPVS parts look ok to me,
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
 > ---
 >  net/netfilter/ipvs/ip_vs_ctl.c   | 3 +--
 >  net/netfilter/ipvs/ip_vs_pe.c    | 3 +--
@@ -120,4 +117,8 @@ Thanks.
 >  			} else {
 > -- 
 > 2.1.3
-> 
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
