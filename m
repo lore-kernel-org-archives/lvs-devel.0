@@ -1,42 +1,36 @@
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: [ipvsadm PATCH 1/2] ipvsadm: fix compile warning in print_largenum
-Date: Thu, 04 Dec 2014 10:38:55 +0100
-Message-ID: <20141204093855.20470.31558.stgit@localhost>
-References: <20141204093757.20470.92421.stgit@localhost>
+Subject: [ipvsadm PATCH 0/2] trivial compile warning fixes for ipvsadm
+Date: Thu, 04 Dec 2014 10:38:50 +0100
+Message-ID: <20141204093757.20470.92421.stgit@localhost>
 Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20141204093757.20470.92421.stgit@localhost>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 To: lvs-devel@vger.kernel.org, Daniel Borkmann <dborkman@redhat.com>
 Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Ryan O'Hara <rohara@redhat.com>, Jesper Dangaard Brouer <brouer@redhat.com>
 
-=46rom: Daniel Borkmann <dborkman@redhat.com>
+Some trivial compile warning fixes from Daniel Borkmann to the ipvsadm tool.
 
-ipvsadm.c: In function =E2=80=98print_largenum=E2=80=99:
-ipvsadm.c:1445:3: warning: field width specifier =E2=80=98*=E2=80=99 ex=
-pects argument of type =E2=80=98int=E2=80=99, but argument 2 has type =E2=
-=80=98size_t=E2=80=99 [-Wformat=3D]
-   printf("%*llu", len <=3D 8 ? 9 : len + 1, i);
-   ^
+I'll apply these to the git repo[1] if nobody objects.
 
-=46ix by reducing the scope and use int for len instead.
+[1] git://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git
 
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 ---
- ipvsadm.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/ipvsadm.c b/ipvsadm.c
-index 1190839..8931412 100644
---- a/ipvsadm.c
-+++ b/ipvsadm.c
-@@ -1437,15 +1437,15 @@ static inline char *fwd_switch(unsigned flags)
-=20
- static void print_largenum(unsigned long long i, unsigned int format)
- {
--	char mytmp[32];
--	size_t len;
+Daniel Borkmann (2):
+      ipvsadm: fix compile warning in print_largenum
+      ipvsadm: fix compile warning in modprobe_ipvs
+
+
+ ipvsadm.c |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+--
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Sr. Network Kernel Developer at Red Hat
+  Author of http://www.iptv-analyzer.org
+  LinkedIn: http://www.linkedin.com/in/brouer
+
