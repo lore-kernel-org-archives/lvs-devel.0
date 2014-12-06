@@ -1,114 +1,64 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: 3.12.33 - BUG xfrm_selector_match+0x25/0x2f6
-Date: Fri, 5 Dec 2014 23:32:14 +0200 (EET)
-Message-ID: <alpine.LFD.2.11.1412052249570.1825@ja.home.ssi.bg>
-References: <547F2462.6040405@smart-weblications.de> <20141204075627.GE6390@secunet.com> <alpine.LFD.2.11.1412042338370.4841@ja.home.ssi.bg> <5481173A.9060308@smart-weblications.de> <alpine.LFD.2.11.1412051126090.2522@ja.home.ssi.bg>
- <5481B944.2000002@smart-weblications.de>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: [patch v2] ipvs: uninitialized data with IP_VS_IPV6
+Date: Sat, 6 Dec 2014 16:49:24 +0300
+Message-ID: <20141206134924.GA17278@mwanda>
+References: <alpine.LFD.2.11.1412042308100.4841@ja.home.ssi.bg>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="-1463811672-511558398-1417815134=:1825"
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <5481B944.2000002@smart-weblications.de>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.11.1412042308100.4841@ja.home.ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: Smart Weblications GmbH - Florian Wiessner <f.wiessner@smart-weblications.de>
-Cc: Steffen Klassert <steffen.klassert@secunet.com>, netdev@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, stable@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Wensong Zhang <wensong@linux-vs.org>
+Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, kernel-janitors@vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+The app_tcp_pkt_out() function expects "*diff" to be set and ends up
+using uninitialized data if CONFIG_IP_VS_IPV6 is turned on.
 
----1463811672-511558398-1417815134=:1825
-Content-Type: TEXT/PLAIN; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+The same issue is there in app_tcp_pkt_in().  Thanks to Julian Anastasov
+for noticing that.
 
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+---
+v2: fix app_tcp_pkt_in() as well.  This is an old bug.
 
-	Hello,
-
-On Fri, 5 Dec 2014, Smart Weblications GmbH - Florian Wiessner wrote:
-
-> thank you for the fast responses! I would like to test any patch for 3.12.
-
-	I hope I'll have time this weekend...
-
-> If i understand correctly, i set:
-> 
-> echo 0 > /proc/sys/net/ipv4/vs/snat_reroute
-
-	The flag works per-packet, no need to reload any modules.
-But it does not help for the case with local client where
-the problem with sockets occurs, that is why you can keep 
-ip_vs_route_me_harder() empty (return 0) until patch is
-created.
-
-> modprobe ip_vs_ftp
-> 
-> and reenable ftp ipvs?
-> 
-> It does not crash, but ftp is not working with neither PASV nor PORT:
-> 
-> 
-> [14:47:42] [R] Verbindung herstellen zu 192.168.10.62 -> IP=192.168.10.62 PORT=21
-> [14:47:42] [R] Verbunden mit 192.168.10.62
-> [14:47:43] [R] 220 (vsFTPd 3.0.2)
-> [14:47:43] [R] USER (hidden)
-> [14:47:43] [R] 331 Please specify the password.
-> [14:47:43] [R] PASS (hidden)
-> [14:47:43] [R] 230 Login successful.
-> [14:47:43] [R] SYST
-> [14:47:43] [R] 215 UNIX Type: L8
-> [14:47:43] [R] FEAT
-> [14:47:43] [R] 211-Features:
-> [14:47:43] [R]  EPRT
-> [14:47:43] [R]  EPSV
-> [14:47:43] [R]  MDTM
-> [14:47:43] [R]  PASV
-> [14:47:43] [R]  REST STREAM
-> [14:47:43] [R]  SIZE
-> [14:47:43] [R]  TVFS
-> [14:47:43] [R]  UTF8
-> [14:47:43] [R] 211 End
-> [14:47:43] [R] PWD
-> [14:47:43] [R] 257 "/"
-> [14:47:43] [R] CWD /
-> [14:47:43] [R] 250 Directory successfully changed.
-> [14:47:43] [R] PWD
-> [14:47:43] [R] 257 "/"
-> [14:47:43] [R] TYPE A
-> [14:47:43] [R] 200 Switching to ASCII mode.
-> [14:47:43] [R] PASV
-> [14:47:43] [R] 227 Entering Passive Mode (10,10,1,23,251,6).
-> [14:47:43] [R] Datenkanal-IP öffnen: 192.168.10.62 PORT: 64262
-> [14:47:44] [R] Datensocket-Fehler: Verbindung abgewiesen
-> [14:47:44] [R] List Fehler
-> [14:47:44] [R] PASV
-> [14:47:44] [R] 227 Entering Passive Mode (10,10,1,23,250,144).
-> [14:47:44] [R] Datenkanal-IP öffnen: 192.168.10.62 PORT: 64144
-> [14:47:45] [R] Datensocket-Fehler: Verbindung abgewiesen
-> [14:47:45] [R] List Fehler
-> [14:47:45] [R] PASV-Modus fehlgeschlagen, PORT -Modus versuchen...
-> [14:47:45] [R] Auf PORT: 62505 warten, Verbindung erwarten.
-> [14:47:45] [R] PORT 192,168,200,13,244,41
-> [14:47:45] [R] 500 Illegal PORT command.
-
-	Who is 192.168.200.13? From vsftpd-3.0.2/postlogin.c,
-handle_port():
-
-  /* SECURITY:
-   * 1) Reject requests not connecting to the control socket IP
-   * 2) Reject connects to privileged ports
-   */
-
-	It looks like PORT command provides different IP.
-IIRC, IPVS does not mangle PORT command, vsftpd expects to
-connect to the same client IP. There is config option you can
-try to set (port_promiscuous), only while testing.
-
-> [14:47:45] [R] List Fehler
-> [14:48:14] [R] QUIT
-> [14:48:14] [R] 221 Goodbye.
-> [14:48:14] [R] Ausgeloggt: 192.168.10.62
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
----1463811672-511558398-1417815134=:1825--
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 1d5341f..5d3daae 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -183,6 +183,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	struct nf_conn *ct;
+ 	struct net *net;
+ 
++	*diff = 0;
++
+ #ifdef CONFIG_IP_VS_IPV6
+ 	/* This application helper doesn't work with IPv6 yet,
+ 	 * so turn this into a no-op for IPv6 packets
+@@ -191,8 +193,6 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		return 1;
+ #endif
+ 
+-	*diff = 0;
+-
+ 	/* Only useful for established sessions */
+ 	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
+ 		return 1;
+@@ -322,6 +322,9 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	struct ip_vs_conn *n_cp;
+ 	struct net *net;
+ 
++	/* no diff required for incoming packets */
++	*diff = 0;
++
+ #ifdef CONFIG_IP_VS_IPV6
+ 	/* This application helper doesn't work with IPv6 yet,
+ 	 * so turn this into a no-op for IPv6 packets
+@@ -330,9 +333,6 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		return 1;
+ #endif
+ 
+-	/* no diff required for incoming packets */
+-	*diff = 0;
