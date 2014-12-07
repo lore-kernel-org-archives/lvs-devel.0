@@ -1,64 +1,43 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: [patch v2] ipvs: uninitialized data with IP_VS_IPV6
-Date: Sat, 6 Dec 2014 16:49:24 +0300
-Message-ID: <20141206134924.GA17278@mwanda>
-References: <alpine.LFD.2.11.1412042308100.4841@ja.home.ssi.bg>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [ipvsadm PATCH 0/2] trivial compile warning fixes for ipvsadm
+Date: Sun, 7 Dec 2014 20:30:38 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1412072028010.1885@ja.home.ssi.bg>
+References: <20141204093757.20470.92421.stgit@localhost>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.11.1412042308100.4841@ja.home.ssi.bg>
+In-Reply-To: <20141204093757.20470.92421.stgit@localhost>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wensong Zhang <wensong@linux-vs.org>
-Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, kernel-janitors@vger.kernel.org
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: lvs-devel@vger.kernel.org, Daniel Borkmann <dborkman@redhat.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Ryan O'Hara <rohara@redhat.com>
 
-The app_tcp_pkt_out() function expects "*diff" to be set and ends up
-using uninitialized data if CONFIG_IP_VS_IPV6 is turned on.
 
-The same issue is there in app_tcp_pkt_in().  Thanks to Julian Anastasov
-for noticing that.
+	Hello,
 
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
----
-v2: fix app_tcp_pkt_in() as well.  This is an old bug.
+On Thu, 4 Dec 2014, Jesper Dangaard Brouer wrote:
 
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 1d5341f..5d3daae 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -183,6 +183,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 	struct nf_conn *ct;
- 	struct net *net;
- 
-+	*diff = 0;
-+
- #ifdef CONFIG_IP_VS_IPV6
- 	/* This application helper doesn't work with IPv6 yet,
- 	 * so turn this into a no-op for IPv6 packets
-@@ -191,8 +193,6 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 		return 1;
- #endif
- 
--	*diff = 0;
--
- 	/* Only useful for established sessions */
- 	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
- 		return 1;
-@@ -322,6 +322,9 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 	struct ip_vs_conn *n_cp;
- 	struct net *net;
- 
-+	/* no diff required for incoming packets */
-+	*diff = 0;
-+
- #ifdef CONFIG_IP_VS_IPV6
- 	/* This application helper doesn't work with IPv6 yet,
- 	 * so turn this into a no-op for IPv6 packets
-@@ -330,9 +333,6 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 		return 1;
- #endif
- 
--	/* no diff required for incoming packets */
--	*diff = 0;
+> Some trivial compile warning fixes from Daniel Borkmann to the ipvsadm tool.
+> 
+> I'll apply these to the git repo[1] if nobody objects.
+> 
+> [1] git://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git
+> 
+> ---
+> 
+> Daniel Borkmann (2):
+>       ipvsadm: fix compile warning in print_largenum
+>       ipvsadm: fix compile warning in modprobe_ipvs
+
+	Both patches look ok to me too,
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+	We should not see ECHILD when SIGCHLD=SIG_DFL, right?
+Only for SIG_IGN.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
