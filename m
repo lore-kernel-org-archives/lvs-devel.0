@@ -1,43 +1,143 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [ipvsadm PATCH 0/2] trivial compile warning fixes for ipvsadm
-Date: Sun, 7 Dec 2014 20:30:38 +0200 (EET)
-Message-ID: <alpine.LFD.2.11.1412072028010.1885@ja.home.ssi.bg>
-References: <20141204093757.20470.92421.stgit@localhost>
+Subject: Re: 3.12.33 - BUG xfrm_selector_match+0x25/0x2f6
+Date: Sun, 7 Dec 2014 20:27:33 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1412072019410.1885@ja.home.ssi.bg>
+References: <547F2462.6040405@smart-weblications.de> <20141204075627.GE6390@secunet.com> <alpine.LFD.2.11.1412042338370.4841@ja.home.ssi.bg> <5481173A.9060308@smart-weblications.de> <alpine.LFD.2.11.1412051126090.2522@ja.home.ssi.bg>
+ <5481B944.2000002@smart-weblications.de>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20141204093757.20470.92421.stgit@localhost>
-Sender: lvs-devel-owner@vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="-1463811672-124321293-1417976855=:1885"
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <5481B944.2000002@smart-weblications.de>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: lvs-devel@vger.kernel.org, Daniel Borkmann <dborkman@redhat.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Ryan O'Hara <rohara@redhat.com>
+To: Smart Weblications GmbH - Florian Wiessner <f.wiessner@smart-weblications.de>
+Cc: Steffen Klassert <steffen.klassert@secunet.com>, netdev@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, stable@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+---1463811672-124321293-1417976855=:1885
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 
 
 	Hello,
 
-On Thu, 4 Dec 2014, Jesper Dangaard Brouer wrote:
+On Fri, 5 Dec 2014, Smart Weblications GmbH - Florian Wiessner wrote:
 
-> Some trivial compile warning fixes from Daniel Borkmann to the ipvsadm tool.
-> 
-> I'll apply these to the git repo[1] if nobody objects.
-> 
-> [1] git://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git
-> 
-> ---
-> 
-> Daniel Borkmann (2):
->       ipvsadm: fix compile warning in print_largenum
->       ipvsadm: fix compile warning in modprobe_ipvs
+> thank you for the fast responses! I would like to test any patch for 3.12.
 
-	Both patches look ok to me too,
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	We should not see ECHILD when SIGCHLD=SIG_DFL, right?
-Only for SIG_IGN.
+	I'm attaching a patch that avoids rerouting in
+IPVS for LOCAL_IN. Please test it in your setup. My tests
+were with NAT on today's net tree. I checked that it
+compiles for 3.12.33. You can use the default snat_reroute=1.
 
 Regards
 
 --
 Julian Anastasov <ja@ssi.bg>
+---1463811672-124321293-1417976855=:1885
+Content-Type: TEXT/plain; name=0001-ipvs-rerouting-to-local-clients-is-not-needed-anymore.txt
+Content-Transfer-Encoding: BASE64
+Content-ID: <alpine.LFD.2.11.1412072027330.1885@ja.home.ssi.bg>
+Content-Description: patch
+Content-Disposition: attachment; filename=0001-ipvs-rerouting-to-local-clients-is-not-needed-anymore.txt
+
+RnJvbSA0ZmM0OTNmOGYxZWQ5NjdiMWUzZGQ2ZDMzMGEyNWJhZDc2MjUxNmQ3
+IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogSnVsaWFuIEFuYXN0
+YXNvdiA8amFAc3NpLmJnPg0KRGF0ZTogU3VuLCA3IERlYyAyMDE0IDE4OjEz
+OjI0ICswMjAwDQpTdWJqZWN0OiBbUEFUQ0ggbmV0XSBpcHZzOiByZXJvdXRp
+bmcgdG8gbG9jYWwgY2xpZW50cyBpcyBub3QgbmVlZGVkIGFueW1vcmUNCg0K
+Y29tbWl0IGY1YTQxODQ3YWNjNSAoImlwdnM6IG1vdmUgaXBfcm91dGVfbWVf
+aGFyZGVyIGZvciBJQ01QIikNCmZyb20gMi42LjM3IGludHJvZHVjZWQgaXBf
+cm91dGVfbWVfaGFyZGVyKCkgY2FsbCBmb3IgcmVzcG9uc2VzIHRvDQpsb2Nh
+bCBjbGllbnRzLCBzbyB0aGF0IHdlIGNhbiBwcm92aWRlIHZhbGlkIHJ0X3Ny
+YyBhZnRlciBTTkFULg0KSXQgd2FzIHVzZWQgYnkgVENQIHRvIHByb3ZpZGUg
+dmFsaWQgZGFkZHIgZm9yIGlwX3NlbmRfcmVwbHkoKS4NCkFmdGVyIGNvbW1p
+dCAwYTVlYmI4MDAwYzUgKCJpcHY0OiBQYXNzIGV4cGxpY2l0IGRhZGRyIGFy
+ZyB0bw0KaXBfc2VuZF9yZXBseSgpLiIgZnJvbSAzLjAgdGhpcyByZXJvdXRp
+bmcgaXMgbm90IG5lZWRlZCBhbnltb3JlDQphbmQgc2hvdWxkIGJlIGF2b2lk
+ZWQsIGVzcGVjaWFsbHkgaW4gTE9DQUxfSU4uDQoNClNpZ25lZC1vZmYtYnk6
+IEp1bGlhbiBBbmFzdGFzb3YgPGphQHNzaS5iZz4NCi0tLQ0KIG5ldC9uZXRm
+aWx0ZXIvaXB2cy9pcF92c19jb3JlLmMgfCAzMyArKysrKysrKysrKysrKysr
+KysrKysrLS0tLS0tLS0tLS0NCiAxIGZpbGUgY2hhbmdlZCwgMjIgaW5zZXJ0
+aW9ucygrKSwgMTEgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9uZXQv
+bmV0ZmlsdGVyL2lwdnMvaXBfdnNfY29yZS5jIGIvbmV0L25ldGZpbHRlci9p
+cHZzL2lwX3ZzX2NvcmUuYw0KaW5kZXggOTkwZGVjYi4uYjg3Y2EzMiAxMDA2
+NDQNCi0tLSBhL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMNCisr
+KyBiL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMNCkBAIC02NTks
+MTYgKzY1OSwyNCBAQCBzdGF0aWMgaW5saW5lIGludCBpcF92c19nYXRoZXJf
+ZnJhZ3Moc3RydWN0IHNrX2J1ZmYgKnNrYiwgdV9pbnQzMl90IHVzZXIpDQog
+CXJldHVybiBlcnI7DQogfQ0KIA0KLXN0YXRpYyBpbnQgaXBfdnNfcm91dGVf
+bWVfaGFyZGVyKGludCBhZiwgc3RydWN0IHNrX2J1ZmYgKnNrYikNCitzdGF0
+aWMgaW50IGlwX3ZzX3JvdXRlX21lX2hhcmRlcihpbnQgYWYsIHN0cnVjdCBz
+a19idWZmICpza2IsDQorCQkJCSB1bnNpZ25lZCBpbnQgaG9va251bSkNCiB7
+DQorCWlmICghc3lzY3RsX3NuYXRfcmVyb3V0ZShza2IpKQ0KKwkJcmV0dXJu
+IDA7DQorCS8qIFJlcm91dGUgcmVwbGllcyBvbmx5IHRvIHJlbW90ZSBjbGll
+bnRzIChGT1JXQVJEIGFuZCBMT0NBTF9PVVQpICovDQorCWlmIChORl9JTkVU
+X0xPQ0FMX0lOID09IGhvb2tudW0pDQorCQlyZXR1cm4gMDsNCiAjaWZkZWYg
+Q09ORklHX0lQX1ZTX0lQVjYNCiAJaWYgKGFmID09IEFGX0lORVQ2KSB7DQot
+CQlpZiAoc3lzY3RsX3NuYXRfcmVyb3V0ZShza2IpICYmIGlwNl9yb3V0ZV9t
+ZV9oYXJkZXIoc2tiKSAhPSAwKQ0KKwkJc3RydWN0IGRzdF9lbnRyeSAqZHN0
+ID0gc2tiX2RzdChza2IpOw0KKw0KKwkJaWYgKGRzdC0+ZGV2ICYmICEoZHN0
+LT5kZXYtPmZsYWdzICYgSUZGX0xPT1BCQUNLKSAmJg0KKwkJICAgIGlwNl9y
+b3V0ZV9tZV9oYXJkZXIoc2tiKSAhPSAwKQ0KIAkJCXJldHVybiAxOw0KIAl9
+IGVsc2UNCiAjZW5kaWYNCi0JCWlmICgoc3lzY3RsX3NuYXRfcmVyb3V0ZShz
+a2IpIHx8DQotCQkgICAgIHNrYl9ydGFibGUoc2tiKS0+cnRfZmxhZ3MgJiBS
+VENGX0xPQ0FMKSAmJg0KKwkJaWYgKCEoc2tiX3J0YWJsZShza2IpLT5ydF9m
+bGFncyAmIFJUQ0ZfTE9DQUwpICYmDQogCQkgICAgaXBfcm91dGVfbWVfaGFy
+ZGVyKHNrYiwgUlROX0xPQ0FMKSAhPSAwKQ0KIAkJCXJldHVybiAxOw0KIA0K
+QEAgLTc5MSw3ICs3OTksOCBAQCBzdGF0aWMgaW50IGhhbmRsZV9yZXNwb25z
+ZV9pY21wKGludCBhZiwgc3RydWN0IHNrX2J1ZmYgKnNrYiwNCiAJCQkJdW5p
+b24gbmZfaW5ldF9hZGRyICpzbmV0LA0KIAkJCQlfX3U4IHByb3RvY29sLCBz
+dHJ1Y3QgaXBfdnNfY29ubiAqY3AsDQogCQkJCXN0cnVjdCBpcF92c19wcm90
+b2NvbCAqcHAsDQotCQkJCXVuc2lnbmVkIGludCBvZmZzZXQsIHVuc2lnbmVk
+IGludCBpaGwpDQorCQkJCXVuc2lnbmVkIGludCBvZmZzZXQsIHVuc2lnbmVk
+IGludCBpaGwsDQorCQkJCXVuc2lnbmVkIGludCBob29rbnVtKQ0KIHsNCiAJ
+dW5zaWduZWQgaW50IHZlcmRpY3QgPSBORl9EUk9QOw0KIA0KQEAgLTgyMSw3
+ICs4MzAsNyBAQCBzdGF0aWMgaW50IGhhbmRsZV9yZXNwb25zZV9pY21wKGlu
+dCBhZiwgc3RydWN0IHNrX2J1ZmYgKnNrYiwNCiAjZW5kaWYNCiAJCWlwX3Zz
+X25hdF9pY21wKHNrYiwgcHAsIGNwLCAxKTsNCiANCi0JaWYgKGlwX3ZzX3Jv
+dXRlX21lX2hhcmRlcihhZiwgc2tiKSkNCisJaWYgKGlwX3ZzX3JvdXRlX21l
+X2hhcmRlcihhZiwgc2tiLCBob29rbnVtKSkNCiAJCWdvdG8gb3V0Ow0KIA0K
+IAkvKiBkbyB0aGUgc3RhdGlzdGljcyBhbmQgcHV0IGl0IGJhY2sgKi8NCkBA
+IC05MTYsNyArOTI1LDcgQEAgc3RhdGljIGludCBpcF92c19vdXRfaWNtcChz
+dHJ1Y3Qgc2tfYnVmZiAqc2tiLCBpbnQgKnJlbGF0ZWQsDQogDQogCXNuZXQu
+aXAgPSBpcGgtPnNhZGRyOw0KIAlyZXR1cm4gaGFuZGxlX3Jlc3BvbnNlX2lj
+bXAoQUZfSU5FVCwgc2tiLCAmc25ldCwgY2loLT5wcm90b2NvbCwgY3AsDQot
+CQkJCSAgICBwcCwgY2lwaC5sZW4sIGlobCk7DQorCQkJCSAgICBwcCwgY2lw
+aC5sZW4sIGlobCwgaG9va251bSk7DQogfQ0KIA0KICNpZmRlZiBDT05GSUdf
+SVBfVlNfSVBWNg0KQEAgLTk4MSw3ICs5OTAsOCBAQCBzdGF0aWMgaW50IGlw
+X3ZzX291dF9pY21wX3Y2KHN0cnVjdCBza19idWZmICpza2IsIGludCAqcmVs
+YXRlZCwNCiAJc25ldC5pbjYgPSBjaXBoLnNhZGRyLmluNjsNCiAJd3JpdGFi
+bGUgPSBjaXBoLmxlbjsNCiAJcmV0dXJuIGhhbmRsZV9yZXNwb25zZV9pY21w
+KEFGX0lORVQ2LCBza2IsICZzbmV0LCBjaXBoLnByb3RvY29sLCBjcCwNCi0J
+CQkJICAgIHBwLCB3cml0YWJsZSwgc2l6ZW9mKHN0cnVjdCBpcHY2aGRyKSk7
+DQorCQkJCSAgICBwcCwgd3JpdGFibGUsIHNpemVvZihzdHJ1Y3QgaXB2Nmhk
+ciksDQorCQkJCSAgICBob29rbnVtKTsNCiB9DQogI2VuZGlmDQogDQpAQCAt
+MTA0MCw3ICsxMDUwLDggQEAgc3RhdGljIGlubGluZSBib29sIGlzX25ld19j
+b25uKGNvbnN0IHN0cnVjdCBza19idWZmICpza2IsDQogICovDQogc3RhdGlj
+IHVuc2lnbmVkIGludA0KIGhhbmRsZV9yZXNwb25zZShpbnQgYWYsIHN0cnVj
+dCBza19idWZmICpza2IsIHN0cnVjdCBpcF92c19wcm90b19kYXRhICpwZCwN
+Ci0JCXN0cnVjdCBpcF92c19jb25uICpjcCwgc3RydWN0IGlwX3ZzX2lwaGRy
+ICppcGgpDQorCQlzdHJ1Y3QgaXBfdnNfY29ubiAqY3AsIHN0cnVjdCBpcF92
+c19pcGhkciAqaXBoLA0KKwkJdW5zaWduZWQgaW50IGhvb2tudW0pDQogew0K
+IAlzdHJ1Y3QgaXBfdnNfcHJvdG9jb2wgKnBwID0gcGQtPnBwOw0KIA0KQEAg
+LTEwNzgsNyArMTA4OSw3IEBAIGhhbmRsZV9yZXNwb25zZShpbnQgYWYsIHN0
+cnVjdCBza19idWZmICpza2IsIHN0cnVjdCBpcF92c19wcm90b19kYXRhICpw
+ZCwNCiAJICogaWYgaXQgY2FtZSBmcm9tIHRoaXMgbWFjaGluZSBpdHNlbGYu
+ICBTbyByZS1jb21wdXRlDQogCSAqIHRoZSByb3V0aW5nIGluZm9ybWF0aW9u
+Lg0KIAkgKi8NCi0JaWYgKGlwX3ZzX3JvdXRlX21lX2hhcmRlcihhZiwgc2ti
+KSkNCisJaWYgKGlwX3ZzX3JvdXRlX21lX2hhcmRlcihhZiwgc2tiLCBob29r
+bnVtKSkNCiAJCWdvdG8gZHJvcDsNCiANCiAJSVBfVlNfREJHX1BLVCgxMCwg
+YWYsIHBwLCBza2IsIDAsICJBZnRlciBTTkFUIik7DQpAQCAtMTE4MSw3ICsx
+MTkyLDcgQEAgaXBfdnNfb3V0KHVuc2lnbmVkIGludCBob29rbnVtLCBzdHJ1
+Y3Qgc2tfYnVmZiAqc2tiLCBpbnQgYWYpDQogCWNwID0gcHAtPmNvbm5fb3V0
+X2dldChhZiwgc2tiLCAmaXBoLCAwKTsNCiANCiAJaWYgKGxpa2VseShjcCkp
+DQotCQlyZXR1cm4gaGFuZGxlX3Jlc3BvbnNlKGFmLCBza2IsIHBkLCBjcCwg
+JmlwaCk7DQorCQlyZXR1cm4gaGFuZGxlX3Jlc3BvbnNlKGFmLCBza2IsIHBk
+LCBjcCwgJmlwaCwgaG9va251bSk7DQogCWlmIChzeXNjdGxfbmF0X2ljbXBf
+c2VuZChuZXQpICYmDQogCSAgICAocHAtPnByb3RvY29sID09IElQUFJPVE9f
+VENQIHx8DQogCSAgICAgcHAtPnByb3RvY29sID09IElQUFJPVE9fVURQIHx8
+DQotLSANCjEuOS4zDQoNCg==
+
+---1463811672-124321293-1417976855=:1885--
