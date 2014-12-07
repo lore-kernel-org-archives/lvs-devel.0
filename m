@@ -1,86 +1,137 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [patch v2] ipvs: uninitialized data with IP_VS_IPV6
-Date: Sun, 7 Dec 2014 20:39:35 +0200 (EET)
-Message-ID: <alpine.LFD.2.11.1412072032420.1885@ja.home.ssi.bg>
-References: <20141206134924.GA17278@mwanda>
+From: Smart Weblications GmbH - Florian Wiessner 
+	<f.wiessner@smart-weblications.de>
+Subject: Re: 3.12.33 - BUG xfrm_selector_match+0x25/0x2f6
+Date: Sun, 07 Dec 2014 23:04:23 +0100
+Message-ID: <5484CEE7.4030307@smart-weblications.de>
+References: <547F2462.6040405@smart-weblications.de> <20141204075627.GE6390@secunet.com> <alpine.LFD.2.11.1412042338370.4841@ja.home.ssi.bg> <5481173A.9060308@smart-weblications.de> <alpine.LFD.2.11.1412051126090.2522@ja.home.ssi.bg> <5481B944.2000002@smart-weblications.de> <alpine.LFD.2.11.1412052249570.1825@ja.home.ssi.bg>
+Reply-To: f.wiessner@smart-weblications.de
 Mime-Version: 1.0
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20141206134924.GA17278@mwanda>
+In-Reply-To: <alpine.LFD.2.11.1412052249570.1825@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, kernel-janitors@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Steffen Klassert <steffen.klassert@secunet.com>, netdev@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, stable@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+
+Hi,
+
+Am 05.12.2014 22:32, schrieb Julian Anastasov:
+>=20
+> 	Hello,
+>=20
+> On Fri, 5 Dec 2014, Smart Weblications GmbH - Florian Wiessner wrote:
+>=20
+>> thank you for the fast responses! I would like to test any patch for=
+ 3.12.
+>=20
+> 	I hope I'll have time this weekend...
+>=20
+>> If i understand correctly, i set:
+>>
+>> echo 0 > /proc/sys/net/ipv4/vs/snat_reroute
+>=20
+> 	The flag works per-packet, no need to reload any modules.
+> But it does not help for the case with local client where
+> the problem with sockets occurs, that is why you can keep=20
+> ip_vs_route_me_harder() empty (return 0) until patch is
+> created.
+>=20
+>> modprobe ip_vs_ftp
+>>
+>> and reenable ftp ipvs?
+>>
+>> It does not crash, but ftp is not working with neither PASV nor PORT=
+:
+>>
+>>
+>> [14:47:42] [R] Verbindung herstellen zu 192.168.10.62 -> IP=3D192.16=
+8.10.62 PORT=3D21
+>> [14:47:42] [R] Verbunden mit 192.168.10.62
+>> [14:47:43] [R] 220 (vsFTPd 3.0.2)
+>> [14:47:43] [R] USER (hidden)
+>> [14:47:43] [R] 331 Please specify the password.
+>> [14:47:43] [R] PASS (hidden)
+>> [14:47:43] [R] 230 Login successful.
+>> [14:47:43] [R] SYST
+>> [14:47:43] [R] 215 UNIX Type: L8
+>> [14:47:43] [R] FEAT
+>> [14:47:43] [R] 211-Features:
+>> [14:47:43] [R]  EPRT
+>> [14:47:43] [R]  EPSV
+>> [14:47:43] [R]  MDTM
+>> [14:47:43] [R]  PASV
+>> [14:47:43] [R]  REST STREAM
+>> [14:47:43] [R]  SIZE
+>> [14:47:43] [R]  TVFS
+>> [14:47:43] [R]  UTF8
+>> [14:47:43] [R] 211 End
+>> [14:47:43] [R] PWD
+>> [14:47:43] [R] 257 "/"
+>> [14:47:43] [R] CWD /
+>> [14:47:43] [R] 250 Directory successfully changed.
+>> [14:47:43] [R] PWD
+>> [14:47:43] [R] 257 "/"
+>> [14:47:43] [R] TYPE A
+>> [14:47:43] [R] 200 Switching to ASCII mode.
+>> [14:47:43] [R] PASV
+>> [14:47:43] [R] 227 Entering Passive Mode (10,10,1,23,251,6).
+>> [14:47:43] [R] Datenkanal-IP =C3=B6ffnen: 192.168.10.62 PORT: 64262
+>> [14:47:44] [R] Datensocket-Fehler: Verbindung abgewiesen
+>> [14:47:44] [R] List Fehler
+>> [14:47:44] [R] PASV
+>> [14:47:44] [R] 227 Entering Passive Mode (10,10,1,23,250,144).
+>> [14:47:44] [R] Datenkanal-IP =C3=B6ffnen: 192.168.10.62 PORT: 64144
+>> [14:47:45] [R] Datensocket-Fehler: Verbindung abgewiesen
+>> [14:47:45] [R] List Fehler
+>> [14:47:45] [R] PASV-Modus fehlgeschlagen, PORT -Modus versuchen...
+>> [14:47:45] [R] Auf PORT: 62505 warten, Verbindung erwarten.
+>> [14:47:45] [R] PORT 192,168,200,13,244,41
+>> [14:47:45] [R] 500 Illegal PORT command.
+>=20
+> 	Who is 192.168.200.13? From vsftpd-3.0.2/postlogin.c,
+> handle_port():
+>=20
+
+192.168.200.13 was the ftp client. As this client also was natted, PORT=
+ Mode
+will fail here because the client provided the internal ip, but i disab=
+led PORT
+anyways before and did reenable it only to test...
 
 
-	Hello,
+>   /* SECURITY:
+>    * 1) Reject requests not connecting to the control socket IP
+>    * 2) Reject connects to privileged ports
+>    */
+>=20
+> 	It looks like PORT command provides different IP.
+> IIRC, IPVS does not mangle PORT command, vsftpd expects to
+> connect to the same client IP. There is config option you can
+> try to set (port_promiscuous), only while testing.
+>=20
 
-On Sat, 6 Dec 2014, Dan Carpenter wrote:
+While this is true, PASV should have worked anyhow, right?
 
-> The app_tcp_pkt_out() function expects "*diff" to be set and ends up
-> using uninitialized data if CONFIG_IP_VS_IPV6 is turned on.
-> 
-> The same issue is there in app_tcp_pkt_in().  Thanks to Julian Anastasov
-> for noticing that.
-> 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> ---
-> v2: fix app_tcp_pkt_in() as well.  This is an old bug.
 
-	Thanks! It will not break seqs for IPv6 control
-connection, only that we do not support FTP yet :( I have
-the doubt whether this should be classified as bugfix :)
-I guess, it is a net-next material, right?
+--=20
 
-	Simon, please apply.
+Mit freundlichen Gr=C3=BC=C3=9Fen,
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
+=46lorian Wiessner
 
-> diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-> index 1d5341f..5d3daae 100644
-> --- a/net/netfilter/ipvs/ip_vs_ftp.c
-> +++ b/net/netfilter/ipvs/ip_vs_ftp.c
-> @@ -183,6 +183,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
->  	struct nf_conn *ct;
->  	struct net *net;
->  
-> +	*diff = 0;
-> +
->  #ifdef CONFIG_IP_VS_IPV6
->  	/* This application helper doesn't work with IPv6 yet,
->  	 * so turn this into a no-op for IPv6 packets
-> @@ -191,8 +193,6 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
->  		return 1;
->  #endif
->  
-> -	*diff = 0;
-> -
->  	/* Only useful for established sessions */
->  	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
->  		return 1;
-> @@ -322,6 +322,9 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
->  	struct ip_vs_conn *n_cp;
->  	struct net *net;
->  
-> +	/* no diff required for incoming packets */
-> +	*diff = 0;
-> +
->  #ifdef CONFIG_IP_VS_IPV6
->  	/* This application helper doesn't work with IPv6 yet,
->  	 * so turn this into a no-op for IPv6 packets
-> @@ -330,9 +333,6 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
->  		return 1;
->  #endif
->  
-> -	/* no diff required for incoming packets */
-> -	*diff = 0;
-> -
->  	/* Only useful for established sessions */
->  	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
->  		return 1;
+Smart Weblications GmbH
+Martinsberger Str. 1
+D-95119 Naila
 
-Regards
+fon.: +49 9282 9638 200
+fax.: +49 9282 9638 205
+24/7: +49 900 144 000 00 - 0,99 EUR/Min*
+http://www.smart-weblications.de
 
 --
-Julian Anastasov <ja@ssi.bg>
+Sitz der Gesellschaft: Naila
+Gesch=C3=A4ftsf=C3=BChrer: Florian Wiessner
+HRB-Nr.: HRB 3840 Amtsgericht Hof
+*aus dem dt. Festnetz, ggf. abweichende Preise aus dem Mobilfunknetz
