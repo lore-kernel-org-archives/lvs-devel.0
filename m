@@ -1,79 +1,43 @@
-From: Marcelo Ricardo Leitner <mleitner@redhat.com>
-Subject: Re: [PATCH RFC] ipvs: reschedule new connections if previous was
- on FIN_WAIT or TIME_WAIT
-Date: Mon, 08 Dec 2014 12:29:10 -0200
-Message-ID: <5485B5B6.7070909@redhat.com>
-References: <f285101382023a28aaaf35dbf1433e09964e979d.1418048197.git.mleitner@redhat.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: 3.12.33 - BUG xfrm_selector_match+0x25/0x2f6
+Date: Mon, 8 Dec 2014 22:40:43 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1412082234350.2401@ja.home.ssi.bg>
+References: <547F2462.6040405@smart-weblications.de> <20141204075627.GE6390@secunet.com> <alpine.LFD.2.11.1412042338370.4841@ja.home.ssi.bg> <5481173A.9060308@smart-weblications.de> <alpine.LFD.2.11.1412051126090.2522@ja.home.ssi.bg> <5481B944.2000002@smart-weblications.de>
+ <alpine.LFD.2.11.1412072019410.1885@ja.home.ssi.bg> <54858948.2060007@smart-weblications.de>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <f285101382023a28aaaf35dbf1433e09964e979d.1418048197.git.mleitner@redhat.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <54858948.2060007@smart-weblications.de>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: lvs-devel@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Smart Weblications GmbH - Florian Wiessner <f.wiessner@smart-weblications.de>
+Cc: Steffen Klassert <steffen.klassert@secunet.com>, netdev@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, stable@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
 
-(I'll repost if the idea is accepted, this one is just for discussion)
 
-On 08-12-2014 12:27, Marcelo Ricardo Leitner wrote:
-> Signed-off-by: Marcelo Ricardo Leitner <mleitner@redhat.com>
-> ---
->
-> Notes:
->      Hi,
->
->      We have a report that not doing so may cause poor load balacing if
->      applications reuse src port. With a patch like this, it would make
->      new SYNs on a given connection to drop the old one and start a new
->      one.
->
->      One could say that this reuse can be done on purpose and carefully
->      as a way to cause poor load balancing to cause a DoS.
->
->      Thing is, I'm unsure if we really should do this, as it may end up
->      doing more harm than good.
->
->      WDYT? And if we do additional checks, like at least validating seq
->      number, would it be better?
->
->      Thanks,
->      Marcelo
->
->   net/netfilter/ipvs/ip_vs_core.c | 15 ++++++++++++---
->   1 file changed, 12 insertions(+), 3 deletions(-)
->
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 990decba1fe418e36e59a1f081fcf0e47188da29..e81a9ac3c7e4e25fb14953b7faa4ace054f51274 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1036,6 +1036,14 @@ static inline bool is_new_conn(const struct sk_buff *skb,
->   	}
->   }
->
-> +static inline bool is_new_conn_expected(const struct ip_vs_conn *cp)
-> +{
-> +	if (cp->protocol != IPPROTO_TCP)
-> +		return false;
-> +	return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
-> +		(cp->state == IP_VS_TCP_S_FIN_WAIT);
-> +}
-> +
->   /* Handle response packets: rewrite addresses and send away...
->    */
->   static unsigned int
-> @@ -1642,9 +1650,10 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
->   	 */
->   	cp = pp->conn_in_get(af, skb, &iph, 0);
->
-> -	if (unlikely(sysctl_expire_nodest_conn(ipvs)) && cp && cp->dest &&
-> -	    unlikely(!atomic_read(&cp->dest->weight)) && !iph.fragoffs &&
-> -	    is_new_conn(skb, &iph)) {
-> +	if (cp && cp->dest && !iph.fragoffs && is_new_conn(skb, &iph) &&
-> +	    ((unlikely(sysctl_expire_nodest_conn(ipvs)) &&
-> +	      unlikely(!atomic_read(&cp->dest->weight))) ||
-> +	     unlikely(is_new_conn_expected(cp)))) {
->   		ip_vs_conn_expire_now(cp);
->   		__ip_vs_conn_put(cp);
->   		cp = NULL;
->
+	Hello,
 
+On Mon, 8 Dec 2014, Smart Weblications GmbH - Florian Wiessner wrote:
+
+> Am 07.12.2014 19:27, schrieb Julian Anastasov:>
+> >
+> > 	I'm attaching a patch that avoids rerouting in
+> > IPVS for LOCAL_IN. Please test it in your setup. My tests
+> > were with NAT on today's net tree. I checked that it
+> > compiles for 3.12.33. You can use the default snat_reroute=1.
+> >
+> 
+> I'm sorry to tell you that your patch does not fix the problem. The BUG happens
+> as soon as the client sends PASV, the ftp server does not return "Entering
+> Passive Mode":
+
+	Patch is to avoid the xfrm_selector_match crash,
+may be caused when using local client (mail?).
+For nf_ct_seqadj_set you have to use commit b25adce16064
+("ipvs: correct usage/allocation of seqadj ext in ipvs").
+I'll send it to you privately...
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
