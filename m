@@ -1,136 +1,107 @@
-From: Marcelo Ricardo Leitner <mleitner@redhat.com>
-Subject: Re: [PATCH RFC] ipvs: reschedule new connections if previous was
- on FIN_WAIT or TIME_WAIT
-Date: Wed, 10 Dec 2014 14:56:28 -0200
-Message-ID: <54887B3C.2000709@redhat.com>
-References: <f285101382023a28aaaf35dbf1433e09964e979d.1418048197.git.mleitner@redhat.com> <alpine.LFD.2.11.1412092248390.2374@ja.home.ssi.bg> <54883DCA.7050906@redhat.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH RFC] ipvs: reschedule new connections if previous was on
+ FIN_WAIT or TIME_WAIT
+Date: Wed, 10 Dec 2014 23:27:47 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1412102217500.4043@ja.home.ssi.bg>
+References: <f285101382023a28aaaf35dbf1433e09964e979d.1418048197.git.mleitner@redhat.com> <alpine.LFD.2.11.1412092248390.2374@ja.home.ssi.bg> <54883DCA.7050906@redhat.com> <54887B3C.2000709@redhat.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <54883DCA.7050906@redhat.com>
+In-Reply-To: <54887B3C.2000709@redhat.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Julian Anastasov <ja@ssi.bg>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Marcelo Ricardo Leitner <mleitner@redhat.com>
 Cc: lvs-devel@vger.kernel.org, hannes@redhat.com, jbrouer@redhat.com
 
-On 10-12-2014 10:34, Marcelo Ricardo Leitner wrote:
-> On 09-12-2014 21:37, Julian Anastasov wrote:
->>
->>     Hello,
->>
->> On Mon, 8 Dec 2014, Marcelo Ricardo Leitner wrote:
->>
->>> Signed-off-by: Marcelo Ricardo Leitner <mleitner@redhat.com>
->>> ---
->>>
->>> Notes:
->>>      Hi,
->>>
->>>      We have a report that not doing so may cause poor load balacing if
->>>      applications reuse src port. With a patch like this, it would make
->>>      new SYNs on a given connection to drop the old one and start a new
->>>      one.
->>
->>     People complained about UDP, such as RADIUS, etc.
->> I guess, for TCP it is some local client that can benefit
->> from balancing, it can be also a local testing tool.
->
-> So it's a new type of issue, ok. I don't have info on what their application
-> is, just that it ends up reusing port numbers.
->
->>>      One could say that this reuse can be done on purpose and carefully
->>>      as a way to cause poor load balancing to cause a DoS.
->>>
->>>      Thing is, I'm unsure if we really should do this, as it may end up
->>>      doing more harm than good.
->>>
->>>      WDYT? And if we do additional checks, like at least validating seq
->>>      number, would it be better?
->>
->>     I think, checking of SEQ will not help, tw_recycle
->> works by checking the timestamp option, SEQ of SYN is
->> arbitrary.
->
-> I thought for time wait assassination it would have to use a bigger seq
-> together with the timestamps. But anyway, Windows (since Vista, even 8)
-> doesn't use timestamps by default, unfortunately. Windows is not really
-> involved, it's just to have that in mind, as by relying on timestamps we would
-> be limiting the solution.
->
->>     Also, not all connections can be expired, for
->> example controlling conns (FTP CTL), i.e. our attempt
->> to expire conn will not succeed if FTP DATA is still in
->> progress (cp->n_control != 0 check) or in some FW/TW state.
->
-> Interesting. I hadn't thought about this case.
->
->>>      Thanks,
->>>      Marcelo
->>>
->>>   net/netfilter/ipvs/ip_vs_core.c | 15 ++++++++++++---
->>>   1 file changed, 12 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
->>> index
->>> 990decba1fe418e36e59a1f081fcf0e47188da29..e81a9ac3c7e4e25fb14953b7faa4ace054f51274
->>> 100644
->>> --- a/net/netfilter/ipvs/ip_vs_core.c
->>> +++ b/net/netfilter/ipvs/ip_vs_core.c
->>> @@ -1036,6 +1036,14 @@ static inline bool is_new_conn(const struct sk_buff
->>> *skb,
->>>       }
->>>   }
->>>
->>> +static inline bool is_new_conn_expected(const struct ip_vs_conn *cp)
->>> +{
->>> +    if (cp->protocol != IPPROTO_TCP)
->>> +        return false;
->>> +    return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
->>> +        (cp->state == IP_VS_TCP_S_FIN_WAIT);
->>
->>     For conns with cp->flags & IP_VS_CONN_F_NOOUTPUT the
->> FIN_WAIT state is problematic, we see only packets from
->> client (eg. DR method) and can not tell if server has sent its
->> FIN packet. I.e. diverting large transfer from one real to
->> another will lead to sending of FIN+ACKs from client to
->> new place.
->>
->>     So, I'm not sure if we should restrict the FW state, eg:
->>
->>     return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
->>            (cp->state == IP_VS_TCP_S_FIN_WAIT &&
->>         (cp->flags & IP_VS_CONN_F_NOOUTPUT) &&
->>         time_after_eq(jiffies + cp->timeout,
->>                   cp->timer.expires + 1 * HZ));
->>
->>     I.e. for INPUT+OUTPUT IP_VS_TCP_S_FIN_WAIT is
->> not expired because only one side sent FIN. For
->
-> And when the other side send it too, it will be in TIME_WAIT then. Ok.
->
->> INPUT-ONLY we can allow expiration in IP_VS_TCP_S_FIN_WAIT,
->> for example, when FIN+ACK was not seen recently, say in
->> last second?
->
-> That's interesting.
->
->>     If such checks look dangerous we can try to expire
->> only in IP_VS_TCP_S_TIME_WAIT.
->
-> Or only enable it within some sysctl, like we have expire_nodest_conn? We
-> could have a "(tcp_)rebalance_on_port_reuse" or something like that.
 
-Actually, I'm more for this tunable than a timeout, as it would allow one to 
-easily rebalance the cluster when one add new nodes. More like:
+	Hello,
 
-      return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
-	    (sysctl_tcp_reschedule_on_syn &&
-	     cp->state == IP_VS_TCP_S_FIN_WAIT &&
-	     (cp->flags & IP_VS_CONN_F_NOOUTPUT));
+On Wed, 10 Dec 2014, Marcelo Ricardo Leitner wrote:
 
-Then we play safe, leave that sysctl_tcp_reschedule_on_syn off by default, but 
-one may use it when applicable. WDYT?
+> > >     return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
+> > >            (cp->state == IP_VS_TCP_S_FIN_WAIT &&
+> > >         (cp->flags & IP_VS_CONN_F_NOOUTPUT) &&
+> > >         time_after_eq(jiffies + cp->timeout,
+> > >                   cp->timer.expires + 1 * HZ));
+> > >
+> > >     I.e. for INPUT+OUTPUT IP_VS_TCP_S_FIN_WAIT is
+> > > not expired because only one side sent FIN. For
+> >
+> > And when the other side send it too, it will be in TIME_WAIT then. Ok.
 
-   Marcelo
+	Yes, for IPVS-NAT TIME_WAIT means both sides closed.
 
+> > >     If such checks look dangerous we can try to expire
+> > > only in IP_VS_TCP_S_TIME_WAIT.
+> >
+> > Or only enable it within some sysctl, like we have expire_nodest_conn? We
+> > could have a "(tcp_)rebalance_on_port_reuse" or something like that.
+> 
+> Actually, I'm more for this tunable than a timeout, as it would allow one to
+> easily rebalance the cluster when one add new nodes. More like:
+> 
+>      return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
+> 	    (sysctl_tcp_reschedule_on_syn &&
+> 	     cp->state == IP_VS_TCP_S_FIN_WAIT &&
+> 	     (cp->flags & IP_VS_CONN_F_NOOUTPUT));
+> 
+> Then we play safe, leave that sysctl_tcp_reschedule_on_syn off by default, but
+> one may use it when applicable. WDYT?
+
+	Agreed, a sysctl var is ok. Only that my preference
+is to have sysctl var that is checked even before
+is_new_conn() call to save some CPU cycles for a rare packet
+such as SYN :)
+
+	In theory, skb_header_pointer() is fast and we will
+get pointer to header in the common case (without copy) but
+checks here and there cost some cycles...
+
+	One option would be to implement "conn_reuse_mode"
+as a bitmask (for now 2 bits), values 0, 1 or 3:
+
+0: do not call is_new_conn(), even for sysctl_expire_nodest_conn()
+purposes. Fastest but without any expiation (reuse always).
+
+1: default: TIME_WAIT-only check for TCP,
+allow the sysctl_expire_nodest_conn check for TCP/SCTP.
+In fact, check for this state is the global conn_reuse_mode != 0.
+
+3 (&2 if treated as bitmask): like 1 but also
+allows DR/TUN in FIN_WAIT to expire (int conn_reuse_mode can
+come as argument):
+
+	return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
+	       ((conn_reuse_mode & 2) &&
+		cp->state == IP_VS_TCP_S_FIN_WAIT &&
+		(cp->flags & IP_VS_CONN_F_NOOUTPUT));
+
+	In fact, 2 and 3 will do the same.
+
+	Then we will have:
+
+	int conn_reuse_mode;
+
+	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
+	if (conn_reuse_mode && !iph.fragoffs &&
+	    is_new_conn(skb, &iph) && cp &&
+	    ...
+	    unlikely(is_new_conn_expected(cp, conn_reuse_mode)))) {
+
+	conn_reuse_mode=0 will work as global disable for reuse.
+But 1 will be the default value.
+
+	You can grep in following way to see the places that
+define sysctl vars, "backup_only" is a good example to use
+as reference:
+# grep -r backup_only include/net/ip_vs.h net/netfilter/ipvs/
+
+	Order of vars in struct, vs_vars and
+ip_vs_control_net_init_sysctl() should be same, we
+have per-netns vars. You can add the new var after backup_only.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
