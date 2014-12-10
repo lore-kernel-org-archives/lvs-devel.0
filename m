@@ -1,39 +1,74 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next] Second round of IPVS Updates for v3.19
-Date: Wed, 10 Dec 2014 17:46:40 +0900
-Message-ID: <1418201201-19257-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next] ipvs: uninitialized data with IP_VS_IPV6
+Date: Wed, 10 Dec 2014 17:46:41 +0900
+Message-ID: <1418201201-19257-2-git-send-email-horms@verge.net.au>
+References: <1418201201-19257-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1418201201-19257-1-git-send-email-horms@verge.net.au>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org
-Cc: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Dan Carpenter <dan.carpenter@oracle.com>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Dan Carpenter <dan.carpenter@oracle.com>
 
-please consider these IPVS updates for v3.19 or alternatively v3.20.
+The app_tcp_pkt_out() function expects "*diff" to be set and ends up
+using uninitialized data if CONFIG_IP_VS_IPV6 is turned on.
 
-The single patch in this series fixes a long standing bug that
-has not caused any trouble and thus is not being prioritised as a fix.
+The same issue is there in app_tcp_pkt_in().  Thanks to Julian Anastasov
+for noticing that.
 
-
-The following changes since commit d6b00fec5dbbe976904b4d77e7d4f9493df5c2ec:
-
-  macvlan: play well with ipvlan device (2014-12-09 16:10:06 -0500)
-
-are available in the git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs2-for-v3.19
-
-for you to fetch changes up to 3b05ac3824ed9648c0d9c02d51d9b54e4e7e874f:
-
-  ipvs: uninitialized data with IP_VS_IPV6 (2014-12-10 17:36:47 +0900)
-
-----------------------------------------------------------------
-Dan Carpenter (1):
-      ipvs: uninitialized data with IP_VS_IPV6
-
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
  net/netfilter/ipvs/ip_vs_ftp.c | 10 +++++-----
  1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 1d5341f..5d3daae 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -183,6 +183,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	struct nf_conn *ct;
+ 	struct net *net;
+ 
++	*diff = 0;
++
+ #ifdef CONFIG_IP_VS_IPV6
+ 	/* This application helper doesn't work with IPv6 yet,
+ 	 * so turn this into a no-op for IPv6 packets
+@@ -191,8 +193,6 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		return 1;
+ #endif
+ 
+-	*diff = 0;
+-
+ 	/* Only useful for established sessions */
+ 	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
+ 		return 1;
+@@ -322,6 +322,9 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	struct ip_vs_conn *n_cp;
+ 	struct net *net;
+ 
++	/* no diff required for incoming packets */
++	*diff = 0;
++
+ #ifdef CONFIG_IP_VS_IPV6
+ 	/* This application helper doesn't work with IPv6 yet,
+ 	 * so turn this into a no-op for IPv6 packets
+@@ -330,9 +333,6 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		return 1;
+ #endif
+ 
+-	/* no diff required for incoming packets */
+-	*diff = 0;
+-
+ 	/* Only useful for established sessions */
+ 	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
+ 		return 1;
+-- 
+2.1.3
