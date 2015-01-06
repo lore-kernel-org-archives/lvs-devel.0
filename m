@@ -1,37 +1,65 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: 3.12.33 - BUG xfrm_selector_match+0x25/0x2f6
-Date: Tue, 6 Jan 2015 22:46:57 +0200 (EET)
-Message-ID: <alpine.LFD.2.11.1501062240130.2241@ja.home.ssi.bg>
-References: <547F2462.6040405@smart-weblications.de> <20141204075627.GE6390@secunet.com> <alpine.LFD.2.11.1412042338370.4841@ja.home.ssi.bg> <5481173A.9060308@smart-weblications.de> <alpine.LFD.2.11.1412051126090.2522@ja.home.ssi.bg> <5481B944.2000002@smart-weblications.de>
- <alpine.LFD.2.11.1412072019410.1885@ja.home.ssi.bg> <54858948.2060007@smart-weblications.de> <alpine.LFD.2.11.1412082234350.2401@ja.home.ssi.bg> <5486CD9D.4060107@smart-weblications.de> <alpine.LFD.2.11.1412102331230.4043@ja.home.ssi.bg>
- <5489A465.6090305@smart-weblications.de> <alpine.LFD.2.11.1412132211260.3229@ja.home.ssi.bg> <54ABDB98.9060504@suse.cz>
+Subject: Re: [PATCH RFC] ipvs: reschedule new connections if previous was on
+ FIN_WAIT or TIME_WAIT
+Date: Tue, 6 Jan 2015 23:06:07 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1501062255390.6550@ja.home.ssi.bg>
+References: <f285101382023a28aaaf35dbf1433e09964e979d.1418048197.git.mleitner@redhat.com> <alpine.LFD.2.11.1412092248390.2374@ja.home.ssi.bg> <54883DCA.7050906@redhat.com> <54887B3C.2000709@redhat.com> <alpine.LFD.2.11.1412102217500.4043@ja.home.ssi.bg>
+ <548991AF.1050502@redhat.com> <alpine.LFD.2.11.1412112207350.2098@ja.home.ssi.bg> <548AD85D.1070109@redhat.com> <54A301AD.8060002@redhat.com> <alpine.LFD.2.11.1501052326290.11288@ja.home.ssi.bg> <54ABD124.9020504@redhat.com>
 Mime-Version: 1.0
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <54ABDB98.9060504@suse.cz>
-Sender: stable-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <54ABD124.9020504@redhat.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jiri Slaby <jslaby@suse.cz>
-Cc: Smart Weblications GmbH - Florian Wiessner <f.wiessner@smart-weblications.de>, Steffen Klassert <steffen.klassert@secunet.com>, netdev@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, stable@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+To: Marcelo Ricardo Leitner <mleitner@redhat.com>
+Cc: lvs-devel@vger.kernel.org, hannes@redhat.com, jbrouer@redhat.com
 
 
 	Hello,
 
-On Tue, 6 Jan 2015, Jiri Slaby wrote:
+On Tue, 6 Jan 2015, Marcelo Ricardo Leitner wrote:
 
-> So what should be done to fix the issue in stable 3.12? Are those
-> patches needed in the upstream kernel too? In that case I suppose it
-> will propagate to me through upstream. Otherwise, could you send "3.12
-> only" patches to stable@ so that I can apply them?
+> > 	I guess, we here try to avoid old sync message to
+> > expire new connection. The problem is that UDP conns and
+> > templates are always IP_VS_CONN_F_INACTIVE, may be a TCP+SCTP
+> > protocol check is needed.
+> 
+> Yes, that's the idea, avoiding the old sync messages. I don't think we need a
+> check for protocol here because the outer if() (the one that checks daddr and
+> dport) wouldn't happen for UDP, right? Unless it was really recycled.. But
+> yeah I missed the template case. Perhaps we can just move this block together
+> with the previous if(!).
 
-	I asked Pablo for the old fix for IPVS-FTP:
+	OK, just make sure patch has short lines (80):
 
-http://www.spinics.net/lists/lvs-devel/msg03879.html
+# scripts/checkpatch.pl --strict /tmp/file.patch
 
-	The new fix for the xfrm crash is not applied yet:
+> 
+>         if (!(flags & IP_VS_CONN_F_TEMPLATE)) {
+>                 cp = ip_vs_conn_in_get(param);
+>                 if (cp && ((cp->dport != dport) ||
+>                            !ip_vs_addr_equal(cp->daf, &cp->daddr, daddr))) {
+>                         if (!(flags & IP_VS_CONN_F_INACTIVE)) {
+>                                 ip_vs_conn_expire_now(cp);
+>                                 __ip_vs_conn_put(cp);
+>                                 cp = NULL;
+>                         } else {
 
-http://www.spinics.net/lists/lvs-devel/msg03877.html
+	I assume we will not stop here sync for some connection that
+was normally expired in master but was delayed in backup. TCP sync
+starts for EST state, so I think it will hit the above case.
+
+>                                 /* This is the expiration message for the
+>                                  * connection that was already replaced, so we
+>                                  * just ignore it.
+>                                  */
+>                                 goto out;
+>                         }
+>                 }
+>         } else {
+>                 cp = ip_vs_ct_in_get(param);
+>         }
 
 Regards
 
