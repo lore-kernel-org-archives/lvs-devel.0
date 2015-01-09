@@ -1,56 +1,51 @@
-From: Marcelo Ricardo Leitner <mleitner@redhat.com>
-Subject: Re: [PATCH RFC] ipvs: reschedule new connections if previous was
- on FIN_WAIT or TIME_WAIT
-Date: Thu, 08 Jan 2015 10:35:37 -0200
-Message-ID: <54AE7999.4020809@redhat.com>
-References: <f285101382023a28aaaf35dbf1433e09964e979d.1418048197.git.mleitner@redhat.com> <alpine.LFD.2.11.1412092248390.2374@ja.home.ssi.bg> <54883DCA.7050906@redhat.com> <54887B3C.2000709@redhat.com> <alpine.LFD.2.11.1412102217500.4043@ja.home.ssi.bg> <548991AF.1050502@redhat.com> <alpine.LFD.2.11.1412112207350.2098@ja.home.ssi.bg> <548AD85D.1070109@redhat.com> <54A301AD.8060002@redhat.com> <alpine.LFD.2.11.1501052326290.11288@ja.home.ssi.bg> <54ABD124.9020504@redhat.com> <alpine.LFD.2.11.1501062255390.6550@ja.home.ssi.bg> <54AD5638.8060201@redhat.com> <alpine.LFD.2.11.1501072126150.2105@ja.home.ssi.bg>
+From: Hibari Michiro <hibari.michiro@lab.ntt.co.jp>
+Subject: [PATCH] ipvsadm: Enable to work display host name of IPv6
+Date: Fri, 09 Jan 2015 17:41:29 +0900
+Message-ID: <54AF9439.8040409@lab.ntt.co.jp>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.11.1501072126150.2105@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, hannes@redhat.com, jbrouer@redhat.com
+Content-Type: text/plain; charset="us-ascii"
+To: lvs-devel@vger.kernel.org
+Cc: hibari.michiro@lab.ntt.co.jp
 
-Hi,
+So far ipvsadm can not display host name of IPv6.
+This patch add process in the case of IPv6 for
+addr_to_host function.
 
-On 07-01-2015 17:31, Julian Anastasov wrote:
->
-> 	Hello,
->
-> On Wed, 7 Jan 2015, Marcelo Ricardo Leitner wrote:
->
->> On 06-01-2015 19:06, Julian Anastasov wrote:
->>>
->>> On Tue, 6 Jan 2015, Marcelo Ricardo Leitner wrote:
->>>
->>>>
->>>>           if (!(flags & IP_VS_CONN_F_TEMPLATE)) {
->>>>                   cp = ip_vs_conn_in_get(param);
->>>>                   if (cp && ((cp->dport != dport) ||
->>>>                              !ip_vs_addr_equal(cp->daf, &cp->daddr,
->>>>                           daddr))) {
->>>>                           if (!(flags & IP_VS_CONN_F_INACTIVE)) {
->>>>                                   ip_vs_conn_expire_now(cp);
->>>>                                   __ip_vs_conn_put(cp);
->>>>                                   cp = NULL;
->>>>                           } else {
->>>
->>> 	I assume we will not stop here sync for some connection that
->>> was normally expired in master but was delayed in backup. TCP sync
->>> starts for EST state, so I think it will hit the above case.
->>
->> You mean that we could end up ignoring a sync msg that we shouldn't ignore?
->
-> 	Yes, that was my worry but I don't see how the code
-> can fail, so it looks fine to me.
+Signed-off-by: Michiro Hibari <hibari.michiro@lab.ntt.co.jp>
+---
+ ipvsadm.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-Ok, cool. I'll do more tests and probably post this by next week.
+diff --git a/ipvsadm.c b/ipvsadm.c
+index 72ddc8a..162d4a2 100644
+--- a/ipvsadm.c
++++ b/ipvsadm.c
+@@ -1770,8 +1770,14 @@ static char * addr_to_host(int af, const void *addr)
+ {
+ 	struct hostent *host;
+-	if ((host = gethostbyaddr((char *) addr,
+-				  sizeof(struct in_addr), af)) != NULL)
++	if (af == AF_INET)
++		host = gethostbyaddr((char *) addr,
++				     sizeof(struct in_addr), af);
++	else
++		host = gethostbyaddr((char *) addr,
++				     sizeof(struct in6_addr), af);
++
++	if (host != NULL)
+ 		return (char *) host->h_name;
+ 	else
+ 		return (char *) NULL;
+-- 
+1.8.3.1
 
-Thanks Julian.
+-- 
+Michiro Hibari <hibari.michiro@lab.ntt.co.jp>
 
-Regards,
-Marcelo
+
+
 
