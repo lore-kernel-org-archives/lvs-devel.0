@@ -1,127 +1,61 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 1/2] IPVS: add wlib & wlip schedulers
-Date: Tue, 20 Jan 2015 01:17:35 +0200 (EET)
-Message-ID: <alpine.LFD.2.11.1501192342190.2687@ja.home.ssi.bg>
-References: <Pine.LNX.4.44.0501260832210.17893-100000@nacho.alt.net> <Pine.LNX.4.61.0502010007060.1148@penguin.linux-vs.org> <Pine.LNX.4.64.1501172217420.8217@nacho.alt.net>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: [PATCH net-next] ipvs: orphan skb on LOCAL_IN path
+Date: Tue, 20 Jan 2015 14:55:16 -0800
+Message-ID: <1421794516-309785-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.64.1501172217420.8217@nacho.alt.net>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=N/ZthTKd0u3d+fs7owAUKrhyAj8EeRSyvrSfU50ZSmQ=;
+ b=QSiv27Ca53XEBFmQB4aYwg0R12aLhfUAgVsz1AIRpYzm+Hroimez+ynYM1LtZUguantQ
+ nBBtH8Wi2jZPDeNQRlgcD7qL1jddnXGPRi+d7TyamEfzGpZuZtUZh0vygEV27FfSRaUt
+ pP1bRQrbMODXivf0QPjm6gRXXAdAL4xeaVE= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Chris Caputo <ccaputo@alt.net>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg
+Cc: lvs-devel@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
+skb->sk can be set in the early_demux path.  This can be problematic, as it
+may be a time-wait socket, which will blow up in the ip6_output path when
+we try to pull out the non-existent pinet6 pointer (the type-punning causes
+that pointer to be garbage).
 
-	Hello,
+This patch orphans the skb if it's not a local socket, so we no longer have
+to worry about running into the time-wait problem from early demux.
 
-On Sat, 17 Jan 2015, Chris Caputo wrote:
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+---
+ net/netfilter/ipvs/ip_vs_core.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
-> From: Chris Caputo <ccaputo@alt.net> 
-> 
-> IPVS wlib (Weighted Least Incoming Byterate) and wlip (Weighted Least Incoming 
-> Packetrate) schedulers, updated for 3.19-rc4.
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 990decb..57fc626 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1692,10 +1692,19 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 
+ 	ip_vs_in_stats(cp, skb);
+ 	ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd);
+-	if (cp->packet_xmit)
++	if (cp->packet_xmit) {
++		/* From now on, we only care about the skb->sk if it's
++		 * LOCAL_OUT (as we may need to update the MTU on a socket
++		 * we own for tunneling overhead.  We must orphan it, in
++		 * case a socket was in time-wait or something and this
++		 * value was assigned in the early_demux path.
++		 */
++		if (hooknum == NF_INET_LOCAL_IN)
++			skb_orphan(skb);
++
+ 		ret = cp->packet_xmit(skb, cp, pp, &iph);
+ 		/* do not touch skb anymore */
+-	else {
++	} else {
+ 		IP_VS_DBG_RL("warning: packet_xmit is null");
+ 		ret = NF_ACCEPT;
+ 	}
+-- 
+Alex Gartrell <agartrell@fb.com>
 
-	The IPVS estimator uses 2-second timer to update
-the stats, isn't that a problem for such schedulers?
-Also, you schedule by incoming traffic rate which is
-ok when clients mostly upload. But in the common case
-clients mostly download and IPVS processes download
-traffic only for NAT method.
-
-	May be not so useful idea: use sum of both directions
-or control it with svc->flags & IP_VS_SVC_F_SCHED_WLIB_xxx
-flags, see how "sh" scheduler supports flags. I.e.
-inbps + outbps.
-
-	Another problem: pps and bps are shifted values,
-see how ip_vs_read_estimator() reads them. ip_vs_est.c
-contains comments that this code handles couple of
-gigabits. May be inbps and outbps in struct ip_vs_estimator
-should be changed to u64 to support more gigabits, with
-separate patch.
-
-> Signed-off-by: Chris Caputo <ccaputo@alt.net>
-> ---
-> +++ linux-3.19-rc4/net/netfilter/ipvs/ip_vs_wlib.c	2015-01-17 22:47:35.421861075 +0000
-
-> +/* Weighted Least Incoming Byterate scheduling */
-> +static struct ip_vs_dest *
-> +ip_vs_wlib_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
-> +		    struct ip_vs_iphdr *iph)
-> +{
-> +	struct list_head *p, *q;
-> +	struct ip_vs_dest *dest, *least = NULL;
-> +	u32 dr, lr = -1;
-> +	int dwgt, lwgt = 0;
-
-	To support u64 result from 32-bit multiply we can
-change the vars as follows:
-
-u32 dwgt, lwgt = 0;
-
-> +	spin_lock_bh(&svc->sched_lock);
-> +	p = (struct list_head *)svc->sched_data;
-> +	p = list_next_rcu(p);
-
-	Note that dests are deleted from svc->destinations
-out of any lock (from __ip_vs_unlink_dest), above lock
-svc->sched_lock protects only svc->sched_data.
-
-	So, RCU dereference is needed here, list_next_rcu is
-not enough. Better to stick to the list walking from the
-rr algorithm in ip_vs_rr.c.
-
-> +	q = p;
-> +	do {
-> +		/* skip list head */
-> +		if (q == &svc->destinations) {
-> +			q = list_next_rcu(q);
-> +			continue;
-> +		}
-> +
-> +		dest = list_entry_rcu(q, struct ip_vs_dest, n_list);
-> +		dwgt = atomic_read(&dest->weight);
-
-	This will be dwgt = (u32) atomic_read(&dest->weight);
-
-> +		if (!(dest->flags & IP_VS_DEST_F_OVERLOAD) && dwgt > 0) {
-> +			spin_lock(&dest->stats.lock);
-> +			dr = dest->stats.ustats.inbps;
-> +			spin_unlock(&dest->stats.lock);
-> +
-> +			if (!least ||
-> +			    (u64)dr * (u64)lwgt < (u64)lr * (u64)dwgt ||
-
-	This will be (u64)dr * lwgt < (u64)lr * dwgt ||
-
-	See commit c16526a7b99c1c for 32x32 multiply.
-
-> +			    (dr == lr && dwgt > lwgt)) {
-
-	Above check is redundant.
-
-> +				least = dest;
-> +				lr = dr;
-> +				lwgt = dwgt;
-> +				svc->sched_data = q;
-
-	Better to update sched_data at final, see below...
-
-> +			}
-> +		}
-> +		q = list_next_rcu(q);
-> +	} while (q != p);
-
-	if (least)
-		svc->sched_data = &least->n_list;
-
-> +	spin_unlock_bh(&svc->sched_lock);
-
-	Same comments for wlip.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
