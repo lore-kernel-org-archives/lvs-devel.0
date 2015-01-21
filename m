@@ -1,58 +1,70 @@
-From: Chris Caputo <ccaputo@alt.net>
-Subject: [PATCH 3/3] IPVS: add wlib & wlip schedulers
-Date: Tue, 20 Jan 2015 23:21:30 +0000 (UTC)
-Message-ID: <Pine.LNX.4.64.1501202320340.8217@nacho.alt.net>
-References: <Pine.LNX.4.44.0501260832210.17893-100000@nacho.alt.net>
-	<Pine.LNX.4.61.0502010007060.1148@penguin.linux-vs.org>
-	<Pine.LNX.4.64.1501172217420.8217@nacho.alt.net>
-	<alpine.LFD.2.11.1501192342190.2687@ja.home.ssi.bg>
-Reply-To: Chris Caputo <ccaputo-dated-1432164091.579f17@alt.net>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH net-next] ipvs: orphan skb on LOCAL_IN path
+Date: Thu, 22 Jan 2015 00:43:27 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1501212355350.2701@ja.home.ssi.bg>
+References: <1421794516-309785-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=alt.net;
-	s=default; x=1422400891; h=Comment:DomainKey-Signature:Received:
-	Received:Received:Date:To:cc:Subject:In-Reply-To:Message-ID:
-	References:MIME-Version:Content-Type:From:Reply-To; bh=iIcvc/iyY
-	2Ggqxfc0Jm580PgSHZQK1Dk+FmpXPa8+QU=; b=FM9bAHNZWkE8XD2RZlj5Mf7Zn
-	y/BZ0/DO/SfltcxGRu8zJzfvm75/0dpESu+YcRLp5EWDka7E2Q1EY+9esivTNidi
-	hGgrpQ+iCedN7QNj3UdEdozsAlg7DDm+YO0RLC1K+LJeDq7m9JCUQJtfxZw+mQ1f
-	V2LE3F7InfVJZrG5bc=
-In-Reply-To: <alpine.LFD.2.11.1501192342190.2687@ja.home.ssi.bg>
+In-Reply-To: <1421794516-309785-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Alex Gartrell <agartrell@fb.com>
+Cc: wensong@linux-vs.org, horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
 
-From: Chris Caputo <ccaputo@alt.net> 
 
-IPVS wlib (Weighted Least Incoming Byterate) and wlip (Weighted Least Incoming 
-Packetrate) scheduler docs for ipvsadm-1.27.
+	Hello,
 
-Signed-off-by: Chris Caputo <ccaputo@alt.net>
----
-diff -upr ipvsadm-1.27-stock/SCHEDULERS ipvsadm-1.27/SCHEDULERS
---- ipvsadm-1.27-stock/SCHEDULERS	2013-09-06 08:37:27.000000000 +0000
-+++ ipvsadm-1.27/SCHEDULERS	2015-01-17 22:14:32.812597191 +0000
-@@ -1 +1 @@
--rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq
-+rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq|wlib|wlip
-diff -upr ipvsadm-1.27-stock/ipvsadm.8 ipvsadm-1.27/ipvsadm.8
---- ipvsadm-1.27-stock/ipvsadm.8	2013-09-06 08:37:27.000000000 +0000
-+++ ipvsadm-1.27/ipvsadm.8	2015-01-17 22:14:32.812597191 +0000
-@@ -261,6 +261,14 @@ fixed service rate (weight) of the ith s
- \fBnq\fR - Never Queue: assigns an incoming job to an idle server if
- there is, instead of waiting for a fast one; if all the servers are
- busy, it adopts the Shortest Expected Delay policy to assign the job.
-+.sp
-+\fBwlib\fR - Weighted Least Incoming Byterate: directs network
-+connections to the real server with the least incoming byterate
-+normalized by the server weight.
-+.sp
-+\fBwlip\fR - Weighted Least Incoming Packetrate: directs network
-+connections to the real server with the least incoming packetrate
-+normalized by the server weight.
- .TP
- .B -p, --persistent [\fItimeout\fP]
- Specify that a virtual service is persistent. If this option is
+On Tue, 20 Jan 2015, Alex Gartrell wrote:
+
+> skb->sk can be set in the early_demux path.  This can be problematic, as it
+> may be a time-wait socket, which will blow up in the ip6_output path when
+> we try to pull out the non-existent pinet6 pointer (the type-punning causes
+> that pointer to be garbage).
+> 
+> This patch orphans the skb if it's not a local socket, so we no longer have
+> to worry about running into the time-wait problem from early demux.
+
+	Good idea. But there is a case where for traffic to
+local real server we return NF_ACCEPT.
+
+	In this case we have to preserve the skb->sk. I guess
+skb_orphan should be used as follows. skb->dev is NULL
+for LOCAL_OUT and non-NULL for LOCAL_IN/FORWARD but
+for FORWARD we do not care for skb->sk. So, we can
+check just for skb->dev.
+
+- ip_vs_send_or_cont: Handles ip_vs_null_xmit,
+ip_vs_bypass_xmit*, ip_vs_dr_xmit*, ip_vs_icmp_xmit(non-NAT)
+
+	/* Not a local client? */
+	if (skb->dev)
+		skb_orphan(skb);
+
+	It should be added only before NF_HOOK.
+I.e. when 'local' is true (local RIP) we should not
+drop the socket.
+
+- ip_vs_nat_send_or_cont(NAT): same but no matter the 'local' var
+because we can change daddr/dport in packet and to
+return NF_ACCEPT. As daddr/dport changes we have to drop
+the socket. In the worst case, when RIP:RPORT
+matches VIP:VPORT daddr/dport do not change but we
+do not have indication, we blindly drop sk. In
+such case DR method is recommended instead, it will not
+drop the socket when 'local' is true.
+
+	if (skb->dev)
+		skb_orphan(skb);
+
+- ip_vs_tunnel_xmit_prepare (TUN): before nf_reset(),
+it is called for remote real server (i.e. no 'local' var there):
+
+	if (skb->dev)
+		skb_orphan(skb);
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
