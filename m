@@ -1,41 +1,65 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net] ipvs: rerouting to local clients is not needed
- anymore
-Date: Fri, 30 Jan 2015 10:22:57 +0900
-Message-ID: <20150130012257.GF11897@verge.net.au>
-References: <1418935283-5315-1-git-send-email-ja@ssi.bg>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: Re: [PATCH net-next,v2] ipvs: orphan skb on LOCAL_IN path
+Date: Thu, 29 Jan 2015 17:24:27 -0800
+Message-ID: <54CADD4B.9080408@fb.com>
+References: <1422566751-92285-1-git-send-email-agartrell@fb.com> <20150130010219.GD11897@verge.net.au>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1418935283-5315-1-git-send-email-ja@ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=message-id : date : from :
+ mime-version : to : cc : subject : references : in-reply-to : content-type
+ : content-transfer-encoding; s=facebook;
+ bh=AoP7bxFO3x3lMlHEDjplEDrad1EZbir7is/nwcxWEsM=;
+ b=UvsTVZD6ivNuosiv9mP4cpjwk89d/AjfTY557Ye+jAZN/DdzjiDwNT37yEGaqGPROTJP
+ bW4XwqSOp/HRFX91EjgGvb/zQmnRgHM/v6VeWTY5kbASm+KXj1WicBFj1E2llJLIVBmn
+ WO+g/EWjwbTa19/iqSPsdGzfkQERLZF8x0E= 
+In-Reply-To: <20150130010219.GD11897@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Smart Weblications GmbH - Florian Wiessner <f.wiessner@smart-weblications.de>
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: Simon Horman <horms@verge.net.au>
+Cc: wensong@linux-vs.org, ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com
 
-On Thu, Dec 18, 2014 at 10:41:23PM +0200, Julian Anastasov wrote:
-> commit f5a41847acc5 ("ipvs: move ip_route_me_harder for ICMP")
-> from 2.6.37 introduced ip_route_me_harder() call for responses to
-> local clients, so that we can provide valid rt_src after SNAT.
-> It was used by TCP to provide valid daddr for ip_send_reply().
-> After commit 0a5ebb8000c5 ("ipv4: Pass explicit daddr arg to
-> ip_send_reply()." from 3.0 this rerouting is not needed anymore
-> and should be avoided, especially in LOCAL_IN.
-> 
-> Fixes 3.12.33 crash in xfrm reported by Florian Wiessner:
-> "3.12.33 - BUG xfrm_selector_match+0x25/0x2f6"
-> 
-> Reported-by: Smart Weblications GmbH - Florian Wiessner <f.wiessner@smart-weblications.de>
-> Tested-by: Smart Weblications GmbH - Florian Wiessner <f.wiessner@smart-weblications.de>
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
-> 
-> 	Patch tested on net tree (Dec 7), 3.14.25, 3.12.33, 3.10.61.
-> 3.4.104 needs a modified fix that resolves rejects, it applies
-> with little fuzz on 3.2.64. Let me know if I should post
-> separately 3.2 and 3.4 patches.
+Hey Simon
 
-Sorry for missing this. I have queued it up and
-sent a pull-request to Pablo.
+On 01/29/2015 05:02 PM, Simon Horman wrote:
+> Hi Alex,
+>
+> when you say "blow" what exactly happens? Does the kernel panic?
+> Assuming this is a bug fix could you provide some information
+> on when the problem was introduced? The reason is to facilitate
+> backporting to stable.
+>
+
+The kernel panics upon a garbage value dereference.  ip6_skb_dst_mtu 
+features the following code:
+
+static inline int ip6_skb_dst_mtu(struct sk_buff *skb)
+{
+         struct ipv6_pinfo *np = skb->sk ? inet6_sk(skb->sk) : NULL;
+
+         return (np && np->pmtudisc >= IPV6_PMTUDISC_PROBE) ?
+                skb_dst(skb)->dev->mtu : dst_mtu(skb_dst(skb));
+}
+
+inet6_sk(skb->sk) expands to
+inet_sk(skb->sk)->pinet6 which expands to
+((struct inet_sock*)skb->sk)->pinet6
+
+Because skb->sk is not actually an inet_sock, dereferencing at such is 
+nonsense and gives you a bunch of fields as a pointer, which is totally 
+bogus.  The dereference into the structure to retrieve pmtudisc causes a 
+kernel panic after that.
+
+We found this with our 3.10 porting effort (from 3.2).  This failure was 
+introduced with early_demux in c7109986d "ipv6: Early TCP socket demux" 
+(2012-07-26) and has been present since.  The underlying problem has 
+existed forever, but it wasn't possible to trigger it (AFAICT) prior to 
+that.
+
+In terms of stable kernels, I believe 3.10 needs to be patched but 3.4 
+does not.
+
+Thanks,
+-- 
+Alex Gartrell <agartrell@fb.com>
