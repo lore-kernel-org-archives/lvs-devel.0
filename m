@@ -1,138 +1,59 @@
-From: Calvin Owens <calvinowens@fb.com>
-Subject: Re: Question: should local address be expired when updating PMTU?
-Date: Mon, 2 Feb 2015 18:10:07 -0800
-Message-ID: <20150203021007.GA1866582@mail.thefacebook.com>
-References: <54CF3348.40207@huawei.com>
- <54D01BEA.2070501@fb.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH RFC net-next] ipvs: use 64-bit rates in stats
+Date: Tue, 3 Feb 2015 11:12:00 +0900
+Message-ID: <20150203021200.GC18662@verge.net.au>
+References: <1422348415-29484-1-git-send-email-ja@ssi.bg>
+ <20150130010011.GC11897@verge.net.au>
+ <alpine.LFD.2.11.1501301019410.4504@ja.home.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=date : from : to : cc :
- subject : message-id : references : mime-version : content-type :
- in-reply-to; s=facebook; bh=u7ZVriZk+iXYVEgZ76lH3onlGclkYhvUm/gpNulAI4k=;
- b=Ycf7SlIoIDV/f/QOehODfYMjPmnGoSO4KuZ6nptOhpYG70Y7+pc1Hp6+8oAPgf4xpajk
- IKAFoU6tb9v4DLxyR5ArG4yuSsGdYqWTiafpPKe/qR7kVfb+ert9DQ6qlxeLCqLavlO0
- RTLz/oyHl5S3RWli3eSpbqAMSsXLc5oVmk8= 
 Content-Disposition: inline
-In-Reply-To: <54D01BEA.2070501@fb.com>
+In-Reply-To: <alpine.LFD.2.11.1501301019410.4504@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alex Gartrell <agartrell@fb.com>
-Cc: shengyong <shengyong1@huawei.com>, davem@davemloft.net, netdev@vger.kernel.org, yangyingling@huawei.com, steffen.klassert@secunet.com, hannes@redhat.com, lvs-devel@vger.kernel.org, kernel-team@fb.com
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, Chris Caputo <ccaputo@alt.net>
 
-On Monday 02/02 at 16:52 -0800, Alex Gartrell wrote:
-> Hello Shengyong,
+On Fri, Jan 30, 2015 at 10:33:26AM +0200, Julian Anastasov wrote:
 > 
-> > diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-> > index b2614b2..b80317a 100644
-> > --- a/net/ipv6/route.c
-> > +++ b/net/ipv6/route.c
-> > @@ -1136,6 +1136,9 @@ static void ip6_rt_update_pmtu(struct
-> dst_entry *dst, struct sock *sk,
-> >   {
-> >          struct rt6_info *rt6 = (struct rt6_info*)dst;
-> >
-> > +       if (rt6->rt6i_flags & RTF_LOCAL)
-> > +               return;
-> > +
-> >          dst_confirm(dst);
-> >          if (mtu < dst_mtu(dst) && rt6->rt6i_dst.plen == 128) {
-> >                  struct net *net = dev_net(dst->dev);
-> >
-> > So is this modification correct? Or how can we avoid such expiring? 
+> 	Hello,
 > 
-> FWIW, we encountered this problem with IPVS tunneling.  Here's a
-> patch done by Calvin (cc'ed) that fixes my attempted fix for this.
-> We're not particularly proud of this...
+> On Fri, 30 Jan 2015, Simon Horman wrote:
 > 
-> At a high level, I don't think the RTF_LOCAL check was sufficient,
-> but I didn't investigate deeply enough and hopefully Calvin can say
-> why.
-
-I honestly didn't spend much time at all finding the underlying cause
-because it appeared to be fixed upstream: on 3.19-rc5 you get all 3
-expected routes after the last step of my repro below. I just really
-needed to get this working at the time, and the gross disgusting
-horrible ugly awful [more negative adjectives] patch included below made
-it work.
-
-FWIW, the explanation I wrote down in my notes was:
-
-"The absence of RTF_NONEXTHOP is causing COWs to happen, which are
-always marked as RTF_CACHE. Somehow that's screwing things up in
-rt6_do_redirect()"
-
-That could be BS though, I don't at all remember how I came to that
-conclusion. 
-
-(/me resolves to write better notes in the future...)
-
-Here's how to get the weird behavior on 3.10 (+stable):
-
-$ sudo ip addr add local 4444::1 dev lo
-### Now I have 2 routes in /proc/net/ipv6_route, a local and a non-local
-### Both have the RTF_NONEXTHOP flag set (0x00200000)
-$ sudo ip route add local 4444::1 dev lo
-### Now I have 3 routes in /proc/net/ipv6_route to 4444::1
-### Notice the new route does NOT have the RTF_NONEXTHOP flag set
-$ sudo ip addr del local 4444::1 dev lo
-### Now I just have the one route I created before
-$ sudo ip addr add local 4444::1 dev lo
-### And now I have 3 routes again
-$ sudo ping6 4444::1
-[blah blah blah successful ping]
-$ sudo ip addr del local 4444::1 dev lo
-$ sudo ip addr add local 4444::1 dev lo
-### Still have 3 routes
-$ sudo ip addr del local 4444::1 dev lo
-### Now I just have my one route yet again
-### Now, *without the address on lo*, talk to it (it works), then re-add it
-$ ping6 4444::1
-[blah blah blah successful ping]
-$ sudo ip addr add local 4444::1 dev lo
-### Now I only have 2 routes... WAT!?
-### Notice the LOCAL (0x80000000) route doesn't have the RTF_NONEXTHOP flag set
-
-Thanks,
-Calvin
-
-> diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-> index f14d49b..c607a42 100644
-> --- a/net/ipv6/route.c
-> +++ b/net/ipv6/route.c
-> @@ -1159,18 +1159,18 @@ static void ip6_rt_update_pmtu(struct
-> dst_entry *dst, struct sock *sk,
->                 }
->                 dst_metric_set(dst, RTAX_MTU, mtu);
+> > On Tue, Jan 27, 2015 at 10:46:55AM +0200, Julian Anastasov wrote:
+> > > IPVS stats are limited to 2^(32-10) conns/s and packets/s,
+> > > 2^(32-5) bytes/s. It is time to use 64 bits:
+> > > 
+> > > * Change all conn/packet kernel counters to 64-bit and update
+> > > them in u64_stats_update_{begin,end} section
+> > > 
+> > > * In kernel use struct ip_vs_kstats instead of the user-space
+> > > struct ip_vs_stats_user and use new func ip_vs_export_stats_user
+> > > to export it to sockopt users to preserve compatibility with
+> > > 32-bit values
+> > > 
+> > > * Rename cpu counters "ustats" to "cnt"
+> > > 
+> > > * To netlink users provide additionally 64-bit stats:
+> > > IPVS_SVC_ATTR_STATS64 and IPVS_DEST_ATTR_STATS64. Old stats
+> > > remain for old binaries.
+> > > 
+> > > * We can use ip_vs_copy_stats in ip_vs_stats_percpu_show
+> > > 
+> > > Thanks to Chris Caputo for providing initial patch for ip_vs_est.c
+> > 
+> > This seems reasonable to me, let me know if you would like me to queue it up.
+> > 
+> > The ipvsadm patch also seems fine to me.
 > 
-> -               /* FACEBOOK HACK: We need to not expire local non-expiring
-> -                * routes so that we don't accidentally start blackholing
-> -                * ipvs traffic when we happen to use it locally for
-> -                * healthchecking (see ip_vs_xmit.c --
-> -                * __ip_vs_get_out_rt_v6 invokes update_pmtu if the rt is
-> -                * associated with a socket)
-> -                * Alex Gartrell <agartrell@fb.com>
-> +               /*
-> +                * FACEBOOK HACK: Only expire routes that aren't destined for
-> +                * the loopback interface.
-> +                *
-> +                * This prevents the strange route coalescing that happens when
-> +                * you add an address to the loopback that had a route that had
-> +                * been used when the address didn't exist from getting expired
-> +                * and causing packet loss in shiv.
->                  */
-> -               if (!(rt6->rt6i_flags & RTF_LOCAL) ||
-> -                   (rt6->rt6i_flags & (RTF_EXPIRES | RTF_CACHE)))
-> -                       rt6_update_expires(
-> -                               rt6, net->ipv6.sysctl.ip6_rt_mtu_expires);
-> +               if (!(dst->dev->flags & IFF_LOOPBACK))
-> +                       rt6_update_expires(rt6,
-> + net->ipv6.sysctl.ip6_rt_mtu_expires);
->         }
->  }
-> 
-> 
-> Cheers,
-> -- 
-> Alex Gartrell <agartrell@fb.com>
+> 	I didn't accumulated other changes to these patches,
+> so they can be applied as is. If needed, I can submit the
+> ipvsadm patch again because I didn't sent a copy to Jesper.
+> In fact, we do not need to hurry with these patches, no problem
+> if we apply them after the next merge window. Lets give
+> some time, in case someone has idea for new attribute or
+> other changes for stats.
+
+I'm comfortable with waiting. Please repost when you're ready.
