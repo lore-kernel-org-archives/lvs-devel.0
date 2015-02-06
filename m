@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH 3.2.66] ipvs: rerouting to local clients is not needed anymore
-Date: Fri,  6 Feb 2015 10:55:25 +0200
-Message-ID: <1423212925-24810-1-git-send-email-ja@ssi.bg>
+Subject: [PATCH 3.4.106] ipvs: rerouting to local clients is not needed anymore
+Date: Fri,  6 Feb 2015 10:56:12 +0200
+Message-ID: <1423212972-24928-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -22,13 +22,13 @@ and should be avoided, especially in LOCAL_IN.
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
 
-Pablo, this patch is a 3.2.66 version (same subject).
+Pablo, this patch is a 3.4.106 version (same subject).
 
  net/netfilter/ipvs/ip_vs_core.c | 32 +++++++++++++++++++++-----------
  1 file changed, 21 insertions(+), 11 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 6dc7d7d..d864aaf 100644
+index 00bdb1d..abdb475 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
 @@ -662,16 +662,24 @@ static inline int ip_vs_gather_frags_v6(struct sk_buff *skb, u_int32_t user)
@@ -90,7 +90,7 @@ index 6dc7d7d..d864aaf 100644
  #ifdef CONFIG_IP_VS_IPV6
 @@ -985,7 +994,8 @@ static int ip_vs_out_icmp_v6(struct sk_buff *skb, int *related,
  
- 	ipv6_addr_copy(&snet.in6, &iph->saddr);
+ 	snet.in6 = iph->saddr;
  	return handle_response_icmp(AF_INET6, skb, &snet, cih->nexthdr, cp,
 -				    pp, offset, sizeof(struct ipv6hdr));
 +				    pp, offset, sizeof(struct ipv6hdr),
