@@ -1,59 +1,35 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net-next] ipvs: use 64-bit rates in stats
-Date: Mon, 9 Feb 2015 17:01:20 +0900
-Message-ID: <20150209080117.GA28737@verge.net.au>
-References: <1423208684-11847-1-git-send-email-ja@ssi.bg>
- <20150209052602.GB9021@verge.net.au>
- <alpine.LFD.2.11.1502090837580.7931@ja.home.ssi.bg>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH 3.2.66] ipvs: rerouting to local clients is not needed
+ anymore
+Date: Mon, 9 Feb 2015 12:30:27 +0100
+Message-ID: <20150209113027.GA3854@salvia>
+References: <1423212925-24810-1-git-send-email-ja@ssi.bg>
+ <20150209002310.GA12850@verge.net.au>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.11.1502090837580.7931@ja.home.ssi.bg>
+In-Reply-To: <20150209002310.GA12850@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Chris Caputo <ccaputo@alt.net>
+To: Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
 
-On Mon, Feb 09, 2015 at 08:41:32AM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 9 Feb 2015, Simon Horman wrote:
-> 
-> > On Fri, Feb 06, 2015 at 09:44:44AM +0200, Julian Anastasov wrote:
-> > > IPVS stats are limited to 2^(32-10) conns/s and packets/s,
-> > > 2^(32-5) bytes/s. It is time to use 64 bits:
-> > > 
-> > > * Change all conn/packet kernel counters to 64-bit and update
-> > > them in u64_stats_update_{begin,end} section
-> > > 
-> > > * In kernel use struct ip_vs_kstats instead of the user-space
-> > > struct ip_vs_stats_user and use new func ip_vs_export_stats_user
-> > > to export it to sockopt users to preserve compatibility with
-> > > 32-bit values
-> > > 
-> > > * Rename cpu counters "ustats" to "cnt"
-> > > 
-> > > * To netlink users provide additionally 64-bit stats:
-> > > IPVS_SVC_ATTR_STATS64 and IPVS_DEST_ATTR_STATS64. Old stats
-> > > remain for old binaries.
-> > > 
-> > > * We can use ip_vs_copy_stats in ip_vs_stats_percpu_show
-> > > 
-> > > Thanks to Chris Caputo for providing initial patch for ip_vs_est.c
-> > > 
-> > > Signed-off-by: Chris Caputo <ccaputo@alt.net>
-> > > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > > ---
-> > > 
-> > > Nothing is changed from previous RFC version.
+On Mon, Feb 09, 2015 at 09:23:10AM +0900, Simon Horman wrote:
+> On Fri, Feb 06, 2015 at 10:55:25AM +0200, Julian Anastasov wrote:
+> > commit f5a41847acc5 ("ipvs: move ip_route_me_harder for ICMP")
+> > from 2.6.37 introduced ip_route_me_harder() call for responses to
+> > local clients, so that we can provide valid rt_src after SNAT.
+> > It was used by TCP to provide valid daddr for ip_send_reply().
+> > After commit 0a5ebb8000c5 ("ipv4: Pass explicit daddr arg to
+> > ip_send_reply()." from 3.0 this rerouting is not needed anymore
+> > and should be avoided, especially in LOCAL_IN.
 > > 
-> > Hi Julian,
-> > 
-> > I'm happy to take this. Can you confirm that you are ready for me to do so?
+> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
 > 
-> 	Yep, please apply.
+> Acked-by: Simon Horman <horms@verge.net.au>
+> 
+> Pablo, could you guide this into stable 3.2 ?
 
-Thanks, I have applied it to ipvs-next.
+Done, thanks.
