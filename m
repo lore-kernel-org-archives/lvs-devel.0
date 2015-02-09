@@ -1,44 +1,45 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf] IPVS Fixes for v3.20
-Date: Mon,  9 Feb 2015 14:25:07 +0900
-Message-ID: <1423459508-15517-1-git-send-email-horms@verge.net.au>
+Subject: Re: [PATCH] ipvs: fix inability to remove a mixed-family RS
+Date: Mon, 9 Feb 2015 14:25:26 +0900
+Message-ID: <20150209052523.GA9021@verge.net.au>
+References: <54D516C4.8080504@al-an.info>
+ <alpine.LFD.2.11.1502062217360.4440@ja.home.ssi.bg>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.11.1502062217360.4440@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Alexey Andriyanov <alan@al-an.info>, lvs-devel@vger.kernel.org, Alex Gartrell <agartrell@fb.com>
 
-Hi Pablo,
+On Fri, Feb 06, 2015 at 10:27:52PM +0200, Julian Anastasov wrote:
+> 
+> 	Hello,
+> 
+> On Fri, 6 Feb 2015, Alexey Andriyanov wrote:
+> 
+> > The current code prevents any operation with a mixed-family dest
+> > unless IP_VS_CONN_F_TUNNEL flag is set. The problem is that it's impossible
+> > for the client to follow this rule, because ip_vs_genl_parse_dest does
+> > not even read the destination conn_flags when cmd = IPVS_CMD_DEL_DEST
+> > (need_full_dest = 0).
+> > 
+> > Also, not every client can pass this flag when removing a dest. ipvsadm,
+> > for example, does not support the "-i" command line option together with
+> > the "-d" option.
+> > 
+> > This change disables any checks for mixed-family on IPVS_CMD_DEL_DEST command.
+> > 
+> > Signed-off-by: Alexey Andriyanov <alan@al-an.info>
+> 
+> 	Good catch.
+> 
+> Fixes: bc18d37f676f ("ipvs: Allow heterogeneous pools now that we support them")
+> Acked-by: Julian Anastasov <ja@ssi.bg>
+> 
+> 	Simon, please apply this bug fix.
 
-please consider this fix for v3.20
-
-This patch prevents the kernel getting into a situation whereby a
-real-server may not be removed from a heterogeneous IPVS virtual server.
-
-This problem was introduced by  bc18d37f676f ("ipvs: Allow heterogeneous
-pools now that we support them") in v3.18. This patch seems appropriate
-for stable and I have checked that it applies cleanly to both v3.19 and
-v3.18.6.
-
-
-The following changes since commit 42b5212fee4f57907e9415b18fe19c13e65574bc:
-
-  xen-netback: stop the guest rx thread after a fatal error (2015-02-02 19:39:04 -0800)
-
-are available in the git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.20
-
-for you to fetch changes up to dd3733b3e798daf778a1ec08557f388f00fdc2f6:
-
-  ipvs: fix inability to remove a mixed-family RS (2015-02-09 14:13:30 +0900)
-
-----------------------------------------------------------------
-Alexey Andriyanov (1):
-      ipvs: fix inability to remove a mixed-family RS
-
- net/netfilter/ipvs/ip_vs_ctl.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Thanks, done.
