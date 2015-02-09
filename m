@@ -1,13 +1,13 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 3.2.66] ipvs: rerouting to local clients is not needed
+Subject: Re: [PATCH 3.4.106] ipvs: rerouting to local clients is not needed
  anymore
-Date: Mon, 9 Feb 2015 09:23:10 +0900
-Message-ID: <20150209002310.GA12850@verge.net.au>
-References: <1423212925-24810-1-git-send-email-ja@ssi.bg>
+Date: Mon, 9 Feb 2015 09:23:20 +0900
+Message-ID: <20150209002320.GB12850@verge.net.au>
+References: <1423212972-24928-1-git-send-email-ja@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1423212925-24810-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1423212972-24928-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -15,7 +15,7 @@ Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>, lvs-devel@vger.kernel.org
 
-On Fri, Feb 06, 2015 at 10:55:25AM +0200, Julian Anastasov wrote:
+On Fri, Feb 06, 2015 at 10:56:12AM +0200, Julian Anastasov wrote:
 > commit f5a41847acc5 ("ipvs: move ip_route_me_harder for ICMP")
 > from 2.6.37 introduced ip_route_me_harder() call for responses to
 > local clients, so that we can provide valid rt_src after SNAT.
@@ -28,17 +28,17 @@ On Fri, Feb 06, 2015 at 10:55:25AM +0200, Julian Anastasov wrote:
 
 Acked-by: Simon Horman <horms@verge.net.au>
 
-Pablo, could you guide this into stable 3.2 ?
+Pablo, could you guide this into stable 3.4 ?
 
 > ---
 > 
-> Pablo, this patch is a 3.2.66 version (same subject).
+> Pablo, this patch is a 3.4.106 version (same subject).
 > 
 >  net/netfilter/ipvs/ip_vs_core.c | 32 +++++++++++++++++++++-----------
 >  1 file changed, 21 insertions(+), 11 deletions(-)
 > 
 > diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 6dc7d7d..d864aaf 100644
+> index 00bdb1d..abdb475 100644
 > --- a/net/netfilter/ipvs/ip_vs_core.c
 > +++ b/net/netfilter/ipvs/ip_vs_core.c
 > @@ -662,16 +662,24 @@ static inline int ip_vs_gather_frags_v6(struct sk_buff *skb, u_int32_t user)
@@ -100,7 +100,7 @@ Pablo, could you guide this into stable 3.2 ?
 >  #ifdef CONFIG_IP_VS_IPV6
 > @@ -985,7 +994,8 @@ static int ip_vs_out_icmp_v6(struct sk_buff *skb, int *related,
 >  
->  	ipv6_addr_copy(&snet.in6, &iph->saddr);
+>  	snet.in6 = iph->saddr;
 >  	return handle_response_icmp(AF_INET6, skb, &snet, cih->nexthdr, cp,
 > -				    pp, offset, sizeof(struct ipv6hdr));
 > +				    pp, offset, sizeof(struct ipv6hdr),
