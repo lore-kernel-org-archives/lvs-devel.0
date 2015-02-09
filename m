@@ -1,69 +1,58 @@
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: [ANNOUNCE] ipvsadm release v1.28
-Date: Mon, 9 Feb 2015 18:55:02 +1300
-Message-ID: <20150209185502.693488a1@redhat.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH net-next] ipvs: use 64-bit rates in stats
+Date: Mon, 9 Feb 2015 08:41:32 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1502090837580.7931@ja.home.ssi.bg>
+References: <1423208684-11847-1-git-send-email-ja@ssi.bg> <20150209052602.GB9021@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20150209052602.GB9021@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org
-Cc: brouer@redhat.com, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Ryan O'Hara <rohara@redhat.com>, Julian Anastasov <ja@ssi.bg>, overcastsky.zhao@gmail.com, formorer@debian.org, mt@suse.de, logan@ubuntu.com, support@remsnet.de, Daniel Borkmann <dborkman@redhat.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Alex Gartrell <agartrell@fb.com>
+Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Chris Caputo <ccaputo@alt.net>
 
 
-We are happy to announce the release of ipvsadm v1.28.
+	Hello,
 
- ipvsadm is a utility to administer the kernels IPVS/LVS load-balancer service
+On Mon, 9 Feb 2015, Simon Horman wrote:
 
-It has been quite a while since the previous release, v1.27. A number of
-fixes and improvements have been made; most noticeably in the area of IPv6.
+> On Fri, Feb 06, 2015 at 09:44:44AM +0200, Julian Anastasov wrote:
+> > IPVS stats are limited to 2^(32-10) conns/s and packets/s,
+> > 2^(32-5) bytes/s. It is time to use 64 bits:
+> > 
+> > * Change all conn/packet kernel counters to 64-bit and update
+> > them in u64_stats_update_{begin,end} section
+> > 
+> > * In kernel use struct ip_vs_kstats instead of the user-space
+> > struct ip_vs_stats_user and use new func ip_vs_export_stats_user
+> > to export it to sockopt users to preserve compatibility with
+> > 32-bit values
+> > 
+> > * Rename cpu counters "ustats" to "cnt"
+> > 
+> > * To netlink users provide additionally 64-bit stats:
+> > IPVS_SVC_ATTR_STATS64 and IPVS_DEST_ATTR_STATS64. Old stats
+> > remain for old binaries.
+> > 
+> > * We can use ip_vs_copy_stats in ip_vs_stats_percpu_show
+> > 
+> > Thanks to Chris Caputo for providing initial patch for ip_vs_est.c
+> > 
+> > Signed-off-by: Chris Caputo <ccaputo@alt.net>
+> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> > ---
+> > 
+> > Nothing is changed from previous RFC version.
+> 
+> Hi Julian,
+> 
+> I'm happy to take this. Can you confirm that you are ready for me to do so?
 
-One big addition is the support for heterogeneous pools (v4 and v6
-mixed pools in 3.18), by Alex Gartrell (facebook).
+	Yep, please apply.
 
-Feature wise the SCTP protocol has been added which is available via the
-cmdline parameter "--sctp-service". The kernel has supported SCTP since
-kernel 2.6.34 but up until now ipvsadm users have been restricted to using
-fwmark-based virtual services for SCTP.
+Regards
 
-This release is based on the kernel.org git tree:
-  https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git/
-
-You can download the tarballs from:
- https://kernel.org/pub/linux/utils/kernel/ipvsadm/
-
-Git tree:
- git://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git
-
-Shortlog:
- Alex Gartrell (2):
-      ipvsadm: specify real server address family to netlink socket
-      ipvsadm: do not truncate ipv6 members of v4 services
-
- Daniel Borkmann (2):
-      ipvsadm: fix compile warning in print_largenum
-      ipvsadm: fix compile warning in modprobe_ipvs
-
- Hibari Michiro (1):
-      ipvsadm: enable displaying of IPv6 hostnames in listing
-
- Jesper Dangaard Brouer (1):
-      Release: Version 1.28
-
- Julian Anastasov (3):
-      ipvsadm: restrict different address family
-      ipvsadm: allow different address family in connection listing
-      ipvsadm: add SCTP support
-
- Ryan O'Hara (2):
-      libipvs: Initialize ipvs_service_t variable
-      ipvsadm: Fix list daemon to show backup daemon
-
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Sr. Network Kernel Developer at Red Hat
-  Author of http://www.iptv-analyzer.org
-  LinkedIn: http://www.linkedin.com/in/brouer
+--
+Julian Anastasov <ja@ssi.bg>
