@@ -1,46 +1,42 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [GIT PULL nf] IPVS Fixes for v3.20
-Date: Tue, 10 Feb 2015 14:44:32 +0900
-Message-ID: <20150210054432.GC10139@verge.net.au>
-References: <1423459508-15517-1-git-send-email-horms@verge.net.au>
- <20150210053141.GA3248@salvia>
-Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150210053141.GA3248@salvia>
-Sender: netdev-owner@vger.kernel.org
+Subject: [GIT PULL nf-next] IPVS Enhancements for v3.20
+Date: Tue, 10 Feb 2015 15:32:08 +0900
+Message-ID: <1423549929-25064-1-git-send-email-horms@verge.net.au>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Tue, Feb 10, 2015 at 06:31:41AM +0100, Pablo Neira Ayuso wrote:
-> On Mon, Feb 09, 2015 at 02:25:07PM +0900, Simon Horman wrote:
-> > Hi Pablo,
-> > 
-> > please consider this fix for v3.20
-> > 
-> > This patch prevents the kernel getting into a situation whereby a
-> > real-server may not be removed from a heterogeneous IPVS virtual server.
-> > 
-> > This problem was introduced by  bc18d37f676f ("ipvs: Allow heterogeneous
-> > pools now that we support them") in v3.18. This patch seems appropriate
-> > for stable and I have checked that it applies cleanly to both v3.19 and
-> > v3.18.6.
-> > 
-> > 
-> > The following changes since commit 42b5212fee4f57907e9415b18fe19c13e65574bc:
-> > 
-> >   xen-netback: stop the guest rx thread after a fatal error (2015-02-02 19:39:04 -0800)
-> > 
-> > are available in the git repository at:
-> > 
-> >   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v3.20
-> 
-> Pulled, thanks Simon.
+Hi Pablo,
 
-Thanks Pablo.
+please consider this enhancement for v3.20.
 
-I have an unrelated feature patch for v3.20 queued up.
-I'll send a pull request for that shortly.
+It adds support for 64-bit rates in IPVS statistics.
+
+
+The following changes since commit 4c1017aa80c95a74703139bb95c4ce0d130efe4d:
+
+  netfilter: nft_lookup: add missing attribute validation for NFTA_LOOKUP_SET_ID (2015-01-30 19:08:20 +0100)
+
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v3.20
+
+for you to fetch changes up to cd67cd5eb25ae9a7bafbfd3d52d4c05e1d80af3b:
+
+  ipvs: use 64-bit rates in stats (2015-02-09 16:59:03 +0900)
+
+----------------------------------------------------------------
+Julian Anastasov (1):
+      ipvs: use 64-bit rates in stats
+
+ include/net/ip_vs.h             |  50 ++++++++----
+ include/uapi/linux/ip_vs.h      |   7 +-
+ net/netfilter/ipvs/ip_vs_core.c |  36 +++++----
+ net/netfilter/ipvs/ip_vs_ctl.c  | 174 ++++++++++++++++++++++++++--------------
+ net/netfilter/ipvs/ip_vs_est.c  | 102 ++++++++++++-----------
+ 5 files changed, 226 insertions(+), 143 deletions(-)
