@@ -1,39 +1,100 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL] Second Round of IPVS Fixes for v3.20
-Date: Sun, 22 Feb 2015 16:24:59 -0500
-Message-ID: <1424640300-30364-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Marcelo Ricardo Leitner <mleitner@redhat.com>
+Subject: Re: [PATCH] ipvs: allow rescheduling of new connections when port
+ reuse is detected
+Date: Mon, 23 Feb 2015 11:59:14 -0300
+Message-ID: <20150223145914.GA27465@localhost.localdomain>
+References: <0c0456705c99cfb43e3e613bc942bf5085ef9a4f.1424461040.git.mleitner@redhat.com>
+ <alpine.LFD.2.11.1502211906380.1558@ja.home.ssi.bg>
+Mime-Version: 1.0
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.11.1502211906380.1558@ja.home.ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org
 
-Hi Pablo,
+Hi,
 
-please consider this fix for v3.20.
+On Sat, Feb 21, 2015 at 07:15:40PM +0200, Julian Anastasov wrote:
+> 
+> 	Hello,
+> 
+> On Fri, 20 Feb 2015, Marcelo Ricardo Leitner wrote:
+> 
+> > Currently, when TCP/SCTP port reusing happens, IPVS will find the old
+> > entry and use it for the new one, behaving like a forced persistence.
+> > But if you consider a cluster with a heavy load of small connections,
+> > such reuse will happen often and may lead to a not optimal load
+> > balancing and might prevent a new node from getting a fair load.
+> > 
+> > This patch introduces a new sysctl, conn_reuse_mode, that allows
+> > controlling how to proceed when port reuse is detected. The default
+> > value will allow rescheduling of new connections only if the old entry
+> > was in TIME_WAIT state for TCP or CLOSED for SCTP.
+> > 
+> > Signed-off-by: Marcelo Ricardo Leitner <mleitner@redhat.com>
+> > ---
+> 
+> > diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> > index c47ffd7a0a709cb73834c84652f251960f25db79..0b4ae02dabf784eebf0bb196f010e239d5c14838 100644
+> > --- a/net/netfilter/ipvs/ip_vs_sync.c
+> > +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> > @@ -845,10 +845,25 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+> >  	struct ip_vs_conn *cp;
+> >  	struct netns_ipvs *ipvs = net_ipvs(net);
+> >  
+> > -	if (!(flags & IP_VS_CONN_F_TEMPLATE))
+> > +	if (!(flags & IP_VS_CONN_F_TEMPLATE)) {
+> >  		cp = ip_vs_conn_in_get(param);
+> > -	else
+> > +		if (cp && ((cp->dport != dport) ||
+> > +			   !ip_vs_addr_equal(cp->daf, &cp->daddr, daddr))) {
+> > +			if (!(flags & IP_VS_CONN_F_INACTIVE)) {
+> > +				ip_vs_conn_expire_now(cp);
+> > +				__ip_vs_conn_put(cp);
+> > +				cp = NULL;
+> > +			} else {
+> > +				/* This is the expiration message for the
+> > +				 * connection that was already replaced, so we
+> > +				 * just ignore it.
+> > +				 */
+> 
+> 	Just noticed that a small change is needed here.
+> We have very odd handling of pe and pe_data. Can you
+> change the code so that we here use:
+> 
+> 				__ip_vs_conn_put(cp);
+> 				kfree(param->pe_data);
+> 				return;
+> 
+> instead of the goto out. I know that pe_data is not
+> expected for non-templates but better to be safe.
 
-This patch resolves some memory leaks in connection
-synchronisation code that date back to v2.6.39.
+Took me a while to understand the memory leak it would be creating.
+Nice catch, thanks. 
 
+> And __ip_vs_conn_put will not restart the timer for
+> ignored messages. Then I'll post another fix for
+> problem with pe, I hope it will not intersect with
+> your patch.
 
-The following changes since commit 78296c97ca1fd3b104f12e1f1fbc06c46635990b:
+Ok. Please let me know if I can do anything to help.
 
-  netfilter: xt_socket: fix a stack corruption bug (2015-02-16 17:00:48 +0100)
+Thanks,
+Marcelo
 
-are available in the git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes2-for-v3.20
-
-for you to fetch changes up to 528c943f3bb919aef75ab2fff4f00176f09a4019:
-
-  ipvs: add missing ip_vs_pe_put in sync code (2015-02-22 16:16:36 -0500)
-
-----------------------------------------------------------------
-Julian Anastasov (1):
-      ipvs: add missing ip_vs_pe_put in sync code
-
- net/netfilter/ipvs/ip_vs_sync.c | 3 +++
- 1 file changed, 3 insertions(+)
+> > +				goto out;
+> > +			}
+> > +		}
+> > +	} else {
+> >  		cp = ip_vs_ct_in_get(param);
+> > +	}
+> 
+> Regards
+> 
+> --
+> Julian Anastasov <ja@ssi.bg>
+> 
