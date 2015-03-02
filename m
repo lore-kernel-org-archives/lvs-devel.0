@@ -1,33 +1,40 @@
-From: Ruben Kerkhof <ruben@rubenkerkhof.com>
-Subject: Re: Standalone version of libipvs
-Date: Wed, 25 Feb 2015 21:25:25 +0100
-Message-ID: <CAPed3OE5h6BjxojtA8FURVTmfwTofLOcqs8R37dERJb8UTTTzQ@mail.gmail.com>
-References: <BB41ACB6-F2C4-4C33-9FF4-D670B7E6228D@rubenkerkhof.com> <AF7C7217-774F-40A4-AB1F-EF58354F2C37@fb.com>
-Mime-Version: 1.0
+From: Simon Horman <horms@verge.net.au>
+Subject: [GIT PULL nf-next] IPVS Enhancements for v4.1
+Date: Mon,  2 Mar 2015 11:39:22 +0900
+Message-ID: <1425263963-6660-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=rubenkerkhof.com; s=google;
-        h=mime-version:in-reply-to:references:from:date:message-id:subject:to
-         :cc:content-type;
-        bh=D7TpQxm/NdbJWzFY2ZLpgshMcc4vpMBYk1SvE2UqIvc=;
-        b=TxBou0rQa6BJX0EKWM2NfLqh/1QFHss2Y5n9t9M0/SNP/C3nJ9E94hgw6pIj+dOD7W
-         9Jz2ecitZy02I/Wiu8m3LzEr6rQZ92S9dPXJh5+DrjQcVIFd2qyEKA8fUNJQqEBA4QfH
-         AZXRc2owf0cUBmbklTMLpvwKaVEWtwFvTVT4U=
-In-Reply-To: <AF7C7217-774F-40A4-AB1F-EF58354F2C37@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alex Gartrell <agartrell@fb.com>
-Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-Hi Alex,
+Hi Pablo,
 
-On Wed, Feb 25, 2015 at 5:05 PM, Alex Gartrell <agartrell@fb.com> wrote:
-> Fwiw, we (at Facebook) have a python-only ipvs library that I'm fairly certain we can give away if there's interest.  There isn't really a logical place to put it at the moment though.
+please consider this enhancement from Marcelo Ricardo Leitner to IPVS for v4.1.
+It allows rescheduling of new connections when port reuse is detected.
 
-I would certainly be interested in that! Maybe you can stick it on Github?
+The following changes since commit 7f73b9f1ca7334eec0ff9a40e37ece92dd3e420f:
 
-Kind regards,
+  netfilter: ipset: fix boolreturn.cocci warnings (2015-02-11 16:13:30 +0100)
 
-Ruben
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v4.1
+
+for you to fetch changes up to d752c364571743d696c2a54a449ce77550c35ac5:
+
+  ipvs: allow rescheduling of new connections when port reuse is detected (2015-02-25 13:46:35 +0900)
+
+----------------------------------------------------------------
+Marcelo Ricardo Leitner (1):
+      ipvs: allow rescheduling of new connections when port reuse is detected
+
+ Documentation/networking/ipvs-sysctl.txt | 21 ++++++++++++++++++++
+ include/net/ip_vs.h                      | 11 +++++++++++
+ net/netfilter/ipvs/ip_vs_core.c          | 33 ++++++++++++++++++++++++++++----
+ net/netfilter/ipvs/ip_vs_ctl.c           |  8 ++++++++
+ net/netfilter/ipvs/ip_vs_sync.c          | 21 ++++++++++++++++++--
+ 5 files changed, 88 insertions(+), 6 deletions(-)
