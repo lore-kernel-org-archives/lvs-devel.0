@@ -1,31 +1,65 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf-next] IPVS Enhancements for v4.1
-Date: Mon, 2 Mar 2015 12:45:28 +0100
-Message-ID: <20150302114528.GA16447@salvia>
-References: <1425263963-6660-1-git-send-email-horms@verge.net.au>
+From: Scott Wood <scottwood@freescale.com>
+Subject: [PATCH 02/22] netfilter: %pF is only for function pointers
+Date: Wed, 11 Mar 2015 22:13:37 -0500
+Message-ID: <1426130037-17956-2-git-send-email-scottwood@freescale.com>
+References: <1426130037-17956-1-git-send-email-scottwood@freescale.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1425263963-6660-1-git-send-email-horms@verge.net.au>
+In-Reply-To: <1426130037-17956-1-git-send-email-scottwood@freescale.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: trivial@kernel.org, linux-kernel@vger.kernel.org
+Cc: Scott Wood <scottwood@freescale.com>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Mon, Mar 02, 2015 at 11:39:22AM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider this enhancement from Marcelo Ricardo Leitner to IPVS for v4.1.
-> It allows rescheduling of new connections when port reuse is detected.
-> 
-> The following changes since commit 7f73b9f1ca7334eec0ff9a40e37ece92dd3e420f:
-> 
->   netfilter: ipset: fix boolreturn.cocci warnings (2015-02-11 16:13:30 +0100)
-> 
-> are available in the git repository at:
-> 
->   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v4.1
+Use %pS for actual addresses, otherwise you'll get bad output
+on arches like ppc64 where %pF expects a function descriptor.
 
-Pulled, thanks Simon.
+Signed-off-by: Scott Wood <scottwood@freescale.com>
+Cc: netdev@vger.kernel.org
+Cc: netfilter-devel@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org
+---
+ net/netfilter/ipvs/ip_vs_conn.c | 2 +-
+ net/netfilter/ipvs/ip_vs_ctl.c  | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index b0f7b62..f9f3c3d 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -184,7 +184,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ 		hlist_add_head_rcu(&cp->c_list, &ip_vs_conn_tab[hash]);
+ 		ret = 1;
+ 	} else {
+-		pr_err("%s(): request for already hashed, called from %pF\n",
++		pr_err("%s(): request for already hashed, called from %pS\n",
+ 		       __func__, __builtin_return_address(0));
+ 		ret = 0;
+ 	}
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index ed99448..bd1ef52 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -300,7 +300,7 @@ static int ip_vs_svc_hash(struct ip_vs_service *svc)
+ 	unsigned int hash;
+ 
+ 	if (svc->flags & IP_VS_SVC_F_HASHED) {
+-		pr_err("%s(): request for already hashed, called from %pF\n",
++		pr_err("%s(): request for already hashed, called from %pS\n",
+ 		       __func__, __builtin_return_address(0));
+ 		return 0;
+ 	}
+@@ -334,7 +334,7 @@ static int ip_vs_svc_hash(struct ip_vs_service *svc)
+ static int ip_vs_svc_unhash(struct ip_vs_service *svc)
+ {
+ 	if (!(svc->flags & IP_VS_SVC_F_HASHED)) {
+-		pr_err("%s(): request for unhash flagged, called from %pF\n",
++		pr_err("%s(): request for unhash flagged, called from %pS\n",
+ 		       __func__, __builtin_return_address(0));
+ 		return 0;
+ 	}
+-- 
+2.1.0
+
