@@ -1,76 +1,68 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: Stop traffic to a destination when setting its
- weight to -1
-Date: Wed, 29 Apr 2015 22:15:49 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1504292130100.1650@ja.home.ssi.bg>
-References: <1430233841-14944-1-git-send-email-scientist@fb.com>
-Mime-Version: 1.0
+From: Tommi Rantala <tt.rantala@gmail.com>
+Subject: [PATCH] ipvs: fix memory leak in ip_vs_ctl.c
+Date: Thu,  7 May 2015 15:12:21 +0300
+Message-ID: <1431000741-7599-1-git-send-email-tt.rantala@gmail.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1430233841-14944-1-git-send-email-scientist@fb.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=from:to:cc:subject:date:message-id;
+        bh=yg22LFY8D0GkZdQTDnrZIFPA5/6XGEcRuq/Bu5zYmLk=;
+        b=hT0gqtr8kMNyZSGAqkd4U8GZeu6kC+ESZeBqlGzTVJwQ/e9WenDpanX/SCq2IU4NGX
+         FKeL+RDeoY8CrpUADifLRZJ6NHcpzGNv9od9pESGyKPG2cNOMckJ62jV1YZobcYFJuPG
+         x770UgtUqyu1/uaf+l+HK2IRd1f0XZZoqyWlTq/A9a7KeFPcZ1MAH0nkHZ2Heu6blEbH
+         rGtfkq9jXP0kVdv5OO42lxX6nXuHXKnCl2fwv/lmu5yHRWJxi3v4Q1IdWgqQ+lm7SOFy
+         bUZddCDuQzWKccM8EJ8ja+NbP3Br0KacmVudke1d7f0A5D2DZvklvyXjqhjhRMehbMc0
+         xw0g==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Yannick Brosseau <scientist@fb.com>
-Cc: wensong@linux-vs.org, horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
+To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Hans Schillstrom <hans.schillstrom@ericsson.com>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Tommi Rantala <tt.rantala@gmail.com>
 
+Fix memory leak introduced in commit a0840e2e165a ("IPVS: netns,
+ip_vs_ctl local vars moved to ipvs struct."):
 
-	Hello,
+unreferenced object 0xffff88005785b800 (size 2048):
+  comm "(-localed)", pid 1434, jiffies 4294755650 (age 1421.089s)
+  hex dump (first 32 bytes):
+    bb 89 0b 83 ff ff ff ff b0 78 f0 4e 00 88 ff ff  .........x.N....
+    04 00 00 00 a4 01 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffffff8262ea8e>] kmemleak_alloc+0x4e/0xb0
+    [<ffffffff811fba74>] __kmalloc_track_caller+0x244/0x430
+    [<ffffffff811b88a0>] kmemdup+0x20/0x50
+    [<ffffffff823276b7>] ip_vs_control_net_init+0x1f7/0x510
+    [<ffffffff8231d630>] __ip_vs_init+0x100/0x250
+    [<ffffffff822363a1>] ops_init+0x41/0x190
+    [<ffffffff82236583>] setup_net+0x93/0x150
+    [<ffffffff82236cc2>] copy_net_ns+0x82/0x140
+    [<ffffffff810ab13d>] create_new_namespaces+0xfd/0x190
+    [<ffffffff810ab49a>] unshare_nsproxy_namespaces+0x5a/0xc0
+    [<ffffffff810833e3>] SyS_unshare+0x173/0x310
+    [<ffffffff8265cbd7>] system_call_fastpath+0x12/0x6f
+    [<ffffffffffffffff>] 0xffffffffffffffff
 
-On Tue, 28 Apr 2015, Yannick Brosseau wrote:
+Signed-off-by: Tommi Rantala <tt.rantala@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-> In some situation, we want to reap all the active connections
-> to a host that is failing. Setting its weight to zero only stop new
-> connections to the destination while still forwarding packets part of
-> an active one.
-> 
-> We need a finer grained version of the sysctl_expire_nodest_conn because
-> in most case we want to kept the behavior of only blocking new connexion.
-> But if one host destination is failing we want to cut the traffic to
-> that one immediately. Sending a RST is preferable than blackholling packets
-> in that case.
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 4953267..285eae3 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3823,6 +3823,9 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
+ 	cancel_work_sync(&ipvs->defense_work.work);
+ 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
+ 	ip_vs_stop_estimator(net, &ipvs->tot_stats);
++
++	if (!net_eq(net, &init_net))
++		kfree(ipvs->sysctl_tbl);
+ }
+ 
+ #else
+-- 
+1.9.3
 
-	IIRC, we send RST only for this case:
-"ip_vs_in: packet continues traversal as normal", i.e.
-when no destination server is available. The place you
-change uses NF_DROP.
-
-	Here is the current situation:
-
-- expire_nodest_conn=1 && weight=0 && cp != NULL => create
-new cp to any available dest, expire old cp, forward packet
-
-- cp != NULL && any weight && dest present (IP_VS_DEST_F_AVAILABLE
-is set) => forward, even if weight=0
-
-- cp != NULL && dest removed (IP_VS_DEST_F_AVAILABLE not set) =>
-NF_DROP and expire old cp depending on expire_nodest_conn
-
-	Can you confirm that the only goal of this change is
-to allow per-destination expire_nodest_conn flag, i.e.
-the benefit is when expire_nodest_conn=0 to use weight=-1,
-so that traffic to be dropped? That is all I see in this
-change, right? So, the same is achieved if destination
-is removed and expire_nodest_conn=1 is used?
-
->  	/* set the dest status flags */
-> -	dest->flags |= IP_VS_DEST_F_AVAILABLE;
-> +	if (atomic_read(&dest->weight) >= 0) {
-> +		dest->flags |= IP_VS_DEST_F_AVAILABLE;
-> +	} else {
-> +		dest->flags &= ~IP_VS_DEST_F_AVAILABLE;
-> +	}
-
-	Note that IP_VS_DEST_F_AVAILABLE is not checked
-by all schedulers, only by ones that can hold dest after
-it is removed (LBLC, LBLCR). IIRC, the check for DH scheduler
-is not needed. As result, some schedulers need to be fixed
-to check properly the negative weight, for example, LC
-has atomic_read(&dest->weight) == 0 check. May be all
-places that use dest->weight should be checked for
-possible problem.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
