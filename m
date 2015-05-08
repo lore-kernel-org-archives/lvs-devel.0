@@ -1,37 +1,65 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf] IPVS Fixes for v4.1
-Date: Fri,  8 May 2015 18:10:26 +0900
-Message-ID: <1431076227-13893-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf] ipvs: fix memory leak in ip_vs_ctl.c
+Date: Fri,  8 May 2015 18:10:27 +0900
+Message-ID: <1431076227-13893-2-git-send-email-horms@verge.net.au>
+References: <1431076227-13893-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1431076227-13893-1-git-send-email-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Tommi Rantala <tt.rantala@gmail.com>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Tommi Rantala <tt.rantala@gmail.com>
 
-please consider this fix for v4.1.
+Fix memory leak introduced in commit a0840e2e165a ("IPVS: netns,
+ip_vs_ctl local vars moved to ipvs struct."):
 
-It resolves a memory leak which appears to have been around since v3.18.
+unreferenced object 0xffff88005785b800 (size 2048):
+  comm "(-localed)", pid 1434, jiffies 4294755650 (age 1421.089s)
+  hex dump (first 32 bytes):
+    bb 89 0b 83 ff ff ff ff b0 78 f0 4e 00 88 ff ff  .........x.N....
+    04 00 00 00 a4 01 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffffff8262ea8e>] kmemleak_alloc+0x4e/0xb0
+    [<ffffffff811fba74>] __kmalloc_track_caller+0x244/0x430
+    [<ffffffff811b88a0>] kmemdup+0x20/0x50
+    [<ffffffff823276b7>] ip_vs_control_net_init+0x1f7/0x510
+    [<ffffffff8231d630>] __ip_vs_init+0x100/0x250
+    [<ffffffff822363a1>] ops_init+0x41/0x190
+    [<ffffffff82236583>] setup_net+0x93/0x150
+    [<ffffffff82236cc2>] copy_net_ns+0x82/0x140
+    [<ffffffff810ab13d>] create_new_namespaces+0xfd/0x190
+    [<ffffffff810ab49a>] unshare_nsproxy_namespaces+0x5a/0xc0
+    [<ffffffff810833e3>] SyS_unshare+0x173/0x310
+    [<ffffffff8265cbd7>] system_call_fastpath+0x12/0x6f
+    [<ffffffffffffffff>] 0xffffffffffffffff
 
-The following changes since commit 39376ccb1968ba9f83e2a880a8bf02ad5dea44e1:
-
-  Merge git://git.kernel.org/pub/scm/linux/kernel/git/pablo/nf (2015-04-27 23:12:34 -0400)
-
-are available in the git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v4.1
-
-for you to fetch changes up to f30bf2a5cac6c60ab366c4bc6db913597bf4d6ab:
-
-  ipvs: fix memory leak in ip_vs_ctl.c (2015-05-08 17:58:54 +0900)
-
-----------------------------------------------------------------
-Tommi Rantala (1):
-      ipvs: fix memory leak in ip_vs_ctl.c
-
+Fixes: a0840e2e165a ("IPVS: netns, ip_vs_ctl local vars moved to ipvs struct.")
+Signed-off-by: Tommi Rantala <tt.rantala@gmail.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
  net/netfilter/ipvs/ip_vs_ctl.c | 3 +++
  1 file changed, 3 insertions(+)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 49532672f66d..285eae3a1454 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3823,6 +3823,9 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
+ 	cancel_work_sync(&ipvs->defense_work.work);
+ 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
+ 	ip_vs_stop_estimator(net, &ipvs->tot_stats);
++
++	if (!net_eq(net, &init_net))
++		kfree(ipvs->sysctl_tbl);
+ }
+ 
+ #else
+-- 
+2.1.4
+
