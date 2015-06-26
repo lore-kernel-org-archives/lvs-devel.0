@@ -1,60 +1,57 @@
-From: Alexander Vasiliev <a.vasylev@404-group.com>
-Subject: Re: [lvs-users] LVS kernel panic
-Date: Fri, 19 Jun 2015 10:53:56 +0300
-Message-ID: <2BC9E46D-82C8-4C85-817C-95DCB52D64E8@404-group.com>
-References: <761B8899-EB6E-4326-9FF3-1B1B44B35D64@404-group.com> <alpine.LFD.2.11.1506182130220.1659@ja.home.ssi.bg>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
-Content-Transfer-Encoding: 8BIT
+From: Alex Gartrell <agartrell@fb.com>
+Subject: [PATCH net-next] ipvs: fix ipv6 route unreach panic
+Date: Fri, 26 Jun 2015 03:18:45 -0700
+Message-ID: <1435313925-107850-1-git-send-email-agartrell@fb.com>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.11.1506182130220.1659@ja.home.ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=HqJREUgNrk+dnqBO+QNPp6t1u1dKtrZs7qKTbdjkBGw=;
+ b=OY7spOmWZ96h76BTeOnNDwpAia3Y3Y83fQfddrZE9hTTXk2+yxDAdpkZQiAk5K6jET39
+ euAz5lebqHdkmHgMviOSkmeyNCcb2+4qF+X5LBMDw9p9W88RRPG1S7Dt/0WFJZgdDoID
+ iRCDGv3+SU5WS4h/o3MBFrH/ncmy9KTA6tQ= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-users@linuxvirtualserver.org, lvs-devel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
+Cc: kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-Hi.
-Thanks, for answer. I will use -D ==> -A for edit services.
+Previously there was a trivial panic
 
-> On Jun 18, 2015, at 9:52 PM, Julian Anastasov <ja@ssi.bg> wrote:
-> 
-> 
-> 	Hello,
-> 
-> On Thu, 18 Jun 2015, Alexander Vasiliev wrote:
-> 
->> Hello.
->> 
->> I have installed ipvsadm (1.2.1) on Linux Ubuntu-14.04 (3.13.0-55-generic) server.
->> Next I create service: ipvsadm -A -t 172.16.0.12:http -s lblc.
->> When I tried edit created service I got kernel panic. Edit command: ipvsadm -A -t 172.16.0.12:http -s rr, for example.
->> The problem is repeatable, I try in VirtualBox.
-> 
-> 	You mean second command is -E, not -A, right?
-> It looks like I completely messed the scheduler editing
-> with commit ceec4c381681 ("ipvs: convert services to rcu").
-> The problem is with the svc->sched_data. I forgot about it.
-> The reverse order of ip_vs_bind_scheduler and
-> ip_vs_unbind_scheduler causes problem in all cases
-> for schedulers that maintain sched_data.
-> And RCU readers are not guaranteed to get the
-> scheduler+sched_data pointers safely for same scheduler.
-> 
-> 	The simple fix would be to make sure
-> ip_vs_unbind_scheduler and ip_vs_bind_scheduler work
-> in this order but with synchronize_rcu between them.
-> Something like what was before this change.
-> The individual schedulers will not be touched.
-> As changing of scheduler is a rare operation it can
-> be the initial bugfix. If we want to fix it without
-> such delay we have to change all schedulers, may be
-> by moving sched_data in some new struct scheduler_context
-> where schedulers can store their sched_data. Then
-> svc->sched_context (RCU ptr) can contain both the
-> scheduler and the sched_data pointers.
-> 
-> Regards
-> 
-> --
-> Julian Anastasov <ja@ssi.bg>
+unshare -n /bin/bash <<EOF
+ip addr add dev lo face::1/128
+ipvsadm -A -t [face::1]:15213
+ipvsadm -a -t [face::1]:15213 -r b00c::1
+echo boom | nc face::1 15213
+EOF
+
+This patch allows us to replicate the net logic above and simply capture
+the skb_dst(skb)->dev and use that for the purpose of the invocation.
+
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+---
+ net/netfilter/ipvs/ip_vs_xmit.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index bf66a86..b99d806 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -505,6 +505,13 @@ err_put:
+ 	return -1;
+ 
+ err_unreach:
++	/* The ip6_link_failure function requires the dev field to be set
++	 * in order to get the net (further for the sake of fwmark
++	 * reflection).
++	 */
++	if (!skb->dev)
++		skb->dev = skb_dst(skb)->dev;
++
+ 	dst_link_failure(skb);
+ 	return -1;
+ }
+-- 
+Alex Gartrell <agartrell@fb.com>
 
