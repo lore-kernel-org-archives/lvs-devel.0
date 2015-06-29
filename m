@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCHv2 3.12.44,3.14.45,3.18.16,4.0.6] ipvs: fix crash if scheduler is changed
-Date: Mon, 29 Jun 2015 21:52:07 +0300
-Message-ID: <1435603927-6376-1-git-send-email-ja@ssi.bg>
+Subject: [PATCHv2 net] ipvs: fix crash if scheduler is changed
+Date: Mon, 29 Jun 2015 21:51:40 +0300
+Message-ID: <1435603900-6307-1-git-send-email-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -35,11 +35,13 @@ Signed-off-by: Julian Anastasov <ja@ssi.bg>
  net/netfilter/ipvs/ip_vs_sched.c | 12 +++----
  3 files changed, 69 insertions(+), 37 deletions(-)
 
+ Works on 4.1, old kernels need different patch
+
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index d1d6b82..edfd604 100644
+index 5d2b806..38fbc19 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -313,7 +313,13 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+@@ -319,7 +319,13 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
  		 * return *ignored=0 i.e. ICMP and NF_DROP
  		 */
  		sched = rcu_dereference(svc->scheduler);
@@ -54,7 +56,7 @@ index d1d6b82..edfd604 100644
  		if (!dest) {
  			IP_VS_DBG(1, "p-schedule: no dest found.\n");
  			kfree(param.pe_data);
-@@ -460,7 +466,13 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+@@ -467,7 +473,13 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
  	}
  
  	sched = rcu_dereference(svc->scheduler);
@@ -70,10 +72,10 @@ index d1d6b82..edfd604 100644
  		IP_VS_DBG(1, "Schedule: no dest found.\n");
  		return NULL;
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index f956865..1f36a13 100644
+index 285eae3..6c51e3a 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -820,15 +820,16 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+@@ -842,15 +842,16 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
  	__ip_vs_dst_cache_reset(dest);
  	spin_unlock_bh(&dest->dst_lock);
  
@@ -93,7 +95,7 @@ index f956865..1f36a13 100644
  			sched->upd_dest(svc, dest);
  	}
  }
-@@ -1053,7 +1054,7 @@ static void __ip_vs_unlink_dest(struct ip_vs_service *svc,
+@@ -1084,7 +1085,7 @@ static void __ip_vs_unlink_dest(struct ip_vs_service *svc,
  		struct ip_vs_scheduler *sched;
  
  		sched = rcu_dereference_protected(svc->scheduler, 1);
@@ -102,7 +104,7 @@ index f956865..1f36a13 100644
  			sched->del_dest(svc, dest);
  	}
  }
-@@ -1144,11 +1145,14 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+@@ -1175,11 +1176,14 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
  	ip_vs_use_count_inc();
  
  	/* Lookup the scheduler by 'u->sched_name' */
@@ -122,7 +124,7 @@ index f956865..1f36a13 100644
  	}
  
  	if (u->pe_name && *u->pe_name) {
-@@ -1202,10 +1206,12 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+@@ -1240,10 +1244,12 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
  	spin_lock_init(&svc->stats.lock);
  
  	/* Bind the scheduler */
@@ -139,7 +141,7 @@ index f956865..1f36a13 100644
  
  	/* Bind the ct retriever */
  	RCU_INIT_POINTER(svc->pe, pe);
-@@ -1253,17 +1259,20 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+@@ -1291,17 +1297,20 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
  static int
  ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
  {
@@ -165,7 +167,7 @@ index f956865..1f36a13 100644
  	}
  	old_sched = sched;
  
-@@ -1291,14 +1300,20 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
+@@ -1329,14 +1338,20 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
  
  	old_sched = rcu_dereference_protected(svc->scheduler, 1);
  	if (sched != old_sched) {
@@ -192,7 +194,7 @@ index f956865..1f36a13 100644
  	}
  
  	/*
-@@ -2024,6 +2039,7 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
+@@ -1982,6 +1997,7 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
  		const struct ip_vs_iter *iter = seq->private;
  		const struct ip_vs_dest *dest;
  		struct ip_vs_scheduler *sched = rcu_dereference(svc->scheduler);
@@ -200,7 +202,7 @@ index f956865..1f36a13 100644
  
  		if (iter->table == ip_vs_svc_table) {
  #ifdef CONFIG_IP_VS_IPV6
-@@ -2032,18 +2048,18 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
+@@ -1990,18 +2006,18 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
  					   ip_vs_proto_name(svc->protocol),
  					   &svc->addr.in6,
  					   ntohs(svc->port),
@@ -222,10 +224,10 @@ index f956865..1f36a13 100644
  				   (svc->flags & IP_VS_SVC_F_ONEPACKET)?"ops ":"");
  		}
  
-@@ -2458,13 +2474,15 @@ static void
- ip_vs_copy_service(struct ip_vs_service_entry *dst, struct ip_vs_service *src)
+@@ -2427,13 +2443,15 @@ ip_vs_copy_service(struct ip_vs_service_entry *dst, struct ip_vs_service *src)
  {
  	struct ip_vs_scheduler *sched;
+ 	struct ip_vs_kstats kstats;
 +	char *sched_name;
  
  	sched = rcu_dereference_protected(src->scheduler, 1);
@@ -239,15 +241,15 @@ index f956865..1f36a13 100644
  	dst->flags = src->flags;
  	dst->timeout = src->timeout / HZ;
  	dst->netmask = src->netmask;
-@@ -2890,6 +2908,7 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
- 	struct nlattr *nl_service;
+@@ -2892,6 +2910,7 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
  	struct ip_vs_flags flags = { .flags = svc->flags,
  				     .mask = ~0 };
+ 	struct ip_vs_kstats kstats;
 +	char *sched_name;
  
  	nl_service = nla_nest_start(skb, IPVS_CMD_ATTR_SERVICE);
  	if (!nl_service)
-@@ -2908,8 +2927,9 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
+@@ -2910,8 +2929,9 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
  	}
  
  	sched = rcu_dereference_protected(svc->scheduler, 1);
@@ -259,7 +261,7 @@ index f956865..1f36a13 100644
  	    nla_put(skb, IPVS_SVC_ATTR_FLAGS, sizeof(flags), &flags) ||
  	    nla_put_u32(skb, IPVS_SVC_ATTR_TIMEOUT, svc->timeout / HZ) ||
 diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
-index 4dbcda6..21b6b51 100644
+index 199760c..7e81416 100644
 --- a/net/netfilter/ipvs/ip_vs_sched.c
 +++ b/net/netfilter/ipvs/ip_vs_sched.c
 @@ -74,7 +74,7 @@ void ip_vs_unbind_scheduler(struct ip_vs_service *svc,
@@ -271,7 +273,7 @@ index 4dbcda6..21b6b51 100644
  }
  
  
-@@ -148,21 +148,21 @@ void ip_vs_scheduler_put(struct ip_vs_scheduler *scheduler)
+@@ -147,21 +147,21 @@ void ip_vs_scheduler_put(struct ip_vs_scheduler *scheduler)
  
  void ip_vs_scheduler_err(struct ip_vs_service *svc, const char *msg)
  {
