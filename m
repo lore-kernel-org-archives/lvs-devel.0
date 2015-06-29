@@ -1,37 +1,43 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [lvs-users] [PATCH net] ipvs: do not use random local source
- address for tunnels
-Date: Mon, 29 Jun 2015 10:05:41 +0900
-Message-ID: <20150629010540.GA13676@verge.net.au>
-References: <1435405170-21023-1-git-send-email-ja@ssi.bg>
+Subject: Re: [PATCH net-next] ipvs: fix ipv6 route unreach panic
+Date: Mon, 29 Jun 2015 10:06:04 +0900
+Message-ID: <20150629010604.GB13676@verge.net.au>
+References: <1435313925-107850-1-git-send-email-agartrell@fb.com>
+ <alpine.LFD.2.11.1506271431530.19527@ja.home.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1435405170-21023-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <alpine.LFD.2.11.1506271431530.19527@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "LinuxVirtualServer.org users mailing list." <lvs-users@linuxvirtualserver.org>
-Cc: lvs-devel@vger.kernel.org, Michael Vallaly <lvs@nolatency.com>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Alex Gartrell <agartrell@fb.com>, lvs-devel@vger.kernel.org, kernel-team@fb.com
 
-On Sat, Jun 27, 2015 at 02:39:30PM +0300, Julian Anastasov wrote:
-> Michael Vallaly reports about wrong source address used
-> in rare cases for tunneled traffic. Looks like
-> __ip_vs_get_out_rt in 3.10+ is providing uninitialized
-> dest_dst->dst_saddr.ip because ip_vs_dest_dst_alloc uses
-> kmalloc. While we retry after seeing EINVAL from routing
-> for data that does not look like valid local address, it
-> still succeeded when this memory was previously used from
-> other dests and with different local addresses. As result,
-> we can use valid local address that is not suitable for
-> our real server.
+On Sat, Jun 27, 2015 at 02:35:00PM +0300, Julian Anastasov wrote:
 > 
-> Fix it by providing 0.0.0.0 every time our cache is refreshed.
-> By this way we will get preferred source address from routing.
+> 	Hello,
 > 
-> Reported-by: Michael Vallaly <lvs@nolatency.com>
-> Fixes: 026ace060dfe ("ipvs: optimize dst usage for real server")
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> On Fri, 26 Jun 2015, Alex Gartrell wrote:
+> 
+> > Previously there was a trivial panic
+> > 
+> > unshare -n /bin/bash <<EOF
+> > ip addr add dev lo face::1/128
+> > ipvsadm -A -t [face::1]:15213
+> > ipvsadm -a -t [face::1]:15213 -r b00c::1
+> > echo boom | nc face::1 15213
+> > EOF
+> > 
+> > This patch allows us to replicate the net logic above and simply capture
+> > the skb_dst(skb)->dev and use that for the purpose of the invocation.
+> > 
+> > Signed-off-by: Alex Gartrell <agartrell@fb.com>
+> 
+> 	Looks good to me, thanks! Simon, patch looks suitable
+> for ipvs (net) tree.
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
 
-Thanks, I have applied this to the ipvs tree.
+Thanks, I have applied this to to the ipvs tree.
