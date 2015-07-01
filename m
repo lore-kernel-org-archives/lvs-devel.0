@@ -1,38 +1,49 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCHv2 net] ipvs: fix crash if scheduler is changed
-Date: Tue, 30 Jun 2015 10:52:32 +0900
-Message-ID: <20150630015231.GB3517@verge.net.au>
-References: <1435603900-6307-1-git-send-email-ja@ssi.bg>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: [PATCH net-next] ipvs: orphan_skb in tunnel transmit case
+Date: Wed, 1 Jul 2015 13:50:22 -0700
+Message-ID: <1435783822-2258560-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1435603900-6307-1-git-send-email-ja@ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=+sjC6LfnR97dPTGEwwI1ZM029Iuj0fk2XkqBeacHo18=;
+ b=lIvMS1SSh+0mxb5CdR3EseVl8pDg7QUszHwW1KI2FLpgSQDq+9fyK/Zic4Ww0LqeOCxE
+ 8BV+JJCMPhTiUkyyu2ZY/r2bsZQFUXDNY4KVwPTjaB9hDtzIkRvK4y/O72jJ3r7QK1EG
+ 4z1txgazmB8cVg1WeeucEh7vOq2AGz+7rP0= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Alexander Vasiliev <a.vasylev@404-group.com>
+To: ja@ssi.bg, horms@verge.net.au, lvs-devel@vger.kernel.org
+Cc: kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-On Mon, Jun 29, 2015 at 09:51:40PM +0300, Julian Anastasov wrote:
-> I overlooked the svc->sched_data usage from schedulers
-> when the services were converted to RCU in 3.10. Now
-> the rare ipvsadm -E command can change the scheduler
-> but due to the reverse order of ip_vs_bind_scheduler
-> and ip_vs_unbind_scheduler we provide new sched_data
-> to the old scheduler resulting in a crash.
-> 
-> To fix it without changing the scheduler methods we
-> have to use synchronize_rcu() only for the editing case.
-> It means all svc->scheduler readers should expect a
-> NULL value. To avoid breakage for the service listing
-> and ipvsadm -R we can use the "none" name to indicate
-> that scheduler is not assigned, a state when we drop
-> new connections.
-> 
-> Reported-by: Alexander Vasiliev <a.vasylev@404-group.com>
-> Fixes: ceec4c381681 ("ipvs: convert services to rcu")
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+It's possible that the sk came from early_demux.  This will blow up every
+time in the TCP_TIME_WAIT case in ip_local_out.  No similar crashes exist
+for masquerade or gateway because they do not use ip_local_out{,6}.
 
-Thanks, I have pushed this to the ipvs tree after dropping
-the previous version of this patch.
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+---
+ net/netfilter/ipvs/ip_vs_xmit.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index bf66a86..1db0ca7 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -521,6 +521,13 @@ static inline int ip_vs_tunnel_xmit_prepare(struct sk_buff *skb,
+ 	if (unlikely(cp->flags & IP_VS_CONN_F_NFCT))
+ 		ret = ip_vs_confirm_conntrack(skb);
+ 	if (ret == NF_ACCEPT) {
++		/* In this case, skb is associated with an old, receiving
++		 * socket, which may be in TIME-WAIT and invalid for the
++		 * forward path, so we orphan it.
++		 */
++		if (skb->dev)
++			skb_orphan(skb);
++
+ 		nf_reset(skb);
+ 		skb_forward_csum(skb);
+ 	}
+-- 
+Alex Gartrell <agartrell@fb.com>
+
