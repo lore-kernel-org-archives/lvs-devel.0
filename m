@@ -1,45 +1,98 @@
-From: SF Markus Elfring <elfring@users.sourceforge.net>
-Subject: [PATCH] net-ipvs: Delete an unnecessary check before the function
- call "module_put"
-Date: Thu, 02 Jul 2015 17:10:41 +0200
-Message-ID: <55955471.9000501@users.sourceforge.net>
-References: <530C5E18.1020800@users.sourceforge.net> <alpine.DEB.2.10.1402251014170.2080@hadrien> <530CD2C4.4050903@users.sourceforge.net> <alpine.DEB.2.10.1402251840450.7035@hadrien> <530CF8FF.8080600@users.sourceforge.net> <alpine.DEB.2.02.1402252117150.2047@localhost6.localdomain6> <530DD06F.4090703@users.sourceforge.net> <alpine.DEB.2.02.1402262129250.2221@localhost6.localdomain6> <5317A59D.4@users.sourceforge.net> <546BA253.6030100@users.sourceforge.net> <20141119134040.GA12270@salvia>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: [PATCH net-next] ipvs: skb_orphan in case of forwarding
+Date: Sun, 5 Jul 2015 13:25:50 -0700
+Message-ID: <1436127950-1481955-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20141119134040.GA12270@salvia>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : mime-version : content-type; s=facebook;
+ bh=udZ/pULTRJ+Qff5hNsRsOSiPhXubhEMC6V1M7fHHLaU=;
+ b=A+l01RXAbfFxLgPmxjhXn+bzedTpLeaPdK5Qm+cX5X7vsJgcRTFjiLV2wUGMK+NO5Eje
+ 4JPuMG+ACO+ilVRNAtMBch6wFDiPnqA+yd1RIDluqfRQgTYksORtAkbWxl3k80B6ISox
+ fdHNaGpa1aG5h//e8LQDyr6flddb/790tKU= 
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: "David S. Miller" <davem@davemloft.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
-Cc: LKML <linux-kernel@vger.kernel.org>, "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>, Julia Lawall <julia.lawall@lip6.fr>
+Content-Transfer-Encoding: 7bit
+To: ja@ssi.bg, horms@verge.net.au, lvs-devel@vger.kernel.org
+Cc: netdev@vger.kernel.org, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-From: Markus Elfring <elfring@users.sourceforge.net>
-Date: Thu, 2 Jul 2015 17:00:14 +0200
+It is possible that we bind against a local socket in early_demux when we
+are actually going to want to forward it.  In this case, the socket serves
+no purpose and only serves to confuse things (particularly functions which
+implicitly expect sk_fullsock to be true, like ip_local_out).
+Additionally, skb_set_owner_w is totally broken for non full-socks.
 
-The module_put() function tests whether its argument is NULL and then
-returns immediately. Thus the test around the call is not needed.
-
-This issue was detected by using the Coccinelle software.
-
-Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_sched.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
-index 199760c..e50221b 100644
---- a/net/netfilter/ipvs/ip_vs_sched.c
-+++ b/net/netfilter/ipvs/ip_vs_sched.c
-@@ -137,7 +137,7 @@ struct ip_vs_scheduler *ip_vs_scheduler_get(const char *sched_name)
- 
- void ip_vs_scheduler_put(struct ip_vs_scheduler *scheduler)
- {
--	if (scheduler && scheduler->module)
-+	if (scheduler)
- 		module_put(scheduler->module);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index bf66a86..65526f4 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -527,6 +527,21 @@ static inline int ip_vs_tunnel_xmit_prepare(struct sk_buff *skb,
+ 	return ret;
  }
  
++/* In the event of a remote destination, it's possible that we would have
++ * matches against an old socket (particularly a TIME-WAIT socket). This
++ * causes havoc down the line (ip_local_out et. al. expect regular sockets
++ * and invalid memory accesses will happen) so simply drop the association
++ * in this case.
++*/
++static inline void ip_vs_drop_early_demux_sk(struct sk_buff *skb)
++{
++	/* If dev is set, the packet came from the LOCAL_IN callback and
++	 * not from a local TCP socket.
++	 */
++	if (skb->dev)
++		skb_orphan(skb);
++}
++
+ /* return NF_STOLEN (sent) or NF_ACCEPT if local=1 (not sent) */
+ static inline int ip_vs_nat_send_or_cont(int pf, struct sk_buff *skb,
+ 					 struct ip_vs_conn *cp, int local)
+@@ -538,12 +553,21 @@ static inline int ip_vs_nat_send_or_cont(int pf, struct sk_buff *skb,
+ 		ip_vs_notrack(skb);
+ 	else
+ 		ip_vs_update_conntrack(skb, cp, 1);
++
++	/* Remove the early_demux association unless it's bound for the
++	 * exact same port and address on this host after translation.
++	 */
++	if (!local || cp->vport != cp->dport ||
++	    !ip_vs_addr_equal(cp->af, &cp->vaddr, &cp->caddr))
++		ip_vs_drop_early_demux_sk(skb);
++
+ 	if (!local) {
+ 		skb_forward_csum(skb);
+ 		NF_HOOK(pf, NF_INET_LOCAL_OUT, NULL, skb,
+ 			NULL, skb_dst(skb)->dev, dst_output_sk);
+ 	} else
+ 		ret = NF_ACCEPT;
++
+ 	return ret;
+ }
+ 
+@@ -557,6 +581,7 @@ static inline int ip_vs_send_or_cont(int pf, struct sk_buff *skb,
+ 	if (likely(!(cp->flags & IP_VS_CONN_F_NFCT)))
+ 		ip_vs_notrack(skb);
+ 	if (!local) {
++		ip_vs_drop_early_demux_sk(skb);
+ 		skb_forward_csum(skb);
+ 		NF_HOOK(pf, NF_INET_LOCAL_OUT, NULL, skb,
+ 			NULL, skb_dst(skb)->dev, dst_output_sk);
+@@ -845,6 +870,8 @@ ip_vs_prepare_tunneled_skb(struct sk_buff *skb, int skb_af,
+ 	struct ipv6hdr *old_ipv6h = NULL;
+ #endif
+ 
++	ip_vs_drop_early_demux_sk(skb);
++
+ 	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+ 		new_skb = skb_realloc_headroom(skb, max_headroom);
+ 		if (!new_skb)
 -- 
-2.4.5
+Alex Gartrell <agartrell@fb.com>
 
