@@ -1,47 +1,36 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net] ipvs: fix crash with sync protocol v0 and FTP
-Date: Thu, 9 Jul 2015 10:39:00 +0900
-Message-ID: <20150709013900.GA14843@verge.net.au>
-References: <1436333493-20436-1-git-send-email-ja@ssi.bg>
+Subject: Re: [PATCH] net-ipvs: Delete an unnecessary check before the
+ function call "module_put"
+Date: Thu, 9 Jul 2015 10:41:02 +0900
+Message-ID: <20150709014102.GB14843@verge.net.au>
+References: <530CD2C4.4050903@users.sourceforge.net>
+ <alpine.DEB.2.10.1402251840450.7035@hadrien>
+ <530CF8FF.8080600@users.sourceforge.net>
+ <alpine.DEB.2.02.1402252117150.2047@localhost6.localdomain6>
+ <530DD06F.4090703@users.sourceforge.net>
+ <alpine.DEB.2.02.1402262129250.2221@localhost6.localdomain6>
+ <5317A59D.4@users.sourceforge.net>
+ <546BA253.6030100@users.sourceforge.net>
+ <20141119134040.GA12270@salvia>
+ <55955471.9000501@users.sourceforge.net>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1436333493-20436-1-git-send-email-ja@ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <55955471.9000501@users.sourceforge.net>
+Sender: kernel-janitors-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org
+To: SF Markus Elfring <elfring@users.sourceforge.net>
+Cc: "David S. Miller" <davem@davemloft.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, LKML <linux-kernel@vger.kernel.org>, "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>, Julia Lawall <julia.lawall@lip6.fr>
 
-On Wed, Jul 08, 2015 at 08:31:33AM +0300, Julian Anastasov wrote:
-> Fix crash in 3.5+ if FTP is used after switching
-> sync_version to 0.
+On Thu, Jul 02, 2015 at 05:10:41PM +0200, SF Markus Elfring wrote:
+> From: Markus Elfring <elfring@users.sourceforge.net>
+> Date: Thu, 2 Jul 2015 17:00:14 +0200
 > 
-> Fixes: 749c42b620a9 ("ipvs: reduce sync rate with time thresholds")
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> The module_put() function tests whether its argument is NULL and then
+> returns immediately. Thus the test around the call is not needed.
+> 
+> This issue was detected by using the Coccinelle software.
 
-Thanks, applied.
-
-> ---
->  net/netfilter/ipvs/ip_vs_sync.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
->  Compiles also on 3.10.81, 3.12.44, 3.14.45, 3.18.16, 4.0.6, 4.1
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-> index 19b9cce..150047c 100644
-> --- a/net/netfilter/ipvs/ip_vs_sync.c
-> +++ b/net/netfilter/ipvs/ip_vs_sync.c
-> @@ -612,7 +612,7 @@ static void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp,
->  			pkts = atomic_add_return(1, &cp->in_pkts);
->  		else
->  			pkts = sysctl_sync_threshold(ipvs);
-> -		ip_vs_sync_conn(net, cp->control, pkts);
-> +		ip_vs_sync_conn(net, cp, pkts);
->  	}
->  }
->  
-> -- 
-> 1.9.3
-> 
+Thanks, applied to ipvs-next for v4.3.
