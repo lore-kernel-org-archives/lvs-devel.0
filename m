@@ -1,44 +1,41 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next] net-ipvs: Delete an unnecessary check before the function call "module_put"
-Date: Fri, 10 Jul 2015 15:42:49 +0900
-Message-ID: <1436510569-10752-2-git-send-email-horms@verge.net.au>
-References: <1436510569-10752-1-git-send-email-horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH ipvs] ipvs: call skb_sender_cpu_clear
+Date: Fri, 10 Jul 2015 09:46:02 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1507100944380.1488@ja.home.ssi.bg>
+References: <1436429727-6527-1-git-send-email-ja@ssi.bg> <20150709085037.GA31426@verge.net.au> <alpine.LFD.2.11.1507092138370.1682@ja.home.ssi.bg> <20150710061814.GA1656@verge.net.au>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1436510569-10752-1-git-send-email-horms@verge.net.au>
+In-Reply-To: <20150710061814.GA1656@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Markus Elfring <elfring@users.sourceforge.net>, Simon Horman <horms@verge.net.au>
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org
 
-From: Markus Elfring <elfring@users.sourceforge.net>
 
-The module_put() function tests whether its argument is NULL and then
-returns immediately. Thus the test around the call is not needed.
+	Hello,
 
-This issue was detected by using the Coccinelle software.
+On Fri, 10 Jul 2015, Simon Horman wrote:
 
-Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_sched.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> On Thu, Jul 09, 2015 at 09:43:39PM +0300, Julian Anastasov wrote:
+> > 
+> > 	I saw Eric fixes for sender_cpu. Here are
+> > some references:
+> > 
+> > - from today @netdev, targets net tree:
+> > bridge: fix potential crash in __netdev_pick_tx()
+> > 
+> > - this commit explains the problem:
+> > commit c29390c6dfee ("xps: must clear sender_cpu before forwarding")
+> 
+> Thanks, I have queued this up in the ipvs tree with
+> 
+> Fixes: 2bd82484bb4c ("xps: fix xps for stacked devices")
 
-diff --git a/net/netfilter/ipvs/ip_vs_sched.c b/net/netfilter/ipvs/ip_vs_sched.c
-index 199760c71f39..e50221b9d95f 100644
---- a/net/netfilter/ipvs/ip_vs_sched.c
-+++ b/net/netfilter/ipvs/ip_vs_sched.c
-@@ -137,7 +137,7 @@ struct ip_vs_scheduler *ip_vs_scheduler_get(const char *sched_name)
- 
- void ip_vs_scheduler_put(struct ip_vs_scheduler *scheduler)
- {
--	if (scheduler && scheduler->module)
-+	if (scheduler)
- 		module_put(scheduler->module);
- }
- 
--- 
-2.1.4
+	Thanks, that looks correct.
 
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
