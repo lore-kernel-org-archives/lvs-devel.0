@@ -1,96 +1,99 @@
-From: Hannes Frederic Sowa <hannes@stressinduktion.org>
-Subject: Re: [PATCH net-next] ipvs: fix ipv6 route unreach panic
-Date: Tue, 14 Jul 2015 11:21:16 +0200
-Message-ID: <1436865676.12408.6.camel@stressinduktion.org>
-References: <1435313925-107850-1-git-send-email-agartrell@fb.com>
-	 <20150714082041.GA5220@verge.net.au>
+From: "rhadoo.io88" <rhadoo.io88@gmail.com>
+Subject: Re: ovf scheduler
+Date: Tue, 14 Jul 2015 17:29:15 +0300
+Message-ID: <CAA0i4Bp30YKvGZVVp=QL9wbfiNT5S4v_cv_14q3ZONjwOoFcdw@mail.gmail.com>
+References: <CAA0i4Bp0n-PooNaUq=F7MgD2Ou8=hdA6w+B0te5tcWP4ODxTfw@mail.gmail.com>
+	<alpine.LFD.2.11.1507132328500.1708@ja.home.ssi.bg>
+	<CAA0i4Bph-Gw00+-kUovvvfSgEta6XEH2-hGtSnusuPNdro2nCA@mail.gmail.com>
+	<20150714013625.GE29200@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=
-	stressinduktion.org; h=cc:content-transfer-encoding:content-type
-	:date:from:in-reply-to:message-id:mime-version:references
-	:subject:to:x-sasl-enc:x-sasl-enc; s=mesmtp; bh=WLK0qefg/y43ilBX
-	lbHGqr9IOR8=; b=izDJcQo5liYvX2F6D6NjgtYjQtsKDa1dt24Z7KeDnl3tqn+U
-	QIEF5BWY1aQzB5vfNcntX1A5t3ZxeJcXojd+MsKmpqXF1gazU20pSC5V4SghNiJB
-	DoQqRsefFGLUTgS53isZog5arBHrdNzQLi3vL6ZJdqyjsjX3EJb8Nqre3aI=
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:content-transfer-encoding:content-type
-	:date:from:in-reply-to:message-id:mime-version:references
-	:subject:to:x-sasl-enc:x-sasl-enc; s=smtpout; bh=WLK0qefg/y43ilB
-	XlbHGqr9IOR8=; b=DuRdTdywUwxGSHQT1CX10bOH+eCLevCUYgrqAawQA43C5e/
-	pCluFzuKQIOsGYMB4qo3h9Psv6oYaI2cmVhs6avjUnFzGftVyt+UxE60borQej6i
-	ZjgBScUK6v8vnHiHqDTBjQa/QT0dc0OsOpnoXCdgh2lwWBCeJJXaDMbICZSI=
-In-Reply-To: <20150714082041.GA5220@verge.net.au>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=mime-version:in-reply-to:references:date:message-id:subject:from:to
+         :cc:content-type;
+        bh=/dr7UAQVXu196i0YJPApEn3SwtoxCz6Pp7+GM3SNjUE=;
+        b=pYd/2DeRJ8o1xIVdH6kKXAwfpB9UttpYsnfnnX/Qlt9FxGwrS4qg0APjKOvnPJsxOg
+         HkS/lQ98WLiYRNP7W4iNipaOdejyYKlCgUTWhtNSNqTsu4hbu9pg63xaaR6OhRzFw4wu
+         rYy2YEZ5Nt5NP9MyXif9XUP8s0Hs7KMOQGNiTo6vrHgi2w6nXvyLPp1FoeDcCbSxPp/E
+         wodUL1LgUSx15fQomaLrDGUSti2RzqbGv+OrMh1wpg8QryYE6688Ntvknijw6p3AmkHd
+         aj75oo++/Rt3zAKiSLtbVbv6fgaCCa7kM+GpnXEEuuFbYMBNZD1S4rO/dy7+2JdzWsnZ
+         S5Xg==
+In-Reply-To: <20150714013625.GE29200@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>, Alex Gartrell <agartrell@fb.com>
-Cc: ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
 
-On Tue, 2015-07-14 at 17:20 +0900, Simon Horman wrote:
-> [Cc Hannes]
-> 
-> On Fri, Jun 26, 2015 at 03:18:45AM -0700, Alex Gartrell wrote:
-> > Previously there was a trivial panic
-> > 
-> > unshare -n /bin/bash <<EOF
-> > ip addr add dev lo face::1/128
-> > ipvsadm -A -t [face::1]:15213
-> > ipvsadm -a -t [face::1]:15213 -r b00c::1
-> > echo boom | nc face::1 15213
-> > EOF
-> > 
-> > This patch allows us to replicate the net logic above and simply 
-> > capture
-> > the skb_dst(skb)->dev and use that for the purpose of the 
-> > invocation.
-> > 
-> > Signed-off-by: Alex Gartrell <agartrell@fb.com>
-> > ---
-> >  net/netfilter/ipvs/ip_vs_xmit.c | 7 +++++++
-> >  1 file changed, 7 insertions(+)
-> > 
-> > diff --git a/net/netfilter/ipvs/ip_vs_xmit.c 
-> > b/net/netfilter/ipvs/ip_vs_xmit.c
-> > index bf66a86..b99d806 100644
-> > --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> > +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> > @@ -505,6 +505,13 @@ err_put:
-> >  	return -1;
-> >  
-> >  err_unreach:
-> > +	/* The ip6_link_failure function requires the dev field to 
-> > be set
-> > +	 * in order to get the net (further for the sake of fwmark
-> > +	 * reflection).
-> > +	 */
-> > +	if (!skb->dev)
-> > +		skb->dev = skb_dst(skb)->dev;
-> > +
-> >  	dst_link_failure(skb);
-> >  	return -1;
-> >  }
-> 
-> 
-> My reading of this is that the above:
-> 
-> Fixes: 1eb4f7582868 ("ipv6: in case of link failure remove route 
-> directly instead of letting it expire")
-> 
-> As it seems to me that it is that patch that causes ip6_link_failure 
-> to
-> require the dev field to be set.
-> 
-> Does that seem sane?
+Hi,
+Yes....adding thresholds support in ldirectord seems like a good ideea anyway...
+But perhaps there would be benefit in merging my proposed OVF
+scheduler with the existing FO, in essence they do the same thing but
+matching the number of active connections supported by the node with
+the node's weight whilst still keeping thresholds for the total number
+of connections might give a bit more flexibility.
 
-From what dst_link_failure -> ip6_link_failure expects the patch does
-make sense.
 
-But the Fixes tag is wrong, because the panic should be triggered during
-dereferencing dev_net(skb->dev) in icmp6_send. This part was not touched
-by my patch.
 
-Bye,
-Hannes
 
+On Tue, Jul 14, 2015 at 4:36 AM, Simon Horman <horms@verge.net.au> wrote:
+> Hi,
+>
+> On Tue, Jul 14, 2015 at 01:47:16AM +0300, rhadoo.io88 wrote:
+>> Unfortunately i was not aware of the FO scheduler, i looked it up just
+>> now...indeed you could get similar behavior with FO scheduler and
+>> proper thresholds.
+>> The only trouble with that is that i can't set the thresholds from
+>> within ldirectord , so i won't be able to keep all the config in one
+>> place,  and that upper threshold seems to take into account all
+>> connections ( active and inactive) , that making the upper limit a bit
+>> vague.
+>
+> Perhaps ldirectord could be enhanced in this regard?
+>
+>> i think this approach has the advantage of keeping all the config in
+>> one place, having the weight set at the actual number of active
+>> connections the node can handle whilst still allowing to have
+>> thresholds on the total connections.
+>>
+>> On Mon, Jul 13, 2015 at 11:35 PM, Julian Anastasov <ja@ssi.bg> wrote:
+>> >
+>> >         Hello,
+>> >
+>> > On Mon, 13 Jul 2015, rhadoo.io88 wrote:
+>> >
+>> >> Hi,
+>> >> My name is Raducu Deaconu, i am a romanian syadmin/solution manager
+>> >> and i have been working with lvs for some years now, great software!
+>> >> I mainly use ldirectord on top of lvs and every now and then i do run
+>> >> into customer tasks that would need new features.
+>> >> One such feature is the need of a failover scheduler that would allow
+>> >> a certain number of active connections to be served by a server and
+>> >> only in case that is overloaded send some jobs to another/other
+>> >> servers.
+>> >> That would be needed say in the case you have let's say a galera
+>> >> cluster and you want to make sure all writes go to one node, and only
+>> >> one node,or in the case where you have some caching implemented in an
+>> >> application and you want the virtual service to always go to that
+>> >> server, unless there is a problem, case when another server can handle
+>> >> the job, although without the caching.
+>> >> These features are not possible now in ldirectord/lvs and i think they
+>> >> would bring some benefits to many use cases like my own.
+>> >
+>> >         Can the same be achieved by setting --u-threshold
+>> > and using the FO scheduler? ip_vs_bind_dest() sets the
+>> > IP_VS_DEST_F_OVERLOAD flag if number of connections
+>> > exceed upper threshold and then the FO scheduler can select
+>> > another real server with lower weight.
+>> >
+>> > Regards
+>> >
+>> > --
+>> > Julian Anastasov <ja@ssi.bg>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
