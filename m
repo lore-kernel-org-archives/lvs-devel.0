@@ -1,52 +1,88 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: ovf scheduler
-Date: Tue, 14 Jul 2015 22:11:25 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1507142152450.1833@ja.home.ssi.bg>
-References: <CAA0i4Bp0n-PooNaUq=F7MgD2Ou8=hdA6w+B0te5tcWP4ODxTfw@mail.gmail.com> <alpine.LFD.2.11.1507132328500.1708@ja.home.ssi.bg> <CAA0i4Bph-Gw00+-kUovvvfSgEta6XEH2-hGtSnusuPNdro2nCA@mail.gmail.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH net-next] ipvs: fix ipv6 route unreach panic
+Date: Wed, 15 Jul 2015 14:21:52 +0900
+Message-ID: <20150715052152.GA7915@verge.net.au>
+References: <1435313925-107850-1-git-send-email-agartrell@fb.com>
+ <20150714082041.GA5220@verge.net.au>
+ <1436865676.12408.6.camel@stressinduktion.org>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <CAA0i4Bph-Gw00+-kUovvvfSgEta6XEH2-hGtSnusuPNdro2nCA@mail.gmail.com>
+Content-Disposition: inline
+In-Reply-To: <1436865676.12408.6.camel@stressinduktion.org>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "rhadoo.io88" <rhadoo.io88@gmail.com>
-Cc: lvs-devel@vger.kernel.org
+To: Hannes Frederic Sowa <hannes@stressinduktion.org>
+Cc: Alex Gartrell <agartrell@fb.com>, ja@ssi.bg, lvs-devel@vger.kernel.org, kernel-team@fb.com
 
+On Tue, Jul 14, 2015 at 11:21:16AM +0200, Hannes Frederic Sowa wrote:
+> On Tue, 2015-07-14 at 17:20 +0900, Simon Horman wrote:
+> > [Cc Hannes]
+> > 
+> > On Fri, Jun 26, 2015 at 03:18:45AM -0700, Alex Gartrell wrote:
+> > > Previously there was a trivial panic
+> > > 
+> > > unshare -n /bin/bash <<EOF
+> > > ip addr add dev lo face::1/128
+> > > ipvsadm -A -t [face::1]:15213
+> > > ipvsadm -a -t [face::1]:15213 -r b00c::1
+> > > echo boom | nc face::1 15213
+> > > EOF
+> > > 
+> > > This patch allows us to replicate the net logic above and simply 
+> > > capture
+> > > the skb_dst(skb)->dev and use that for the purpose of the 
+> > > invocation.
+> > > 
+> > > Signed-off-by: Alex Gartrell <agartrell@fb.com>
+> > > ---
+> > >  net/netfilter/ipvs/ip_vs_xmit.c | 7 +++++++
+> > >  1 file changed, 7 insertions(+)
+> > > 
+> > > diff --git a/net/netfilter/ipvs/ip_vs_xmit.c 
+> > > b/net/netfilter/ipvs/ip_vs_xmit.c
+> > > index bf66a86..b99d806 100644
+> > > --- a/net/netfilter/ipvs/ip_vs_xmit.c
+> > > +++ b/net/netfilter/ipvs/ip_vs_xmit.c
+> > > @@ -505,6 +505,13 @@ err_put:
+> > >  	return -1;
+> > >  
+> > >  err_unreach:
+> > > +	/* The ip6_link_failure function requires the dev field to 
+> > > be set
+> > > +	 * in order to get the net (further for the sake of fwmark
+> > > +	 * reflection).
+> > > +	 */
+> > > +	if (!skb->dev)
+> > > +		skb->dev = skb_dst(skb)->dev;
+> > > +
+> > >  	dst_link_failure(skb);
+> > >  	return -1;
+> > >  }
+> > 
+> > 
+> > My reading of this is that the above:
+> > 
+> > Fixes: 1eb4f7582868 ("ipv6: in case of link failure remove route 
+> > directly instead of letting it expire")
+> > 
+> > As it seems to me that it is that patch that causes ip6_link_failure 
+> > to
+> > require the dev field to be set.
+> > 
+> > Does that seem sane?
+> 
+> >From what dst_link_failure -> ip6_link_failure expects the patch does
+> make sense.
+> 
+> But the Fixes tag is wrong, because the panic should be triggered during
+> dereferencing dev_net(skb->dev) in icmp6_send. This part was not touched
+> by my patch.
 
-	Hello,
+Thanks, of course you are correct.
 
-On Tue, 14 Jul 2015, rhadoo.io88 wrote:
-
-> Unfortunately i was not aware of the FO scheduler, i looked it up just
-> now...indeed you could get similar behavior with FO scheduler and
-> proper thresholds.
-> The only trouble with that is that i can't set the thresholds from
-> within ldirectord , so i won't be able to keep all the config in one
-> place,  and that upper threshold seems to take into account all
-> connections ( active and inactive) , that making the upper limit a bit
-> vague.
-> i think this approach has the advantage of keeping all the config in
-> one place, having the weight set at the actual number of active
-> connections the node can handle whilst still allowing to have
-> thresholds on the total connections.
-
-	OK. But you have to update this scheduler because
-it is based on old code. You can use ip_vs_fo.c for
-reference. You have to fix any coding style warnings by using
-scripts/checkpatch.pl --strict /tmp/your.patch
-You can check Documentation/CodingStyle for reference.
-You can add comment that this scheduler can be used
-for TCP/SCTP but not for UDP because it uses only the
-activeconns.
-
-	Your patch should include also changes for Kconfig
-and Makefile.
-
-	Also, the 'curentw = atomic_read(&dest->weight);'
-can be used early to read the weight only once.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+I now wonder if this bug may not have been present ever since 
+IPv6 support was added to IPv6 in v2.6.28 and thus this patch fixes
+b3cdd2a73867 ("IPVS: Add and bind IPv6 xmit functions") which originally
+added the call to dst_link_failure for IPv6.
