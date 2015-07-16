@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf 6/6] ipvs: call skb_sender_cpu_clear
-Date: Thu, 16 Jul 2015 11:14:13 +0900
-Message-ID: <1437012853-7318-7-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf 4/6] ipvs: skb_orphan in case of forwarding
+Date: Thu, 16 Jul 2015 11:14:11 +0900
+Message-ID: <1437012853-7318-5-git-send-email-horms@verge.net.au>
 References: <1437012853-7318-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1437012853-7318-1-git-send-email-horms@verge.net.au>
@@ -11,50 +11,89 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Alex Gartrell <agartrell@fb.com>, Simon Horman <horms@verge.net.au>
 
-From: Julian Anastasov <ja@ssi.bg>
+From: Alex Gartrell <agartrell@fb.com>
 
-Reset XPS's sender_cpu on forwarding.
+It is possible that we bind against a local socket in early_demux when we
+are actually going to want to forward it.  In this case, the socket serves
+no purpose and only serves to confuse things (particularly functions which
+implicitly expect sk_fullsock to be true, like ip_local_out).
+Additionally, skb_set_owner_w is totally broken for non full-socks.
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Fixes: 2bd82484bb4c ("xps: fix xps for stacked devices")
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+Fixes: 41063e9dd119 ("ipv4: Early TCP socket demux.")
+Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ net/netfilter/ipvs/ip_vs_xmit.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
 diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 34dc1429ebdb..258a0b0e82a2 100644
+index ec30d68ccc0b..34dc1429ebdb 100644
 --- a/net/netfilter/ipvs/ip_vs_xmit.c
 +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -529,6 +529,8 @@ static inline int ip_vs_tunnel_xmit_prepare(struct sk_buff *skb,
- 	if (ret == NF_ACCEPT) {
- 		nf_reset(skb);
- 		skb_forward_csum(skb);
-+		if (!skb->sk)
-+			skb_sender_cpu_clear(skb);
- 	}
+@@ -533,6 +533,21 @@ static inline int ip_vs_tunnel_xmit_prepare(struct sk_buff *skb,
  	return ret;
  }
-@@ -569,6 +571,8 @@ static inline int ip_vs_nat_send_or_cont(int pf, struct sk_buff *skb,
  
++/* In the event of a remote destination, it's possible that we would have
++ * matches against an old socket (particularly a TIME-WAIT socket). This
++ * causes havoc down the line (ip_local_out et. al. expect regular sockets
++ * and invalid memory accesses will happen) so simply drop the association
++ * in this case.
++*/
++static inline void ip_vs_drop_early_demux_sk(struct sk_buff *skb)
++{
++	/* If dev is set, the packet came from the LOCAL_IN callback and
++	 * not from a local TCP socket.
++	 */
++	if (skb->dev)
++		skb_orphan(skb);
++}
++
+ /* return NF_STOLEN (sent) or NF_ACCEPT if local=1 (not sent) */
+ static inline int ip_vs_nat_send_or_cont(int pf, struct sk_buff *skb,
+ 					 struct ip_vs_conn *cp, int local)
+@@ -544,12 +559,21 @@ static inline int ip_vs_nat_send_or_cont(int pf, struct sk_buff *skb,
+ 		ip_vs_notrack(skb);
+ 	else
+ 		ip_vs_update_conntrack(skb, cp, 1);
++
++	/* Remove the early_demux association unless it's bound for the
++	 * exact same port and address on this host after translation.
++	 */
++	if (!local || cp->vport != cp->dport ||
++	    !ip_vs_addr_equal(cp->af, &cp->vaddr, &cp->daddr))
++		ip_vs_drop_early_demux_sk(skb);
++
  	if (!local) {
  		skb_forward_csum(skb);
-+		if (!skb->sk)
-+			skb_sender_cpu_clear(skb);
  		NF_HOOK(pf, NF_INET_LOCAL_OUT, NULL, skb,
  			NULL, skb_dst(skb)->dev, dst_output_sk);
  	} else
-@@ -589,6 +593,8 @@ static inline int ip_vs_send_or_cont(int pf, struct sk_buff *skb,
+ 		ret = NF_ACCEPT;
++
+ 	return ret;
+ }
+ 
+@@ -563,6 +587,7 @@ static inline int ip_vs_send_or_cont(int pf, struct sk_buff *skb,
+ 	if (likely(!(cp->flags & IP_VS_CONN_F_NFCT)))
+ 		ip_vs_notrack(skb);
  	if (!local) {
- 		ip_vs_drop_early_demux_sk(skb);
++		ip_vs_drop_early_demux_sk(skb);
  		skb_forward_csum(skb);
-+		if (!skb->sk)
-+			skb_sender_cpu_clear(skb);
  		NF_HOOK(pf, NF_INET_LOCAL_OUT, NULL, skb,
  			NULL, skb_dst(skb)->dev, dst_output_sk);
- 	} else
+@@ -851,6 +876,8 @@ ip_vs_prepare_tunneled_skb(struct sk_buff *skb, int skb_af,
+ 	struct ipv6hdr *old_ipv6h = NULL;
+ #endif
+ 
++	ip_vs_drop_early_demux_sk(skb);
++
+ 	if (skb_headroom(skb) < max_headroom || skb_cloned(skb)) {
+ 		new_skb = skb_realloc_headroom(skb, max_headroom);
+ 		if (!new_skb)
 -- 
 2.1.4
 
