@@ -1,53 +1,162 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf 2/6] ipvs: do not use random local source address for tunnels
-Date: Thu, 16 Jul 2015 11:14:09 +0900
-Message-ID: <1437012853-7318-3-git-send-email-horms@verge.net.au>
-References: <1437012853-7318-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1437012853-7318-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+From: Raducu Deaconu <rhadoo.io88@gmail.com>
+Subject: Re: ovf scheduler
+Date: Thu, 16 Jul 2015 10:03:19 +0300
+Message-ID: <CAA0i4Bo3w3msK9Tdn1T3BNa-ZyQ6mon=XeXFRkSfsWHRVEua=w@mail.gmail.com>
+References: <CAA0i4Bp0n-PooNaUq=F7MgD2Ou8=hdA6w+B0te5tcWP4ODxTfw@mail.gmail.com>
+	<alpine.LFD.2.11.1507132328500.1708@ja.home.ssi.bg>
+	<CAA0i4Bph-Gw00+-kUovvvfSgEta6XEH2-hGtSnusuPNdro2nCA@mail.gmail.com>
+	<alpine.LFD.2.11.1507142152450.1833@ja.home.ssi.bg>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary=001a113369e8954340051af8aa47
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=mime-version:in-reply-to:references:date:message-id:subject:from:to
+         :cc:content-type;
+        bh=6VDVaproFwbzND00C46nAOaZF1Rt1LQYu4Avfw9462o=;
+        b=rOtdIwd60NmkOvAE/Tggm9ooH6JtkvDe9+QkldUz16ZcRrUKY4GGBubp8sPOmfJwEY
+         HwhCl0giIoNNmQ8VDpoqbdCHBi6Y4nB/bYZIINsMDfJpuOm7FVHHjB0K7Xdv4Jd9r7rx
+         Ntjs1UgLopJnoKV7UhPon8HcY66cN59/tHdordI6IVWQy/SKsXM49Lfa+RI05ssNaHQ+
+         ateoFXMqNV+C7k5pGHqW9sntOBND+5u/h78qHorUqttlWtGl0OGJcsfhABcRL0T7K3DH
+         RQcAe4xGBWjpm4SzD8mTWj36xGJ1eGggvuQijTN61m1D/jWRE/SI1xGqvP2GzbSsyHIu
+         b9WQ==
+In-Reply-To: <alpine.LFD.2.11.1507142152450.1833@ja.home.ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org
 
-From: Julian Anastasov <ja@ssi.bg>
+--001a113369e8954340051af8aa47
+Content-Type: text/plain; charset=UTF-8
 
-Michael Vallaly reports about wrong source address used
-in rare cases for tunneled traffic. Looks like
-__ip_vs_get_out_rt in 3.10+ is providing uninitialized
-dest_dst->dst_saddr.ip because ip_vs_dest_dst_alloc uses
-kmalloc. While we retry after seeing EINVAL from routing
-for data that does not look like valid local address, it
-still succeeded when this memory was previously used from
-other dests and with different local addresses. As result,
-we can use valid local address that is not suitable for
-our real server.
+Hi,
+I have updated the code and generated the patch, according to your indications.
 
-Fix it by providing 0.0.0.0 every time our cache is refreshed.
-By this way we will get preferred source address from routing.
 
-Reported-by: Michael Vallaly <lvs@nolatency.com>
-Fixes: 026ace060dfe ("ipvs: optimize dst usage for real server")
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- net/netfilter/ipvs/ip_vs_xmit.c | 1 -
- 1 file changed, 1 deletion(-)
+On Tue, Jul 14, 2015 at 10:11 PM, Julian Anastasov <ja@ssi.bg> wrote:
+>
+>         Hello,
+>
+> On Tue, 14 Jul 2015, rhadoo.io88 wrote:
+>
+>> Unfortunately i was not aware of the FO scheduler, i looked it up just
+>> now...indeed you could get similar behavior with FO scheduler and
+>> proper thresholds.
+>> The only trouble with that is that i can't set the thresholds from
+>> within ldirectord , so i won't be able to keep all the config in one
+>> place,  and that upper threshold seems to take into account all
+>> connections ( active and inactive) , that making the upper limit a bit
+>> vague.
+>> i think this approach has the advantage of keeping all the config in
+>> one place, having the weight set at the actual number of active
+>> connections the node can handle whilst still allowing to have
+>> thresholds on the total connections.
+>
+>         OK. But you have to update this scheduler because
+> it is based on old code. You can use ip_vs_fo.c for
+> reference. You have to fix any coding style warnings by using
+> scripts/checkpatch.pl --strict /tmp/your.patch
+> You can check Documentation/CodingStyle for reference.
+> You can add comment that this scheduler can be used
+> for TCP/SCTP but not for UDP because it uses only the
+> activeconns.
+>
+>         Your patch should include also changes for Kconfig
+> and Makefile.
+>
+>         Also, the 'curentw = atomic_read(&dest->weight);'
+> can be used early to read the weight only once.
+>
+> Regards
+>
+> --
+> Julian Anastasov <ja@ssi.bg>
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index b99d80695b1f..ec30d68ccc0b 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -130,7 +130,6 @@ static struct rtable *do_output_route4(struct net *net, __be32 daddr,
- 
- 	memset(&fl4, 0, sizeof(fl4));
- 	fl4.daddr = daddr;
--	fl4.saddr = (rt_mode & IP_VS_RT_MODE_CONNECT) ? *saddr : 0;
- 	fl4.flowi4_flags = (rt_mode & IP_VS_RT_MODE_KNOWN_NH) ?
- 			   FLOWI_FLAG_KNOWN_NH : 0;
- 
--- 
-2.1.4
+--001a113369e8954340051af8aa47
+Content-Type: text/x-patch; charset=US-ASCII; name="addovf.patch"
+Content-Disposition: attachment; filename="addovf.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_ic5u9fvg0
+
+RnJvbSA2OWVhYjJjNmU1YWRkNGU1NjViODgyZmQ5MTk1OWRlOWNiODUyNmZiIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBSYWR1Y3UgRGVhY29udSA8cmhhZG9vLmlvODhAZ21haWwuY29t
+PgpEYXRlOiBUaHUsIDE2IEp1bCAyMDE1IDA4OjU0OjE2ICswMzAwClN1YmplY3Q6IFtQQVRDSF0g
+QWRkIG92ZiBzY2hlZHVsZXIKClNpZ25lZC1vZmYtYnk6IFJhZHVjdSBEZWFjb251IDxyaGFkb28u
+aW84OEBnbWFpbC5jb20+Ci0tLQogbmV0L25ldGZpbHRlci9pcHZzL0tjb25maWcgICAgIHwgICAx
+MSArKysrKwogbmV0L25ldGZpbHRlci9pcHZzL01ha2VmaWxlICAgIHwgICAgMSArCiBuZXQvbmV0
+ZmlsdGVyL2lwdnMvaXBfdnNfb3ZmLmMgfCAgIDg3ICsrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysKIDMgZmlsZXMgY2hhbmdlZCwgOTkgaW5zZXJ0aW9ucygrKQogY3JlYXRl
+IG1vZGUgMTAwNjQ0IG5ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19vdmYuYwoKZGlmZiAtLWdpdCBh
+L25ldC9uZXRmaWx0ZXIvaXB2cy9LY29uZmlnIGIvbmV0L25ldGZpbHRlci9pcHZzL0tjb25maWcK
+aW5kZXggM2I2OTI5ZC4uMjU2M2MxOCAxMDA2NDQKLS0tIGEvbmV0L25ldGZpbHRlci9pcHZzL0tj
+b25maWcKKysrIGIvbmV0L25ldGZpbHRlci9pcHZzL0tjb25maWcKQEAgLTE2Miw2ICsxNjIsMTcg
+QEAgY29uZmlnICBJUF9WU19GTwogCSAgSWYgeW91IHdhbnQgdG8gY29tcGlsZSBpdCBpbiBrZXJu
+ZWwsIHNheSBZLiBUbyBjb21waWxlIGl0IGFzIGEKIAkgIG1vZHVsZSwgY2hvb3NlIE0gaGVyZS4g
+SWYgdW5zdXJlLCBzYXkgTi4KIAorY29uZmlnICBJUF9WU19PVkYKKwkJdHJpc3RhdGUgIndlaWdo
+dGVkIG92ZXJmbG93IHNjaGVkdWxpbmciCisJLS0taGVscC0tLQorCSAgVGhlIHdlaWdodGVkIG92
+ZXJmbG93IHNjaGVkdWxpbmcgYWxnb3JpdGhtIGRpcmVjdHMgbmV0d29yaworCSAgY29ubmVjdGlv
+bnMgdG8gdGhlIHNlcnZlciB3aXRoIHRoZSBoaWdoZXN0IHdlaWdodCB0aGF0IGlzCisJICBjdXJy
+ZW50bHkgYXZhaWxhYmxlIGFuZCBvdmVyZmxvd3MgdG8gdGhlIG5leHQgd2hlbiBhY3RpdmUKKwkg
+IGNvbm5lY3Rpb25zIGV4Y2VlZCB0aGUgbm9kZSdzIHdlaWdodC4KKworCSAgSWYgeW91IHdhbnQg
+dG8gY29tcGlsZSBpdCBpbiBrZXJuZWwsIHNheSBZLiBUbyBjb21waWxlIGl0IGFzIGEKKwkgIG1v
+ZHVsZSwgY2hvb3NlIE0gaGVyZS4gSWYgdW5zdXJlLCBzYXkgTi4KKwogY29uZmlnCUlQX1ZTX0xC
+TEMKIAl0cmlzdGF0ZSAibG9jYWxpdHktYmFzZWQgbGVhc3QtY29ubmVjdGlvbiBzY2hlZHVsaW5n
+IgogCS0tLWhlbHAtLS0KZGlmZiAtLWdpdCBhL25ldC9uZXRmaWx0ZXIvaXB2cy9NYWtlZmlsZSBi
+L25ldC9uZXRmaWx0ZXIvaXB2cy9NYWtlZmlsZQppbmRleCAzOGIyNzIzLi42N2YzZjQzIDEwMDY0
+NAotLS0gYS9uZXQvbmV0ZmlsdGVyL2lwdnMvTWFrZWZpbGUKKysrIGIvbmV0L25ldGZpbHRlci9p
+cHZzL01ha2VmaWxlCkBAIC0yNyw2ICsyNyw3IEBAIG9iai0kKENPTkZJR19JUF9WU19XUlIpICs9
+IGlwX3ZzX3dyci5vCiBvYmotJChDT05GSUdfSVBfVlNfTEMpICs9IGlwX3ZzX2xjLm8KIG9iai0k
+KENPTkZJR19JUF9WU19XTEMpICs9IGlwX3ZzX3dsYy5vCiBvYmotJChDT05GSUdfSVBfVlNfRk8p
+ICs9IGlwX3ZzX2ZvLm8KK29iai0kKENPTkZJR19JUF9WU19PVkYpICs9IGlwX3ZzX292Zi5vCiBv
+YmotJChDT05GSUdfSVBfVlNfTEJMQykgKz0gaXBfdnNfbGJsYy5vCiBvYmotJChDT05GSUdfSVBf
+VlNfTEJMQ1IpICs9IGlwX3ZzX2xibGNyLm8KIG9iai0kKENPTkZJR19JUF9WU19ESCkgKz0gaXBf
+dnNfZGgubwpkaWZmIC0tZ2l0IGEvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX292Zi5jIGIvbmV0
+L25ldGZpbHRlci9pcHZzL2lwX3ZzX292Zi5jCm5ldyBmaWxlIG1vZGUgMTAwNjQ0CmluZGV4IDAw
+MDAwMDAuLjRlOTQ1OGQKLS0tIC9kZXYvbnVsbAorKysgYi9uZXQvbmV0ZmlsdGVyL2lwdnMvaXBf
+dnNfb3ZmLmMKQEAgLTAsMCArMSw4NyBAQAorLyoKKyAqIElQVlM6ICAgICAgICBPdmVyZmxvdy1D
+b25uZWN0aW9uIFNjaGVkdWxpbmcgbW9kdWxlCisgKgorICogQXV0aG9yczogICAgIFJhZHVjdSBE
+ZWFjb251IDxyaGFkb29faW9AeWFob28uY29tPgorICoKKyAqICAgICAgICAgICAgICBUaGlzIHBy
+b2dyYW0gaXMgZnJlZSBzb2Z0d2FyZTsgeW91IGNhbiByZWRpc3RyaWJ1dGUgaXQgYW5kL29yCisg
+KiAgICAgICAgICAgICAgbW9kaWZ5IGl0IHVuZGVyIHRoZSB0ZXJtcyBvZiB0aGUgR05VIEdlbmVy
+YWwgUHVibGljIExpY2Vuc2UKKyAqICAgICAgICAgICAgICBhcyBwdWJsaXNoZWQgYnkgdGhlIEZy
+ZWUgU29mdHdhcmUgRm91bmRhdGlvbjsgZWl0aGVyIHZlcnNpb24KKyAqICAgICAgICAgICAgICAy
+IG9mIHRoZSBMaWNlbnNlLCBvciAoYXQgeW91ciBvcHRpb24pIGFueSBsYXRlciB2ZXJzaW9uLgor
+ICoKKyAqIFNjaGVkdWxlciBpbXBsZW1lbnRzICJvdmVyZmxvdyIgbG9hZGJhbGFuY2luZyBhY2Nv
+cmRpbmcgdG8gbnVtYmVyIG9mIGFjdGl2ZQorICogY29ubmVjdGlvbnMgLCB3aWxsIGtlZXAgYWxs
+IGNvbmVjdGlvbnMgdG8gdGhlIG5vZGUgd2l0aCB0aGUgaGlnaGVzdCB3ZWlnaHQKKyAqIGFuZCBv
+dmVyZmxvdyB0byB0aGUgbmV4dCBub2RlIGlmIHRoZSBudW1iZXIgb2YgY29ubmVjdGlvbnMgZXhj
+ZWVkcyB0aGUgbm9kZSdzCisgKiB3ZWlnaHQuCisgKiBOb3RlIHRoYXQgdGhpcyBzY2hlZHVsZXIg
+bWlnaHQgbm90IGJlIHN1aXRhYmxlIGZvciBVRFAgYmVjYXVzZSBpdCBvbmx5IHVzZXMKKyAqIGFj
+dGl2ZSBjb25uZWN0aW9ucworICoKKyAqLworCisjZGVmaW5lIEtNU0dfQ09NUE9ORU5UICJJUFZT
+IgorI2RlZmluZSBwcl9mbXQoZm10KSBLTVNHX0NPTVBPTkVOVCAiOiAiIGZtdAorCisjaW5jbHVk
+ZSA8bGludXgvbW9kdWxlLmg+CisjaW5jbHVkZSA8bGludXgva2VybmVsLmg+CisKKyNpbmNsdWRl
+IDxuZXQvaXBfdnMuaD4KKworLyogT1ZGIENvbm5lY3Rpb24gc2NoZWR1bGluZyAgKi8KK3N0YXRp
+YyBzdHJ1Y3QgaXBfdnNfZGVzdCAqCitpcF92c19vdmZfc2NoZWR1bGUoc3RydWN0IGlwX3ZzX3Nl
+cnZpY2UgKnN2YywgY29uc3Qgc3RydWN0IHNrX2J1ZmYgKnNrYiwKKwkJICAgc3RydWN0IGlwX3Zz
+X2lwaGRyICppcGgpCit7CisJc3RydWN0IGlwX3ZzX2Rlc3QgKmRlc3QsICpodyA9IE5VTEw7CisJ
+aW50IGhpZ2hlc3R3ID0gMCwgY3VyZW50dzsKKworCUlQX1ZTX0RCRyg2LCAiaXBfdnNfb3ZmX3Nj
+aGVkdWxlKCk6IFNjaGVkdWxpbmcuLi5cbiIpOworCS8qIHNlbGVjdCB0aGUgbm9kZSB3aXRoIGhp
+Z2hlc3Qgd2VpZ2h0LCBnbyB0byBuZXh0IGluIGxpbmUgaWYgYWN0aXZlCisJKiBjb25uZWN0aW9u
+cyBleGNlZWQgd2VpZ2h0CisJKgorCSovCisJbGlzdF9mb3JfZWFjaF9lbnRyeV9yY3UoZGVzdCwg
+JnN2Yy0+ZGVzdGluYXRpb25zLCBuX2xpc3QpIHsKKwkJY3VyZW50dyA9IGF0b21pY19yZWFkKCZk
+ZXN0LT53ZWlnaHQpOworCWlmICgoZGVzdC0+ZmxhZ3MgJiBJUF9WU19ERVNUX0ZfT1ZFUkxPQUQp
+IHx8CisJICAgIGF0b21pY19yZWFkKCZkZXN0LT5hY3RpdmVjb25ucykgPiBjdXJlbnR3IHx8CisJ
+ICAgIGN1cmVudHcgPT0gMCkKKwkJCWNvbnRpbnVlOworCWlmICghaHcgfHwgY3VyZW50dyA+IGhp
+Z2hlc3R3KSB7CisJCQlodyA9IGRlc3Q7CisJCQloaWdoZXN0dyA9IGN1cmVudHc7CisJCX0KKwl9
+CisKKwlpZiAoaHcpIHsKKwkJSVBfVlNfREJHX0JVRig2LCAiT1ZGOiBzZXJ2ZXIgJXM6JXUgYWN0
+aXZlY29ubnMgJWQgd2VpZ2h0ICVkXG4iLAorCQkJICAgICAgSVBfVlNfREJHX0FERFIoc3ZjLT5h
+ZiwgJmh3LT5hZGRyKSwKKwkJCSAgICAgIG50b2hzKGh3ZWlnaHQtPnBvcnQpLAorCQkJICAgICAg
+YXRvbWljX3JlYWQoJmh3LT5hY3RpdmVjb25ucyksCisJCQkgICAgICBhdG9taWNfcmVhZCgmaHct
+PndlaWdodCkpOworCQlyZXR1cm4gaHc7CisJfQorCisJaXBfdnNfc2NoZWR1bGVyX2VycihzdmMs
+ICJubyBkZXN0aW5hdGlvbiBhdmFpbGFibGUiKTsKKwlyZXR1cm4gTlVMTDsKK30KKworc3RhdGlj
+IHN0cnVjdCBpcF92c19zY2hlZHVsZXIgaXBfdnNfb3ZmX3NjaGVkdWxlciA9IHsKKwkubmFtZSA9
+CQkJIm92ZiIsCisJLnJlZmNudCA9CQlBVE9NSUNfSU5JVCgwKSwKKwkubW9kdWxlID0JCVRISVNf
+TU9EVUxFLAorCS5uX2xpc3QgPQkJTElTVF9IRUFEX0lOSVQoaXBfdnNfb3ZmX3NjaGVkdWxlci5u
+X2xpc3QpLAorCS5zY2hlZHVsZSA9CQlpcF92c19vdmZfc2NoZWR1bGUsCit9OworCitzdGF0aWMg
+aW50IF9faW5pdCBpcF92c19vdmZfaW5pdCh2b2lkKQoreworCXJldHVybiByZWdpc3Rlcl9pcF92
+c19zY2hlZHVsZXIoJmlwX3ZzX292Zl9zY2hlZHVsZXIpOworfQorCitzdGF0aWMgdm9pZCBfX2V4
+aXQgaXBfdnNfb3ZmX2NsZWFudXAodm9pZCkKK3sKKwl1bnJlZ2lzdGVyX2lwX3ZzX3NjaGVkdWxl
+cigmaXBfdnNfb3ZmX3NjaGVkdWxlcik7CisJc3luY2hyb25pemVfcmN1KCk7Cit9CisKK21vZHVs
+ZV9pbml0KGlwX3ZzX292Zl9pbml0KTsKK21vZHVsZV9leGl0KGlwX3ZzX292Zl9jbGVhbnVwKTsK
+K01PRFVMRV9MSUNFTlNFKCJHUEwiKTsKLS0gCjEuNy4xMC40Cgo=
+--001a113369e8954340051af8aa47--
