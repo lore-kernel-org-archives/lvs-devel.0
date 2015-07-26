@@ -1,97 +1,164 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH nf 0/6] IPVS Fixes for v4.2
-Date: Wed, 22 Jul 2015 21:52:43 +0200
-Message-ID: <20150722195243.GA3989@salvia>
-References: <1437012853-7318-1-git-send-email-horms@verge.net.au>
-Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1437012853-7318-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCH net] ipvs: call rtnl_lock early
+Date: Sun, 26 Jul 2015 14:57:34 +0300
+Message-ID: <1437911854-29447-1-git-send-email-ja@ssi.bg>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org
 
-Hi Simon,
+When the sync damon is started we need to hold rtnl
+lock while calling ip_mc_join_group. Currently, we have
+a wrong locking order because the correct one is
+rtnl_lock->__ip_vs_mutex. It is implied from the usage
+of __ip_vs_mutex in ip_vs_dst_event() which is called
+under rtnl lock during NETDEV_* notifications.
 
-On Thu, Jul 16, 2015 at 11:14:07AM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider this fix for v4.2.
-> For reasons that are not clear to me it is a bumper crop.
-> 
-> It seems to me that they are all relevant to stable.
-> Please let me know if you need my help to get the fixes into stable.
+Fix the problem by calling rtnl_lock early only for the
+start_sync_thread call. As a bonus this fixes the usage
+__dev_get_by_name which was not called under rtnl lock.
 
-Several comments below regarding -stable.
+This patch actually extends and depends on commit 54ff9ef36bdf
+("ipv4, ipv6: kill ip_mc_{join, leave}_group and
+ipv6_sock_mc_{join, drop}").
 
-> * ipvs: fix ipv6 route unreach panic
-> 
->   This problem appears to be present since IPv6 support was added to
->   IPVS in v2.6.28.
-> 
-> * ipvs: skb_orphan in case of forwarding
-> 
->   This appears to resolve a problem resulting from a side effect of
->   41063e9dd119 ("ipv4: Early TCP socket demux.") which was included in v3.6.
-> 
-> * ipvs: do not use random local source address for tunnels
-> 
->   This appears to resolve a problem introduced by
->   026ace060dfe ("ipvs: optimize dst usage for real server") in v3.10.
-> 
-> * ipvs: fix crash if scheduler is changed
-> 
->   This appears to resolve a problem introduced by
->   ceec4c381681 ("ipvs: convert services to rcu") in v3.10.
-> 
->   Julian has provided backports of the fix:
->   * [PATCHv2 3.10.81] ipvs: fix crash if scheduler is changed
->     http://www.spinics.net/lists/lvs-devel/msg04008.html
->   * [PATCHv2 3.12.44,3.14.45,3.18.16,4.0.6] ipvs: fix crash if scheduler is changed
->     http://www.spinics.net/lists/lvs-devel/msg04007.html
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c  | 50 +++++++++++++++++++++++++++--------------
+ net/netfilter/ipvs/ip_vs_sync.c |  2 --
+ 2 files changed, 33 insertions(+), 19 deletions(-)
 
-OK, I have enqueued these from Julian.
+ Works on 4.1+ becase commit 54ff9ef36bdf is present only there.
 
-Next time, it would be easier for me if I can fetch these from
-patchwork. So either you request a patchwork space for IPVS to Jeremy
-Kerr or you Cc netfilter-devel including -stable in the prefix.
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 24c5542..af0b69e 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2335,13 +2335,18 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 	    cmd == IP_VS_SO_SET_STOPDAEMON) {
+ 		struct ip_vs_daemon_user *dm = (struct ip_vs_daemon_user *)arg;
+ 
+-		mutex_lock(&ipvs->sync_mutex);
+-		if (cmd == IP_VS_SO_SET_STARTDAEMON)
++		if (cmd == IP_VS_SO_SET_STARTDAEMON) {
++			rtnl_lock();
++			mutex_lock(&ipvs->sync_mutex);
+ 			ret = start_sync_thread(net, dm->state, dm->mcast_ifn,
+ 						dm->syncid);
+-		else
++			mutex_unlock(&ipvs->sync_mutex);
++			rtnl_unlock();
++		} else {
++			mutex_lock(&ipvs->sync_mutex);
+ 			ret = stop_sync_thread(net, dm->state);
+-		mutex_unlock(&ipvs->sync_mutex);
++			mutex_unlock(&ipvs->sync_mutex);
++		}
+ 		goto out_dec;
+ 	}
+ 
+@@ -3342,6 +3347,9 @@ nla_put_failure:
+ 
+ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
+ {
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	int ret;
++
+ 	if (!(attrs[IPVS_DAEMON_ATTR_STATE] &&
+ 	      attrs[IPVS_DAEMON_ATTR_MCAST_IFN] &&
+ 	      attrs[IPVS_DAEMON_ATTR_SYNC_ID]))
+@@ -3353,19 +3361,30 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
+ 	if (net_ipvs(net)->mixed_address_family_dests > 0)
+ 		return -EINVAL;
+ 
+-	return start_sync_thread(net,
+-				 nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]),
+-				 nla_data(attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
+-				 nla_get_u32(attrs[IPVS_DAEMON_ATTR_SYNC_ID]));
++	rtnl_lock();
++	mutex_lock(&ipvs->sync_mutex);
++	ret = start_sync_thread(net,
++				nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]),
++				nla_data(attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
++				nla_get_u32(attrs[IPVS_DAEMON_ATTR_SYNC_ID]));
++	mutex_unlock(&ipvs->sync_mutex);
++	rtnl_unlock();
++	return ret;
+ }
+ 
+ static int ip_vs_genl_del_daemon(struct net *net, struct nlattr **attrs)
+ {
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	int ret;
++
+ 	if (!attrs[IPVS_DAEMON_ATTR_STATE])
+ 		return -EINVAL;
+ 
+-	return stop_sync_thread(net,
+-				nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
++	mutex_lock(&ipvs->sync_mutex);
++	ret = stop_sync_thread(net,
++			       nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
++	mutex_unlock(&ipvs->sync_mutex);
++	return ret;
+ }
+ 
+ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
+@@ -3389,7 +3408,7 @@ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
+ 
+ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
+ {
+-	int ret = 0, cmd;
++	int ret = -EINVAL, cmd;
+ 	struct net *net;
+ 	struct netns_ipvs *ipvs;
+ 
+@@ -3400,22 +3419,19 @@ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
+ 	if (cmd == IPVS_CMD_NEW_DAEMON || cmd == IPVS_CMD_DEL_DAEMON) {
+ 		struct nlattr *daemon_attrs[IPVS_DAEMON_ATTR_MAX + 1];
+ 
+-		mutex_lock(&ipvs->sync_mutex);
+ 		if (!info->attrs[IPVS_CMD_ATTR_DAEMON] ||
+ 		    nla_parse_nested(daemon_attrs, IPVS_DAEMON_ATTR_MAX,
+ 				     info->attrs[IPVS_CMD_ATTR_DAEMON],
+-				     ip_vs_daemon_policy)) {
+-			ret = -EINVAL;
++				     ip_vs_daemon_policy))
+ 			goto out;
+-		}
+ 
+ 		if (cmd == IPVS_CMD_NEW_DAEMON)
+ 			ret = ip_vs_genl_new_daemon(net, daemon_attrs);
+ 		else
+ 			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
+-out:
+-		mutex_unlock(&ipvs->sync_mutex);
+ 	}
++
++out:
+ 	return ret;
+ }
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index d99ad93..6bc6dca 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1405,11 +1405,9 @@ join_mcast_group(struct sock *sk, struct in_addr *addr, char *ifname)
+ 
+ 	mreq.imr_ifindex = dev->ifindex;
+ 
+-	rtnl_lock();
+ 	lock_sock(sk);
+ 	ret = ip_mc_join_group(sk, &mreq);
+ 	release_sock(sk);
+-	rtnl_unlock();
+ 
+ 	return ret;
+ }
+-- 
+1.9.3
 
->   Please let me know how you would like to handle guiding these
->   backports into stable.
-> 
-> * ipvs: fix crash with sync protocol v0 and FTP
-> 
->   This appears to resolve a problem introduced by
->   749c42b620a9 ("ipvs: reduce sync rate with time thresholds") in v3.5
-
-These three patches:
-
-* ipvs: fix ipv6 route unreach panic
-* ipvs: do not use random local source address for tunnels
-* ipvs: fix crash with sync protocol v0 and FTP
-
-apply cleanly via git-am to:
-
-v3.10.x, 3.12.x, 3.14.x, 3.18.x, 4.0.x, 4.1.x
-
-but I didn't compile test, so if you want to have this in -stable, it
-would be good to validate that all dependencies are in place.
-
-Regarding this one:
-
-* ipvs: skb_orphan in case of forwarding
-
-This only applies cleanly to 4.1.x here.
-
-> The following changes since commit 484836ec2de24d9a7c6471f022b746d947698725:
-> 
->   netfilter: IDLETIMER: fix lockdep warning (2015-07-13 17:23:25 +0200)
-> 
-> are available in the git repository at:
-> 
->   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v4.2
-
-Pulled, thanks Simon.
