@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next 01/12] ipvs: pull out ip_vs_try_to_schedule function
-Date: Wed, 12 Aug 2015 13:46:59 -0700
-Message-ID: <1439412430-1702375-2-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next 06/12] ipvs: add schedule_icmp sysctl
+Date: Wed, 12 Aug 2015 13:47:04 -0700
+Message-ID: <1439412430-1702375-7-git-send-email-agartrell@fb.com>
 References: <1439412430-1702375-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=ESiRFWc0n56h6WaAdH5qVfQ/AmQ85B+bCp0xqvEQuMo=;
- b=K1Y6ZPliFkGJDhStmyGRpohp5fWmCPuq/w37ecp4I86VaE3nP7iEyIRv6MW7pfhkunQR
- xLHr5B64XwfPCW9HfGlJp83ZlivJelLl7o8zfvPIlkPQTz/F+WMD2U7wXZLSPMpYDIYa
- 1x8nCcZZ1QYbkHaHHtyE9BxZJskJYDwV99Q= 
+ content-type; s=facebook; bh=efACg3XOb3Y4sxoGfh5EZFPWcHVki/UYNCIV2ljmyXc=;
+ b=RGDJyqlxjFkoksNdgXQYL2R99CVv3k+7NckZosl2p6kfRrYYJ/9btd0yfLDS4/EZfMAv
+ HuOR2Cba779ulhpmV2tR/gcM/OHazHo+Xo22IqRaTwwnINJODwM1CpIaYmEPFLldAJQT
+ Hgm1jPp7YCWlq5hIWW4yyp3T4TJ6SbJCnGI= 
 In-Reply-To: <1439412430-1702375-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,87 +19,68 @@ Content-Transfer-Encoding: 7bit
 To: ja@ssi.bg, horms@verge.net.au, lvs-devel@vger.kernel.org
 Cc: kernel-team@fb.com, alexgartrell@gmail.com, Alex Gartrell <agartrell@fb.com>
 
-This is necessary as we'll be trying to schedule icmp later and we'll want
-to share this code.
+This sysctl will be used to enable the scheduling of icmp packets.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 57 ++++++++++++++++++++++++++---------------
- 1 file changed, 37 insertions(+), 20 deletions(-)
+ include/net/ip_vs.h            | 11 +++++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c |  8 +++++++-
+ 2 files changed, 18 insertions(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 38fbc19..2d895ca 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1327,6 +1327,41 @@ ip_vs_local_reply6(const struct nf_hook_ops *ops, struct sk_buff *skb,
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 9f4497b..b949a90 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -978,6 +978,7 @@ struct netns_ipvs {
+ 	int			sysctl_pmtu_disc;
+ 	int			sysctl_backup_only;
+ 	int			sysctl_conn_reuse_mode;
++	int			sysctl_schedule_icmp;
  
- #endif
+ 	/* ip_vs_lblc */
+ 	int			sysctl_lblc_expiration;
+@@ -1101,6 +1102,11 @@ static inline int sysctl_conn_reuse_mode(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_conn_reuse_mode;
+ }
  
-+static unsigned int
-+ip_vs_try_to_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
-+		      int *verdict, struct ip_vs_conn **cpp,
-+		      struct ip_vs_iphdr *iph)
++static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
 +{
-+	struct ip_vs_protocol *pp = pd->pp;
-+
-+	if (!iph->fragoffs) {
-+		/* No (second) fragments need to enter here, as nf_defrag_ipv6
-+		 * replayed fragment zero will already have created the cp
-+		 */
-+
-+		/* Schedule and create new connection entry into cpp */
-+		if (!pp->conn_schedule(af, skb, pd, verdict, cpp, iph))
-+			return 0;
-+	}
-+
-+	if (unlikely(!*cpp)) {
-+		/* sorry, all this trouble for a no-hit :) */
-+		IP_VS_DBG_PKT(12, af, pp, skb, 0,
-+			      "ip_vs_in: packet continues traversal as normal");
-+		if (iph->fragoffs) {
-+			/* Fragment that couldn't be mapped to a conn entry
-+			 * is missing module nf_defrag_ipv6
-+			 */
-+			IP_VS_DBG_RL("Unhandled frag, load nf_defrag_ipv6\n");
-+			IP_VS_DBG_PKT(7, af, pp, skb, 0, "unhandled fragment");
-+		}
-+		*verdict = NF_ACCEPT;
-+		return 0;
-+	}
-+
-+	return 1;
++	return ipvs->sysctl_schedule_icmp;
 +}
 +
- /*
-  *	Handle ICMP messages in the outside-to-inside direction (incoming).
-  *	Find any that might be relevant, check against existing connections,
-@@ -1700,31 +1735,13 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 		cp = NULL;
- 	}
+ #else
  
--	if (unlikely(!cp) && !iph.fragoffs) {
--		/* No (second) fragments need to enter here, as nf_defrag_ipv6
--		 * replayed fragment zero will already have created the cp
--		 */
-+	if (unlikely(!cp)) {
- 		int v;
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -1173,6 +1179,11 @@ static inline int sysctl_conn_reuse_mode(struct netns_ipvs *ipvs)
+ 	return 1;
+ }
  
--		/* Schedule and create new connection entry into &cp */
--		if (!pp->conn_schedule(af, skb, pd, &v, &cp, &iph))
-+		if (!ip_vs_try_to_schedule(af, skb, pd, &v, &cp, &iph))
- 			return v;
- 	}
++static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
++{
++	return 0;
++}
++
+ #endif
  
--	if (unlikely(!cp)) {
--		/* sorry, all this trouble for a no-hit :) */
--		IP_VS_DBG_PKT(12, af, pp, skb, 0,
--			      "ip_vs_in: packet continues traversal as normal");
--		if (iph.fragoffs) {
--			/* Fragment that couldn't be mapped to a conn entry
--			 * is missing module nf_defrag_ipv6
--			 */
--			IP_VS_DBG_RL("Unhandled frag, load nf_defrag_ipv6\n");
--			IP_VS_DBG_PKT(7, af, pp, skb, 0, "unhandled fragment");
--		}
--		return NF_ACCEPT;
--	}
+ /* IPVS core functions
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 24c5542..2d57d41 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1844,6 +1844,12 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "schedule_icmp",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	{
+ 		.procname	= "debug_level",
+@@ -3818,7 +3824,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	tbl[idx++].data = &ipvs->sysctl_backup_only;
+ 	ipvs->sysctl_conn_reuse_mode = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
