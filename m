@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next 10/12] ipvs: support scheduling inverse and icmp TCP packets
-Date: Wed, 12 Aug 2015 13:47:08 -0700
-Message-ID: <1439412430-1702375-11-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next 07/12] ipvs: Use outer header in ip_vs_bypass_xmit_v6
+Date: Wed, 12 Aug 2015 13:47:05 -0700
+Message-ID: <1439412430-1702375-8-git-send-email-agartrell@fb.com>
 References: <1439412430-1702375-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=ELYurYLWI5FA2YTA09899stgdI1U2jyPFwORCz29rUA=;
- b=NqCkBy1/rQ/fHjg9WKjTAUS+TJ2iIEdX1XeJInmE202eLnOjnxNJqz6wNbQbGuCdBLb/
- mZoS5BY44YANcRO0ygeqNJNU9XtdDZ5Q2ZwIEOLkza1IF9Tln4BCLFNNwkeiOgKAXBc+
- cbyXT2z7LV0RlaOtVWr+3Wu19pLTdMpBqdk= 
+ content-type; s=facebook; bh=7b2q55GHhXfyhjMkR0Jb/wGRTeYhEg90CjCQW6jFecE=;
+ b=Cm2mDnxZ0bN71ZFfIgA9S2NEjCPnOw+ZH7OMCBZW/smKC51v1pwTiP+70Tpi0aJJY0ip
+ YXgmH++bh7oGrk9V7xClw/iFUu7uzTBQYuYAznOptyICFO2k9SwpT94KHPwSSObfINIZ
+ qCtgCTmtuRGYwWXgQ9iQxc1Wq7eWhMSMfwg= 
 In-Reply-To: <1439412430-1702375-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,75 +19,32 @@ Content-Transfer-Encoding: 7bit
 To: ja@ssi.bg, horms@verge.net.au, lvs-devel@vger.kernel.org
 Cc: kernel-team@fb.com, alexgartrell@gmail.com, Alex Gartrell <agartrell@fb.com>
 
-In the event of an icmp packet, take only the ports instead of trying to
-grab the full header.
-
-In the event of an inverse packet, use the source address and port.
+The ip_vs_iphdr may refer to an internal header, so use the outer one
+instead.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_proto_tcp.c | 40 +++++++++++++++++++++++++-----------
- 1 file changed, 28 insertions(+), 12 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index dbc7075..36e2324 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -40,26 +40,42 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	struct ip_vs_service *svc;
- 	struct tcphdr _tcph, *th;
- 	struct netns_ipvs *ipvs;
-+	__be16 _ports[2], *ports = NULL;
- 
--	if (ip_vs_iph_icmp(iph)) {
--		/* TEMPORARY - do not schedule icmp yet */
--		*verdict = NF_ACCEPT;
--		return 0;
--	}
-+	net = skb_net(skb);
-+	ipvs = net_ipvs(net);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 258a0b0..7691738 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -656,10 +656,12 @@ int
+ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		     struct ip_vs_protocol *pp, struct ip_vs_iphdr *ipvsh)
+ {
++	struct ipv6hdr *iph = ipv6_hdr(skb);
 +
-+	/* In the event of icmp, we're only guaranteed to have the first 8
-+	 * bytes of the transport header, so we only check the rest of the
-+	 * TCP packet for non-ICMP packets
-+	 */
-+	if (likely(!ip_vs_iph_icmp(iph))) {
-+		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
-+		if (th) {
-+			if (th->rst || !(sysctl_sloppy_tcp(ipvs) || th->syn))
-+				return 1;
-+			ports = &th->source;
-+		}
-+	} else
-+		ports = skb_header_pointer(
-+			skb, iph->len, sizeof(_ports), &_ports);
+ 	EnterFunction(10);
  
--	th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
--	if (th == NULL) {
-+	if (!ports) {
- 		*verdict = NF_DROP;
- 		return 0;
- 	}
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
- 
- 	/* No !th->ack check to allow scheduling on SYN+ACK for Active FTP */
  	rcu_read_lock();
--	if ((th->syn || sysctl_sloppy_tcp(ipvs)) && !th->rst &&
--	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
--				      &iph->daddr, th->dest))) {
-+
-+	if (likely(!ip_vs_iph_inverse(iph)))
-+		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+					 &iph->daddr, ports[1]);
-+	else
-+		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+					 &iph->saddr, ports[0]);
-+
-+	if (svc) {
- 		int ignored;
+-	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &ipvsh->daddr.in6, NULL,
++	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &iph->daddr, NULL,
+ 				  ipvsh, 0, IP_VS_RT_MODE_NON_LOCAL) < 0)
+ 		goto tx_error;
  
- 		if (ip_vs_todrop(ipvs)) {
 -- 
 Alex Gartrell <agartrell@fb.com>
 
