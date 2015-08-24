@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next,v2 11/13] ipvs: support scheduling inverse and icmp TCP packets
-Date: Mon, 24 Aug 2015 16:44:43 -0700
-Message-ID: <1440459885-1103938-11-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next,v2 03/13] ipvs: pull out ip_vs_try_to_schedule function
+Date: Mon, 24 Aug 2015 16:44:35 -0700
+Message-ID: <1440459885-1103938-3-git-send-email-agartrell@fb.com>
 References: <1440459885-1103938-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=/EytTalq4oWN8bKdZ35yjbVVCEBTH7WrHNOZNjnMUC0=;
- b=fKwWXpz3WwUk0atp030Jt9uA2Bes+uvDNPFEBLo0WZiCwSQyAmuicwTjTKWsCkpJ2ysS
- cd/Nv2+aK8JLkG4gZjvZYHNRQ6lTHiUBTDVfMqq4JYatwGNiKMMKJevLQgBMFcXt217I
- V27xK7JRWla7ZQVhHALrq8bzdz7jSBda5Wk= 
+ content-type; s=facebook; bh=Lrk+ltNB/FCoWf7O7VBKsBopWZd0eRD2CxLxlJgX1ww=;
+ b=JfBx4O4s9HQTJdjRs3fN0ktMe9Wtw2CWWks3+AvLyyN/Fm/UP05v/VgFTESIOCPgT5IN
+ ineBVyeBe7zmEfd+xAWBEps0O63fDqxQf0QyXK0ftFZ8p/H0l9dkM2qw6PZW8K4+t5Ib
+ BGv8eycT/zBDkmQsfgJYgVq9zxW0eg/iv98= 
 In-Reply-To: <1440459885-1103938-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,75 +19,89 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
 Cc: alexgartrell@gmail.com, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-In the event of an icmp packet, take only the ports instead of trying to
-grab the full header.
-
-In the event of an inverse packet, use the source address and port.
+This is necessary as we'll be trying to schedule icmp later and we'll want
+to share this code.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_proto_tcp.c | 39 ++++++++++++++++++++++++++----------
- 1 file changed, 28 insertions(+), 11 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 60 ++++++++++++++++++++++++++---------------
+ 1 file changed, 39 insertions(+), 21 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index dbc7075..8f43cf6 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -40,26 +40,43 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	struct ip_vs_service *svc;
- 	struct tcphdr _tcph, *th;
- 	struct netns_ipvs *ipvs;
-+	__be16 _ports[2], *ports = NULL;
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index f36b81c..1f09cf6 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1318,6 +1318,42 @@ ip_vs_local_reply6(const struct nf_hook_ops *ops, struct sk_buff *skb,
  
--	if (ip_vs_iph_icmp(iph)) {
--		/* TEMPORARY - do not schedule icmp yet */
--		*verdict = NF_ACCEPT;
--		return 0;
-+	net = skb_net(skb);
-+	ipvs = net_ipvs(net);
+ #endif
+ 
++static unsigned int
++ip_vs_try_to_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
++		      int *verdict, struct ip_vs_conn **cpp,
++		      struct ip_vs_iphdr *iph)
++{
++	struct ip_vs_protocol *pp = pd->pp;
 +
-+	/* In the event of icmp, we're only guaranteed to have the first 8
-+	 * bytes of the transport header, so we only check the rest of the
-+	 * TCP packet for non-ICMP packets
-+	 */
-+	if (likely(!ip_vs_iph_icmp(iph))) {
-+		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
-+		if (th) {
-+			if (th->rst || !(sysctl_sloppy_tcp(ipvs) || th->syn))
-+				return 1;
-+			ports = &th->source;
++	if (!iph->fragoffs) {
++		/* No (second) fragments need to enter here, as nf_defrag_ipv6
++		 * replayed fragment zero will already have created the cp
++		 */
++
++		/* Schedule and create new connection entry into cpp */
++		if (!pp->conn_schedule(af, skb, pd, verdict, cpp, iph))
++			return 0;
++	}
++
++	if (unlikely(!*cpp)) {
++		/* sorry, all this trouble for a no-hit :) */
++		IP_VS_DBG_PKT(12, af, pp, skb, 0,
++			      "ip_vs_in: packet continues traversal as normal");
++		if (iph->fragoffs) {
++			/* Fragment that couldn't be mapped to a conn entry
++			 * is missing module nf_defrag_ipv6
++			 */
++			IP_VS_DBG_RL("Unhandled frag, load nf_defrag_ipv6\n");
++			IP_VS_DBG_PKT(7, af, pp, skb, iph->off,
++				      "unhandled fragment");
 +		}
-+	} else {
-+		ports = skb_header_pointer(
-+			skb, iph->len, sizeof(_ports), &_ports);
++		*verdict = NF_ACCEPT;
++		return 0;
++	}
++
++	return 1;
++}
++
+ /*
+  *	Handle ICMP messages in the outside-to-inside direction (incoming).
+  *	Find any that might be relevant, check against existing connections,
+@@ -1680,33 +1716,15 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 		cp = NULL;
  	}
  
--	th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
--	if (th == NULL) {
-+	if (!ports) {
- 		*verdict = NF_DROP;
- 		return 0;
+-	if (unlikely(!cp) && !iph.fragoffs) {
+-		/* No (second) fragments need to enter here, as nf_defrag_ipv6
+-		 * replayed fragment zero will already have created the cp
+-		 */
++	if (unlikely(!cp)) {
+ 		int v;
+ 
+-		/* Schedule and create new connection entry into &cp */
+-		if (!pp->conn_schedule(af, skb, pd, &v, &cp, &iph))
++		if (!ip_vs_try_to_schedule(af, skb, pd, &v, &cp, &iph))
+ 			return v;
  	}
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
  
- 	/* No !th->ack check to allow scheduling on SYN+ACK for Active FTP */
- 	rcu_read_lock();
--	if ((th->syn || sysctl_sloppy_tcp(ipvs)) && !th->rst &&
--	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
--				      &iph->daddr, th->dest))) {
-+
-+	if (likely(!ip_vs_iph_inverse(iph)))
-+		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+					 &iph->daddr, ports[1]);
-+	else
-+		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+					 &iph->saddr, ports[0]);
-+
-+	if (svc) {
- 		int ignored;
- 
- 		if (ip_vs_todrop(ipvs)) {
--- 
-Alex Gartrell <agartrell@fb.com>
-
+-	if (unlikely(!cp)) {
+-		/* sorry, all this trouble for a no-hit :) */
+-		IP_VS_DBG_PKT(12, af, pp, skb, 0,
+-			      "ip_vs_in: packet continues traversal as normal");
+-		if (iph.fragoffs) {
+-			/* Fragment that couldn't be mapped to a conn entry
+-			 * is missing module nf_defrag_ipv6
+-			 */
+-			IP_VS_DBG_RL("Unhandled frag, load nf_defrag_ipv6\n");
+-			IP_VS_DBG_PKT(7, af, pp, skb, iph.off,
+-				      "unhandled fragment");
+-		}
+-		return NF_ACCEPT;
+-	}
