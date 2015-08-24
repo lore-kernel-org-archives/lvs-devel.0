@@ -1,167 +1,94 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 2/4 nf-next] ipvs: call rtnl_lock early
-Date: Fri, 21 Aug 2015 09:23:40 -0700
-Message-ID: <1440174222-12695-3-git-send-email-horms@verge.net.au>
-References: <1440174222-12695-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <1440174222-12695-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Alex Gartrell <agartrell@fb.com>
+Subject: [PATCH net-next,v2 13/13] ipvs: support scheduling inverse and icmp SCTP packets
+Date: Mon, 24 Aug 2015 16:44:45 -0700
+Message-ID: <1440459885-1103938-13-git-send-email-agartrell@fb.com>
+References: <1440459885-1103938-1-git-send-email-agartrell@fb.com>
+Mime-Version: 1.0
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : in-reply-to : references : mime-version :
+ content-type; s=facebook; bh=G7tHxDQfnGD8WuyO+RukSSKb8kr9ypPk2vUSjG4CmWA=;
+ b=dkC/N0VlTJCuE4pWBI5tpN35DLSjyAqmbnbpaNi1q5VZAykfvrQi/XSMieUR5xzea07m
+ KaD9Jt3OWhdtodUdIRRr90BIIVAe36nG711Ww7WjQZ7BZpmurmh1PqgXmjxPA2dy6WYQ
+ zLTDtq+8str7CJODraf8EUByc4TVGTh5tBQ= 
+In-Reply-To: <1440459885-1103938-1-git-send-email-agartrell@fb.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
+Cc: alexgartrell@gmail.com, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-From: Julian Anastasov <ja@ssi.bg>
+In the event of an icmp packet, take only the ports instead of trying to
+grab the full header.
 
-When the sync damon is started we need to hold rtnl
-lock while calling ip_mc_join_group. Currently, we have
-a wrong locking order because the correct one is
-rtnl_lock->__ip_vs_mutex. It is implied from the usage
-of __ip_vs_mutex in ip_vs_dst_event() which is called
-under rtnl lock during NETDEV_* notifications.
+In the event of an inverse packet, use the source address and port.
 
-Fix the problem by calling rtnl_lock early only for the
-start_sync_thread call. As a bonus this fixes the usage
-__dev_get_by_name which was not called under rtnl lock.
-
-This patch actually extends and depends on commit 54ff9ef36bdf
-("ipv4, ipv6: kill ip_mc_{join, leave}_group and
-ipv6_sock_mc_{join, drop}").
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c  | 50 +++++++++++++++++++++++++++--------------
- net/netfilter/ipvs/ip_vs_sync.c |  2 --
- 2 files changed, 33 insertions(+), 19 deletions(-)
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 40 ++++++++++++++++++++---------------
+ 1 file changed, 23 insertions(+), 17 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 24c554201a76..af0b69e411b7 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2335,13 +2335,18 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 	    cmd == IP_VS_SO_SET_STOPDAEMON) {
- 		struct ip_vs_daemon_user *dm = (struct ip_vs_daemon_user *)arg;
- 
--		mutex_lock(&ipvs->sync_mutex);
--		if (cmd == IP_VS_SO_SET_STARTDAEMON)
-+		if (cmd == IP_VS_SO_SET_STARTDAEMON) {
-+			rtnl_lock();
-+			mutex_lock(&ipvs->sync_mutex);
- 			ret = start_sync_thread(net, dm->state, dm->mcast_ifn,
- 						dm->syncid);
--		else
-+			mutex_unlock(&ipvs->sync_mutex);
-+			rtnl_unlock();
-+		} else {
-+			mutex_lock(&ipvs->sync_mutex);
- 			ret = stop_sync_thread(net, dm->state);
--		mutex_unlock(&ipvs->sync_mutex);
-+			mutex_unlock(&ipvs->sync_mutex);
-+		}
- 		goto out_dec;
- 	}
- 
-@@ -3342,6 +3347,9 @@ nla_put_failure:
- 
- static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	int ret;
-+
- 	if (!(attrs[IPVS_DAEMON_ATTR_STATE] &&
- 	      attrs[IPVS_DAEMON_ATTR_MCAST_IFN] &&
- 	      attrs[IPVS_DAEMON_ATTR_SYNC_ID]))
-@@ -3353,19 +3361,30 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
- 	if (net_ipvs(net)->mixed_address_family_dests > 0)
- 		return -EINVAL;
- 
--	return start_sync_thread(net,
--				 nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]),
--				 nla_data(attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
--				 nla_get_u32(attrs[IPVS_DAEMON_ATTR_SYNC_ID]));
-+	rtnl_lock();
-+	mutex_lock(&ipvs->sync_mutex);
-+	ret = start_sync_thread(net,
-+				nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]),
-+				nla_data(attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
-+				nla_get_u32(attrs[IPVS_DAEMON_ATTR_SYNC_ID]));
-+	mutex_unlock(&ipvs->sync_mutex);
-+	rtnl_unlock();
-+	return ret;
- }
- 
- static int ip_vs_genl_del_daemon(struct net *net, struct nlattr **attrs)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	int ret;
-+
- 	if (!attrs[IPVS_DAEMON_ATTR_STATE])
- 		return -EINVAL;
- 
--	return stop_sync_thread(net,
--				nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
-+	mutex_lock(&ipvs->sync_mutex);
-+	ret = stop_sync_thread(net,
-+			       nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
-+	mutex_unlock(&ipvs->sync_mutex);
-+	return ret;
- }
- 
- static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
-@@ -3389,7 +3408,7 @@ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
- 
- static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
- {
--	int ret = 0, cmd;
-+	int ret = -EINVAL, cmd;
- 	struct net *net;
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index cd2984f..2026fca 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -18,22 +18,24 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
  	struct netns_ipvs *ipvs;
- 
-@@ -3400,22 +3419,19 @@ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
- 	if (cmd == IPVS_CMD_NEW_DAEMON || cmd == IPVS_CMD_DEL_DAEMON) {
- 		struct nlattr *daemon_attrs[IPVS_DAEMON_ATTR_MAX + 1];
- 
--		mutex_lock(&ipvs->sync_mutex);
- 		if (!info->attrs[IPVS_CMD_ATTR_DAEMON] ||
- 		    nla_parse_nested(daemon_attrs, IPVS_DAEMON_ATTR_MAX,
- 				     info->attrs[IPVS_CMD_ATTR_DAEMON],
--				     ip_vs_daemon_policy)) {
--			ret = -EINVAL;
-+				     ip_vs_daemon_policy))
- 			goto out;
--		}
- 
- 		if (cmd == IPVS_CMD_NEW_DAEMON)
- 			ret = ip_vs_genl_new_daemon(net, daemon_attrs);
- 		else
- 			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
--out:
--		mutex_unlock(&ipvs->sync_mutex);
- 	}
+ 	sctp_chunkhdr_t _schunkh, *sch;
+ 	sctp_sctphdr_t *sh, _sctph;
+-
+-	if (ip_vs_iph_icmp(iph)) {
+-		/* TEMPORARY - do not schedule icmp yet */
+-		*verdict = NF_ACCEPT;
+-		return 0;
+-	}
+-
+-	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+-	if (sh == NULL) {
+-		*verdict = NF_DROP;
+-		return 0;
++	__be16 _ports[2], *ports = NULL;
 +
-+out:
- 	return ret;
- }
++	if (likely(!ip_vs_iph_icmp(iph))) {
++		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
++		if (sh) {
++			sch = skb_header_pointer(
++				skb, iph->len + sizeof(sctp_sctphdr_t),
++				sizeof(_schunkh), &_schunkh);
++			if (sch && (sch->type == SCTP_CID_INIT ||
++				    sysctl_sloppy_sctp(ipvs)))
++				ports = &sh->source;
++		}
++	} else {
++		ports = skb_header_pointer(
++			skb, iph->len, sizeof(_ports), &_ports);
+ 	}
  
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index d99ad93eb855..6bc6dca9bca8 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1405,11 +1405,9 @@ join_mcast_group(struct sock *sk, struct in_addr *addr, char *ifname)
+-	sch = skb_header_pointer(skb, iph->len + sizeof(sctp_sctphdr_t),
+-				 sizeof(_schunkh), &_schunkh);
+-	if (sch == NULL) {
++	if (!ports) {
+ 		*verdict = NF_DROP;
+ 		return 0;
+ 	}
+@@ -41,9 +43,13 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	net = skb_net(skb);
+ 	ipvs = net_ipvs(net);
+ 	rcu_read_lock();
+-	if ((sch->type == SCTP_CID_INIT || sysctl_sloppy_sctp(ipvs)) &&
+-	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
+-				      &iph->daddr, sh->dest))) {
++	if (likely(!ip_vs_iph_inverse(iph)))
++		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++					 &iph->daddr, ports[1]);
++	else
++		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++					 &iph->saddr, ports[0]);
++	if (svc) {
+ 		int ignored;
  
- 	mreq.imr_ifindex = dev->ifindex;
- 
--	rtnl_lock();
- 	lock_sock(sk);
- 	ret = ip_mc_join_group(sk, &mreq);
- 	release_sock(sk);
--	rtnl_unlock();
- 
- 	return ret;
- }
+ 		if (ip_vs_todrop(ipvs)) {
 -- 
-2.1.4
+Alex Gartrell <agartrell@fb.com>
 
