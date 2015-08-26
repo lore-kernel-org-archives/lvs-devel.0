@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next,v3 02/14] ipvs: Add hdr_flags to iphdr
-Date: Tue, 25 Aug 2015 20:49:17 -0700
-Message-ID: <1440560969-3511889-2-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next,v3 10/14] ipvs: attempt to schedule icmp packets
+Date: Tue, 25 Aug 2015 20:49:25 -0700
+Message-ID: <1440560969-3511889-10-git-send-email-agartrell@fb.com>
 References: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=7aBh/UgpvkSm7ijaNvsOsZNYP2tvg3fbszWsAmGJ1Tg=;
- b=dEFlAnybUVnrHifDE1wmddR0wLfDKcrtUUFTXFlv8Z9fdtajaKK1r+CUJ5wVsKq0+7Ar
- ZVnho7CtgbGMNJuuVcnq2gMyTzcZ1ODALZ/eJSk51vck184EMR/+zdGtHfb86v8wpzWk
- IDbdK5JfyOZUZHNNI0vMsRQQ9rh0fc6ZoXA= 
+ content-type; s=facebook; bh=TeozjihdCuF+umFDr9PLTULKDzRYXkZS/ya6GHq1bU4=;
+ b=lLGPu0JaoBAwR9yn4EL9OMbxPzAGcyRDoRuUKzQbRPAGiBJubKblMDU9+OlLa7gfjik6
+ fM56/gwYrDDFpMtOHXddcPEFqaD3/paX6XrmJ5A4r4cd309axlpeJ6TkHBPuejOHigfL
+ kV37LCDmJg3VEpfZ77+sbqxeqIZaGUOpkv8= 
 In-Reply-To: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,209 +19,171 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
 Cc: alexgartrell@gmail.com, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-These flags contain information like whether or not the addresses are
-inverted or from icmp.  The first will allow us to drop an inverse param
-all over the place, and the second will later be useful in scheduling icmp.
+Invoke the try_to_schedule logic from the icmp path and update it to the
+appropriate ip_vs_conn_put function.  The schedule functions have been
+updated to reject the packets immediately for now.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- include/net/ip_vs.h               | 43 ++++++++++++++++++++++++++++++++++++---
- net/netfilter/ipvs/ip_vs_core.c   | 20 +++++++++---------
- net/netfilter/ipvs/ip_vs_pe_sip.c |  2 +-
- net/netfilter/xt_ipvs.c           |  2 +-
- 4 files changed, 52 insertions(+), 15 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c       | 45 ++++++++++++++++++++++++++++-------
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |  6 +++++
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  |  7 ++++++
+ net/netfilter/ipvs/ip_vs_proto_udp.c  |  6 +++++
+ 4 files changed, 55 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 781068c..62d9c61 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -29,6 +29,9 @@
- #endif
- #include <net/net_namespace.h>		/* Netw namespace */
- 
-+#define IP_VS_HDR_INVERSE	1
-+#define IP_VS_HDR_ICMP		2
-+
- /* Generic access of ipvs struct */
- static inline struct netns_ipvs *net_ipvs(struct net* net)
- {
-@@ -104,6 +107,7 @@ static inline struct net *seq_file_single_net(struct seq_file *seq)
- extern int ip_vs_conn_tab_size;
- 
- struct ip_vs_iphdr {
-+	int hdr_flags;	/* ipvs flags */
- 	__u32 off;	/* Where IP or IPv4 header starts */
- 	__u32 len;	/* IPv4 simply where L4 starts
- 			 * IPv6 where L4 Transport Header starts */
-@@ -127,9 +131,11 @@ static inline void *frag_safe_skb_hp(const struct sk_buff *skb, int offset,
-  */
- static inline int
- ip_vs_fill_iph_skb_off(int af, const struct sk_buff *skb, int offset,
--		       struct ip_vs_iphdr *iphdr)
-+		       int hdr_flags, struct ip_vs_iphdr *iphdr)
- {
-+	iphdr->hdr_flags = hdr_flags;
- 	iphdr->off = offset;
-+
- #ifdef CONFIG_IP_VS_IPV6
- 	if (af == AF_INET6) {
- 		struct ipv6hdr _iph;
-@@ -168,9 +174,40 @@ ip_vs_fill_iph_skb_off(int af, const struct sk_buff *skb, int offset,
- }
- 
- static inline int
--ip_vs_fill_iph_skb(int af, const struct sk_buff *skb, struct ip_vs_iphdr *iphdr)
-+ip_vs_fill_iph_skb_icmp(int af, const struct sk_buff *skb, int offset,
-+			bool inverse, struct ip_vs_iphdr *iphdr)
-+{
-+	int hdr_flags = IP_VS_HDR_ICMP;
-+
-+	if (inverse)
-+		hdr_flags |= IP_VS_HDR_INVERSE;
-+
-+	return ip_vs_fill_iph_skb_off(af, skb, offset, hdr_flags, iphdr);
-+}
-+
-+static inline int
-+ip_vs_fill_iph_skb(int af, const struct sk_buff *skb, bool inverse,
-+		   struct ip_vs_iphdr *iphdr)
-+{
-+	int hdr_flags = 0;
-+
-+	if (inverse)
-+		hdr_flags |= IP_VS_HDR_INVERSE;
-+
-+	return ip_vs_fill_iph_skb_off(af, skb, skb_network_offset(skb),
-+				      hdr_flags, iphdr);
-+}
-+
-+static inline bool
-+ip_vs_iph_inverse(const struct ip_vs_iphdr *iph)
-+{
-+	return !!(iph->hdr_flags & IP_VS_HDR_INVERSE);
-+}
-+
-+static inline bool
-+ip_vs_iph_icmp(const struct ip_vs_iphdr *iph)
- {
--	return ip_vs_fill_iph_skb_off(af, skb, skb_network_offset(skb), iphdr);
-+	return !!(iph->hdr_flags & IP_VS_HDR_ICMP);
- }
- 
- static inline void ip_vs_addr_copy(int af, union nf_inet_addr *dst,
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index b831fe8..4f5d3d1 100644
+index efff6cf..564ba7f 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -934,7 +934,7 @@ static int ip_vs_out_icmp(struct sk_buff *skb, int *related,
- 	IP_VS_DBG_PKT(11, AF_INET, pp, skb, offset,
- 		      "Checking outgoing ICMP for");
+@@ -1406,7 +1406,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	unsigned int offset, offset2, ihl, verdict;
+-	bool ipip;
++	bool ipip, new_cp = false;
  
--	ip_vs_fill_iph_skb_off(AF_INET, skb, offset, &ciph);
-+	ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, true, &ciph);
+ 	*related = 1;
  
- 	/* The embedded headers contain source and dest in reverse order */
- 	cp = pp->conn_out_get(AF_INET, skb, &ciph, 1);
-@@ -983,8 +983,8 @@ static int ip_vs_out_icmp_v6(struct sk_buff *skb, int *related,
- 		  ic->icmp6_type, ntohs(icmpv6_id(ic)),
- 		  &ipvsh->saddr, &ipvsh->daddr);
+@@ -1484,8 +1484,17 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	 * For IPIP this is error for request, not for reply.
+ 	 */
+ 	cp = pp->conn_in_get(AF_INET, skb, &ciph);
+-	if (!cp)
+-		return NF_ACCEPT;
++
++	if (!cp) {
++		int v;
++
++		if (!sysctl_schedule_icmp(net_ipvs(net)))
++			return NF_ACCEPT;
++
++		if (!ip_vs_try_to_schedule(AF_INET, skb, pd, &v, &cp, &ciph))
++			return v;
++		new_cp = true;
++	}
  
--	if (!ip_vs_fill_iph_skb_off(AF_INET6, skb, ipvsh->len + sizeof(_icmph),
--				    &ciph))
-+	if (!ip_vs_fill_iph_skb_icmp(AF_INET6, skb, ipvsh->len + sizeof(_icmph),
-+				     true, &ciph))
- 		return NF_ACCEPT; /* The packet looks wrong, ignore */
+ 	verdict = NF_DROP;
  
- 	pp = ip_vs_proto_get(ciph.protocol);
-@@ -1177,7 +1177,7 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
- 	if (!net_ipvs(net)->enable)
- 		return NF_ACCEPT;
+@@ -1562,7 +1571,10 @@ ignore_ipip:
+ 	verdict = ip_vs_icmp_xmit(skb, cp, pp, offset, hooknum, &ciph);
  
--	ip_vs_fill_iph_skb(af, skb, &iph);
-+	ip_vs_fill_iph_skb(af, skb, false, &iph);
- #ifdef CONFIG_IP_VS_IPV6
- 	if (af == AF_INET6) {
- 		if (unlikely(iph.protocol == IPPROTO_ICMPV6)) {
-@@ -1212,7 +1212,7 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
- 					       ip_vs_defrag_user(hooknum)))
- 				return NF_STOLEN;
+ out:
+-	__ip_vs_conn_put(cp);
++	if (likely(!new_cp))
++		__ip_vs_conn_put(cp);
++	else
++		ip_vs_conn_put(cp);
  
--			ip_vs_fill_iph_skb(AF_INET, skb, &iph);
-+			ip_vs_fill_iph_skb(AF_INET, skb, false, &iph);
- 		}
+ 	return verdict;
+ }
+@@ -1578,6 +1590,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	unsigned int offset, verdict;
++	bool new_cp = false;
  
- 	/*
-@@ -1407,7 +1407,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 		      "Checking incoming ICMP for");
+ 	*related = 1;
  
- 	offset2 = offset;
--	ip_vs_fill_iph_skb_off(AF_INET, skb, offset, &ciph);
-+	ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, !ipip, &ciph);
- 	offset = ciph.len;
+@@ -1628,13 +1641,23 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 	 */
+ 	cp = pp->conn_in_get(AF_INET6, skb, &ciph);
  
- 	/* The embedded headers contain source and dest in reverse order.
-@@ -1537,7 +1537,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
- 		  &iph->saddr, &iph->daddr);
- 
- 	offset = iph->len + sizeof(_icmph);
--	if (!ip_vs_fill_iph_skb_off(AF_INET6, skb, offset, &ciph))
-+	if (!ip_vs_fill_iph_skb_icmp(AF_INET6, skb, offset, true, &ciph))
- 		return NF_ACCEPT;
- 
- 	net = skb_net(skb);
-@@ -1614,7 +1614,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	if (unlikely((skb->pkt_type != PACKET_HOST &&
- 		      hooknum != NF_INET_LOCAL_OUT) ||
- 		     !skb_dst(skb))) {
--		ip_vs_fill_iph_skb(af, skb, &iph);
-+		ip_vs_fill_iph_skb(af, skb, false, &iph);
- 		IP_VS_DBG_BUF(12, "packet type=%d proto=%d daddr=%s"
- 			      " ignored in hook %u\n",
- 			      skb->pkt_type, iph.protocol,
-@@ -1627,7 +1627,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
- 		return NF_ACCEPT;
- 
--	ip_vs_fill_iph_skb(af, skb, &iph);
-+	ip_vs_fill_iph_skb(af, skb, false, &iph);
- 
- 	/* Bad... Do not break raw sockets */
- 	if (unlikely(skb->sk != NULL && hooknum == NF_INET_LOCAL_OUT &&
-@@ -1841,7 +1841,7 @@ ip_vs_forward_icmp_v6(const struct nf_hook_ops *ops, struct sk_buff *skb,
- 	struct netns_ipvs *ipvs;
- 	struct ip_vs_iphdr iphdr;
- 
--	ip_vs_fill_iph_skb(AF_INET6, skb, &iphdr);
-+	ip_vs_fill_iph_skb(AF_INET6, skb, false, &iphdr);
- 	if (iphdr.protocol != IPPROTO_ICMPV6)
- 		return NF_ACCEPT;
- 
-diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
-index bed5f70..1b8d594 100644
---- a/net/netfilter/ipvs/ip_vs_pe_sip.c
-+++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
-@@ -70,7 +70,7 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
- 	const char *dptr;
- 	int retc;
- 
--	ip_vs_fill_iph_skb(p->af, skb, &iph);
-+	ip_vs_fill_iph_skb(p->af, skb, false, &iph);
- 
- 	/* Only useful with UDP */
- 	if (iph.protocol != IPPROTO_UDP)
-diff --git a/net/netfilter/xt_ipvs.c b/net/netfilter/xt_ipvs.c
-index 8d47c37..3704625 100644
---- a/net/netfilter/xt_ipvs.c
-+++ b/net/netfilter/xt_ipvs.c
-@@ -67,7 +67,7 @@ ipvs_mt(const struct sk_buff *skb, struct xt_action_param *par)
- 		goto out;
+-	if (!cp)
+-		return NF_ACCEPT;
++	if (!cp) {
++		int v;
++
++		if (!sysctl_schedule_icmp(net_ipvs(net)))
++			return NF_ACCEPT;
++
++		if (!ip_vs_try_to_schedule(AF_INET6, skb, pd, &v, &cp, &ciph))
++			return v;
++
++		new_cp = true;
++	}
++
+ 	/* VS/TUN, VS/DR and LOCALNODE just let it go */
+ 	if ((hooknum == NF_INET_LOCAL_OUT) &&
+ 	    (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)) {
+-		__ip_vs_conn_put(cp);
+-		return NF_ACCEPT;
++		verdict = NF_ACCEPT;
++		goto out;
  	}
  
--	ip_vs_fill_iph_skb(family, skb, &iph);
-+	ip_vs_fill_iph_skb(family, skb, true, &iph);
+ 	/* do the statistics and put it back */
+@@ -1648,7 +1671,11 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
  
- 	if (data->bitmask & XT_IPVS_PROTO)
- 		if ((iph.protocol == data->l4proto) ^
+ 	verdict = ip_vs_icmp_xmit_v6(skb, cp, pp, offset, hooknum, &ciph);
+ 
+-	__ip_vs_conn_put(cp);
++out:
++	if (likely(!new_cp))
++		__ip_vs_conn_put(cp);
++	else
++		ip_vs_conn_put(cp);
+ 
+ 	return verdict;
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 5b84c0b..cd2984f 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -19,6 +19,12 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	sctp_chunkhdr_t _schunkh, *sch;
+ 	sctp_sctphdr_t *sh, _sctph;
+ 
++	if (ip_vs_iph_icmp(iph)) {
++		/* TEMPORARY - do not schedule icmp yet */
++		*verdict = NF_ACCEPT;
++		return 0;
++	}
++
+ 	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+ 	if (sh == NULL) {
+ 		*verdict = NF_DROP;
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 8e92beb..dbc7075 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -41,6 +41,12 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct tcphdr _tcph, *th;
+ 	struct netns_ipvs *ipvs;
+ 
++	if (ip_vs_iph_icmp(iph)) {
++		/* TEMPORARY - do not schedule icmp yet */
++		*verdict = NF_ACCEPT;
++		return 0;
++	}
++
+ 	th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
+ 	if (th == NULL) {
+ 		*verdict = NF_DROP;
+@@ -48,6 +54,7 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	}
+ 	net = skb_net(skb);
+ 	ipvs = net_ipvs(net);
++
+ 	/* No !th->ack check to allow scheduling on SYN+ACK for Active FTP */
+ 	rcu_read_lock();
+ 	if ((th->syn || sysctl_sloppy_tcp(ipvs)) && !th->rst &&
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index b62a3c0..1403be2 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -37,6 +37,12 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct ip_vs_service *svc;
+ 	struct udphdr _udph, *uh;
+ 
++	if (ip_vs_iph_icmp(iph)) {
++		/* TEMPORARY - do not schedule icmp yet */
++		*verdict = NF_ACCEPT;
++		return 0;
++	}
++
+ 	/* IPv6 fragments, only first fragment will hit this */
+ 	uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
+ 	if (uh == NULL) {
 -- 
 Alex Gartrell <agartrell@fb.com>
 
