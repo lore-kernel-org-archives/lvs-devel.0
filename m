@@ -1,59 +1,86 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH net-next,v3 03/14] ipvs: Handle inverse and icmp headers
- in ip_vs_leave
-Date: Wed, 26 Aug 2015 15:29:18 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1508261442060.3538@ja.home.ssi.bg>
-References: <1440560969-3511889-1-git-send-email-agartrell@fb.com> <1440560969-3511889-3-git-send-email-agartrell@fb.com>
+From: Alex Gartrell <agartrell@fb.com>
+Subject: [PATCH net-next,v4 07/14] ipvs: add schedule_icmp sysctl
+Date: Wed, 26 Aug 2015 09:40:34 -0700
+Message-ID: <1440607241-355987-7-git-send-email-agartrell@fb.com>
+References: <1440607241-355987-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1440560969-3511889-3-git-send-email-agartrell@fb.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
+ date : message-id : in-reply-to : references : mime-version :
+ content-type; s=facebook; bh=GQNFndpIyn6AB1Iqsh61xAZf58w6sPy5bJ2BXYOdHnU=;
+ b=rHurbnlp9kuEU7WT/Vduz4TeEcuHPKilhzHvOMJytPB18BrWDegirXfb7vUDWSJLQku3
+ IxzqRm6HE39Izu7Fae183i1alv+u8Lc7IJMwuuCqwnjYHmVCzznXI5NweZdz2tpqWfnr
+ B/lIGJ7Fs2zvr4F5s0bi+blxJP2MonohvOA= 
+In-Reply-To: <1440607241-355987-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alex Gartrell <agartrell@fb.com>
-Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, alexgartrell@gmail.com, kernel-team@fb.com
+To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
+Cc: alexgartrell@gmail.com, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
+This sysctl will be used to enable the scheduling of icmp packets.
 
-	Hello,
+Signed-off-by: Alex Gartrell <agartrell@fb.com>
+---
+ include/net/ip_vs.h            | 11 +++++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c |  8 +++++++-
+ 2 files changed, 18 insertions(+), 1 deletion(-)
 
-On Tue, 25 Aug 2015, Alex Gartrell wrote:
-
-> -	if ((svc->port == FTPPORT) && (pptr[1] != FTPPORT))
-> +	if (svc->port == FTPPORT && dport != FTPPORT)
->  		return NF_ACCEPT;
-
-	Not sure if we have chance for this merge window
-but only small things for patches 3 and 4 need to be fixed:
-
-Patch 1: OK
-Patch 2: OK
-
-Patch 3:
-	- We need to prevent ICMP-to-ICMP in ip_vs_leave:
-
-	if (svc->port == FTPPORT && dport != FTPPORT)
-		return NF_ACCEPT;
-
-+	if (ip_vs_iph_icmp(iph))
-+		return NF_DROP;
-
-Patch 4:
-	- I now see that first IP_VS_DBG_PKT in ip_vs_try_to_schedule
-needs iph->off instead of 0.
-
-Patch 5: OK
-Patch 6: OK
-Patch 7: OK
-Patch 8: OK
-Patch 9: OK
-Patch 10: OK
-Patch 11: OK
-Patch 12: OK
-Patch 13: OK
-Patch 14: OK
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 3d47b5f..786cb9b 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -986,6 +986,7 @@ struct netns_ipvs {
+ 	int			sysctl_pmtu_disc;
+ 	int			sysctl_backup_only;
+ 	int			sysctl_conn_reuse_mode;
++	int			sysctl_schedule_icmp;
+ 
+ 	/* ip_vs_lblc */
+ 	int			sysctl_lblc_expiration;
+@@ -1109,6 +1110,11 @@ static inline int sysctl_conn_reuse_mode(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_conn_reuse_mode;
+ }
+ 
++static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_schedule_icmp;
++}
++
+ #else
+ 
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -1181,6 +1187,11 @@ static inline int sysctl_conn_reuse_mode(struct netns_ipvs *ipvs)
+ 	return 1;
+ }
+ 
++static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
++{
++	return 0;
++}
++
+ #endif
+ 
+ /* IPVS core functions
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 24c5542..2d57d41 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1844,6 +1844,12 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "schedule_icmp",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	{
+ 		.procname	= "debug_level",
+@@ -3818,7 +3824,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	tbl[idx++].data = &ipvs->sysctl_backup_only;
+ 	ipvs->sysctl_conn_reuse_mode = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
