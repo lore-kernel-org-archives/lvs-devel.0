@@ -1,79 +1,38 @@
-From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next,v4 00/14] ipvs: Add icmp scheduling
-Date: Wed, 26 Aug 2015 10:47:52 -0700
-Message-ID: <1440611272-437619-1-git-send-email-agartrell@fb.com>
+From: Alex Gartrell <alexgartrell@gmail.com>
+Subject: Re: [PATCH net-next,v4 01/14] ipvs: replace ip_vs_fill_ip4hdr with ip_vs_fill_iph_skb_off
+Date: Wed, 26 Aug 2015 10:48:29 -0700
+Message-ID: <CALCkm3dUakzPN4ffMsWUrCuXCMKbBhY5z2EN8oJR2Yw9NMr6Bw@mail.gmail.com>
+References: <1440607241-355987-1-git-send-email-agartrell@fb.com> <alpine.LFD.2.11.1508262034120.22375@ja.home.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : mime-version : content-type; s=facebook;
- bh=etcoegglmc44xz+I//C0bG8+ecSClHkNqT2LZ3Yejug=;
- b=UNvNCKySyRa1+4Qe5C62d3G6S0uTFyycSWL04d7Lb6/XRx7hKG4lk1VJtMW00nWClVYo
- zajGTO//EU6JQ/UtNcvv9jvpL+mcvWey2HRfhsSY0+yPp6+G6xezoKNTXSrlG3YIrPfm
- 2dhDd4F2kivXqS2GADVYwr1kGeLYPCLbHg4= 
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20120113;
+        h=mime-version:in-reply-to:references:from:date:message-id:subject:to
+         :cc:content-type;
+        bh=NpWZyjgwj5C2Yx5SHG3HdPMNYwoEqRPKBPCj+sLaFAk=;
+        b=OajpmIcZ5fTbw0U8+CoQJdXzY9SfQ+hOej8FhIiVdrSf6BUx46VOE7rO0XpbuCuLTM
+         A7zyKtcyjSAgTEfZKl70PRB/RIFpocels7xq6wB9jBLi0IS53Um3/QSsokDQ/IIA3kC4
+         YTZ72TnJaQoIOWoc1P6H2QQUIkRSPzdmU6EMlHExBetb17ty99DjL+lZJlzchPb3tOSo
+         O9k+RYTu0rrosLew4LcIiTr5LJ6lopmy9MH+PeF1brFGN6f4Fzh+Uwls4m2D+qV3Al6K
+         uwFdmYn0N9BUNSEnM8K3b3nSjh62o2irA6q8GC06/zJ5ZfjS+Z3rPzgCx9mXa/fMO2q/
+         Ublw==
+In-Reply-To: <alpine.LFD.2.11.1508262034120.22375@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
-Cc: alexgartrell@gmail.com, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Alex Gartrell <agartrell@fb.com>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, kernel-team <kernel-team@fb.com>
 
-The configuration of ipvs at Facebook is relatively straightforward.  All
-ipvs instances bgp advertise a set of VIPs and the network prefers the
-nearest one or uses ECMP in the event of a tie.  For the uninitiated, ECMP
-deterministically and statelessly load balances by hashing the packet
-(usually a 5-tuple of protocol, saddr, daddr, sport, and dport) and using
-that number as an index (basic hash table type logic).
+Hey,
 
-The problem is that ICMP packets (which contain really important
-information like whether or not an MTU has been exceeded) will get a
-different hash value and may end up at a different ipvs instance.  With no
-information about where to route these packets, they are dropped, creating
-ICMP black holes and breaking Path MTU discovery.  Suddenly, my mom's
-pictures can't load and I'm fielding midday calls that I want nothing to do
-with.
+On Wed, Aug 26, 2015 at 10:37 AM, Julian Anastasov <ja@ssi.bg> wrote:
+>         All patches 1-14 look ok to me, thanks!
+>
+> Acked-by: Julian Anastasov <ja@ssi.bg>
 
-To address this, this patch set introduces the ability to schedule icmp
-packets which is gated by a sysctl net.ipv4.vs.schedule_icmp.  If set to 0,
-the old behavior is maintained -- otherwise ICMP packets are scheduled.
+Thanks so much for all of your help!
 
-Updates:
-  v2: Added ip_vs_sh change, IP_VS_DBG_PKT macro changes,
-      reordered ip_vs_try_to_schedule, and other ja fixes.
-  v3: Added ip_vs_leave change, ip_vs_sched_persist handling,
-      and `offset = ciph.len` change.  Dropped unnecessary !cp check
-  v4: Return NF_DROP from ip_vs_leave on icmp_case if not ftp special case.
-      Fix LOG invocation with iph->off argument in ip_vs_try_to_schedule
+>         Not sure why 00/14 is missing, it is useful.
 
-Alex Gartrell (14):
-  ipvs: replace ip_vs_fill_ip4hdr with ip_vs_fill_iph_skb_off
-  ipvs: Add hdr_flags to iphdr
-  ipvs: Handle inverse and icmp headers in ip_vs_leave
-  ipvs: pull out ip_vs_try_to_schedule function
-  ipvs: drop inverse argument to conn_{in,out}_get
-  ipvs: Make ip_vs_schedule aware of inverse iph'es
-  ipvs: add schedule_icmp sysctl
-  ipvs: Use outer header in ip_vs_bypass_xmit_v6
-  ipvs: sh: support scheduling icmp/inverse packets consistently
-  ipvs: attempt to schedule icmp packets
-  ipvs: ensure that ICMP cannot be sent in reply to ICMP
-  ipvs: support scheduling inverse and icmp TCP packets
-  ipvs: support scheduling inverse and icmp UDP packets
-  ipvs: support scheduling inverse and icmp SCTP packets
-
- include/net/ip_vs.h                     | 109 ++++++++----
- net/netfilter/ipvs/ip_vs_conn.c         |  12 +-
- net/netfilter/ipvs/ip_vs_core.c         | 289 +++++++++++++++++++-------------
- net/netfilter/ipvs/ip_vs_ctl.c          |   8 +-
- net/netfilter/ipvs/ip_vs_pe_sip.c       |   2 +-
- net/netfilter/ipvs/ip_vs_proto_ah_esp.c |  17 +-
- net/netfilter/ipvs/ip_vs_proto_sctp.c   |  34 ++--
- net/netfilter/ipvs/ip_vs_proto_tcp.c    |  38 ++++-
- net/netfilter/ipvs/ip_vs_proto_udp.c    |  25 ++-
- net/netfilter/ipvs/ip_vs_sh.c           |  45 +++--
- net/netfilter/ipvs/ip_vs_xmit.c         |  24 +--
- net/netfilter/xt_ipvs.c                 |   4 +-
- 12 files changed, 390 insertions(+), 217 deletions(-)
-
--- 
-Alex Gartrell <agartrell@fb.com>
-
+This is because I am stupid :)  I've sent it now.
