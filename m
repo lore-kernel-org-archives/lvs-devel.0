@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next,v3 14/14] ipvs: support scheduling inverse and icmp SCTP packets
-Date: Tue, 25 Aug 2015 20:49:29 -0700
-Message-ID: <1440560969-3511889-14-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next,v3 12/14] ipvs: support scheduling inverse and icmp TCP packets
+Date: Tue, 25 Aug 2015 20:49:27 -0700
+Message-ID: <1440560969-3511889-12-git-send-email-agartrell@fb.com>
 References: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=G7tHxDQfnGD8WuyO+RukSSKb8kr9ypPk2vUSjG4CmWA=;
- b=EkOWVpvAsnCUsjaq0B9S8Fc4BaBm/DDXpKm3FpjZd8BlgS/ci24LFHwdF3QhtMAA95q2
- Yf9Zli35F7kpwy6pbjqSKCkaGLROPF8Lg5mhR1eDr7uQ9cYU6KuxygPSW6R0vy+mpn46
- 4wCVf3llQIkMHl/Ap5U7EmSIA+8d7QYSUQA= 
+ content-type; s=facebook; bh=/EytTalq4oWN8bKdZ35yjbVVCEBTH7WrHNOZNjnMUC0=;
+ b=ZLEnyURkUH4FA8rTpUzx3OiLAvQxGtnRcDoh2+e12YWiWO4wrA/Vey/5279exHlEKeMd
+ Cvaq+R2wvT9DjPMB+IgA/oDzJICpaFGrIIxxdYvEWNpU+rs/pBTfMYw/6e4y/vyOB93t
+ JnWYX+2NRCWxNZp6Bzt5N59fp1QWjvgUvb4= 
 In-Reply-To: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -26,65 +26,64 @@ In the event of an inverse packet, use the source address and port.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_proto_sctp.c | 40 ++++++++++++++++++++---------------
- 1 file changed, 23 insertions(+), 17 deletions(-)
+ net/netfilter/ipvs/ip_vs_proto_tcp.c | 39 ++++++++++++++++++++++++++----------
+ 1 file changed, 28 insertions(+), 11 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index cd2984f..2026fca 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -18,22 +18,24 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index dbc7075..8f43cf6 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -40,26 +40,43 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct ip_vs_service *svc;
+ 	struct tcphdr _tcph, *th;
  	struct netns_ipvs *ipvs;
- 	sctp_chunkhdr_t _schunkh, *sch;
- 	sctp_sctphdr_t *sh, _sctph;
--
++	__be16 _ports[2], *ports = NULL;
+ 
 -	if (ip_vs_iph_icmp(iph)) {
 -		/* TEMPORARY - do not schedule icmp yet */
 -		*verdict = NF_ACCEPT;
 -		return 0;
--	}
--
--	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
--	if (sh == NULL) {
--		*verdict = NF_DROP;
--		return 0;
-+	__be16 _ports[2], *ports = NULL;
++	net = skb_net(skb);
++	ipvs = net_ipvs(net);
 +
++	/* In the event of icmp, we're only guaranteed to have the first 8
++	 * bytes of the transport header, so we only check the rest of the
++	 * TCP packet for non-ICMP packets
++	 */
 +	if (likely(!ip_vs_iph_icmp(iph))) {
-+		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
-+		if (sh) {
-+			sch = skb_header_pointer(
-+				skb, iph->len + sizeof(sctp_sctphdr_t),
-+				sizeof(_schunkh), &_schunkh);
-+			if (sch && (sch->type == SCTP_CID_INIT ||
-+				    sysctl_sloppy_sctp(ipvs)))
-+				ports = &sh->source;
++		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
++		if (th) {
++			if (th->rst || !(sysctl_sloppy_tcp(ipvs) || th->syn))
++				return 1;
++			ports = &th->source;
 +		}
 +	} else {
 +		ports = skb_header_pointer(
 +			skb, iph->len, sizeof(_ports), &_ports);
  	}
  
--	sch = skb_header_pointer(skb, iph->len + sizeof(sctp_sctphdr_t),
--				 sizeof(_schunkh), &_schunkh);
--	if (sch == NULL) {
+-	th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
+-	if (th == NULL) {
 +	if (!ports) {
  		*verdict = NF_DROP;
  		return 0;
  	}
-@@ -41,9 +43,13 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	net = skb_net(skb);
- 	ipvs = net_ipvs(net);
+-	net = skb_net(skb);
+-	ipvs = net_ipvs(net);
+ 
+ 	/* No !th->ack check to allow scheduling on SYN+ACK for Active FTP */
  	rcu_read_lock();
--	if ((sch->type == SCTP_CID_INIT || sysctl_sloppy_sctp(ipvs)) &&
+-	if ((th->syn || sysctl_sloppy_tcp(ipvs)) && !th->rst &&
 -	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
--				      &iph->daddr, sh->dest))) {
+-				      &iph->daddr, th->dest))) {
++
 +	if (likely(!ip_vs_iph_inverse(iph)))
 +		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
 +					 &iph->daddr, ports[1]);
 +	else
 +		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
 +					 &iph->saddr, ports[0]);
++
 +	if (svc) {
  		int ignored;
  
