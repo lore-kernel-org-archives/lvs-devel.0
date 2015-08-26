@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next,v3 13/14] ipvs: support scheduling inverse and icmp UDP packets
-Date: Tue, 25 Aug 2015 20:49:28 -0700
-Message-ID: <1440560969-3511889-13-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next,v3 14/14] ipvs: support scheduling inverse and icmp SCTP packets
+Date: Tue, 25 Aug 2015 20:49:29 -0700
+Message-ID: <1440560969-3511889-14-git-send-email-agartrell@fb.com>
 References: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=2Gpevps/SnMj9WF9va81vF2pj6S+j5OUkeGToHPXQXE=;
- b=CKSMWwTiOHgeJ0UkOKYEBzY5DKkcSEUe4LUSUNn6vPEW28DwerCQ+oDaMSf1T46mYnpU
- FlVYQeTLhvCY/Wdpy6vrTXfD+o/cQ6Gaq6lcPEbVKeCYjy9i7nKQTPajczYdhHRNfP2b
- 5M8Eq20Z3aGeRGGzAFiUT2WmAxj1W0PBZ5Y= 
+ content-type; s=facebook; bh=G7tHxDQfnGD8WuyO+RukSSKb8kr9ypPk2vUSjG4CmWA=;
+ b=EkOWVpvAsnCUsjaq0B9S8Fc4BaBm/DDXpKm3FpjZd8BlgS/ci24LFHwdF3QhtMAA95q2
+ Yf9Zli35F7kpwy6pbjqSKCkaGLROPF8Lg5mhR1eDr7uQ9cYU6KuxygPSW6R0vy+mpn46
+ 4wCVf3llQIkMHl/Ap5U7EmSIA+8d7QYSUQA= 
 In-Reply-To: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -26,55 +26,69 @@ In the event of an inverse packet, use the source address and port.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_proto_udp.c | 27 ++++++++++++++++++---------
- 1 file changed, 18 insertions(+), 9 deletions(-)
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 40 ++++++++++++++++++++---------------
+ 1 file changed, 23 insertions(+), 17 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index 1403be2..f3aa821 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -36,23 +36,32 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	struct net *net;
- 	struct ip_vs_service *svc;
- 	struct udphdr _udph, *uh;
-+	__be16 _ports[2], *ports = NULL;
- 
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index cd2984f..2026fca 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -18,22 +18,24 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct netns_ipvs *ipvs;
+ 	sctp_chunkhdr_t _schunkh, *sch;
+ 	sctp_sctphdr_t *sh, _sctph;
+-
 -	if (ip_vs_iph_icmp(iph)) {
 -		/* TEMPORARY - do not schedule icmp yet */
 -		*verdict = NF_ACCEPT;
 -		return 0;
+-	}
+-
+-	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+-	if (sh == NULL) {
+-		*verdict = NF_DROP;
+-		return 0;
++	__be16 _ports[2], *ports = NULL;
++
 +	if (likely(!ip_vs_iph_icmp(iph))) {
-+		/* IPv6 fragments, only first fragment will hit this */
-+		uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
-+		if (uh)
-+			ports = &uh->source;
++		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
++		if (sh) {
++			sch = skb_header_pointer(
++				skb, iph->len + sizeof(sctp_sctphdr_t),
++				sizeof(_schunkh), &_schunkh);
++			if (sch && (sch->type == SCTP_CID_INIT ||
++				    sysctl_sloppy_sctp(ipvs)))
++				ports = &sh->source;
++		}
 +	} else {
 +		ports = skb_header_pointer(
 +			skb, iph->len, sizeof(_ports), &_ports);
  	}
  
--	/* IPv6 fragments, only first fragment will hit this */
--	uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
--	if (uh == NULL) {
+-	sch = skb_header_pointer(skb, iph->len + sizeof(sctp_sctphdr_t),
+-				 sizeof(_schunkh), &_schunkh);
+-	if (sch == NULL) {
 +	if (!ports) {
  		*verdict = NF_DROP;
  		return 0;
  	}
-+
+@@ -41,9 +43,13 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
  	net = skb_net(skb);
+ 	ipvs = net_ipvs(net);
  	rcu_read_lock();
--	svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
--				 &iph->daddr, uh->dest);
+-	if ((sch->type == SCTP_CID_INIT || sysctl_sloppy_sctp(ipvs)) &&
+-	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
+-				      &iph->daddr, sh->dest))) {
 +	if (likely(!ip_vs_iph_inverse(iph)))
 +		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
 +					 &iph->daddr, ports[1]);
 +	else
 +		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
 +					 &iph->saddr, ports[0]);
-+
- 	if (svc) {
++	if (svc) {
  		int ignored;
  
+ 		if (ip_vs_todrop(ipvs)) {
 -- 
 Alex Gartrell <agartrell@fb.com>
 
