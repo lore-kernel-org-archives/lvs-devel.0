@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next,v3 11/14] ipvs: ensure that ICMP cannot be sent in reply to ICMP
-Date: Tue, 25 Aug 2015 20:49:26 -0700
-Message-ID: <1440560969-3511889-11-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next,v3 13/14] ipvs: support scheduling inverse and icmp UDP packets
+Date: Tue, 25 Aug 2015 20:49:28 -0700
+Message-ID: <1440560969-3511889-13-git-send-email-agartrell@fb.com>
 References: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=CUTg9L75TMr9ivzKtKlyO3vt5LcI9+xsthUX8Vwa/Kc=;
- b=fOhQ3YoK/yV7OxzOWafV7XSPxU/KxHQc+a4uHvieY7CXxUdXO3b2wdjvM32d3TCibyh3
- OMyYcXstLY9HowoUwPgOcWlwNKtoShAAnggxUGf8mF+3NLPKXalNkeFWOWyh5NrEf7B/
- p5oh7n65NLLE1i2NK868WU4OGEHCoSu6Pz0= 
+ content-type; s=facebook; bh=2Gpevps/SnMj9WF9va81vF2pj6S+j5OUkeGToHPXQXE=;
+ b=CKSMWwTiOHgeJ0UkOKYEBzY5DKkcSEUe4LUSUNn6vPEW28DwerCQ+oDaMSf1T46mYnpU
+ FlVYQeTLhvCY/Wdpy6vrTXfD+o/cQ6Gaq6lcPEbVKeCYjy9i7nKQTPajczYdhHRNfP2b
+ 5M8Eq20Z3aGeRGGzAFiUT2WmAxj1W0PBZ5Y= 
 In-Reply-To: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,36 +19,62 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
 Cc: alexgartrell@gmail.com, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-Check the header for icmp before sending a PACKET_TOO_BIG
+In the event of an icmp packet, take only the ports instead of trying to
+grab the full header.
+
+In the event of an inverse packet, use the source address and port.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_proto_udp.c | 27 ++++++++++++++++++---------
+ 1 file changed, 18 insertions(+), 9 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index af5e9d3..c5be055 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -224,7 +224,7 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
- 			if (!skb->dev)
- 				skb->dev = net->loopback_dev;
- 			/* only send ICMP too big on first fragment */
--			if (!ipvsh->fragoffs)
-+			if (!ipvsh->fragoffs && !ip_vs_iph_icmp(ipvsh))
- 				icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu);
- 			IP_VS_DBG(1, "frag needed for %pI6c\n",
- 				  &ipv6_hdr(skb)->saddr);
-@@ -242,7 +242,8 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
- 			return true;
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index 1403be2..f3aa821 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -36,23 +36,32 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct net *net;
+ 	struct ip_vs_service *svc;
+ 	struct udphdr _udph, *uh;
++	__be16 _ports[2], *ports = NULL;
  
- 		if (unlikely(ip_hdr(skb)->frag_off & htons(IP_DF) &&
--			     skb->len > mtu && !skb_is_gso(skb))) {
-+			     skb->len > mtu && !skb_is_gso(skb) &&
-+			     !ip_vs_iph_icmp(ipvsh))) {
- 			icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED,
- 				  htonl(mtu));
- 			IP_VS_DBG(1, "frag needed for %pI4\n",
+-	if (ip_vs_iph_icmp(iph)) {
+-		/* TEMPORARY - do not schedule icmp yet */
+-		*verdict = NF_ACCEPT;
+-		return 0;
++	if (likely(!ip_vs_iph_icmp(iph))) {
++		/* IPv6 fragments, only first fragment will hit this */
++		uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
++		if (uh)
++			ports = &uh->source;
++	} else {
++		ports = skb_header_pointer(
++			skb, iph->len, sizeof(_ports), &_ports);
+ 	}
+ 
+-	/* IPv6 fragments, only first fragment will hit this */
+-	uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
+-	if (uh == NULL) {
++	if (!ports) {
+ 		*verdict = NF_DROP;
+ 		return 0;
+ 	}
++
+ 	net = skb_net(skb);
+ 	rcu_read_lock();
+-	svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
+-				 &iph->daddr, uh->dest);
++	if (likely(!ip_vs_iph_inverse(iph)))
++		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++					 &iph->daddr, ports[1]);
++	else
++		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++					 &iph->saddr, ports[0]);
++
+ 	if (svc) {
+ 		int ignored;
+ 
 -- 
 Alex Gartrell <agartrell@fb.com>
 
