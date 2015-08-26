@@ -1,16 +1,16 @@
 From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next,v4 11/14] ipvs: ensure that ICMP cannot be sent in reply to ICMP
-Date: Wed, 26 Aug 2015 09:40:38 -0700
-Message-ID: <1440607241-355987-11-git-send-email-agartrell@fb.com>
+Subject: [PATCH net-next,v4 09/14] ipvs: sh: support scheduling icmp/inverse packets consistently
+Date: Wed, 26 Aug 2015 09:40:36 -0700
+Message-ID: <1440607241-355987-9-git-send-email-agartrell@fb.com>
 References: <1440607241-355987-1-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
  date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=CUTg9L75TMr9ivzKtKlyO3vt5LcI9+xsthUX8Vwa/Kc=;
- b=g6bk0xPIKyN4lxSL3B/hFEKQZsfxjLxcCCHNcKta7WpAOslPgefNwq6px/q9KPIho1m1
- nBVaRZ8NeL0/BTW07IRnP5IULiWXtps/e0pQigZXrs0BTIkyfhyCyG9L0xX/koEBbhQh
- k7qI4hpGKJ/nvgS7y9zdvE2V5XAxoWhS5oc= 
+ content-type; s=facebook; bh=pNESdHmgDDDtD/587trlO+7UmMHbHSx/hl3oA0mCWIM=;
+ b=ow+Maux4rWgRtnI2dmkziFKOi/rKK+783MkaH1U/XHqVe6mStwwCPRTpEgeS15dPp19B
+ nanYoKhhE07cp6IktYFU/P7ARRCJDxCcNmKD/W8vzpNYcfqzCdaopsGVFFFiPGn/tkjf
+ YmynGxxgwpwS+PlTR8G6hUGgGufniRkqU8o= 
 In-Reply-To: <1440607241-355987-1-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -19,36 +19,99 @@ Content-Transfer-Encoding: 7bit
 To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
 Cc: alexgartrell@gmail.com, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
 
-Check the header for icmp before sending a PACKET_TOO_BIG
+"source_hash" the dest fields if it's an inverse packet.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_sh.c | 45 ++++++++++++++++++++-----------------------
+ 1 file changed, 21 insertions(+), 24 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index af5e9d3..c5be055 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -224,7 +224,7 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
- 			if (!skb->dev)
- 				skb->dev = net->loopback_dev;
- 			/* only send ICMP too big on first fragment */
--			if (!ipvsh->fragoffs)
-+			if (!ipvsh->fragoffs && !ip_vs_iph_icmp(ipvsh))
- 				icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu);
- 			IP_VS_DBG(1, "frag needed for %pI6c\n",
- 				  &ipv6_hdr(skb)->saddr);
-@@ -242,7 +242,8 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
- 			return true;
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index 98a1343..1e373a5 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -280,35 +280,29 @@ static int ip_vs_sh_dest_changed(struct ip_vs_service *svc,
+ static inline __be16
+ ip_vs_sh_get_port(const struct sk_buff *skb, struct ip_vs_iphdr *iph)
+ {
+-	__be16 port;
+-	struct tcphdr _tcph, *th;
+-	struct udphdr _udph, *uh;
+-	sctp_sctphdr_t _sctph, *sh;
++	__be16 _ports[2], *ports;
  
- 		if (unlikely(ip_hdr(skb)->frag_off & htons(IP_DF) &&
--			     skb->len > mtu && !skb_is_gso(skb))) {
-+			     skb->len > mtu && !skb_is_gso(skb) &&
-+			     !ip_vs_iph_icmp(ipvsh))) {
- 			icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED,
- 				  htonl(mtu));
- 			IP_VS_DBG(1, "frag needed for %pI4\n",
++	/* At this point we know that we have a valid packet of some kind.
++	 * Because ICMP packets are only guaranteed to have the first 8
++	 * bytes, let's just grab the ports.  Fortunately they're in the
++	 * same position for all three of the protocols we care about.
++	 */
+ 	switch (iph->protocol) {
+ 	case IPPROTO_TCP:
+-		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
+-		if (unlikely(th == NULL))
+-			return 0;
+-		port = th->source;
+-		break;
+ 	case IPPROTO_UDP:
+-		uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
+-		if (unlikely(uh == NULL))
+-			return 0;
+-		port = uh->source;
+-		break;
+ 	case IPPROTO_SCTP:
+-		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+-		if (unlikely(sh == NULL))
++		ports = skb_header_pointer(skb, iph->len, sizeof(_ports),
++					   &_ports);
++		if (unlikely(!ports))
+ 			return 0;
+-		port = sh->source;
+-		break;
++
++		if (likely(!ip_vs_iph_inverse(iph)))
++			return ports[0];
++		else
++			return ports[1];
+ 	default:
+-		port = 0;
++		return 0;
+ 	}
+-
+-	return port;
+ }
+ 
+ 
+@@ -322,6 +316,9 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_sh_state *s;
+ 	__be16 port = 0;
++	const union nf_inet_addr *hash_addr;
++
++	hash_addr = ip_vs_iph_inverse(iph) ? &iph->daddr : &iph->saddr;
+ 
+ 	IP_VS_DBG(6, "ip_vs_sh_schedule(): Scheduling...\n");
+ 
+@@ -331,9 +328,9 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	s = (struct ip_vs_sh_state *) svc->sched_data;
+ 
+ 	if (svc->flags & IP_VS_SVC_F_SCHED_SH_FALLBACK)
+-		dest = ip_vs_sh_get_fallback(svc, s, &iph->saddr, port);
++		dest = ip_vs_sh_get_fallback(svc, s, hash_addr, port);
+ 	else
+-		dest = ip_vs_sh_get(svc, s, &iph->saddr, port);
++		dest = ip_vs_sh_get(svc, s, hash_addr, port);
+ 
+ 	if (!dest) {
+ 		ip_vs_scheduler_err(svc, "no destination available");
+@@ -341,7 +338,7 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	}
+ 
+ 	IP_VS_DBG_BUF(6, "SH: source IP address %s --> server %s:%d\n",
+-		      IP_VS_DBG_ADDR(svc->af, &iph->saddr),
++		      IP_VS_DBG_ADDR(svc->af, hash_addr),
+ 		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 		      ntohs(dest->port));
+ 
 -- 
 Alex Gartrell <agartrell@fb.com>
 
