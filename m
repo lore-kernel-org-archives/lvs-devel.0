@@ -1,50 +1,59 @@
-From: Alex Gartrell <agartrell@fb.com>
-Subject: [PATCH net-next,v3 08/14] ipvs: Use outer header in ip_vs_bypass_xmit_v6
-Date: Tue, 25 Aug 2015 20:49:23 -0700
-Message-ID: <1440560969-3511889-8-git-send-email-agartrell@fb.com>
-References: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH net-next,v3 03/14] ipvs: Handle inverse and icmp headers
+ in ip_vs_leave
+Date: Wed, 26 Aug 2015 15:29:18 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1508261442060.3538@ja.home.ssi.bg>
+References: <1440560969-3511889-1-git-send-email-agartrell@fb.com> <1440560969-3511889-3-git-send-email-agartrell@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : in-reply-to : references : mime-version :
- content-type; s=facebook; bh=QXiM7pXZxfCQdU4VOi0sF4gLhIaka6daOapj3LGtZlQ=;
- b=MuAB3lSR8FPR6rzvogUrZ7K9hjCc6VCjblvqme5HIJ3r4PL/AdDycO+lZ/iGVziybcNL
- rsC9FWwzmGvc/Pma+3/48KBIvXSYlrkD1Q+xRmGpWxbTSjKsXiKNOBGZYiQcg83O8Gip
- asn766vw89oD6peNMphJrBpUdS33RWu7iOA= 
-In-Reply-To: <1440560969-3511889-1-git-send-email-agartrell@fb.com>
+In-Reply-To: <1440560969-3511889-3-git-send-email-agartrell@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
-Cc: alexgartrell@gmail.com, kernel-team@fb.com, Alex Gartrell <agartrell@fb.com>
+To: Alex Gartrell <agartrell@fb.com>
+Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, alexgartrell@gmail.com, kernel-team@fb.com
 
-The ip_vs_iphdr may refer to an internal header, so use the outer one
-instead.
 
-Signed-off-by: Alex Gartrell <agartrell@fb.com>
----
- net/netfilter/ipvs/ip_vs_xmit.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+	Hello,
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 9a26f2e..af5e9d3 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -656,10 +656,12 @@ int
- ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		     struct ip_vs_protocol *pp, struct ip_vs_iphdr *ipvsh)
- {
-+	struct ipv6hdr *iph = ipv6_hdr(skb);
-+
- 	EnterFunction(10);
- 
- 	rcu_read_lock();
--	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &ipvsh->daddr.in6, NULL,
-+	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &iph->daddr, NULL,
- 				  ipvsh, 0, IP_VS_RT_MODE_NON_LOCAL) < 0)
- 		goto tx_error;
- 
--- 
-Alex Gartrell <agartrell@fb.com>
+On Tue, 25 Aug 2015, Alex Gartrell wrote:
 
+> -	if ((svc->port == FTPPORT) && (pptr[1] != FTPPORT))
+> +	if (svc->port == FTPPORT && dport != FTPPORT)
+>  		return NF_ACCEPT;
+
+	Not sure if we have chance for this merge window
+but only small things for patches 3 and 4 need to be fixed:
+
+Patch 1: OK
+Patch 2: OK
+
+Patch 3:
+	- We need to prevent ICMP-to-ICMP in ip_vs_leave:
+
+	if (svc->port == FTPPORT && dport != FTPPORT)
+		return NF_ACCEPT;
+
++	if (ip_vs_iph_icmp(iph))
++		return NF_DROP;
+
+Patch 4:
+	- I now see that first IP_VS_DBG_PKT in ip_vs_try_to_schedule
+needs iph->off instead of 0.
+
+Patch 5: OK
+Patch 6: OK
+Patch 7: OK
+Patch 8: OK
+Patch 9: OK
+Patch 10: OK
+Patch 11: OK
+Patch 12: OK
+Patch 13: OK
+Patch 14: OK
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
