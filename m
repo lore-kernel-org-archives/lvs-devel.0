@@ -1,48 +1,39 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH ipvs-next] ipvs: add sysctl to ignore tunneled packets
-Date: Fri, 11 Sep 2015 22:24:12 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1509112212460.1836@ja.home.ssi.bg>
-References: <1441907665-1703876-1-git-send-email-agartrell@fb.com>
+Subject: Re: [PATCH] ipvs:Fix locking requirements in the function
+ ip_vs_unlink_service
+Date: Sat, 12 Sep 2015 09:20:21 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1509120910090.1626@ja.home.ssi.bg>
+References: <1442032025-18642-1-git-send-email-xerofoify@gmail.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1441907665-1703876-1-git-send-email-agartrell@fb.com>
+In-Reply-To: <1442032025-18642-1-git-send-email-xerofoify@gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alex Gartrell <agartrell@fb.com>
-Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, kernel-team@fb.com
+To: Nicholas Krause <xerofoify@gmail.com>
+Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kaber@trash.net, kadlec@blackhole.kfki.hu, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
 
 	Hello,
 
-On Thu, 10 Sep 2015, Alex Gartrell wrote:
+On Sat, 12 Sep 2015, Nicholas Krause wrote:
 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 99be680..984cf49 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1760,8 +1760,16 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
->  
->  	/* Protocol supported? */
->  	pd = ip_vs_proto_data_get(net, iph.protocol);
-> -	if (unlikely(!pd))
-> +	if (unlikely(!pd)) {
-> +		/* The only way we'll see this packet again is if it's
-> +		 * encapsulated, so mark it with ipvs_property=1 so we
-> +		 * skip it if we're ignoring tunneled packets
-> +		 */
-> +		if (sysctl_ignore_tunneled(net_ipvs(net)))
+> This fixes locking requirements in the function ip_vs_unlink_service
+> to properly use bottom half spinlocking around the call to the function
+> __ip_vs_del_service  in order to meet the locking that this paricular
+> function requires as stated in it's comments related to locking.
 
-	We can use "ipvs" here. I remember people used
-matching by src MAC to solve such problem for DR. For TUN
-fwmark or match by input device can work too. In all cases,
-a fwmark-based service is needed...
+> +	spin_lock_bh(&svc->sched_lock);
+>  	__ip_vs_del_service(svc, cleanup);
+> +	spin_unlock_bh(&svc->sched_lock);
 
-> +			skb->ipvs_property = 1;
-> +
->  		return NF_ACCEPT;
-> +	}
+	BH locking is not needed anymore. Also, sched_lock is
+used by schedulers to protect only access to svc->sched_data
+fields.
+
+	It seems the comment is outdated after
+commit ceec4c381681 ("ipvs: convert services to rcu").
 
 Regards
 
