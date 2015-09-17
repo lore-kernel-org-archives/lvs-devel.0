@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 03/15] ipvs: Handle inverse and icmp headers in ip_vs_leave
-Date: Thu, 17 Sep 2015 14:40:39 +0900
-Message-ID: <1442468451-24012-4-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 09/15] ipvs: sh: support scheduling icmp/inverse packets consistently
+Date: Thu, 17 Sep 2015 14:40:45 +0900
+Message-ID: <1442468451-24012-10-git-send-email-horms@verge.net.au>
 References: <1442468451-24012-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1442468451-24012-1-git-send-email-horms@verge.net.au>
@@ -15,88 +15,100 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
+"source_hash" the dest fields if it's an inverse packet.
+
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 33 +++++++++++++++++++++------------
- 1 file changed, 21 insertions(+), 12 deletions(-)
+ net/netfilter/ipvs/ip_vs_sh.c | 45 ++++++++++++++++++++-----------------------
+ 1 file changed, 21 insertions(+), 24 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 4f5d3d174517..bb998d432ce7 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -519,6 +519,17 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	return cp;
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index 98a13433b68c..1e373a5e44e3 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -280,35 +280,29 @@ static int ip_vs_sh_dest_changed(struct ip_vs_service *svc,
+ static inline __be16
+ ip_vs_sh_get_port(const struct sk_buff *skb, struct ip_vs_iphdr *iph)
+ {
+-	__be16 port;
+-	struct tcphdr _tcph, *th;
+-	struct udphdr _udph, *uh;
+-	sctp_sctphdr_t _sctph, *sh;
++	__be16 _ports[2], *ports;
+ 
++	/* At this point we know that we have a valid packet of some kind.
++	 * Because ICMP packets are only guaranteed to have the first 8
++	 * bytes, let's just grab the ports.  Fortunately they're in the
++	 * same position for all three of the protocols we care about.
++	 */
+ 	switch (iph->protocol) {
+ 	case IPPROTO_TCP:
+-		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
+-		if (unlikely(th == NULL))
+-			return 0;
+-		port = th->source;
+-		break;
+ 	case IPPROTO_UDP:
+-		uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
+-		if (unlikely(uh == NULL))
+-			return 0;
+-		port = uh->source;
+-		break;
+ 	case IPPROTO_SCTP:
+-		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+-		if (unlikely(sh == NULL))
++		ports = skb_header_pointer(skb, iph->len, sizeof(_ports),
++					   &_ports);
++		if (unlikely(!ports))
+ 			return 0;
+-		port = sh->source;
+-		break;
++
++		if (likely(!ip_vs_iph_inverse(iph)))
++			return ports[0];
++		else
++			return ports[1];
+ 	default:
+-		port = 0;
++		return 0;
+ 	}
+-
+-	return port;
  }
  
-+#ifdef CONFIG_SYSCTL
-+static inline int ip_vs_addr_is_unicast(struct net *net, int af,
-+					union nf_inet_addr *addr)
-+{
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (af == AF_INET6)
-+		return ipv6_addr_type(&addr->in6) & IPV6_ADDR_UNICAST;
-+#endif
-+	return (inet_addr_type(net, addr->ip) == RTN_UNICAST);
-+}
-+#endif
  
- /*
-  *  Pass or drop the packet.
-@@ -528,33 +539,28 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		struct ip_vs_proto_data *pd, struct ip_vs_iphdr *iph)
- {
--	__be16 _ports[2], *pptr;
-+	__be16 _ports[2], *pptr, dport;
- #ifdef CONFIG_SYSCTL
- 	struct net *net;
- 	struct netns_ipvs *ipvs;
--	int unicast;
- #endif
- 
- 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
--	if (pptr == NULL) {
-+	if (!pptr)
- 		return NF_DROP;
--	}
-+	dport = likely(!ip_vs_iph_inverse(iph)) ? pptr[1] : pptr[0];
- 
- #ifdef CONFIG_SYSCTL
- 	net = skb_net(skb);
- 
--#ifdef CONFIG_IP_VS_IPV6
--	if (svc->af == AF_INET6)
--		unicast = ipv6_addr_type(&iph->daddr.in6) & IPV6_ADDR_UNICAST;
--	else
--#endif
--		unicast = (inet_addr_type(net, iph->daddr.ip) == RTN_UNICAST);
- 
- 	/* if it is fwmark-based service, the cache_bypass sysctl is up
- 	   and the destination is a non-local unicast, then create
- 	   a cache_bypass connection entry */
- 	ipvs = net_ipvs(net);
--	if (ipvs->sysctl_cache_bypass && svc->fwmark && unicast) {
-+	if (ipvs->sysctl_cache_bypass && svc->fwmark &&
-+	    !(iph->hdr_flags & (IP_VS_HDR_INVERSE | IP_VS_HDR_ICMP)) &&
-+	    ip_vs_addr_is_unicast(net, svc->af, &iph->daddr)) {
- 		int ret;
- 		struct ip_vs_conn *cp;
- 		unsigned int flags = (svc->flags & IP_VS_SVC_F_ONEPACKET &&
-@@ -598,9 +604,12 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 	 * listed in the ipvs table), pass the packets, because it is
- 	 * not ipvs job to decide to drop the packets.
- 	 */
--	if ((svc->port == FTPPORT) && (pptr[1] != FTPPORT))
-+	if (svc->port == FTPPORT && dport != FTPPORT)
- 		return NF_ACCEPT;
- 
-+	if (unlikely(ip_vs_iph_icmp(iph)))
-+		return NF_DROP;
+@@ -322,6 +316,9 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_sh_state *s;
+ 	__be16 port = 0;
++	const union nf_inet_addr *hash_addr;
 +
- 	/*
- 	 * Notify the client that the destination is unreachable, and
- 	 * release the socket buffer.
++	hash_addr = ip_vs_iph_inverse(iph) ? &iph->daddr : &iph->saddr;
+ 
+ 	IP_VS_DBG(6, "ip_vs_sh_schedule(): Scheduling...\n");
+ 
+@@ -331,9 +328,9 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	s = (struct ip_vs_sh_state *) svc->sched_data;
+ 
+ 	if (svc->flags & IP_VS_SVC_F_SCHED_SH_FALLBACK)
+-		dest = ip_vs_sh_get_fallback(svc, s, &iph->saddr, port);
++		dest = ip_vs_sh_get_fallback(svc, s, hash_addr, port);
+ 	else
+-		dest = ip_vs_sh_get(svc, s, &iph->saddr, port);
++		dest = ip_vs_sh_get(svc, s, hash_addr, port);
+ 
+ 	if (!dest) {
+ 		ip_vs_scheduler_err(svc, "no destination available");
+@@ -341,7 +338,7 @@ ip_vs_sh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+ 	}
+ 
+ 	IP_VS_DBG_BUF(6, "SH: source IP address %s --> server %s:%d\n",
+-		      IP_VS_DBG_ADDR(svc->af, &iph->saddr),
++		      IP_VS_DBG_ADDR(svc->af, hash_addr),
+ 		      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+ 		      ntohs(dest->port));
+ 
 -- 
 2.1.4
