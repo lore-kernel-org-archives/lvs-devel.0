@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 15/15] ipvs: add sysctl to ignore tunneled packets
-Date: Thu, 17 Sep 2015 14:40:51 +0900
-Message-ID: <1442468451-24012-16-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 14/15] ipvs: support scheduling inverse and icmp SCTP packets
+Date: Thu, 17 Sep 2015 14:40:50 +0900
+Message-ID: <1442468451-24012-15-git-send-email-horms@verge.net.au>
 References: <1442468451-24012-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1442468451-24012-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,122 +15,78 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-This is a way to avoid nasty routing loops when multiple ipvs instances can
-forward to eachother.
+In the event of an icmp packet, take only the ports instead of trying to
+grab the full header.
+
+In the event of an inverse packet, use the source address and port.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- Documentation/networking/ipvs-sysctl.txt | 10 ++++++++++
- include/net/ip_vs.h                      | 11 +++++++++++
- net/netfilter/ipvs/ip_vs_core.c          | 10 +++++++++-
- net/netfilter/ipvs/ip_vs_ctl.c           |  7 +++++++
- 4 files changed, 37 insertions(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 40 ++++++++++++++++++++---------------
+ 1 file changed, 23 insertions(+), 17 deletions(-)
 
-diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
-index 3ba709531adb..e6b1c025fdd8 100644
---- a/Documentation/networking/ipvs-sysctl.txt
-+++ b/Documentation/networking/ipvs-sysctl.txt
-@@ -157,6 +157,16 @@ expire_quiescent_template - BOOLEAN
- 	persistence template if it is to be used to schedule a new
- 	connection and the destination server is quiescent.
- 
-+ignore_tunneled - BOOLEAN
-+	0 - disabled (default)
-+	not 0 - enabled
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index cd2984f3dad7..2026fca7e1c3 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -18,22 +18,24 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct netns_ipvs *ipvs;
+ 	sctp_chunkhdr_t _schunkh, *sch;
+ 	sctp_sctphdr_t *sh, _sctph;
+-
+-	if (ip_vs_iph_icmp(iph)) {
+-		/* TEMPORARY - do not schedule icmp yet */
+-		*verdict = NF_ACCEPT;
+-		return 0;
+-	}
+-
+-	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+-	if (sh == NULL) {
+-		*verdict = NF_DROP;
+-		return 0;
++	__be16 _ports[2], *ports = NULL;
 +
-+	If set, ipvs will set the ipvs_property on all packets which are of
-+	unrecognized protocols.  This prevents us from routing tunneled
-+	protocols like ipip, which is useful to prevent rescheduling
-+	packets that have been tunneled to the ipvs host (i.e. to prevent
-+	ipvs routing loops when ipvs is also acting as a real server).
-+
- nat_icmp_send - BOOLEAN
-         0 - disabled (default)
-         not 0 - enabled
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 47677f0493c7..1096a71ab6ed 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -998,6 +998,7 @@ struct netns_ipvs {
- 	int			sysctl_backup_only;
- 	int			sysctl_conn_reuse_mode;
- 	int			sysctl_schedule_icmp;
-+	int			sysctl_ignore_tunneled;
++	if (likely(!ip_vs_iph_icmp(iph))) {
++		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
++		if (sh) {
++			sch = skb_header_pointer(
++				skb, iph->len + sizeof(sctp_sctphdr_t),
++				sizeof(_schunkh), &_schunkh);
++			if (sch && (sch->type == SCTP_CID_INIT ||
++				    sysctl_sloppy_sctp(ipvs)))
++				ports = &sh->source;
++		}
++	} else {
++		ports = skb_header_pointer(
++			skb, iph->len, sizeof(_ports), &_ports);
+ 	}
  
- 	/* ip_vs_lblc */
- 	int			sysctl_lblc_expiration;
-@@ -1121,6 +1122,11 @@ static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
- 	return ipvs->sysctl_schedule_icmp;
- }
+-	sch = skb_header_pointer(skb, iph->len + sizeof(sctp_sctphdr_t),
+-				 sizeof(_schunkh), &_schunkh);
+-	if (sch == NULL) {
++	if (!ports) {
+ 		*verdict = NF_DROP;
+ 		return 0;
+ 	}
+@@ -41,9 +43,13 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	net = skb_net(skb);
+ 	ipvs = net_ipvs(net);
+ 	rcu_read_lock();
+-	if ((sch->type == SCTP_CID_INIT || sysctl_sloppy_sctp(ipvs)) &&
+-	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
+-				      &iph->daddr, sh->dest))) {
++	if (likely(!ip_vs_iph_inverse(iph)))
++		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++					 &iph->daddr, ports[1]);
++	else
++		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++					 &iph->saddr, ports[0]);
++	if (svc) {
+ 		int ignored;
  
-+static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
-+{
-+	return ipvs->sysctl_ignore_tunneled;
-+}
-+
- #else
- 
- static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
-@@ -1198,6 +1204,11 @@ static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
- 	return 0;
- }
- 
-+static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
-+{
-+	return 0;
-+}
-+
- #endif
- 
- /* IPVS core functions
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 99be6801c795..453972c6909e 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1760,8 +1760,16 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 
- 	/* Protocol supported? */
- 	pd = ip_vs_proto_data_get(net, iph.protocol);
--	if (unlikely(!pd))
-+	if (unlikely(!pd)) {
-+		/* The only way we'll see this packet again is if it's
-+		 * encapsulated, so mark it with ipvs_property=1 so we
-+		 * skip it if we're ignoring tunneled packets
-+		 */
-+		if (sysctl_ignore_tunneled(ipvs))
-+			skb->ipvs_property = 1;
-+
- 		return NF_ACCEPT;
-+	}
- 	pp = pd->pp;
- 	/*
- 	 * Check if the packet belongs to an existing connection entry
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 31d80e203863..7338827ee5e9 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1850,6 +1850,12 @@ static struct ctl_table vs_vars[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec,
- 	},
-+	{
-+		.procname	= "ignore_tunneled",
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
- #ifdef CONFIG_IP_VS_DEBUG
- 	{
- 		.procname	= "debug_level",
-@@ -3902,6 +3908,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
- 	ipvs->sysctl_conn_reuse_mode = 1;
- 	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
- 	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
-+	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
- 
- 	ipvs->sysctl_hdr = register_net_sysctl(net, "net/ipv4/vs", tbl);
- 	if (ipvs->sysctl_hdr == NULL) {
+ 		if (ip_vs_todrop(ipvs)) {
 -- 
 2.1.4
 
