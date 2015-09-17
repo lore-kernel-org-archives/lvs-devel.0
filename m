@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 14/15] ipvs: support scheduling inverse and icmp SCTP packets
-Date: Thu, 17 Sep 2015 14:40:50 +0900
-Message-ID: <1442468451-24012-15-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 07/15] ipvs: add schedule_icmp sysctl
+Date: Thu, 17 Sep 2015 14:40:43 +0900
+Message-ID: <1442468451-24012-8-git-send-email-horms@verge.net.au>
 References: <1442468451-24012-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1442468451-24012-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,78 +15,78 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-In the event of an icmp packet, take only the ports instead of trying to
-grab the full header.
-
-In the event of an inverse packet, use the source address and port.
+This sysctl will be used to enable the scheduling of icmp packets.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_proto_sctp.c | 40 ++++++++++++++++++++---------------
- 1 file changed, 23 insertions(+), 17 deletions(-)
+ include/net/ip_vs.h            | 11 +++++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c |  8 +++++++-
+ 2 files changed, 18 insertions(+), 1 deletion(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index cd2984f3dad7..2026fca7e1c3 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -18,22 +18,24 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	struct netns_ipvs *ipvs;
- 	sctp_chunkhdr_t _schunkh, *sch;
- 	sctp_sctphdr_t *sh, _sctph;
--
--	if (ip_vs_iph_icmp(iph)) {
--		/* TEMPORARY - do not schedule icmp yet */
--		*verdict = NF_ACCEPT;
--		return 0;
--	}
--
--	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
--	if (sh == NULL) {
--		*verdict = NF_DROP;
--		return 0;
-+	__be16 _ports[2], *ports = NULL;
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index ba90729d1111..47677f0493c7 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -997,6 +997,7 @@ struct netns_ipvs {
+ 	int			sysctl_pmtu_disc;
+ 	int			sysctl_backup_only;
+ 	int			sysctl_conn_reuse_mode;
++	int			sysctl_schedule_icmp;
+ 
+ 	/* ip_vs_lblc */
+ 	int			sysctl_lblc_expiration;
+@@ -1115,6 +1116,11 @@ static inline int sysctl_conn_reuse_mode(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_conn_reuse_mode;
+ }
+ 
++static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_schedule_icmp;
++}
 +
-+	if (likely(!ip_vs_iph_icmp(iph))) {
-+		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
-+		if (sh) {
-+			sch = skb_header_pointer(
-+				skb, iph->len + sizeof(sctp_sctphdr_t),
-+				sizeof(_schunkh), &_schunkh);
-+			if (sch && (sch->type == SCTP_CID_INIT ||
-+				    sysctl_sloppy_sctp(ipvs)))
-+				ports = &sh->source;
-+		}
-+	} else {
-+		ports = skb_header_pointer(
-+			skb, iph->len, sizeof(_ports), &_ports);
- 	}
+ #else
  
--	sch = skb_header_pointer(skb, iph->len + sizeof(sctp_sctphdr_t),
--				 sizeof(_schunkh), &_schunkh);
--	if (sch == NULL) {
-+	if (!ports) {
- 		*verdict = NF_DROP;
- 		return 0;
- 	}
-@@ -41,9 +43,13 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	net = skb_net(skb);
- 	ipvs = net_ipvs(net);
- 	rcu_read_lock();
--	if ((sch->type == SCTP_CID_INIT || sysctl_sloppy_sctp(ipvs)) &&
--	    (svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
--				      &iph->daddr, sh->dest))) {
-+	if (likely(!ip_vs_iph_inverse(iph)))
-+		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+					 &iph->daddr, ports[1]);
-+	else
-+		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+					 &iph->saddr, ports[0]);
-+	if (svc) {
- 		int ignored;
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -1187,6 +1193,11 @@ static inline int sysctl_conn_reuse_mode(struct netns_ipvs *ipvs)
+ 	return 1;
+ }
  
- 		if (ip_vs_todrop(ipvs)) {
++static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
++{
++	return 0;
++}
++
+ #endif
+ 
+ /* IPVS core functions
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 1a23e91d50d8..31d80e203863 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1844,6 +1844,12 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "schedule_icmp",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	{
+ 		.procname	= "debug_level",
+@@ -3895,7 +3901,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	tbl[idx++].data = &ipvs->sysctl_backup_only;
+ 	ipvs->sysctl_conn_reuse_mode = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
+-
++	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
+ 
+ 	ipvs->sysctl_hdr = register_net_sysctl(net, "net/ipv4/vs", tbl);
+ 	if (ipvs->sysctl_hdr == NULL) {
 -- 
 2.1.4
 
