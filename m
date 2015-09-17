@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 06/15] ipvs: Make ip_vs_schedule aware of inverse iph'es
-Date: Thu, 17 Sep 2015 14:40:42 +0900
-Message-ID: <1442468451-24012-7-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 10/15] ipvs: attempt to schedule icmp packets
+Date: Thu, 17 Sep 2015 14:40:46 +0900
+Message-ID: <1442468451-24012-11-git-send-email-horms@verge.net.au>
 References: <1442468451-24012-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1442468451-24012-1-git-send-email-horms@verge.net.au>
@@ -15,141 +15,172 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-This is necessary to schedule icmp later.
+Invoke the try_to_schedule logic from the icmp path and update it to the
+appropriate ip_vs_conn_put function.  The schedule functions have been
+updated to reject the packets immediately for now.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 50 +++++++++++++++++++++++++++++------------
- 1 file changed, 36 insertions(+), 14 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c       | 45 ++++++++++++++++++++++++++++-------
+ net/netfilter/ipvs/ip_vs_proto_sctp.c |  6 +++++
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  |  7 ++++++
+ net/netfilter/ipvs/ip_vs_proto_udp.c  |  6 +++++
+ 4 files changed, 55 insertions(+), 9 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index ebfb371daa3b..6465e7b3e891 100644
+index 6465e7b3e891..99be6801c795 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -245,20 +245,30 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	const union nf_inet_addr fwmark = { .ip = htonl(svc->fwmark) };
- 	union nf_inet_addr snet;	/* source network of the client,
- 					   after masking */
-+	const union nf_inet_addr *src_addr, *dst_addr;
+@@ -1409,7 +1409,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	unsigned int offset, offset2, ihl, verdict;
+-	bool ipip;
++	bool ipip, new_cp = false;
+ 
+ 	*related = 1;
+ 
+@@ -1487,8 +1487,17 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	 * For IPIP this is error for request, not for reply.
+ 	 */
+ 	cp = pp->conn_in_get(AF_INET, skb, &ciph);
+-	if (!cp)
+-		return NF_ACCEPT;
 +
-+	if (likely(!ip_vs_iph_inverse(iph))) {
-+		src_addr = &iph->saddr;
-+		dst_addr = &iph->daddr;
-+	} else {
-+		src_addr = &iph->daddr;
-+		dst_addr = &iph->saddr;
++	if (!cp) {
++		int v;
++
++		if (!sysctl_schedule_icmp(net_ipvs(net)))
++			return NF_ACCEPT;
++
++		if (!ip_vs_try_to_schedule(AF_INET, skb, pd, &v, &cp, &ciph))
++			return v;
++		new_cp = true;
++	}
+ 
+ 	verdict = NF_DROP;
+ 
+@@ -1565,7 +1574,10 @@ ignore_ipip:
+ 	verdict = ip_vs_icmp_xmit(skb, cp, pp, offset, hooknum, &ciph);
+ 
+ out:
+-	__ip_vs_conn_put(cp);
++	if (likely(!new_cp))
++		__ip_vs_conn_put(cp);
++	else
++		ip_vs_conn_put(cp);
+ 
+ 	return verdict;
+ }
+@@ -1581,6 +1593,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	unsigned int offset, verdict;
++	bool new_cp = false;
+ 
+ 	*related = 1;
+ 
+@@ -1631,13 +1644,23 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 	 */
+ 	cp = pp->conn_in_get(AF_INET6, skb, &ciph);
+ 
+-	if (!cp)
+-		return NF_ACCEPT;
++	if (!cp) {
++		int v;
++
++		if (!sysctl_schedule_icmp(net_ipvs(net)))
++			return NF_ACCEPT;
++
++		if (!ip_vs_try_to_schedule(AF_INET6, skb, pd, &v, &cp, &ciph))
++			return v;
++
++		new_cp = true;
 +	}
 +
+ 	/* VS/TUN, VS/DR and LOCALNODE just let it go */
+ 	if ((hooknum == NF_INET_LOCAL_OUT) &&
+ 	    (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)) {
+-		__ip_vs_conn_put(cp);
+-		return NF_ACCEPT;
++		verdict = NF_ACCEPT;
++		goto out;
+ 	}
  
- 	/* Mask saddr with the netmask to adjust template granularity */
- #ifdef CONFIG_IP_VS_IPV6
- 	if (svc->af == AF_INET6)
--		ipv6_addr_prefix(&snet.in6, &iph->saddr.in6,
-+		ipv6_addr_prefix(&snet.in6, &src_addr->in6,
- 				 (__force __u32) svc->netmask);
- 	else
- #endif
--		snet.ip = iph->saddr.ip & svc->netmask;
-+		snet.ip = src_addr->ip & svc->netmask;
+ 	/* do the statistics and put it back */
+@@ -1651,7 +1674,11 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
  
- 	IP_VS_DBG_BUF(6, "p-schedule: src %s:%u dest %s:%u "
- 		      "mnet %s\n",
--		      IP_VS_DBG_ADDR(svc->af, &iph->saddr), ntohs(src_port),
--		      IP_VS_DBG_ADDR(svc->af, &iph->daddr), ntohs(dst_port),
-+		      IP_VS_DBG_ADDR(svc->af, src_addr), ntohs(src_port),
-+		      IP_VS_DBG_ADDR(svc->af, dst_addr), ntohs(dst_port),
- 		      IP_VS_DBG_ADDR(svc->af, &snet));
+ 	verdict = ip_vs_icmp_xmit_v6(skb, cp, pp, offset, hooknum, &ciph);
  
- 	/*
-@@ -276,7 +286,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	 */
- 	{
- 		int protocol = iph->protocol;
--		const union nf_inet_addr *vaddr = &iph->daddr;
-+		const union nf_inet_addr *vaddr = dst_addr;
- 		__be16 vport = 0;
+-	__ip_vs_conn_put(cp);
++out:
++	if (likely(!new_cp))
++		__ip_vs_conn_put(cp);
++	else
++		ip_vs_conn_put(cp);
  
- 		if (dst_port == svc->port) {
-@@ -366,8 +376,8 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 	/*
- 	 *    Create a new connection according to the template
- 	 */
--	ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol, &iph->saddr,
--			      src_port, &iph->daddr, dst_port, &param);
-+	ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol, src_addr,
-+			      src_port, dst_addr, dst_port, &param);
+ 	return verdict;
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 5b84c0b56642..cd2984f3dad7 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -19,6 +19,12 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	sctp_chunkhdr_t _schunkh, *sch;
+ 	sctp_sctphdr_t *sh, _sctph;
  
- 	cp = ip_vs_conn_new(&param, dest->af, &dest->addr, dport, flags, dest,
- 			    skb->mark);
-@@ -418,7 +428,8 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	struct ip_vs_conn *cp = NULL;
- 	struct ip_vs_scheduler *sched;
- 	struct ip_vs_dest *dest;
--	__be16 _ports[2], *pptr;
-+	__be16 _ports[2], *pptr, cport, vport;
-+	const void *caddr, *vaddr;
- 	unsigned int flags;
- 
- 	*ignored = 1;
-@@ -429,13 +440,25 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	if (pptr == NULL)
- 		return NULL;
- 
-+	if (likely(!ip_vs_iph_inverse(iph))) {
-+		cport = pptr[0];
-+		caddr = &iph->saddr;
-+		vport = pptr[1];
-+		vaddr = &iph->daddr;
-+	} else {
-+		cport = pptr[1];
-+		caddr = &iph->daddr;
-+		vport = pptr[0];
-+		vaddr = &iph->saddr;
++	if (ip_vs_iph_icmp(iph)) {
++		/* TEMPORARY - do not schedule icmp yet */
++		*verdict = NF_ACCEPT;
++		return 0;
 +	}
 +
- 	/*
- 	 * FTPDATA needs this check when using local real server.
- 	 * Never schedule Active FTPDATA connections from real server.
- 	 * For LVS-NAT they must be already created. For other methods
- 	 * with persistence the connection is created on SYN+ACK.
- 	 */
--	if (pptr[0] == FTPDATA) {
-+	if (cport == FTPDATA) {
- 		IP_VS_DBG_PKT(12, svc->af, pp, skb, iph->off,
- 			      "Not scheduling FTPDATA");
- 		return NULL;
-@@ -462,7 +485,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	 *    Persistent service
- 	 */
- 	if (svc->flags & IP_VS_SVC_F_PERSISTENT)
--		return ip_vs_sched_persist(svc, skb, pptr[0], pptr[1], ignored,
-+		return ip_vs_sched_persist(svc, skb, cport, vport, ignored,
- 					   iph);
+ 	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+ 	if (sh == NULL) {
+ 		*verdict = NF_DROP;
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 8e92beb0cca9..dbc707514f29 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -41,6 +41,12 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct tcphdr _tcph, *th;
+ 	struct netns_ipvs *ipvs;
  
- 	*ignored = 0;
-@@ -470,7 +493,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	/*
- 	 *    Non-persistent service
- 	 */
--	if (!svc->fwmark && pptr[1] != svc->port) {
-+	if (!svc->fwmark && vport != svc->port) {
- 		if (!svc->port)
- 			pr_err("Schedule: port zero only supported "
- 			       "in persistent services, "
-@@ -502,10 +525,9 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 		struct ip_vs_conn_param p;
++	if (ip_vs_iph_icmp(iph)) {
++		/* TEMPORARY - do not schedule icmp yet */
++		*verdict = NF_ACCEPT;
++		return 0;
++	}
++
+ 	th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
+ 	if (th == NULL) {
+ 		*verdict = NF_DROP;
+@@ -48,6 +54,7 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	}
+ 	net = skb_net(skb);
+ 	ipvs = net_ipvs(net);
++
+ 	/* No !th->ack check to allow scheduling on SYN+ACK for Active FTP */
+ 	rcu_read_lock();
+ 	if ((th->syn || sysctl_sloppy_tcp(ipvs)) && !th->rst &&
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index b62a3c0ff9bf..1403be250988 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -37,6 +37,12 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	struct ip_vs_service *svc;
+ 	struct udphdr _udph, *uh;
  
- 		ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
--				      &iph->saddr, pptr[0], &iph->daddr,
--				      pptr[1], &p);
-+				      caddr, cport, vaddr, vport, &p);
- 		cp = ip_vs_conn_new(&p, dest->af, &dest->addr,
--				    dest->port ? dest->port : pptr[1],
-+				    dest->port ? dest->port : vport,
- 				    flags, dest, skb->mark);
- 		if (!cp) {
- 			*ignored = -1;
++	if (ip_vs_iph_icmp(iph)) {
++		/* TEMPORARY - do not schedule icmp yet */
++		*verdict = NF_ACCEPT;
++		return 0;
++	}
++
+ 	/* IPv6 fragments, only first fragment will hit this */
+ 	uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
+ 	if (uh == NULL) {
 -- 
 2.1.4
