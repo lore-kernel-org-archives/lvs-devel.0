@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 10/15] ipvs: attempt to schedule icmp packets
-Date: Thu, 17 Sep 2015 14:40:46 +0900
-Message-ID: <1442468451-24012-11-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 15/15] ipvs: add sysctl to ignore tunneled packets
+Date: Thu, 17 Sep 2015 14:40:51 +0900
+Message-ID: <1442468451-24012-16-git-send-email-horms@verge.net.au>
 References: <1442468451-24012-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1442468451-24012-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,172 +15,122 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-Invoke the try_to_schedule logic from the icmp path and update it to the
-appropriate ip_vs_conn_put function.  The schedule functions have been
-updated to reject the packets immediately for now.
+This is a way to avoid nasty routing loops when multiple ipvs instances can
+forward to eachother.
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
-Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_core.c       | 45 ++++++++++++++++++++++++++++-------
- net/netfilter/ipvs/ip_vs_proto_sctp.c |  6 +++++
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |  7 ++++++
- net/netfilter/ipvs/ip_vs_proto_udp.c  |  6 +++++
- 4 files changed, 55 insertions(+), 9 deletions(-)
+ Documentation/networking/ipvs-sysctl.txt | 10 ++++++++++
+ include/net/ip_vs.h                      | 11 +++++++++++
+ net/netfilter/ipvs/ip_vs_core.c          | 10 +++++++++-
+ net/netfilter/ipvs/ip_vs_ctl.c           |  7 +++++++
+ 4 files changed, 37 insertions(+), 1 deletion(-)
 
+diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
+index 3ba709531adb..e6b1c025fdd8 100644
+--- a/Documentation/networking/ipvs-sysctl.txt
++++ b/Documentation/networking/ipvs-sysctl.txt
+@@ -157,6 +157,16 @@ expire_quiescent_template - BOOLEAN
+ 	persistence template if it is to be used to schedule a new
+ 	connection and the destination server is quiescent.
+ 
++ignore_tunneled - BOOLEAN
++	0 - disabled (default)
++	not 0 - enabled
++
++	If set, ipvs will set the ipvs_property on all packets which are of
++	unrecognized protocols.  This prevents us from routing tunneled
++	protocols like ipip, which is useful to prevent rescheduling
++	packets that have been tunneled to the ipvs host (i.e. to prevent
++	ipvs routing loops when ipvs is also acting as a real server).
++
+ nat_icmp_send - BOOLEAN
+         0 - disabled (default)
+         not 0 - enabled
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 47677f0493c7..1096a71ab6ed 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -998,6 +998,7 @@ struct netns_ipvs {
+ 	int			sysctl_backup_only;
+ 	int			sysctl_conn_reuse_mode;
+ 	int			sysctl_schedule_icmp;
++	int			sysctl_ignore_tunneled;
+ 
+ 	/* ip_vs_lblc */
+ 	int			sysctl_lblc_expiration;
+@@ -1121,6 +1122,11 @@ static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_schedule_icmp;
+ }
+ 
++static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_ignore_tunneled;
++}
++
+ #else
+ 
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -1198,6 +1204,11 @@ static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
+ 	return 0;
+ }
+ 
++static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
++{
++	return 0;
++}
++
+ #endif
+ 
+ /* IPVS core functions
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 6465e7b3e891..99be6801c795 100644
+index 99be6801c795..453972c6909e 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1409,7 +1409,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 	struct ip_vs_protocol *pp;
- 	struct ip_vs_proto_data *pd;
- 	unsigned int offset, offset2, ihl, verdict;
--	bool ipip;
-+	bool ipip, new_cp = false;
+@@ -1760,8 +1760,16 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
  
- 	*related = 1;
- 
-@@ -1487,8 +1487,17 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 	 * For IPIP this is error for request, not for reply.
- 	 */
- 	cp = pp->conn_in_get(AF_INET, skb, &ciph);
--	if (!cp)
--		return NF_ACCEPT;
+ 	/* Protocol supported? */
+ 	pd = ip_vs_proto_data_get(net, iph.protocol);
+-	if (unlikely(!pd))
++	if (unlikely(!pd)) {
++		/* The only way we'll see this packet again is if it's
++		 * encapsulated, so mark it with ipvs_property=1 so we
++		 * skip it if we're ignoring tunneled packets
++		 */
++		if (sysctl_ignore_tunneled(ipvs))
++			skb->ipvs_property = 1;
 +
-+	if (!cp) {
-+		int v;
-+
-+		if (!sysctl_schedule_icmp(net_ipvs(net)))
-+			return NF_ACCEPT;
-+
-+		if (!ip_vs_try_to_schedule(AF_INET, skb, pd, &v, &cp, &ciph))
-+			return v;
-+		new_cp = true;
+ 		return NF_ACCEPT;
 +	}
+ 	pp = pd->pp;
+ 	/*
+ 	 * Check if the packet belongs to an existing connection entry
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 31d80e203863..7338827ee5e9 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1850,6 +1850,12 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "ignore_tunneled",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	{
+ 		.procname	= "debug_level",
+@@ -3902,6 +3908,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	ipvs->sysctl_conn_reuse_mode = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
+ 	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
++	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
  
- 	verdict = NF_DROP;
- 
-@@ -1565,7 +1574,10 @@ ignore_ipip:
- 	verdict = ip_vs_icmp_xmit(skb, cp, pp, offset, hooknum, &ciph);
- 
- out:
--	__ip_vs_conn_put(cp);
-+	if (likely(!new_cp))
-+		__ip_vs_conn_put(cp);
-+	else
-+		ip_vs_conn_put(cp);
- 
- 	return verdict;
- }
-@@ -1581,6 +1593,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
- 	struct ip_vs_protocol *pp;
- 	struct ip_vs_proto_data *pd;
- 	unsigned int offset, verdict;
-+	bool new_cp = false;
- 
- 	*related = 1;
- 
-@@ -1631,13 +1644,23 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
- 	 */
- 	cp = pp->conn_in_get(AF_INET6, skb, &ciph);
- 
--	if (!cp)
--		return NF_ACCEPT;
-+	if (!cp) {
-+		int v;
-+
-+		if (!sysctl_schedule_icmp(net_ipvs(net)))
-+			return NF_ACCEPT;
-+
-+		if (!ip_vs_try_to_schedule(AF_INET6, skb, pd, &v, &cp, &ciph))
-+			return v;
-+
-+		new_cp = true;
-+	}
-+
- 	/* VS/TUN, VS/DR and LOCALNODE just let it go */
- 	if ((hooknum == NF_INET_LOCAL_OUT) &&
- 	    (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)) {
--		__ip_vs_conn_put(cp);
--		return NF_ACCEPT;
-+		verdict = NF_ACCEPT;
-+		goto out;
- 	}
- 
- 	/* do the statistics and put it back */
-@@ -1651,7 +1674,11 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
- 
- 	verdict = ip_vs_icmp_xmit_v6(skb, cp, pp, offset, hooknum, &ciph);
- 
--	__ip_vs_conn_put(cp);
-+out:
-+	if (likely(!new_cp))
-+		__ip_vs_conn_put(cp);
-+	else
-+		ip_vs_conn_put(cp);
- 
- 	return verdict;
- }
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index 5b84c0b56642..cd2984f3dad7 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -19,6 +19,12 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	sctp_chunkhdr_t _schunkh, *sch;
- 	sctp_sctphdr_t *sh, _sctph;
- 
-+	if (ip_vs_iph_icmp(iph)) {
-+		/* TEMPORARY - do not schedule icmp yet */
-+		*verdict = NF_ACCEPT;
-+		return 0;
-+	}
-+
- 	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
- 	if (sh == NULL) {
- 		*verdict = NF_DROP;
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index 8e92beb0cca9..dbc707514f29 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -41,6 +41,12 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	struct tcphdr _tcph, *th;
- 	struct netns_ipvs *ipvs;
- 
-+	if (ip_vs_iph_icmp(iph)) {
-+		/* TEMPORARY - do not schedule icmp yet */
-+		*verdict = NF_ACCEPT;
-+		return 0;
-+	}
-+
- 	th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
- 	if (th == NULL) {
- 		*verdict = NF_DROP;
-@@ -48,6 +54,7 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	}
- 	net = skb_net(skb);
- 	ipvs = net_ipvs(net);
-+
- 	/* No !th->ack check to allow scheduling on SYN+ACK for Active FTP */
- 	rcu_read_lock();
- 	if ((th->syn || sysctl_sloppy_tcp(ipvs)) && !th->rst &&
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index b62a3c0ff9bf..1403be250988 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -37,6 +37,12 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	struct ip_vs_service *svc;
- 	struct udphdr _udph, *uh;
- 
-+	if (ip_vs_iph_icmp(iph)) {
-+		/* TEMPORARY - do not schedule icmp yet */
-+		*verdict = NF_ACCEPT;
-+		return 0;
-+	}
-+
- 	/* IPv6 fragments, only first fragment will hit this */
- 	uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
- 	if (uh == NULL) {
+ 	ipvs->sysctl_hdr = register_net_sysctl(net, "net/ipv4/vs", tbl);
+ 	if (ipvs->sysctl_hdr == NULL) {
 -- 
 2.1.4
+
