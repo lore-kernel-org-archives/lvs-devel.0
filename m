@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 13/15] ipvs: support scheduling inverse and icmp UDP packets
-Date: Thu, 17 Sep 2015 14:40:49 +0900
-Message-ID: <1442468451-24012-14-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 11/15] ipvs: ensure that ICMP cannot be sent in reply to ICMP
+Date: Thu, 17 Sep 2015 14:40:47 +0900
+Message-ID: <1442468451-24012-12-git-send-email-horms@verge.net.au>
 References: <1442468451-24012-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1442468451-24012-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,63 +15,38 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Alex Gartrell <agartrell@fb.com>
 
-In the event of an icmp packet, take only the ports instead of trying to
-grab the full header.
-
-In the event of an inverse packet, use the source address and port.
+Check the header for icmp before sending a PACKET_TOO_BIG
 
 Signed-off-by: Alex Gartrell <agartrell@fb.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_proto_udp.c | 27 ++++++++++++++++++---------
- 1 file changed, 18 insertions(+), 9 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index 1403be250988..f3aa821efb89 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -36,23 +36,32 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	struct net *net;
- 	struct ip_vs_service *svc;
- 	struct udphdr _udph, *uh;
-+	__be16 _ports[2], *ports = NULL;
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index af5e9d3b4de9..c5be055ae32e 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -224,7 +224,7 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
+ 			if (!skb->dev)
+ 				skb->dev = net->loopback_dev;
+ 			/* only send ICMP too big on first fragment */
+-			if (!ipvsh->fragoffs)
++			if (!ipvsh->fragoffs && !ip_vs_iph_icmp(ipvsh))
+ 				icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu);
+ 			IP_VS_DBG(1, "frag needed for %pI6c\n",
+ 				  &ipv6_hdr(skb)->saddr);
+@@ -242,7 +242,8 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
+ 			return true;
  
--	if (ip_vs_iph_icmp(iph)) {
--		/* TEMPORARY - do not schedule icmp yet */
--		*verdict = NF_ACCEPT;
--		return 0;
-+	if (likely(!ip_vs_iph_icmp(iph))) {
-+		/* IPv6 fragments, only first fragment will hit this */
-+		uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
-+		if (uh)
-+			ports = &uh->source;
-+	} else {
-+		ports = skb_header_pointer(
-+			skb, iph->len, sizeof(_ports), &_ports);
- 	}
- 
--	/* IPv6 fragments, only first fragment will hit this */
--	uh = skb_header_pointer(skb, iph->len, sizeof(_udph), &_udph);
--	if (uh == NULL) {
-+	if (!ports) {
- 		*verdict = NF_DROP;
- 		return 0;
- 	}
-+
- 	net = skb_net(skb);
- 	rcu_read_lock();
--	svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
--				 &iph->daddr, uh->dest);
-+	if (likely(!ip_vs_iph_inverse(iph)))
-+		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+					 &iph->daddr, ports[1]);
-+	else
-+		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+					 &iph->saddr, ports[0]);
-+
- 	if (svc) {
- 		int ignored;
- 
+ 		if (unlikely(ip_hdr(skb)->frag_off & htons(IP_DF) &&
+-			     skb->len > mtu && !skb_is_gso(skb))) {
++			     skb->len > mtu && !skb_is_gso(skb) &&
++			     !ip_vs_iph_icmp(ipvsh))) {
+ 			icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED,
+ 				  htonl(mtu));
+ 			IP_VS_DBG(1, "frag needed for %pI4\n",
 -- 
 2.1.4
+
