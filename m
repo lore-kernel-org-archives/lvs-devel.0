@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 67/84] ipvs: Better derivation of ipvs in ip_vs_tunnel_xmit
-Date: Sun, 20 Sep 2015 01:23:23 -0500
-Message-ID: <1442730220-32458-67-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 63/84] ipvs: Pass ipvs not net to ip_vs_conn_hashkey
+Date: Sun, 20 Sep 2015 01:23:19 -0500
+Message-ID: <1442730220-32458-63-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,28 +13,52 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-Don't use "net_ipvs(skb_net(skb))" as skb_net is a bad hack.  Instead
-use cp->ipvs and ipvs->net for the net.
+Use the address of struct netns_ipvs in the hash not the address of
+struct net.  Both addresses are equally valid candidates and by using
+the address of struct netns_ipvs there becomes no need deal with
+struct net in this part of the code.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_conn.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 5b5ec0b688de..ec10ebf246fd 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -971,8 +971,8 @@ int
- ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		  struct ip_vs_protocol *pp, struct ip_vs_iphdr *ipvsh)
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 70ad51050cd8..76cdb6c06a52 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -108,7 +108,7 @@ static inline void ct_write_unlock_bh(unsigned int key)
+ /*
+  *	Returns hash value for IPVS connection entry
+  */
+-static unsigned int ip_vs_conn_hashkey(struct net *net, int af, unsigned int proto,
++static unsigned int ip_vs_conn_hashkey(struct netns_ipvs *ipvs, int af, unsigned int proto,
+ 				       const union nf_inet_addr *addr,
+ 				       __be16 port)
  {
--	struct net *net = skb_net(skb);
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct netns_ipvs *ipvs = cp->ipvs;
-+	struct net *net = ipvs->net;
- 	struct rtable *rt;			/* Route to the other host */
- 	__be32 saddr;				/* Source for tunnel */
- 	struct net_device *tdev;		/* Device to other host */
+@@ -116,11 +116,11 @@ static unsigned int ip_vs_conn_hashkey(struct net *net, int af, unsigned int pro
+ 	if (af == AF_INET6)
+ 		return (jhash_3words(jhash(addr, 16, ip_vs_conn_rnd),
+ 				    (__force u32)port, proto, ip_vs_conn_rnd) ^
+-			((size_t)net>>8)) & ip_vs_conn_tab_mask;
++			((size_t)ipvs>>8)) & ip_vs_conn_tab_mask;
+ #endif
+ 	return (jhash_3words((__force u32)addr->ip, (__force u32)port, proto,
+ 			    ip_vs_conn_rnd) ^
+-		((size_t)net>>8)) & ip_vs_conn_tab_mask;
++		((size_t)ipvs>>8)) & ip_vs_conn_tab_mask;
+ }
+ 
+ static unsigned int ip_vs_conn_hashkey_param(const struct ip_vs_conn_param *p,
+@@ -141,7 +141,7 @@ static unsigned int ip_vs_conn_hashkey_param(const struct ip_vs_conn_param *p,
+ 		port = p->vport;
+ 	}
+ 
+-	return ip_vs_conn_hashkey(p->ipvs->net, p->af, p->protocol, addr, port);
++	return ip_vs_conn_hashkey(p->ipvs, p->af, p->protocol, addr, port);
+ }
+ 
+ static unsigned int ip_vs_conn_hashkey_conn(const struct ip_vs_conn *cp)
 -- 
 2.2.1
+
