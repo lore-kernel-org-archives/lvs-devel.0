@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 73/84] ipvs: Simplify ipvs and net access in ip_vs_leave
-Date: Sun, 20 Sep 2015 01:23:29 -0500
-Message-ID: <1442730220-32458-73-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 45/84] ipvs: Pass ipvs not net to ip_vs_genl_set_config
+Date: Sun, 20 Sep 2015 01:23:01 -0500
+Message-ID: <1442730220-32458-45-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,30 +13,35 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-Stop using the hack skb_net(skb) to compute the network namespace.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 7e9ee1dece19..15661691bf7d 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -568,21 +568,17 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		struct ip_vs_proto_data *pd, struct ip_vs_iphdr *iph)
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 85a2f2699a18..851bd121ed94 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3453,9 +3453,8 @@ static int ip_vs_genl_del_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
+ 	return ret;
+ }
+ 
+-static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
++static int ip_vs_genl_set_config(struct netns_ipvs *ipvs, struct nlattr **attrs)
  {
- 	__be16 _ports[2], *pptr, dport;
--	struct net *net;
--	struct netns_ipvs *ipvs;
-+	struct netns_ipvs *ipvs = svc->ipvs;
-+	struct net *net = ipvs->net;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_timeout_user t;
  
- 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
- 	if (!pptr)
- 		return NF_DROP;
- 	dport = likely(!ip_vs_iph_inverse(iph)) ? pptr[1] : pptr[0];
- 
--	net = skb_net(skb);
--
+ 	__ip_vs_get_timeouts(ipvs, &t);
+@@ -3522,7 +3521,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 		ret = ip_vs_flush(ipvs, false);
+ 		goto out;
+ 	} else if (cmd == IPVS_CMD_SET_CONFIG) {
+-		ret = ip_vs_genl_set_config(net, info->attrs);
++		ret = ip_vs_genl_set_config(ipvs, info->attrs);
+ 		goto out;
+ 	} else if (cmd == IPVS_CMD_ZERO &&
+ 		   !info->attrs[IPVS_CMD_ATTR_SERVICE]) {
+-- 
+2.2.1
+
