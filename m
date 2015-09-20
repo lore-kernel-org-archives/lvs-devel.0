@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 60/84] ipvs: Pass ipvs into ip_vs_conn_fill_param_proto
-Date: Sun, 20 Sep 2015 01:23:16 -0500
-Message-ID: <1442730220-32458-60-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 69/84] ipvs: Pass ipvs into __ip_vs_get_out_rt_v6
+Date: Sun, 20 Sep 2015 01:23:25 -0500
+Message-ID: <1442730220-32458-69-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,57 +13,80 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-Move the ugly hack net_ipvs(skb_net(skb)) up a layer in the call stack
-so it is easier to remove.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_conn.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 3917ea1b20df..3b1f57af739a 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -314,12 +314,12 @@ struct ip_vs_conn *ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
- }
- 
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 5cfd914d9a39..13a678a63ed5 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -404,11 +404,12 @@ out_err:
+  * Get route to destination or remote server
+  */
  static int
--ip_vs_conn_fill_param_proto(int af, const struct sk_buff *skb,
-+ip_vs_conn_fill_param_proto(struct netns_ipvs *ipvs,
-+			    int af, const struct sk_buff *skb,
- 			    const struct ip_vs_iphdr *iph,
- 			    struct ip_vs_conn_param *p)
+-__ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
++__ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
++		      struct ip_vs_dest *dest,
+ 		      struct in6_addr *daddr, struct in6_addr *ret_saddr,
+ 		      struct ip_vs_iphdr *ipvsh, int do_xfrm, int rt_mode)
  {
- 	__be16 _ports[2], *pptr;
--	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
+-	struct net *net = dev_net(skb_dst(skb)->dev);
++	struct net *net = ipvs->net;
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rt6_info *rt;			/* Route to the other host */
+ 	struct dst_entry *dst;
+@@ -663,7 +664,8 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
  
- 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
- 	if (pptr == NULL)
-@@ -338,9 +338,10 @@ struct ip_vs_conn *
- ip_vs_conn_in_get_proto(int af, const struct sk_buff *skb,
- 			const struct ip_vs_iphdr *iph)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 	struct ip_vs_conn_param p;
+ 	rcu_read_lock();
+-	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &iph->daddr, NULL,
++	if (__ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, NULL,
++				  &iph->daddr, NULL,
+ 				  ipvsh, 0, IP_VS_RT_MODE_NON_LOCAL) < 0)
+ 		goto tx_error;
  
--	if (ip_vs_conn_fill_param_proto(af, skb, iph, &p))
-+	if (ip_vs_conn_fill_param_proto(ipvs, af, skb, iph, &p))
- 		return NULL;
+@@ -799,7 +801,8 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
+ 	}
  
- 	return ip_vs_conn_in_get(&p);
-@@ -442,9 +443,10 @@ struct ip_vs_conn *
- ip_vs_conn_out_get_proto(int af, const struct sk_buff *skb,
- 			 const struct ip_vs_iphdr *iph)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 	struct ip_vs_conn_param p;
+-	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
++				      &cp->daddr.in6,
+ 				      NULL, ipvsh, 0,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+@@ -1083,7 +1086,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
  
--	if (ip_vs_conn_fill_param_proto(af, skb, iph, &p))
-+	if (ip_vs_conn_fill_param_proto(ipvs, af, skb, iph, &p))
- 		return NULL;
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
++				      &cp->daddr.in6,
+ 				      &saddr, ipvsh, 1,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+@@ -1209,7 +1213,8 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
  
- 	return ip_vs_conn_out_get(&p);
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
++				      &cp->daddr.in6,
+ 				      NULL, ipvsh, 0,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+@@ -1370,8 +1375,8 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
+-				      NULL, ipvsh, 0, rt_mode);
++	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
++				      &cp->daddr.in6, NULL, ipvsh, 0, rt_mode);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	rt = (struct rt6_info *) skb_dst(skb);
 -- 
 2.2.1
-
