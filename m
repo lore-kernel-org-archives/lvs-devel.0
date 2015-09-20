@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 01/84] ipvs: Hoist computation of ipvs earlier in sctp_conn_schedule
-Date: Sun, 20 Sep 2015 01:22:17 -0500
-Message-ID: <1442730220-32458-1-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 02/84] ipvs: Don't use current in proc_do_defense_mode
+Date: Sun, 20 Sep 2015 01:22:18 -0500
+Message-ID: <1442730220-32458-2-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -13,38 +13,47 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-The addition of sysctl_sloppy_sctp in sctp_conn_schedule resulted
-in a use of ipvs before it was computed.  Hoist the computation of
-ipvs earlier to avoid this problem.
+Instead store ipvs in extra2 so that proc_do_defense_mode can easily
+find the ipvs that it's value is associated with.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_proto_sctp.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index 2026fca7e1c3..ac628a9afdb5 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -20,6 +20,9 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	sctp_sctphdr_t *sh, _sctph;
- 	__be16 _ports[2], *ports = NULL;
- 
-+	net = skb_net(skb);
-+	ipvs = net_ipvs(net);
-+
- 	if (likely(!ip_vs_iph_icmp(iph))) {
- 		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
- 		if (sh) {
-@@ -40,8 +43,6 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 		return 0;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 7338827ee5e9..b88a1daeb78e 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1615,7 +1615,7 @@ static int
+ proc_do_defense_mode(struct ctl_table *table, int write,
+ 		     void __user *buffer, size_t *lenp, loff_t *ppos)
+ {
+-	struct net *net = current->nsproxy->net_ns;
++	struct netns_ipvs *ipvs = table->extra2;
+ 	int *valp = table->data;
+ 	int val = *valp;
+ 	int rc;
+@@ -1626,7 +1626,7 @@ proc_do_defense_mode(struct ctl_table *table, int write,
+ 			/* Restore the correct value */
+ 			*valp = val;
+ 		} else {
+-			update_defense_level(net_ipvs(net));
++			update_defense_level(ipvs);
+ 		}
  	}
- 
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
- 	rcu_read_lock();
- 	if (likely(!ip_vs_iph_inverse(iph)))
- 		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
+ 	return rc;
+@@ -3866,6 +3866,10 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	} else
+ 		tbl = vs_vars;
+ 	/* Initialize sysctl defaults */
++	for (idx = 0; idx < sizeof(vs_vars)/sizeof(vs_vars[0]); idx++) {
++		if (tbl[idx].proc_handler == proc_do_defense_mode)
++			tbl[idx].extra2 = ipvs;
++	}
+ 	idx = 0;
+ 	ipvs->sysctl_amemthresh = 1024;
+ 	tbl[idx++].data = &ipvs->sysctl_amemthresh;
 -- 
 2.2.1
 
