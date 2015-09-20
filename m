@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 12/84] ipvs: Pass ipvs not net to ipvs_service_find
-Date: Sun, 20 Sep 2015 01:22:28 -0500
-Message-ID: <1442730220-32458-12-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 61/84] ipvs: Pass ipvs into .conn_in_get and ip_vs_conn_in_get_proto
+Date: Sun, 20 Sep 2015 01:23:17 -0500
+Message-ID: <1442730220-32458-61-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -13,116 +13,116 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
+Stop relying on "net_ipvs(skb_net(skb))" to dreive the ipvs as
+skb_net is a hack.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h                   | 2 +-
- net/netfilter/ipvs/ip_vs_ctl.c        | 5 ++---
- net/netfilter/ipvs/ip_vs_proto_sctp.c | 4 ++--
- net/netfilter/ipvs/ip_vs_proto_tcp.c  | 4 ++--
- net/netfilter/ipvs/ip_vs_proto_udp.c  | 6 ++++--
- 5 files changed, 11 insertions(+), 10 deletions(-)
+ include/net/ip_vs.h                     | 6 ++++--
+ net/netfilter/ipvs/ip_vs_conn.c         | 4 ++--
+ net/netfilter/ipvs/ip_vs_core.c         | 8 ++++----
+ net/netfilter/ipvs/ip_vs_proto_ah_esp.c | 3 +--
+ 4 files changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 2c22380b9ad7..828b19b23e02 100644
+index fe3373c9bb3b..5c26383542e3 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1410,7 +1410,7 @@ extern struct ip_vs_stats ip_vs_stats;
- extern int sysctl_ip_vs_sync_ver;
+@@ -493,7 +493,8 @@ struct ip_vs_protocol {
+ 			     struct ip_vs_iphdr *iph);
  
- struct ip_vs_service *
--ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
-+ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u32 fwmark, __u16 protocol,
- 		  const union nf_inet_addr *vaddr, __be16 vport);
+ 	struct ip_vs_conn *
+-	(*conn_in_get)(int af,
++	(*conn_in_get)(struct netns_ipvs *ipvs,
++		       int af,
+ 		       const struct sk_buff *skb,
+ 		       const struct ip_vs_iphdr *iph);
  
- bool ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 9a56256502b6..f9151d8ee1ac 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -406,11 +406,10 @@ __ip_vs_svc_fwm_find(struct netns_ipvs *ipvs, int af, __u32 fwmark)
+@@ -1222,7 +1223,8 @@ static inline void ip_vs_conn_fill_param(struct netns_ipvs *ipvs, int af, int pr
+ struct ip_vs_conn *ip_vs_conn_in_get(const struct ip_vs_conn_param *p);
+ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p);
  
- /* Find service, called under RCU lock */
- struct ip_vs_service *
--ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
-+ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u32 fwmark, __u16 protocol,
- 		   const union nf_inet_addr *vaddr, __be16 vport)
+-struct ip_vs_conn * ip_vs_conn_in_get_proto(int af, const struct sk_buff *skb,
++struct ip_vs_conn * ip_vs_conn_in_get_proto(struct netns_ipvs *ipvs, int af,
++					    const struct sk_buff *skb,
+ 					    const struct ip_vs_iphdr *iph);
+ 
+ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p);
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 3b1f57af739a..b27b06eb693c 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -335,10 +335,10 @@ ip_vs_conn_fill_param_proto(struct netns_ipvs *ipvs,
+ }
+ 
+ struct ip_vs_conn *
+-ip_vs_conn_in_get_proto(int af, const struct sk_buff *skb,
++ip_vs_conn_in_get_proto(struct netns_ipvs *ipvs, int af,
++			const struct sk_buff *skb,
+ 			const struct ip_vs_iphdr *iph)
  {
- 	struct ip_vs_service *svc;
--	struct netns_ipvs *ipvs = net_ipvs(net);
+-	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
+ 	struct ip_vs_conn_param p;
  
+ 	if (ip_vs_conn_fill_param_proto(ipvs, af, skb, iph, &p))
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 01398eb757fa..9b5c2af7b63a 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -469,7 +469,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	 */
+ 	if ((!skb->dev || skb->dev->flags & IFF_LOOPBACK)) {
+ 		iph->hdr_flags ^= IP_VS_HDR_INVERSE;
+-		cp = pp->conn_in_get(svc->af, skb, iph);
++		cp = pp->conn_in_get(svc->ipvs, svc->af, skb, iph);
+ 		iph->hdr_flags ^= IP_VS_HDR_INVERSE;
+ 
+ 		if (cp) {
+@@ -1490,7 +1490,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	/* The embedded headers contain source and dest in reverse order.
+ 	 * For IPIP this is error for request, not for reply.
+ 	 */
+-	cp = pp->conn_in_get(AF_INET, skb, &ciph);
++	cp = pp->conn_in_get(ipvs, AF_INET, skb, &ciph);
+ 
+ 	if (!cp) {
+ 		int v;
+@@ -1648,7 +1648,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 	/* The embedded headers contain source and dest in reverse order
+ 	 * if not from localhost
+ 	 */
+-	cp = pp->conn_in_get(AF_INET6, skb, &ciph);
++	cp = pp->conn_in_get(ipvs, AF_INET6, skb, &ciph);
+ 
+ 	if (!cp) {
+ 		int v;
+@@ -1780,7 +1780,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
  	/*
- 	 *	Check the table hashed by fwmark first
-@@ -612,7 +611,7 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int svc_af, int dest_af,
- 	struct ip_vs_service *svc;
- 	__be16 port = dport;
+ 	 * Check if the packet belongs to an existing connection entry
+ 	 */
+-	cp = pp->conn_in_get(af, skb, &iph);
++	cp = pp->conn_in_get(ipvs, af, skb, &iph);
  
--	svc = ip_vs_service_find(net, svc_af, fwmark, protocol, vaddr, vport);
-+	svc = ip_vs_service_find(net_ipvs(net), svc_af, fwmark, protocol, vaddr, vport);
- 	if (!svc)
- 		return NULL;
- 	if (fwmark && (flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ)
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index ce615866bd63..373a4751c328 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -45,10 +45,10 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
+ 	if (conn_reuse_mode && !iph.fragoffs &&
+diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+index 406d9a433d92..a96d93d11807 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+@@ -56,12 +56,11 @@ ah_esp_conn_fill_param_proto(struct netns_ipvs *ipvs, int af,
+ }
  
- 	rcu_read_lock();
- 	if (likely(!ip_vs_iph_inverse(iph)))
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->daddr, ports[1]);
- 	else
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->saddr, ports[0]);
- 	if (svc) {
- 		int ignored;
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index e00623a88518..48af3ca6be03 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -70,10 +70,10 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	rcu_read_lock();
- 
- 	if (likely(!ip_vs_iph_inverse(iph)))
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->daddr, ports[1]);
- 	else
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->saddr, ports[0]);
- 
- 	if (svc) {
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index 3b0a2dc1826b..e9f5f7e30bef 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -34,6 +34,7 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 		  struct ip_vs_iphdr *iph)
+ static struct ip_vs_conn *
+-ah_esp_conn_in_get(int af, const struct sk_buff *skb,
++ah_esp_conn_in_get(struct netns_ipvs *ipvs, int af, const struct sk_buff *skb,
+ 		   const struct ip_vs_iphdr *iph)
  {
- 	struct net *net;
-+	struct netns_ipvs *ipvs;
- 	struct ip_vs_service *svc;
- 	struct udphdr _udph, *uh;
- 	__be16 _ports[2], *ports = NULL;
-@@ -54,12 +55,13 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	}
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_conn_param p;
+-	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
  
- 	net = skb_net(skb);
-+	ipvs = net_ipvs(net);
- 	rcu_read_lock();
- 	if (likely(!ip_vs_iph_inverse(iph)))
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->daddr, ports[1]);
- 	else
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->saddr, ports[0]);
- 
- 	if (svc) {
+ 	ah_esp_conn_fill_param_proto(ipvs, af, iph, &p);
+ 	cp = ip_vs_conn_in_get(&p);
 -- 
 2.2.1
 
