@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 77/84] ipvs: Pass ipvs into ip_vs_in_icmp and ip_vs_in_icmp_v6
-Date: Sun, 20 Sep 2015 01:23:33 -0500
-Message-ID: <1442730220-32458-77-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 49/84] ipvs: Pass ipvs not net into ip_vs_control_net_(init|cleanup)
+Date: Sun, 20 Sep 2015 01:23:05 -0500
+Message-ID: <1442730220-32458-49-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,140 +13,95 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-With ipvs passed into ip_vs_in_icmp and ip_vs_in_icmp_v6
-they no longer need to call the hack that is skb_net.
-
-Additionally ipvs_in_icmp no longer needs to call dev_net(skb->dev)
-and can use the ipvs->net instead.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 36 ++++++++++++++----------------------
- 1 file changed, 14 insertions(+), 22 deletions(-)
+ include/net/ip_vs.h             | 4 ++--
+ net/netfilter/ipvs/ip_vs_core.c | 6 +++---
+ net/netfilter/ipvs/ip_vs_ctl.c  | 8 ++++----
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index c88a3bf85f98..38c1fca0c1a7 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1324,7 +1324,7 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
+ 
+ /* IPVS netns init & cleanup functions */
+ int ip_vs_estimator_net_init(struct net *net);
+-int ip_vs_control_net_init(struct net *net);
++int ip_vs_control_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_protocol_net_init(struct net *net);
+ int ip_vs_app_net_init(struct net *net);
+ int ip_vs_conn_net_init(struct net *net);
+@@ -1332,7 +1332,7 @@ int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
+ void ip_vs_conn_net_cleanup(struct net *net);
+ void ip_vs_app_net_cleanup(struct net *net);
+ void ip_vs_protocol_net_cleanup(struct net *net);
+-void ip_vs_control_net_cleanup(struct net *net);
++void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_estimator_net_cleanup(struct net *net);
+ void ip_vs_sync_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 3ab96bdc66fd..0304c7cbb786 100644
+index cae395fc6523..b5f451f20f52 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1388,10 +1388,9 @@ ip_vs_try_to_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
-  *	Currently handles error types - unreachable, quench, ttl exceeded.
-  */
- static int
--ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
-+ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
-+	      unsigned int hooknum)
- {
--	struct net *net = NULL;
--	struct netns_ipvs *ipvs;
- 	struct iphdr *iph;
- 	struct icmphdr	_icmph, *ic;
- 	struct iphdr	_ciph, *cih;	/* The ip header contained within the ICMP */
-@@ -1440,9 +1439,6 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 	if (cih == NULL)
- 		return NF_ACCEPT; /* The packet looks wrong, ignore */
+@@ -2075,7 +2075,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_estimator_net_init(net) < 0)
+ 		goto estimator_fail;
  
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
--
- 	/* Special case for errors for IPIP packets */
- 	ipip = false;
- 	if (cih->protocol == IPPROTO_IPIP) {
-@@ -1520,7 +1516,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 			skb_reset_network_header(skb);
- 			IP_VS_DBG(12, "ICMP for IPIP %pI4->%pI4: mtu=%u\n",
- 				&ip_hdr(skb)->saddr, &ip_hdr(skb)->daddr, mtu);
--			ipv4_update_pmtu(skb, dev_net(skb->dev),
-+			ipv4_update_pmtu(skb, ipvs->net,
- 					 mtu, 0, 0, 0, 0);
- 			/* Client uses PMTUD? */
- 			if (!(frag_off & htons(IP_DF)))
-@@ -1575,11 +1571,10 @@ out:
+-	if (ip_vs_control_net_init(net) < 0)
++	if (ip_vs_control_net_init(ipvs) < 0)
+ 		goto control_fail;
+ 
+ 	if (ip_vs_protocol_net_init(net) < 0)
+@@ -2104,7 +2104,7 @@ conn_fail:
+ app_fail:
+ 	ip_vs_protocol_net_cleanup(net);
+ protocol_fail:
+-	ip_vs_control_net_cleanup(net);
++	ip_vs_control_net_cleanup(ipvs);
+ control_fail:
+ 	ip_vs_estimator_net_cleanup(net);
+ estimator_fail:
+@@ -2120,7 +2120,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 	ip_vs_conn_net_cleanup(net);
+ 	ip_vs_app_net_cleanup(net);
+ 	ip_vs_protocol_net_cleanup(net);
+-	ip_vs_control_net_cleanup(net);
++	ip_vs_control_net_cleanup(ipvs);
+ 	ip_vs_estimator_net_cleanup(net);
+ 	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+ 	net->ipvs = NULL;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 1665db8e9f2a..c71c4cbbf3b6 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3950,10 +3950,10 @@ static struct notifier_block ip_vs_dst_notifier = {
+ 	.notifier_call = ip_vs_dst_event,
+ };
+ 
+-int __net_init ip_vs_control_net_init(struct net *net)
++int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
+ {
++	struct net *net = ipvs->net;
+ 	int i, idx;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+ 	/* Initialize rs_table */
+ 	for (idx = 0; idx < IP_VS_RTAB_SIZE; idx++)
+@@ -3994,9 +3994,9 @@ err:
+ 	return -ENOMEM;
  }
  
- #ifdef CONFIG_IP_VS_IPV6
--static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
--			    unsigned int hooknum, struct ip_vs_iphdr *iph)
-+static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
-+			    int *related, unsigned int hooknum,
-+			    struct ip_vs_iphdr *iph)
+-void __net_exit ip_vs_control_net_cleanup(struct net *net)
++void __net_exit ip_vs_control_net_cleanup(struct netns_ipvs *ipvs)
  {
--	struct net *net = NULL;
--	struct netns_ipvs *ipvs;
- 	struct icmp6hdr	_icmph, *ic;
- 	struct ip_vs_iphdr ciph = {.flags = 0, .fragoffs = 0};/*Contained IP */
- 	struct ip_vs_conn *cp;
-@@ -1619,8 +1614,6 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
- 	if (!ip_vs_fill_iph_skb_icmp(AF_INET6, skb, offset, true, &ciph))
- 		return NF_ACCEPT;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct net *net = ipvs->net;
  
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
- 	pd = ip_vs_proto_data_get(ipvs, ciph.protocol);
- 	if (!pd)
- 		return NF_ACCEPT;
-@@ -1732,8 +1725,8 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
- 	if (af == AF_INET6) {
- 		if (unlikely(iph.protocol == IPPROTO_ICMPV6)) {
- 			int related;
--			int verdict = ip_vs_in_icmp_v6(skb, &related, hooknum,
--						       &iph);
-+			int verdict = ip_vs_in_icmp_v6(ipvs, skb, &related,
-+						       hooknum, &iph);
- 
- 			if (related)
- 				return verdict;
-@@ -1742,7 +1735,8 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
- #endif
- 		if (unlikely(iph.protocol == IPPROTO_ICMP)) {
- 			int related;
--			int verdict = ip_vs_in_icmp(skb, &related, hooknum);
-+			int verdict = ip_vs_in_icmp(ipvs, skb, &related,
-+						    hooknum);
- 
- 			if (related)
- 				return verdict;
-@@ -1895,17 +1889,16 @@ ip_vs_forward_icmp(void *priv, struct sk_buff *skb,
- 		   const struct nf_hook_state *state)
- {
- 	int r;
--	struct netns_ipvs *ipvs;
-+	struct netns_ipvs *ipvs = net_ipvs(state->net);
- 
- 	if (ip_hdr(skb)->protocol != IPPROTO_ICMP)
- 		return NF_ACCEPT;
- 
- 	/* ipvs enabled in this netns ? */
--	ipvs = net_ipvs(state->net);
- 	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
- 		return NF_ACCEPT;
- 
--	return ip_vs_in_icmp(skb, &r, state->hook);
-+	return ip_vs_in_icmp(ipvs, skb, &r, state->hook);
- }
- 
- #ifdef CONFIG_IP_VS_IPV6
-@@ -1914,7 +1907,7 @@ ip_vs_forward_icmp_v6(void *priv, struct sk_buff *skb,
- 		      const struct nf_hook_state *state)
- {
- 	int r;
--	struct netns_ipvs *ipvs;
-+	struct netns_ipvs *ipvs = net_ipvs(state->net);
- 	struct ip_vs_iphdr iphdr;
- 
- 	ip_vs_fill_iph_skb(AF_INET6, skb, false, &iphdr);
-@@ -1922,11 +1915,10 @@ ip_vs_forward_icmp_v6(void *priv, struct sk_buff *skb,
- 		return NF_ACCEPT;
- 
- 	/* ipvs enabled in this netns ? */
--	ipvs = net_ipvs(state->net);
- 	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
- 		return NF_ACCEPT;
- 
--	return ip_vs_in_icmp_v6(skb, &r, state->hook, &iphdr);
-+	return ip_vs_in_icmp_v6(ipvs, skb, &r, state->hook, &iphdr);
- }
- #endif
- 
+ 	ip_vs_trash_cleanup(ipvs);
+ 	ip_vs_control_net_cleanup_sysctl(ipvs);
 -- 
 2.2.1
 
