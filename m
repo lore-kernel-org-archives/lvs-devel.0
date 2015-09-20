@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 16/84] ipvs: Pass ipvs not net to __ip_vs_del_dest
-Date: Sun, 20 Sep 2015 01:22:32 -0500
-Message-ID: <1442730220-32458-16-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 22/84] ipvs: Pass ipvs not net to ip_vs_zero_all
+Date: Sun, 20 Sep 2015 01:22:38 -0500
+Message-ID: <1442730220-32458-22-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,46 +15,42 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index ee2ec40d0f12..4f08611347a2 100644
+index d3407ad866bb..591f528e4ed6 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1033,12 +1033,10 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- /*
-  *	Delete a destination (must be already unlinked from the service)
-  */
--static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest,
-+static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
- 			     bool cleanup)
+@@ -1576,9 +1576,8 @@ static int ip_vs_zero_service(struct ip_vs_service *svc)
+ 	return 0;
+ }
+ 
+-static int ip_vs_zero_all(struct net *net)
++static int ip_vs_zero_all(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
--
--	ip_vs_stop_estimator(net, &dest->stats);
-+	ip_vs_stop_estimator(ipvs->net, &dest->stats);
+ 	int idx;
+ 	struct ip_vs_service *svc;
  
- 	/*
- 	 *  Remove it from the d-linked list with the real services.
-@@ -1117,7 +1115,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 	/*
- 	 *	Delete the destination
- 	 */
--	__ip_vs_del_dest(svc->ipvs->net, dest, false);
-+	__ip_vs_del_dest(svc->ipvs, dest, false);
- 
- 	LeaveFunction(2);
- 
-@@ -1402,7 +1400,7 @@ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
- 	 */
- 	list_for_each_entry_safe(dest, nxt, &svc->destinations, n_list) {
- 		__ip_vs_unlink_dest(svc, dest, 0);
--		__ip_vs_del_dest(svc->ipvs->net, dest, cleanup);
-+		__ip_vs_del_dest(svc->ipvs, dest, cleanup);
+@@ -2384,7 +2383,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 	if (cmd == IP_VS_SO_SET_ZERO) {
+ 		/* if no service address is set, zero counters in all */
+ 		if (!usvc.fwmark && !usvc.addr.ip && !usvc.port) {
+-			ret = ip_vs_zero_all(net);
++			ret = ip_vs_zero_all(ipvs);
+ 			goto out_unlock;
+ 		}
+ 	}
+@@ -3530,7 +3529,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 		goto out;
+ 	} else if (cmd == IPVS_CMD_ZERO &&
+ 		   !info->attrs[IPVS_CMD_ATTR_SERVICE]) {
+-		ret = ip_vs_zero_all(net);
++		ret = ip_vs_zero_all(ipvs);
+ 		goto out;
  	}
  
- 	/*
 -- 
 2.2.1
 
