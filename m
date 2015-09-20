@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 50/84] ipvs: Pass ipvs not net to estimation_timer
-Date: Sun, 20 Sep 2015 01:23:06 -0500
-Message-ID: <1442730220-32458-50-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 47/84] ipvs: Pass ipvs not net to ip_vs_random_drop_entry
+Date: Sun, 20 Sep 2015 01:23:03 -0500
+Message-ID: <1442730220-32458-47-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -15,33 +15,58 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_est.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ include/net/ip_vs.h             | 2 +-
+ net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
+ net/netfilter/ipvs/ip_vs_ctl.c  | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index 638a301f7ee4..c86dc456c8f4 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -102,10 +102,8 @@ static void estimation_timer(unsigned long arg)
- 	struct ip_vs_estimator *e;
- 	struct ip_vs_stats *s;
- 	u64 rate;
--	struct net *net = (struct net *)arg;
--	struct netns_ipvs *ipvs;
-+	struct netns_ipvs *ipvs = (struct netns_ipvs *)arg;
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 2d49357b328c..c88a3bf85f98 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1258,7 +1258,7 @@ const char *ip_vs_state_name(__u16 proto, int state);
  
--	ipvs = net_ipvs(net);
- 	spin_lock(&ipvs->est_lock);
- 	list_for_each_entry(e, &ipvs->est_list, list) {
- 		s = container_of(e, struct ip_vs_stats, est);
-@@ -196,7 +194,7 @@ int __net_init ip_vs_estimator_net_init(struct net *net)
+ void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp);
+ int ip_vs_check_template(struct ip_vs_conn *ct);
+-void ip_vs_random_dropentry(struct net *net);
++void ip_vs_random_dropentry(struct netns_ipvs *ipvs);
+ int ip_vs_conn_init(void);
+ void ip_vs_conn_cleanup(void);
  
- 	INIT_LIST_HEAD(&ipvs->est_list);
- 	spin_lock_init(&ipvs->est_lock);
--	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)net);
-+	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)ipvs);
- 	mod_timer(&ipvs->est_timer, jiffies + 2 * HZ);
- 	return 0;
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 5d001f410fc5..3917ea1b20df 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1239,7 +1239,7 @@ static inline int todrop_entry(struct ip_vs_conn *cp)
  }
+ 
+ /* Called from keventd and must protect itself from softirqs */
+-void ip_vs_random_dropentry(struct net *net)
++void ip_vs_random_dropentry(struct netns_ipvs *ipvs)
+ {
+ 	int idx;
+ 	struct ip_vs_conn *cp, *cp_c;
+@@ -1255,7 +1255,7 @@ void ip_vs_random_dropentry(struct net *net)
+ 			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
+ 				/* connection template */
+ 				continue;
+-			if (!net_eq(cp->ipvs->net, net))
++			if (cp->ipvs != ipvs)
+ 				continue;
+ 			if (cp->protocol == IPPROTO_TCP) {
+ 				switch(cp->state) {
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 8eb5453a75f8..67278c6e41a3 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -228,7 +228,7 @@ static void defense_work_handler(struct work_struct *work)
+ 
+ 	update_defense_level(ipvs);
+ 	if (atomic_read(&ipvs->dropentry))
+-		ip_vs_random_dropentry(ipvs->net);
++		ip_vs_random_dropentry(ipvs);
+ 	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+ }
+ #endif
 -- 
 2.2.1
