@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 43/84] ipvs: Pass ipvs not net to ip_vs_sync_net_init
-Date: Sun, 20 Sep 2015 01:22:59 -0500
-Message-ID: <1442730220-32458-43-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 20/84] ipvs: Pass ipvs not net to ip_vs_flush
+Date: Sun, 20 Sep 2015 01:22:36 -0500
+Message-ID: <1442730220-32458-20-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -15,46 +15,55 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             | 2 +-
- net/netfilter/ipvs/ip_vs_core.c | 2 +-
- net/netfilter/ipvs/ip_vs_sync.c | 4 +---
- 3 files changed, 3 insertions(+), 5 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b10b337ce974..47a4cddb7c33 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1328,7 +1328,7 @@ int ip_vs_control_net_init(struct net *net);
- int ip_vs_protocol_net_init(struct net *net);
- int ip_vs_app_net_init(struct net *net);
- int ip_vs_conn_net_init(struct net *net);
--int ip_vs_sync_net_init(struct net *net);
-+int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
- void ip_vs_conn_net_cleanup(struct net *net);
- void ip_vs_app_net_cleanup(struct net *net);
- void ip_vs_protocol_net_cleanup(struct net *net);
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index a8128b06f73b..5a5a6d63b3d9 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2087,7 +2087,7 @@ static int __net_init __ip_vs_init(struct net *net)
- 	if (ip_vs_conn_net_init(net) < 0)
- 		goto conn_fail;
- 
--	if (ip_vs_sync_net_init(net) < 0)
-+	if (ip_vs_sync_net_init(ipvs) < 0)
- 		goto sync_fail;
- 
- 	printk(KERN_INFO "IPVS: Creating netns size=%zu id=%d\n",
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index e3f72cbc1204..11b4f17e2e1a 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -2007,10 +2007,8 @@ int stop_sync_thread(struct netns_ipvs *ipvs, int state)
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 7f0635242c7f..51dab90bf184 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1449,9 +1449,8 @@ static int ip_vs_del_service(struct ip_vs_service *svc)
  /*
-  * Initialize data struct for each netns
+  *	Flush all the virtual services
   */
--int __net_init ip_vs_sync_net_init(struct net *net)
-+int __net_init ip_vs_sync_net_init(struct netns_ipvs *ipvs)
+-static int ip_vs_flush(struct net *net, bool cleanup)
++static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	int idx;
+ 	struct ip_vs_service *svc;
+ 	struct hlist_node *n;
+@@ -1487,10 +1486,11 @@ static int ip_vs_flush(struct net *net, bool cleanup)
+  */
+ void ip_vs_service_net_cleanup(struct net *net)
+ {
++	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	EnterFunction(2);
+ 	/* Check for "full" addressed entries */
+ 	mutex_lock(&__ip_vs_mutex);
+-	ip_vs_flush(net, true);
++	ip_vs_flush(ipvs, true);
+ 	mutex_unlock(&__ip_vs_mutex);
+ 	LeaveFunction(2);
+ }
+@@ -2366,7 +2366,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 	mutex_lock(&__ip_vs_mutex);
+ 	if (cmd == IP_VS_SO_SET_FLUSH) {
+ 		/* Flush the virtual service */
+-		ret = ip_vs_flush(net, false);
++		ret = ip_vs_flush(ipvs, false);
+ 		goto out_unlock;
+ 	} else if (cmd == IP_VS_SO_SET_TIMEOUT) {
+ 		/* Set timeout values for (tcp tcpfin udp) */
+@@ -3524,7 +3524,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	mutex_lock(&__ip_vs_mutex);
+ 
+ 	if (cmd == IPVS_CMD_FLUSH) {
+-		ret = ip_vs_flush(net, false);
++		ret = ip_vs_flush(ipvs, false);
+ 		goto out;
+ 	} else if (cmd == IPVS_CMD_SET_CONFIG) {
+ 		ret = ip_vs_genl_set_config(net, info->attrs);
+-- 
+2.2.1
+
