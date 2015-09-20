@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 32/84] ipvs: Pass ipvs not net to ip_vs_genl_del_daemon
-Date: Sun, 20 Sep 2015 01:22:48 -0500
-Message-ID: <1442730220-32458-32-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 31/84] ipvs: Pass ipvs not net to ip_vs_genl_new_daemon
+Date: Sun, 20 Sep 2015 01:22:47 -0500
+Message-ID: <1442730220-32458-31-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -19,36 +19,38 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
  1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 30ed3a93bf22..6a8238adda02 100644
+index 9dab372ceedb..30ed3a93bf22 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3439,16 +3439,15 @@ static int ip_vs_genl_new_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
- 	return ret;
+@@ -3374,9 +3374,8 @@ nla_put_failure:
+ 	return skb->len;
  }
  
--static int ip_vs_genl_del_daemon(struct net *net, struct nlattr **attrs)
-+static int ip_vs_genl_del_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
+-static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
++static int ip_vs_genl_new_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ipvs_sync_daemon_cfg c;
+ 	struct nlattr *a;
  	int ret;
+@@ -3433,7 +3432,7 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
  
- 	if (!attrs[IPVS_DAEMON_ATTR_STATE])
- 		return -EINVAL;
- 
+ 	rtnl_lock();
  	mutex_lock(&ipvs->sync_mutex);
--	ret = stop_sync_thread(net,
-+	ret = stop_sync_thread(ipvs->net,
- 			       nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
+-	ret = start_sync_thread(net, &c,
++	ret = start_sync_thread(ipvs->net, &c,
+ 				nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
  	mutex_unlock(&ipvs->sync_mutex);
- 	return ret;
-@@ -3496,7 +3495,7 @@ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
- 		if (cmd == IPVS_CMD_NEW_DAEMON)
- 			ret = ip_vs_genl_new_daemon(ipvs, daemon_attrs);
- 		else
--			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
-+			ret = ip_vs_genl_del_daemon(ipvs, daemon_attrs);
- 	}
+ 	rtnl_unlock();
+@@ -3495,7 +3494,7 @@ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
+ 			goto out;
  
- out:
+ 		if (cmd == IPVS_CMD_NEW_DAEMON)
+-			ret = ip_vs_genl_new_daemon(net, daemon_attrs);
++			ret = ip_vs_genl_new_daemon(ipvs, daemon_attrs);
+ 		else
+ 			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
+ 	}
 -- 
 2.2.1
+
