@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 28/84] ipvs: Pass ipvs not net to __ip_vs_get_timeouts
-Date: Sun, 20 Sep 2015 01:22:44 -0500
-Message-ID: <1442730220-32458-28-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 48/84] ipvs: Pass ipvs not net to ip_vs_control_net_(init|cleanup)_sysctl
+Date: Sun, 20 Sep 2015 01:23:04 -0500
+Message-ID: <1442730220-32458-48-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,63 +15,67 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 176068c3a7fe..4ca8d64ab6f1 100644
+index 67278c6e41a3..1665db8e9f2a 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2584,10 +2584,9 @@ __ip_vs_get_dest_entries(struct netns_ipvs *ipvs, const struct ip_vs_get_dests *
+@@ -3841,10 +3841,10 @@ static void ip_vs_genl_unregister(void)
+  * per netns intit/exit func.
+  */
+ #ifdef CONFIG_SYSCTL
+-static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
++static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ {
++	struct net *net = ipvs->net;
+ 	int idx;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ctl_table *tbl;
+ 
+ 	atomic_set(&ipvs->dropentry, 0);
+@@ -3926,9 +3926,9 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+ 	return 0;
  }
  
- static inline void
--__ip_vs_get_timeouts(struct net *net, struct ip_vs_timeout_user *u)
-+__ip_vs_get_timeouts(struct netns_ipvs *ipvs, struct ip_vs_timeout_user *u)
+-static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
++static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
  {
- #if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_proto_data *pd;
++	struct net *net = ipvs->net;
+ 
+ 	cancel_delayed_work_sync(&ipvs->defense_work);
+ 	cancel_work_sync(&ipvs->defense_work.work);
+@@ -3941,8 +3941,8 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
+ 
+ #else
+ 
+-static int __net_init ip_vs_control_net_init_sysctl(struct net *net) { return 0; }
+-static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net) { }
++static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs) { return 0; }
++static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs) { }
+ 
  #endif
  
-@@ -2768,7 +2767,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
- 	{
- 		struct ip_vs_timeout_user t;
+@@ -3984,7 +3984,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
+ 	proc_create("ip_vs_stats_percpu", 0, net->proc_net,
+ 		    &ip_vs_stats_percpu_fops);
  
--		__ip_vs_get_timeouts(net, &t);
-+		__ip_vs_get_timeouts(ipvs, &t);
- 		if (copy_to_user(user, &t, sizeof(t)) != 0)
- 			ret = -EFAULT;
- 	}
-@@ -3461,7 +3460,7 @@ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
+-	if (ip_vs_control_net_init_sysctl(net))
++	if (ip_vs_control_net_init_sysctl(ipvs))
+ 		goto err;
+ 
+ 	return 0;
+@@ -3999,7 +3999,7 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
  	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_timeout_user t;
  
--	__ip_vs_get_timeouts(net, &t);
-+	__ip_vs_get_timeouts(ipvs, &t);
- 
- 	if (attrs[IPVS_CMD_ATTR_TIMEOUT_TCP])
- 		t.tcp_timeout = nla_get_u32(attrs[IPVS_CMD_ATTR_TIMEOUT_TCP]);
-@@ -3637,8 +3636,10 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
- 	void *reply;
- 	int ret, cmd, reply_cmd;
- 	struct net *net;
-+	struct netns_ipvs *ipvs;
- 
- 	net = skb_sknet(skb);
-+	ipvs = net_ipvs(net);
- 	cmd = info->genlhdr->cmd;
- 
- 	if (cmd == IPVS_CMD_GET_SERVICE)
-@@ -3688,7 +3689,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
- 	{
- 		struct ip_vs_timeout_user t;
- 
--		__ip_vs_get_timeouts(net, &t);
-+		__ip_vs_get_timeouts(ipvs, &t);
- #ifdef CONFIG_IP_VS_PROTO_TCP
- 		if (nla_put_u32(msg, IPVS_CMD_ATTR_TIMEOUT_TCP,
- 				t.tcp_timeout) ||
+ 	ip_vs_trash_cleanup(ipvs);
+-	ip_vs_control_net_cleanup_sysctl(net);
++	ip_vs_control_net_cleanup_sysctl(ipvs);
+ 	remove_proc_entry("ip_vs_stats_percpu", net->proc_net);
+ 	remove_proc_entry("ip_vs_stats", net->proc_net);
+ 	remove_proc_entry("ip_vs", net->proc_net);
 -- 
 2.2.1
 
