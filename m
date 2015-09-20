@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 61/84] ipvs: Pass ipvs into .conn_in_get and ip_vs_conn_in_get_proto
-Date: Sun, 20 Sep 2015 01:23:17 -0500
-Message-ID: <1442730220-32458-61-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 35/84] ipvs: Pass ipvs not net to make_send_sock
+Date: Sun, 20 Sep 2015 01:22:51 -0500
+Message-ID: <1442730220-32458-35-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,116 +13,42 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-Stop relying on "net_ipvs(skb_net(skb))" to dreive the ipvs as
-skb_net is a hack.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h                     | 6 ++++--
- net/netfilter/ipvs/ip_vs_conn.c         | 4 ++--
- net/netfilter/ipvs/ip_vs_core.c         | 8 ++++----
- net/netfilter/ipvs/ip_vs_proto_ah_esp.c | 3 +--
- 4 files changed, 11 insertions(+), 10 deletions(-)
+ net/netfilter/ipvs/ip_vs_sync.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index fe3373c9bb3b..5c26383542e3 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -493,7 +493,8 @@ struct ip_vs_protocol {
- 			     struct ip_vs_iphdr *iph);
- 
- 	struct ip_vs_conn *
--	(*conn_in_get)(int af,
-+	(*conn_in_get)(struct netns_ipvs *ipvs,
-+		       int af,
- 		       const struct sk_buff *skb,
- 		       const struct ip_vs_iphdr *iph);
- 
-@@ -1222,7 +1223,8 @@ static inline void ip_vs_conn_fill_param(struct netns_ipvs *ipvs, int af, int pr
- struct ip_vs_conn *ip_vs_conn_in_get(const struct ip_vs_conn_param *p);
- struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p);
- 
--struct ip_vs_conn * ip_vs_conn_in_get_proto(int af, const struct sk_buff *skb,
-+struct ip_vs_conn * ip_vs_conn_in_get_proto(struct netns_ipvs *ipvs, int af,
-+					    const struct sk_buff *skb,
- 					    const struct ip_vs_iphdr *iph);
- 
- struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p);
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 3b1f57af739a..b27b06eb693c 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -335,10 +335,10 @@ ip_vs_conn_fill_param_proto(struct netns_ipvs *ipvs,
- }
- 
- struct ip_vs_conn *
--ip_vs_conn_in_get_proto(int af, const struct sk_buff *skb,
-+ip_vs_conn_in_get_proto(struct netns_ipvs *ipvs, int af,
-+			const struct sk_buff *skb,
- 			const struct ip_vs_iphdr *iph)
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 0b2e01aa764a..dc987762ca2c 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1493,16 +1493,15 @@ static void get_mcast_sockaddr(union ipvs_sockaddr *sa, int *salen,
+ /*
+  *      Set up sending multicast socket over UDP
+  */
+-static struct socket *make_send_sock(struct net *net, int id)
++static struct socket *make_send_sock(struct netns_ipvs *ipvs, int id)
  {
--	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 	struct ip_vs_conn_param p;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	/* multicast addr */
+ 	union ipvs_sockaddr mcast_addr;
+ 	struct socket *sock;
+ 	int result, salen;
  
- 	if (ip_vs_conn_fill_param_proto(ipvs, af, skb, iph, &p))
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 01398eb757fa..9b5c2af7b63a 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -469,7 +469,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	 */
- 	if ((!skb->dev || skb->dev->flags & IFF_LOOPBACK)) {
- 		iph->hdr_flags ^= IP_VS_HDR_INVERSE;
--		cp = pp->conn_in_get(svc->af, skb, iph);
-+		cp = pp->conn_in_get(svc->ipvs, svc->af, skb, iph);
- 		iph->hdr_flags ^= IP_VS_HDR_INVERSE;
- 
- 		if (cp) {
-@@ -1490,7 +1490,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 	/* The embedded headers contain source and dest in reverse order.
- 	 * For IPIP this is error for request, not for reply.
- 	 */
--	cp = pp->conn_in_get(AF_INET, skb, &ciph);
-+	cp = pp->conn_in_get(ipvs, AF_INET, skb, &ciph);
- 
- 	if (!cp) {
- 		int v;
-@@ -1648,7 +1648,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
- 	/* The embedded headers contain source and dest in reverse order
- 	 * if not from localhost
- 	 */
--	cp = pp->conn_in_get(AF_INET6, skb, &ciph);
-+	cp = pp->conn_in_get(ipvs, AF_INET6, skb, &ciph);
- 
- 	if (!cp) {
- 		int v;
-@@ -1780,7 +1780,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	/*
- 	 * Check if the packet belongs to an existing connection entry
- 	 */
--	cp = pp->conn_in_get(af, skb, &iph);
-+	cp = pp->conn_in_get(ipvs, af, skb, &iph);
- 
- 	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
- 	if (conn_reuse_mode && !iph.fragoffs &&
-diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-index 406d9a433d92..a96d93d11807 100644
---- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-@@ -56,12 +56,11 @@ ah_esp_conn_fill_param_proto(struct netns_ipvs *ipvs, int af,
- }
- 
- static struct ip_vs_conn *
--ah_esp_conn_in_get(int af, const struct sk_buff *skb,
-+ah_esp_conn_in_get(struct netns_ipvs *ipvs, int af, const struct sk_buff *skb,
- 		   const struct ip_vs_iphdr *iph)
- {
- 	struct ip_vs_conn *cp;
- 	struct ip_vs_conn_param p;
--	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 
- 	ah_esp_conn_fill_param_proto(ipvs, af, iph, &p);
- 	cp = ip_vs_conn_in_get(&p);
+ 	/* First create a socket */
+-	result = sock_create_kern(net, ipvs->mcfg.mcast_af, SOCK_DGRAM,
++	result = sock_create_kern(ipvs->net, ipvs->mcfg.mcast_af, SOCK_DGRAM,
+ 				  IPPROTO_UDP, &sock);
+ 	if (result < 0) {
+ 		pr_err("Error during creation of socket; terminating\n");
+@@ -1872,7 +1871,7 @@ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *c,
+ 	tinfo = NULL;
+ 	for (id = 0; id < count; id++) {
+ 		if (state == IP_VS_STATE_MASTER)
+-			sock = make_send_sock(ipvs->net, id);
++			sock = make_send_sock(ipvs, id);
+ 		else
+ 			sock = make_receive_sock(ipvs->net, id);
+ 		if (IS_ERR(sock)) {
 -- 
 2.2.1
-
