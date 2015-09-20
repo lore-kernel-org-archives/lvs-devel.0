@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 38/84] ipvs: Pass ipvs not net to ip_vs_process_message
-Date: Sun, 20 Sep 2015 01:22:54 -0500
-Message-ID: <1442730220-32458-38-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 12/84] ipvs: Pass ipvs not net to ipvs_service_find
+Date: Sun, 20 Sep 2015 01:22:28 -0500
+Message-ID: <1442730220-32458-12-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -15,43 +15,114 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ include/net/ip_vs.h                   | 2 +-
+ net/netfilter/ipvs/ip_vs_ctl.c        | 5 ++---
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 4 ++--
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  | 4 ++--
+ net/netfilter/ipvs/ip_vs_proto_udp.c  | 6 ++++--
+ 5 files changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index cd32e3ab0c4d..280e1c03e598 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1204,10 +1204,9 @@ out:
-  *      ip_vs_conn entries.
-  *      Handles Version 0 & 1
-  */
--static void ip_vs_process_message(struct net *net, __u8 *buffer,
-+static void ip_vs_process_message(struct netns_ipvs *ipvs, __u8 *buffer,
- 				  const size_t buflen)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_mesg *m2 = (struct ip_vs_sync_mesg *)buffer;
- 	__u8 *p, *msg_end;
- 	int i, nr_conns;
-@@ -1257,7 +1256,7 @@ static void ip_vs_process_message(struct net *net, __u8 *buffer,
- 				return;
- 			}
- 			/* Process a single sync_conn */
--			retc = ip_vs_proc_sync_conn(net, p, msg_end);
-+			retc = ip_vs_proc_sync_conn(ipvs->net, p, msg_end);
- 			if (retc < 0) {
- 				IP_VS_ERR_RL("BACKUP, Dropping buffer, Err: %d in decoding\n",
- 					     retc);
-@@ -1763,7 +1762,7 @@ static int sync_thread_backup(void *data)
- 				break;
- 			}
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 2c22380b9ad7..828b19b23e02 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1410,7 +1410,7 @@ extern struct ip_vs_stats ip_vs_stats;
+ extern int sysctl_ip_vs_sync_ver;
  
--			ip_vs_process_message(ipvs->net, tinfo->buf, len);
-+			ip_vs_process_message(ipvs, tinfo->buf, len);
- 		}
+ struct ip_vs_service *
+-ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
++ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u32 fwmark, __u16 protocol,
+ 		  const union nf_inet_addr *vaddr, __be16 vport);
+ 
+ bool ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 9a56256502b6..f9151d8ee1ac 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -406,11 +406,10 @@ __ip_vs_svc_fwm_find(struct netns_ipvs *ipvs, int af, __u32 fwmark)
+ 
+ /* Find service, called under RCU lock */
+ struct ip_vs_service *
+-ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
++ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u32 fwmark, __u16 protocol,
+ 		   const union nf_inet_addr *vaddr, __be16 vport)
+ {
+ 	struct ip_vs_service *svc;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+ 	/*
+ 	 *	Check the table hashed by fwmark first
+@@ -612,7 +611,7 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int svc_af, int dest_af,
+ 	struct ip_vs_service *svc;
+ 	__be16 port = dport;
+ 
+-	svc = ip_vs_service_find(net, svc_af, fwmark, protocol, vaddr, vport);
++	svc = ip_vs_service_find(net_ipvs(net), svc_af, fwmark, protocol, vaddr, vport);
+ 	if (!svc)
+ 		return NULL;
+ 	if (fwmark && (flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ)
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index ce615866bd63..373a4751c328 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -45,10 +45,10 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 
+ 	rcu_read_lock();
+ 	if (likely(!ip_vs_iph_inverse(iph)))
+-		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
+ 					 &iph->daddr, ports[1]);
+ 	else
+-		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
+ 					 &iph->saddr, ports[0]);
+ 	if (svc) {
+ 		int ignored;
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index e00623a88518..48af3ca6be03 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -70,10 +70,10 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	rcu_read_lock();
+ 
+ 	if (likely(!ip_vs_iph_inverse(iph)))
+-		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
+ 					 &iph->daddr, ports[1]);
+ 	else
+-		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
+ 					 &iph->saddr, ports[0]);
+ 
+ 	if (svc) {
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index 3b0a2dc1826b..e9f5f7e30bef 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -34,6 +34,7 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 		  struct ip_vs_iphdr *iph)
+ {
+ 	struct net *net;
++	struct netns_ipvs *ipvs;
+ 	struct ip_vs_service *svc;
+ 	struct udphdr _udph, *uh;
+ 	__be16 _ports[2], *ports = NULL;
+@@ -54,12 +55,13 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
  	}
  
+ 	net = skb_net(skb);
++	ipvs = net_ipvs(net);
+ 	rcu_read_lock();
+ 	if (likely(!ip_vs_iph_inverse(iph)))
+-		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
+ 					 &iph->daddr, ports[1]);
+ 	else
+-		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
++		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
+ 					 &iph->saddr, ports[0]);
+ 
+ 	if (svc) {
 -- 
 2.2.1
 
