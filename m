@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 68/84] ipvs: Pass ipvs into __ip_vs_get_out_rt
-Date: Sun, 20 Sep 2015 01:23:24 -0500
-Message-ID: <1442730220-32458-68-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 33/84] ipvs: Pass ipvs not net to start_sync_thread
+Date: Sun, 20 Sep 2015 01:22:49 -0500
+Message-ID: <1442730220-32458-33-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -15,72 +15,94 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 15 ++++++++-------
- 1 file changed, 8 insertions(+), 7 deletions(-)
+ include/net/ip_vs.h             |  2 +-
+ net/netfilter/ipvs/ip_vs_ctl.c  |  4 ++--
+ net/netfilter/ipvs/ip_vs_sync.c | 11 +++++------
+ 3 files changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index ec10ebf246fd..5cfd914d9a39 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -257,11 +257,12 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 3c077e8a038c..dd7cd3a48fd4 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1449,7 +1449,7 @@ static inline void ip_vs_dest_put_and_free(struct ip_vs_dest *dest)
+ /* IPVS sync daemon data and function prototypes
+  * (from ip_vs_sync.c)
+  */
+-int start_sync_thread(struct net *net, struct ipvs_sync_daemon_cfg *cfg,
++int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *cfg,
+ 		      int state);
+ int stop_sync_thread(struct net *net, int state);
+ void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp, int pkts);
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 6a8238adda02..07106bfe2ac4 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2350,7 +2350,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 			cfg.syncid = dm->syncid;
+ 			rtnl_lock();
+ 			mutex_lock(&ipvs->sync_mutex);
+-			ret = start_sync_thread(net, &cfg, dm->state);
++			ret = start_sync_thread(ipvs, &cfg, dm->state);
+ 			mutex_unlock(&ipvs->sync_mutex);
+ 			rtnl_unlock();
+ 		} else {
+@@ -3432,7 +3432,7 @@ static int ip_vs_genl_new_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
  
- /* Get route to destination or remote server */
- static int
--__ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
-+__ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
-+		   struct ip_vs_dest *dest,
- 		   __be32 daddr, int rt_mode, __be32 *ret_saddr,
- 		   struct ip_vs_iphdr *ipvsh)
+ 	rtnl_lock();
+ 	mutex_lock(&ipvs->sync_mutex);
+-	ret = start_sync_thread(ipvs->net, &c,
++	ret = start_sync_thread(ipvs, &c,
+ 				nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
+ 	mutex_unlock(&ipvs->sync_mutex);
+ 	rtnl_unlock();
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index d158e0713ab9..90c455c0b42b 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1778,13 +1778,12 @@ static int sync_thread_backup(void *data)
+ }
+ 
+ 
+-int start_sync_thread(struct net *net, struct ipvs_sync_daemon_cfg *c,
++int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *c,
+ 		      int state)
  {
--	struct net *net = dev_net(skb_dst(skb)->dev);
-+	struct net *net = ipvs->net;
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rtable *rt;			/* Route to the other host */
- 	int mtu;
-@@ -630,7 +631,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
+ 	struct ip_vs_sync_thread_data *tinfo;
+ 	struct task_struct **array = NULL, *task;
+ 	struct socket *sock;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct net_device *dev;
+ 	char *name;
+ 	int (*threadfn)(void *data);
+@@ -1811,7 +1810,7 @@ int start_sync_thread(struct net *net, struct ipvs_sync_daemon_cfg *c,
+ 	if (!c->mcast_ttl)
+ 		c->mcast_ttl = 1;
  
- 	rcu_read_lock();
--	if (__ip_vs_get_out_rt(cp->af, skb, NULL, iph->daddr,
-+	if (__ip_vs_get_out_rt(cp->ipvs, cp->af, skb, NULL, iph->daddr,
- 			       IP_VS_RT_MODE_NON_LOCAL, NULL, ipvsh) < 0)
- 		goto tx_error;
- 
-@@ -709,7 +710,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	}
- 
- 	was_input = rt_is_input_route(skb_rtable(skb));
--	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
-+	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
- 				   IP_VS_RT_MODE_RDR, NULL, ipvsh);
-@@ -988,7 +989,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
- 
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
-+	local = __ip_vs_get_out_rt(ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
- 				   IP_VS_RT_MODE_CONNECT |
-@@ -1169,7 +1170,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
- 
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
-+	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
- 				   IP_VS_RT_MODE_KNOWN_NH, NULL, ipvsh);
-@@ -1277,7 +1278,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
- 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
-+	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
- 				   NULL, iph);
- 	if (local < 0)
- 		goto tx_error;
+-	dev = __dev_get_by_name(net, c->mcast_ifn);
++	dev = __dev_get_by_name(ipvs->net, c->mcast_ifn);
+ 	if (!dev) {
+ 		pr_err("Unknown mcast interface: %s\n", c->mcast_ifn);
+ 		return -ENODEV;
+@@ -1873,9 +1872,9 @@ int start_sync_thread(struct net *net, struct ipvs_sync_daemon_cfg *c,
+ 	tinfo = NULL;
+ 	for (id = 0; id < count; id++) {
+ 		if (state == IP_VS_STATE_MASTER)
+-			sock = make_send_sock(net, id);
++			sock = make_send_sock(ipvs->net, id);
+ 		else
+-			sock = make_receive_sock(net, id);
++			sock = make_receive_sock(ipvs->net, id);
+ 		if (IS_ERR(sock)) {
+ 			result = PTR_ERR(sock);
+ 			goto outtinfo;
+@@ -1883,7 +1882,7 @@ int start_sync_thread(struct net *net, struct ipvs_sync_daemon_cfg *c,
+ 		tinfo = kmalloc(sizeof(*tinfo), GFP_KERNEL);
+ 		if (!tinfo)
+ 			goto outsocket;
+-		tinfo->net = net;
++		tinfo->net = ipvs->net;
+ 		tinfo->sock = sock;
+ 		if (state == IP_VS_STATE_BACKUP) {
+ 			tinfo->buf = kmalloc(ipvs->bcfg.sync_maxlen,
 -- 
 2.2.1
