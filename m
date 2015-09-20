@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 57/84] ipvs: Pass ipvs not net into ip_vs_app_net_init and ip_vs_app_net_cleanup
-Date: Sun, 20 Sep 2015 01:23:13 -0500
-Message-ID: <1442730220-32458-57-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 76/84] ipvs: Pass ipvs into ip_vs_in
+Date: Sun, 20 Sep 2015 01:23:32 -0500
+Message-ID: <1442730220-32458-76-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,90 +13,79 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
+Derive ipvs from state->net in the callers of ip_vs_in and pass it
+into ip_vs_out.  Removing the need to use the hack skb_net.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             | 4 ++--
- net/netfilter/ipvs/ip_vs_app.c  | 9 +++++----
- net/netfilter/ipvs/ip_vs_core.c | 6 +++---
- 3 files changed, 10 insertions(+), 9 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 5caafed5af2e..728a670d69fd 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1326,11 +1326,11 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
- int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
- int ip_vs_control_net_init(struct netns_ipvs *ipvs);
- int ip_vs_protocol_net_init(struct net *net);
--int ip_vs_app_net_init(struct net *net);
-+int ip_vs_app_net_init(struct netns_ipvs *ipvs);
- int ip_vs_conn_net_init(struct net *net);
- int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
- void ip_vs_conn_net_cleanup(struct net *net);
--void ip_vs_app_net_cleanup(struct net *net);
-+void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_protocol_net_cleanup(struct net *net);
- void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
-diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
-index cb1246912f0f..0328f7250693 100644
---- a/net/netfilter/ipvs/ip_vs_app.c
-+++ b/net/netfilter/ipvs/ip_vs_app.c
-@@ -603,18 +603,19 @@ static const struct file_operations ip_vs_app_fops = {
- };
- #endif
- 
--int __net_init ip_vs_app_net_init(struct net *net)
-+int __net_init ip_vs_app_net_init(struct netns_ipvs *ipvs)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct net *net = ipvs->net;
- 
- 	INIT_LIST_HEAD(&ipvs->app_list);
- 	proc_create("ip_vs_app", 0, net->proc_net, &ip_vs_app_fops);
- 	return 0;
- }
- 
--void __net_exit ip_vs_app_net_cleanup(struct net *net)
-+void __net_exit ip_vs_app_net_cleanup(struct netns_ipvs *ipvs)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct net *net = ipvs->net;
-+
- 	unregister_ip_vs_app(ipvs, NULL /* all */);
- 	remove_proc_entry("ip_vs_app", net->proc_net);
- }
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index ec6f022fba6a..01398eb757fa 100644
+index 07a4ddca650d..3ab96bdc66fd 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2081,7 +2081,7 @@ static int __net_init __ip_vs_init(struct net *net)
- 	if (ip_vs_protocol_net_init(net) < 0)
- 		goto protocol_fail;
+@@ -1684,15 +1684,13 @@ out:
+  *	and send it on its way...
+  */
+ static unsigned int
+-ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
++ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int af)
+ {
+-	struct net *net;
+ 	struct ip_vs_iphdr iph;
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	struct ip_vs_conn *cp;
+ 	int ret, pkts;
+-	struct netns_ipvs *ipvs;
+ 	int conn_reuse_mode;
  
--	if (ip_vs_app_net_init(net) < 0)
-+	if (ip_vs_app_net_init(ipvs) < 0)
- 		goto app_fail;
+ 	/* Already marked as IPVS request or reply? */
+@@ -1715,8 +1713,6 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 		return NF_ACCEPT;
+ 	}
+ 	/* ipvs enabled in this netns ? */
+-	net = skb_net(skb);
+-	ipvs = net_ipvs(net);
+ 	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
+ 		return NF_ACCEPT;
  
- 	if (ip_vs_conn_net_init(net) < 0)
-@@ -2100,7 +2100,7 @@ static int __net_init __ip_vs_init(struct net *net)
- sync_fail:
- 	ip_vs_conn_net_cleanup(net);
- conn_fail:
--	ip_vs_app_net_cleanup(net);
-+	ip_vs_app_net_cleanup(ipvs);
- app_fail:
- 	ip_vs_protocol_net_cleanup(net);
- protocol_fail:
-@@ -2118,7 +2118,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+@@ -1844,7 +1840,7 @@ static unsigned int
+ ip_vs_remote_request4(void *priv, struct sk_buff *skb,
+ 		      const struct nf_hook_state *state)
+ {
+-	return ip_vs_in(state->hook, skb, AF_INET);
++	return ip_vs_in(net_ipvs(state->net), state->hook, skb, AF_INET);
+ }
  
- 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
- 	ip_vs_conn_net_cleanup(net);
--	ip_vs_app_net_cleanup(net);
-+	ip_vs_app_net_cleanup(ipvs);
- 	ip_vs_protocol_net_cleanup(net);
- 	ip_vs_control_net_cleanup(ipvs);
- 	ip_vs_estimator_net_cleanup(ipvs);
+ /*
+@@ -1855,7 +1851,7 @@ static unsigned int
+ ip_vs_local_request4(void *priv, struct sk_buff *skb,
+ 		     const struct nf_hook_state *state)
+ {
+-	return ip_vs_in(state->hook, skb, AF_INET);
++	return ip_vs_in(net_ipvs(state->net), state->hook, skb, AF_INET);
+ }
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+@@ -1868,7 +1864,7 @@ static unsigned int
+ ip_vs_remote_request6(void *priv, struct sk_buff *skb,
+ 		      const struct nf_hook_state *state)
+ {
+-	return ip_vs_in(state->hook, skb, AF_INET6);
++	return ip_vs_in(net_ipvs(state->net), state->hook, skb, AF_INET6);
+ }
+ 
+ /*
+@@ -1879,7 +1875,7 @@ static unsigned int
+ ip_vs_local_request6(void *priv, struct sk_buff *skb,
+ 		     const struct nf_hook_state *state)
+ {
+-	return ip_vs_in(state->hook, skb, AF_INET6);
++	return ip_vs_in(net_ipvs(state->net), state->hook, skb, AF_INET6);
+ }
+ 
+ #endif
 -- 
 2.2.1
-
