@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 05/84] ipvs: Store ipvs not net in struct ip_vs_conn_param
-Date: Sun, 20 Sep 2015 01:22:21 -0500
-Message-ID: <1442730220-32458-5-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 23/84] ipvs: Cache ipvs in ip_vs_in_icmp and ip_vs_in_icmp_v6
+Date: Sun, 20 Sep 2015 01:22:39 -0500
+Message-ID: <1442730220-32458-23-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -13,104 +13,69 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-In practice struct netns_ipvs is as meaningful as struct net and more
-useful as it holds the ipvs specific data.  So store a pointer to
-struct netns_ipvs.
-
-Update the accesses of param->net to access param->ipvs->net instead.
-
-When lookup up struct ip_vs_conn in a hash table replace comparisons
-of cp->net with comparisons of cp->ipvs which is possible
-now that ipvs is present in ip_vs_conn_param.
+Storte the value of net_ipvs in a variable named ipvs so that when
+there are more users struct netns_ipvs in ip_vs_in_cmp and
+ip_vs_in_icmp_v6 they won't need to compute the value again.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             |  4 ++--
- net/netfilter/ipvs/ip_vs_conn.c | 14 +++++++-------
- 2 files changed, 9 insertions(+), 9 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 3bf6da8fdaf1..8cca99bbe15b 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -545,7 +545,7 @@ struct ip_vs_proto_data *ip_vs_proto_data_get(struct net *net,
- 					      unsigned short proto);
- 
- struct ip_vs_conn_param {
--	struct net			*net;
-+	struct netns_ipvs		*ipvs;
- 	const union nf_inet_addr	*caddr;
- 	const union nf_inet_addr	*vaddr;
- 	__be16				cport;
-@@ -1208,7 +1208,7 @@ static inline void ip_vs_conn_fill_param(struct net *net, int af, int protocol,
- 					 __be16 vport,
- 					 struct ip_vs_conn_param *p)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 787d561e200b..77dcd3ed27de 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1403,6 +1403,7 @@ static int
+ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
  {
--	p->net = net;
-+	p->ipvs = net_ipvs(net);
- 	p->af = af;
- 	p->protocol = protocol;
- 	p->caddr = caddr;
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 899f5d3e46ed..d1b19bbacb45 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -141,7 +141,7 @@ static unsigned int ip_vs_conn_hashkey_param(const struct ip_vs_conn_param *p,
- 		port = p->vport;
- 	}
+ 	struct net *net = NULL;
++	struct netns_ipvs *ipvs;
+ 	struct iphdr *iph;
+ 	struct icmphdr	_icmph, *ic;
+ 	struct iphdr	_ciph, *cih;	/* The ip header contained within the ICMP */
+@@ -1452,6 +1453,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 		return NF_ACCEPT; /* The packet looks wrong, ignore */
  
--	return ip_vs_conn_hashkey(p->net, p->af, p->protocol, addr, port);
-+	return ip_vs_conn_hashkey(p->ipvs->net, p->af, p->protocol, addr, port);
- }
+ 	net = skb_net(skb);
++	ipvs = net_ipvs(net);
  
- static unsigned int ip_vs_conn_hashkey_conn(const struct ip_vs_conn *cp)
-@@ -279,7 +279,7 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
- 		    ip_vs_addr_equal(p->af, p->vaddr, &cp->vaddr) &&
- 		    ((!p->cport) ^ (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
- 		    p->protocol == cp->protocol &&
--		    net_eq(cp->ipvs->net, p->net)) {
-+		    cp->ipvs == p->ipvs) {
- 			if (!__ip_vs_conn_get(cp))
- 				continue;
- 			/* HIT */
-@@ -359,7 +359,7 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
+ 	/* Special case for errors for IPIP packets */
+ 	ipip = false;
+@@ -1493,7 +1495,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	if (!cp) {
+ 		int v;
  
- 	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
- 		if (unlikely(p->pe_data && p->pe->ct_match)) {
--			if (net_eq(cp->ipvs->net, p->net))
-+			if (cp->ipvs == p->ipvs)
- 				continue;
- 			if (p->pe == cp->pe && p->pe->ct_match(p, cp)) {
- 				if (__ip_vs_conn_get(cp))
-@@ -377,7 +377,7 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
- 		    p->vport == cp->vport && p->cport == cp->cport &&
- 		    cp->flags & IP_VS_CONN_F_TEMPLATE &&
- 		    p->protocol == cp->protocol &&
--		    net_eq(cp->ipvs->net, p->net)) {
-+		    cp->ipvs == p->ipvs) {
- 			if (__ip_vs_conn_get(cp))
- 				goto out;
- 		}
-@@ -418,7 +418,7 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
- 		    ip_vs_addr_equal(p->af, p->vaddr, &cp->caddr) &&
- 		    ip_vs_addr_equal(p->af, p->caddr, &cp->daddr) &&
- 		    p->protocol == cp->protocol &&
--		    net_eq(cp->ipvs->net, p->net)) {
-+		    cp->ipvs == p->ipvs) {
- 			if (!__ip_vs_conn_get(cp))
- 				continue;
- 			/* HIT */
-@@ -875,8 +875,8 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
- 	       struct ip_vs_dest *dest, __u32 fwmark)
+-		if (!sysctl_schedule_icmp(net_ipvs(net)))
++		if (!sysctl_schedule_icmp(ipvs))
+ 			return NF_ACCEPT;
+ 
+ 		if (!ip_vs_try_to_schedule(AF_INET, skb, pd, &v, &cp, &ciph))
+@@ -1589,6 +1591,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 			    unsigned int hooknum, struct ip_vs_iphdr *iph)
  {
+ 	struct net *net = NULL;
++	struct netns_ipvs *ipvs;
+ 	struct icmp6hdr	_icmph, *ic;
+ 	struct ip_vs_iphdr ciph = {.flags = 0, .fragoffs = 0};/*Contained IP */
  	struct ip_vs_conn *cp;
--	struct netns_ipvs *ipvs = net_ipvs(p->net);
--	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(p->net,
-+	struct netns_ipvs *ipvs = p->ipvs;
-+	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(p->ipvs->net,
- 							   p->protocol);
+@@ -1629,6 +1632,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 		return NF_ACCEPT;
  
- 	cp = kmem_cache_alloc(ip_vs_conn_cachep, GFP_ATOMIC);
+ 	net = skb_net(skb);
++	ipvs = net_ipvs(net);
+ 	pd = ip_vs_proto_data_get(net, ciph.protocol);
+ 	if (!pd)
+ 		return NF_ACCEPT;
+@@ -1649,7 +1653,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 	if (!cp) {
+ 		int v;
+ 
+-		if (!sysctl_schedule_icmp(net_ipvs(net)))
++		if (!sysctl_schedule_icmp(ipvs))
+ 			return NF_ACCEPT;
+ 
+ 		if (!ip_vs_try_to_schedule(AF_INET6, skb, pd, &v, &cp, &ciph))
 -- 
 2.2.1
 
