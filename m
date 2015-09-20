@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 84/84] ipvs: Pass ipvs into ip_vs_gather_frags
-Date: Sun, 20 Sep 2015 01:23:40 -0500
-Message-ID: <1442730220-32458-84-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 19/84] ipvs: Pass ipvs not net to ip_vs_add_service
+Date: Sun, 20 Sep 2015 01:22:35 -0500
+Message-ID: <1442730220-32458-19-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,54 +13,58 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-This will be needed later when the network namespace guessing is removed from ip_defrag
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index ab85ae0f531f..fb6b6c87d841 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -688,7 +688,8 @@ static inline enum ip_defrag_users ip_vs_defrag_user(unsigned int hooknum)
- 	return IP_DEFRAG_VS_OUT;
- }
- 
--static inline int ip_vs_gather_frags(struct sk_buff *skb, u_int32_t user)
-+static inline int ip_vs_gather_frags(struct netns_ipvs *ipvs,
-+				     struct sk_buff *skb, u_int32_t user)
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index b192bb45f697..7f0635242c7f 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1157,14 +1157,13 @@ static void ip_vs_dest_trash_expire(unsigned long data)
+  *	Add a service into the service hash table
+  */
+ static int
+-ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
++ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
+ 		  struct ip_vs_service **svc_p)
  {
- 	int err;
+ 	int ret = 0, i;
+ 	struct ip_vs_scheduler *sched = NULL;
+ 	struct ip_vs_pe *pe = NULL;
+ 	struct ip_vs_service *svc = NULL;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
  
-@@ -912,7 +913,7 @@ static int ip_vs_out_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 	/* increase the module use count */
+ 	ip_vs_use_count_inc();
+@@ -1255,7 +1254,7 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+ 	else if (svc->port == 0)
+ 		atomic_inc(&ipvs->nullsvc_counter);
  
- 	/* reassemble IP fragments */
- 	if (ip_is_fragment(ip_hdr(skb))) {
--		if (ip_vs_gather_frags(skb, ip_vs_defrag_user(hooknum)))
-+		if (ip_vs_gather_frags(ipvs, skb, ip_vs_defrag_user(hooknum)))
- 			return NF_STOLEN;
- 	}
+-	ip_vs_start_estimator(net, &svc->stats);
++	ip_vs_start_estimator(ipvs->net, &svc->stats);
  
-@@ -1232,7 +1233,7 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
- 	if (af == AF_INET)
- #endif
- 		if (unlikely(ip_is_fragment(ip_hdr(skb)) && !pp->dont_defrag)) {
--			if (ip_vs_gather_frags(skb,
-+			if (ip_vs_gather_frags(ipvs, skb,
- 					       ip_vs_defrag_user(hooknum)))
- 				return NF_STOLEN;
- 
-@@ -1403,7 +1404,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
- 
- 	/* reassemble IP fragments */
- 	if (ip_is_fragment(ip_hdr(skb))) {
--		if (ip_vs_gather_frags(skb, ip_vs_defrag_user(hooknum)))
-+		if (ip_vs_gather_frags(ipvs, skb, ip_vs_defrag_user(hooknum)))
- 			return NF_STOLEN;
- 	}
- 
+ 	/* Count only IPv4 services for old get/setsockopt interface */
+ 	if (svc->af == AF_INET)
+@@ -2421,7 +2420,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 		if (svc != NULL)
+ 			ret = -EEXIST;
+ 		else
+-			ret = ip_vs_add_service(net, &usvc, &svc);
++			ret = ip_vs_add_service(ipvs, &usvc, &svc);
+ 		break;
+ 	case IP_VS_SO_SET_EDIT:
+ 		ret = ip_vs_edit_service(svc, &usvc);
+@@ -3601,7 +3600,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	switch (cmd) {
+ 	case IPVS_CMD_NEW_SERVICE:
+ 		if (svc == NULL)
+-			ret = ip_vs_add_service(net, &usvc, &svc);
++			ret = ip_vs_add_service(ipvs, &usvc, &svc);
+ 		else
+ 			ret = -EEXIST;
+ 		break;
 -- 
 2.2.1
 
