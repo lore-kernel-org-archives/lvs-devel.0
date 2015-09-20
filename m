@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 21/84] ipvs: Pass ipvs not net to ip_vs_service_net_cleanup
-Date: Sun, 20 Sep 2015 01:22:37 -0500
-Message-ID: <1442730220-32458-21-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 65/84] ipvs: Pass ipvs not net into ip_vs_conn_net_init and ip_vs_conn_net_cleanup
+Date: Sun, 20 Sep 2015 01:23:21 -0500
+Message-ID: <1442730220-32458-65-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -15,61 +15,86 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             | 2 +-
- net/netfilter/ipvs/ip_vs_core.c | 6 ++++--
- net/netfilter/ipvs/ip_vs_ctl.c  | 3 +--
- 3 files changed, 6 insertions(+), 5 deletions(-)
+ include/net/ip_vs.h             | 4 ++--
+ net/netfilter/ipvs/ip_vs_conn.c | 8 ++++----
+ net/netfilter/ipvs/ip_vs_core.c | 6 +++---
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b54a19eaa630..3c7040a313b5 100644
+index 0ca436ef7dad..5ad04be64895 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1335,7 +1335,7 @@ void ip_vs_protocol_net_cleanup(struct net *net);
- void ip_vs_control_net_cleanup(struct net *net);
- void ip_vs_estimator_net_cleanup(struct net *net);
- void ip_vs_sync_net_cleanup(struct net *net);
--void ip_vs_service_net_cleanup(struct net *net);
-+void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
- 
- /* IPVS application functions
-  * (from ip_vs_app.c)
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index c22e0692e22d..787d561e200b 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2110,13 +2110,15 @@ estimator_fail:
- 
- static void __net_exit __ip_vs_cleanup(struct net *net)
- {
--	ip_vs_service_net_cleanup(net);	/* ip_vs_flush() with locks */
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+
-+	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
- 	ip_vs_conn_net_cleanup(net);
- 	ip_vs_app_net_cleanup(net);
- 	ip_vs_protocol_net_cleanup(net);
- 	ip_vs_control_net_cleanup(net);
- 	ip_vs_estimator_net_cleanup(net);
--	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
-+	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
- 	net->ipvs = NULL;
- }
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 51dab90bf184..d3407ad866bb 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1484,9 +1484,8 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
-  *	Delete service by {netns} in the service table.
-  *	Called by __ip_vs_cleanup()
+@@ -1331,9 +1331,9 @@ int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_control_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_protocol_net_init(struct net *net);
+ int ip_vs_app_net_init(struct netns_ipvs *ipvs);
+-int ip_vs_conn_net_init(struct net *net);
++int ip_vs_conn_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
+-void ip_vs_conn_net_cleanup(struct net *net);
++void ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_protocol_net_cleanup(struct net *net);
+ void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 43b7a7d2ba4d..3d461f417c1d 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1345,9 +1345,9 @@ flush_again:
+ /*
+  * per netns init and exit
   */
--void ip_vs_service_net_cleanup(struct net *net)
-+void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs)
+-int __net_init ip_vs_conn_net_init(struct net *net)
++int __net_init ip_vs_conn_net_init(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	EnterFunction(2);
- 	/* Check for "full" addressed entries */
- 	mutex_lock(&__ip_vs_mutex);
++	struct net *net = ipvs->net;
+ 
+ 	atomic_set(&ipvs->conn_count, 0);
+ 
+@@ -1356,9 +1356,9 @@ int __net_init ip_vs_conn_net_init(struct net *net)
+ 	return 0;
+ }
+ 
+-void __net_exit ip_vs_conn_net_cleanup(struct net *net)
++void __net_exit ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct net *net = ipvs->net;
+ 
+ 	/* flush all the connection entries first */
+ 	ip_vs_conn_flush(ipvs);
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index f0369e7602a0..9b37fe30dcac 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2086,7 +2086,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_app_net_init(ipvs) < 0)
+ 		goto app_fail;
+ 
+-	if (ip_vs_conn_net_init(net) < 0)
++	if (ip_vs_conn_net_init(ipvs) < 0)
+ 		goto conn_fail;
+ 
+ 	if (ip_vs_sync_net_init(ipvs) < 0)
+@@ -2100,7 +2100,7 @@ static int __net_init __ip_vs_init(struct net *net)
+  */
+ 
+ sync_fail:
+-	ip_vs_conn_net_cleanup(net);
++	ip_vs_conn_net_cleanup(ipvs);
+ conn_fail:
+ 	ip_vs_app_net_cleanup(ipvs);
+ app_fail:
+@@ -2119,7 +2119,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+ 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+-	ip_vs_conn_net_cleanup(net);
++	ip_vs_conn_net_cleanup(ipvs);
+ 	ip_vs_app_net_cleanup(ipvs);
+ 	ip_vs_protocol_net_cleanup(net);
+ 	ip_vs_control_net_cleanup(ipvs);
 -- 
 2.2.1
 
