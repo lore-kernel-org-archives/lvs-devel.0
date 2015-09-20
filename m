@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 41/84] ipvs: Pass ipvs not net to ip_vs_proc_conn
-Date: Sun, 20 Sep 2015 01:22:57 -0500
-Message-ID: <1442730220-32458-41-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 25/84] ipvs: Pass ipvs not net to ip_vs_set_timeout
+Date: Sun, 20 Sep 2015 01:22:41 -0500
+Message-ID: <1442730220-32458-25-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,72 +15,50 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index a0808f230cd6..98180904ccd2 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -835,7 +835,7 @@ ip_vs_conn_fill_param_sync(struct netns_ipvs *ipvs, int af, union ip_vs_sync_con
-  *  Param: ...
-  *         timeout is in sec.
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index b9426a5fb667..81eb3ed4ce90 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2202,10 +2202,9 @@ static const struct file_operations ip_vs_stats_percpu_fops = {
+ /*
+  *	Set timeout values for tcp tcpfin udp in the timeout_table.
   */
--static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
-+static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *param,
- 			    unsigned int flags, unsigned int state,
- 			    unsigned int protocol, unsigned int type,
- 			    const union nf_inet_addr *daddr, __be16 dport,
-@@ -844,7 +844,6 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+-static int ip_vs_set_timeout(struct net *net, struct ip_vs_timeout_user *u)
++static int ip_vs_set_timeout(struct netns_ipvs *ipvs, struct ip_vs_timeout_user *u)
  {
- 	struct ip_vs_dest *dest;
- 	struct ip_vs_conn *cp;
+ #if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
 -	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_proto_data *pd;
+ #endif
  
- 	if (!(flags & IP_VS_CONN_F_TEMPLATE)) {
- 		cp = ip_vs_conn_in_get(param);
-@@ -1014,7 +1013,7 @@ static void ip_vs_process_message_v0(struct netns_ipvs *ipvs, const char *buffer
- 				      s->vport, &param);
- 
- 		/* Send timeout as Zero */
--		ip_vs_proc_conn(ipvs->net, &param, flags, state, s->protocol, AF_INET,
-+		ip_vs_proc_conn(ipvs, &param, flags, state, s->protocol, AF_INET,
- 				(union nf_inet_addr *)&s->daddr, s->dport,
- 				0, 0, opt);
+@@ -2369,7 +2368,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 		goto out_unlock;
+ 	} else if (cmd == IP_VS_SO_SET_TIMEOUT) {
+ 		/* Set timeout values for (tcp tcpfin udp) */
+-		ret = ip_vs_set_timeout(net, (struct ip_vs_timeout_user *)arg);
++		ret = ip_vs_set_timeout(ipvs, (struct ip_vs_timeout_user *)arg);
+ 		goto out_unlock;
  	}
-@@ -1067,6 +1066,7 @@ static int ip_vs_proc_str(__u8 *p, unsigned int plen, unsigned int *data_len,
-  */
- static inline int ip_vs_proc_sync_conn(struct net *net, __u8 *p, __u8 *msg_end)
+ 
+@@ -3461,6 +3460,7 @@ static int ip_vs_genl_del_daemon(struct net *net, struct nlattr **attrs)
+ 
+ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
  {
 +	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_conn_options opt;
- 	union  ip_vs_sync_conn *s;
- 	struct ip_vs_protocol *pp;
-@@ -1169,21 +1169,21 @@ static inline int ip_vs_proc_sync_conn(struct net *net, __u8 *p, __u8 *msg_end)
- 			state = 0;
- 		}
- 	}
--	if (ip_vs_conn_fill_param_sync(net_ipvs(net), af, s, &param, pe_data,
-+	if (ip_vs_conn_fill_param_sync(ipvs, af, s, &param, pe_data,
- 				       pe_data_len, pe_name, pe_name_len)) {
- 		retc = 50;
- 		goto out;
- 	}
- 	/* If only IPv4, just silent skip IPv6 */
- 	if (af == AF_INET)
--		ip_vs_proc_conn(net, &param, flags, state, s->v4.protocol, af,
-+		ip_vs_proc_conn(ipvs, &param, flags, state, s->v4.protocol, af,
- 				(union nf_inet_addr *)&s->v4.daddr, s->v4.dport,
- 				ntohl(s->v4.timeout), ntohl(s->v4.fwmark),
- 				(opt_flags & IPVS_OPT_F_SEQ_DATA ? &opt : NULL)
- 				);
- #ifdef CONFIG_IP_VS_IPV6
- 	else
--		ip_vs_proc_conn(net, &param, flags, state, s->v6.protocol, af,
-+		ip_vs_proc_conn(ipvs, &param, flags, state, s->v6.protocol, af,
- 				(union nf_inet_addr *)&s->v6.daddr, s->v6.dport,
- 				ntohl(s->v6.timeout), ntohl(s->v6.fwmark),
- 				(opt_flags & IPVS_OPT_F_SEQ_DATA ? &opt : NULL)
+ 	struct ip_vs_timeout_user t;
+ 
+ 	__ip_vs_get_timeouts(net, &t);
+@@ -3475,7 +3475,7 @@ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
+ 	if (attrs[IPVS_CMD_ATTR_TIMEOUT_UDP])
+ 		t.udp_timeout = nla_get_u32(attrs[IPVS_CMD_ATTR_TIMEOUT_UDP]);
+ 
+-	return ip_vs_set_timeout(net, &t);
++	return ip_vs_set_timeout(ipvs, &t);
+ }
+ 
+ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
 -- 
 2.2.1
-
