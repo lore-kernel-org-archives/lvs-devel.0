@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 36/84] ipvs: Pass ipvs not net to make_receive_sock
-Date: Sun, 20 Sep 2015 01:22:52 -0500
-Message-ID: <1442730220-32458-36-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 75/84] ipvs: Pass ipvs into ip_vs_out
+Date: Sun, 20 Sep 2015 01:23:31 -0500
+Message-ID: <1442730220-32458-75-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,42 +13,76 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
+Derive ipvs from state->net in the callers of ip_vs_out and pass it
+into ip_vs_out.  Removing the need to use the hack skb_net.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index dc987762ca2c..304eade977d2 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1549,16 +1549,15 @@ error:
- /*
-  *      Set up receiving multicast socket over UDP
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index b25fb3309472..07a4ddca650d 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1173,10 +1173,9 @@ drop:
+  *	Check if outgoing packet belongs to the established ip_vs_conn.
   */
--static struct socket *make_receive_sock(struct net *net, int id)
-+static struct socket *make_receive_sock(struct netns_ipvs *ipvs, int id)
+ static unsigned int
+-ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
++ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int af)
  {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	/* multicast addr */
- 	union ipvs_sockaddr mcast_addr;
- 	struct socket *sock;
- 	int result, salen;
+-	struct net *net = NULL;
+-	struct netns_ipvs *ipvs;
++	struct net *net = ipvs->net;
+ 	struct ip_vs_iphdr iph;
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+@@ -1201,8 +1200,6 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	if (unlikely(!skb_dst(skb)))
+ 		return NF_ACCEPT;
  
- 	/* First create a socket */
--	result = sock_create_kern(net, ipvs->bcfg.mcast_af, SOCK_DGRAM,
-+	result = sock_create_kern(ipvs->net, ipvs->bcfg.mcast_af, SOCK_DGRAM,
- 				  IPPROTO_UDP, &sock);
- 	if (result < 0) {
- 		pr_err("Error during creation of socket; terminating\n");
-@@ -1873,7 +1872,7 @@ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *c,
- 		if (state == IP_VS_STATE_MASTER)
- 			sock = make_send_sock(ipvs, id);
- 		else
--			sock = make_receive_sock(ipvs->net, id);
-+			sock = make_receive_sock(ipvs, id);
- 		if (IS_ERR(sock)) {
- 			result = PTR_ERR(sock);
- 			goto outtinfo;
+-	net = skb_net(skb);
+-	ipvs = net_ipvs(net);
+ 	if (!ipvs->enable)
+ 		return NF_ACCEPT;
+ 
+@@ -1306,7 +1303,7 @@ static unsigned int
+ ip_vs_reply4(void *priv, struct sk_buff *skb,
+ 	     const struct nf_hook_state *state)
+ {
+-	return ip_vs_out(state->hook, skb, AF_INET);
++	return ip_vs_out(net_ipvs(state->net), state->hook, skb, AF_INET);
+ }
+ 
+ /*
+@@ -1317,7 +1314,7 @@ static unsigned int
+ ip_vs_local_reply4(void *priv, struct sk_buff *skb,
+ 		   const struct nf_hook_state *state)
+ {
+-	return ip_vs_out(state->hook, skb, AF_INET);
++	return ip_vs_out(net_ipvs(state->net), state->hook, skb, AF_INET);
+ }
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+@@ -1331,7 +1328,7 @@ static unsigned int
+ ip_vs_reply6(void *priv, struct sk_buff *skb,
+ 	     const struct nf_hook_state *state)
+ {
+-	return ip_vs_out(state->hook, skb, AF_INET6);
++	return ip_vs_out(net_ipvs(state->net), state->hook, skb, AF_INET6);
+ }
+ 
+ /*
+@@ -1342,7 +1339,7 @@ static unsigned int
+ ip_vs_local_reply6(void *priv, struct sk_buff *skb,
+ 		   const struct nf_hook_state *state)
+ {
+-	return ip_vs_out(state->hook, skb, AF_INET6);
++	return ip_vs_out(net_ipvs(state->net), state->hook, skb, AF_INET6);
+ }
+ 
+ #endif
 -- 
 2.2.1
+
