@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 42/84] ipvs: Pass ipvs not net to ip_vs_proc_sync_conn
-Date: Sun, 20 Sep 2015 01:22:58 -0500
-Message-ID: <1442730220-32458-42-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 16/84] ipvs: Pass ipvs not net to __ip_vs_del_dest
+Date: Sun, 20 Sep 2015 01:22:32 -0500
+Message-ID: <1442730220-32458-16-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -15,33 +15,46 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 98180904ccd2..e3f72cbc1204 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1064,9 +1064,8 @@ static int ip_vs_proc_str(__u8 *p, unsigned int plen, unsigned int *data_len,
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index ee2ec40d0f12..4f08611347a2 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1033,12 +1033,10 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
  /*
-  *   Process a Version 1 sync. connection
+  *	Delete a destination (must be already unlinked from the service)
   */
--static inline int ip_vs_proc_sync_conn(struct net *net, __u8 *p, __u8 *msg_end)
-+static inline int ip_vs_proc_sync_conn(struct netns_ipvs *ipvs, __u8 *p, __u8 *msg_end)
+-static void __ip_vs_del_dest(struct net *net, struct ip_vs_dest *dest,
++static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
+ 			     bool cleanup)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_conn_options opt;
- 	union  ip_vs_sync_conn *s;
- 	struct ip_vs_protocol *pp;
-@@ -1254,7 +1253,7 @@ static void ip_vs_process_message(struct netns_ipvs *ipvs, __u8 *buffer,
- 				return;
- 			}
- 			/* Process a single sync_conn */
--			retc = ip_vs_proc_sync_conn(ipvs->net, p, msg_end);
-+			retc = ip_vs_proc_sync_conn(ipvs, p, msg_end);
- 			if (retc < 0) {
- 				IP_VS_ERR_RL("BACKUP, Dropping buffer, Err: %d in decoding\n",
- 					     retc);
+-
+-	ip_vs_stop_estimator(net, &dest->stats);
++	ip_vs_stop_estimator(ipvs->net, &dest->stats);
+ 
+ 	/*
+ 	 *  Remove it from the d-linked list with the real services.
+@@ -1117,7 +1115,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 	/*
+ 	 *	Delete the destination
+ 	 */
+-	__ip_vs_del_dest(svc->ipvs->net, dest, false);
++	__ip_vs_del_dest(svc->ipvs, dest, false);
+ 
+ 	LeaveFunction(2);
+ 
+@@ -1402,7 +1400,7 @@ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
+ 	 */
+ 	list_for_each_entry_safe(dest, nxt, &svc->destinations, n_list) {
+ 		__ip_vs_unlink_dest(svc, dest, 0);
+-		__ip_vs_del_dest(svc->ipvs->net, dest, cleanup);
++		__ip_vs_del_dest(svc->ipvs, dest, cleanup);
+ 	}
+ 
+ 	/*
 -- 
 2.2.1
 
