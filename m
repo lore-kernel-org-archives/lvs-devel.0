@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 65/84] ipvs: Pass ipvs not net into ip_vs_conn_net_init and ip_vs_conn_net_cleanup
-Date: Sun, 20 Sep 2015 01:23:21 -0500
-Message-ID: <1442730220-32458-65-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 34/84] ipvs: Pass ipvs not net to stop_sync_thread
+Date: Sun, 20 Sep 2015 01:22:50 -0500
+Message-ID: <1442730220-32458-34-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,86 +15,75 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             | 4 ++--
- net/netfilter/ipvs/ip_vs_conn.c | 8 ++++----
- net/netfilter/ipvs/ip_vs_core.c | 6 +++---
- 3 files changed, 9 insertions(+), 9 deletions(-)
+ include/net/ip_vs.h             | 2 +-
+ net/netfilter/ipvs/ip_vs_ctl.c  | 4 ++--
+ net/netfilter/ipvs/ip_vs_sync.c | 7 +++----
+ 3 files changed, 6 insertions(+), 7 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 0ca436ef7dad..5ad04be64895 100644
+index dd7cd3a48fd4..71f4d338c208 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1331,9 +1331,9 @@ int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
- int ip_vs_control_net_init(struct netns_ipvs *ipvs);
- int ip_vs_protocol_net_init(struct net *net);
- int ip_vs_app_net_init(struct netns_ipvs *ipvs);
--int ip_vs_conn_net_init(struct net *net);
-+int ip_vs_conn_net_init(struct netns_ipvs *ipvs);
- int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
--void ip_vs_conn_net_cleanup(struct net *net);
-+void ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_protocol_net_cleanup(struct net *net);
- void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 43b7a7d2ba4d..3d461f417c1d 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1345,9 +1345,9 @@ flush_again:
- /*
-  * per netns init and exit
+@@ -1451,7 +1451,7 @@ static inline void ip_vs_dest_put_and_free(struct ip_vs_dest *dest)
   */
--int __net_init ip_vs_conn_net_init(struct net *net)
-+int __net_init ip_vs_conn_net_init(struct netns_ipvs *ipvs)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct net *net = ipvs->net;
+ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *cfg,
+ 		      int state);
+-int stop_sync_thread(struct net *net, int state);
++int stop_sync_thread(struct netns_ipvs *ipvs, int state);
+ void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp, int pkts);
  
- 	atomic_set(&ipvs->conn_count, 0);
+ /* IPVS rate estimator prototypes (from ip_vs_est.c) */
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 07106bfe2ac4..85a2f2699a18 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2355,7 +2355,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 			rtnl_unlock();
+ 		} else {
+ 			mutex_lock(&ipvs->sync_mutex);
+-			ret = stop_sync_thread(net, dm->state);
++			ret = stop_sync_thread(ipvs, dm->state);
+ 			mutex_unlock(&ipvs->sync_mutex);
+ 		}
+ 		goto out_dec;
+@@ -3447,7 +3447,7 @@ static int ip_vs_genl_del_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
+ 		return -EINVAL;
  
-@@ -1356,9 +1356,9 @@ int __net_init ip_vs_conn_net_init(struct net *net)
- 	return 0;
+ 	mutex_lock(&ipvs->sync_mutex);
+-	ret = stop_sync_thread(ipvs->net,
++	ret = stop_sync_thread(ipvs,
+ 			       nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
+ 	mutex_unlock(&ipvs->sync_mutex);
+ 	return ret;
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 90c455c0b42b..0b2e01aa764a 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1946,9 +1946,8 @@ out:
  }
  
--void __net_exit ip_vs_conn_net_cleanup(struct net *net)
-+void __net_exit ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs)
+ 
+-int stop_sync_thread(struct net *net, int state)
++int stop_sync_thread(struct netns_ipvs *ipvs, int state)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct net *net = ipvs->net;
- 
- 	/* flush all the connection entries first */
- 	ip_vs_conn_flush(ipvs);
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index f0369e7602a0..9b37fe30dcac 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2086,7 +2086,7 @@ static int __net_init __ip_vs_init(struct net *net)
- 	if (ip_vs_app_net_init(ipvs) < 0)
- 		goto app_fail;
- 
--	if (ip_vs_conn_net_init(net) < 0)
-+	if (ip_vs_conn_net_init(ipvs) < 0)
- 		goto conn_fail;
- 
- 	if (ip_vs_sync_net_init(ipvs) < 0)
-@@ -2100,7 +2100,7 @@ static int __net_init __ip_vs_init(struct net *net)
-  */
- 
- sync_fail:
--	ip_vs_conn_net_cleanup(net);
-+	ip_vs_conn_net_cleanup(ipvs);
- conn_fail:
- 	ip_vs_app_net_cleanup(ipvs);
- app_fail:
-@@ -2119,7 +2119,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 	struct task_struct **array;
+ 	int id;
+ 	int retc = -EINVAL;
+@@ -2030,11 +2029,11 @@ void ip_vs_sync_net_cleanup(struct net *net)
  	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
--	ip_vs_conn_net_cleanup(net);
-+	ip_vs_conn_net_cleanup(ipvs);
- 	ip_vs_app_net_cleanup(ipvs);
- 	ip_vs_protocol_net_cleanup(net);
- 	ip_vs_control_net_cleanup(ipvs);
+ 	mutex_lock(&ipvs->sync_mutex);
+-	retc = stop_sync_thread(net, IP_VS_STATE_MASTER);
++	retc = stop_sync_thread(ipvs, IP_VS_STATE_MASTER);
+ 	if (retc && retc != -ESRCH)
+ 		pr_err("Failed to stop Master Daemon\n");
+ 
+-	retc = stop_sync_thread(net, IP_VS_STATE_BACKUP);
++	retc = stop_sync_thread(ipvs, IP_VS_STATE_BACKUP);
+ 	if (retc && retc != -ESRCH)
+ 		pr_err("Failed to stop Backup Daemon\n");
+ 	mutex_unlock(&ipvs->sync_mutex);
 -- 
 2.2.1
 
