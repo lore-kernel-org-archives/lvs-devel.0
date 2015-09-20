@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 25/84] ipvs: Pass ipvs not net to ip_vs_set_timeout
-Date: Sun, 20 Sep 2015 01:22:41 -0500
-Message-ID: <1442730220-32458-25-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 50/84] ipvs: Pass ipvs not net to estimation_timer
+Date: Sun, 20 Sep 2015 01:23:06 -0500
+Message-ID: <1442730220-32458-50-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -15,50 +15,33 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_est.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index b9426a5fb667..81eb3ed4ce90 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2202,10 +2202,9 @@ static const struct file_operations ip_vs_stats_percpu_fops = {
- /*
-  *	Set timeout values for tcp tcpfin udp in the timeout_table.
-  */
--static int ip_vs_set_timeout(struct net *net, struct ip_vs_timeout_user *u)
-+static int ip_vs_set_timeout(struct netns_ipvs *ipvs, struct ip_vs_timeout_user *u)
- {
- #if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_proto_data *pd;
- #endif
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 638a301f7ee4..c86dc456c8f4 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -102,10 +102,8 @@ static void estimation_timer(unsigned long arg)
+ 	struct ip_vs_estimator *e;
+ 	struct ip_vs_stats *s;
+ 	u64 rate;
+-	struct net *net = (struct net *)arg;
+-	struct netns_ipvs *ipvs;
++	struct netns_ipvs *ipvs = (struct netns_ipvs *)arg;
  
-@@ -2369,7 +2368,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		goto out_unlock;
- 	} else if (cmd == IP_VS_SO_SET_TIMEOUT) {
- 		/* Set timeout values for (tcp tcpfin udp) */
--		ret = ip_vs_set_timeout(net, (struct ip_vs_timeout_user *)arg);
-+		ret = ip_vs_set_timeout(ipvs, (struct ip_vs_timeout_user *)arg);
- 		goto out_unlock;
- 	}
+-	ipvs = net_ipvs(net);
+ 	spin_lock(&ipvs->est_lock);
+ 	list_for_each_entry(e, &ipvs->est_list, list) {
+ 		s = container_of(e, struct ip_vs_stats, est);
+@@ -196,7 +194,7 @@ int __net_init ip_vs_estimator_net_init(struct net *net)
  
-@@ -3461,6 +3460,7 @@ static int ip_vs_genl_del_daemon(struct net *net, struct nlattr **attrs)
- 
- static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_timeout_user t;
- 
- 	__ip_vs_get_timeouts(net, &t);
-@@ -3475,7 +3475,7 @@ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
- 	if (attrs[IPVS_CMD_ATTR_TIMEOUT_UDP])
- 		t.udp_timeout = nla_get_u32(attrs[IPVS_CMD_ATTR_TIMEOUT_UDP]);
- 
--	return ip_vs_set_timeout(net, &t);
-+	return ip_vs_set_timeout(ipvs, &t);
+ 	INIT_LIST_HEAD(&ipvs->est_list);
+ 	spin_lock_init(&ipvs->est_lock);
+-	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)net);
++	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)ipvs);
+ 	mod_timer(&ipvs->est_timer, jiffies + 2 * HZ);
+ 	return 0;
  }
- 
- static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
 -- 
 2.2.1
