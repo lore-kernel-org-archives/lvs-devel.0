@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 62/84] ipvs: Pass ipvs into conn_out_get
-Date: Sun, 20 Sep 2015 01:23:18 -0500
-Message-ID: <1442730220-32458-62-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 51/84] ipvs: Pass ipvs not net to ip_vs_estimator_net_init and ip_vs_estimator_cleanup
+Date: Sun, 20 Sep 2015 01:23:07 -0500
+Message-ID: <1442730220-32458-51-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -13,144 +13,91 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-Move the hack of relying on "net_ipvs(skb_net(skb))" to dreive the ipvs up
-a layer.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h                     | 6 ++++--
- net/netfilter/ipvs/ip_vs_conn.c         | 4 ++--
- net/netfilter/ipvs/ip_vs_core.c         | 8 +++++---
- net/netfilter/ipvs/ip_vs_proto_ah_esp.c | 3 +--
- net/netfilter/xt_ipvs.c                 | 3 ++-
- 5 files changed, 14 insertions(+), 10 deletions(-)
+ include/net/ip_vs.h             | 4 ++--
+ net/netfilter/ipvs/ip_vs_core.c | 6 +++---
+ net/netfilter/ipvs/ip_vs_est.c  | 8 +++-----
+ 3 files changed, 8 insertions(+), 10 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 5c26383542e3..0ca436ef7dad 100644
+index 38c1fca0c1a7..02734eaae679 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -499,7 +499,8 @@ struct ip_vs_protocol {
- 		       const struct ip_vs_iphdr *iph);
- 
- 	struct ip_vs_conn *
--	(*conn_out_get)(int af,
-+	(*conn_out_get)(struct netns_ipvs *ipvs,
-+			int af,
- 			const struct sk_buff *skb,
- 			const struct ip_vs_iphdr *iph);
- 
-@@ -1229,7 +1230,8 @@ struct ip_vs_conn * ip_vs_conn_in_get_proto(struct netns_ipvs *ipvs, int af,
- 
- struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p);
- 
--struct ip_vs_conn * ip_vs_conn_out_get_proto(int af, const struct sk_buff *skb,
-+struct ip_vs_conn * ip_vs_conn_out_get_proto(struct netns_ipvs *ipvs, int af,
-+					     const struct sk_buff *skb,
- 					     const struct ip_vs_iphdr *iph);
- 
- /* Get reference to gain full access to conn.
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index b27b06eb693c..70ad51050cd8 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -440,10 +440,10 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
+@@ -1323,7 +1323,7 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
  }
  
- struct ip_vs_conn *
--ip_vs_conn_out_get_proto(int af, const struct sk_buff *skb,
-+ip_vs_conn_out_get_proto(struct netns_ipvs *ipvs, int af,
-+			 const struct sk_buff *skb,
- 			 const struct ip_vs_iphdr *iph)
- {
--	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 	struct ip_vs_conn_param p;
+ /* IPVS netns init & cleanup functions */
+-int ip_vs_estimator_net_init(struct net *net);
++int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_control_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_protocol_net_init(struct net *net);
+ int ip_vs_app_net_init(struct net *net);
+@@ -1333,7 +1333,7 @@ void ip_vs_conn_net_cleanup(struct net *net);
+ void ip_vs_app_net_cleanup(struct net *net);
+ void ip_vs_protocol_net_cleanup(struct net *net);
+ void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+-void ip_vs_estimator_net_cleanup(struct net *net);
++void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_sync_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
  
- 	if (ip_vs_conn_fill_param_proto(ipvs, af, skb, iph, &p))
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 9b5c2af7b63a..f0369e7602a0 100644
+index b5f451f20f52..ec6f022fba6a 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -912,6 +912,7 @@ out:
- static int ip_vs_out_icmp(struct sk_buff *skb, int *related,
- 			  unsigned int hooknum)
+@@ -2072,7 +2072,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	atomic_inc(&ipvs_netns_cnt);
+ 	net->ipvs = ipvs;
+ 
+-	if (ip_vs_estimator_net_init(net) < 0)
++	if (ip_vs_estimator_net_init(ipvs) < 0)
+ 		goto estimator_fail;
+ 
+ 	if (ip_vs_control_net_init(ipvs) < 0)
+@@ -2106,7 +2106,7 @@ app_fail:
+ protocol_fail:
+ 	ip_vs_control_net_cleanup(ipvs);
+ control_fail:
+-	ip_vs_estimator_net_cleanup(net);
++	ip_vs_estimator_net_cleanup(ipvs);
+ estimator_fail:
+ 	net->ipvs = NULL;
+ 	return -ENOMEM;
+@@ -2121,7 +2121,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 	ip_vs_app_net_cleanup(net);
+ 	ip_vs_protocol_net_cleanup(net);
+ 	ip_vs_control_net_cleanup(ipvs);
+-	ip_vs_estimator_net_cleanup(net);
++	ip_vs_estimator_net_cleanup(ipvs);
+ 	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+ 	net->ipvs = NULL;
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index c86dc456c8f4..457c6c193e13 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -188,10 +188,8 @@ void ip_vs_read_estimator(struct ip_vs_kstats *dst, struct ip_vs_stats *stats)
+ 	dst->outbps = (e->outbps + 0xF) >> 5;
+ }
+ 
+-int __net_init ip_vs_estimator_net_init(struct net *net)
++int __net_init ip_vs_estimator_net_init(struct netns_ipvs *ipvs)
  {
-+	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 	struct iphdr *iph;
- 	struct icmphdr	_icmph, *ic;
- 	struct iphdr	_ciph, *cih;	/* The ip header contained within the ICMP */
-@@ -974,7 +975,7 @@ static int ip_vs_out_icmp(struct sk_buff *skb, int *related,
- 	ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, true, &ciph);
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+-
+ 	INIT_LIST_HEAD(&ipvs->est_list);
+ 	spin_lock_init(&ipvs->est_lock);
+ 	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)ipvs);
+@@ -199,7 +197,7 @@ int __net_init ip_vs_estimator_net_init(struct net *net)
+ 	return 0;
+ }
  
- 	/* The embedded headers contain source and dest in reverse order */
--	cp = pp->conn_out_get(AF_INET, skb, &ciph);
-+	cp = pp->conn_out_get(ipvs, AF_INET, skb, &ciph);
- 	if (!cp)
- 		return NF_ACCEPT;
- 
-@@ -987,6 +988,7 @@ static int ip_vs_out_icmp(struct sk_buff *skb, int *related,
- static int ip_vs_out_icmp_v6(struct sk_buff *skb, int *related,
- 			     unsigned int hooknum, struct ip_vs_iphdr *ipvsh)
+-void __net_exit ip_vs_estimator_net_cleanup(struct net *net)
++void __net_exit ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs)
  {
-+	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 	struct icmp6hdr	_icmph, *ic;
- 	struct ip_vs_iphdr ciph = {.flags = 0, .fragoffs = 0};/*Contained IP */
- 	struct ip_vs_conn *cp;
-@@ -1029,7 +1031,7 @@ static int ip_vs_out_icmp_v6(struct sk_buff *skb, int *related,
- 		return NF_ACCEPT;
- 
- 	/* The embedded headers contain source and dest in reverse order */
--	cp = pp->conn_out_get(AF_INET6, skb, &ciph);
-+	cp = pp->conn_out_get(ipvs, AF_INET6, skb, &ciph);
- 	if (!cp)
- 		return NF_ACCEPT;
- 
-@@ -1257,7 +1259,7 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
- 	/*
- 	 * Check if the packet belongs to an existing entry
- 	 */
--	cp = pp->conn_out_get(af, skb, &iph);
-+	cp = pp->conn_out_get(ipvs, af, skb, &iph);
- 
- 	if (likely(cp))
- 		return handle_response(af, skb, pd, cp, &iph, hooknum);
-diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-index a96d93d11807..e924455de5c0 100644
---- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-@@ -82,12 +82,11 @@ ah_esp_conn_in_get(struct netns_ipvs *ipvs, int af, const struct sk_buff *skb,
- 
- 
- static struct ip_vs_conn *
--ah_esp_conn_out_get(int af, const struct sk_buff *skb,
-+ah_esp_conn_out_get(struct netns_ipvs *ipvs, int af, const struct sk_buff *skb,
- 		    const struct ip_vs_iphdr *iph)
- {
- 	struct ip_vs_conn *cp;
- 	struct ip_vs_conn_param p;
--	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 
- 	ah_esp_conn_fill_param_proto(ipvs, af, iph, &p);
- 	cp = ip_vs_conn_out_get(&p);
-diff --git a/net/netfilter/xt_ipvs.c b/net/netfilter/xt_ipvs.c
-index 452ba2a3e7ae..71a9d95e0a81 100644
---- a/net/netfilter/xt_ipvs.c
-+++ b/net/netfilter/xt_ipvs.c
-@@ -48,6 +48,7 @@ static bool
- ipvs_mt(const struct sk_buff *skb, struct xt_action_param *par)
- {
- 	const struct xt_ipvs_mtinfo *data = par->matchinfo;
-+	struct netns_ipvs *ipvs = net_ipvs(par->net);
- 	/* ipvs_mt_check ensures that family is only NFPROTO_IPV[46]. */
- 	const u_int8_t family = par->family;
- 	struct ip_vs_iphdr iph;
-@@ -85,7 +86,7 @@ ipvs_mt(const struct sk_buff *skb, struct xt_action_param *par)
- 	/*
- 	 * Check if the packet belongs to an existing entry
- 	 */
--	cp = pp->conn_out_get(family, skb, &iph);
-+	cp = pp->conn_out_get(ipvs, family, skb, &iph);
- 	if (unlikely(cp == NULL)) {
- 		match = false;
- 		goto out;
+-	del_timer_sync(&net_ipvs(net)->est_timer);
++	del_timer_sync(&ipvs->est_timer);
+ }
 -- 
 2.2.1
