@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 72/84] ipvs: Wrap sysctl_cache_bypass and remove ifdefs in ip_vs_leave
-Date: Sun, 20 Sep 2015 01:23:28 -0500
-Message-ID: <1442730220-32458-72-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 18/84] ipvs: Cache ipvs in ip_vs_genl_set_cmd
+Date: Sun, 20 Sep 2015 01:22:34 -0500
+Message-ID: <1442730220-32458-18-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -13,99 +13,37 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-With sysctl_cache_bypass now a compile time constant the compiler can
-figue out that it can elimiate all of the code that depends on
-sysctl_cache_bypass being true.
-
-Also remove the duplicate computation of net previously necessitated
-by #ifdef CONFIG_SYSCTL
+Compute ipvs early in ip_vs_genl_set_cmd and use the cached value to
+access ipvs->sync_state.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             | 10 ++++++++++
- net/netfilter/ipvs/ip_vs_core.c | 13 +++----------
- 2 files changed, 13 insertions(+), 10 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index c68c2c8ae48a..dacd873e8bb9 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1101,6 +1101,11 @@ static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
- 	return ipvs->sysctl_ignore_tunneled;
- }
- 
-+static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
-+{
-+	return ipvs->sysctl_cache_bypass;
-+}
-+
- #else
- 
- static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
-@@ -1183,6 +1188,11 @@ static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
- 	return 0;
- }
- 
-+static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
-+{
-+	return 0;
-+}
-+
- #endif
- 
- /* IPVS core functions
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 1c9c52349b7c..7e9ee1dece19 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -568,17 +568,14 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		struct ip_vs_proto_data *pd, struct ip_vs_iphdr *iph)
- {
- 	__be16 _ports[2], *pptr, dport;
--#ifdef CONFIG_SYSCTL
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 9169a27be6e7..b192bb45f697 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3516,8 +3516,10 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	int ret = 0, cmd;
+ 	int need_full_svc = 0, need_full_dest = 0;
  	struct net *net;
- 	struct netns_ipvs *ipvs;
--#endif
++	struct netns_ipvs *ipvs;
  
- 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
- 	if (!pptr)
- 		return NF_DROP;
- 	dport = likely(!ip_vs_iph_inverse(iph)) ? pptr[1] : pptr[0];
+ 	net = skb_sknet(skb);
++	ipvs = net_ipvs(net);
+ 	cmd = info->genlhdr->cmd;
  
--#ifdef CONFIG_SYSCTL
- 	net = skb_net(skb);
- 
- 
-@@ -586,7 +583,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 	   and the destination is a non-local unicast, then create
- 	   a cache_bypass connection entry */
- 	ipvs = net_ipvs(net);
--	if (ipvs->sysctl_cache_bypass && svc->fwmark &&
-+	if (sysctl_cache_bypass(ipvs) && svc->fwmark &&
- 	    !(iph->hdr_flags & (IP_VS_HDR_INVERSE | IP_VS_HDR_ICMP)) &&
- 	    ip_vs_addr_is_unicast(net, svc->af, &iph->daddr)) {
- 		int ret;
-@@ -624,7 +621,6 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		ip_vs_conn_put(cp);
- 		return ret;
- 	}
--#endif
- 
- 	/*
- 	 * When the virtual ftp service is presented, packets destined
-@@ -647,11 +643,8 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 	 */
- #ifdef CONFIG_IP_VS_IPV6
- 	if (svc->af == AF_INET6) {
--		if (!skb->dev) {
--			struct net *net_ = dev_net(skb_dst(skb)->dev);
--
--			skb->dev = net_->loopback_dev;
--		}
-+		if (!skb->dev)
-+			skb->dev = net->loopback_dev;
- 		icmpv6_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_PORT_UNREACH, 0);
- 	} else
- #endif
+ 	mutex_lock(&__ip_vs_mutex);
+@@ -3579,7 +3581,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 			/* The synchronization protocol is incompatible
+ 			 * with mixed family services
+ 			 */
+-			if (net_ipvs(net)->sync_state) {
++			if (ipvs->sync_state) {
+ 				ret = -EINVAL;
+ 				goto out;
+ 			}
 -- 
 2.2.1
