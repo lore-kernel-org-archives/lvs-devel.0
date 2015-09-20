@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 29/84] ipvs: Pass ipvs not net to ip_vs_genl_parse_service
-Date: Sun, 20 Sep 2015 01:22:45 -0500
-Message-ID: <1442730220-32458-29-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 74/84] ipvs: Pass ipvs not net into sysctl_nat_icmp_send
+Date: Sun, 20 Sep 2015 01:23:30 -0500
+Message-ID: <1442730220-32458-74-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,49 +15,42 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 4ca8d64ab6f1..1e3fc8962627 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3034,12 +3034,11 @@ nla_put_failure:
- 	return skb->len;
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 15661691bf7d..b25fb3309472 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -657,9 +657,8 @@ static int sysctl_snat_reroute(struct sk_buff *skb)
+ 	return ipvs->sysctl_snat_reroute;
  }
  
--static int ip_vs_genl_parse_service(struct net *net,
-+static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
- 				    struct ip_vs_service_user_kern *usvc,
- 				    struct nlattr *nla, int full_entry,
- 				    struct ip_vs_service **ret_svc)
+-static int sysctl_nat_icmp_send(struct net *net)
++static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct nlattr *attrs[IPVS_SVC_ATTR_MAX + 1];
- 	struct nlattr *nla_af, *nla_port, *nla_fwmark, *nla_protocol, *nla_addr;
- 	struct ip_vs_service *svc;
-@@ -3123,11 +3122,12 @@ static int ip_vs_genl_parse_service(struct net *net,
- static struct ip_vs_service *ip_vs_genl_find_service(struct net *net,
- 						     struct nlattr *nla)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_service_user_kern usvc;
- 	struct ip_vs_service *svc;
- 	int ret;
- 
--	ret = ip_vs_genl_parse_service(net, &usvc, nla, 0, &svc);
-+	ret = ip_vs_genl_parse_service(ipvs, &usvc, nla, 0, &svc);
- 	return ret ? ERR_PTR(ret) : svc;
+ 	return ipvs->sysctl_nat_icmp_send;
  }
  
-@@ -3538,7 +3538,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 	if (cmd == IPVS_CMD_NEW_SERVICE || cmd == IPVS_CMD_SET_SERVICE)
- 		need_full_svc = 1;
+@@ -671,7 +670,7 @@ static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs)
+ #else
  
--	ret = ip_vs_genl_parse_service(net, &usvc,
-+	ret = ip_vs_genl_parse_service(ipvs, &usvc,
- 				       info->attrs[IPVS_CMD_ATTR_SERVICE],
- 				       need_full_svc, &svc);
- 	if (ret)
+ static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
+-static int sysctl_nat_icmp_send(struct net *net) { return 0; }
++static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs) { return 0; }
+ static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs) { return 0; }
+ 
+ #endif
+@@ -1252,7 +1251,7 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 
+ 	if (likely(cp))
+ 		return handle_response(af, skb, pd, cp, &iph, hooknum);
+-	if (sysctl_nat_icmp_send(net) &&
++	if (sysctl_nat_icmp_send(ipvs) &&
+ 	    (pp->protocol == IPPROTO_TCP ||
+ 	     pp->protocol == IPPROTO_UDP ||
+ 	     pp->protocol == IPPROTO_SCTP)) {
 -- 
 2.2.1
+
