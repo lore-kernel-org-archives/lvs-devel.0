@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 04/84] ipvs: Store ipvs not net in struct ip_vs_conn
-Date: Sun, 20 Sep 2015 01:22:20 -0500
-Message-ID: <1442730220-32458-4-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 06/84] ipvs: Pass ipvs not net to ip_vs_fill_conn
+Date: Sun, 20 Sep 2015 01:22:22 -0500
+Message-ID: <1442730220-32458-6-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -13,223 +13,133 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-In practice struct netns_ipvs is as meaningful as struct net and more
-useful as it holds the ipvs specific data.  So store a pointer to
-struct netns_ipvs.
-
-Update the accesses of conn->net to access conn->ipvs->net instead.
+ipvs is what is actually desired so change the parameter and the modify
+the callers to pass struct netns_ipvs.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h                   | 31 +------------------------------
- net/netfilter/ipvs/ip_vs_conn.c       | 30 +++++++++++++++---------------
- net/netfilter/ipvs/ip_vs_ftp.c        |  6 +++---
- net/netfilter/ipvs/ip_vs_nfct.c       |  3 +--
- net/netfilter/ipvs/ip_vs_proto_sctp.c |  2 +-
- net/netfilter/ipvs/ip_vs_proto_tcp.c  |  2 +-
- net/netfilter/ipvs/ip_vs_proto_udp.c  |  2 +-
- net/netfilter/ipvs/ip_vs_xmit.c       |  4 ++--
- 8 files changed, 25 insertions(+), 55 deletions(-)
+ include/net/ip_vs.h                     |  4 ++--
+ net/netfilter/ipvs/ip_vs_conn.c         |  8 ++++----
+ net/netfilter/ipvs/ip_vs_core.c         |  8 ++++----
+ net/netfilter/ipvs/ip_vs_ftp.c          |  6 +++---
+ net/netfilter/ipvs/ip_vs_nfct.c         |  2 +-
+ net/netfilter/ipvs/ip_vs_proto_ah_esp.c | 14 +++++++-------
+ net/netfilter/ipvs/ip_vs_sync.c         | 16 ++++++++--------
+ 7 files changed, 29 insertions(+), 29 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 1096a71ab6ed..3bf6da8fdaf1 100644
+index 8cca99bbe15b..83e2aea63db2 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -572,9 +572,7 @@ struct ip_vs_conn {
- 	volatile __u32          flags;          /* status flags */
- 	__u16                   protocol;       /* Which protocol (TCP/UDP) */
- 	__u16			daf;		/* Address family of the dest */
--#ifdef CONFIG_NET_NS
--	struct net              *net;           /* Name space */
--#endif
-+	struct netns_ipvs	*ipvs;
- 
- 	/* counter and timer */
- 	atomic_t		refcnt;		/* reference count */
-@@ -621,33 +619,6 @@ struct ip_vs_conn {
- 	struct rcu_head		rcu_head;
+@@ -1201,14 +1201,14 @@ enum {
+ 	IP_VS_DIR_LAST,
  };
  
--/* To save some memory in conn table when name space is disabled. */
--static inline struct net *ip_vs_conn_net(const struct ip_vs_conn *cp)
--{
--#ifdef CONFIG_NET_NS
--	return cp->net;
--#else
--	return &init_net;
--#endif
--}
--
--static inline void ip_vs_conn_net_set(struct ip_vs_conn *cp, struct net *net)
--{
--#ifdef CONFIG_NET_NS
--	cp->net = net;
--#endif
--}
--
--static inline int ip_vs_conn_net_eq(const struct ip_vs_conn *cp,
--				    struct net *net)
--{
--#ifdef CONFIG_NET_NS
--	return cp->net == net;
--#else
--	return 1;
--#endif
--}
--
- /* Extended internal versions of struct ip_vs_service_user and ip_vs_dest_user
-  * for IPv6 support.
-  *
+-static inline void ip_vs_conn_fill_param(struct net *net, int af, int protocol,
++static inline void ip_vs_conn_fill_param(struct netns_ipvs *ipvs, int af, int protocol,
+ 					 const union nf_inet_addr *caddr,
+ 					 __be16 cport,
+ 					 const union nf_inet_addr *vaddr,
+ 					 __be16 vport,
+ 					 struct ip_vs_conn_param *p)
+ {
+-	p->ipvs = net_ipvs(net);
++	p->ipvs = ipvs;
+ 	p->af = af;
+ 	p->protocol = protocol;
+ 	p->caddr = caddr;
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index f71b3146a5a1..899f5d3e46ed 100644
+index d1b19bbacb45..afc7a7558434 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
 @@ -148,7 +148,7 @@ static unsigned int ip_vs_conn_hashkey_conn(const struct ip_vs_conn *cp)
  {
  	struct ip_vs_conn_param p;
  
--	ip_vs_conn_fill_param(ip_vs_conn_net(cp), cp->af, cp->protocol,
-+	ip_vs_conn_fill_param(cp->ipvs->net, cp->af, cp->protocol,
+-	ip_vs_conn_fill_param(cp->ipvs->net, cp->af, cp->protocol,
++	ip_vs_conn_fill_param(cp->ipvs, cp->af, cp->protocol,
  			      &cp->caddr, cp->cport, NULL, 0, &p);
  
  	if (cp->pe) {
-@@ -279,7 +279,7 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
- 		    ip_vs_addr_equal(p->af, p->vaddr, &cp->vaddr) &&
- 		    ((!p->cport) ^ (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
- 		    p->protocol == cp->protocol &&
--		    ip_vs_conn_net_eq(cp, p->net)) {
-+		    net_eq(cp->ipvs->net, p->net)) {
- 			if (!__ip_vs_conn_get(cp))
- 				continue;
- 			/* HIT */
-@@ -359,7 +359,7 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
+@@ -319,17 +319,17 @@ ip_vs_conn_fill_param_proto(int af, const struct sk_buff *skb,
+ 			    struct ip_vs_conn_param *p)
+ {
+ 	__be16 _ports[2], *pptr;
+-	struct net *net = skb_net(skb);
++	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
  
- 	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
- 		if (unlikely(p->pe_data && p->pe->ct_match)) {
--			if (!ip_vs_conn_net_eq(cp, p->net))
-+			if (net_eq(cp->ipvs->net, p->net))
- 				continue;
- 			if (p->pe == cp->pe && p->pe->ct_match(p, cp)) {
- 				if (__ip_vs_conn_get(cp))
-@@ -377,7 +377,7 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
- 		    p->vport == cp->vport && p->cport == cp->cport &&
- 		    cp->flags & IP_VS_CONN_F_TEMPLATE &&
- 		    p->protocol == cp->protocol &&
--		    ip_vs_conn_net_eq(cp, p->net)) {
-+		    net_eq(cp->ipvs->net, p->net)) {
- 			if (__ip_vs_conn_get(cp))
- 				goto out;
- 		}
-@@ -418,7 +418,7 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
- 		    ip_vs_addr_equal(p->af, p->vaddr, &cp->caddr) &&
- 		    ip_vs_addr_equal(p->af, p->caddr, &cp->daddr) &&
- 		    p->protocol == cp->protocol &&
--		    ip_vs_conn_net_eq(cp, p->net)) {
-+		    net_eq(cp->ipvs->net, p->net)) {
- 			if (!__ip_vs_conn_get(cp))
- 				continue;
- 			/* HIT */
-@@ -638,7 +638,7 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- 	 * so we can make the assumption that the svc_af is the same as the
- 	 * dest_af
+ 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
+ 	if (pptr == NULL)
+ 		return 1;
+ 
+ 	if (likely(!ip_vs_iph_inverse(iph)))
+-		ip_vs_conn_fill_param(net, af, iph->protocol, &iph->saddr,
++		ip_vs_conn_fill_param(ipvs, af, iph->protocol, &iph->saddr,
+ 				      pptr[0], &iph->daddr, pptr[1], p);
+ 	else
+-		ip_vs_conn_fill_param(net, af, iph->protocol, &iph->daddr,
++		ip_vs_conn_fill_param(ipvs, af, iph->protocol, &iph->daddr,
+ 				      pptr[1], &iph->saddr, pptr[0], p);
+ 	return 0;
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 3f33a076aaec..fd02aec0a11a 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -215,7 +215,7 @@ ip_vs_conn_fill_param_persist(const struct ip_vs_service *svc,
+ 			      const union nf_inet_addr *vaddr, __be16 vport,
+ 			      struct ip_vs_conn_param *p)
+ {
+-	ip_vs_conn_fill_param(svc->net, svc->af, protocol, caddr, cport, vaddr,
++	ip_vs_conn_fill_param(net_ipvs(svc->net), svc->af, protocol, caddr, cport, vaddr,
+ 			      vport, p);
+ 	p->pe = rcu_dereference(svc->pe);
+ 	if (p->pe && p->pe->fill_param)
+@@ -376,7 +376,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
+ 	/*
+ 	 *    Create a new connection according to the template
  	 */
--	dest = ip_vs_find_dest(ip_vs_conn_net(cp), cp->af, cp->af, &cp->daddr,
-+	dest = ip_vs_find_dest(cp->ipvs->net, cp->af, cp->af, &cp->daddr,
- 			       cp->dport, &cp->vaddr, cp->vport,
- 			       cp->protocol, cp->fwmark, cp->flags);
- 	if (dest) {
-@@ -668,7 +668,7 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- #endif
- 			ip_vs_bind_xmit(cp);
+-	ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol, src_addr,
++	ip_vs_conn_fill_param(net_ipvs(svc->net), svc->af, iph->protocol, src_addr,
+ 			      src_port, dst_addr, dst_port, &param);
  
--		pd = ip_vs_proto_data_get(ip_vs_conn_net(cp), cp->protocol);
-+		pd = ip_vs_proto_data_get(cp->ipvs->net, cp->protocol);
- 		if (pd && atomic_read(&pd->appcnt))
- 			ip_vs_bind_app(cp, pd->pp);
- 	}
-@@ -746,7 +746,7 @@ static int expire_quiescent_template(struct netns_ipvs *ipvs,
- int ip_vs_check_template(struct ip_vs_conn *ct)
- {
- 	struct ip_vs_dest *dest = ct->dest;
--	struct netns_ipvs *ipvs = net_ipvs(ip_vs_conn_net(ct));
-+	struct netns_ipvs *ipvs = ct->ipvs;
+ 	cp = ip_vs_conn_new(&param, dest->af, &dest->addr, dport, flags, dest,
+@@ -524,7 +524,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	{
+ 		struct ip_vs_conn_param p;
  
- 	/*
- 	 * Checking the dest server status.
-@@ -800,8 +800,8 @@ static void ip_vs_conn_rcu_free(struct rcu_head *head)
- static void ip_vs_conn_expire(unsigned long data)
- {
- 	struct ip_vs_conn *cp = (struct ip_vs_conn *)data;
--	struct net *net = ip_vs_conn_net(cp);
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct netns_ipvs *ipvs = cp->ipvs;
-+	struct net *net = ipvs->net;
- 
- 	/*
- 	 *	do I control anybody?
-@@ -887,7 +887,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
- 
- 	INIT_HLIST_NODE(&cp->c_list);
- 	setup_timer(&cp->timer, ip_vs_conn_expire, (unsigned long)cp);
--	ip_vs_conn_net_set(cp, p->net);
-+	cp->ipvs	   = ipvs;
- 	cp->af		   = p->af;
- 	cp->daf		   = dest_af;
- 	cp->protocol	   = p->protocol;
-@@ -1061,7 +1061,7 @@ static int ip_vs_conn_seq_show(struct seq_file *seq, void *v)
- 		size_t len = 0;
- 		char dbuf[IP_VS_ADDRSTRLEN];
- 
--		if (!ip_vs_conn_net_eq(cp, net))
-+		if (!net_eq(cp->ipvs->net, net))
- 			return 0;
- 		if (cp->pe_data) {
- 			pe_data[0] = ' ';
-@@ -1146,7 +1146,7 @@ static int ip_vs_conn_sync_seq_show(struct seq_file *seq, void *v)
- 		const struct ip_vs_conn *cp = v;
- 		struct net *net = seq_file_net(seq);
- 
--		if (!ip_vs_conn_net_eq(cp, net))
-+		if (!net_eq(cp->ipvs->net, net))
- 			return 0;
- 
- #ifdef CONFIG_IP_VS_IPV6
-@@ -1256,7 +1256,7 @@ void ip_vs_random_dropentry(struct net *net)
- 			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
- 				/* connection template */
- 				continue;
--			if (!ip_vs_conn_net_eq(cp, net))
-+			if (!net_eq(cp->ipvs->net, net))
- 				continue;
- 			if (cp->protocol == IPPROTO_TCP) {
- 				switch(cp->state) {
-@@ -1319,7 +1319,7 @@ flush_again:
- 	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
- 
- 		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
--			if (!ip_vs_conn_net_eq(cp, net))
-+			if (cp->ipvs != ipvs)
- 				continue;
- 			IP_VS_DBG(4, "del connection\n");
- 			ip_vs_conn_expire_now(cp);
+-		ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
++		ip_vs_conn_fill_param(net_ipvs(svc->net), svc->af, iph->protocol,
+ 				      caddr, cport, vaddr, vport, &p);
+ 		cp = ip_vs_conn_new(&p, dest->af, &dest->addr,
+ 				    dest->port ? dest->port : vport,
+@@ -600,7 +600,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 		IP_VS_DBG(6, "%s(): create a cache_bypass entry\n", __func__);
+ 		{
+ 			struct ip_vs_conn_param p;
+-			ip_vs_conn_fill_param(svc->net, svc->af, iph->protocol,
++			ip_vs_conn_fill_param(net_ipvs(svc->net), svc->af, iph->protocol,
+ 					      &iph->saddr, pptr[0],
+ 					      &iph->daddr, pptr[1], &p);
+ 			cp = ip_vs_conn_new(&p, svc->af, &daddr, 0,
 diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 5d3daae98bf0..5ccbf3c16dd4 100644
+index 5ccbf3c16dd4..cf0cba956a21 100644
 --- a/net/netfilter/ipvs/ip_vs_ftp.c
 +++ b/net/netfilter/ipvs/ip_vs_ftp.c
 @@ -223,14 +223,14 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
  		 */
  		{
  			struct ip_vs_conn_param p;
--			ip_vs_conn_fill_param(ip_vs_conn_net(cp), AF_INET,
-+			ip_vs_conn_fill_param(cp->ipvs->net, AF_INET,
+-			ip_vs_conn_fill_param(cp->ipvs->net, AF_INET,
++			ip_vs_conn_fill_param(cp->ipvs, AF_INET,
  					      iph->protocol, &from, port,
  					      &cp->caddr, 0, &p);
  			n_cp = ip_vs_conn_out_get(&p);
  		}
  		if (!n_cp) {
  			struct ip_vs_conn_param p;
--			ip_vs_conn_fill_param(ip_vs_conn_net(cp),
-+			ip_vs_conn_fill_param(cp->ipvs->net,
+-			ip_vs_conn_fill_param(cp->ipvs->net,
++			ip_vs_conn_fill_param(cp->ipvs,
  					      AF_INET, IPPROTO_TCP, &cp->caddr,
  					      0, &cp->vaddr, port, &p);
  			/* As above, this is ipv4 only */
@@ -237,85 +147,144 @@ index 5d3daae98bf0..5ccbf3c16dd4 100644
  
  	{
  		struct ip_vs_conn_param p;
--		ip_vs_conn_fill_param(ip_vs_conn_net(cp), AF_INET,
-+		ip_vs_conn_fill_param(cp->ipvs->net, AF_INET,
+-		ip_vs_conn_fill_param(cp->ipvs->net, AF_INET,
++		ip_vs_conn_fill_param(cp->ipvs, AF_INET,
  				      iph->protocol, &to, port, &cp->vaddr,
  				      htons(ntohs(cp->vport)-1), &p);
  		n_cp = ip_vs_conn_in_get(&p);
 diff --git a/net/netfilter/ipvs/ip_vs_nfct.c b/net/netfilter/ipvs/ip_vs_nfct.c
-index 136184572fc9..dae3c069966f 100644
+index dae3c069966f..30434fb133df 100644
 --- a/net/netfilter/ipvs/ip_vs_nfct.c
 +++ b/net/netfilter/ipvs/ip_vs_nfct.c
-@@ -274,8 +274,7 @@ void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp)
- 		" for conn " FMT_CONN "\n",
- 		__func__, ARG_TUPLE(&tuple), ARG_CONN(cp));
+@@ -161,7 +161,7 @@ static void ip_vs_nfct_expect_callback(struct nf_conn *ct,
  
--	h = nf_conntrack_find_get(ip_vs_conn_net(cp), &nf_ct_zone_dflt,
--				  &tuple);
-+	h = nf_conntrack_find_get(cp->ipvs->net, &nf_ct_zone_dflt, &tuple);
- 	if (h) {
- 		ct = nf_ct_tuplehash_to_ctrack(h);
- 		/* Show what happens instead of calling nf_ct_kill() */
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index ac628a9afdb5..ce615866bd63 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -521,7 +521,7 @@ static void sctp_unregister_app(struct net *net, struct ip_vs_app *inc)
+ 	/* RS->CLIENT */
+ 	orig = &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple;
+-	ip_vs_conn_fill_param(net, exp->tuple.src.l3num, orig->dst.protonum,
++	ip_vs_conn_fill_param(net_ipvs(net), exp->tuple.src.l3num, orig->dst.protonum,
+ 			      &orig->src.u3, orig->src.u.tcp.port,
+ 			      &orig->dst.u3, orig->dst.u.tcp.port, &p);
+ 	cp = ip_vs_conn_out_get(&p);
+diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+index be1791d1c03f..406d9a433d92 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+@@ -41,16 +41,16 @@ struct isakmp_hdr {
+ #define PORT_ISAKMP	500
  
- static int sctp_app_conn_bind(struct ip_vs_conn *cp)
+ static void
+-ah_esp_conn_fill_param_proto(struct net *net, int af,
++ah_esp_conn_fill_param_proto(struct netns_ipvs *ipvs, int af,
+ 			     const struct ip_vs_iphdr *iph,
+ 			     struct ip_vs_conn_param *p)
  {
--	struct netns_ipvs *ipvs = net_ipvs(ip_vs_conn_net(cp));
-+	struct netns_ipvs *ipvs = cp->ipvs;
- 	int hash;
- 	struct ip_vs_app *inc;
- 	int result = 0;
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index 8f43cf6044e9..e00623a88518 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -633,7 +633,7 @@ tcp_unregister_app(struct net *net, struct ip_vs_app *inc)
- static int
- tcp_app_conn_bind(struct ip_vs_conn *cp)
+ 	if (likely(!ip_vs_iph_inverse(iph)))
+-		ip_vs_conn_fill_param(net, af, IPPROTO_UDP,
++		ip_vs_conn_fill_param(ipvs, af, IPPROTO_UDP,
+ 				      &iph->saddr, htons(PORT_ISAKMP),
+ 				      &iph->daddr, htons(PORT_ISAKMP), p);
+ 	else
+-		ip_vs_conn_fill_param(net, af, IPPROTO_UDP,
++		ip_vs_conn_fill_param(ipvs, af, IPPROTO_UDP,
+ 				      &iph->daddr, htons(PORT_ISAKMP),
+ 				      &iph->saddr, htons(PORT_ISAKMP), p);
+ }
+@@ -61,9 +61,9 @@ ah_esp_conn_in_get(int af, const struct sk_buff *skb,
  {
--	struct netns_ipvs *ipvs = net_ipvs(ip_vs_conn_net(cp));
-+	struct netns_ipvs *ipvs = cp->ipvs;
- 	int hash;
- 	struct ip_vs_app *inc;
- 	int result = 0;
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index f3aa821efb89..3b0a2dc1826b 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -400,7 +400,7 @@ udp_unregister_app(struct net *net, struct ip_vs_app *inc)
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_conn_param p;
+-	struct net *net = skb_net(skb);
++	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
  
- static int udp_app_conn_bind(struct ip_vs_conn *cp)
+-	ah_esp_conn_fill_param_proto(net, af, iph, &p);
++	ah_esp_conn_fill_param_proto(ipvs, af, iph, &p);
+ 	cp = ip_vs_conn_in_get(&p);
+ 	if (!cp) {
+ 		/*
+@@ -88,9 +88,9 @@ ah_esp_conn_out_get(int af, const struct sk_buff *skb,
  {
--	struct netns_ipvs *ipvs = net_ipvs(ip_vs_conn_net(cp));
-+	struct netns_ipvs *ipvs = cp->ipvs;
- 	int hash;
- 	struct ip_vs_app *inc;
- 	int result = 0;
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 9dbb7ccadecb..5b5ec0b688de 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -574,7 +574,7 @@ static inline int ip_vs_nat_send_or_cont(int pf, struct sk_buff *skb,
- 		skb_forward_csum(skb);
- 		if (!skb->sk)
- 			skb_sender_cpu_clear(skb);
--		NF_HOOK(pf, NF_INET_LOCAL_OUT, ip_vs_conn_net(cp), NULL, skb,
-+		NF_HOOK(pf, NF_INET_LOCAL_OUT, cp->ipvs->net, NULL, skb,
- 			NULL, skb_dst(skb)->dev, dst_output_okfn);
- 	} else
- 		ret = NF_ACCEPT;
-@@ -596,7 +596,7 @@ static inline int ip_vs_send_or_cont(int pf, struct sk_buff *skb,
- 		skb_forward_csum(skb);
- 		if (!skb->sk)
- 			skb_sender_cpu_clear(skb);
--		NF_HOOK(pf, NF_INET_LOCAL_OUT, ip_vs_conn_net(cp), NULL, skb,
-+		NF_HOOK(pf, NF_INET_LOCAL_OUT, cp->ipvs->net, NULL, skb,
- 			NULL, skb_dst(skb)->dev, dst_output_okfn);
- 	} else
- 		ret = NF_ACCEPT;
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_conn_param p;
+-	struct net *net = skb_net(skb);
++	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
+ 
+-	ah_esp_conn_fill_param_proto(net, af, iph, &p);
++	ah_esp_conn_fill_param_proto(ipvs, af, iph, &p);
+ 	cp = ip_vs_conn_out_get(&p);
+ 	if (!cp) {
+ 		IP_VS_DBG_BUF(12, "Unknown ISAKMP entry for inout packet "
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 43f140950075..f8bc2027a6c4 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -784,21 +784,21 @@ control:
+  *  fill_param used by version 1
+  */
+ static inline int
+-ip_vs_conn_fill_param_sync(struct net *net, int af, union ip_vs_sync_conn *sc,
++ip_vs_conn_fill_param_sync(struct netns_ipvs *ipvs, int af, union ip_vs_sync_conn *sc,
+ 			   struct ip_vs_conn_param *p,
+ 			   __u8 *pe_data, unsigned int pe_data_len,
+ 			   __u8 *pe_name, unsigned int pe_name_len)
+ {
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (af == AF_INET6)
+-		ip_vs_conn_fill_param(net, af, sc->v6.protocol,
++		ip_vs_conn_fill_param(ipvs, af, sc->v6.protocol,
+ 				      (const union nf_inet_addr *)&sc->v6.caddr,
+ 				      sc->v6.cport,
+ 				      (const union nf_inet_addr *)&sc->v6.vaddr,
+ 				      sc->v6.vport, p);
+ 	else
+ #endif
+-		ip_vs_conn_fill_param(net, af, sc->v4.protocol,
++		ip_vs_conn_fill_param(ipvs, af, sc->v4.protocol,
+ 				      (const union nf_inet_addr *)&sc->v4.caddr,
+ 				      sc->v4.cport,
+ 				      (const union nf_inet_addr *)&sc->v4.vaddr,
+@@ -953,7 +953,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
+ /*
+  *  Process received multicast message for Version 0
+  */
+-static void ip_vs_process_message_v0(struct net *net, const char *buffer,
++static void ip_vs_process_message_v0(struct netns_ipvs *ipvs, const char *buffer,
+ 				     const size_t buflen)
+ {
+ 	struct ip_vs_sync_mesg_v0 *m = (struct ip_vs_sync_mesg_v0 *)buffer;
+@@ -1009,14 +1009,14 @@ static void ip_vs_process_message_v0(struct net *net, const char *buffer,
+ 			}
+ 		}
+ 
+-		ip_vs_conn_fill_param(net, AF_INET, s->protocol,
++		ip_vs_conn_fill_param(ipvs, AF_INET, s->protocol,
+ 				      (const union nf_inet_addr *)&s->caddr,
+ 				      s->cport,
+ 				      (const union nf_inet_addr *)&s->vaddr,
+ 				      s->vport, &param);
+ 
+ 		/* Send timeout as Zero */
+-		ip_vs_proc_conn(net, &param, flags, state, s->protocol, AF_INET,
++		ip_vs_proc_conn(ipvs->net, &param, flags, state, s->protocol, AF_INET,
+ 				(union nf_inet_addr *)&s->daddr, s->dport,
+ 				0, 0, opt);
+ 	}
+@@ -1171,7 +1171,7 @@ static inline int ip_vs_proc_sync_conn(struct net *net, __u8 *p, __u8 *msg_end)
+ 			state = 0;
+ 		}
+ 	}
+-	if (ip_vs_conn_fill_param_sync(net, af, s, &param, pe_data,
++	if (ip_vs_conn_fill_param_sync(net_ipvs(net), af, s, &param, pe_data,
+ 				       pe_data_len, pe_name, pe_name_len)) {
+ 		retc = 50;
+ 		goto out;
+@@ -1268,7 +1268,7 @@ static void ip_vs_process_message(struct net *net, __u8 *buffer,
+ 		}
+ 	} else {
+ 		/* Old type of message */
+-		ip_vs_process_message_v0(net, buffer, buflen);
++		ip_vs_process_message_v0(ipvs, buffer, buflen);
+ 		return;
+ 	}
+ }
 -- 
 2.2.1
