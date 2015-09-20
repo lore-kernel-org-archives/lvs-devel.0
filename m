@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 31/84] ipvs: Pass ipvs not net to ip_vs_genl_new_daemon
-Date: Sun, 20 Sep 2015 01:22:47 -0500
-Message-ID: <1442730220-32458-31-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 57/84] ipvs: Pass ipvs not net into ip_vs_app_net_init and ip_vs_app_net_cleanup
+Date: Sun, 20 Sep 2015 01:23:13 -0500
+Message-ID: <1442730220-32458-57-git-send-email-ebiederm@xmission.com>
 References: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
@@ -15,42 +15,88 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ include/net/ip_vs.h             | 4 ++--
+ net/netfilter/ipvs/ip_vs_app.c  | 9 +++++----
+ net/netfilter/ipvs/ip_vs_core.c | 6 +++---
+ 3 files changed, 10 insertions(+), 9 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 9dab372ceedb..30ed3a93bf22 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3374,9 +3374,8 @@ nla_put_failure:
- 	return skb->len;
- }
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 5caafed5af2e..728a670d69fd 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1326,11 +1326,11 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
+ int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_control_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_protocol_net_init(struct net *net);
+-int ip_vs_app_net_init(struct net *net);
++int ip_vs_app_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_conn_net_init(struct net *net);
+ int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
+ void ip_vs_conn_net_cleanup(struct net *net);
+-void ip_vs_app_net_cleanup(struct net *net);
++void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_protocol_net_cleanup(struct net *net);
+ void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index cb1246912f0f..0328f7250693 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -603,18 +603,19 @@ static const struct file_operations ip_vs_app_fops = {
+ };
+ #endif
  
--static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
-+static int ip_vs_genl_new_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
+-int __net_init ip_vs_app_net_init(struct net *net)
++int __net_init ip_vs_app_net_init(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ipvs_sync_daemon_cfg c;
- 	struct nlattr *a;
- 	int ret;
-@@ -3433,7 +3432,7 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
++	struct net *net = ipvs->net;
  
- 	rtnl_lock();
- 	mutex_lock(&ipvs->sync_mutex);
--	ret = start_sync_thread(net, &c,
-+	ret = start_sync_thread(ipvs->net, &c,
- 				nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
- 	mutex_unlock(&ipvs->sync_mutex);
- 	rtnl_unlock();
-@@ -3495,7 +3494,7 @@ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
- 			goto out;
+ 	INIT_LIST_HEAD(&ipvs->app_list);
+ 	proc_create("ip_vs_app", 0, net->proc_net, &ip_vs_app_fops);
+ 	return 0;
+ }
  
- 		if (cmd == IPVS_CMD_NEW_DAEMON)
--			ret = ip_vs_genl_new_daemon(net, daemon_attrs);
-+			ret = ip_vs_genl_new_daemon(ipvs, daemon_attrs);
- 		else
- 			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
- 	}
+-void __net_exit ip_vs_app_net_cleanup(struct net *net)
++void __net_exit ip_vs_app_net_cleanup(struct netns_ipvs *ipvs)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct net *net = ipvs->net;
++
+ 	unregister_ip_vs_app(ipvs, NULL /* all */);
+ 	remove_proc_entry("ip_vs_app", net->proc_net);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index ec6f022fba6a..01398eb757fa 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2081,7 +2081,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_protocol_net_init(net) < 0)
+ 		goto protocol_fail;
+ 
+-	if (ip_vs_app_net_init(net) < 0)
++	if (ip_vs_app_net_init(ipvs) < 0)
+ 		goto app_fail;
+ 
+ 	if (ip_vs_conn_net_init(net) < 0)
+@@ -2100,7 +2100,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ sync_fail:
+ 	ip_vs_conn_net_cleanup(net);
+ conn_fail:
+-	ip_vs_app_net_cleanup(net);
++	ip_vs_app_net_cleanup(ipvs);
+ app_fail:
+ 	ip_vs_protocol_net_cleanup(net);
+ protocol_fail:
+@@ -2118,7 +2118,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 
+ 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+ 	ip_vs_conn_net_cleanup(net);
+-	ip_vs_app_net_cleanup(net);
++	ip_vs_app_net_cleanup(ipvs);
+ 	ip_vs_protocol_net_cleanup(net);
+ 	ip_vs_control_net_cleanup(ipvs);
+ 	ip_vs_estimator_net_cleanup(ipvs);
 -- 
 2.2.1
 
