@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 79/84] ipvs: Pass ipvs through ip_vs_route_me_harder into sysctl_snat_reroute
-Date: Mon, 21 Sep 2015 13:02:56 -0500
-Message-ID: <1442858581-15869-79-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 80/84] ipvs: Remove net argument from ip_vs_tcp_conn_listen
+Date: Mon, 21 Sep 2015 13:02:57 -0500
+Message-ID: <1442858581-15869-80-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -13,68 +13,85 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
 
-This removes the need to use the hack skb_net.
+The argument is unnecessary and in practice confusing,
+and has caused the callers to do all manner of silly things.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 15 +++++++--------
- 1 file changed, 7 insertions(+), 8 deletions(-)
+ include/net/ip_vs.h                  | 2 +-
+ net/netfilter/ipvs/ip_vs_ftp.c       | 8 ++------
+ net/netfilter/ipvs/ip_vs_proto_tcp.c | 4 ++--
+ 3 files changed, 5 insertions(+), 9 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 9967c9fac7f7..22eae0231cbb 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -651,9 +651,8 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index dacd873e8bb9..f0a39ce3bf0e 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1271,7 +1271,7 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp);
  
- #ifdef CONFIG_SYSCTL
+ const char *ip_vs_state_name(__u16 proto, int state);
  
--static int sysctl_snat_reroute(struct sk_buff *skb)
-+static int sysctl_snat_reroute(struct netns_ipvs *ipvs)
- {
--	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
- 	return ipvs->sysctl_snat_reroute;
- }
+-void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp);
++void ip_vs_tcp_conn_listen(struct ip_vs_conn *cp);
+ int ip_vs_check_template(struct ip_vs_conn *ct);
+ void ip_vs_random_dropentry(struct netns_ipvs *ipvs);
+ int ip_vs_conn_init(void);
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 508544aff36d..d30c327bb578 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -181,7 +181,6 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	int ret = 0;
+ 	enum ip_conntrack_info ctinfo;
+ 	struct nf_conn *ct;
+-	struct net *net;
  
-@@ -669,7 +668,7 @@ static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs)
+ 	*diff = 0;
  
- #else
+@@ -289,9 +288,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		 * would be adjusted twice.
+ 		 */
  
--static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
-+static int sysctl_snat_reroute(struct netns_ipvs *ipvs) { return 0; }
- static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs) { return 0; }
- static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs) { return 0; }
+-		net = skb_net(skb);
+ 		cp->app_data = NULL;
+-		ip_vs_tcp_conn_listen(net, n_cp);
++		ip_vs_tcp_conn_listen(n_cp);
+ 		ip_vs_conn_put(n_cp);
+ 		return ret;
+ 	}
+@@ -320,7 +318,6 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	union nf_inet_addr to;
+ 	__be16 port;
+ 	struct ip_vs_conn *n_cp;
+-	struct net *net;
  
-@@ -702,10 +701,10 @@ static inline int ip_vs_gather_frags(struct sk_buff *skb, u_int32_t user)
- 	return err;
- }
- 
--static int ip_vs_route_me_harder(int af, struct sk_buff *skb,
--				 unsigned int hooknum)
-+static int ip_vs_route_me_harder(struct netns_ipvs *ipvs, int af,
-+				 struct sk_buff *skb, unsigned int hooknum)
- {
--	if (!sysctl_snat_reroute(skb))
-+	if (!sysctl_snat_reroute(ipvs))
- 		return 0;
- 	/* Reroute replies only to remote clients (FORWARD and LOCAL_OUT) */
- 	if (NF_INET_LOCAL_IN == hooknum)
-@@ -873,7 +872,7 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- #endif
- 		ip_vs_nat_icmp(skb, pp, cp, 1);
- 
--	if (ip_vs_route_me_harder(af, skb, hooknum))
-+	if (ip_vs_route_me_harder(cp->ipvs, af, skb, hooknum))
- 		goto out;
- 
- 	/* do the statistics and put it back */
-@@ -1144,7 +1143,7 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	 * if it came from this machine itself.  So re-compute
- 	 * the routing information.
+ 	/* no diff required for incoming packets */
+ 	*diff = 0;
+@@ -413,8 +410,7 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	/*
+ 	 *	Move tunnel to listen state
  	 */
--	if (ip_vs_route_me_harder(af, skb, hooknum))
-+	if (ip_vs_route_me_harder(cp->ipvs, af, skb, hooknum))
- 		goto drop;
+-	net = skb_net(skb);
+-	ip_vs_tcp_conn_listen(net, n_cp);
++	ip_vs_tcp_conn_listen(n_cp);
+ 	ip_vs_conn_put(n_cp);
  
- 	IP_VS_DBG_PKT(10, af, pp, skb, iph->off, "After SNAT");
+ 	return 1;
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index c913c2d00caf..d7024b2ed769 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -672,9 +672,9 @@ tcp_app_conn_bind(struct ip_vs_conn *cp)
+ /*
+  *	Set LISTEN timeout. (ip_vs_conn_put will setup timer)
+  */
+-void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp)
++void ip_vs_tcp_conn_listen(struct ip_vs_conn *cp)
+ {
+-	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(net_ipvs(net), IPPROTO_TCP);
++	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(cp->ipvs, IPPROTO_TCP);
+ 
+ 	spin_lock_bh(&cp->lock);
+ 	cp->state = IP_VS_TCP_S_LISTEN;
 -- 
 2.2.1
