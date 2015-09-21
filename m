@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 56/84] ipvs: Pass ipvs not net into ip_vs_app_inc_release
-Date: Mon, 21 Sep 2015 13:02:33 -0500
-Message-ID: <1442858581-15869-56-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 38/84] ipvs: Pass ipvs not net to ip_vs_process_message
+Date: Mon, 21 Sep 2015 13:02:15 -0500
+Message-ID: <1442858581-15869-38-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,40 +15,43 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_app.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_sync.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
-index a0cc08337a2c..42220a0efda2 100644
---- a/net/netfilter/ipvs/ip_vs_app.c
-+++ b/net/netfilter/ipvs/ip_vs_app.c
-@@ -127,9 +127,8 @@ ip_vs_app_inc_new(struct netns_ipvs *ipvs, struct ip_vs_app *app, __u16 proto,
-  *	Release app incarnation
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index cd32e3ab0c4d..280e1c03e598 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1204,10 +1204,9 @@ out:
+  *      ip_vs_conn entries.
+  *      Handles Version 0 & 1
   */
- static void
--ip_vs_app_inc_release(struct net *net, struct ip_vs_app *inc)
-+ip_vs_app_inc_release(struct netns_ipvs *ipvs, struct ip_vs_app *inc)
+-static void ip_vs_process_message(struct net *net, __u8 *buffer,
++static void ip_vs_process_message(struct netns_ipvs *ipvs, __u8 *buffer,
+ 				  const size_t buflen)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_sync_mesg *m2 = (struct ip_vs_sync_mesg *)buffer;
+ 	__u8 *p, *msg_end;
+ 	int i, nr_conns;
+@@ -1257,7 +1256,7 @@ static void ip_vs_process_message(struct net *net, __u8 *buffer,
+ 				return;
+ 			}
+ 			/* Process a single sync_conn */
+-			retc = ip_vs_proc_sync_conn(net, p, msg_end);
++			retc = ip_vs_proc_sync_conn(ipvs->net, p, msg_end);
+ 			if (retc < 0) {
+ 				IP_VS_ERR_RL("BACKUP, Dropping buffer, Err: %d in decoding\n",
+ 					     retc);
+@@ -1763,7 +1762,7 @@ static int sync_thread_backup(void *data)
+ 				break;
+ 			}
  
- 	if (!(pp = ip_vs_proto_get(inc->protocol)))
-@@ -230,7 +229,6 @@ out_unlock:
- void unregister_ip_vs_app(struct netns_ipvs *ipvs, struct ip_vs_app *app)
- {
- 	struct ip_vs_app *a, *anxt, *inc, *nxt;
--	struct net *net = ipvs->net;
- 
- 	mutex_lock(&__ip_vs_app_mutex);
- 
-@@ -238,7 +236,7 @@ void unregister_ip_vs_app(struct netns_ipvs *ipvs, struct ip_vs_app *app)
- 		if (app && strcmp(app->name, a->name))
- 			continue;
- 		list_for_each_entry_safe(inc, nxt, &a->incs_list, a_list) {
--			ip_vs_app_inc_release(net, inc);
-+			ip_vs_app_inc_release(ipvs, inc);
+-			ip_vs_process_message(ipvs->net, tinfo->buf, len);
++			ip_vs_process_message(ipvs, tinfo->buf, len);
  		}
+ 	}
  
- 		list_del(&a->a_list);
 -- 
 2.2.1
+
