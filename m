@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 42/84] ipvs: Pass ipvs not net to ip_vs_proc_sync_conn
-Date: Mon, 21 Sep 2015 13:02:19 -0500
-Message-ID: <1442858581-15869-42-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 21/84] ipvs: Pass ipvs not net to ip_vs_service_net_cleanup
+Date: Mon, 21 Sep 2015 13:01:58 -0500
+Message-ID: <1442858581-15869-21-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -15,33 +15,61 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ include/net/ip_vs.h             | 2 +-
+ net/netfilter/ipvs/ip_vs_core.c | 6 ++++--
+ net/netfilter/ipvs/ip_vs_ctl.c  | 3 +--
+ 3 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 98180904ccd2..e3f72cbc1204 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1064,9 +1064,8 @@ static int ip_vs_proc_str(__u8 *p, unsigned int plen, unsigned int *data_len,
- /*
-  *   Process a Version 1 sync. connection
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index b54a19eaa630..3c7040a313b5 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1335,7 +1335,7 @@ void ip_vs_protocol_net_cleanup(struct net *net);
+ void ip_vs_control_net_cleanup(struct net *net);
+ void ip_vs_estimator_net_cleanup(struct net *net);
+ void ip_vs_sync_net_cleanup(struct net *net);
+-void ip_vs_service_net_cleanup(struct net *net);
++void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
+ 
+ /* IPVS application functions
+  * (from ip_vs_app.c)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index c22e0692e22d..787d561e200b 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2110,13 +2110,15 @@ estimator_fail:
+ 
+ static void __net_exit __ip_vs_cleanup(struct net *net)
+ {
+-	ip_vs_service_net_cleanup(net);	/* ip_vs_flush() with locks */
++	struct netns_ipvs *ipvs = net_ipvs(net);
++
++	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+ 	ip_vs_conn_net_cleanup(net);
+ 	ip_vs_app_net_cleanup(net);
+ 	ip_vs_protocol_net_cleanup(net);
+ 	ip_vs_control_net_cleanup(net);
+ 	ip_vs_estimator_net_cleanup(net);
+-	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
++	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+ 	net->ipvs = NULL;
+ }
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index d9ff59a4bc6e..a281961a1840 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1484,9 +1484,8 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
+  *	Delete service by {netns} in the service table.
+  *	Called by __ip_vs_cleanup()
   */
--static inline int ip_vs_proc_sync_conn(struct net *net, __u8 *p, __u8 *msg_end)
-+static inline int ip_vs_proc_sync_conn(struct netns_ipvs *ipvs, __u8 *p, __u8 *msg_end)
+-void ip_vs_service_net_cleanup(struct net *net)
++void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_conn_options opt;
- 	union  ip_vs_sync_conn *s;
- 	struct ip_vs_protocol *pp;
-@@ -1254,7 +1253,7 @@ static void ip_vs_process_message(struct netns_ipvs *ipvs, __u8 *buffer,
- 				return;
- 			}
- 			/* Process a single sync_conn */
--			retc = ip_vs_proc_sync_conn(ipvs->net, p, msg_end);
-+			retc = ip_vs_proc_sync_conn(ipvs, p, msg_end);
- 			if (retc < 0) {
- 				IP_VS_ERR_RL("BACKUP, Dropping buffer, Err: %d in decoding\n",
- 					     retc);
+ 	EnterFunction(2);
+ 	/* Check for "full" addressed entries */
+ 	mutex_lock(&__ip_vs_mutex);
 -- 
 2.2.1
 
