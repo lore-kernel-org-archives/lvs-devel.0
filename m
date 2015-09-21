@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 83/84] ipvs: Remove skb_sknet
-Date: Mon, 21 Sep 2015 13:03:00 -0500
-Message-ID: <1442858581-15869-83-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 65/84] ipvs: Pass ipvs not net into ip_vs_conn_net_init and ip_vs_conn_net_cleanup
+Date: Mon, 21 Sep 2015 13:02:42 -0500
+Message-ID: <1442858581-15869-65-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -13,120 +13,87 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
 
-This function adds no real value and it obscures what the code is doing.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h            | 22 ----------------------
- net/netfilter/ipvs/ip_vs_ctl.c | 25 ++++++++++---------------
- 2 files changed, 10 insertions(+), 37 deletions(-)
+ include/net/ip_vs.h             | 4 ++--
+ net/netfilter/ipvs/ip_vs_conn.c | 8 ++++----
+ net/netfilter/ipvs/ip_vs_core.c | 6 +++---
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index d621330d423c..0816c872b689 100644
+index 0ca436ef7dad..5ad04be64895 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -38,28 +38,6 @@ static inline struct netns_ipvs *net_ipvs(struct net* net)
- 	return net->ipvs;
+@@ -1331,9 +1331,9 @@ int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_control_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_protocol_net_init(struct net *net);
+ int ip_vs_app_net_init(struct netns_ipvs *ipvs);
+-int ip_vs_conn_net_init(struct net *net);
++int ip_vs_conn_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
+-void ip_vs_conn_net_cleanup(struct net *net);
++void ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_protocol_net_cleanup(struct net *net);
+ void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 4bb1b7d1286d..d1d168c7fc68 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1345,9 +1345,9 @@ flush_again:
+ /*
+  * per netns init and exit
+  */
+-int __net_init ip_vs_conn_net_init(struct net *net)
++int __net_init ip_vs_conn_net_init(struct netns_ipvs *ipvs)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct net *net = ipvs->net;
+ 
+ 	atomic_set(&ipvs->conn_count, 0);
+ 
+@@ -1356,9 +1356,9 @@ int __net_init ip_vs_conn_net_init(struct net *net)
+ 	return 0;
  }
  
--static inline struct net *skb_sknet(const struct sk_buff *skb)
--{
--#ifdef CONFIG_NET_NS
--#ifdef CONFIG_IP_VS_DEBUG
--	/* Start with the most likely hit */
--	if (likely(skb->sk && sock_net(skb->sk)))
--		return sock_net(skb->sk);
--	WARN(skb->dev, "Maybe skb_net should be used instead in %s() line:%d\n",
--		       __func__, __LINE__);
--	if (likely(skb->dev && dev_net(skb->dev)))
--		return dev_net(skb->dev);
--	pr_err("There is no net ptr to find in the skb in %s() line:%d\n",
--		__func__, __LINE__);
--	BUG();
--#else
--	return sock_net(skb->sk);
--#endif
--#else
--	return &init_net;
--#endif
--}
--
- /* This one needed for single_open_net since net is stored directly in
-  * private not as a struct i.e. seq_file_net can't be used.
+-void __net_exit ip_vs_conn_net_cleanup(struct net *net)
++void __net_exit ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct net *net = ipvs->net;
+ 
+ 	/* flush all the connection entries first */
+ 	ip_vs_conn_flush(ipvs);
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index f0369e7602a0..9b37fe30dcac 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2086,7 +2086,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_app_net_init(ipvs) < 0)
+ 		goto app_fail;
+ 
+-	if (ip_vs_conn_net_init(net) < 0)
++	if (ip_vs_conn_net_init(ipvs) < 0)
+ 		goto conn_fail;
+ 
+ 	if (ip_vs_sync_net_init(ipvs) < 0)
+@@ -2100,7 +2100,7 @@ static int __net_init __ip_vs_init(struct net *net)
   */
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index b7a0bd274085..e7c1b052c2a3 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3002,7 +3002,8 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
- 	int idx = 0, i;
- 	int start = cb->args[0];
- 	struct ip_vs_service *svc;
--	struct netns_ipvs *ipvs = net_ipvs(skb_sknet(skb));
-+	struct net *net = sock_net(skb->sk);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	mutex_lock(&__ip_vs_mutex);
- 	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
-@@ -3201,7 +3202,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
- 	struct ip_vs_service *svc;
- 	struct ip_vs_dest *dest;
- 	struct nlattr *attrs[IPVS_CMD_ATTR_MAX + 1];
--	struct net *net = skb_sknet(skb);
-+	struct net *net = sock_net(skb->sk);
+ sync_fail:
+-	ip_vs_conn_net_cleanup(net);
++	ip_vs_conn_net_cleanup(ipvs);
+ conn_fail:
+ 	ip_vs_app_net_cleanup(ipvs);
+ app_fail:
+@@ -2119,7 +2119,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
  	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	mutex_lock(&__ip_vs_mutex);
-@@ -3348,7 +3349,7 @@ nla_put_failure:
- static int ip_vs_genl_dump_daemons(struct sk_buff *skb,
- 				   struct netlink_callback *cb)
- {
--	struct net *net = skb_sknet(skb);
-+	struct net *net = sock_net(skb->sk);
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	mutex_lock(&ipvs->sync_mutex);
-@@ -3475,11 +3476,9 @@ static int ip_vs_genl_set_config(struct netns_ipvs *ipvs, struct nlattr **attrs)
- static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
- {
- 	int ret = -EINVAL, cmd;
--	struct net *net;
--	struct netns_ipvs *ipvs;
-+	struct net *net = sock_net(skb->sk);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	net = skb_sknet(skb);
--	ipvs = net_ipvs(net);
- 	cmd = info->genlhdr->cmd;
- 
- 	if (cmd == IPVS_CMD_NEW_DAEMON || cmd == IPVS_CMD_DEL_DAEMON) {
-@@ -3508,11 +3507,9 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 	struct ip_vs_dest_user_kern udest;
- 	int ret = 0, cmd;
- 	int need_full_svc = 0, need_full_dest = 0;
--	struct net *net;
--	struct netns_ipvs *ipvs;
-+	struct net *net = sock_net(skb->sk);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	net = skb_sknet(skb);
--	ipvs = net_ipvs(net);
- 	cmd = info->genlhdr->cmd;
- 
- 	mutex_lock(&__ip_vs_mutex);
-@@ -3632,11 +3629,9 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
- 	struct sk_buff *msg;
- 	void *reply;
- 	int ret, cmd, reply_cmd;
--	struct net *net;
--	struct netns_ipvs *ipvs;
-+	struct net *net = sock_net(skb->sk);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	net = skb_sknet(skb);
--	ipvs = net_ipvs(net);
- 	cmd = info->genlhdr->cmd;
- 
- 	if (cmd == IPVS_CMD_GET_SERVICE)
+ 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+-	ip_vs_conn_net_cleanup(net);
++	ip_vs_conn_net_cleanup(ipvs);
+ 	ip_vs_app_net_cleanup(ipvs);
+ 	ip_vs_protocol_net_cleanup(net);
+ 	ip_vs_control_net_cleanup(ipvs);
 -- 
 2.2.1
