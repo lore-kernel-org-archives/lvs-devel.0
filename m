@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 14/84] ipvs: Pass ipvs not net to ip_vs_find_dest
-Date: Mon, 21 Sep 2015 13:01:51 -0500
-Message-ID: <1442858581-15869-14-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 61/84] ipvs: Pass ipvs into .conn_in_get and ip_vs_conn_in_get_proto
+Date: Mon, 21 Sep 2015 13:02:38 -0500
+Message-ID: <1442858581-15869-61-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -13,74 +13,115 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
 
+Stop relying on "net_ipvs(skb_net(skb))" to derive the ipvs as
+skb_net is a hack.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             | 2 +-
- net/netfilter/ipvs/ip_vs_conn.c | 2 +-
- net/netfilter/ipvs/ip_vs_ctl.c  | 4 ++--
- net/netfilter/ipvs/ip_vs_sync.c | 2 +-
- 4 files changed, 5 insertions(+), 5 deletions(-)
+ include/net/ip_vs.h                     | 6 ++++--
+ net/netfilter/ipvs/ip_vs_conn.c         | 4 ++--
+ net/netfilter/ipvs/ip_vs_core.c         | 8 ++++----
+ net/netfilter/ipvs/ip_vs_proto_ah_esp.c | 3 +--
+ 4 files changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b93ee28fb011..b54a19eaa630 100644
+index fe3373c9bb3b..5c26383542e3 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1423,7 +1423,7 @@ void ip_vs_unregister_nl_ioctl(void);
- int ip_vs_control_init(void);
- void ip_vs_control_cleanup(void);
- struct ip_vs_dest *
--ip_vs_find_dest(struct net *net, int svc_af, int dest_af,
-+ip_vs_find_dest(struct netns_ipvs *ipvs, int svc_af, int dest_af,
- 		const union nf_inet_addr *daddr, __be16 dport,
- 		const union nf_inet_addr *vaddr, __be16 vport,
- 		__u16 protocol, __u32 fwmark, __u32 flags);
+@@ -493,7 +493,8 @@ struct ip_vs_protocol {
+ 			     struct ip_vs_iphdr *iph);
+ 
+ 	struct ip_vs_conn *
+-	(*conn_in_get)(int af,
++	(*conn_in_get)(struct netns_ipvs *ipvs,
++		       int af,
+ 		       const struct sk_buff *skb,
+ 		       const struct ip_vs_iphdr *iph);
+ 
+@@ -1222,7 +1223,8 @@ static inline void ip_vs_conn_fill_param(struct netns_ipvs *ipvs, int af, int pr
+ struct ip_vs_conn *ip_vs_conn_in_get(const struct ip_vs_conn_param *p);
+ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p);
+ 
+-struct ip_vs_conn * ip_vs_conn_in_get_proto(int af, const struct sk_buff *skb,
++struct ip_vs_conn * ip_vs_conn_in_get_proto(struct netns_ipvs *ipvs, int af,
++					    const struct sk_buff *skb,
+ 					    const struct ip_vs_iphdr *iph);
+ 
+ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p);
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 3e277093ec45..ce788f8781f4 100644
+index 6754e3595a72..439d6fb8bc29 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -638,7 +638,7 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
- 	 * so we can make the assumption that the svc_af is the same as the
- 	 * dest_af
+@@ -335,10 +335,10 @@ ip_vs_conn_fill_param_proto(struct netns_ipvs *ipvs,
+ }
+ 
+ struct ip_vs_conn *
+-ip_vs_conn_in_get_proto(int af, const struct sk_buff *skb,
++ip_vs_conn_in_get_proto(struct netns_ipvs *ipvs, int af,
++			const struct sk_buff *skb,
+ 			const struct ip_vs_iphdr *iph)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
+ 	struct ip_vs_conn_param p;
+ 
+ 	if (ip_vs_conn_fill_param_proto(ipvs, af, skb, iph, &p))
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 01398eb757fa..9b5c2af7b63a 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -469,7 +469,7 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
  	 */
--	dest = ip_vs_find_dest(cp->ipvs->net, cp->af, cp->af, &cp->daddr,
-+	dest = ip_vs_find_dest(cp->ipvs, cp->af, cp->af, &cp->daddr,
- 			       cp->dport, &cp->vaddr, cp->vport,
- 			       cp->protocol, cp->fwmark, cp->flags);
- 	if (dest) {
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 8f914b67b41a..24dceaccb0a1 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -599,7 +599,7 @@ ip_vs_lookup_dest(struct ip_vs_service *svc, int dest_af,
-  * on the backup.
-  * Called under RCU lock, no refcnt is returned.
-  */
--struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int svc_af, int dest_af,
-+struct ip_vs_dest *ip_vs_find_dest(struct netns_ipvs *ipvs, int svc_af, int dest_af,
- 				   const union nf_inet_addr *daddr,
- 				   __be16 dport,
- 				   const union nf_inet_addr *vaddr,
-@@ -610,7 +610,7 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int svc_af, int dest_af,
- 	struct ip_vs_service *svc;
- 	__be16 port = dport;
+ 	if ((!skb->dev || skb->dev->flags & IFF_LOOPBACK)) {
+ 		iph->hdr_flags ^= IP_VS_HDR_INVERSE;
+-		cp = pp->conn_in_get(svc->af, skb, iph);
++		cp = pp->conn_in_get(svc->ipvs, svc->af, skb, iph);
+ 		iph->hdr_flags ^= IP_VS_HDR_INVERSE;
  
--	svc = ip_vs_service_find(net_ipvs(net), svc_af, fwmark, protocol, vaddr, vport);
-+	svc = ip_vs_service_find(ipvs, svc_af, fwmark, protocol, vaddr, vport);
- 	if (!svc)
- 		return NULL;
- 	if (fwmark && (flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ)
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index f8bc2027a6c4..9a49c3899f2e 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -904,7 +904,7 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- 		 * with synchronization, so we can make the assumption that
- 		 * the svc_af is the same as the dest_af
- 		 */
--		dest = ip_vs_find_dest(net, type, type, daddr, dport,
-+		dest = ip_vs_find_dest(ipvs, type, type, daddr, dport,
- 				       param->vaddr, param->vport, protocol,
- 				       fwmark, flags);
+ 		if (cp) {
+@@ -1490,7 +1490,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 	/* The embedded headers contain source and dest in reverse order.
+ 	 * For IPIP this is error for request, not for reply.
+ 	 */
+-	cp = pp->conn_in_get(AF_INET, skb, &ciph);
++	cp = pp->conn_in_get(ipvs, AF_INET, skb, &ciph);
  
+ 	if (!cp) {
+ 		int v;
+@@ -1648,7 +1648,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 	/* The embedded headers contain source and dest in reverse order
+ 	 * if not from localhost
+ 	 */
+-	cp = pp->conn_in_get(AF_INET6, skb, &ciph);
++	cp = pp->conn_in_get(ipvs, AF_INET6, skb, &ciph);
+ 
+ 	if (!cp) {
+ 		int v;
+@@ -1780,7 +1780,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	/*
+ 	 * Check if the packet belongs to an existing connection entry
+ 	 */
+-	cp = pp->conn_in_get(af, skb, &iph);
++	cp = pp->conn_in_get(ipvs, af, skb, &iph);
+ 
+ 	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
+ 	if (conn_reuse_mode && !iph.fragoffs &&
+diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+index 406d9a433d92..a96d93d11807 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+@@ -56,12 +56,11 @@ ah_esp_conn_fill_param_proto(struct netns_ipvs *ipvs, int af,
+ }
+ 
+ static struct ip_vs_conn *
+-ah_esp_conn_in_get(int af, const struct sk_buff *skb,
++ah_esp_conn_in_get(struct netns_ipvs *ipvs, int af, const struct sk_buff *skb,
+ 		   const struct ip_vs_iphdr *iph)
+ {
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_conn_param p;
+-	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
+ 
+ 	ah_esp_conn_fill_param_proto(ipvs, af, iph, &p);
+ 	cp = ip_vs_conn_in_get(&p);
 -- 
 2.2.1
