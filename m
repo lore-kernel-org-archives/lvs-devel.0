@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 46/84] ipvs: Pass ipvs not net to ip_vs_start_estimator aned ip_vs_stop_estimator
-Date: Mon, 21 Sep 2015 13:02:23 -0500
-Message-ID: <1442858581-15869-46-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 11/84] ipvs: Pass ipvs not net to __ip_vs_service_find
+Date: Mon, 21 Sep 2015 13:01:48 -0500
+Message-ID: <1442858581-15869-11-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -15,110 +15,88 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h            |  4 ++--
- net/netfilter/ipvs/ip_vs_ctl.c | 12 ++++++------
- net/netfilter/ipvs/ip_vs_est.c |  6 ++----
- 3 files changed, 10 insertions(+), 12 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index f3ddf7696d68..2d49357b328c 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1455,8 +1455,8 @@ int stop_sync_thread(struct netns_ipvs *ipvs, int state);
- void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts);
- 
- /* IPVS rate estimator prototypes (from ip_vs_est.c) */
--void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats);
--void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats);
-+void ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats);
-+void ip_vs_stop_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats);
- void ip_vs_zero_estimator(struct ip_vs_stats *stats);
- void ip_vs_read_estimator(struct ip_vs_kstats *dst, struct ip_vs_stats *stats);
- 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 4042a6f449cb..f43b894f3ef6 100644
+index dcb3c10a4ef2..fd8de5ceffca 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -840,7 +840,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	spin_unlock_bh(&dest->dst_lock);
- 
- 	if (add) {
--		ip_vs_start_estimator(svc->ipvs->net, &dest->stats);
-+		ip_vs_start_estimator(svc->ipvs, &dest->stats);
- 		list_add_rcu(&dest->n_list, &svc->destinations);
- 		svc->num_dests++;
- 		sched = rcu_dereference_protected(svc->scheduler, 1);
-@@ -1036,7 +1036,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
- 			     bool cleanup)
+@@ -357,10 +357,9 @@ static int ip_vs_svc_unhash(struct ip_vs_service *svc)
+  *	Get service by {netns, proto,addr,port} in the service table.
+  */
+ static inline struct ip_vs_service *
+-__ip_vs_service_find(struct net *net, int af, __u16 protocol,
++__ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u16 protocol,
+ 		     const union nf_inet_addr *vaddr, __be16 vport)
  {
--	ip_vs_stop_estimator(ipvs->net, &dest->stats);
-+	ip_vs_stop_estimator(ipvs, &dest->stats);
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	unsigned int hash;
+ 	struct ip_vs_service *svc;
  
- 	/*
- 	 *  Remove it from the d-linked list with the real services.
-@@ -1254,7 +1254,7 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 	else if (svc->port == 0)
- 		atomic_inc(&ipvs->nullsvc_counter);
+@@ -426,7 +425,7 @@ ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ 	 *	Check the table hashed by <protocol,addr,port>
+ 	 *	for "full" addressed entries
+ 	 */
+-	svc = __ip_vs_service_find(net, af, protocol, vaddr, vport);
++	svc = __ip_vs_service_find(ipvs, af, protocol, vaddr, vport);
  
--	ip_vs_start_estimator(ipvs->net, &svc->stats);
-+	ip_vs_start_estimator(ipvs, &svc->stats);
- 
- 	/* Count only IPv4 services for old get/setsockopt interface */
- 	if (svc->af == AF_INET)
-@@ -1382,7 +1382,7 @@ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
- 	if (svc->af == AF_INET)
- 		ipvs->num_services--;
- 
--	ip_vs_stop_estimator(svc->ipvs->net, &svc->stats);
-+	ip_vs_stop_estimator(svc->ipvs, &svc->stats);
- 
- 	/* Unbind scheduler */
- 	old_sched = rcu_dereference_protected(svc->scheduler, 1);
-@@ -3917,7 +3917,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
- 			kfree(tbl);
- 		return -ENOMEM;
+ 	if (svc == NULL
+ 	    && protocol == IPPROTO_TCP
+@@ -436,7 +435,7 @@ ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ 		 * Check if ftp service entry exists, the packet
+ 		 * might belong to FTP data connections.
+ 		 */
+-		svc = __ip_vs_service_find(net, af, protocol, vaddr, FTPPORT);
++		svc = __ip_vs_service_find(ipvs, af, protocol, vaddr, FTPPORT);
  	}
--	ip_vs_start_estimator(net, &ipvs->tot_stats);
-+	ip_vs_start_estimator(ipvs, &ipvs->tot_stats);
- 	ipvs->sysctl_tbl = tbl;
- 	/* Schedule defense work */
- 	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
-@@ -3933,7 +3933,7 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
- 	cancel_delayed_work_sync(&ipvs->defense_work);
- 	cancel_work_sync(&ipvs->defense_work.work);
- 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
--	ip_vs_stop_estimator(net, &ipvs->tot_stats);
-+	ip_vs_stop_estimator(ipvs, &ipvs->tot_stats);
  
- 	if (!net_eq(net, &init_net))
- 		kfree(ipvs->sysctl_tbl);
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index ef0eb0a8d552..638a301f7ee4 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -140,9 +140,8 @@ static void estimation_timer(unsigned long arg)
- 	mod_timer(&ipvs->est_timer, jiffies + 2*HZ);
- }
+ 	if (svc == NULL
+@@ -444,7 +443,7 @@ ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ 		/*
+ 		 * Check if the catch-all port (port zero) exists
+ 		 */
+-		svc = __ip_vs_service_find(net, af, protocol, vaddr, 0);
++		svc = __ip_vs_service_find(ipvs, af, protocol, vaddr, 0);
+ 	}
  
--void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats)
-+void ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_estimator *est = &stats->est;
+   out:
+@@ -2411,7 +2410,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 	/* Lookup the exact service by <protocol, addr, port> or fwmark */
+ 	rcu_read_lock();
+ 	if (usvc.fwmark == 0)
+-		svc = __ip_vs_service_find(net, usvc.af, usvc.protocol,
++		svc = __ip_vs_service_find(ipvs, usvc.af, usvc.protocol,
+ 					   &usvc.addr, usvc.port);
+ 	else
+ 		svc = __ip_vs_svc_fwm_find(ipvs, usvc.af, usvc.fwmark);
+@@ -2551,7 +2550,7 @@ __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
+ 	if (get->fwmark)
+ 		svc = __ip_vs_svc_fwm_find(ipvs, AF_INET, get->fwmark);
+ 	else
+-		svc = __ip_vs_service_find(net, AF_INET, get->protocol, &addr,
++		svc = __ip_vs_service_find(ipvs, AF_INET, get->protocol, &addr,
+ 					   get->port);
+ 	rcu_read_unlock();
  
- 	INIT_LIST_HEAD(&est->list);
-@@ -152,9 +151,8 @@ void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats)
- 	spin_unlock_bh(&ipvs->est_lock);
- }
- 
--void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats)
-+void ip_vs_stop_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_estimator *est = &stats->est;
- 
- 	spin_lock_bh(&ipvs->est_lock);
+@@ -2745,7 +2744,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 		if (entry->fwmark)
+ 			svc = __ip_vs_svc_fwm_find(ipvs, AF_INET, entry->fwmark);
+ 		else
+-			svc = __ip_vs_service_find(net, AF_INET,
++			svc = __ip_vs_service_find(ipvs, AF_INET,
+ 						   entry->protocol, &addr,
+ 						   entry->port);
+ 		rcu_read_unlock();
+@@ -3094,7 +3093,7 @@ static int ip_vs_genl_parse_service(struct net *net,
+ 	if (usvc->fwmark)
+ 		svc = __ip_vs_svc_fwm_find(ipvs, usvc->af, usvc->fwmark);
+ 	else
+-		svc = __ip_vs_service_find(net, usvc->af, usvc->protocol,
++		svc = __ip_vs_service_find(ipvs, usvc->af, usvc->protocol,
+ 					   &usvc->addr, usvc->port);
+ 	rcu_read_unlock();
+ 	*ret_svc = svc;
 -- 
 2.2.1
 
