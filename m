@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 73/84] ipvs: Simplify ipvs and net access in ip_vs_leave
-Date: Mon, 21 Sep 2015 13:02:50 -0500
-Message-ID: <1442858581-15869-73-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 56/84] ipvs: Pass ipvs not net into ip_vs_app_inc_release
+Date: Mon, 21 Sep 2015 13:02:33 -0500
+Message-ID: <1442858581-15869-56-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -13,40 +13,42 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
 
-Stop using the hack skb_net(skb) to compute the network namespace.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ net/netfilter/ipvs/ip_vs_app.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 7e9ee1dece19..15661691bf7d 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -568,21 +568,17 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		struct ip_vs_proto_data *pd, struct ip_vs_iphdr *iph)
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index a0cc08337a2c..42220a0efda2 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -127,9 +127,8 @@ ip_vs_app_inc_new(struct netns_ipvs *ipvs, struct ip_vs_app *app, __u16 proto,
+  *	Release app incarnation
+  */
+ static void
+-ip_vs_app_inc_release(struct net *net, struct ip_vs_app *inc)
++ip_vs_app_inc_release(struct netns_ipvs *ipvs, struct ip_vs_app *inc)
  {
- 	__be16 _ports[2], *pptr, dport;
--	struct net *net;
--	struct netns_ipvs *ipvs;
-+	struct netns_ipvs *ipvs = svc->ipvs;
-+	struct net *net = ipvs->net;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_protocol *pp;
  
- 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
- 	if (!pptr)
- 		return NF_DROP;
- 	dport = likely(!ip_vs_iph_inverse(iph)) ? pptr[1] : pptr[0];
+ 	if (!(pp = ip_vs_proto_get(inc->protocol)))
+@@ -230,7 +229,6 @@ out_unlock:
+ void unregister_ip_vs_app(struct netns_ipvs *ipvs, struct ip_vs_app *app)
+ {
+ 	struct ip_vs_app *a, *anxt, *inc, *nxt;
+-	struct net *net = ipvs->net;
  
--	net = skb_net(skb);
--
--
- 	/* if it is fwmark-based service, the cache_bypass sysctl is up
- 	   and the destination is a non-local unicast, then create
- 	   a cache_bypass connection entry */
--	ipvs = net_ipvs(net);
- 	if (sysctl_cache_bypass(ipvs) && svc->fwmark &&
- 	    !(iph->hdr_flags & (IP_VS_HDR_INVERSE | IP_VS_HDR_ICMP)) &&
- 	    ip_vs_addr_is_unicast(net, svc->af, &iph->daddr)) {
+ 	mutex_lock(&__ip_vs_app_mutex);
+ 
+@@ -238,7 +236,7 @@ void unregister_ip_vs_app(struct netns_ipvs *ipvs, struct ip_vs_app *app)
+ 		if (app && strcmp(app->name, a->name))
+ 			continue;
+ 		list_for_each_entry_safe(inc, nxt, &a->incs_list, a_list) {
+-			ip_vs_app_inc_release(net, inc);
++			ip_vs_app_inc_release(ipvs, inc);
+ 		}
+ 
+ 		list_del(&a->a_list);
 -- 
 2.2.1
