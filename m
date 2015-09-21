@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 65/84] ipvs: Pass ipvs not net into ip_vs_conn_net_init and ip_vs_conn_net_cleanup
-Date: Mon, 21 Sep 2015 13:02:42 -0500
-Message-ID: <1442858581-15869-65-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 57/84] ipvs: Pass ipvs not net into ip_vs_app_net_init and ip_vs_app_net_cleanup
+Date: Mon, 21 Sep 2015 13:02:34 -0500
+Message-ID: <1442858581-15869-57-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -16,84 +16,86 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
  include/net/ip_vs.h             | 4 ++--
- net/netfilter/ipvs/ip_vs_conn.c | 8 ++++----
+ net/netfilter/ipvs/ip_vs_app.c  | 8 ++++----
  net/netfilter/ipvs/ip_vs_core.c | 6 +++---
  3 files changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 0ca436ef7dad..5ad04be64895 100644
+index 5caafed5af2e..728a670d69fd 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1331,9 +1331,9 @@ int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
+@@ -1326,11 +1326,11 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
+ int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
  int ip_vs_control_net_init(struct netns_ipvs *ipvs);
  int ip_vs_protocol_net_init(struct net *net);
- int ip_vs_app_net_init(struct netns_ipvs *ipvs);
--int ip_vs_conn_net_init(struct net *net);
-+int ip_vs_conn_net_init(struct netns_ipvs *ipvs);
+-int ip_vs_app_net_init(struct net *net);
++int ip_vs_app_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_conn_net_init(struct net *net);
  int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
--void ip_vs_conn_net_cleanup(struct net *net);
-+void ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_conn_net_cleanup(struct net *net);
+-void ip_vs_app_net_cleanup(struct net *net);
++void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
  void ip_vs_protocol_net_cleanup(struct net *net);
  void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 4bb1b7d1286d..d1d168c7fc68 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1345,9 +1345,9 @@ flush_again:
- /*
-  * per netns init and exit
-  */
--int __net_init ip_vs_conn_net_init(struct net *net)
-+int __net_init ip_vs_conn_net_init(struct netns_ipvs *ipvs)
+ void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index 42220a0efda2..0328f7250693 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -603,18 +603,18 @@ static const struct file_operations ip_vs_app_fops = {
+ };
+ #endif
+ 
+-int __net_init ip_vs_app_net_init(struct net *net)
++int __net_init ip_vs_app_net_init(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
 +	struct net *net = ipvs->net;
  
- 	atomic_set(&ipvs->conn_count, 0);
- 
-@@ -1356,9 +1356,9 @@ int __net_init ip_vs_conn_net_init(struct net *net)
+ 	INIT_LIST_HEAD(&ipvs->app_list);
+ 	proc_create("ip_vs_app", 0, net->proc_net, &ip_vs_app_fops);
  	return 0;
  }
  
--void __net_exit ip_vs_conn_net_cleanup(struct net *net)
-+void __net_exit ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs)
+-void __net_exit ip_vs_app_net_cleanup(struct net *net)
++void __net_exit ip_vs_app_net_cleanup(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
 +	struct net *net = ipvs->net;
  
- 	/* flush all the connection entries first */
- 	ip_vs_conn_flush(ipvs);
+ 	unregister_ip_vs_app(ipvs, NULL /* all */);
+ 	remove_proc_entry("ip_vs_app", net->proc_net);
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index f0369e7602a0..9b37fe30dcac 100644
+index ec6f022fba6a..01398eb757fa 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2086,7 +2086,7 @@ static int __net_init __ip_vs_init(struct net *net)
- 	if (ip_vs_app_net_init(ipvs) < 0)
+@@ -2081,7 +2081,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_protocol_net_init(net) < 0)
+ 		goto protocol_fail;
+ 
+-	if (ip_vs_app_net_init(net) < 0)
++	if (ip_vs_app_net_init(ipvs) < 0)
  		goto app_fail;
  
--	if (ip_vs_conn_net_init(net) < 0)
-+	if (ip_vs_conn_net_init(ipvs) < 0)
- 		goto conn_fail;
- 
- 	if (ip_vs_sync_net_init(ipvs) < 0)
+ 	if (ip_vs_conn_net_init(net) < 0)
 @@ -2100,7 +2100,7 @@ static int __net_init __ip_vs_init(struct net *net)
-  */
- 
  sync_fail:
--	ip_vs_conn_net_cleanup(net);
-+	ip_vs_conn_net_cleanup(ipvs);
+ 	ip_vs_conn_net_cleanup(net);
  conn_fail:
- 	ip_vs_app_net_cleanup(ipvs);
+-	ip_vs_app_net_cleanup(net);
++	ip_vs_app_net_cleanup(ipvs);
  app_fail:
-@@ -2119,7 +2119,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
- 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	ip_vs_protocol_net_cleanup(net);
+ protocol_fail:
+@@ -2118,7 +2118,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
  
  	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
--	ip_vs_conn_net_cleanup(net);
-+	ip_vs_conn_net_cleanup(ipvs);
- 	ip_vs_app_net_cleanup(ipvs);
+ 	ip_vs_conn_net_cleanup(net);
+-	ip_vs_app_net_cleanup(net);
++	ip_vs_app_net_cleanup(ipvs);
  	ip_vs_protocol_net_cleanup(net);
  	ip_vs_control_net_cleanup(ipvs);
+ 	ip_vs_estimator_net_cleanup(ipvs);
 -- 
 2.2.1
+
