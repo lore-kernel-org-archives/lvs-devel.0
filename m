@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 20/84] ipvs: Pass ipvs not net to ip_vs_flush
-Date: Mon, 21 Sep 2015 13:01:57 -0500
-Message-ID: <1442858581-15869-20-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 74/84] ipvs: Pass ipvs not net into sysctl_nat_icmp_send
+Date: Mon, 21 Sep 2015 13:02:51 -0500
+Message-ID: <1442858581-15869-74-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,55 +15,41 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index ff7f9d19f2c3..d9ff59a4bc6e 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1449,9 +1449,8 @@ static int ip_vs_del_service(struct ip_vs_service *svc)
- /*
-  *	Flush all the virtual services
-  */
--static int ip_vs_flush(struct net *net, bool cleanup)
-+static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 15661691bf7d..b25fb3309472 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -657,9 +657,8 @@ static int sysctl_snat_reroute(struct sk_buff *skb)
+ 	return ipvs->sysctl_snat_reroute;
+ }
+ 
+-static int sysctl_nat_icmp_send(struct net *net)
++static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	int idx;
- 	struct ip_vs_service *svc;
- 	struct hlist_node *n;
-@@ -1487,10 +1486,11 @@ static int ip_vs_flush(struct net *net, bool cleanup)
-  */
- void ip_vs_service_net_cleanup(struct net *net)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 	EnterFunction(2);
- 	/* Check for "full" addressed entries */
- 	mutex_lock(&__ip_vs_mutex);
--	ip_vs_flush(net, true);
-+	ip_vs_flush(ipvs, true);
- 	mutex_unlock(&__ip_vs_mutex);
- 	LeaveFunction(2);
+ 	return ipvs->sysctl_nat_icmp_send;
  }
-@@ -2366,7 +2366,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 	mutex_lock(&__ip_vs_mutex);
- 	if (cmd == IP_VS_SO_SET_FLUSH) {
- 		/* Flush the virtual service */
--		ret = ip_vs_flush(net, false);
-+		ret = ip_vs_flush(ipvs, false);
- 		goto out_unlock;
- 	} else if (cmd == IP_VS_SO_SET_TIMEOUT) {
- 		/* Set timeout values for (tcp tcpfin udp) */
-@@ -3524,7 +3524,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 	mutex_lock(&__ip_vs_mutex);
  
- 	if (cmd == IPVS_CMD_FLUSH) {
--		ret = ip_vs_flush(net, false);
-+		ret = ip_vs_flush(ipvs, false);
- 		goto out;
- 	} else if (cmd == IPVS_CMD_SET_CONFIG) {
- 		ret = ip_vs_genl_set_config(net, info->attrs);
+@@ -671,7 +670,7 @@ static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs)
+ #else
+ 
+ static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
+-static int sysctl_nat_icmp_send(struct net *net) { return 0; }
++static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs) { return 0; }
+ static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs) { return 0; }
+ 
+ #endif
+@@ -1252,7 +1251,7 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+ 
+ 	if (likely(cp))
+ 		return handle_response(af, skb, pd, cp, &iph, hooknum);
+-	if (sysctl_nat_icmp_send(net) &&
++	if (sysctl_nat_icmp_send(ipvs) &&
+ 	    (pp->protocol == IPPROTO_TCP ||
+ 	     pp->protocol == IPPROTO_UDP ||
+ 	     pp->protocol == IPPROTO_SCTP)) {
 -- 
 2.2.1
-
