@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 29/84] ipvs: Pass ipvs not net to ip_vs_genl_parse_service
-Date: Mon, 21 Sep 2015 13:02:06 -0500
-Message-ID: <1442858581-15869-29-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 34/84] ipvs: Pass ipvs not net to stop_sync_thread
+Date: Mon, 21 Sep 2015 13:02:11 -0500
+Message-ID: <1442858581-15869-34-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,50 +15,74 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ include/net/ip_vs.h             | 2 +-
+ net/netfilter/ipvs/ip_vs_ctl.c  | 4 ++--
+ net/netfilter/ipvs/ip_vs_sync.c | 7 +++----
+ 3 files changed, 6 insertions(+), 7 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index dd7cd3a48fd4..71f4d338c208 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1451,7 +1451,7 @@ static inline void ip_vs_dest_put_and_free(struct ip_vs_dest *dest)
+  */
+ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *cfg,
+ 		      int state);
+-int stop_sync_thread(struct net *net, int state);
++int stop_sync_thread(struct netns_ipvs *ipvs, int state);
+ void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp, int pkts);
+ 
+ /* IPVS rate estimator prototypes (from ip_vs_est.c) */
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index e509c27f7292..ea650ed62a50 100644
+index b63b4c186040..dba75ec2ed53 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3034,12 +3034,11 @@ nla_put_failure:
- 	return skb->len;
+@@ -2355,7 +2355,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 			rtnl_unlock();
+ 		} else {
+ 			mutex_lock(&ipvs->sync_mutex);
+-			ret = stop_sync_thread(net, dm->state);
++			ret = stop_sync_thread(ipvs, dm->state);
+ 			mutex_unlock(&ipvs->sync_mutex);
+ 		}
+ 		goto out_dec;
+@@ -3447,7 +3447,7 @@ static int ip_vs_genl_del_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
+ 		return -EINVAL;
+ 
+ 	mutex_lock(&ipvs->sync_mutex);
+-	ret = stop_sync_thread(ipvs->net,
++	ret = stop_sync_thread(ipvs,
+ 			       nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
+ 	mutex_unlock(&ipvs->sync_mutex);
+ 	return ret;
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 90c455c0b42b..0b2e01aa764a 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1946,9 +1946,8 @@ out:
  }
  
--static int ip_vs_genl_parse_service(struct net *net,
-+static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
- 				    struct ip_vs_service_user_kern *usvc,
- 				    struct nlattr *nla, int full_entry,
- 				    struct ip_vs_service **ret_svc)
+ 
+-int stop_sync_thread(struct net *net, int state)
++int stop_sync_thread(struct netns_ipvs *ipvs, int state)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct nlattr *attrs[IPVS_SVC_ATTR_MAX + 1];
- 	struct nlattr *nla_af, *nla_port, *nla_fwmark, *nla_protocol, *nla_addr;
- 	struct ip_vs_service *svc;
-@@ -3123,11 +3122,12 @@ static int ip_vs_genl_parse_service(struct net *net,
- static struct ip_vs_service *ip_vs_genl_find_service(struct net *net,
- 						     struct nlattr *nla)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_service_user_kern usvc;
- 	struct ip_vs_service *svc;
- 	int ret;
+ 	struct task_struct **array;
+ 	int id;
+ 	int retc = -EINVAL;
+@@ -2030,11 +2029,11 @@ void ip_vs_sync_net_cleanup(struct net *net)
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
  
--	ret = ip_vs_genl_parse_service(net, &usvc, nla, 0, &svc);
-+	ret = ip_vs_genl_parse_service(ipvs, &usvc, nla, 0, &svc);
- 	return ret ? ERR_PTR(ret) : svc;
- }
+ 	mutex_lock(&ipvs->sync_mutex);
+-	retc = stop_sync_thread(net, IP_VS_STATE_MASTER);
++	retc = stop_sync_thread(ipvs, IP_VS_STATE_MASTER);
+ 	if (retc && retc != -ESRCH)
+ 		pr_err("Failed to stop Master Daemon\n");
  
-@@ -3538,7 +3538,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 	if (cmd == IPVS_CMD_NEW_SERVICE || cmd == IPVS_CMD_SET_SERVICE)
- 		need_full_svc = 1;
- 
--	ret = ip_vs_genl_parse_service(net, &usvc,
-+	ret = ip_vs_genl_parse_service(ipvs, &usvc,
- 				       info->attrs[IPVS_CMD_ATTR_SERVICE],
- 				       need_full_svc, &svc);
- 	if (ret)
+-	retc = stop_sync_thread(net, IP_VS_STATE_BACKUP);
++	retc = stop_sync_thread(ipvs, IP_VS_STATE_BACKUP);
+ 	if (retc && retc != -ESRCH)
+ 		pr_err("Failed to stop Backup Daemon\n");
+ 	mutex_unlock(&ipvs->sync_mutex);
 -- 
 2.2.1
-
