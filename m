@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 45/84] ipvs: Pass ipvs not net to ip_vs_genl_set_config
-Date: Mon, 21 Sep 2015 13:02:22 -0500
-Message-ID: <1442858581-15869-45-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 30/84] ipvs: Pass ipvs not net to ip_vs_genl_find_service
+Date: Mon, 21 Sep 2015 13:02:07 -0500
+Message-ID: <1442858581-15869-30-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,32 +15,51 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index dba75ec2ed53..4042a6f449cb 100644
+index ea650ed62a50..01c3a1a75d16 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3453,9 +3453,8 @@ static int ip_vs_genl_del_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
- 	return ret;
+@@ -3119,10 +3119,9 @@ static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
+ 	return 0;
  }
  
--static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
-+static int ip_vs_genl_set_config(struct netns_ipvs *ipvs, struct nlattr **attrs)
+-static struct ip_vs_service *ip_vs_genl_find_service(struct net *net,
++static struct ip_vs_service *ip_vs_genl_find_service(struct netns_ipvs *ipvs,
+ 						     struct nlattr *nla)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_timeout_user t;
+ 	struct ip_vs_service_user_kern usvc;
+ 	struct ip_vs_service *svc;
+ 	int ret;
+@@ -3203,6 +3202,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
+ 	struct ip_vs_dest *dest;
+ 	struct nlattr *attrs[IPVS_CMD_ATTR_MAX + 1];
+ 	struct net *net = skb_sknet(skb);
++	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	__ip_vs_get_timeouts(ipvs, &t);
-@@ -3522,7 +3521,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 		ret = ip_vs_flush(ipvs, false);
- 		goto out;
- 	} else if (cmd == IPVS_CMD_SET_CONFIG) {
--		ret = ip_vs_genl_set_config(net, info->attrs);
-+		ret = ip_vs_genl_set_config(ipvs, info->attrs);
- 		goto out;
- 	} else if (cmd == IPVS_CMD_ZERO &&
- 		   !info->attrs[IPVS_CMD_ATTR_SERVICE]) {
+ 	mutex_lock(&__ip_vs_mutex);
+ 
+@@ -3212,7 +3212,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
+ 		goto out_err;
+ 
+ 
+-	svc = ip_vs_genl_find_service(net, attrs[IPVS_CMD_ATTR_SERVICE]);
++	svc = ip_vs_genl_find_service(ipvs, attrs[IPVS_CMD_ATTR_SERVICE]);
+ 	if (IS_ERR(svc) || svc == NULL)
+ 		goto out_err;
+ 
+@@ -3668,7 +3668,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	{
+ 		struct ip_vs_service *svc;
+ 
+-		svc = ip_vs_genl_find_service(net,
++		svc = ip_vs_genl_find_service(ipvs,
+ 					      info->attrs[IPVS_CMD_ATTR_SERVICE]);
+ 		if (IS_ERR(svc)) {
+ 			ret = PTR_ERR(svc);
 -- 
 2.2.1
+
