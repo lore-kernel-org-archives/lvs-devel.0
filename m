@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 22/84] ipvs: Pass ipvs not net to ip_vs_zero_all
-Date: Mon, 21 Sep 2015 13:01:59 -0500
-Message-ID: <1442858581-15869-22-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 68/84] ipvs: Pass ipvs into __ip_vs_get_out_rt
+Date: Mon, 21 Sep 2015 13:02:45 -0500
+Message-ID: <1442858581-15869-68-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,41 +15,73 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index a281961a1840..0b7749ae1e8d 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1576,9 +1576,8 @@ static int ip_vs_zero_service(struct ip_vs_service *svc)
- 	return 0;
- }
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index ec10ebf246fd..5cfd914d9a39 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -257,11 +257,12 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
  
--static int ip_vs_zero_all(struct net *net)
-+static int ip_vs_zero_all(struct netns_ipvs *ipvs)
+ /* Get route to destination or remote server */
+ static int
+-__ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
++__ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
++		   struct ip_vs_dest *dest,
+ 		   __be32 daddr, int rt_mode, __be32 *ret_saddr,
+ 		   struct ip_vs_iphdr *ipvsh)
  {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	int idx;
- 	struct ip_vs_service *svc;
+-	struct net *net = dev_net(skb_dst(skb)->dev);
++	struct net *net = ipvs->net;
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rtable *rt;			/* Route to the other host */
+ 	int mtu;
+@@ -630,7 +631,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
  
-@@ -2384,7 +2383,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 	if (cmd == IP_VS_SO_SET_ZERO) {
- 		/* if no service address is set, zero counters in all */
- 		if (!usvc.fwmark && !usvc.addr.ip && !usvc.port) {
--			ret = ip_vs_zero_all(net);
-+			ret = ip_vs_zero_all(ipvs);
- 			goto out_unlock;
- 		}
- 	}
-@@ -3530,7 +3529,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 		goto out;
- 	} else if (cmd == IPVS_CMD_ZERO &&
- 		   !info->attrs[IPVS_CMD_ATTR_SERVICE]) {
--		ret = ip_vs_zero_all(net);
-+		ret = ip_vs_zero_all(ipvs);
- 		goto out;
+ 	rcu_read_lock();
+-	if (__ip_vs_get_out_rt(cp->af, skb, NULL, iph->daddr,
++	if (__ip_vs_get_out_rt(cp->ipvs, cp->af, skb, NULL, iph->daddr,
+ 			       IP_VS_RT_MODE_NON_LOCAL, NULL, ipvsh) < 0)
+ 		goto tx_error;
+ 
+@@ -709,7 +710,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	}
  
+ 	was_input = rt_is_input_route(skb_rtable(skb));
+-	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_RDR, NULL, ipvsh);
+@@ -988,7 +989,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_CONNECT |
+@@ -1169,7 +1170,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_KNOWN_NH, NULL, ipvsh);
+@@ -1277,7 +1278,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
++	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
+ 				   NULL, iph);
+ 	if (local < 0)
+ 		goto tx_error;
 -- 
 2.2.1
+
