@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 41/84] ipvs: Pass ipvs not net to ip_vs_proc_conn
-Date: Mon, 21 Sep 2015 13:02:18 -0500
-Message-ID: <1442858581-15869-41-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 59/84] ipvs: Pass ipvs not net into init_netns and exit_netns
+Date: Mon, 21 Sep 2015 13:02:36 -0500
+Message-ID: <1442858581-15869-59-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,71 +15,126 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ include/net/ip_vs.h                   | 4 ++--
+ net/netfilter/ipvs/ip_vs_proto.c      | 4 ++--
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 6 ++----
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  | 6 ++----
+ net/netfilter/ipvs/ip_vs_proto_udp.c  | 6 ++----
+ 5 files changed, 10 insertions(+), 16 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index a0808f230cd6..98180904ccd2 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -835,7 +835,7 @@ ip_vs_conn_fill_param_sync(struct netns_ipvs *ipvs, int af, union ip_vs_sync_con
-  *  Param: ...
-  *         timeout is in sec.
-  */
--static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
-+static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *param,
- 			    unsigned int flags, unsigned int state,
- 			    unsigned int protocol, unsigned int type,
- 			    const union nf_inet_addr *daddr, __be16 dport,
-@@ -844,7 +844,6 @@ static void ip_vs_proc_conn(struct net *net, struct ip_vs_conn_param *param,
- {
- 	struct ip_vs_dest *dest;
- 	struct ip_vs_conn *cp;
--	struct netns_ipvs *ipvs = net_ipvs(net);
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 728a670d69fd..fe3373c9bb3b 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -483,9 +483,9 @@ struct ip_vs_protocol {
  
- 	if (!(flags & IP_VS_CONN_F_TEMPLATE)) {
- 		cp = ip_vs_conn_in_get(param);
-@@ -1014,7 +1013,7 @@ static void ip_vs_process_message_v0(struct netns_ipvs *ipvs, const char *buffer
- 				      s->vport, &param);
+ 	void (*exit)(struct ip_vs_protocol *pp);
  
- 		/* Send timeout as Zero */
--		ip_vs_proc_conn(ipvs->net, &param, flags, state, s->protocol, AF_INET,
-+		ip_vs_proc_conn(ipvs, &param, flags, state, s->protocol, AF_INET,
- 				(union nf_inet_addr *)&s->daddr, s->dport,
- 				0, 0, opt);
- 	}
-@@ -1067,6 +1066,7 @@ static int ip_vs_proc_str(__u8 *p, unsigned int plen, unsigned int *data_len,
-  */
- static inline int ip_vs_proc_sync_conn(struct net *net, __u8 *p, __u8 *msg_end)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_conn_options opt;
- 	union  ip_vs_sync_conn *s;
- 	struct ip_vs_protocol *pp;
-@@ -1169,21 +1169,21 @@ static inline int ip_vs_proc_sync_conn(struct net *net, __u8 *p, __u8 *msg_end)
- 			state = 0;
+-	int (*init_netns)(struct net *net, struct ip_vs_proto_data *pd);
++	int (*init_netns)(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd);
+ 
+-	void (*exit_netns)(struct net *net, struct ip_vs_proto_data *pd);
++	void (*exit_netns)(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd);
+ 
+ 	int (*conn_schedule)(int af, struct sk_buff *skb,
+ 			     struct ip_vs_proto_data *pd,
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index fb581babe5e2..f05ee668a1d1 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -78,7 +78,7 @@ register_ip_vs_proto_netns(struct netns_ipvs *ipvs, struct ip_vs_protocol *pp)
+ 	atomic_set(&pd->appcnt, 0);	/* Init app counter */
+ 
+ 	if (pp->init_netns != NULL) {
+-		int ret = pp->init_netns(ipvs->net, pd);
++		int ret = pp->init_netns(ipvs, pd);
+ 		if (ret) {
+ 			/* unlink an free proto data */
+ 			ipvs->proto_data_table[hash] = pd->next;
+@@ -125,7 +125,7 @@ unregister_ip_vs_proto_netns(struct netns_ipvs *ipvs, struct ip_vs_proto_data *p
+ 		if (*pd_p == pd) {
+ 			*pd_p = pd->next;
+ 			if (pd->pp->exit_netns != NULL)
+-				pd->pp->exit_netns(ipvs->net, pd);
++				pd->pp->exit_netns(ipvs, pd);
+ 			kfree(pd);
+ 			return 0;
  		}
- 	}
--	if (ip_vs_conn_fill_param_sync(net_ipvs(net), af, s, &param, pe_data,
-+	if (ip_vs_conn_fill_param_sync(ipvs, af, s, &param, pe_data,
- 				       pe_data_len, pe_name, pe_name_len)) {
- 		retc = 50;
- 		goto out;
- 	}
- 	/* If only IPv4, just silent skip IPv6 */
- 	if (af == AF_INET)
--		ip_vs_proc_conn(net, &param, flags, state, s->v4.protocol, af,
-+		ip_vs_proc_conn(ipvs, &param, flags, state, s->v4.protocol, af,
- 				(union nf_inet_addr *)&s->v4.daddr, s->v4.dport,
- 				ntohl(s->v4.timeout), ntohl(s->v4.fwmark),
- 				(opt_flags & IPVS_OPT_F_SEQ_DATA ? &opt : NULL)
- 				);
- #ifdef CONFIG_IP_VS_IPV6
- 	else
--		ip_vs_proc_conn(net, &param, flags, state, s->v6.protocol, af,
-+		ip_vs_proc_conn(ipvs, &param, flags, state, s->v6.protocol, af,
- 				(union nf_inet_addr *)&s->v6.daddr, s->v6.dport,
- 				ntohl(s->v6.timeout), ntohl(s->v6.fwmark),
- 				(opt_flags & IPVS_OPT_F_SEQ_DATA ? &opt : NULL)
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 345fc7485f2e..3e9418ab276a 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -561,10 +561,8 @@ out:
+  *   timeouts is netns related now.
+  * ---------------------------------------------
+  */
+-static int __ip_vs_sctp_init(struct net *net, struct ip_vs_proto_data *pd)
++static int __ip_vs_sctp_init(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+-
+ 	ip_vs_init_hash_table(ipvs->sctp_apps, SCTP_APP_TAB_SIZE);
+ 	pd->timeout_table = ip_vs_create_timeout_table((int *)sctp_timeouts,
+ 							sizeof(sctp_timeouts));
+@@ -573,7 +571,7 @@ static int __ip_vs_sctp_init(struct net *net, struct ip_vs_proto_data *pd)
+ 	return 0;
+ }
+ 
+-static void __ip_vs_sctp_exit(struct net *net, struct ip_vs_proto_data *pd)
++static void __ip_vs_sctp_exit(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd)
+ {
+ 	kfree(pd->timeout_table);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 94bea31ec388..93ba6b1fe9d1 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -691,10 +691,8 @@ void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp)
+  *   timeouts is netns related now.
+  * ---------------------------------------------
+  */
+-static int __ip_vs_tcp_init(struct net *net, struct ip_vs_proto_data *pd)
++static int __ip_vs_tcp_init(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+-
+ 	ip_vs_init_hash_table(ipvs->tcp_apps, TCP_APP_TAB_SIZE);
+ 	pd->timeout_table = ip_vs_create_timeout_table((int *)tcp_timeouts,
+ 							sizeof(tcp_timeouts));
+@@ -704,7 +702,7 @@ static int __ip_vs_tcp_init(struct net *net, struct ip_vs_proto_data *pd)
+ 	return 0;
+ }
+ 
+-static void __ip_vs_tcp_exit(struct net *net, struct ip_vs_proto_data *pd)
++static void __ip_vs_tcp_exit(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd)
+ {
+ 	kfree(pd->timeout_table);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index 234521ec9703..382dcc9cfe11 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -472,10 +472,8 @@ udp_state_transition(struct ip_vs_conn *cp, int direction,
+ 	cp->timeout = pd->timeout_table[IP_VS_UDP_S_NORMAL];
+ }
+ 
+-static int __udp_init(struct net *net, struct ip_vs_proto_data *pd)
++static int __udp_init(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+-
+ 	ip_vs_init_hash_table(ipvs->udp_apps, UDP_APP_TAB_SIZE);
+ 	pd->timeout_table = ip_vs_create_timeout_table((int *)udp_timeouts,
+ 							sizeof(udp_timeouts));
+@@ -484,7 +482,7 @@ static int __udp_init(struct net *net, struct ip_vs_proto_data *pd)
+ 	return 0;
+ }
+ 
+-static void __udp_exit(struct net *net, struct ip_vs_proto_data *pd)
++static void __udp_exit(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd)
+ {
+ 	kfree(pd->timeout_table);
+ }
 -- 
 2.2.1
+
