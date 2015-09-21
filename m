@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 47/84] ipvs: Pass ipvs not net to ip_vs_random_drop_entry
-Date: Mon, 21 Sep 2015 13:02:24 -0500
-Message-ID: <1442858581-15869-47-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 19/84] ipvs: Pass ipvs not net to ip_vs_add_service
+Date: Mon, 21 Sep 2015 13:01:56 -0500
+Message-ID: <1442858581-15869-19-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,59 +15,55 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             | 2 +-
- net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
- net/netfilter/ipvs/ip_vs_ctl.c  | 2 +-
- 3 files changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 2d49357b328c..c88a3bf85f98 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1258,7 +1258,7 @@ const char *ip_vs_state_name(__u16 proto, int state);
- 
- void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp);
- int ip_vs_check_template(struct ip_vs_conn *ct);
--void ip_vs_random_dropentry(struct net *net);
-+void ip_vs_random_dropentry(struct netns_ipvs *ipvs);
- int ip_vs_conn_init(void);
- void ip_vs_conn_cleanup(void);
- 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 06809db5eef6..bbe9e69e3eeb 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1239,7 +1239,7 @@ static inline int todrop_entry(struct ip_vs_conn *cp)
- }
- 
- /* Called from keventd and must protect itself from softirqs */
--void ip_vs_random_dropentry(struct net *net)
-+void ip_vs_random_dropentry(struct netns_ipvs *ipvs)
- {
- 	int idx;
- 	struct ip_vs_conn *cp, *cp_c;
-@@ -1255,7 +1255,7 @@ void ip_vs_random_dropentry(struct net *net)
- 			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
- 				/* connection template */
- 				continue;
--			if (!net_eq(cp->ipvs->net, net))
-+			if (cp->ipvs != ipvs)
- 				continue;
- 			if (cp->protocol == IPPROTO_TCP) {
- 				switch(cp->state) {
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index f43b894f3ef6..93b7bd39bcb9 100644
+index 7aae2dc0f766..ff7f9d19f2c3 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -228,7 +228,7 @@ static void defense_work_handler(struct work_struct *work)
+@@ -1157,14 +1157,13 @@ static void ip_vs_dest_trash_expire(unsigned long data)
+  *	Add a service into the service hash table
+  */
+ static int
+-ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
++ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
+ 		  struct ip_vs_service **svc_p)
+ {
+ 	int ret = 0, i;
+ 	struct ip_vs_scheduler *sched = NULL;
+ 	struct ip_vs_pe *pe = NULL;
+ 	struct ip_vs_service *svc = NULL;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	update_defense_level(ipvs);
- 	if (atomic_read(&ipvs->dropentry))
--		ip_vs_random_dropentry(ipvs->net);
-+		ip_vs_random_dropentry(ipvs);
- 	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
- }
- #endif
+ 	/* increase the module use count */
+ 	ip_vs_use_count_inc();
+@@ -1255,7 +1254,7 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
+ 	else if (svc->port == 0)
+ 		atomic_inc(&ipvs->nullsvc_counter);
+ 
+-	ip_vs_start_estimator(net, &svc->stats);
++	ip_vs_start_estimator(ipvs->net, &svc->stats);
+ 
+ 	/* Count only IPv4 services for old get/setsockopt interface */
+ 	if (svc->af == AF_INET)
+@@ -2421,7 +2420,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 		if (svc != NULL)
+ 			ret = -EEXIST;
+ 		else
+-			ret = ip_vs_add_service(net, &usvc, &svc);
++			ret = ip_vs_add_service(ipvs, &usvc, &svc);
+ 		break;
+ 	case IP_VS_SO_SET_EDIT:
+ 		ret = ip_vs_edit_service(svc, &usvc);
+@@ -3601,7 +3600,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	switch (cmd) {
+ 	case IPVS_CMD_NEW_SERVICE:
+ 		if (svc == NULL)
+-			ret = ip_vs_add_service(net, &usvc, &svc);
++			ret = ip_vs_add_service(ipvs, &usvc, &svc);
+ 		else
+ 			ret = -EEXIST;
+ 		break;
 -- 
 2.2.1
-
