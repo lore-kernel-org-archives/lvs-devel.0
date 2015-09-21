@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 69/84] ipvs: Pass ipvs into __ip_vs_get_out_rt_v6
-Date: Mon, 21 Sep 2015 13:02:46 -0500
-Message-ID: <1442858581-15869-69-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 83/84] ipvs: Remove skb_sknet
+Date: Mon, 21 Sep 2015 13:03:00 -0500
+Message-ID: <1442858581-15869-83-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -13,80 +13,120 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
 
+This function adds no real value and it obscures what the code is doing.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
+ include/net/ip_vs.h            | 22 ----------------------
+ net/netfilter/ipvs/ip_vs_ctl.c | 25 ++++++++++---------------
+ 2 files changed, 10 insertions(+), 37 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 5cfd914d9a39..13a678a63ed5 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -404,11 +404,12 @@ out_err:
-  * Get route to destination or remote server
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index d621330d423c..0816c872b689 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -38,28 +38,6 @@ static inline struct netns_ipvs *net_ipvs(struct net* net)
+ 	return net->ipvs;
+ }
+ 
+-static inline struct net *skb_sknet(const struct sk_buff *skb)
+-{
+-#ifdef CONFIG_NET_NS
+-#ifdef CONFIG_IP_VS_DEBUG
+-	/* Start with the most likely hit */
+-	if (likely(skb->sk && sock_net(skb->sk)))
+-		return sock_net(skb->sk);
+-	WARN(skb->dev, "Maybe skb_net should be used instead in %s() line:%d\n",
+-		       __func__, __LINE__);
+-	if (likely(skb->dev && dev_net(skb->dev)))
+-		return dev_net(skb->dev);
+-	pr_err("There is no net ptr to find in the skb in %s() line:%d\n",
+-		__func__, __LINE__);
+-	BUG();
+-#else
+-	return sock_net(skb->sk);
+-#endif
+-#else
+-	return &init_net;
+-#endif
+-}
+-
+ /* This one needed for single_open_net since net is stored directly in
+  * private not as a struct i.e. seq_file_net can't be used.
   */
- static int
--__ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
-+__ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
-+		      struct ip_vs_dest *dest,
- 		      struct in6_addr *daddr, struct in6_addr *ret_saddr,
- 		      struct ip_vs_iphdr *ipvsh, int do_xfrm, int rt_mode)
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index b7a0bd274085..e7c1b052c2a3 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3002,7 +3002,8 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
+ 	int idx = 0, i;
+ 	int start = cb->args[0];
+ 	struct ip_vs_service *svc;
+-	struct netns_ipvs *ipvs = net_ipvs(skb_sknet(skb));
++	struct net *net = sock_net(skb->sk);
++	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+ 	mutex_lock(&__ip_vs_mutex);
+ 	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
+@@ -3201,7 +3202,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
+ 	struct ip_vs_service *svc;
+ 	struct ip_vs_dest *dest;
+ 	struct nlattr *attrs[IPVS_CMD_ATTR_MAX + 1];
+-	struct net *net = skb_sknet(skb);
++	struct net *net = sock_net(skb->sk);
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+ 	mutex_lock(&__ip_vs_mutex);
+@@ -3348,7 +3349,7 @@ nla_put_failure:
+ static int ip_vs_genl_dump_daemons(struct sk_buff *skb,
+ 				   struct netlink_callback *cb)
  {
--	struct net *net = dev_net(skb_dst(skb)->dev);
-+	struct net *net = ipvs->net;
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rt6_info *rt;			/* Route to the other host */
- 	struct dst_entry *dst;
-@@ -663,7 +664,8 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
+-	struct net *net = skb_sknet(skb);
++	struct net *net = sock_net(skb->sk);
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	rcu_read_lock();
--	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &iph->daddr, NULL,
-+	if (__ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, NULL,
-+				  &iph->daddr, NULL,
- 				  ipvsh, 0, IP_VS_RT_MODE_NON_LOCAL) < 0)
- 		goto tx_error;
+ 	mutex_lock(&ipvs->sync_mutex);
+@@ -3475,11 +3476,9 @@ static int ip_vs_genl_set_config(struct netns_ipvs *ipvs, struct nlattr **attrs)
+ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
+ {
+ 	int ret = -EINVAL, cmd;
+-	struct net *net;
+-	struct netns_ipvs *ipvs;
++	struct net *net = sock_net(skb->sk);
++	struct netns_ipvs *ipvs = net_ipvs(net);
  
-@@ -799,7 +801,8 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
- 	}
+-	net = skb_sknet(skb);
+-	ipvs = net_ipvs(net);
+ 	cmd = info->genlhdr->cmd;
  
--	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
-+	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
-+				      &cp->daddr.in6,
- 				      NULL, ipvsh, 0,
- 				      IP_VS_RT_MODE_LOCAL |
- 				      IP_VS_RT_MODE_NON_LOCAL |
-@@ -1083,7 +1086,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
+ 	if (cmd == IPVS_CMD_NEW_DAEMON || cmd == IPVS_CMD_DEL_DAEMON) {
+@@ -3508,11 +3507,9 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	struct ip_vs_dest_user_kern udest;
+ 	int ret = 0, cmd;
+ 	int need_full_svc = 0, need_full_dest = 0;
+-	struct net *net;
+-	struct netns_ipvs *ipvs;
++	struct net *net = sock_net(skb->sk);
++	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
-+	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
-+				      &cp->daddr.in6,
- 				      &saddr, ipvsh, 1,
- 				      IP_VS_RT_MODE_LOCAL |
- 				      IP_VS_RT_MODE_NON_LOCAL |
-@@ -1209,7 +1213,8 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
+-	net = skb_sknet(skb);
+-	ipvs = net_ipvs(net);
+ 	cmd = info->genlhdr->cmd;
  
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
-+	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
-+				      &cp->daddr.in6,
- 				      NULL, ipvsh, 0,
- 				      IP_VS_RT_MODE_LOCAL |
- 				      IP_VS_RT_MODE_NON_LOCAL |
-@@ -1370,8 +1375,8 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
- 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
--				      NULL, ipvsh, 0, rt_mode);
-+	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
-+				      &cp->daddr.in6, NULL, ipvsh, 0, rt_mode);
- 	if (local < 0)
- 		goto tx_error;
- 	rt = (struct rt6_info *) skb_dst(skb);
+ 	mutex_lock(&__ip_vs_mutex);
+@@ -3632,11 +3629,9 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	struct sk_buff *msg;
+ 	void *reply;
+ 	int ret, cmd, reply_cmd;
+-	struct net *net;
+-	struct netns_ipvs *ipvs;
++	struct net *net = sock_net(skb->sk);
++	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+-	net = skb_sknet(skb);
+-	ipvs = net_ipvs(net);
+ 	cmd = info->genlhdr->cmd;
+ 
+ 	if (cmd == IPVS_CMD_GET_SERVICE)
 -- 
 2.2.1
