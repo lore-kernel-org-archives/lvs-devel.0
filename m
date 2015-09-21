@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 19/84] ipvs: Pass ipvs not net to ip_vs_add_service
-Date: Mon, 21 Sep 2015 13:01:56 -0500
-Message-ID: <1442858581-15869-19-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 72/84] ipvs: Wrap sysctl_cache_bypass and remove ifdefs in ip_vs_leave
+Date: Mon, 21 Sep 2015 13:02:49 -0500
+Message-ID: <1442858581-15869-72-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -13,57 +13,99 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
 
+With sysctl_cache_bypass now a compile time constant the compiler can
+figue out that it can elimiate all of the code that depends on
+sysctl_cache_bypass being true.
+
+Also remove the duplicate computation of net previously necessitated
+by #ifdef CONFIG_SYSCTL
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ include/net/ip_vs.h             | 10 ++++++++++
+ net/netfilter/ipvs/ip_vs_core.c | 13 +++----------
+ 2 files changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 7aae2dc0f766..ff7f9d19f2c3 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1157,14 +1157,13 @@ static void ip_vs_dest_trash_expire(unsigned long data)
-  *	Add a service into the service hash table
-  */
- static int
--ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
-+ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 		  struct ip_vs_service **svc_p)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index c68c2c8ae48a..dacd873e8bb9 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1101,6 +1101,11 @@ static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_ignore_tunneled;
+ }
+ 
++static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_cache_bypass;
++}
++
+ #else
+ 
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -1183,6 +1188,11 @@ static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
+ 	return 0;
+ }
+ 
++static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
++{
++	return 0;
++}
++
+ #endif
+ 
+ /* IPVS core functions
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 1c9c52349b7c..7e9ee1dece19 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -568,17 +568,14 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 		struct ip_vs_proto_data *pd, struct ip_vs_iphdr *iph)
  {
- 	int ret = 0, i;
- 	struct ip_vs_scheduler *sched = NULL;
- 	struct ip_vs_pe *pe = NULL;
- 	struct ip_vs_service *svc = NULL;
--	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	__be16 _ports[2], *pptr, dport;
+-#ifdef CONFIG_SYSCTL
+ 	struct net *net;
+ 	struct netns_ipvs *ipvs;
+-#endif
  
- 	/* increase the module use count */
- 	ip_vs_use_count_inc();
-@@ -1255,7 +1254,7 @@ ip_vs_add_service(struct net *net, struct ip_vs_service_user_kern *u,
- 	else if (svc->port == 0)
- 		atomic_inc(&ipvs->nullsvc_counter);
+ 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
+ 	if (!pptr)
+ 		return NF_DROP;
+ 	dport = likely(!ip_vs_iph_inverse(iph)) ? pptr[1] : pptr[0];
  
--	ip_vs_start_estimator(net, &svc->stats);
-+	ip_vs_start_estimator(ipvs->net, &svc->stats);
+-#ifdef CONFIG_SYSCTL
+ 	net = skb_net(skb);
  
- 	/* Count only IPv4 services for old get/setsockopt interface */
- 	if (svc->af == AF_INET)
-@@ -2421,7 +2420,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		if (svc != NULL)
- 			ret = -EEXIST;
- 		else
--			ret = ip_vs_add_service(net, &usvc, &svc);
-+			ret = ip_vs_add_service(ipvs, &usvc, &svc);
- 		break;
- 	case IP_VS_SO_SET_EDIT:
- 		ret = ip_vs_edit_service(svc, &usvc);
-@@ -3601,7 +3600,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 	switch (cmd) {
- 	case IPVS_CMD_NEW_SERVICE:
- 		if (svc == NULL)
--			ret = ip_vs_add_service(net, &usvc, &svc);
-+			ret = ip_vs_add_service(ipvs, &usvc, &svc);
- 		else
- 			ret = -EEXIST;
- 		break;
+ 
+@@ -586,7 +583,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	   and the destination is a non-local unicast, then create
+ 	   a cache_bypass connection entry */
+ 	ipvs = net_ipvs(net);
+-	if (ipvs->sysctl_cache_bypass && svc->fwmark &&
++	if (sysctl_cache_bypass(ipvs) && svc->fwmark &&
+ 	    !(iph->hdr_flags & (IP_VS_HDR_INVERSE | IP_VS_HDR_ICMP)) &&
+ 	    ip_vs_addr_is_unicast(net, svc->af, &iph->daddr)) {
+ 		int ret;
+@@ -624,7 +621,6 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 		ip_vs_conn_put(cp);
+ 		return ret;
+ 	}
+-#endif
+ 
+ 	/*
+ 	 * When the virtual ftp service is presented, packets destined
+@@ -647,11 +643,8 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	 */
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (svc->af == AF_INET6) {
+-		if (!skb->dev) {
+-			struct net *net_ = dev_net(skb_dst(skb)->dev);
+-
+-			skb->dev = net_->loopback_dev;
+-		}
++		if (!skb->dev)
++			skb->dev = net->loopback_dev;
+ 		icmpv6_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_PORT_UNREACH, 0);
+ 	} else
+ #endif
 -- 
 2.2.1
