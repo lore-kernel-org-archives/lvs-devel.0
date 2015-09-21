@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 38/84] ipvs: Pass ipvs not net to ip_vs_process_message
-Date: Mon, 21 Sep 2015 13:02:15 -0500
-Message-ID: <1442858581-15869-38-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 17/84] ipvs: Pass ipvs not net to ip_vs_dest_trash_expire
+Date: Mon, 21 Sep 2015 13:01:54 -0500
+Message-ID: <1442858581-15869-17-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,43 +15,31 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <ni
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index cd32e3ab0c4d..280e1c03e598 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1204,10 +1204,9 @@ out:
-  *      ip_vs_conn entries.
-  *      Handles Version 0 & 1
-  */
--static void ip_vs_process_message(struct net *net, __u8 *buffer,
-+static void ip_vs_process_message(struct netns_ipvs *ipvs, __u8 *buffer,
- 				  const size_t buflen)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_mesg *m2 = (struct ip_vs_sync_mesg *)buffer;
- 	__u8 *p, *msg_end;
- 	int i, nr_conns;
-@@ -1257,7 +1256,7 @@ static void ip_vs_process_message(struct net *net, __u8 *buffer,
- 				return;
- 			}
- 			/* Process a single sync_conn */
--			retc = ip_vs_proc_sync_conn(net, p, msg_end);
-+			retc = ip_vs_proc_sync_conn(ipvs->net, p, msg_end);
- 			if (retc < 0) {
- 				IP_VS_ERR_RL("BACKUP, Dropping buffer, Err: %d in decoding\n",
- 					     retc);
-@@ -1763,7 +1762,7 @@ static int sync_thread_backup(void *data)
- 				break;
- 			}
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index b295e2bb706f..20aeb993618f 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1124,8 +1124,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
  
--			ip_vs_process_message(ipvs->net, tinfo->buf, len);
-+			ip_vs_process_message(ipvs, tinfo->buf, len);
- 		}
- 	}
+ static void ip_vs_dest_trash_expire(unsigned long data)
+ {
+-	struct net *net = (struct net *) data;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct netns_ipvs *ipvs = (struct netns_ipvs *)data;
+ 	struct ip_vs_dest *dest, *next;
+ 	unsigned long now = jiffies;
+ 
+@@ -3966,7 +3965,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
+ 	INIT_LIST_HEAD(&ipvs->dest_trash);
+ 	spin_lock_init(&ipvs->dest_trash_lock);
+ 	setup_timer(&ipvs->dest_trash_timer, ip_vs_dest_trash_expire,
+-		    (unsigned long) net);
++		    (unsigned long) ipvs);
+ 	atomic_set(&ipvs->ftpsvc_counter, 0);
+ 	atomic_set(&ipvs->nullsvc_counter, 0);
  
 -- 
 2.2.1
-
