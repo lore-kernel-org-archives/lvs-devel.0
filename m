@@ -1,7 +1,7 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 72/84] ipvs: Wrap sysctl_cache_bypass and remove ifdefs in ip_vs_leave
-Date: Mon, 21 Sep 2015 13:02:49 -0500
-Message-ID: <1442858581-15869-72-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH next 84/84] ipvs: Pass ipvs into ip_vs_gather_frags
+Date: Mon, 21 Sep 2015 13:03:01 -0500
+Message-ID: <1442858581-15869-84-git-send-email-ebiederm@xmission.com>
 References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
@@ -13,99 +13,54 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
 
-With sysctl_cache_bypass now a compile time constant the compiler can
-figue out that it can elimiate all of the code that depends on
-sysctl_cache_bypass being true.
-
-Also remove the duplicate computation of net previously necessitated
-by #ifdef CONFIG_SYSCTL
+This will be needed later when the network namespace guessing is
+removed from ip_defrag.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/ip_vs.h             | 10 ++++++++++
- net/netfilter/ipvs/ip_vs_core.c | 13 +++----------
- 2 files changed, 13 insertions(+), 10 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index c68c2c8ae48a..dacd873e8bb9 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1101,6 +1101,11 @@ static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
- 	return ipvs->sysctl_ignore_tunneled;
- }
- 
-+static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
-+{
-+	return ipvs->sysctl_cache_bypass;
-+}
-+
- #else
- 
- static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
-@@ -1183,6 +1188,11 @@ static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
- 	return 0;
- }
- 
-+static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
-+{
-+	return 0;
-+}
-+
- #endif
- 
- /* IPVS core functions
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 1c9c52349b7c..7e9ee1dece19 100644
+index ab85ae0f531f..fb6b6c87d841 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -568,17 +568,14 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		struct ip_vs_proto_data *pd, struct ip_vs_iphdr *iph)
+@@ -688,7 +688,8 @@ static inline enum ip_defrag_users ip_vs_defrag_user(unsigned int hooknum)
+ 	return IP_DEFRAG_VS_OUT;
+ }
+ 
+-static inline int ip_vs_gather_frags(struct sk_buff *skb, u_int32_t user)
++static inline int ip_vs_gather_frags(struct netns_ipvs *ipvs,
++				     struct sk_buff *skb, u_int32_t user)
  {
- 	__be16 _ports[2], *pptr, dport;
--#ifdef CONFIG_SYSCTL
- 	struct net *net;
- 	struct netns_ipvs *ipvs;
--#endif
+ 	int err;
  
- 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
- 	if (!pptr)
- 		return NF_DROP;
- 	dport = likely(!ip_vs_iph_inverse(iph)) ? pptr[1] : pptr[0];
+@@ -912,7 +913,7 @@ static int ip_vs_out_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb,
  
--#ifdef CONFIG_SYSCTL
- 	net = skb_net(skb);
- 
- 
-@@ -586,7 +583,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 	   and the destination is a non-local unicast, then create
- 	   a cache_bypass connection entry */
- 	ipvs = net_ipvs(net);
--	if (ipvs->sysctl_cache_bypass && svc->fwmark &&
-+	if (sysctl_cache_bypass(ipvs) && svc->fwmark &&
- 	    !(iph->hdr_flags & (IP_VS_HDR_INVERSE | IP_VS_HDR_ICMP)) &&
- 	    ip_vs_addr_is_unicast(net, svc->af, &iph->daddr)) {
- 		int ret;
-@@ -624,7 +621,6 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		ip_vs_conn_put(cp);
- 		return ret;
+ 	/* reassemble IP fragments */
+ 	if (ip_is_fragment(ip_hdr(skb))) {
+-		if (ip_vs_gather_frags(skb, ip_vs_defrag_user(hooknum)))
++		if (ip_vs_gather_frags(ipvs, skb, ip_vs_defrag_user(hooknum)))
+ 			return NF_STOLEN;
  	}
--#endif
  
- 	/*
- 	 * When the virtual ftp service is presented, packets destined
-@@ -647,11 +643,8 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 	 */
- #ifdef CONFIG_IP_VS_IPV6
- 	if (svc->af == AF_INET6) {
--		if (!skb->dev) {
--			struct net *net_ = dev_net(skb_dst(skb)->dev);
--
--			skb->dev = net_->loopback_dev;
--		}
-+		if (!skb->dev)
-+			skb->dev = net->loopback_dev;
- 		icmpv6_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_PORT_UNREACH, 0);
- 	} else
+@@ -1232,7 +1233,7 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
+ 	if (af == AF_INET)
  #endif
+ 		if (unlikely(ip_is_fragment(ip_hdr(skb)) && !pp->dont_defrag)) {
+-			if (ip_vs_gather_frags(skb,
++			if (ip_vs_gather_frags(ipvs, skb,
+ 					       ip_vs_defrag_user(hooknum)))
+ 				return NF_STOLEN;
+ 
+@@ -1403,7 +1404,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
+ 
+ 	/* reassemble IP fragments */
+ 	if (ip_is_fragment(ip_hdr(skb))) {
+-		if (ip_vs_gather_frags(skb, ip_vs_defrag_user(hooknum)))
++		if (ip_vs_gather_frags(ipvs, skb, ip_vs_defrag_user(hooknum)))
+ 			return NF_STOLEN;
+ 	}
+ 
 -- 
 2.2.1
