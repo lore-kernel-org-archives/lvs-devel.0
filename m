@@ -1,128 +1,82 @@
-From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH next 12/84] ipvs: Pass ipvs not net to ip_vs_service_find
-Date: Mon, 21 Sep 2015 13:01:49 -0500
-Message-ID: <1442858581-15869-12-git-send-email-ebiederm@xmission.com>
-References: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH next 00/84] ipvs: Stop guessing the network namespace
+ (take 2)
+Date: Tue, 22 Sep 2015 10:22:13 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1509221019170.3008@ja.home.ssi.bg>
+References: <87mvwn18my.fsf@x220.int.ebiederm.org> <87pp1fpy1b.fsf@x220.int.ebiederm.org> <87fv2bo7br.fsf_-_@x220.int.ebiederm.org> <87h9mplifu.fsf_-_@x220.int.ebiederm.org> <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
+Mime-Version: 1.0
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
-Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, David Miller <davem@davemloft.net>, Simon Horman <horms@verge.net.au>, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
----
- include/net/ip_vs.h                   | 2 +-
- net/netfilter/ipvs/ip_vs_ctl.c        | 5 ++---
- net/netfilter/ipvs/ip_vs_proto_sctp.c | 4 ++--
- net/netfilter/ipvs/ip_vs_proto_tcp.c  | 4 ++--
- net/netfilter/ipvs/ip_vs_proto_udp.c  | 6 ++++--
- 5 files changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 2c22380b9ad7..828b19b23e02 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1410,7 +1410,7 @@ extern struct ip_vs_stats ip_vs_stats;
- extern int sysctl_ip_vs_sync_ver;
- 
- struct ip_vs_service *
--ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
-+ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u32 fwmark, __u16 protocol,
- 		  const union nf_inet_addr *vaddr, __be16 vport);
- 
- bool ip_vs_has_real_service(struct net *net, int af, __u16 protocol,
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index fd8de5ceffca..67fe0c92e3f7 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -406,11 +406,10 @@ __ip_vs_svc_fwm_find(struct netns_ipvs *ipvs, int af, __u32 fwmark)
- 
- /* Find service, called under RCU lock */
- struct ip_vs_service *
--ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
-+ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u32 fwmark, __u16 protocol,
- 		   const union nf_inet_addr *vaddr, __be16 vport)
- {
- 	struct ip_vs_service *svc;
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	/*
- 	 *	Check the table hashed by fwmark first
-@@ -612,7 +611,7 @@ struct ip_vs_dest *ip_vs_find_dest(struct net  *net, int svc_af, int dest_af,
- 	struct ip_vs_service *svc;
- 	__be16 port = dport;
- 
--	svc = ip_vs_service_find(net, svc_af, fwmark, protocol, vaddr, vport);
-+	svc = ip_vs_service_find(net_ipvs(net), svc_af, fwmark, protocol, vaddr, vport);
- 	if (!svc)
- 		return NULL;
- 	if (fwmark && (flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ)
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index ce615866bd63..373a4751c328 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -45,10 +45,10 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 
- 	rcu_read_lock();
- 	if (likely(!ip_vs_iph_inverse(iph)))
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->daddr, ports[1]);
- 	else
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->saddr, ports[0]);
- 	if (svc) {
- 		int ignored;
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index e00623a88518..48af3ca6be03 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -70,10 +70,10 @@ tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	rcu_read_lock();
- 
- 	if (likely(!ip_vs_iph_inverse(iph)))
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->daddr, ports[1]);
- 	else
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->saddr, ports[0]);
- 
- 	if (svc) {
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index 3b0a2dc1826b..e9f5f7e30bef 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -34,6 +34,7 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 		  struct ip_vs_iphdr *iph)
- {
- 	struct net *net;
-+	struct netns_ipvs *ipvs;
- 	struct ip_vs_service *svc;
- 	struct udphdr _udph, *uh;
- 	__be16 _ports[2], *ports = NULL;
-@@ -54,12 +55,13 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	}
- 
- 	net = skb_net(skb);
-+	ipvs = net_ipvs(net);
- 	rcu_read_lock();
- 	if (likely(!ip_vs_iph_inverse(iph)))
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->daddr, ports[1]);
- 	else
--		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
-+		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
- 					 &iph->saddr, ports[0]);
- 
- 	if (svc) {
--- 
-2.2.1
+	Hello,
 
+On Mon, 21 Sep 2015, Eric W. Biederman wrote:
+
+> I am gradually working my way through the netfilter stack passing struct
+> down into the netfilter hooks and from the netfilter hooks and from
+> there down into the functions that actually care.  This removes the need
+> for netfilter functions to guess how to figure out how to compute which
+> network namespace they are in and instead provides a simple and reliable
+> method to do so.
+> 
+> The cleanups stand on their own but this is part of a larger effort to
+> have routes with an output device that is not in the current network
+> namespace.
+> 
+> The IPVS code has been a bit more of a challenge than most.  Just
+> passing struct net through to where it is needed did not feel clean to
+> me.  The practical issue is that the ipvs code in most places actually
+> wants struct netns_ipvs and not struct net.
+> 
+> So as part of this process I have turned the relationship between struct
+> net and the structs netns_ipvs, ip_vs_conn_param, ip_vs_conn, and
+> ip_vs_service inside out.  I have modified the ipvs functions to take a
+> struct netns_ipvs not a struct net.  The net is code with fewer
+> conversions from one type of structure to another.  I did wind up adding
+> a struct netns_ipvs parameter to quite a few functions that did not have
+> it before so I could pass the structure down from the netfilter hooks to
+> where it is actually needed to avoid guessing.
+> 
+> I have broken up the work in a bunch of small patches so there is at
+> least a chance and reviewing that each step I took is correct.  The
+> series compiles at each step so bisecting it should not be a problem
+> if something weird comes up.
+> 
+> The first two changes in this series are actually bug fixes.  The first
+> is a compile fix for a bug in sctp that came in, in the last round of
+> ipvs changes merged into nf-next.  The second fixes an older bug where
+> in pathological circumstances the wrong network namespace could be used
+> when a proc file is written to.
+> 
+> The rest of the patchset is a bunch of boring changes getting pushing
+> struct netns_ipvs (and by extension ipvs->net) where it needs to be.
+> Either by replacing struct net pointers or adding new struct netns_ipvs
+> pointers.  With a handful of other minor cleanups (like removing
+> skb_net).
+> 
+> I have incorporated Julian Anastasov's feedback, which critically
+> involves fixing a wrong piece of code.
+> 
+> The changes are also available against nf-next at:
+> git://git.kernel.org/pub/scm/linux/kernel/git/ebiederm/net-next.git master
+> 
+> My entire pending set of changes for those who want to look ahead is at:
+> git://git.kernel.org/pub/scm/linux/kernel/git/ebiederm/net-next.git for-testing
+> 
+> Eric
+
+	v2 looks good to me,
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
