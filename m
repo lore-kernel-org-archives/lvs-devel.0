@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 17/84] ipvs: Pass ipvs not net to ip_vs_dest_trash_expire
-Date: Thu, 24 Sep 2015 09:52:02 +0900
-Message-ID: <1443055989-1306-18-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 32/84] ipvs: Pass ipvs not net to ip_vs_genl_del_daemon
+Date: Thu, 24 Sep 2015 09:52:17 +0900
+Message-ID: <1443055989-1306-33-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -19,31 +19,40 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index b295e2bb706f..20aeb993618f 100644
+index 847ea2fd44db..08d772c289d7 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1124,8 +1124,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+@@ -3439,16 +3439,15 @@ static int ip_vs_genl_new_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
+ 	return ret;
+ }
  
- static void ip_vs_dest_trash_expire(unsigned long data)
+-static int ip_vs_genl_del_daemon(struct net *net, struct nlattr **attrs)
++static int ip_vs_genl_del_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
  {
--	struct net *net = (struct net *) data;
 -	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct netns_ipvs *ipvs = (struct netns_ipvs *)data;
- 	struct ip_vs_dest *dest, *next;
- 	unsigned long now = jiffies;
+ 	int ret;
  
-@@ -3966,7 +3965,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
- 	INIT_LIST_HEAD(&ipvs->dest_trash);
- 	spin_lock_init(&ipvs->dest_trash_lock);
- 	setup_timer(&ipvs->dest_trash_timer, ip_vs_dest_trash_expire,
--		    (unsigned long) net);
-+		    (unsigned long) ipvs);
- 	atomic_set(&ipvs->ftpsvc_counter, 0);
- 	atomic_set(&ipvs->nullsvc_counter, 0);
+ 	if (!attrs[IPVS_DAEMON_ATTR_STATE])
+ 		return -EINVAL;
  
+ 	mutex_lock(&ipvs->sync_mutex);
+-	ret = stop_sync_thread(net,
++	ret = stop_sync_thread(ipvs->net,
+ 			       nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
+ 	mutex_unlock(&ipvs->sync_mutex);
+ 	return ret;
+@@ -3496,7 +3495,7 @@ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
+ 		if (cmd == IPVS_CMD_NEW_DAEMON)
+ 			ret = ip_vs_genl_new_daemon(ipvs, daemon_attrs);
+ 		else
+-			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
++			ret = ip_vs_genl_del_daemon(ipvs, daemon_attrs);
+ 	}
+ 
+ out:
 -- 
 2.1.4
