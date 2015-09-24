@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 31/84] ipvs: Pass ipvs not net to ip_vs_genl_new_daemon
-Date: Thu, 24 Sep 2015 09:52:16 +0900
-Message-ID: <1443055989-1306-32-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 15/84] ipvs: Pass ipvs not net to ip_vs_trash_cleanup
+Date: Thu, 24 Sep 2015 09:52:00 +0900
+Message-ID: <1443055989-1306-16-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -19,42 +19,34 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 01c3a1a75d16..847ea2fd44db 100644
+index 24dceaccb0a1..b66ab765f36d 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3374,9 +3374,8 @@ nla_put_failure:
- 	return skb->len;
- }
- 
--static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
-+static int ip_vs_genl_new_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
+@@ -713,10 +713,9 @@ static void ip_vs_dest_free(struct ip_vs_dest *dest)
+  *  are expired, and the refcnt of each destination in the trash must
+  *  be 0, so we simply release them here.
+  */
+-static void ip_vs_trash_cleanup(struct net *net)
++static void ip_vs_trash_cleanup(struct netns_ipvs *ipvs)
  {
+ 	struct ip_vs_dest *dest, *nxt;
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ipvs_sync_daemon_cfg c;
- 	struct nlattr *a;
- 	int ret;
-@@ -3433,7 +3432,7 @@ static int ip_vs_genl_new_daemon(struct net *net, struct nlattr **attrs)
  
- 	rtnl_lock();
- 	mutex_lock(&ipvs->sync_mutex);
--	ret = start_sync_thread(net, &c,
-+	ret = start_sync_thread(ipvs->net, &c,
- 				nla_get_u32(attrs[IPVS_DAEMON_ATTR_STATE]));
- 	mutex_unlock(&ipvs->sync_mutex);
- 	rtnl_unlock();
-@@ -3495,7 +3494,7 @@ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
- 			goto out;
+ 	del_timer_sync(&ipvs->dest_trash_timer);
+ 	/* No need to use dest_trash_lock */
+@@ -4005,7 +4004,7 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 		if (cmd == IPVS_CMD_NEW_DAEMON)
--			ret = ip_vs_genl_new_daemon(net, daemon_attrs);
-+			ret = ip_vs_genl_new_daemon(ipvs, daemon_attrs);
- 		else
- 			ret = ip_vs_genl_del_daemon(net, daemon_attrs);
- 	}
+-	ip_vs_trash_cleanup(net);
++	ip_vs_trash_cleanup(ipvs);
+ 	ip_vs_control_net_cleanup_sysctl(net);
+ 	remove_proc_entry("ip_vs_stats_percpu", net->proc_net);
+ 	remove_proc_entry("ip_vs_stats", net->proc_net);
 -- 
 2.1.4
 
