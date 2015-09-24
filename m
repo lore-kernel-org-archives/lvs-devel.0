@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 66/84] ipvs: Pass ipvs into .conn_schedule and ip_vs_try_to_schedule
-Date: Thu, 24 Sep 2015 09:52:51 +0900
-Message-ID: <1443055989-1306-67-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 69/84] ipvs: Pass ipvs into __ip_vs_get_out_rt_v6
+Date: Thu, 24 Sep 2015 09:52:54 +0900
+Message-ID: <1443055989-1306-70-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -15,188 +15,82 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
-This moves the hack "net_ipvs(skb_net(skb))" up one level where it
-will be easier to remove.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h                     |  3 ++-
- net/netfilter/ipvs/ip_vs_core.c         | 11 ++++++-----
- net/netfilter/ipvs/ip_vs_proto_ah_esp.c |  3 ++-
- net/netfilter/ipvs/ip_vs_proto_sctp.c   |  8 ++------
- net/netfilter/ipvs/ip_vs_proto_tcp.c    |  8 ++------
- net/netfilter/ipvs/ip_vs_proto_udp.c    |  9 +++------
- 6 files changed, 17 insertions(+), 25 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 5ad04be64895..c68c2c8ae48a 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -487,7 +487,8 @@ struct ip_vs_protocol {
- 
- 	void (*exit_netns)(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd);
- 
--	int (*conn_schedule)(int af, struct sk_buff *skb,
-+	int (*conn_schedule)(struct netns_ipvs *ipvs,
-+			     int af, struct sk_buff *skb,
- 			     struct ip_vs_proto_data *pd,
- 			     int *verdict, struct ip_vs_conn **cpp,
- 			     struct ip_vs_iphdr *iph);
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 9b37fe30dcac..514596b7a324 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1360,7 +1360,8 @@ ip_vs_local_reply6(void *priv, struct sk_buff *skb,
- #endif
- 
- static unsigned int
--ip_vs_try_to_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
-+ip_vs_try_to_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
-+		      struct ip_vs_proto_data *pd,
- 		      int *verdict, struct ip_vs_conn **cpp,
- 		      struct ip_vs_iphdr *iph)
- {
-@@ -1372,7 +1373,7 @@ ip_vs_try_to_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 		 */
- 
- 		/* Schedule and create new connection entry into cpp */
--		if (!pp->conn_schedule(af, skb, pd, verdict, cpp, iph))
-+		if (!pp->conn_schedule(ipvs, af, skb, pd, verdict, cpp, iph))
- 			return 0;
- 	}
- 
-@@ -1500,7 +1501,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
- 		if (!sysctl_schedule_icmp(ipvs))
- 			return NF_ACCEPT;
- 
--		if (!ip_vs_try_to_schedule(AF_INET, skb, pd, &v, &cp, &ciph))
-+		if (!ip_vs_try_to_schedule(ipvs, AF_INET, skb, pd, &v, &cp, &ciph))
- 			return v;
- 		new_cp = true;
- 	}
-@@ -1658,7 +1659,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
- 		if (!sysctl_schedule_icmp(ipvs))
- 			return NF_ACCEPT;
- 
--		if (!ip_vs_try_to_schedule(AF_INET6, skb, pd, &v, &cp, &ciph))
-+		if (!ip_vs_try_to_schedule(ipvs, AF_INET6, skb, pd, &v, &cp, &ciph))
- 			return v;
- 
- 		new_cp = true;
-@@ -1799,7 +1800,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	if (unlikely(!cp)) {
- 		int v;
- 
--		if (!ip_vs_try_to_schedule(af, skb, pd, &v, &cp, &iph))
-+		if (!ip_vs_try_to_schedule(ipvs, af, skb, pd, &v, &cp, &iph))
- 			return v;
- 	}
- 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-index e924455de5c0..5320d39976e1 100644
---- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
-@@ -104,7 +104,8 @@ ah_esp_conn_out_get(struct netns_ipvs *ipvs, int af, const struct sk_buff *skb,
- 
- 
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 5cfd914d9a39..13a678a63ed5 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -404,11 +404,12 @@ out_err:
+  * Get route to destination or remote server
+  */
  static int
--ah_esp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
-+ah_esp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
-+		     struct ip_vs_proto_data *pd,
- 		     int *verdict, struct ip_vs_conn **cpp,
- 		     struct ip_vs_iphdr *iph)
+-__ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
++__ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
++		      struct ip_vs_dest *dest,
+ 		      struct in6_addr *daddr, struct in6_addr *ret_saddr,
+ 		      struct ip_vs_iphdr *ipvsh, int do_xfrm, int rt_mode)
  {
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index 3e9418ab276a..010ddeec135f 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -9,20 +9,16 @@
- #include <net/ip_vs.h>
+-	struct net *net = dev_net(skb_dst(skb)->dev);
++	struct net *net = ipvs->net;
+ 	struct ip_vs_dest_dst *dest_dst;
+ 	struct rt6_info *rt;			/* Route to the other host */
+ 	struct dst_entry *dst;
+@@ -663,7 +664,8 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
  
- static int
--sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
-+sctp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
-+		   struct ip_vs_proto_data *pd,
- 		   int *verdict, struct ip_vs_conn **cpp,
- 		   struct ip_vs_iphdr *iph)
- {
--	struct net *net;
- 	struct ip_vs_service *svc;
--	struct netns_ipvs *ipvs;
- 	sctp_chunkhdr_t _schunkh, *sch;
- 	sctp_sctphdr_t *sh, _sctph;
- 	__be16 _ports[2], *ports = NULL;
- 
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
--
- 	if (likely(!ip_vs_iph_icmp(iph))) {
- 		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
- 		if (sh) {
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index 93ba6b1fe9d1..c913c2d00caf 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -32,19 +32,15 @@
- #include <net/ip_vs.h>
- 
- static int
--tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
-+tcp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
-+		  struct ip_vs_proto_data *pd,
- 		  int *verdict, struct ip_vs_conn **cpp,
- 		  struct ip_vs_iphdr *iph)
- {
--	struct net *net;
- 	struct ip_vs_service *svc;
- 	struct tcphdr _tcph, *th;
--	struct netns_ipvs *ipvs;
- 	__be16 _ports[2], *ports = NULL;
- 
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
--
- 	/* In the event of icmp, we're only guaranteed to have the first 8
- 	 * bytes of the transport header, so we only check the rest of the
- 	 * TCP packet for non-ICMP packets
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index 382dcc9cfe11..e494e9a88c7f 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -29,12 +29,11 @@
- #include <net/ip6_checksum.h>
- 
- static int
--udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
-+udp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
-+		  struct ip_vs_proto_data *pd,
- 		  int *verdict, struct ip_vs_conn **cpp,
- 		  struct ip_vs_iphdr *iph)
- {
--	struct net *net;
--	struct netns_ipvs *ipvs;
- 	struct ip_vs_service *svc;
- 	struct udphdr _udph, *uh;
- 	__be16 _ports[2], *ports = NULL;
-@@ -54,8 +53,6 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 		return 0;
- 	}
- 
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
  	rcu_read_lock();
- 	if (likely(!ip_vs_iph_inverse(iph)))
- 		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
-@@ -67,7 +64,7 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	if (svc) {
- 		int ignored;
+-	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &iph->daddr, NULL,
++	if (__ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, NULL,
++				  &iph->daddr, NULL,
+ 				  ipvsh, 0, IP_VS_RT_MODE_NON_LOCAL) < 0)
+ 		goto tx_error;
  
--		if (ip_vs_todrop(net_ipvs(net))) {
-+		if (ip_vs_todrop(ipvs)) {
- 			/*
- 			 * It seems that we are very loaded.
- 			 * We have to drop this packet :(
+@@ -799,7 +801,8 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
+ 	}
+ 
+-	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
++				      &cp->daddr.in6,
+ 				      NULL, ipvsh, 0,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+@@ -1083,7 +1086,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
++				      &cp->daddr.in6,
+ 				      &saddr, ipvsh, 1,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+@@ -1209,7 +1213,8 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	EnterFunction(10);
+ 
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
++	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
++				      &cp->daddr.in6,
+ 				      NULL, ipvsh, 0,
+ 				      IP_VS_RT_MODE_LOCAL |
+ 				      IP_VS_RT_MODE_NON_LOCAL |
+@@ -1370,8 +1375,8 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
+ 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
+ 	rcu_read_lock();
+-	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
+-				      NULL, ipvsh, 0, rt_mode);
++	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
++				      &cp->daddr.in6, NULL, ipvsh, 0, rt_mode);
+ 	if (local < 0)
+ 		goto tx_error;
+ 	rt = (struct rt6_info *) skb_dst(skb);
 -- 
 2.1.4
