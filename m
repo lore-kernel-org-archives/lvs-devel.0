@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 47/84] ipvs: Pass ipvs not net to ip_vs_random_drop_entry
-Date: Thu, 24 Sep 2015 09:52:32 +0900
-Message-ID: <1443055989-1306-48-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 43/84] ipvs: Pass ipvs not net to ip_vs_sync_net_init
+Date: Thu, 24 Sep 2015 09:52:28 +0900
+Message-ID: <1443055989-1306-44-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -20,58 +20,45 @@ Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
  include/net/ip_vs.h             | 2 +-
- net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
- net/netfilter/ipvs/ip_vs_ctl.c  | 2 +-
- 3 files changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 2 +-
+ net/netfilter/ipvs/ip_vs_sync.c | 4 +---
+ 3 files changed, 3 insertions(+), 5 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 2d49357b328c..c88a3bf85f98 100644
+index b10b337ce974..47a4cddb7c33 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1258,7 +1258,7 @@ const char *ip_vs_state_name(__u16 proto, int state);
+@@ -1328,7 +1328,7 @@ int ip_vs_control_net_init(struct net *net);
+ int ip_vs_protocol_net_init(struct net *net);
+ int ip_vs_app_net_init(struct net *net);
+ int ip_vs_conn_net_init(struct net *net);
+-int ip_vs_sync_net_init(struct net *net);
++int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
+ void ip_vs_conn_net_cleanup(struct net *net);
+ void ip_vs_app_net_cleanup(struct net *net);
+ void ip_vs_protocol_net_cleanup(struct net *net);
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index a8128b06f73b..5a5a6d63b3d9 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2087,7 +2087,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_conn_net_init(net) < 0)
+ 		goto conn_fail;
  
- void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp);
- int ip_vs_check_template(struct ip_vs_conn *ct);
--void ip_vs_random_dropentry(struct net *net);
-+void ip_vs_random_dropentry(struct netns_ipvs *ipvs);
- int ip_vs_conn_init(void);
- void ip_vs_conn_cleanup(void);
+-	if (ip_vs_sync_net_init(net) < 0)
++	if (ip_vs_sync_net_init(ipvs) < 0)
+ 		goto sync_fail;
  
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 06809db5eef6..bbe9e69e3eeb 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1239,7 +1239,7 @@ static inline int todrop_entry(struct ip_vs_conn *cp)
- }
- 
- /* Called from keventd and must protect itself from softirqs */
--void ip_vs_random_dropentry(struct net *net)
-+void ip_vs_random_dropentry(struct netns_ipvs *ipvs)
+ 	printk(KERN_INFO "IPVS: Creating netns size=%zu id=%d\n",
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index e3f72cbc1204..11b4f17e2e1a 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -2007,10 +2007,8 @@ int stop_sync_thread(struct netns_ipvs *ipvs, int state)
+ /*
+  * Initialize data struct for each netns
+  */
+-int __net_init ip_vs_sync_net_init(struct net *net)
++int __net_init ip_vs_sync_net_init(struct netns_ipvs *ipvs)
  {
- 	int idx;
- 	struct ip_vs_conn *cp, *cp_c;
-@@ -1255,7 +1255,7 @@ void ip_vs_random_dropentry(struct net *net)
- 			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
- 				/* connection template */
- 				continue;
--			if (!net_eq(cp->ipvs->net, net))
-+			if (cp->ipvs != ipvs)
- 				continue;
- 			if (cp->protocol == IPPROTO_TCP) {
- 				switch(cp->state) {
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index f43b894f3ef6..93b7bd39bcb9 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -228,7 +228,7 @@ static void defense_work_handler(struct work_struct *work)
- 
- 	update_defense_level(ipvs);
- 	if (atomic_read(&ipvs->dropentry))
--		ip_vs_random_dropentry(ipvs->net);
-+		ip_vs_random_dropentry(ipvs);
- 	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
- }
- #endif
--- 
-2.1.4
-
+-	struct netns_ipvs *ipvs = net_ipvs(net);
