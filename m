@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 10/84] ipvs: Pass ipvs not net to ip_vs_svc_hashkey
-Date: Thu, 24 Sep 2015 09:51:55 +0900
-Message-ID: <1443055989-1306-11-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 27/84] ipvs: Pass ipvs not net to __ip_vs_get_dest_entries
+Date: Thu, 24 Sep 2015 09:52:12 +0900
+Message-ID: <1443055989-1306-28-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,56 +15,37 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
-Use the address of ipvs not the address of net when computing the
-hash value.  This removes an unncessary dependency on struct net.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 740703ee7116..dcb3c10a4ef2 100644
+index 05f7e1d14738..6c06e9a8414d 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -263,7 +263,7 @@ static struct hlist_head ip_vs_svc_fwm_table[IP_VS_SVC_TAB_SIZE];
-  *	Returns hash value for virtual service
-  */
- static inline unsigned int
--ip_vs_svc_hashkey(struct net *net, int af, unsigned int proto,
-+ip_vs_svc_hashkey(struct netns_ipvs *ipvs, int af, unsigned int proto,
- 		  const union nf_inet_addr *addr, __be16 port)
+@@ -2528,10 +2528,9 @@ out:
+ }
+ 
+ static inline int
+-__ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
++__ip_vs_get_dest_entries(struct netns_ipvs *ipvs, const struct ip_vs_get_dests *get,
+ 			 struct ip_vs_get_dests __user *uptr)
  {
- 	register unsigned int porth = ntohs(port);
-@@ -276,7 +276,7 @@ ip_vs_svc_hashkey(struct net *net, int af, unsigned int proto,
- 			    addr->ip6[2]^addr->ip6[3];
- #endif
- 	ahash = ntohl(addr_fold);
--	ahash ^= ((size_t) net >> 8);
-+	ahash ^= ((size_t) ipvs >> 8);
- 
- 	return (proto ^ ahash ^ (porth >> IP_VS_SVC_TAB_BITS) ^ porth) &
- 	       IP_VS_SVC_TAB_MASK;
-@@ -309,7 +309,7 @@ static int ip_vs_svc_hash(struct ip_vs_service *svc)
- 		/*
- 		 *  Hash it by <netns,protocol,addr,port> in ip_vs_svc_table
- 		 */
--		hash = ip_vs_svc_hashkey(svc->ipvs->net, svc->af, svc->protocol,
-+		hash = ip_vs_svc_hashkey(svc->ipvs, svc->af, svc->protocol,
- 					 &svc->addr, svc->port);
- 		hlist_add_head_rcu(&svc->s_list, &ip_vs_svc_table[hash]);
- 	} else {
-@@ -365,7 +365,7 @@ __ip_vs_service_find(struct net *net, int af, __u16 protocol,
+-	struct netns_ipvs *ipvs = net_ipvs(net);
  	struct ip_vs_service *svc;
+ 	union nf_inet_addr addr = { .ip = get->addr };
+ 	int ret = 0;
+@@ -2761,7 +2760,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 			ret = -EINVAL;
+ 			goto out;
+ 		}
+-		ret = __ip_vs_get_dest_entries(net, get, user);
++		ret = __ip_vs_get_dest_entries(ipvs, get, user);
+ 	}
+ 	break;
  
- 	/* Check for "full" addressed entries */
--	hash = ip_vs_svc_hashkey(net, af, protocol, vaddr, vport);
-+	hash = ip_vs_svc_hashkey(ipvs, af, protocol, vaddr, vport);
- 
- 	hlist_for_each_entry_rcu(svc, &ip_vs_svc_table[hash], s_list) {
- 		if ((svc->af == af)
 -- 
 2.1.4
-
