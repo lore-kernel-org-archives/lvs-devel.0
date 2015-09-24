@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 15/84] ipvs: Pass ipvs not net to ip_vs_trash_cleanup
-Date: Thu, 24 Sep 2015 09:52:00 +0900
-Message-ID: <1443055989-1306-16-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 29/84] ipvs: Pass ipvs not net to ip_vs_genl_parse_service
+Date: Thu, 24 Sep 2015 09:52:14 +0900
+Message-ID: <1443055989-1306-30-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -19,34 +19,49 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 24dceaccb0a1..b66ab765f36d 100644
+index e509c27f7292..ea650ed62a50 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -713,10 +713,9 @@ static void ip_vs_dest_free(struct ip_vs_dest *dest)
-  *  are expired, and the refcnt of each destination in the trash must
-  *  be 0, so we simply release them here.
-  */
--static void ip_vs_trash_cleanup(struct net *net)
-+static void ip_vs_trash_cleanup(struct netns_ipvs *ipvs)
+@@ -3034,12 +3034,11 @@ nla_put_failure:
+ 	return skb->len;
+ }
+ 
+-static int ip_vs_genl_parse_service(struct net *net,
++static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
+ 				    struct ip_vs_service_user_kern *usvc,
+ 				    struct nlattr *nla, int full_entry,
+ 				    struct ip_vs_service **ret_svc)
  {
- 	struct ip_vs_dest *dest, *nxt;
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	del_timer_sync(&ipvs->dest_trash_timer);
- 	/* No need to use dest_trash_lock */
-@@ -4005,7 +4004,7 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
+ 	struct nlattr *attrs[IPVS_SVC_ATTR_MAX + 1];
+ 	struct nlattr *nla_af, *nla_port, *nla_fwmark, *nla_protocol, *nla_addr;
+ 	struct ip_vs_service *svc;
+@@ -3123,11 +3122,12 @@ static int ip_vs_genl_parse_service(struct net *net,
+ static struct ip_vs_service *ip_vs_genl_find_service(struct net *net,
+ 						     struct nlattr *nla)
  {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_service_user_kern usvc;
+ 	struct ip_vs_service *svc;
+ 	int ret;
  
--	ip_vs_trash_cleanup(net);
-+	ip_vs_trash_cleanup(ipvs);
- 	ip_vs_control_net_cleanup_sysctl(net);
- 	remove_proc_entry("ip_vs_stats_percpu", net->proc_net);
- 	remove_proc_entry("ip_vs_stats", net->proc_net);
+-	ret = ip_vs_genl_parse_service(net, &usvc, nla, 0, &svc);
++	ret = ip_vs_genl_parse_service(ipvs, &usvc, nla, 0, &svc);
+ 	return ret ? ERR_PTR(ret) : svc;
+ }
+ 
+@@ -3538,7 +3538,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	if (cmd == IPVS_CMD_NEW_SERVICE || cmd == IPVS_CMD_SET_SERVICE)
+ 		need_full_svc = 1;
+ 
+-	ret = ip_vs_genl_parse_service(net, &usvc,
++	ret = ip_vs_genl_parse_service(ipvs, &usvc,
+ 				       info->attrs[IPVS_CMD_ATTR_SERVICE],
+ 				       need_full_svc, &svc);
+ 	if (ret)
 -- 
 2.1.4
-
