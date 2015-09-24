@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 80/84] ipvs: Remove net argument from ip_vs_tcp_conn_listen
-Date: Thu, 24 Sep 2015 09:53:05 +0900
-Message-ID: <1443055989-1306-81-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 81/84] ipvs: Pass ipvs not net to ip_vs_protocol_net_(init|cleanup)
+Date: Thu, 24 Sep 2015 09:53:06 +0900
+Message-ID: <1443055989-1306-82-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -15,87 +15,102 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
-The argument is unnecessary and in practice confusing,
-and has caused the callers to do all manner of silly things.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h                  | 2 +-
- net/netfilter/ipvs/ip_vs_ftp.c       | 8 ++------
- net/netfilter/ipvs/ip_vs_proto_tcp.c | 4 ++--
- 3 files changed, 5 insertions(+), 9 deletions(-)
+ include/net/ip_vs.h              | 4 ++--
+ net/netfilter/ipvs/ip_vs_core.c  | 6 +++---
+ net/netfilter/ipvs/ip_vs_proto.c | 8 +++-----
+ 3 files changed, 8 insertions(+), 10 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index dacd873e8bb9..f0a39ce3bf0e 100644
+index f0a39ce3bf0e..00318d63a565 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1271,7 +1271,7 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp);
+@@ -1340,13 +1340,13 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
+ /* IPVS netns init & cleanup functions */
+ int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_control_net_init(struct netns_ipvs *ipvs);
+-int ip_vs_protocol_net_init(struct net *net);
++int ip_vs_protocol_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_app_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_conn_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
+ void ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
+-void ip_vs_protocol_net_cleanup(struct net *net);
++void ip_vs_protocol_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_sync_net_cleanup(struct netns_ipvs *ipvs);
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 22eae0231cbb..ab85ae0f531f 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2052,7 +2052,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_control_net_init(ipvs) < 0)
+ 		goto control_fail;
  
- const char *ip_vs_state_name(__u16 proto, int state);
+-	if (ip_vs_protocol_net_init(net) < 0)
++	if (ip_vs_protocol_net_init(ipvs) < 0)
+ 		goto protocol_fail;
  
--void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp);
-+void ip_vs_tcp_conn_listen(struct ip_vs_conn *cp);
- int ip_vs_check_template(struct ip_vs_conn *ct);
- void ip_vs_random_dropentry(struct netns_ipvs *ipvs);
- int ip_vs_conn_init(void);
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 508544aff36d..d30c327bb578 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -181,7 +181,6 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 	int ret = 0;
- 	enum ip_conntrack_info ctinfo;
- 	struct nf_conn *ct;
--	struct net *net;
- 
- 	*diff = 0;
- 
-@@ -289,9 +288,8 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 		 * would be adjusted twice.
- 		 */
- 
--		net = skb_net(skb);
- 		cp->app_data = NULL;
--		ip_vs_tcp_conn_listen(net, n_cp);
-+		ip_vs_tcp_conn_listen(n_cp);
- 		ip_vs_conn_put(n_cp);
- 		return ret;
- 	}
-@@ -320,7 +318,6 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 	union nf_inet_addr to;
- 	__be16 port;
- 	struct ip_vs_conn *n_cp;
--	struct net *net;
- 
- 	/* no diff required for incoming packets */
- 	*diff = 0;
-@@ -413,8 +410,7 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 	/*
- 	 *	Move tunnel to listen state
- 	 */
--	net = skb_net(skb);
--	ip_vs_tcp_conn_listen(net, n_cp);
-+	ip_vs_tcp_conn_listen(n_cp);
- 	ip_vs_conn_put(n_cp);
- 
- 	return 1;
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index c913c2d00caf..d7024b2ed769 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -672,9 +672,9 @@ tcp_app_conn_bind(struct ip_vs_conn *cp)
+ 	if (ip_vs_app_net_init(ipvs) < 0)
+@@ -2076,7 +2076,7 @@ sync_fail:
+ conn_fail:
+ 	ip_vs_app_net_cleanup(ipvs);
+ app_fail:
+-	ip_vs_protocol_net_cleanup(net);
++	ip_vs_protocol_net_cleanup(ipvs);
+ protocol_fail:
+ 	ip_vs_control_net_cleanup(ipvs);
+ control_fail:
+@@ -2093,7 +2093,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+ 	ip_vs_conn_net_cleanup(ipvs);
+ 	ip_vs_app_net_cleanup(ipvs);
+-	ip_vs_protocol_net_cleanup(net);
++	ip_vs_protocol_net_cleanup(ipvs);
+ 	ip_vs_control_net_cleanup(ipvs);
+ 	ip_vs_estimator_net_cleanup(ipvs);
+ 	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index f05ee668a1d1..8ae480715cea 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -307,7 +307,7 @@ ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
  /*
-  *	Set LISTEN timeout. (ip_vs_conn_put will setup timer)
+  * per network name-space init
   */
--void ip_vs_tcp_conn_listen(struct net *net, struct ip_vs_conn *cp)
-+void ip_vs_tcp_conn_listen(struct ip_vs_conn *cp)
+-int __net_init ip_vs_protocol_net_init(struct net *net)
++int __net_init ip_vs_protocol_net_init(struct netns_ipvs *ipvs)
  {
--	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(net_ipvs(net), IPPROTO_TCP);
-+	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(cp->ipvs, IPPROTO_TCP);
+ 	int i, ret;
+ 	static struct ip_vs_protocol *protos[] = {
+@@ -327,7 +327,6 @@ int __net_init ip_vs_protocol_net_init(struct net *net)
+ 	&ip_vs_protocol_esp,
+ #endif
+ 	};
+-	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	spin_lock_bh(&cp->lock);
- 	cp->state = IP_VS_TCP_S_LISTEN;
+ 	for (i = 0; i < ARRAY_SIZE(protos); i++) {
+ 		ret = register_ip_vs_proto_netns(ipvs, protos[i]);
+@@ -337,13 +336,12 @@ int __net_init ip_vs_protocol_net_init(struct net *net)
+ 	return 0;
+ 
+ cleanup:
+-	ip_vs_protocol_net_cleanup(net);
++	ip_vs_protocol_net_cleanup(ipvs);
+ 	return ret;
+ }
+ 
+-void __net_exit ip_vs_protocol_net_cleanup(struct net *net)
++void __net_exit ip_vs_protocol_net_cleanup(struct netns_ipvs *ipvs)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_proto_data *pd;
+ 	int i;
+ 
 -- 
 2.1.4
