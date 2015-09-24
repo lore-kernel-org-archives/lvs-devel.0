@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 28/84] ipvs: Pass ipvs not net to __ip_vs_get_timeouts
-Date: Thu, 24 Sep 2015 09:52:13 +0900
-Message-ID: <1443055989-1306-29-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 11/84] ipvs: Pass ipvs not net to __ip_vs_service_find
+Date: Thu, 24 Sep 2015 09:51:56 +0900
+Message-ID: <1443055989-1306-12-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -19,62 +19,88 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 6c06e9a8414d..e509c27f7292 100644
+index dcb3c10a4ef2..fd8de5ceffca 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2584,10 +2584,9 @@ __ip_vs_get_dest_entries(struct netns_ipvs *ipvs, const struct ip_vs_get_dests *
- }
- 
- static inline void
--__ip_vs_get_timeouts(struct net *net, struct ip_vs_timeout_user *u)
-+__ip_vs_get_timeouts(struct netns_ipvs *ipvs, struct ip_vs_timeout_user *u)
+@@ -357,10 +357,9 @@ static int ip_vs_svc_unhash(struct ip_vs_service *svc)
+  *	Get service by {netns, proto,addr,port} in the service table.
+  */
+ static inline struct ip_vs_service *
+-__ip_vs_service_find(struct net *net, int af, __u16 protocol,
++__ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u16 protocol,
+ 		     const union nf_inet_addr *vaddr, __be16 vport)
  {
- #if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_proto_data *pd;
- #endif
+ 	unsigned int hash;
+ 	struct ip_vs_service *svc;
  
-@@ -2768,7 +2767,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
- 	{
- 		struct ip_vs_timeout_user t;
+@@ -426,7 +425,7 @@ ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ 	 *	Check the table hashed by <protocol,addr,port>
+ 	 *	for "full" addressed entries
+ 	 */
+-	svc = __ip_vs_service_find(net, af, protocol, vaddr, vport);
++	svc = __ip_vs_service_find(ipvs, af, protocol, vaddr, vport);
  
--		__ip_vs_get_timeouts(net, &t);
-+		__ip_vs_get_timeouts(ipvs, &t);
- 		if (copy_to_user(user, &t, sizeof(t)) != 0)
- 			ret = -EFAULT;
+ 	if (svc == NULL
+ 	    && protocol == IPPROTO_TCP
+@@ -436,7 +435,7 @@ ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ 		 * Check if ftp service entry exists, the packet
+ 		 * might belong to FTP data connections.
+ 		 */
+-		svc = __ip_vs_service_find(net, af, protocol, vaddr, FTPPORT);
++		svc = __ip_vs_service_find(ipvs, af, protocol, vaddr, FTPPORT);
  	}
-@@ -3461,7 +3460,7 @@ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_timeout_user t;
  
--	__ip_vs_get_timeouts(net, &t);
-+	__ip_vs_get_timeouts(ipvs, &t);
+ 	if (svc == NULL
+@@ -444,7 +443,7 @@ ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
+ 		/*
+ 		 * Check if the catch-all port (port zero) exists
+ 		 */
+-		svc = __ip_vs_service_find(net, af, protocol, vaddr, 0);
++		svc = __ip_vs_service_find(ipvs, af, protocol, vaddr, 0);
+ 	}
  
- 	if (attrs[IPVS_CMD_ATTR_TIMEOUT_TCP])
- 		t.tcp_timeout = nla_get_u32(attrs[IPVS_CMD_ATTR_TIMEOUT_TCP]);
-@@ -3637,8 +3636,10 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
- 	void *reply;
- 	int ret, cmd, reply_cmd;
- 	struct net *net;
-+	struct netns_ipvs *ipvs;
+   out:
+@@ -2411,7 +2410,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 	/* Lookup the exact service by <protocol, addr, port> or fwmark */
+ 	rcu_read_lock();
+ 	if (usvc.fwmark == 0)
+-		svc = __ip_vs_service_find(net, usvc.af, usvc.protocol,
++		svc = __ip_vs_service_find(ipvs, usvc.af, usvc.protocol,
+ 					   &usvc.addr, usvc.port);
+ 	else
+ 		svc = __ip_vs_svc_fwm_find(ipvs, usvc.af, usvc.fwmark);
+@@ -2551,7 +2550,7 @@ __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
+ 	if (get->fwmark)
+ 		svc = __ip_vs_svc_fwm_find(ipvs, AF_INET, get->fwmark);
+ 	else
+-		svc = __ip_vs_service_find(net, AF_INET, get->protocol, &addr,
++		svc = __ip_vs_service_find(ipvs, AF_INET, get->protocol, &addr,
+ 					   get->port);
+ 	rcu_read_unlock();
  
- 	net = skb_sknet(skb);
-+	ipvs = net_ipvs(net);
- 	cmd = info->genlhdr->cmd;
- 
- 	if (cmd == IPVS_CMD_GET_SERVICE)
-@@ -3688,7 +3689,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
- 	{
- 		struct ip_vs_timeout_user t;
- 
--		__ip_vs_get_timeouts(net, &t);
-+		__ip_vs_get_timeouts(ipvs, &t);
- #ifdef CONFIG_IP_VS_PROTO_TCP
- 		if (nla_put_u32(msg, IPVS_CMD_ATTR_TIMEOUT_TCP,
- 				t.tcp_timeout) ||
+@@ -2745,7 +2744,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 		if (entry->fwmark)
+ 			svc = __ip_vs_svc_fwm_find(ipvs, AF_INET, entry->fwmark);
+ 		else
+-			svc = __ip_vs_service_find(net, AF_INET,
++			svc = __ip_vs_service_find(ipvs, AF_INET,
+ 						   entry->protocol, &addr,
+ 						   entry->port);
+ 		rcu_read_unlock();
+@@ -3094,7 +3093,7 @@ static int ip_vs_genl_parse_service(struct net *net,
+ 	if (usvc->fwmark)
+ 		svc = __ip_vs_svc_fwm_find(ipvs, usvc->af, usvc->fwmark);
+ 	else
+-		svc = __ip_vs_service_find(net, usvc->af, usvc->protocol,
++		svc = __ip_vs_service_find(ipvs, usvc->af, usvc->protocol,
+ 					   &usvc->addr, usvc->port);
+ 	rcu_read_unlock();
+ 	*ret_svc = svc;
 -- 
 2.1.4
+
