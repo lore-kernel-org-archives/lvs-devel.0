@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 48/84] ipvs: Pass ipvs not net to ip_vs_control_net_(init|cleanup)_sysctl
-Date: Thu, 24 Sep 2015 09:52:33 +0900
-Message-ID: <1443055989-1306-49-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 50/84] ipvs: Pass ipvs not net to estimation_timer
+Date: Thu, 24 Sep 2015 09:52:35 +0900
+Message-ID: <1443055989-1306-51-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -19,66 +19,33 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ net/netfilter/ipvs/ip_vs_est.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 93b7bd39bcb9..f0d72d6375e7 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3841,10 +3841,10 @@ static void ip_vs_genl_unregister(void)
-  * per netns intit/exit func.
-  */
- #ifdef CONFIG_SYSCTL
--static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
-+static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
- {
-+	struct net *net = ipvs->net;
- 	int idx;
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ctl_table *tbl;
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 638a301f7ee4..c86dc456c8f4 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -102,10 +102,8 @@ static void estimation_timer(unsigned long arg)
+ 	struct ip_vs_estimator *e;
+ 	struct ip_vs_stats *s;
+ 	u64 rate;
+-	struct net *net = (struct net *)arg;
+-	struct netns_ipvs *ipvs;
++	struct netns_ipvs *ipvs = (struct netns_ipvs *)arg;
  
- 	atomic_set(&ipvs->dropentry, 0);
-@@ -3926,9 +3926,9 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
+-	ipvs = net_ipvs(net);
+ 	spin_lock(&ipvs->est_lock);
+ 	list_for_each_entry(e, &ipvs->est_list, list) {
+ 		s = container_of(e, struct ip_vs_stats, est);
+@@ -196,7 +194,7 @@ int __net_init ip_vs_estimator_net_init(struct net *net)
+ 
+ 	INIT_LIST_HEAD(&ipvs->est_list);
+ 	spin_lock_init(&ipvs->est_lock);
+-	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)net);
++	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)ipvs);
+ 	mod_timer(&ipvs->est_timer, jiffies + 2 * HZ);
  	return 0;
  }
- 
--static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
-+static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct net *net = ipvs->net;
- 
- 	cancel_delayed_work_sync(&ipvs->defense_work);
- 	cancel_work_sync(&ipvs->defense_work.work);
-@@ -3941,8 +3941,8 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
- 
- #else
- 
--static int __net_init ip_vs_control_net_init_sysctl(struct net *net) { return 0; }
--static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net) { }
-+static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs) { return 0; }
-+static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs) { }
- 
- #endif
- 
-@@ -3984,7 +3984,7 @@ int __net_init ip_vs_control_net_init(struct net *net)
- 	proc_create("ip_vs_stats_percpu", 0, net->proc_net,
- 		    &ip_vs_stats_percpu_fops);
- 
--	if (ip_vs_control_net_init_sysctl(net))
-+	if (ip_vs_control_net_init_sysctl(ipvs))
- 		goto err;
- 
- 	return 0;
-@@ -3999,7 +3999,7 @@ void __net_exit ip_vs_control_net_cleanup(struct net *net)
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	ip_vs_trash_cleanup(ipvs);
--	ip_vs_control_net_cleanup_sysctl(net);
-+	ip_vs_control_net_cleanup_sysctl(ipvs);
- 	remove_proc_entry("ip_vs_stats_percpu", net->proc_net);
- 	remove_proc_entry("ip_vs_stats", net->proc_net);
- 	remove_proc_entry("ip_vs", net->proc_net);
 -- 
 2.1.4
