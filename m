@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 46/84] ipvs: Pass ipvs not net to ip_vs_start_estimator aned ip_vs_stop_estimator
-Date: Thu, 24 Sep 2015 09:52:31 +0900
-Message-ID: <1443055989-1306-47-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 49/84] ipvs: Pass ipvs not net into ip_vs_control_net_(init|cleanup)
+Date: Thu, 24 Sep 2015 09:52:34 +0900
+Message-ID: <1443055989-1306-50-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -19,109 +19,93 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h            |  4 ++--
- net/netfilter/ipvs/ip_vs_ctl.c | 12 ++++++------
- net/netfilter/ipvs/ip_vs_est.c |  6 ++----
- 3 files changed, 10 insertions(+), 12 deletions(-)
+ include/net/ip_vs.h             | 4 ++--
+ net/netfilter/ipvs/ip_vs_core.c | 6 +++---
+ net/netfilter/ipvs/ip_vs_ctl.c  | 8 ++++----
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index f3ddf7696d68..2d49357b328c 100644
+index c88a3bf85f98..38c1fca0c1a7 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1455,8 +1455,8 @@ int stop_sync_thread(struct netns_ipvs *ipvs, int state);
- void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts);
+@@ -1324,7 +1324,7 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
  
- /* IPVS rate estimator prototypes (from ip_vs_est.c) */
--void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats);
--void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats);
-+void ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats);
-+void ip_vs_stop_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats);
- void ip_vs_zero_estimator(struct ip_vs_stats *stats);
- void ip_vs_read_estimator(struct ip_vs_kstats *dst, struct ip_vs_stats *stats);
+ /* IPVS netns init & cleanup functions */
+ int ip_vs_estimator_net_init(struct net *net);
+-int ip_vs_control_net_init(struct net *net);
++int ip_vs_control_net_init(struct netns_ipvs *ipvs);
+ int ip_vs_protocol_net_init(struct net *net);
+ int ip_vs_app_net_init(struct net *net);
+ int ip_vs_conn_net_init(struct net *net);
+@@ -1332,7 +1332,7 @@ int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
+ void ip_vs_conn_net_cleanup(struct net *net);
+ void ip_vs_app_net_cleanup(struct net *net);
+ void ip_vs_protocol_net_cleanup(struct net *net);
+-void ip_vs_control_net_cleanup(struct net *net);
++void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_estimator_net_cleanup(struct net *net);
+ void ip_vs_sync_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index cae395fc6523..b5f451f20f52 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2075,7 +2075,7 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	if (ip_vs_estimator_net_init(net) < 0)
+ 		goto estimator_fail;
  
+-	if (ip_vs_control_net_init(net) < 0)
++	if (ip_vs_control_net_init(ipvs) < 0)
+ 		goto control_fail;
+ 
+ 	if (ip_vs_protocol_net_init(net) < 0)
+@@ -2104,7 +2104,7 @@ conn_fail:
+ app_fail:
+ 	ip_vs_protocol_net_cleanup(net);
+ protocol_fail:
+-	ip_vs_control_net_cleanup(net);
++	ip_vs_control_net_cleanup(ipvs);
+ control_fail:
+ 	ip_vs_estimator_net_cleanup(net);
+ estimator_fail:
+@@ -2120,7 +2120,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ 	ip_vs_conn_net_cleanup(net);
+ 	ip_vs_app_net_cleanup(net);
+ 	ip_vs_protocol_net_cleanup(net);
+-	ip_vs_control_net_cleanup(net);
++	ip_vs_control_net_cleanup(ipvs);
+ 	ip_vs_estimator_net_cleanup(net);
+ 	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+ 	net->ipvs = NULL;
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 4042a6f449cb..f43b894f3ef6 100644
+index f0d72d6375e7..b7a0bd274085 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -840,7 +840,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	spin_unlock_bh(&dest->dst_lock);
+@@ -3950,10 +3950,10 @@ static struct notifier_block ip_vs_dst_notifier = {
+ 	.notifier_call = ip_vs_dst_event,
+ };
  
- 	if (add) {
--		ip_vs_start_estimator(svc->ipvs->net, &dest->stats);
-+		ip_vs_start_estimator(svc->ipvs, &dest->stats);
- 		list_add_rcu(&dest->n_list, &svc->destinations);
- 		svc->num_dests++;
- 		sched = rcu_dereference_protected(svc->scheduler, 1);
-@@ -1036,7 +1036,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
- 			     bool cleanup)
+-int __net_init ip_vs_control_net_init(struct net *net)
++int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
  {
--	ip_vs_stop_estimator(ipvs->net, &dest->stats);
-+	ip_vs_stop_estimator(ipvs, &dest->stats);
++	struct net *net = ipvs->net;
+ 	int i, idx;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	/*
- 	 *  Remove it from the d-linked list with the real services.
-@@ -1254,7 +1254,7 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 	else if (svc->port == 0)
- 		atomic_inc(&ipvs->nullsvc_counter);
- 
--	ip_vs_start_estimator(ipvs->net, &svc->stats);
-+	ip_vs_start_estimator(ipvs, &svc->stats);
- 
- 	/* Count only IPv4 services for old get/setsockopt interface */
- 	if (svc->af == AF_INET)
-@@ -1382,7 +1382,7 @@ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
- 	if (svc->af == AF_INET)
- 		ipvs->num_services--;
- 
--	ip_vs_stop_estimator(svc->ipvs->net, &svc->stats);
-+	ip_vs_stop_estimator(svc->ipvs, &svc->stats);
- 
- 	/* Unbind scheduler */
- 	old_sched = rcu_dereference_protected(svc->scheduler, 1);
-@@ -3917,7 +3917,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct net *net)
- 			kfree(tbl);
- 		return -ENOMEM;
- 	}
--	ip_vs_start_estimator(net, &ipvs->tot_stats);
-+	ip_vs_start_estimator(ipvs, &ipvs->tot_stats);
- 	ipvs->sysctl_tbl = tbl;
- 	/* Schedule defense work */
- 	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
-@@ -3933,7 +3933,7 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct net *net)
- 	cancel_delayed_work_sync(&ipvs->defense_work);
- 	cancel_work_sync(&ipvs->defense_work.work);
- 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
--	ip_vs_stop_estimator(net, &ipvs->tot_stats);
-+	ip_vs_stop_estimator(ipvs, &ipvs->tot_stats);
- 
- 	if (!net_eq(net, &init_net))
- 		kfree(ipvs->sysctl_tbl);
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index ef0eb0a8d552..638a301f7ee4 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -140,9 +140,8 @@ static void estimation_timer(unsigned long arg)
- 	mod_timer(&ipvs->est_timer, jiffies + 2*HZ);
+ 	/* Initialize rs_table */
+ 	for (idx = 0; idx < IP_VS_RTAB_SIZE; idx++)
+@@ -3994,9 +3994,9 @@ err:
+ 	return -ENOMEM;
  }
  
--void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats)
-+void ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
+-void __net_exit ip_vs_control_net_cleanup(struct net *net)
++void __net_exit ip_vs_control_net_cleanup(struct netns_ipvs *ipvs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_estimator *est = &stats->est;
++	struct net *net = ipvs->net;
  
- 	INIT_LIST_HEAD(&est->list);
-@@ -152,9 +151,8 @@ void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats)
- 	spin_unlock_bh(&ipvs->est_lock);
- }
- 
--void ip_vs_stop_estimator(struct net *net, struct ip_vs_stats *stats)
-+void ip_vs_stop_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_estimator *est = &stats->est;
- 
- 	spin_lock_bh(&ipvs->est_lock);
+ 	ip_vs_trash_cleanup(ipvs);
+ 	ip_vs_control_net_cleanup_sysctl(ipvs);
 -- 
 2.1.4
+
