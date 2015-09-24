@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 83/84] ipvs: Remove skb_sknet
-Date: Thu, 24 Sep 2015 09:53:08 +0900
-Message-ID: <1443055989-1306-84-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 79/84] ipvs: Pass ipvs through ip_vs_route_me_harder into sysctl_snat_reroute
+Date: Thu, 24 Sep 2015 09:53:04 +0900
+Message-ID: <1443055989-1306-80-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,122 +15,71 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
-This function adds no real value and it obscures what the code is doing.
+This removes the need to use the hack skb_net.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h            | 22 ----------------------
- net/netfilter/ipvs/ip_vs_ctl.c | 25 ++++++++++---------------
- 2 files changed, 10 insertions(+), 37 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index d621330d423c..0816c872b689 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -38,28 +38,6 @@ static inline struct netns_ipvs *net_ipvs(struct net* net)
- 	return net->ipvs;
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 9967c9fac7f7..22eae0231cbb 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -651,9 +651,8 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 
+ #ifdef CONFIG_SYSCTL
+ 
+-static int sysctl_snat_reroute(struct sk_buff *skb)
++static int sysctl_snat_reroute(struct netns_ipvs *ipvs)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
+ 	return ipvs->sysctl_snat_reroute;
  }
  
--static inline struct net *skb_sknet(const struct sk_buff *skb)
--{
--#ifdef CONFIG_NET_NS
--#ifdef CONFIG_IP_VS_DEBUG
--	/* Start with the most likely hit */
--	if (likely(skb->sk && sock_net(skb->sk)))
--		return sock_net(skb->sk);
--	WARN(skb->dev, "Maybe skb_net should be used instead in %s() line:%d\n",
--		       __func__, __LINE__);
--	if (likely(skb->dev && dev_net(skb->dev)))
--		return dev_net(skb->dev);
--	pr_err("There is no net ptr to find in the skb in %s() line:%d\n",
--		__func__, __LINE__);
--	BUG();
--#else
--	return sock_net(skb->sk);
--#endif
--#else
--	return &init_net;
--#endif
--}
--
- /* This one needed for single_open_net since net is stored directly in
-  * private not as a struct i.e. seq_file_net can't be used.
-  */
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index b7a0bd274085..e7c1b052c2a3 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3002,7 +3002,8 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
- 	int idx = 0, i;
- 	int start = cb->args[0];
- 	struct ip_vs_service *svc;
--	struct netns_ipvs *ipvs = net_ipvs(skb_sknet(skb));
-+	struct net *net = sock_net(skb->sk);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
+@@ -669,7 +668,7 @@ static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs)
  
- 	mutex_lock(&__ip_vs_mutex);
- 	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
-@@ -3201,7 +3202,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
- 	struct ip_vs_service *svc;
- 	struct ip_vs_dest *dest;
- 	struct nlattr *attrs[IPVS_CMD_ATTR_MAX + 1];
--	struct net *net = skb_sknet(skb);
-+	struct net *net = sock_net(skb->sk);
- 	struct netns_ipvs *ipvs = net_ipvs(net);
+ #else
  
- 	mutex_lock(&__ip_vs_mutex);
-@@ -3348,7 +3349,7 @@ nla_put_failure:
- static int ip_vs_genl_dump_daemons(struct sk_buff *skb,
- 				   struct netlink_callback *cb)
+-static int sysctl_snat_reroute(struct sk_buff *skb) { return 0; }
++static int sysctl_snat_reroute(struct netns_ipvs *ipvs) { return 0; }
+ static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs) { return 0; }
+ static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs) { return 0; }
+ 
+@@ -702,10 +701,10 @@ static inline int ip_vs_gather_frags(struct sk_buff *skb, u_int32_t user)
+ 	return err;
+ }
+ 
+-static int ip_vs_route_me_harder(int af, struct sk_buff *skb,
+-				 unsigned int hooknum)
++static int ip_vs_route_me_harder(struct netns_ipvs *ipvs, int af,
++				 struct sk_buff *skb, unsigned int hooknum)
  {
--	struct net *net = skb_sknet(skb);
-+	struct net *net = sock_net(skb->sk);
- 	struct netns_ipvs *ipvs = net_ipvs(net);
+-	if (!sysctl_snat_reroute(skb))
++	if (!sysctl_snat_reroute(ipvs))
+ 		return 0;
+ 	/* Reroute replies only to remote clients (FORWARD and LOCAL_OUT) */
+ 	if (NF_INET_LOCAL_IN == hooknum)
+@@ -873,7 +872,7 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ #endif
+ 		ip_vs_nat_icmp(skb, pp, cp, 1);
  
- 	mutex_lock(&ipvs->sync_mutex);
-@@ -3475,11 +3476,9 @@ static int ip_vs_genl_set_config(struct netns_ipvs *ipvs, struct nlattr **attrs)
- static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
- {
- 	int ret = -EINVAL, cmd;
--	struct net *net;
--	struct netns_ipvs *ipvs;
-+	struct net *net = sock_net(skb->sk);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
+-	if (ip_vs_route_me_harder(af, skb, hooknum))
++	if (ip_vs_route_me_harder(cp->ipvs, af, skb, hooknum))
+ 		goto out;
  
--	net = skb_sknet(skb);
--	ipvs = net_ipvs(net);
- 	cmd = info->genlhdr->cmd;
+ 	/* do the statistics and put it back */
+@@ -1144,7 +1143,7 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	 * if it came from this machine itself.  So re-compute
+ 	 * the routing information.
+ 	 */
+-	if (ip_vs_route_me_harder(af, skb, hooknum))
++	if (ip_vs_route_me_harder(cp->ipvs, af, skb, hooknum))
+ 		goto drop;
  
- 	if (cmd == IPVS_CMD_NEW_DAEMON || cmd == IPVS_CMD_DEL_DAEMON) {
-@@ -3508,11 +3507,9 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 	struct ip_vs_dest_user_kern udest;
- 	int ret = 0, cmd;
- 	int need_full_svc = 0, need_full_dest = 0;
--	struct net *net;
--	struct netns_ipvs *ipvs;
-+	struct net *net = sock_net(skb->sk);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	net = skb_sknet(skb);
--	ipvs = net_ipvs(net);
- 	cmd = info->genlhdr->cmd;
- 
- 	mutex_lock(&__ip_vs_mutex);
-@@ -3632,11 +3629,9 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
- 	struct sk_buff *msg;
- 	void *reply;
- 	int ret, cmd, reply_cmd;
--	struct net *net;
--	struct netns_ipvs *ipvs;
-+	struct net *net = sock_net(skb->sk);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	net = skb_sknet(skb);
--	ipvs = net_ipvs(net);
- 	cmd = info->genlhdr->cmd;
- 
- 	if (cmd == IPVS_CMD_GET_SERVICE)
+ 	IP_VS_DBG_PKT(10, af, pp, skb, iph->off, "After SNAT");
 -- 
 2.1.4
+
