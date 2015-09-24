@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 51/84] ipvs: Pass ipvs not net to ip_vs_estimator_net_init and ip_vs_estimator_cleanup
-Date: Thu, 24 Sep 2015 09:52:36 +0900
-Message-ID: <1443055989-1306-52-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 52/84] ipvs: Pass ipvs not net into register_app and unregister_app
+Date: Thu, 24 Sep 2015 09:52:37 +0900
+Message-ID: <1443055989-1306-53-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -19,90 +19,159 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             | 4 ++--
- net/netfilter/ipvs/ip_vs_core.c | 6 +++---
- net/netfilter/ipvs/ip_vs_est.c  | 8 +++-----
- 3 files changed, 8 insertions(+), 10 deletions(-)
+ include/net/ip_vs.h                   | 4 ++--
+ net/netfilter/ipvs/ip_vs_app.c        | 6 ++++--
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 7 +++----
+ net/netfilter/ipvs/ip_vs_proto_tcp.c  | 7 +++----
+ net/netfilter/ipvs/ip_vs_proto_udp.c  | 7 +++----
+ 5 files changed, 15 insertions(+), 16 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 38c1fca0c1a7..02734eaae679 100644
+index 02734eaae679..a7275ae18b96 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -1323,7 +1323,7 @@ ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
- }
+@@ -517,9 +517,9 @@ struct ip_vs_protocol {
+ 				 const struct sk_buff *skb,
+ 				 struct ip_vs_proto_data *pd);
  
- /* IPVS netns init & cleanup functions */
--int ip_vs_estimator_net_init(struct net *net);
-+int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
- int ip_vs_control_net_init(struct netns_ipvs *ipvs);
- int ip_vs_protocol_net_init(struct net *net);
- int ip_vs_app_net_init(struct net *net);
-@@ -1333,7 +1333,7 @@ void ip_vs_conn_net_cleanup(struct net *net);
- void ip_vs_app_net_cleanup(struct net *net);
- void ip_vs_protocol_net_cleanup(struct net *net);
- void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
--void ip_vs_estimator_net_cleanup(struct net *net);
-+void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_sync_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
+-	int (*register_app)(struct net *net, struct ip_vs_app *inc);
++	int (*register_app)(struct netns_ipvs *ipvs, struct ip_vs_app *inc);
  
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index b5f451f20f52..ec6f022fba6a 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2072,7 +2072,7 @@ static int __net_init __ip_vs_init(struct net *net)
- 	atomic_inc(&ipvs_netns_cnt);
- 	net->ipvs = ipvs;
+-	void (*unregister_app)(struct net *net, struct ip_vs_app *inc);
++	void (*unregister_app)(struct netns_ipvs *ipvs, struct ip_vs_app *inc);
  
--	if (ip_vs_estimator_net_init(net) < 0)
-+	if (ip_vs_estimator_net_init(ipvs) < 0)
- 		goto estimator_fail;
+ 	int (*app_conn_bind)(struct ip_vs_conn *cp);
  
- 	if (ip_vs_control_net_init(ipvs) < 0)
-@@ -2106,7 +2106,7 @@ app_fail:
- protocol_fail:
- 	ip_vs_control_net_cleanup(ipvs);
- control_fail:
--	ip_vs_estimator_net_cleanup(net);
-+	ip_vs_estimator_net_cleanup(ipvs);
- estimator_fail:
- 	net->ipvs = NULL;
- 	return -ENOMEM;
-@@ -2121,7 +2121,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
- 	ip_vs_app_net_cleanup(net);
- 	ip_vs_protocol_net_cleanup(net);
- 	ip_vs_control_net_cleanup(ipvs);
--	ip_vs_estimator_net_cleanup(net);
-+	ip_vs_estimator_net_cleanup(ipvs);
- 	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
- 	net->ipvs = NULL;
- }
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index c86dc456c8f4..457c6c193e13 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -188,10 +188,8 @@ void ip_vs_read_estimator(struct ip_vs_kstats *dst, struct ip_vs_stats *stats)
- 	dst->outbps = (e->outbps + 0xF) >> 5;
- }
- 
--int __net_init ip_vs_estimator_net_init(struct net *net)
-+int __net_init ip_vs_estimator_net_init(struct netns_ipvs *ipvs)
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index dfd7b65b3d2a..f20f72c4ac80 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -78,6 +78,7 @@ static int
+ ip_vs_app_inc_new(struct net *net, struct ip_vs_app *app, __u16 proto,
+ 		  __u16 port)
  {
++	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_app *inc;
+ 	int ret;
+@@ -107,7 +108,7 @@ ip_vs_app_inc_new(struct net *net, struct ip_vs_app *app, __u16 proto,
+ 		}
+ 	}
+ 
+-	ret = pp->register_app(net, inc);
++	ret = pp->register_app(ipvs, inc);
+ 	if (ret)
+ 		goto out;
+ 
+@@ -129,13 +130,14 @@ ip_vs_app_inc_new(struct net *net, struct ip_vs_app *app, __u16 proto,
+ static void
+ ip_vs_app_inc_release(struct net *net, struct ip_vs_app *inc)
+ {
++	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_protocol *pp;
+ 
+ 	if (!(pp = ip_vs_proto_get(inc->protocol)))
+ 		return;
+ 
+ 	if (pp->unregister_app)
+-		pp->unregister_app(net, inc);
++		pp->unregister_app(ipvs, inc);
+ 
+ 	IP_VS_DBG(9, "%s App %s:%u unregistered\n",
+ 		  pp->name, inc->name, ntohs(inc->port));
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 8f39e0266ade..345fc7485f2e 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -487,13 +487,12 @@ static inline __u16 sctp_app_hashkey(__be16 port)
+ 		& SCTP_APP_TAB_MASK;
+ }
+ 
+-static int sctp_register_app(struct net *net, struct ip_vs_app *inc)
++static int sctp_register_app(struct netns_ipvs *ipvs, struct ip_vs_app *inc)
+ {
+ 	struct ip_vs_app *i;
+ 	__u16 hash;
+ 	__be16 port = inc->port;
+ 	int ret = 0;
 -	struct netns_ipvs *ipvs = net_ipvs(net);
--
- 	INIT_LIST_HEAD(&ipvs->est_list);
- 	spin_lock_init(&ipvs->est_lock);
- 	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)ipvs);
-@@ -199,7 +197,7 @@ int __net_init ip_vs_estimator_net_init(struct net *net)
- 	return 0;
+ 	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(ipvs, IPPROTO_SCTP);
+ 
+ 	hash = sctp_app_hashkey(port);
+@@ -511,9 +510,9 @@ out:
+ 	return ret;
  }
  
--void __net_exit ip_vs_estimator_net_cleanup(struct net *net)
-+void __net_exit ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs)
+-static void sctp_unregister_app(struct net *net, struct ip_vs_app *inc)
++static void sctp_unregister_app(struct netns_ipvs *ipvs, struct ip_vs_app *inc)
  {
--	del_timer_sync(&net_ipvs(net)->est_timer);
-+	del_timer_sync(&ipvs->est_timer);
+-	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(net_ipvs(net), IPPROTO_SCTP);
++	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(ipvs, IPPROTO_SCTP);
+ 
+ 	atomic_dec(&pd->appcnt);
+ 	list_del_rcu(&inc->p_list);
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 975aa69eec9c..94bea31ec388 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -595,13 +595,12 @@ static inline __u16 tcp_app_hashkey(__be16 port)
  }
+ 
+ 
+-static int tcp_register_app(struct net *net, struct ip_vs_app *inc)
++static int tcp_register_app(struct netns_ipvs *ipvs, struct ip_vs_app *inc)
+ {
+ 	struct ip_vs_app *i;
+ 	__u16 hash;
+ 	__be16 port = inc->port;
+ 	int ret = 0;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(ipvs, IPPROTO_TCP);
+ 
+ 	hash = tcp_app_hashkey(port);
+@@ -621,9 +620,9 @@ static int tcp_register_app(struct net *net, struct ip_vs_app *inc)
+ 
+ 
+ static void
+-tcp_unregister_app(struct net *net, struct ip_vs_app *inc)
++tcp_unregister_app(struct netns_ipvs *ipvs, struct ip_vs_app *inc)
+ {
+-	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(net_ipvs(net), IPPROTO_TCP);
++	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(ipvs, IPPROTO_TCP);
+ 
+ 	atomic_dec(&pd->appcnt);
+ 	list_del_rcu(&inc->p_list);
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index 1baa7494446a..234521ec9703 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -365,13 +365,12 @@ static inline __u16 udp_app_hashkey(__be16 port)
+ }
+ 
+ 
+-static int udp_register_app(struct net *net, struct ip_vs_app *inc)
++static int udp_register_app(struct netns_ipvs *ipvs, struct ip_vs_app *inc)
+ {
+ 	struct ip_vs_app *i;
+ 	__u16 hash;
+ 	__be16 port = inc->port;
+ 	int ret = 0;
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(ipvs, IPPROTO_UDP);
+ 
+ 	hash = udp_app_hashkey(port);
+@@ -391,9 +390,9 @@ static int udp_register_app(struct net *net, struct ip_vs_app *inc)
+ 
+ 
+ static void
+-udp_unregister_app(struct net *net, struct ip_vs_app *inc)
++udp_unregister_app(struct netns_ipvs *ipvs, struct ip_vs_app *inc)
+ {
+-	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(net_ipvs(net), IPPROTO_UDP);
++	struct ip_vs_proto_data *pd = ip_vs_proto_data_get(ipvs, IPPROTO_UDP);
+ 
+ 	atomic_dec(&pd->appcnt);
+ 	list_del_rcu(&inc->p_list);
 -- 
 2.1.4
 
