@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 65/84] ipvs: Pass ipvs not net into ip_vs_conn_net_init and ip_vs_conn_net_cleanup
-Date: Thu, 24 Sep 2015 09:52:50 +0900
-Message-ID: <1443055989-1306-66-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 63/84] ipvs: Pass ipvs not net to ip_vs_conn_hashkey
+Date: Thu, 24 Sep 2015 09:52:48 +0900
+Message-ID: <1443055989-1306-64-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -15,90 +15,54 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
+Use the address of struct netns_ipvs in the hash not the address of
+struct net.  Both addresses are equally valid candidates and by using
+the address of struct netns_ipvs there becomes no need deal with
+struct net in this part of the code.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             | 4 ++--
  net/netfilter/ipvs/ip_vs_conn.c | 8 ++++----
- net/netfilter/ipvs/ip_vs_core.c | 6 +++---
- 3 files changed, 9 insertions(+), 9 deletions(-)
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 0ca436ef7dad..5ad04be64895 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1331,9 +1331,9 @@ int ip_vs_estimator_net_init(struct netns_ipvs *ipvs);
- int ip_vs_control_net_init(struct netns_ipvs *ipvs);
- int ip_vs_protocol_net_init(struct net *net);
- int ip_vs_app_net_init(struct netns_ipvs *ipvs);
--int ip_vs_conn_net_init(struct net *net);
-+int ip_vs_conn_net_init(struct netns_ipvs *ipvs);
- int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
--void ip_vs_conn_net_cleanup(struct net *net);
-+void ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_app_net_cleanup(struct netns_ipvs *ipvs);
- void ip_vs_protocol_net_cleanup(struct net *net);
- void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 4bb1b7d1286d..d1d168c7fc68 100644
+index 7a4d1d8e8f0c..a99bbf6c8202 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1345,9 +1345,9 @@ flush_again:
+@@ -108,7 +108,7 @@ static inline void ct_write_unlock_bh(unsigned int key)
  /*
-  * per netns init and exit
+  *	Returns hash value for IPVS connection entry
   */
--int __net_init ip_vs_conn_net_init(struct net *net)
-+int __net_init ip_vs_conn_net_init(struct netns_ipvs *ipvs)
+-static unsigned int ip_vs_conn_hashkey(struct net *net, int af, unsigned int proto,
++static unsigned int ip_vs_conn_hashkey(struct netns_ipvs *ipvs, int af, unsigned int proto,
+ 				       const union nf_inet_addr *addr,
+ 				       __be16 port)
  {
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct net *net = ipvs->net;
- 
- 	atomic_set(&ipvs->conn_count, 0);
- 
-@@ -1356,9 +1356,9 @@ int __net_init ip_vs_conn_net_init(struct net *net)
- 	return 0;
+@@ -116,11 +116,11 @@ static unsigned int ip_vs_conn_hashkey(struct net *net, int af, unsigned int pro
+ 	if (af == AF_INET6)
+ 		return (jhash_3words(jhash(addr, 16, ip_vs_conn_rnd),
+ 				    (__force u32)port, proto, ip_vs_conn_rnd) ^
+-			((size_t)net>>8)) & ip_vs_conn_tab_mask;
++			((size_t)ipvs>>8)) & ip_vs_conn_tab_mask;
+ #endif
+ 	return (jhash_3words((__force u32)addr->ip, (__force u32)port, proto,
+ 			    ip_vs_conn_rnd) ^
+-		((size_t)net>>8)) & ip_vs_conn_tab_mask;
++		((size_t)ipvs>>8)) & ip_vs_conn_tab_mask;
  }
  
--void __net_exit ip_vs_conn_net_cleanup(struct net *net)
-+void __net_exit ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct net *net = ipvs->net;
+ static unsigned int ip_vs_conn_hashkey_param(const struct ip_vs_conn_param *p,
+@@ -141,7 +141,7 @@ static unsigned int ip_vs_conn_hashkey_param(const struct ip_vs_conn_param *p,
+ 		port = p->vport;
+ 	}
  
- 	/* flush all the connection entries first */
- 	ip_vs_conn_flush(ipvs);
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index f0369e7602a0..9b37fe30dcac 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2086,7 +2086,7 @@ static int __net_init __ip_vs_init(struct net *net)
- 	if (ip_vs_app_net_init(ipvs) < 0)
- 		goto app_fail;
+-	return ip_vs_conn_hashkey(p->ipvs->net, p->af, p->protocol, addr, port);
++	return ip_vs_conn_hashkey(p->ipvs, p->af, p->protocol, addr, port);
+ }
  
--	if (ip_vs_conn_net_init(net) < 0)
-+	if (ip_vs_conn_net_init(ipvs) < 0)
- 		goto conn_fail;
- 
- 	if (ip_vs_sync_net_init(ipvs) < 0)
-@@ -2100,7 +2100,7 @@ static int __net_init __ip_vs_init(struct net *net)
-  */
- 
- sync_fail:
--	ip_vs_conn_net_cleanup(net);
-+	ip_vs_conn_net_cleanup(ipvs);
- conn_fail:
- 	ip_vs_app_net_cleanup(ipvs);
- app_fail:
-@@ -2119,7 +2119,7 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
--	ip_vs_conn_net_cleanup(net);
-+	ip_vs_conn_net_cleanup(ipvs);
- 	ip_vs_app_net_cleanup(ipvs);
- 	ip_vs_protocol_net_cleanup(net);
- 	ip_vs_control_net_cleanup(ipvs);
+ static unsigned int ip_vs_conn_hashkey_conn(const struct ip_vs_conn *cp)
 -- 
 2.1.4
 
