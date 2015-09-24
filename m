@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 39/84] ipvs: Pass ipvs not net to ip_vs_sync_conn_v0
-Date: Thu, 24 Sep 2015 09:52:24 +0900
-Message-ID: <1443055989-1306-40-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 37/84] ipvs: Store ipvs not net in struct ip_vs_sync_thread_data
+Date: Thu, 24 Sep 2015 09:52:22 +0900
+Message-ID: <1443055989-1306-38-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -15,47 +15,68 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
+In practice struct netns_ipvs is as meaningful as struct net and more
+useful as it holds the ipvs specific data.  So store a pointer to
+struct netns_ipvs.
+
+Update the accesses of tinfo->net to access tinfo->ipvs->net instead.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_sync.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 280e1c03e598..58ec7850ab06 100644
+index 304eade977d2..cd32e3ab0c4d 100644
 --- a/net/netfilter/ipvs/ip_vs_sync.c
 +++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -533,10 +533,9 @@ set:
-  *      Version 0 , could be switched in by sys_ctl.
-  *      Add an ip_vs_conn information into the current sync_buff.
-  */
--static void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp,
-+static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
- 			       int pkts)
+@@ -193,7 +193,7 @@ union ip_vs_sync_conn {
+ #define IPVS_OPT_F_PARAM	(1 << (IPVS_OPT_PARAM-1))
+ 
+ struct ip_vs_sync_thread_data {
+-	struct net *net;
++	struct netns_ipvs *ipvs;
+ 	struct socket *sock;
+ 	char *buf;
+ 	int id;
+@@ -1685,7 +1685,7 @@ next_sync_buff(struct netns_ipvs *ipvs, struct ipvs_master_sync_state *ms)
+ static int sync_thread_master(void *data)
  {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_mesg_v0 *m;
- 	struct ip_vs_sync_conn_v0 *s;
- 	struct ip_vs_sync_buff *buff;
-@@ -615,7 +614,7 @@ static void ip_vs_sync_conn_v0(struct net *net, struct ip_vs_conn *cp,
- 			pkts = atomic_add_return(1, &cp->in_pkts);
- 		else
- 			pkts = sysctl_sync_threshold(ipvs);
--		ip_vs_sync_conn(net, cp, pkts);
-+		ip_vs_sync_conn(ipvs->net, cp, pkts);
- 	}
- }
+ 	struct ip_vs_sync_thread_data *tinfo = data;
+-	struct netns_ipvs *ipvs = net_ipvs(tinfo->net);
++	struct netns_ipvs *ipvs = tinfo->ipvs;
+ 	struct ipvs_master_sync_state *ms = &ipvs->ms[tinfo->id];
+ 	struct sock *sk = tinfo->sock->sk;
+ 	struct ip_vs_sync_buff *sb;
+@@ -1741,7 +1741,7 @@ done:
+ static int sync_thread_backup(void *data)
+ {
+ 	struct ip_vs_sync_thread_data *tinfo = data;
+-	struct netns_ipvs *ipvs = net_ipvs(tinfo->net);
++	struct netns_ipvs *ipvs = tinfo->ipvs;
+ 	int len;
  
-@@ -637,7 +636,7 @@ void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp, int pkts)
+ 	pr_info("sync thread started: state = BACKUP, mcast_ifn = %s, "
+@@ -1763,7 +1763,7 @@ static int sync_thread_backup(void *data)
+ 				break;
+ 			}
  
- 	/* Handle old version of the protocol */
- 	if (sysctl_sync_ver(ipvs) == 0) {
--		ip_vs_sync_conn_v0(net, cp, pkts);
-+		ip_vs_sync_conn_v0(ipvs, cp, pkts);
- 		return;
+-			ip_vs_process_message(tinfo->net, tinfo->buf, len);
++			ip_vs_process_message(ipvs->net, tinfo->buf, len);
+ 		}
  	}
- 	/* Do not sync ONE PACKET */
+ 
+@@ -1880,7 +1880,7 @@ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *c,
+ 		tinfo = kmalloc(sizeof(*tinfo), GFP_KERNEL);
+ 		if (!tinfo)
+ 			goto outsocket;
+-		tinfo->net = ipvs->net;
++		tinfo->ipvs = ipvs;
+ 		tinfo->sock = sock;
+ 		if (state == IP_VS_STATE_BACKUP) {
+ 			tinfo->buf = kmalloc(ipvs->bcfg.sync_maxlen,
 -- 
 2.1.4
 
