@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 09/84] ipvs: Pass ipvs not net to __ip_vs_svc_fwm_find
-Date: Thu, 24 Sep 2015 09:51:54 +0900
-Message-ID: <1443055989-1306-10-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 25/84] ipvs: Pass ipvs not net to ip_vs_set_timeout
+Date: Thu, 24 Sep 2015 09:52:10 +0900
+Message-ID: <1443055989-1306-26-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,90 +15,55 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
-ipvs is what the code actually wants to use.
-
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 15 ++++++++-------
- 1 file changed, 8 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 5e5f40f85a31..740703ee7116 100644
+index eb3911c69037..7aba55c875cb 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -386,9 +386,8 @@ __ip_vs_service_find(struct net *net, int af, __u16 protocol,
-  *	Get service by {fwmark} in the service table.
+@@ -2202,10 +2202,9 @@ static const struct file_operations ip_vs_stats_percpu_fops = {
+ /*
+  *	Set timeout values for tcp tcpfin udp in the timeout_table.
   */
- static inline struct ip_vs_service *
--__ip_vs_svc_fwm_find(struct net *net, int af, __u32 fwmark)
-+__ip_vs_svc_fwm_find(struct netns_ipvs *ipvs, int af, __u32 fwmark)
+-static int ip_vs_set_timeout(struct net *net, struct ip_vs_timeout_user *u)
++static int ip_vs_set_timeout(struct netns_ipvs *ipvs, struct ip_vs_timeout_user *u)
  {
+ #if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	unsigned int hash;
- 	struct ip_vs_service *svc;
+ 	struct ip_vs_proto_data *pd;
+ #endif
  
-@@ -418,7 +417,7 @@ ip_vs_service_find(struct net *net, int af, __u32 fwmark, __u16 protocol,
- 	 *	Check the table hashed by fwmark first
- 	 */
- 	if (fwmark) {
--		svc = __ip_vs_svc_fwm_find(net, af, fwmark);
-+		svc = __ip_vs_svc_fwm_find(ipvs, af, fwmark);
- 		if (svc)
- 			goto out;
+@@ -2369,7 +2368,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 		goto out_unlock;
+ 	} else if (cmd == IP_VS_SO_SET_TIMEOUT) {
+ 		/* Set timeout values for (tcp tcpfin udp) */
+-		ret = ip_vs_set_timeout(net, (struct ip_vs_timeout_user *)arg);
++		ret = ip_vs_set_timeout(ipvs, (struct ip_vs_timeout_user *)arg);
+ 		goto out_unlock;
  	}
-@@ -2415,7 +2414,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		svc = __ip_vs_service_find(net, usvc.af, usvc.protocol,
- 					   &usvc.addr, usvc.port);
- 	else
--		svc = __ip_vs_svc_fwm_find(net, usvc.af, usvc.fwmark);
-+		svc = __ip_vs_svc_fwm_find(ipvs, usvc.af, usvc.fwmark);
- 	rcu_read_unlock();
  
- 	if (cmd != IP_VS_SO_SET_ADD
-@@ -2543,13 +2542,14 @@ static inline int
- __ip_vs_get_dest_entries(struct net *net, const struct ip_vs_get_dests *get,
- 			 struct ip_vs_get_dests __user *uptr)
+@@ -3461,6 +3460,7 @@ static int ip_vs_genl_del_daemon(struct net *net, struct nlattr **attrs)
+ 
+ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
  {
 +	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_service *svc;
- 	union nf_inet_addr addr = { .ip = get->addr };
- 	int ret = 0;
+ 	struct ip_vs_timeout_user t;
  
- 	rcu_read_lock();
- 	if (get->fwmark)
--		svc = __ip_vs_svc_fwm_find(net, AF_INET, get->fwmark);
-+		svc = __ip_vs_svc_fwm_find(ipvs, AF_INET, get->fwmark);
- 	else
- 		svc = __ip_vs_service_find(net, AF_INET, get->protocol, &addr,
- 					   get->port);
-@@ -2743,7 +2743,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
- 		addr.ip = entry->addr;
- 		rcu_read_lock();
- 		if (entry->fwmark)
--			svc = __ip_vs_svc_fwm_find(net, AF_INET, entry->fwmark);
-+			svc = __ip_vs_svc_fwm_find(ipvs, AF_INET, entry->fwmark);
- 		else
- 			svc = __ip_vs_service_find(net, AF_INET,
- 						   entry->protocol, &addr,
-@@ -3051,6 +3051,7 @@ static int ip_vs_genl_parse_service(struct net *net,
- 				    struct nlattr *nla, int full_entry,
- 				    struct ip_vs_service **ret_svc)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct nlattr *attrs[IPVS_SVC_ATTR_MAX + 1];
- 	struct nlattr *nla_af, *nla_port, *nla_fwmark, *nla_protocol, *nla_addr;
- 	struct ip_vs_service *svc;
-@@ -3091,7 +3092,7 @@ static int ip_vs_genl_parse_service(struct net *net,
+ 	__ip_vs_get_timeouts(net, &t);
+@@ -3475,7 +3475,7 @@ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
+ 	if (attrs[IPVS_CMD_ATTR_TIMEOUT_UDP])
+ 		t.udp_timeout = nla_get_u32(attrs[IPVS_CMD_ATTR_TIMEOUT_UDP]);
  
- 	rcu_read_lock();
- 	if (usvc->fwmark)
--		svc = __ip_vs_svc_fwm_find(net, usvc->af, usvc->fwmark);
-+		svc = __ip_vs_svc_fwm_find(ipvs, usvc->af, usvc->fwmark);
- 	else
- 		svc = __ip_vs_service_find(net, usvc->af, usvc->protocol,
- 					   &usvc->addr, usvc->port);
+-	return ip_vs_set_timeout(net, &t);
++	return ip_vs_set_timeout(ipvs, &t);
+ }
+ 
+ static int ip_vs_genl_set_daemon(struct sk_buff *skb, struct genl_info *info)
 -- 
 2.1.4
 
