@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 58/84] ipvs: Pass ipvs not net into [un]register_ip_vs_proto_netns
-Date: Thu, 24 Sep 2015 09:52:43 +0900
-Message-ID: <1443055989-1306-59-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 66/84] ipvs: Pass ipvs into .conn_schedule and ip_vs_try_to_schedule
+Date: Thu, 24 Sep 2015 09:52:51 +0900
+Message-ID: <1443055989-1306-67-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -15,77 +15,188 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
+This moves the hack "net_ipvs(skb_net(skb))" up one level where it
+will be easier to remove.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_proto.c | 15 +++++++--------
- 1 file changed, 7 insertions(+), 8 deletions(-)
+ include/net/ip_vs.h                     |  3 ++-
+ net/netfilter/ipvs/ip_vs_core.c         | 11 ++++++-----
+ net/netfilter/ipvs/ip_vs_proto_ah_esp.c |  3 ++-
+ net/netfilter/ipvs/ip_vs_proto_sctp.c   |  8 ++------
+ net/netfilter/ipvs/ip_vs_proto_tcp.c    |  8 ++------
+ net/netfilter/ipvs/ip_vs_proto_udp.c    |  9 +++------
+ 6 files changed, 17 insertions(+), 25 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-index 82ccfd2f235c..fb581babe5e2 100644
---- a/net/netfilter/ipvs/ip_vs_proto.c
-+++ b/net/netfilter/ipvs/ip_vs_proto.c
-@@ -63,9 +63,8 @@ static int __used __init register_ip_vs_protocol(struct ip_vs_protocol *pp)
-  *	register an ipvs protocols netns related data
-  */
- static int
--register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
-+register_ip_vs_proto_netns(struct netns_ipvs *ipvs, struct ip_vs_protocol *pp)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	unsigned int hash = IP_VS_PROTO_HASH(pp->protocol);
- 	struct ip_vs_proto_data *pd =
- 			kzalloc(sizeof(struct ip_vs_proto_data), GFP_KERNEL);
-@@ -79,7 +78,7 @@ register_ip_vs_proto_netns(struct net *net, struct ip_vs_protocol *pp)
- 	atomic_set(&pd->appcnt, 0);	/* Init app counter */
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 5ad04be64895..c68c2c8ae48a 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -487,7 +487,8 @@ struct ip_vs_protocol {
  
- 	if (pp->init_netns != NULL) {
--		int ret = pp->init_netns(net, pd);
-+		int ret = pp->init_netns(ipvs->net, pd);
- 		if (ret) {
- 			/* unlink an free proto data */
- 			ipvs->proto_data_table[hash] = pd->next;
-@@ -116,9 +115,8 @@ static int unregister_ip_vs_protocol(struct ip_vs_protocol *pp)
-  *	unregister an ipvs protocols netns data
-  */
- static int
--unregister_ip_vs_proto_netns(struct net *net, struct ip_vs_proto_data *pd)
-+unregister_ip_vs_proto_netns(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_proto_data **pd_p;
- 	unsigned int hash = IP_VS_PROTO_HASH(pd->pp->protocol);
+ 	void (*exit_netns)(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd);
  
-@@ -127,7 +125,7 @@ unregister_ip_vs_proto_netns(struct net *net, struct ip_vs_proto_data *pd)
- 		if (*pd_p == pd) {
- 			*pd_p = pd->next;
- 			if (pd->pp->exit_netns != NULL)
--				pd->pp->exit_netns(net, pd);
-+				pd->pp->exit_netns(ipvs->net, pd);
- 			kfree(pd);
- 			return 0;
- 		}
-@@ -329,9 +327,10 @@ int __net_init ip_vs_protocol_net_init(struct net *net)
- 	&ip_vs_protocol_esp,
+-	int (*conn_schedule)(int af, struct sk_buff *skb,
++	int (*conn_schedule)(struct netns_ipvs *ipvs,
++			     int af, struct sk_buff *skb,
+ 			     struct ip_vs_proto_data *pd,
+ 			     int *verdict, struct ip_vs_conn **cpp,
+ 			     struct ip_vs_iphdr *iph);
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 9b37fe30dcac..514596b7a324 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1360,7 +1360,8 @@ ip_vs_local_reply6(void *priv, struct sk_buff *skb,
  #endif
- 	};
-+	struct netns_ipvs *ipvs = net_ipvs(net);
  
- 	for (i = 0; i < ARRAY_SIZE(protos); i++) {
--		ret = register_ip_vs_proto_netns(net, protos[i]);
-+		ret = register_ip_vs_proto_netns(ipvs, protos[i]);
- 		if (ret < 0)
- 			goto cleanup;
- 	}
-@@ -351,7 +350,7 @@ void __net_exit ip_vs_protocol_net_cleanup(struct net *net)
- 	/* unregister all the ipvs proto data for this netns */
- 	for (i = 0; i < IP_VS_PROTO_TAB_SIZE; i++) {
- 		while ((pd = ipvs->proto_data_table[i]) != NULL)
--			unregister_ip_vs_proto_netns(net, pd);
-+			unregister_ip_vs_proto_netns(ipvs, pd);
- 	}
- }
+ static unsigned int
+-ip_vs_try_to_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
++ip_vs_try_to_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
++		      struct ip_vs_proto_data *pd,
+ 		      int *verdict, struct ip_vs_conn **cpp,
+ 		      struct ip_vs_iphdr *iph)
+ {
+@@ -1372,7 +1373,7 @@ ip_vs_try_to_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 		 */
  
+ 		/* Schedule and create new connection entry into cpp */
+-		if (!pp->conn_schedule(af, skb, pd, verdict, cpp, iph))
++		if (!pp->conn_schedule(ipvs, af, skb, pd, verdict, cpp, iph))
+ 			return 0;
+ 	}
+ 
+@@ -1500,7 +1501,7 @@ ip_vs_in_icmp(struct sk_buff *skb, int *related, unsigned int hooknum)
+ 		if (!sysctl_schedule_icmp(ipvs))
+ 			return NF_ACCEPT;
+ 
+-		if (!ip_vs_try_to_schedule(AF_INET, skb, pd, &v, &cp, &ciph))
++		if (!ip_vs_try_to_schedule(ipvs, AF_INET, skb, pd, &v, &cp, &ciph))
+ 			return v;
+ 		new_cp = true;
+ 	}
+@@ -1658,7 +1659,7 @@ static int ip_vs_in_icmp_v6(struct sk_buff *skb, int *related,
+ 		if (!sysctl_schedule_icmp(ipvs))
+ 			return NF_ACCEPT;
+ 
+-		if (!ip_vs_try_to_schedule(AF_INET6, skb, pd, &v, &cp, &ciph))
++		if (!ip_vs_try_to_schedule(ipvs, AF_INET6, skb, pd, &v, &cp, &ciph))
+ 			return v;
+ 
+ 		new_cp = true;
+@@ -1799,7 +1800,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	if (unlikely(!cp)) {
+ 		int v;
+ 
+-		if (!ip_vs_try_to_schedule(af, skb, pd, &v, &cp, &iph))
++		if (!ip_vs_try_to_schedule(ipvs, af, skb, pd, &v, &cp, &iph))
+ 			return v;
+ 	}
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+index e924455de5c0..5320d39976e1 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+@@ -104,7 +104,8 @@ ah_esp_conn_out_get(struct netns_ipvs *ipvs, int af, const struct sk_buff *skb,
+ 
+ 
+ static int
+-ah_esp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
++ah_esp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
++		     struct ip_vs_proto_data *pd,
+ 		     int *verdict, struct ip_vs_conn **cpp,
+ 		     struct ip_vs_iphdr *iph)
+ {
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 3e9418ab276a..010ddeec135f 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -9,20 +9,16 @@
+ #include <net/ip_vs.h>
+ 
+ static int
+-sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
++sctp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
++		   struct ip_vs_proto_data *pd,
+ 		   int *verdict, struct ip_vs_conn **cpp,
+ 		   struct ip_vs_iphdr *iph)
+ {
+-	struct net *net;
+ 	struct ip_vs_service *svc;
+-	struct netns_ipvs *ipvs;
+ 	sctp_chunkhdr_t _schunkh, *sch;
+ 	sctp_sctphdr_t *sh, _sctph;
+ 	__be16 _ports[2], *ports = NULL;
+ 
+-	net = skb_net(skb);
+-	ipvs = net_ipvs(net);
+-
+ 	if (likely(!ip_vs_iph_icmp(iph))) {
+ 		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+ 		if (sh) {
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 93ba6b1fe9d1..c913c2d00caf 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -32,19 +32,15 @@
+ #include <net/ip_vs.h>
+ 
+ static int
+-tcp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
++tcp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
++		  struct ip_vs_proto_data *pd,
+ 		  int *verdict, struct ip_vs_conn **cpp,
+ 		  struct ip_vs_iphdr *iph)
+ {
+-	struct net *net;
+ 	struct ip_vs_service *svc;
+ 	struct tcphdr _tcph, *th;
+-	struct netns_ipvs *ipvs;
+ 	__be16 _ports[2], *ports = NULL;
+ 
+-	net = skb_net(skb);
+-	ipvs = net_ipvs(net);
+-
+ 	/* In the event of icmp, we're only guaranteed to have the first 8
+ 	 * bytes of the transport header, so we only check the rest of the
+ 	 * TCP packet for non-ICMP packets
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index 382dcc9cfe11..e494e9a88c7f 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -29,12 +29,11 @@
+ #include <net/ip6_checksum.h>
+ 
+ static int
+-udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
++udp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
++		  struct ip_vs_proto_data *pd,
+ 		  int *verdict, struct ip_vs_conn **cpp,
+ 		  struct ip_vs_iphdr *iph)
+ {
+-	struct net *net;
+-	struct netns_ipvs *ipvs;
+ 	struct ip_vs_service *svc;
+ 	struct udphdr _udph, *uh;
+ 	__be16 _ports[2], *ports = NULL;
+@@ -54,8 +53,6 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 		return 0;
+ 	}
+ 
+-	net = skb_net(skb);
+-	ipvs = net_ipvs(net);
+ 	rcu_read_lock();
+ 	if (likely(!ip_vs_iph_inverse(iph)))
+ 		svc = ip_vs_service_find(ipvs, af, skb->mark, iph->protocol,
+@@ -67,7 +64,7 @@ udp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	if (svc) {
+ 		int ignored;
+ 
+-		if (ip_vs_todrop(net_ipvs(net))) {
++		if (ip_vs_todrop(ipvs)) {
+ 			/*
+ 			 * It seems that we are very loaded.
+ 			 * We have to drop this packet :(
 -- 
 2.1.4
