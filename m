@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 29/84] ipvs: Pass ipvs not net to ip_vs_genl_parse_service
-Date: Thu, 24 Sep 2015 09:52:14 +0900
-Message-ID: <1443055989-1306-30-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 28/84] ipvs: Pass ipvs not net to __ip_vs_get_timeouts
+Date: Thu, 24 Sep 2015 09:52:13 +0900
+Message-ID: <1443055989-1306-29-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -19,49 +19,62 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index e509c27f7292..ea650ed62a50 100644
+index 6c06e9a8414d..e509c27f7292 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3034,12 +3034,11 @@ nla_put_failure:
- 	return skb->len;
+@@ -2584,10 +2584,9 @@ __ip_vs_get_dest_entries(struct netns_ipvs *ipvs, const struct ip_vs_get_dests *
  }
  
--static int ip_vs_genl_parse_service(struct net *net,
-+static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
- 				    struct ip_vs_service_user_kern *usvc,
- 				    struct nlattr *nla, int full_entry,
- 				    struct ip_vs_service **ret_svc)
+ static inline void
+-__ip_vs_get_timeouts(struct net *net, struct ip_vs_timeout_user *u)
++__ip_vs_get_timeouts(struct netns_ipvs *ipvs, struct ip_vs_timeout_user *u)
  {
+ #if defined(CONFIG_IP_VS_PROTO_TCP) || defined(CONFIG_IP_VS_PROTO_UDP)
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct nlattr *attrs[IPVS_SVC_ATTR_MAX + 1];
- 	struct nlattr *nla_af, *nla_port, *nla_fwmark, *nla_protocol, *nla_addr;
- 	struct ip_vs_service *svc;
-@@ -3123,11 +3122,12 @@ static int ip_vs_genl_parse_service(struct net *net,
- static struct ip_vs_service *ip_vs_genl_find_service(struct net *net,
- 						     struct nlattr *nla)
- {
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_service_user_kern usvc;
- 	struct ip_vs_service *svc;
- 	int ret;
+ 	struct ip_vs_proto_data *pd;
+ #endif
  
--	ret = ip_vs_genl_parse_service(net, &usvc, nla, 0, &svc);
-+	ret = ip_vs_genl_parse_service(ipvs, &usvc, nla, 0, &svc);
- 	return ret ? ERR_PTR(ret) : svc;
- }
+@@ -2768,7 +2767,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 	{
+ 		struct ip_vs_timeout_user t;
  
-@@ -3538,7 +3538,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 	if (cmd == IPVS_CMD_NEW_SERVICE || cmd == IPVS_CMD_SET_SERVICE)
- 		need_full_svc = 1;
+-		__ip_vs_get_timeouts(net, &t);
++		__ip_vs_get_timeouts(ipvs, &t);
+ 		if (copy_to_user(user, &t, sizeof(t)) != 0)
+ 			ret = -EFAULT;
+ 	}
+@@ -3461,7 +3460,7 @@ static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_timeout_user t;
  
--	ret = ip_vs_genl_parse_service(net, &usvc,
-+	ret = ip_vs_genl_parse_service(ipvs, &usvc,
- 				       info->attrs[IPVS_CMD_ATTR_SERVICE],
- 				       need_full_svc, &svc);
- 	if (ret)
+-	__ip_vs_get_timeouts(net, &t);
++	__ip_vs_get_timeouts(ipvs, &t);
+ 
+ 	if (attrs[IPVS_CMD_ATTR_TIMEOUT_TCP])
+ 		t.tcp_timeout = nla_get_u32(attrs[IPVS_CMD_ATTR_TIMEOUT_TCP]);
+@@ -3637,8 +3636,10 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	void *reply;
+ 	int ret, cmd, reply_cmd;
+ 	struct net *net;
++	struct netns_ipvs *ipvs;
+ 
+ 	net = skb_sknet(skb);
++	ipvs = net_ipvs(net);
+ 	cmd = info->genlhdr->cmd;
+ 
+ 	if (cmd == IPVS_CMD_GET_SERVICE)
+@@ -3688,7 +3689,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	{
+ 		struct ip_vs_timeout_user t;
+ 
+-		__ip_vs_get_timeouts(net, &t);
++		__ip_vs_get_timeouts(ipvs, &t);
+ #ifdef CONFIG_IP_VS_PROTO_TCP
+ 		if (nla_put_u32(msg, IPVS_CMD_ATTR_TIMEOUT_TCP,
+ 				t.tcp_timeout) ||
 -- 
 2.1.4
