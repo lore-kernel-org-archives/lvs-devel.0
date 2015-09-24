@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 72/84] ipvs: Wrap sysctl_cache_bypass and remove ifdefs in ip_vs_leave
-Date: Thu, 24 Sep 2015 09:52:57 +0900
-Message-ID: <1443055989-1306-73-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 70/84] ipvs: Pass ipvs into ensure_mtu_is adequate
+Date: Thu, 24 Sep 2015 09:52:55 +0900
+Message-ID: <1443055989-1306-71-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -15,101 +15,63 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
-With sysctl_cache_bypass now a compile time constant the compiler can
-figue out that it can elimiate all of the code that depends on
-sysctl_cache_bypass being true.
-
-Also remove the duplicate computation of net previously necessitated
-by #ifdef CONFIG_SYSCTL
+This allows two different ways for computing/guessing net to be
+removed from ensure_mtu_is_adequate.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             | 10 ++++++++++
- net/netfilter/ipvs/ip_vs_core.c | 13 +++----------
- 2 files changed, 13 insertions(+), 10 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index c68c2c8ae48a..dacd873e8bb9 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1101,6 +1101,11 @@ static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
- 	return ipvs->sysctl_ignore_tunneled;
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 13a678a63ed5..77182b9750cd 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -212,13 +212,14 @@ static inline void maybe_update_pmtu(int skb_af, struct sk_buff *skb, int mtu)
+ 		ort->dst.ops->update_pmtu(&ort->dst, sk, NULL, mtu);
  }
  
-+static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
-+{
-+	return ipvs->sysctl_cache_bypass;
-+}
-+
- #else
- 
- static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
-@@ -1183,6 +1188,11 @@ static inline int sysctl_ignore_tunneled(struct netns_ipvs *ipvs)
- 	return 0;
- }
- 
-+static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
-+{
-+	return 0;
-+}
-+
- #endif
- 
- /* IPVS core functions
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 1c9c52349b7c..7e9ee1dece19 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -568,17 +568,14 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		struct ip_vs_proto_data *pd, struct ip_vs_iphdr *iph)
+-static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
++static inline bool ensure_mtu_is_adequate(struct netns_ipvs *ipvs, int skb_af,
++					  int rt_mode,
+ 					  struct ip_vs_iphdr *ipvsh,
+ 					  struct sk_buff *skb, int mtu)
  {
- 	__be16 _ports[2], *pptr, dport;
--#ifdef CONFIG_SYSCTL
- 	struct net *net;
- 	struct netns_ipvs *ipvs;
--#endif
- 
- 	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
- 	if (!pptr)
- 		return NF_DROP;
- 	dport = likely(!ip_vs_iph_inverse(iph)) ? pptr[1] : pptr[0];
- 
--#ifdef CONFIG_SYSCTL
- 	net = skb_net(skb);
- 
- 
-@@ -586,7 +583,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 	   and the destination is a non-local unicast, then create
- 	   a cache_bypass connection entry */
- 	ipvs = net_ipvs(net);
--	if (ipvs->sysctl_cache_bypass && svc->fwmark &&
-+	if (sysctl_cache_bypass(ipvs) && svc->fwmark &&
- 	    !(iph->hdr_flags & (IP_VS_HDR_INVERSE | IP_VS_HDR_ICMP)) &&
- 	    ip_vs_addr_is_unicast(net, svc->af, &iph->daddr)) {
- 		int ret;
-@@ -624,7 +621,6 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 		ip_vs_conn_put(cp);
- 		return ret;
- 	}
--#endif
- 
- 	/*
- 	 * When the virtual ftp service is presented, packets destined
-@@ -647,11 +643,8 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
- 	 */
  #ifdef CONFIG_IP_VS_IPV6
- 	if (svc->af == AF_INET6) {
--		if (!skb->dev) {
--			struct net *net_ = dev_net(skb_dst(skb)->dev);
--
--			skb->dev = net_->loopback_dev;
--		}
-+		if (!skb->dev)
-+			skb->dev = net->loopback_dev;
- 		icmpv6_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_PORT_UNREACH, 0);
+ 	if (skb_af == AF_INET6) {
+-		struct net *net = dev_net(skb_dst(skb)->dev);
++		struct net *net = ipvs->net;
+ 
+ 		if (unlikely(__mtu_check_toobig_v6(skb, mtu))) {
+ 			if (!skb->dev)
+@@ -233,8 +234,6 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
  	} else
  #endif
+ 	{
+-		struct netns_ipvs *ipvs = net_ipvs(skb_net(skb));
+-
+ 		/* If we're going to tunnel the packet and pmtu discovery
+ 		 * is disabled, we'll just fragment it anyway
+ 		 */
+@@ -338,7 +337,7 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 		maybe_update_pmtu(skb_af, skb, mtu);
+ 	}
+ 
+-	if (!ensure_mtu_is_adequate(skb_af, rt_mode, ipvsh, skb, mtu))
++	if (!ensure_mtu_is_adequate(ipvs, skb_af, rt_mode, ipvsh, skb, mtu))
+ 		goto err_put;
+ 
+ 	skb_dst_drop(skb);
+@@ -487,7 +486,7 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 		maybe_update_pmtu(skb_af, skb, mtu);
+ 	}
+ 
+-	if (!ensure_mtu_is_adequate(skb_af, rt_mode, ipvsh, skb, mtu))
++	if (!ensure_mtu_is_adequate(ipvs, skb_af, rt_mode, ipvsh, skb, mtu))
+ 		goto err_put;
+ 
+ 	skb_dst_drop(skb);
 -- 
 2.1.4
