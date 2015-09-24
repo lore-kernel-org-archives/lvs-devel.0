@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 42/84] ipvs: Pass ipvs not net to ip_vs_proc_sync_conn
-Date: Thu, 24 Sep 2015 09:52:27 +0900
-Message-ID: <1443055989-1306-43-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 40/84] ipvs: Pass ipvs not net to ip_vs_sync_conn
+Date: Thu, 24 Sep 2015 09:52:25 +0900
+Message-ID: <1443055989-1306-41-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -19,32 +19,83 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
+ include/net/ip_vs.h             | 2 +-
+ net/netfilter/ipvs/ip_vs_conn.c | 3 +--
+ net/netfilter/ipvs/ip_vs_core.c | 2 +-
  net/netfilter/ipvs/ip_vs_sync.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ 4 files changed, 5 insertions(+), 7 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 71f4d338c208..b10b337ce974 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1452,7 +1452,7 @@ static inline void ip_vs_dest_put_and_free(struct ip_vs_dest *dest)
+ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *cfg,
+ 		      int state);
+ int stop_sync_thread(struct netns_ipvs *ipvs, int state);
+-void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp, int pkts);
++void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts);
+ 
+ /* IPVS rate estimator prototypes (from ip_vs_est.c) */
+ void ip_vs_start_estimator(struct net *net, struct ip_vs_stats *stats);
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index d0d57f14bc76..06809db5eef6 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -801,7 +801,6 @@ static void ip_vs_conn_expire(unsigned long data)
+ {
+ 	struct ip_vs_conn *cp = (struct ip_vs_conn *)data;
+ 	struct netns_ipvs *ipvs = cp->ipvs;
+-	struct net *net = ipvs->net;
+ 
+ 	/*
+ 	 *	do I control anybody?
+@@ -847,7 +846,7 @@ static void ip_vs_conn_expire(unsigned long data)
+ 	cp->timeout = 60*HZ;
+ 
+ 	if (ipvs->sync_state & IP_VS_STATE_MASTER)
+-		ip_vs_sync_conn(net, cp, sysctl_sync_threshold(ipvs));
++		ip_vs_sync_conn(ipvs, cp, sysctl_sync_threshold(ipvs));
+ 
+ 	ip_vs_conn_put(cp);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 2e96500c6f3f..a8128b06f73b 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1842,7 +1842,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 		pkts = atomic_add_return(1, &cp->in_pkts);
+ 
+ 	if (ipvs->sync_state & IP_VS_STATE_MASTER)
+-		ip_vs_sync_conn(net, cp, pkts);
++		ip_vs_sync_conn(ipvs, cp, pkts);
+ 
+ 	ip_vs_conn_put(cp);
+ 	return ret;
 diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 98180904ccd2..e3f72cbc1204 100644
+index 58ec7850ab06..a0808f230cd6 100644
 --- a/net/netfilter/ipvs/ip_vs_sync.c
 +++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1064,9 +1064,8 @@ static int ip_vs_proc_str(__u8 *p, unsigned int plen, unsigned int *data_len,
- /*
-  *   Process a Version 1 sync. connection
+@@ -614,7 +614,7 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
+ 			pkts = atomic_add_return(1, &cp->in_pkts);
+ 		else
+ 			pkts = sysctl_sync_threshold(ipvs);
+-		ip_vs_sync_conn(ipvs->net, cp, pkts);
++		ip_vs_sync_conn(ipvs, cp, pkts);
+ 	}
+ }
+ 
+@@ -623,9 +623,8 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
+  *      Called by ip_vs_in.
+  *      Sending Version 1 messages
   */
--static inline int ip_vs_proc_sync_conn(struct net *net, __u8 *p, __u8 *msg_end)
-+static inline int ip_vs_proc_sync_conn(struct netns_ipvs *ipvs, __u8 *p, __u8 *msg_end)
+-void ip_vs_sync_conn(struct net *net, struct ip_vs_conn *cp, int pkts)
++void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
- 	struct ip_vs_sync_conn_options opt;
- 	union  ip_vs_sync_conn *s;
- 	struct ip_vs_protocol *pp;
-@@ -1254,7 +1253,7 @@ static void ip_vs_process_message(struct netns_ipvs *ipvs, __u8 *buffer,
- 				return;
- 			}
- 			/* Process a single sync_conn */
--			retc = ip_vs_proc_sync_conn(ipvs->net, p, msg_end);
-+			retc = ip_vs_proc_sync_conn(ipvs, p, msg_end);
- 			if (retc < 0) {
- 				IP_VS_ERR_RL("BACKUP, Dropping buffer, Err: %d in decoding\n",
- 					     retc);
+ 	struct ip_vs_sync_mesg *m;
+ 	union ip_vs_sync_conn *s;
+ 	struct ip_vs_sync_buff *buff;
 -- 
 2.1.4
+
