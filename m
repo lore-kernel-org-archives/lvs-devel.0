@@ -1,40 +1,54 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH next 00/84] ipvs: Stop guessing the network namespace
- (take 2)
-Date: Wed, 23 Sep 2015 11:16:21 +0200
-Message-ID: <20150923091621.GA3927@salvia>
-References: <87mvwn18my.fsf@x220.int.ebiederm.org>
- <87pp1fpy1b.fsf@x220.int.ebiederm.org>
- <87fv2bo7br.fsf_-_@x220.int.ebiederm.org>
- <87h9mplifu.fsf_-_@x220.int.ebiederm.org>
- <8737y7irc8.fsf_-_@x220.int.ebiederm.org>
- <alpine.LFD.2.11.1509221019170.3008@ja.home.ssi.bg>
- <20150922085041.GD3422@salvia>
- <20150923001727.GD4685@verge.net.au>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20150923001727.GD4685@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+From: Simon Horman <horms@verge.net.au>
+Subject: [PATCH nf-next 01/84] ipvs: Hoist computation of ipvs earlier in sctp_conn_schedule
+Date: Thu, 24 Sep 2015 09:51:46 +0900
+Message-ID: <1443055989-1306-2-git-send-email-horms@verge.net.au>
+References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Julian Anastasov <ja@ssi.bg>, "Eric W. Biederman" <ebiederm@xmission.com>, David Miller <davem@davemloft.net>, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, "Eric W. Biederman" <ebiederm@xmission.com>, Simon Horman <horms@verge.net.au>
 
-On Wed, Sep 23, 2015 at 09:17:27AM +0900, Simon Horman wrote:
-> On Tue, Sep 22, 2015 at 10:50:41AM +0200, Pablo Neira Ayuso wrote:
-> > On Tue, Sep 22, 2015 at 10:22:13AM +0300, Julian Anastasov wrote:
-> > [...]
-> > > 
-> > > 	v2 looks good to me,
-> > > 
-> > > Acked-by: Julian Anastasov <ja@ssi.bg>
-> > 
-> > Thanks a lot for reviewing Julian.
-> > 
-> > Simon, please let me know how you want to handle this. Thanks.
-> 
-> I will see about taking it through my tree (as usual).
+From: "Eric W. Biederman" <ebiederm@xmission.com>
 
-Thanks Simon!
+The addition of sysctl_sloppy_sctp in sctp_conn_schedule resulted
+in a use of ipvs before it was computed.  Hoist the computation of
+ipvs earlier to avoid this problem.
+
+Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 2026fca7e1c3..ac628a9afdb5 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -20,6 +20,9 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	sctp_sctphdr_t *sh, _sctph;
+ 	__be16 _ports[2], *ports = NULL;
+ 
++	net = skb_net(skb);
++	ipvs = net_ipvs(net);
++
+ 	if (likely(!ip_vs_iph_icmp(iph))) {
+ 		sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
+ 		if (sh) {
+@@ -40,8 +43,6 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 		return 0;
+ 	}
+ 
+-	net = skb_net(skb);
+-	ipvs = net_ipvs(net);
+ 	rcu_read_lock();
+ 	if (likely(!ip_vs_iph_inverse(iph)))
+ 		svc = ip_vs_service_find(net, af, skb->mark, iph->protocol,
+-- 
+2.1.4
+
