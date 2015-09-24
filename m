@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 43/84] ipvs: Pass ipvs not net to ip_vs_sync_net_init
-Date: Thu, 24 Sep 2015 09:52:28 +0900
-Message-ID: <1443055989-1306-44-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 45/84] ipvs: Pass ipvs not net to ip_vs_genl_set_config
+Date: Thu, 24 Sep 2015 09:52:30 +0900
+Message-ID: <1443055989-1306-46-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -19,46 +19,32 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- include/net/ip_vs.h             | 2 +-
- net/netfilter/ipvs/ip_vs_core.c | 2 +-
- net/netfilter/ipvs/ip_vs_sync.c | 4 +---
- 3 files changed, 3 insertions(+), 5 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b10b337ce974..47a4cddb7c33 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1328,7 +1328,7 @@ int ip_vs_control_net_init(struct net *net);
- int ip_vs_protocol_net_init(struct net *net);
- int ip_vs_app_net_init(struct net *net);
- int ip_vs_conn_net_init(struct net *net);
--int ip_vs_sync_net_init(struct net *net);
-+int ip_vs_sync_net_init(struct netns_ipvs *ipvs);
- void ip_vs_conn_net_cleanup(struct net *net);
- void ip_vs_app_net_cleanup(struct net *net);
- void ip_vs_protocol_net_cleanup(struct net *net);
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index a8128b06f73b..5a5a6d63b3d9 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2087,7 +2087,7 @@ static int __net_init __ip_vs_init(struct net *net)
- 	if (ip_vs_conn_net_init(net) < 0)
- 		goto conn_fail;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index dba75ec2ed53..4042a6f449cb 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3453,9 +3453,8 @@ static int ip_vs_genl_del_daemon(struct netns_ipvs *ipvs, struct nlattr **attrs)
+ 	return ret;
+ }
  
--	if (ip_vs_sync_net_init(net) < 0)
-+	if (ip_vs_sync_net_init(ipvs) < 0)
- 		goto sync_fail;
- 
- 	printk(KERN_INFO "IPVS: Creating netns size=%zu id=%d\n",
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index e3f72cbc1204..11b4f17e2e1a 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -2007,10 +2007,8 @@ int stop_sync_thread(struct netns_ipvs *ipvs, int state)
- /*
-  * Initialize data struct for each netns
-  */
--int __net_init ip_vs_sync_net_init(struct net *net)
-+int __net_init ip_vs_sync_net_init(struct netns_ipvs *ipvs)
+-static int ip_vs_genl_set_config(struct net *net, struct nlattr **attrs)
++static int ip_vs_genl_set_config(struct netns_ipvs *ipvs, struct nlattr **attrs)
  {
 -	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_timeout_user t;
+ 
+ 	__ip_vs_get_timeouts(ipvs, &t);
+@@ -3522,7 +3521,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 		ret = ip_vs_flush(ipvs, false);
+ 		goto out;
+ 	} else if (cmd == IPVS_CMD_SET_CONFIG) {
+-		ret = ip_vs_genl_set_config(net, info->attrs);
++		ret = ip_vs_genl_set_config(ipvs, info->attrs);
+ 		goto out;
+ 	} else if (cmd == IPVS_CMD_ZERO &&
+ 		   !info->attrs[IPVS_CMD_ATTR_SERVICE]) {
+-- 
+2.1.4
