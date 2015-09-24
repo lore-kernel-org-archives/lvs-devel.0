@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 03/84] ipvs: Use state->net in the ipvs forward functions
-Date: Thu, 24 Sep 2015 09:51:48 +0900
-Message-ID: <1443055989-1306-4-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 21/84] ipvs: Pass ipvs not net to ip_vs_service_net_cleanup
+Date: Thu, 24 Sep 2015 09:52:06 +0900
+Message-ID: <1443055989-1306-22-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -19,47 +19,60 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ include/net/ip_vs.h             | 2 +-
+ net/netfilter/ipvs/ip_vs_core.c | 6 ++++--
+ net/netfilter/ipvs/ip_vs_ctl.c  | 3 +--
+ 3 files changed, 6 insertions(+), 5 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index b54a19eaa630..3c7040a313b5 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1335,7 +1335,7 @@ void ip_vs_protocol_net_cleanup(struct net *net);
+ void ip_vs_control_net_cleanup(struct net *net);
+ void ip_vs_estimator_net_cleanup(struct net *net);
+ void ip_vs_sync_net_cleanup(struct net *net);
+-void ip_vs_service_net_cleanup(struct net *net);
++void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
+ 
+ /* IPVS application functions
+  * (from ip_vs_app.c)
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 1fa12edccbcc..3f33a076aaec 100644
+index c22e0692e22d..787d561e200b 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1905,15 +1905,13 @@ ip_vs_forward_icmp(void *priv, struct sk_buff *skb,
- 		   const struct nf_hook_state *state)
+@@ -2110,13 +2110,15 @@ estimator_fail:
+ 
+ static void __net_exit __ip_vs_cleanup(struct net *net)
  {
- 	int r;
--	struct net *net;
- 	struct netns_ipvs *ipvs;
+-	ip_vs_service_net_cleanup(net);	/* ip_vs_flush() with locks */
++	struct netns_ipvs *ipvs = net_ipvs(net);
++
++	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+ 	ip_vs_conn_net_cleanup(net);
+ 	ip_vs_app_net_cleanup(net);
+ 	ip_vs_protocol_net_cleanup(net);
+ 	ip_vs_control_net_cleanup(net);
+ 	ip_vs_estimator_net_cleanup(net);
+-	IP_VS_DBG(2, "ipvs netns %d released\n", net_ipvs(net)->gen);
++	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+ 	net->ipvs = NULL;
+ }
  
- 	if (ip_hdr(skb)->protocol != IPPROTO_ICMP)
- 		return NF_ACCEPT;
- 
- 	/* ipvs enabled in this netns ? */
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
-+	ipvs = net_ipvs(state->net);
- 	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
- 		return NF_ACCEPT;
- 
-@@ -1926,7 +1924,6 @@ ip_vs_forward_icmp_v6(void *priv, struct sk_buff *skb,
- 		      const struct nf_hook_state *state)
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index d9ff59a4bc6e..a281961a1840 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1484,9 +1484,8 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
+  *	Delete service by {netns} in the service table.
+  *	Called by __ip_vs_cleanup()
+  */
+-void ip_vs_service_net_cleanup(struct net *net)
++void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs)
  {
- 	int r;
--	struct net *net;
- 	struct netns_ipvs *ipvs;
- 	struct ip_vs_iphdr iphdr;
- 
-@@ -1935,8 +1932,7 @@ ip_vs_forward_icmp_v6(void *priv, struct sk_buff *skb,
- 		return NF_ACCEPT;
- 
- 	/* ipvs enabled in this netns ? */
--	net = skb_net(skb);
--	ipvs = net_ipvs(net);
-+	ipvs = net_ipvs(state->net);
- 	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
- 		return NF_ACCEPT;
- 
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	EnterFunction(2);
+ 	/* Check for "full" addressed entries */
+ 	mutex_lock(&__ip_vs_mutex);
 -- 
 2.1.4
