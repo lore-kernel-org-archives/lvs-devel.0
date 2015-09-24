@@ -1,7 +1,7 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 69/84] ipvs: Pass ipvs into __ip_vs_get_out_rt_v6
-Date: Thu, 24 Sep 2015 09:52:54 +0900
-Message-ID: <1443055989-1306-70-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 68/84] ipvs: Pass ipvs into __ip_vs_get_out_rt
+Date: Thu, 24 Sep 2015 09:52:53 +0900
+Message-ID: <1443055989-1306-69-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
@@ -19,78 +19,72 @@ Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
+ net/netfilter/ipvs/ip_vs_xmit.c | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 5cfd914d9a39..13a678a63ed5 100644
+index ec10ebf246fd..5cfd914d9a39 100644
 --- a/net/netfilter/ipvs/ip_vs_xmit.c
 +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -404,11 +404,12 @@ out_err:
-  * Get route to destination or remote server
-  */
+@@ -257,11 +257,12 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
+ 
+ /* Get route to destination or remote server */
  static int
--__ip_vs_get_out_rt_v6(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
-+__ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
-+		      struct ip_vs_dest *dest,
- 		      struct in6_addr *daddr, struct in6_addr *ret_saddr,
- 		      struct ip_vs_iphdr *ipvsh, int do_xfrm, int rt_mode)
+-__ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
++__ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
++		   struct ip_vs_dest *dest,
+ 		   __be32 daddr, int rt_mode, __be32 *ret_saddr,
+ 		   struct ip_vs_iphdr *ipvsh)
  {
 -	struct net *net = dev_net(skb_dst(skb)->dev);
 +	struct net *net = ipvs->net;
  	struct ip_vs_dest_dst *dest_dst;
- 	struct rt6_info *rt;			/* Route to the other host */
- 	struct dst_entry *dst;
-@@ -663,7 +664,8 @@ ip_vs_bypass_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	struct rtable *rt;			/* Route to the other host */
+ 	int mtu;
+@@ -630,7 +631,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	EnterFunction(10);
  
  	rcu_read_lock();
--	if (__ip_vs_get_out_rt_v6(cp->af, skb, NULL, &iph->daddr, NULL,
-+	if (__ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, NULL,
-+				  &iph->daddr, NULL,
- 				  ipvsh, 0, IP_VS_RT_MODE_NON_LOCAL) < 0)
+-	if (__ip_vs_get_out_rt(cp->af, skb, NULL, iph->daddr,
++	if (__ip_vs_get_out_rt(cp->ipvs, cp->af, skb, NULL, iph->daddr,
+ 			       IP_VS_RT_MODE_NON_LOCAL, NULL, ipvsh) < 0)
  		goto tx_error;
  
-@@ -799,7 +801,8 @@ ip_vs_nat_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		IP_VS_DBG(10, "filled cport=%d\n", ntohs(*p));
+@@ -709,7 +710,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	}
  
--	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
-+	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
-+				      &cp->daddr.in6,
- 				      NULL, ipvsh, 0,
- 				      IP_VS_RT_MODE_LOCAL |
- 				      IP_VS_RT_MODE_NON_LOCAL |
-@@ -1083,7 +1086,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	was_input = rt_is_input_route(skb_rtable(skb));
+-	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_RDR, NULL, ipvsh);
+@@ -988,7 +989,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	EnterFunction(10);
  
  	rcu_read_lock();
--	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
-+	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
-+				      &cp->daddr.in6,
- 				      &saddr, ipvsh, 1,
- 				      IP_VS_RT_MODE_LOCAL |
- 				      IP_VS_RT_MODE_NON_LOCAL |
-@@ -1209,7 +1213,8 @@ ip_vs_dr_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+-	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_CONNECT |
+@@ -1169,7 +1170,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	EnterFunction(10);
  
  	rcu_read_lock();
--	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
-+	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
-+				      &cp->daddr.in6,
- 				      NULL, ipvsh, 0,
- 				      IP_VS_RT_MODE_LOCAL |
- 				      IP_VS_RT_MODE_NON_LOCAL |
-@@ -1370,8 +1375,8 @@ ip_vs_icmp_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+-	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
++	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
+ 				   IP_VS_RT_MODE_LOCAL |
+ 				   IP_VS_RT_MODE_NON_LOCAL |
+ 				   IP_VS_RT_MODE_KNOWN_NH, NULL, ipvsh);
+@@ -1277,7 +1278,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
  		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
  	rcu_read_lock();
--	local = __ip_vs_get_out_rt_v6(cp->af, skb, cp->dest, &cp->daddr.in6,
--				      NULL, ipvsh, 0, rt_mode);
-+	local = __ip_vs_get_out_rt_v6(cp->ipvs, cp->af, skb, cp->dest,
-+				      &cp->daddr.in6, NULL, ipvsh, 0, rt_mode);
+-	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
++	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
+ 				   NULL, iph);
  	if (local < 0)
  		goto tx_error;
- 	rt = (struct rt6_info *) skb_dst(skb);
 -- 
 2.1.4
