@@ -1,11 +1,11 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf-next 68/84] ipvs: Pass ipvs into __ip_vs_get_out_rt
-Date: Thu, 24 Sep 2015 09:52:53 +0900
-Message-ID: <1443055989-1306-69-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 76/84] ipvs: Pass ipvs into ip_vs_in
+Date: Thu, 24 Sep 2015 09:53:01 +0900
+Message-ID: <1443055989-1306-77-git-send-email-horms@verge.net.au>
 References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -15,76 +15,82 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: "Eric W. Biederman" <ebiederm@xmission.com>
 
+Derive ipvs from state->net in the callers of ip_vs_in and pass it
+into ip_vs_out.  Removing the need to use the hack skb_net.
+
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_xmit.c | 15 ++++++++-------
- 1 file changed, 8 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index ec10ebf246fd..5cfd914d9a39 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -257,11 +257,12 @@ static inline bool ensure_mtu_is_adequate(int skb_af, int rt_mode,
- 
- /* Get route to destination or remote server */
- static int
--__ip_vs_get_out_rt(int skb_af, struct sk_buff *skb, struct ip_vs_dest *dest,
-+__ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
-+		   struct ip_vs_dest *dest,
- 		   __be32 daddr, int rt_mode, __be32 *ret_saddr,
- 		   struct ip_vs_iphdr *ipvsh)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 07a4ddca650d..3ab96bdc66fd 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1684,15 +1684,13 @@ out:
+  *	and send it on its way...
+  */
+ static unsigned int
+-ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
++ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int af)
  {
--	struct net *net = dev_net(skb_dst(skb)->dev);
-+	struct net *net = ipvs->net;
- 	struct ip_vs_dest_dst *dest_dst;
- 	struct rtable *rt;			/* Route to the other host */
- 	int mtu;
-@@ -630,7 +631,7 @@ ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
+-	struct net *net;
+ 	struct ip_vs_iphdr iph;
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	struct ip_vs_conn *cp;
+ 	int ret, pkts;
+-	struct netns_ipvs *ipvs;
+ 	int conn_reuse_mode;
  
- 	rcu_read_lock();
--	if (__ip_vs_get_out_rt(cp->af, skb, NULL, iph->daddr,
-+	if (__ip_vs_get_out_rt(cp->ipvs, cp->af, skb, NULL, iph->daddr,
- 			       IP_VS_RT_MODE_NON_LOCAL, NULL, ipvsh) < 0)
- 		goto tx_error;
- 
-@@ -709,7 +710,7 @@ ip_vs_nat_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	/* Already marked as IPVS request or reply? */
+@@ -1715,8 +1713,6 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 		return NF_ACCEPT;
  	}
+ 	/* ipvs enabled in this netns ? */
+-	net = skb_net(skb);
+-	ipvs = net_ipvs(net);
+ 	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
+ 		return NF_ACCEPT;
  
- 	was_input = rt_is_input_route(skb_rtable(skb));
--	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
-+	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
- 				   IP_VS_RT_MODE_RDR, NULL, ipvsh);
-@@ -988,7 +989,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
+@@ -1844,7 +1840,7 @@ static unsigned int
+ ip_vs_remote_request4(void *priv, struct sk_buff *skb,
+ 		      const struct nf_hook_state *state)
+ {
+-	return ip_vs_in(state->hook, skb, AF_INET);
++	return ip_vs_in(net_ipvs(state->net), state->hook, skb, AF_INET);
+ }
  
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
-+	local = __ip_vs_get_out_rt(ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
- 				   IP_VS_RT_MODE_CONNECT |
-@@ -1169,7 +1170,7 @@ ip_vs_dr_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	EnterFunction(10);
+ /*
+@@ -1855,7 +1851,7 @@ static unsigned int
+ ip_vs_local_request4(void *priv, struct sk_buff *skb,
+ 		     const struct nf_hook_state *state)
+ {
+-	return ip_vs_in(state->hook, skb, AF_INET);
++	return ip_vs_in(net_ipvs(state->net), state->hook, skb, AF_INET);
+ }
  
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip,
-+	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip,
- 				   IP_VS_RT_MODE_LOCAL |
- 				   IP_VS_RT_MODE_NON_LOCAL |
- 				   IP_VS_RT_MODE_KNOWN_NH, NULL, ipvsh);
-@@ -1277,7 +1278,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		  IP_VS_RT_MODE_LOCAL | IP_VS_RT_MODE_NON_LOCAL |
- 		  IP_VS_RT_MODE_RDR : IP_VS_RT_MODE_NON_LOCAL;
- 	rcu_read_lock();
--	local = __ip_vs_get_out_rt(cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
-+	local = __ip_vs_get_out_rt(cp->ipvs, cp->af, skb, cp->dest, cp->daddr.ip, rt_mode,
- 				   NULL, iph);
- 	if (local < 0)
- 		goto tx_error;
+ #ifdef CONFIG_IP_VS_IPV6
+@@ -1868,7 +1864,7 @@ static unsigned int
+ ip_vs_remote_request6(void *priv, struct sk_buff *skb,
+ 		      const struct nf_hook_state *state)
+ {
+-	return ip_vs_in(state->hook, skb, AF_INET6);
++	return ip_vs_in(net_ipvs(state->net), state->hook, skb, AF_INET6);
+ }
+ 
+ /*
+@@ -1879,7 +1875,7 @@ static unsigned int
+ ip_vs_local_request6(void *priv, struct sk_buff *skb,
+ 		     const struct nf_hook_state *state)
+ {
+-	return ip_vs_in(state->hook, skb, AF_INET6);
++	return ip_vs_in(net_ipvs(state->net), state->hook, skb, AF_INET6);
+ }
+ 
+ #endif
 -- 
 2.1.4
+
