@@ -1,23 +1,50 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf-next 00/84] Second Round of IPVS Updates for v4.4
-Date: Fri, 25 Sep 2015 02:01:02 +0200
-Message-ID: <20150925000102.GA5634@salvia>
-References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
+From: Jiri Bohac <jbohac@suse.cz>
+Subject: [PATCH] ipvs: drop first packet to dead server
+Date: Fri, 25 Sep 2015 11:37:38 +0200
+Message-ID: <20150925093737.GA5047@midget.suse.cz>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1443055989-1306-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, "Eric W. Biederman" <ebiederm@xmission.com>
+To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Thu, Sep 24, 2015 at 09:51:45AM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider these bug fixes and extensive clean-ups of IPVS
-> from Eric Biederman for v4.4.
+Since commit dc7b3eb9 (ipvs: Fix reuse connection if real server
+is dead), new connections to dead servers are redistributed
+immediately to new servers.  The old connection is expired using
+ip_vs_conn_expire_now() which sets the connection timer to expire
+immediately. 
 
-Pulled, thanks Simon.
+However, before the timer callback, ip_vs_conn_expire(), is run
+to clean the connection's conntrack entry, the new redistributed
+connection may already be established and its conntrack removed
+instead.
+
+Fix this by dropping the first packet of the new connection
+instead, like we do when the destination server is not available.
+The timer will have deleted the old conntrack entry long before
+the first packet of the new connection is retransmitted.
+
+Signed-off-by: Jiri Bohac <jbohac@suse.cz>
+
+
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index d1d6b82..3f884b8 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1657,7 +1657,7 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
+ 	    is_new_conn(skb, &iph)) {
+ 		ip_vs_conn_expire_now(cp);
+ 		__ip_vs_conn_put(cp);
+-		cp = NULL;
++		return NF_DROP;
+ 	}
+ 
+ 	if (unlikely(!cp) && !iph.fragoffs) {
+
+-- 
+Jiri Bohac <jbohac@suse.cz>
+SUSE Labs, SUSE CZ
