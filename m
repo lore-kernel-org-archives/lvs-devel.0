@@ -1,127 +1,64 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH v2] ipvs: drop first packet to dead server
-Date: Sun, 27 Sep 2015 20:25:18 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1509272004230.1618@ja.home.ssi.bg>
-References: <20150925093737.GA5047@midget.suse.cz> <20150925094820.GB5047@midget.suse.cz>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Subject: [PATCH] ipvs: Don't protect ip_vs_addr_is_unicast with CONFIG_SYSCTL
+Date: Mon, 28 Sep 2015 10:23:27 -0500
+Message-ID: <87612ueff4.fsf_-_@x220.int.ebiederm.org>
+References: <1443055989-1306-1-git-send-email-horms@verge.net.au>
+	<20150925000102.GA5634@salvia>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20150925094820.GB5047@midget.suse.cz>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20150925000102.GA5634@salvia> (Pablo Neira Ayuso's message of
+	"Fri, 25 Sep 2015 02:01:02 +0200")
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jiri Bohac <jbohac@suse.cz>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
 
 
-	Hello,
+I arranged the code so that the compiler can remove the unecessary bits
+in ip_vs_leave when CONFIG_SYSCTL is unset, and removed an explicit
+CONFIG_SYSCTL.
 
-On Fri, 25 Sep 2015, Jiri Bohac wrote:
+Unfortunately when rebasing my work on top of that of Alex Gartrell I
+missed the fact that the newly added function ip_vs_addr_is_unicast was
+surrounded by CONFIG_SYSCTL.
 
->  		if (!atomic_read(&cp->n_control))
->  			ip_vs_conn_expire_now(cp);
->  		__ip_vs_conn_put(cp);
-> -		cp = NULL;
-> +		return NF_DROP;
+So remove the now unnecessary CONFIG_SYSCTL guards around
+ip_vs_addr_is_unicast.  It is causing build failures today when
+CONFIG_SYSCTL is not selected and any self respecting compiler will
+notice that sysctl_cache_bypass is always false without CONFIG_SYSCTL
+and not include the logic from the function ip_vs_addr_is_unicast in
+the compiled code.
 
-	So, at this point we do not know whether we have
-one or many real servers, with same or different forwarding
-method. For example, if we know that old real server is DR
-and the new real server is again DR we can reuse the conntrack.
+Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
+---
 
-	Without such info we have to drop the connection
-_only_ when conntrack is used. But if the connection is referenced
-by others, eg. FTP:21 referenced by data connection, it is not
-going to expire soon. We have to reuse it, otherwise client
-will retransmit for long time. See below...
+This is a build fix for ipvs-next and nf-next.
 
-	Also, according to RFC 5961, 4.2. Mitigation, client can
-send RST during its SYN retransmissions. So, may be we have to
-allow rescheduling by adding IP_VS_TCP_S_CLOSE check after the
-IP_VS_TCP_S_TIME_WAIT check in is_new_conn_expected(). This should
-allow restarted client to be rescheduled. But this can be in
-separate patch.
+ net/netfilter/ipvs/ip_vs_core.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-	Here is a RFC patch (not for latest tree, not tested):
-
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 9b9ca87..e989841 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1591,6 +1591,23 @@ static inline void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp)
- }
- #endif /* CONFIG_IP_VS_NFCT */
- 
-+/* Really using conntrack? */
-+static inline bool ip_vs_conn_uses_conntrack(struct ip_vs_conn *cp,
-+					struct sk_buff *skb)
-+{
-+#ifdef CONFIG_IP_VS_NFCT
-+	enum ip_conntrack_info ctinfo;
-+	struct nf_conn *ct;
-+
-+	if (!(cp->flags & IP_VS_CONN_F_NFCT))
-+		return false;
-+	ct = nf_ct_get(skb, &ctinfo);
-+	if (ct && !nf_ct_is_untracked(ct))
-+		return true;
-+#endif
-+	return false;
-+}
-+
- static inline int
- ip_vs_dest_conn_overhead(struct ip_vs_dest *dest)
- {
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 38fbc19..a26bd65 100644
+index 07a791ecdfba..fba73db81d2f 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1689,15 +1689,34 @@ ip_vs_in(unsigned int hooknum, struct sk_buff *skb, int af)
- 	cp = pp->conn_in_get(af, skb, &iph, 0);
+@@ -547,7 +547,6 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	return cp;
+ }
  
- 	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
--	if (conn_reuse_mode && !iph.fragoffs &&
--	    is_new_conn(skb, &iph) && cp &&
--	    ((unlikely(sysctl_expire_nodest_conn(ipvs)) && cp->dest &&
--	      unlikely(!atomic_read(&cp->dest->weight))) ||
--	     unlikely(is_new_conn_expected(cp, conn_reuse_mode)))) {
--		if (!atomic_read(&cp->n_control))
--			ip_vs_conn_expire_now(cp);
--		__ip_vs_conn_put(cp);
--		cp = NULL;
-+	if (conn_reuse_mode && !iph.fragoffs && is_new_conn(skb, &iph) && cp) {
-+		bool uses_ct = false, resched = false;
-+
-+		if (unlikely(sysctl_expire_nodest_conn(ipvs)) && cp->dest &&
-+		    unlikely(!atomic_read(&cp->dest->weight))) {
-+			resched = true;
-+			uses_ct = ip_vs_conn_uses_conntrack(cp, skb);
-+		} else if (is_new_conn_expected(cp, conn_reuse_mode)) {
-+			uses_ct = ip_vs_conn_uses_conntrack(cp, skb);
-+			if (!atomic_read(&cp->n_control)) {
-+				resched = true;
-+			} else {
-+				/* Do not reschedule controlling connection
-+				 * that uses conntrack while it is still
-+				 * referenced by controlled connection(s).
-+				 */
-+				resched = !uses_ct;
-+			}
-+		}
-+
-+		if (resched) {
-+			if (!atomic_read(&cp->n_control))
-+				ip_vs_conn_expire_now(cp);
-+			__ip_vs_conn_put(cp);
-+			if (uses_ct)
-+				return NF_DROP;
-+			cp = NULL;
-+		}
- 	}
+-#ifdef CONFIG_SYSCTL
+ static inline int ip_vs_addr_is_unicast(struct net *net, int af,
+ 					union nf_inet_addr *addr)
+ {
+@@ -557,7 +556,6 @@ static inline int ip_vs_addr_is_unicast(struct net *net, int af,
+ #endif
+ 	return (inet_addr_type(net, addr->ip) == RTN_UNICAST);
+ }
+-#endif
  
- 	if (unlikely(!cp) && !iph.fragoffs) {
+ /*
+  *  Pass or drop the packet.
+-- 
+2.2.1
 
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
