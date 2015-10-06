@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH net-next 09/15] ipv4: Cache net in iptunnel_xmit
-Date: Tue,  6 Oct 2015 13:53:09 -0500
-Message-ID: <1444157595-28816-9-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH net-next 11/15] ppp: Cache net in pptp_xmit
+Date: Tue,  6 Oct 2015 13:53:11 -0500
+Message-ID: <1444157595-28816-11-git-send-email-ebiederm@xmission.com>
 References: <878u7fesrg.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <878u7fesrg.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,36 +13,44 @@ Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-Store net in a variable in ip_tunnel_xmit so it does not need
-to be recomputed when it is used again.
+Compute net and store it in a variable in pptp_xmit, so that the value
+can be reused the next time it is needed.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/ipv4/ip_tunnel_core.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/net/ppp/pptp.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/net/ipv4/ip_tunnel_core.c b/net/ipv4/ip_tunnel_core.c
-index 8d85ecd1ced5..caef8e2c281d 100644
---- a/net/ipv4/ip_tunnel_core.c
-+++ b/net/ipv4/ip_tunnel_core.c
-@@ -53,6 +53,7 @@ int iptunnel_xmit(struct sock *sk, struct rtable *rt, struct sk_buff *skb,
- 		  __u8 tos, __u8 ttl, __be16 df, bool xnet)
+diff --git a/drivers/net/ppp/pptp.c b/drivers/net/ppp/pptp.c
+index 6bef7be10671..5243ab6ed4d4 100644
+--- a/drivers/net/ppp/pptp.c
++++ b/drivers/net/ppp/pptp.c
+@@ -169,6 +169,7 @@ static int pptp_xmit(struct ppp_channel *chan, struct sk_buff *skb)
  {
- 	int pkt_len = skb->len - skb_inner_network_offset(skb);
-+	struct net *net = dev_net(rt->dst.dev);
- 	struct iphdr *iph;
- 	int err;
+ 	struct sock *sk = (struct sock *) chan->private;
+ 	struct pppox_sock *po = pppox_sk(sk);
++	struct net *net = sock_net(sk);
+ 	struct pptp_opt *opt = &po->proto.pptp;
+ 	struct pptp_gre_header *hdr;
+ 	unsigned int header_len = sizeof(*hdr);
+@@ -187,7 +188,7 @@ static int pptp_xmit(struct ppp_channel *chan, struct sk_buff *skb)
+ 	if (sk_pppox(po)->sk_state & PPPOX_DEAD)
+ 		goto tx_error;
  
-@@ -76,8 +77,7 @@ int iptunnel_xmit(struct sock *sk, struct rtable *rt, struct sk_buff *skb,
- 	iph->daddr	=	dst;
- 	iph->saddr	=	src;
- 	iph->ttl	=	ttl;
--	__ip_select_ident(dev_net(rt->dst.dev), iph,
--			  skb_shinfo(skb)->gso_segs ?: 1);
-+	__ip_select_ident(net, iph, skb_shinfo(skb)->gso_segs ?: 1);
+-	rt = ip_route_output_ports(sock_net(sk), &fl4, NULL,
++	rt = ip_route_output_ports(net, &fl4, NULL,
+ 				   opt->dst_addr.sin_addr.s_addr,
+ 				   opt->src_addr.sin_addr.s_addr,
+ 				   0, 0, IPPROTO_GRE,
+@@ -279,7 +280,7 @@ static int pptp_xmit(struct ppp_channel *chan, struct sk_buff *skb)
+ 	nf_reset(skb);
  
- 	err = ip_local_out(sk, skb);
- 	if (unlikely(net_xmit_eval(err)))
+ 	skb->ip_summed = CHECKSUM_NONE;
+-	ip_select_ident(sock_net(sk), skb, NULL);
++	ip_select_ident(net, skb, NULL);
+ 	ip_send_check(iph);
+ 
+ 	ip_local_out(skb->sk, skb);
 -- 
 2.2.1
 
