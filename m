@@ -1,37 +1,50 @@
 From: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>
-Subject: Re: [PATCH net-next 01/15] ipv4: Fix ip_local_out_sk by passing the
- sk into __ip_local_out_sk
-Date: Wed, 7 Oct 2015 16:37:03 +0300
-Message-ID: <56151FFF.90506@cogentembedded.com>
-References: <878u7fesrg.fsf_-_@x220.int.ebiederm.org>
- <1444157595-28816-1-git-send-email-ebiederm@xmission.com>
+Subject: Re: [PATCH nf-next 1/2] ipvs: Remove possibly unused variable from
+ ip_vs_out
+Date: Wed, 7 Oct 2015 16:58:47 +0300
+Message-ID: <56152517.6020807@cogentembedded.com>
+References: <1444195403-4288-1-git-send-email-horms@verge.net.au>
+ <1444195403-4288-2-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1444157595-28816-1-git-send-email-ebiederm@xmission.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1444195403-4288-2-git-send-email-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: "Eric W. Biederman" <ebiederm@xmission.com>, David Miller <davem@davemloft.net>
-Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"; format="flowed"
+To: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, David Ahern <dsa@cumulusnetworks.com>
 
 Hello.
 
-On 10/6/2015 9:53 PM, Eric W. Biederman wrote:
+On 10/7/2015 8:23 AM, Simon Horman wrote:
 
-> In the rare case where sk != skb->sk ip_local_out_sk arranges
-> to call dst->output differently if the skb is queued or not.
-> This is a bug.
+> From: David Ahern <dsa@cumulusnetworks.com>
 >
-> Fix this bug by passing the sk parameter of ip_local_out_sk through
-> from ip_local_out_sk to __ip_local_out_sk (skipping __ip_local_out).
+> Eric's net namespace changes in 1b75097dd7a26 leaves net unreferenced=
+ if
+> CONFIG_IP_VS_IPV6 is not enabled:
 >
-> Fixes: 7026b1ddb6b8d4e6ee33dc2bd06c0ca8746fa7ab
+> ../net/netfilter/ipvs/ip_vs_core.c: In function =E2=80=98ip_vs_out=E2=
+=80=99:
+> ../net/netfilter/ipvs/ip_vs_core.c:1177:14: warning: unused variable =
+=E2=80=98net=E2=80=99 [-Wunused-variable]
+>
+> After the net refactoring there is only 1 user; push the reference to=
+ the
+> 1 user. While the line length slightly exceeds 80 it seems to be the
+> best change.
+>
+> Fixes: 1b75097dd7a26("ipvs: Pass ipvs into ip_vs_out")
 
-    Please see Documentation/SubmittingPatches on how the Fixes tag should 
-look like.
+    Minor nit: missing space before (. Could be probbably fixed while a=
+pplying...
 
-> Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
+> Signed-off-by: David Ahern <dsa@cumulusnetworks.com>
+> Acked-by: Julian Anastasov <ja@ssi.bg>
+> [horms: updated subject]
+> Signed-off-by: Simon Horman <horms@verge.net.au>
+
+[...]
 
 MBR, Sergei
-
