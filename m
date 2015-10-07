@@ -1,11 +1,11 @@
 From: "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: [PATCH net-next 05/16] dst: Pass a sk into .local_out
-Date: Wed,  7 Oct 2015 16:48:36 -0500
-Message-ID: <1444254527-17833-5-git-send-email-ebiederm@xmission.com>
+Subject: [PATCH net-next 08/16] ipv6: Merge __ip6_local_out and __ip6_local_out_sk
+Date: Wed,  7 Oct 2015 16:48:39 -0500
+Message-ID: <1444254527-17833-8-git-send-email-ebiederm@xmission.com>
 References: <87bnca4aie.fsf_-_@x220.int.ebiederm.org>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <87bnca4aie.fsf_-_@x220.int.ebiederm.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,171 +13,90 @@ Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>, lvs-devel@vger.kernel.org
 
-For consistency with the other similar methods in the kernel pass a
-struct sock into the dst_ops .local_out method.
-
-Simplifying the socket passing case is needed a prequel to passing a
-struct net reference into .local_out.
+Only __ip6_local_out_sk has callers so rename __ip6_local_out_sk
+__ip6_local_out and remove the previous __ip6_local_out.
 
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- drivers/net/vrf.c       | 4 ++--
- include/net/dst_ops.h   | 2 +-
- include/net/ip.h        | 1 +
- include/net/ipv6.h      | 1 +
- net/ipv4/ip_output.c    | 2 +-
- net/ipv4/route.c        | 2 +-
- net/ipv4/xfrm4_policy.c | 2 +-
- net/ipv6/output_core.c  | 2 +-
+ include/net/ipv6.h      | 3 +--
+ net/ipv6/output_core.c  | 9 ++-------
  net/ipv6/route.c        | 2 +-
  net/ipv6/xfrm6_policy.c | 2 +-
- net/xfrm/xfrm_output.c  | 2 +-
- 11 files changed, 12 insertions(+), 10 deletions(-)
+ 4 files changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/net/vrf.c b/drivers/net/vrf.c
-index 64499766e00f..1039eb5f6c2a 100644
---- a/drivers/net/vrf.c
-+++ b/drivers/net/vrf.c
-@@ -74,9 +74,9 @@ static struct dst_entry *vrf_ip_check(struct dst_entry *dst, u32 cookie)
- 	return dst;
- }
- 
--static int vrf_ip_local_out(struct sk_buff *skb)
-+static int vrf_ip_local_out(struct sock *sk, struct sk_buff *skb)
- {
--	return ip_local_out(skb);
-+	return ip_local_out_sk(sk, skb);
- }
- 
- static unsigned int vrf_v4_mtu(const struct dst_entry *dst)
-diff --git a/include/net/dst_ops.h b/include/net/dst_ops.h
-index d64253914a6a..3f26a6af444e 100644
---- a/include/net/dst_ops.h
-+++ b/include/net/dst_ops.h
-@@ -28,7 +28,7 @@ struct dst_ops {
- 					       struct sk_buff *skb, u32 mtu);
- 	void			(*redirect)(struct dst_entry *dst, struct sock *sk,
- 					    struct sk_buff *skb);
--	int			(*local_out)(struct sk_buff *skb);
-+	int			(*local_out)(struct sock *sk, struct sk_buff *skb);
- 	struct neighbour *	(*neigh_lookup)(const struct dst_entry *dst,
- 						struct sk_buff *skb,
- 						const void *daddr);
-diff --git a/include/net/ip.h b/include/net/ip.h
-index dd06ab3669f9..ea1f721f7224 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -112,6 +112,7 @@ int ip_mc_output(struct sock *sk, struct sk_buff *skb);
- int ip_do_fragment(struct net *net, struct sock *sk, struct sk_buff *skb,
- 		   int (*output)(struct net *, struct sock *, struct sk_buff *));
- void ip_send_check(struct iphdr *ip);
-+int __ip_local_out_sk(struct sock *sk, struct sk_buff *skb);
- int __ip_local_out(struct sk_buff *skb);
- int ip_local_out_sk(struct sock *sk, struct sk_buff *skb);
- static inline int ip_local_out(struct sk_buff *skb)
 diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index 3dde042bcd3f..56920262dbe9 100644
+index 56920262dbe9..be7e7689514b 100644
 --- a/include/net/ipv6.h
 +++ b/include/net/ipv6.h
-@@ -865,6 +865,7 @@ int ip6_forward(struct sk_buff *skb);
+@@ -865,8 +865,7 @@ int ip6_forward(struct sk_buff *skb);
  int ip6_input(struct sk_buff *skb);
  int ip6_mc_input(struct sk_buff *skb);
  
-+int __ip6_local_out_sk(struct sock *sk, struct sk_buff *skb);
- int __ip6_local_out(struct sk_buff *skb);
+-int __ip6_local_out_sk(struct sock *sk, struct sk_buff *skb);
+-int __ip6_local_out(struct sk_buff *skb);
++int __ip6_local_out(struct sock *sk, struct sk_buff *skb);
  int ip6_local_out_sk(struct sock *sk, struct sk_buff *skb);
  int ip6_local_out(struct sk_buff *skb);
-diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
-index c94efb22f380..c38dfd7404fb 100644
---- a/net/ipv4/ip_output.c
-+++ b/net/ipv4/ip_output.c
-@@ -96,7 +96,7 @@ void ip_send_check(struct iphdr *iph)
- }
- EXPORT_SYMBOL(ip_send_check);
- 
--static int __ip_local_out_sk(struct sock *sk, struct sk_buff *skb)
-+int __ip_local_out_sk(struct sock *sk, struct sk_buff *skb)
- {
- 	struct net *net = dev_net(skb_dst(skb)->dev);
- 	struct iphdr *iph = ip_hdr(skb);
-diff --git a/net/ipv4/route.c b/net/ipv4/route.c
-index bf1486bd7e81..638b976008b7 100644
---- a/net/ipv4/route.c
-+++ b/net/ipv4/route.c
-@@ -165,7 +165,7 @@ static struct dst_ops ipv4_dst_ops = {
- 	.link_failure =		ipv4_link_failure,
- 	.update_pmtu =		ip_rt_update_pmtu,
- 	.redirect =		ip_do_redirect,
--	.local_out =		__ip_local_out,
-+	.local_out =		__ip_local_out_sk,
- 	.neigh_lookup =		ipv4_neigh_lookup,
- };
- 
-diff --git a/net/ipv4/xfrm4_policy.c b/net/ipv4/xfrm4_policy.c
-index f2606b9056bb..d46d99f9cabd 100644
---- a/net/ipv4/xfrm4_policy.c
-+++ b/net/ipv4/xfrm4_policy.c
-@@ -243,7 +243,7 @@ static struct dst_ops xfrm4_dst_ops = {
- 	.cow_metrics =		dst_cow_metrics_generic,
- 	.destroy =		xfrm4_dst_destroy,
- 	.ifdown =		xfrm4_dst_ifdown,
--	.local_out =		__ip_local_out,
-+	.local_out =		__ip_local_out_sk,
- 	.gc_thresh =		32768,
- };
  
 diff --git a/net/ipv6/output_core.c b/net/ipv6/output_core.c
-index 4337147ee23d..e5affb5fe095 100644
+index e5affb5fe095..f93ae1515387 100644
 --- a/net/ipv6/output_core.c
 +++ b/net/ipv6/output_core.c
 @@ -138,7 +138,7 @@ int ip6_dst_hoplimit(struct dst_entry *dst)
  EXPORT_SYMBOL(ip6_dst_hoplimit);
  #endif
  
--static int __ip6_local_out_sk(struct sock *sk, struct sk_buff *skb)
-+int __ip6_local_out_sk(struct sock *sk, struct sk_buff *skb)
+-int __ip6_local_out_sk(struct sock *sk, struct sk_buff *skb)
++int __ip6_local_out(struct sock *sk, struct sk_buff *skb)
  {
  	struct net *net = dev_net(skb_dst(skb)->dev);
  	int len;
+@@ -153,11 +153,6 @@ int __ip6_local_out_sk(struct sock *sk, struct sk_buff *skb)
+ 		       net, sk, skb, NULL, skb_dst(skb)->dev,
+ 		       dst_output);
+ }
+-
+-int __ip6_local_out(struct sk_buff *skb)
+-{
+-	return __ip6_local_out_sk(skb->sk, skb);
+-}
+ EXPORT_SYMBOL_GPL(__ip6_local_out);
+ 
+ int ip6_local_out_sk(struct sock *sk, struct sk_buff *skb)
+@@ -165,7 +160,7 @@ int ip6_local_out_sk(struct sock *sk, struct sk_buff *skb)
+ 	struct net *net = dev_net(skb_dst(skb)->dev);
+ 	int err;
+ 
+-	err = __ip6_local_out_sk(sk, skb);
++	err = __ip6_local_out(sk, skb);
+ 	if (likely(err == 1))
+ 		err = dst_output(net, sk, skb);
+ 
 diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index d3d946773a3e..b62a507cc1a5 100644
+index b62a507cc1a5..d3d946773a3e 100644
 --- a/net/ipv6/route.c
 +++ b/net/ipv6/route.c
 @@ -226,7 +226,7 @@ static struct dst_ops ip6_dst_ops_template = {
  	.link_failure		=	ip6_link_failure,
  	.update_pmtu		=	ip6_rt_update_pmtu,
  	.redirect		=	rt6_do_redirect,
--	.local_out		=	__ip6_local_out,
-+	.local_out		=	__ip6_local_out_sk,
+-	.local_out		=	__ip6_local_out_sk,
++	.local_out		=	__ip6_local_out,
  	.neigh_lookup		=	ip6_neigh_lookup,
  };
  
 diff --git a/net/ipv6/xfrm6_policy.c b/net/ipv6/xfrm6_policy.c
-index 08c9c93f3527..f7876830f263 100644
+index f7876830f263..08c9c93f3527 100644
 --- a/net/ipv6/xfrm6_policy.c
 +++ b/net/ipv6/xfrm6_policy.c
 @@ -285,7 +285,7 @@ static struct dst_ops xfrm6_dst_ops = {
  	.cow_metrics =		dst_cow_metrics_generic,
  	.destroy =		xfrm6_dst_destroy,
  	.ifdown =		xfrm6_dst_ifdown,
--	.local_out =		__ip6_local_out,
-+	.local_out =		__ip6_local_out_sk,
+-	.local_out =		__ip6_local_out_sk,
++	.local_out =		__ip6_local_out,
  	.gc_thresh =		32768,
  };
  
-diff --git a/net/xfrm/xfrm_output.c b/net/xfrm/xfrm_output.c
-index 88752b0c07d8..a7a254fe7985 100644
---- a/net/xfrm/xfrm_output.c
-+++ b/net/xfrm/xfrm_output.c
-@@ -136,7 +136,7 @@ int xfrm_output_resume(struct sk_buff *skb, int err)
- 	while (likely((err = xfrm_output_one(skb, err)) == 0)) {
- 		nf_reset(skb);
- 
--		err = skb_dst(skb)->ops->local_out(skb);
-+		err = skb_dst(skb)->ops->local_out(skb->sk, skb);
- 		if (unlikely(err != 1))
- 			goto out;
- 
 -- 
 2.2.1
-
