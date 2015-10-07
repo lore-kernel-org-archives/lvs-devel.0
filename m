@@ -1,42 +1,67 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next 0/2] Fourth Round of IPVS Updates for v4.4
-Date: Wed,  7 Oct 2015 14:23:21 +0900
-Message-ID: <1444195403-4288-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next 1/2] ipvs: Remove possibly unused variable from ip_vs_out
+Date: Wed,  7 Oct 2015 14:23:22 +0900
+Message-ID: <1444195403-4288-2-git-send-email-horms@verge.net.au>
+References: <1444195403-4288-1-git-send-email-horms@verge.net.au>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1444195403-4288-1-git-send-email-horms@verge.net.au>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, David Ahern <dsa@cumulusnetworks.com>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+=46rom: David Ahern <dsa@cumulusnetworks.com>
 
-please consider these build warning cleanups from David Ahern and myself.
-They resolve some minor side effects of Eric Biederman' heroic work to
-cleanup IPVS which you recently pulled: its queued up for v4.4 so no need
-to worry about earlier kernel versions.
+Eric's net namespace changes in 1b75097dd7a26 leaves net unreferenced i=
+f
+CONFIG_IP_VS_IPV6 is not enabled:
 
-The following changes since commit a29a9a585b2840a205f085a34dfd65c75e86f7c3:
+=2E./net/netfilter/ipvs/ip_vs_core.c: In function =E2=80=98ip_vs_out=E2=
+=80=99:
+=2E./net/netfilter/ipvs/ip_vs_core.c:1177:14: warning: unused variable =
+=E2=80=98net=E2=80=99 [-Wunused-variable]
 
-  netfilter: nfnetlink_log: allow to attach conntrack (2015-10-05 17:32:14 +0200)
+After the net refactoring there is only 1 user; push the reference to t=
+he
+1 user. While the line length slightly exceeds 80 it seems to be the
+best change.
 
-are available in the git repository at:
+=46ixes: 1b75097dd7a26("ipvs: Pass ipvs into ip_vs_out")
+Signed-off-by: David Ahern <dsa@cumulusnetworks.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+[horms: updated subject]
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_core.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs4-for-v4.4
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs=
+_core.c
+index d08df435c2aa..3773154d9b71 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1172,7 +1172,6 @@ drop:
+ static unsigned int
+ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buf=
+f *skb, int af)
+ {
+-	struct net *net =3D ipvs->net;
+ 	struct ip_vs_iphdr iph;
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+@@ -1272,7 +1271,7 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int h=
+ooknum, struct sk_buff *skb, in
+ #ifdef CONFIG_IP_VS_IPV6
+ 				if (af =3D=3D AF_INET6) {
+ 					if (!skb->dev)
+-						skb->dev =3D net->loopback_dev;
++						skb->dev =3D ipvs->net->loopback_dev;
+ 					icmpv6_send(skb,
+ 						    ICMPV6_DEST_UNREACH,
+ 						    ICMPV6_PORT_UNREACH,
+--=20
+2.1.4
 
-for you to fetch changes up to 92240e8dc0d1a94ea3dde7cb19aace113dcc6cb9:
-
-  ipvs: Remove possibly unused variables from ip_vs_conn_net_{init,cleanup} (2015-10-07 10:12:00 +0900)
-
-----------------------------------------------------------------
-David Ahern (1):
-      ipvs: Remove possibly unused variable from ip_vs_out
-
-Simon Horman (1):
-      ipvs: Remove possibly unused variables from ip_vs_conn_net_{init,cleanup}
-
- net/netfilter/ipvs/ip_vs_conn.c | 13 +++++--------
- net/netfilter/ipvs/ip_vs_core.c |  3 +--
- 2 files changed, 6 insertions(+), 10 deletions(-)
