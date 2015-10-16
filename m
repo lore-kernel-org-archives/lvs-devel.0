@@ -1,60 +1,139 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH nf-next 1/2] ipvs: Remove possibly unused variable from
- ip_vs_out
-Date: Wed, 14 Oct 2015 11:10:09 +0900
-Message-ID: <20151014021007.GA2932@verge.net.au>
-References: <1444195403-4288-1-git-send-email-horms@verge.net.au>
- <1444195403-4288-2-git-send-email-horms@verge.net.au>
- <56152517.6020807@cogentembedded.com>
- <20151012154349.GA22589@salvia>
-Mime-Version: 1.0
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-	t=1444788610; bh=y1pAwF7sDw4iB2IZ9lESjI2Qef5Lq2jjPz1WcF4XDoo=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=kjO+JHWznMYiVwewPFWcENFMtW9oxC900TLUtTgKaVeWBc1OBf+j2yO67a+iWYp2/
-	 7B52dTr/VV/Iiaw78fo3oq2UvlSZPHmTdFL5i6zgEW/bFCPpiiUR7SMqM+qfEszcOt
-	 j6oC4/c73AUIhKI7jy97X9tBn/KnRTEcv+7Hggkc=
-Content-Disposition: inline
-In-Reply-To: <20151012154349.GA22589@salvia>
-Sender: netdev-owner@vger.kernel.org
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCH net-next 1/2] ipvs: drop first packet to redirect conntrack
+Date: Fri, 16 Oct 2015 11:07:48 +0300
+Message-ID: <1444982869-9600-2-git-send-email-ja@ssi.bg>
+References: <1444982869-9600-1-git-send-email-ja@ssi.bg>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1444982869-9600-1-git-send-email-ja@ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, David Ahern <dsa@cumulusnetworks.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, Jiri Bohac <jbohac@suse.cz>
 
-On Mon, Oct 12, 2015 at 05:43:49PM +0200, Pablo Neira Ayuso wrote:
-> On Wed, Oct 07, 2015 at 04:58:47PM +0300, Sergei Shtylyov wrote:
-> > Hello.
-> >=20
-> > On 10/7/2015 8:23 AM, Simon Horman wrote:
-> >=20
-> > >From: David Ahern <dsa@cumulusnetworks.com>
-> > >
-> > >Eric's net namespace changes in 1b75097dd7a26 leaves net unreferen=
-ced if
-> > >CONFIG_IP_VS_IPV6 is not enabled:
-> > >
-> > >../net/netfilter/ipvs/ip_vs_core.c: In function =E2=80=98ip_vs_out=
-=E2=80=99:
-> > >../net/netfilter/ipvs/ip_vs_core.c:1177:14: warning: unused variab=
-le =E2=80=98net=E2=80=99 [-Wunused-variable]
-> > >
-> > >After the net refactoring there is only 1 user; push the reference=
- to the
-> > >1 user. While the line length slightly exceeds 80 it seems to be t=
-he
-> > >best change.
-> > >
-> > >Fixes: 1b75097dd7a26("ipvs: Pass ipvs into ip_vs_out")
-> >=20
-> >    Minor nit: missing space before (. Could be probbably fixed whil=
-e applying...
->=20
-> I have pulled this anyway, I don't want to keep this back for this
-> minor style problem.
->=20
-> But please Simon, run checkpatch.pl before submitting next time.
+Jiri Bohac is reporting for a problem where the attempt
+to reschedule existing connection to another real server
+needs proper redirect for the conntrack used by the IPVS
+connection. For example, when IPVS connection is created
+to NAT-ed real server we alter the reply direction of
+conntrack. If we later decide to select different real
+server we can not alter again the conntrack. And if we
+expire the old connection, the new connection is left
+without conntrack.
 
-Sorry about that, I will try to be more careful.
+So, the only way to redirect both the IPVS connection and
+the Netfilter's conntrack is to drop the SYN packet that
+hits existing connection, to wait for the next jiffie
+to expire the old connection and its conntrack and to rely
+on client's retransmission to create new connection as
+usually.
+
+Jiri Bohac provided a fix that drops all SYNs on rescheduling,
+I extended his patch to do such drops only for connections
+that use conntrack. Here is the original report from Jiri Bohac:
+
+Since commit dc7b3eb900aa ("ipvs: Fix reuse connection if real server
+is dead"), new connections to dead servers are redistributed
+immediately to new servers.  The old connection is expired using
+ip_vs_conn_expire_now() which sets the connection timer to expire
+immediately.
+
+However, before the timer callback, ip_vs_conn_expire(), is run
+to clean the connection's conntrack entry, the new redistributed
+connection may already be established and its conntrack removed
+instead.
+
+Fix this by dropping the first packet of the new connection
+instead, like we do when the destination server is not available.
+The timer will have deleted the old conntrack entry long before
+the first packet of the new connection is retransmitted.
+
+Fixes: dc7b3eb900aa ("ipvs: Fix reuse connection if real server is dead")
+Signed-off-by: Jiri Bohac <jbohac@suse.cz>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ include/net/ip_vs.h             | 17 +++++++++++++++++
+ net/netfilter/ipvs/ip_vs_core.c | 37 ++++++++++++++++++++++++++++---------
+ 2 files changed, 45 insertions(+), 9 deletions(-)
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 0816c87..647dbc0 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1588,6 +1588,23 @@ static inline void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp)
+ }
+ #endif /* CONFIG_IP_VS_NFCT */
+ 
++/* Really using conntrack? */
++static inline bool ip_vs_conn_uses_conntrack(struct ip_vs_conn *cp,
++					     struct sk_buff *skb)
++{
++#ifdef CONFIG_IP_VS_NFCT
++	enum ip_conntrack_info ctinfo;
++	struct nf_conn *ct;
++
++	if (!(cp->flags & IP_VS_CONN_F_NFCT))
++		return false;
++	ct = nf_ct_get(skb, &ctinfo);
++	if (ct && !nf_ct_is_untracked(ct))
++		return true;
++#endif
++	return false;
++}
++
+ static inline int
+ ip_vs_dest_conn_overhead(struct ip_vs_dest *dest)
+ {
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 07a791e..76e9736 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1760,15 +1760,34 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
+ 	cp = pp->conn_in_get(ipvs, af, skb, &iph);
+ 
+ 	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
+-	if (conn_reuse_mode && !iph.fragoffs &&
+-	    is_new_conn(skb, &iph) && cp &&
+-	    ((unlikely(sysctl_expire_nodest_conn(ipvs)) && cp->dest &&
+-	      unlikely(!atomic_read(&cp->dest->weight))) ||
+-	     unlikely(is_new_conn_expected(cp, conn_reuse_mode)))) {
+-		if (!atomic_read(&cp->n_control))
+-			ip_vs_conn_expire_now(cp);
+-		__ip_vs_conn_put(cp);
+-		cp = NULL;
++	if (conn_reuse_mode && !iph.fragoffs && is_new_conn(skb, &iph) && cp) {
++		bool uses_ct = false, resched = false;
++
++		if (unlikely(sysctl_expire_nodest_conn(ipvs)) && cp->dest &&
++		    unlikely(!atomic_read(&cp->dest->weight))) {
++			resched = true;
++			uses_ct = ip_vs_conn_uses_conntrack(cp, skb);
++		} else if (is_new_conn_expected(cp, conn_reuse_mode)) {
++			uses_ct = ip_vs_conn_uses_conntrack(cp, skb);
++			if (!atomic_read(&cp->n_control)) {
++				resched = true;
++			} else {
++				/* Do not reschedule controlling connection
++				 * that uses conntrack while it is still
++				 * referenced by controlled connection(s).
++				 */
++				resched = !uses_ct;
++			}
++		}
++
++		if (resched) {
++			if (!atomic_read(&cp->n_control))
++				ip_vs_conn_expire_now(cp);
++			__ip_vs_conn_put(cp);
++			if (uses_ct)
++				return NF_DROP;
++			cp = NULL;
++		}
+ 	}
+ 
+ 	if (unlikely(!cp)) {
+-- 
+1.9.3
+
