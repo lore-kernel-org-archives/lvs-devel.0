@@ -1,52 +1,43 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
 Subject: Re: [PATCH] netfilter: ipvs: avoid unused variable warning
-Date: Mon, 30 Nov 2015 22:48:34 +0200 (EET)
-Message-ID: <alpine.LFD.2.11.1511302242210.1918@ja.home.ssi.bg>
+Date: Tue, 1 Dec 2015 16:48:59 +0900
+Message-ID: <20151201074859.GA22945@verge.net.au>
 References: <9616810.SPqCgIbKt5@wuerfel>
+ <alpine.LFD.2.11.1511302242210.1918@ja.home.ssi.bg>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <9616810.SPqCgIbKt5@wuerfel>
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+	t=1448956140; bh=ZD3XSH2pbwIAVrPqRj/nqBvW/yM/WwuihBuVW6+jquo=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=YtkuiyHy+O27nyrNDWju8UxNIiZlGh4nWcCJ9SgWpaNZ+voCt3ifEVHAtlvuMasC8
+	 iNfimlJbZrk6lAOemG58Di3DVZ3i0TDDL5o3IFRO/+a1fKqUmUhf83HEc1HL/PPb1g
+	 0lf5Ot0Tdqz6nanL0E0CuWU1bnh9eS+U/JgAEHRs=
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.11.1511302242210.1918@ja.home.ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Arnd Bergmann <arnd@arndb.de>, Wensong Zhang <wensong@linux-vs.org>, lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
-
-	Hello,
-
-On Mon, 30 Nov 2015, Arnd Bergmann wrote:
-
-> When CONFIG_PROC_FS is disabled, the local 'net' variable in
-> ip_vs_app_net_init becomes unused, as gcc warns:
+On Mon, Nov 30, 2015 at 10:48:34PM +0200, Julian Anastasov wrote:
 > 
-> net/netfilter/ipvs/ip_vs_app.c: In function 'ip_vs_app_net_init':
-> net/netfilter/ipvs/ip_vs_app.c:608:14: warning: unused variable 'net' [-Wunused-variable]
+> 	Hello,
 > 
-> This removes the line by moving the pointer dereference into the
-> user of the variable.
+> On Mon, 30 Nov 2015, Arnd Bergmann wrote:
 > 
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+> > When CONFIG_PROC_FS is disabled, the local 'net' variable in
+> > ip_vs_app_net_init becomes unused, as gcc warns:
+> > 
+> > net/netfilter/ipvs/ip_vs_app.c: In function 'ip_vs_app_net_init':
+> > net/netfilter/ipvs/ip_vs_app.c:608:14: warning: unused variable 'net' [-Wunused-variable]
+> > 
+> > This removes the line by moving the pointer dereference into the
+> > user of the variable.
+> > 
+> > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
-> index 0328f7250693..e5422d3db501 100644
-> --- a/net/netfilter/ipvs/ip_vs_app.c
-> +++ b/net/netfilter/ipvs/ip_vs_app.c
-> @@ -614,8 +614,6 @@ int __net_init ip_vs_app_net_init(struct netns_ipvs *ipvs)
->  
->  void __net_exit ip_vs_app_net_cleanup(struct netns_ipvs *ipvs)
->  {
-> -	struct net *net = ipvs->net;
-> -
->  	unregister_ip_vs_app(ipvs, NULL /* all */);
-> -	remove_proc_entry("ip_vs_app", net->proc_net);
-> +	remove_proc_entry("ip_vs_app", ipvs->net->proc_net);
->  }
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Thanks, applied to ipvs-next.
