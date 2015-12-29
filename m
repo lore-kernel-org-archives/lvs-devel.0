@@ -1,7 +1,7 @@
 From: "Jeff Skoll" <verna.viajar@icdd.uni-kassel.de>
 Subject: Donation/Charity
-Date: Mon, 28 Dec 2015 21:30:34 -0500
-Message-ID: <auto-000005520822@mailadmin.uni-kassel.de>
+Date: Tue, 29 Dec 2015 00:12:28 -0500
+Message-ID: <auto-000005790961@mailadmin.uni-kassel.de>
 Reply-To: jeff.skoll@skollcharity.org
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
