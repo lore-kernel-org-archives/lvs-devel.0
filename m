@@ -1,7 +1,7 @@
-From: "Jeff Skoll" <verna.viajar@icdd.uni-kassel.de>
-Subject: Donation/Charity
-Date: Tue, 29 Dec 2015 00:12:28 -0500
-Message-ID: <auto-000005790961@mailadmin.uni-kassel.de>
+From: "Jeff Skoll" <s_w9gc9x@uni-kassel.de>
+Subject: Charity Donation
+Date: Sat, 02 Jan 2016 11:08:13 -0500
+Message-ID: <auto-000000188312@mailadmin.uni-kassel.de>
 Reply-To: jeff.skoll@skollcharity.org
 Mime-Version: 1.0
 Content-Transfer-Encoding: QUOTED-PRINTABLE
@@ -10,7 +10,7 @@ Content-Description: Mail message body
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="utf-8"
-To: Me <verna.viajar@icdd.uni-kassel.de>
+To: Me <s_w9gc9x@uni-kassel.de>
 
 Hi,
 My name is Jeffrey Skoll, a philanthropist and the founder of one of th=
