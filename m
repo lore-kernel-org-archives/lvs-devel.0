@@ -1,35 +1,26 @@
-From: Yannick Brosseau <scientist@fb.com>
-Subject: [PATCH] Remove noisy debug print from ip_vs_del_service
-Date: Mon, 25 Jan 2016 17:12:25 -0800
-Message-ID: <1453770745-12788-1-git-send-email-scientist@fb.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH] Remove noisy debug print from ip_vs_del_service
+Date: Tue, 26 Jan 2016 10:25:19 +0900
+Message-ID: <20160126012519.GM26945@verge.net.au>
+References: <1453770745-12788-1-git-send-email-scientist@fb.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fb.com; h=from : to : cc : subject :
- date : message-id : mime-version : content-type; s=facebook;
- bh=tD8ZE8EiAuanc9cSAkjUlRbAAg+6nZ3A+hNruH8U5uM=;
- b=fmVPn9Zb+4fG1+DihaNZgLfQeNv+nEgxIAYd7Q0SaVqz53E9t8chRkSQgWZxs8AaJVCE
- gdaXMkU21msvjsyksDtSmKvVOEelde5P3Y5XvZ4OBS4A97bv78IpCxc2zDOW80pi63Uj
- TUM7MkVmWDq2cdbIyG70b/taNBxNH5tV1fg= 
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+	t=1453771522; bh=ggVeN8IsfD6juFsVFxFLDpY7yh1EEPAaf0AF3lAiOQA=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=Tq3/QADKdaEgzAMG64Fap1vc2/s14L3Eu+bTaX52Fb3T3X8JkIZetgWjsD/A9E+PH
+	 2HDeztr+/ihg3RNj9xGkMAmwSEZMdTJ/IatuMuc742sCU2ZUfioCOvD38u9uq6CZzF
+	 qpDgKweMEJNX5Z6KavJpW8TY/koMSVcGzvhi4SSs=
+Content-Disposition: inline
+In-Reply-To: <1453770745-12788-1-git-send-email-scientist@fb.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org
-Cc: Yannick Brosseau <scientist@fb.com>
+To: Yannick Brosseau <scientist@fb.com>
+Cc: ja@ssi.bg, lvs-devel@vger.kernel.org
 
-This have been there for a long time, but does not seem to add value
+On Mon, Jan 25, 2016 at 05:12:25PM -0800, Yannick Brosseau wrote:
+> This have been there for a long time, but does not seem to add value
 
-Signed-off-by: Yannick Brosseau <scientist@fb.com>
----
- net/netfilter/ipvs/ip_vs_ctl.c | 2 --
- 1 file changed, 2 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index e7c1b05..daf4cb7 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1376,8 +1376,6 @@ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
- 	struct ip_vs_pe *old_pe;
- 	struct netns_ipvs *ipvs = svc->ipvs;
- 
--	pr_info("%s: enter\n", __func__);
+Thanks, applied.
