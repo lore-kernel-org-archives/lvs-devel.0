@@ -1,26 +1,56 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] Remove noisy debug print from ip_vs_del_service
-Date: Tue, 26 Jan 2016 10:25:19 +0900
-Message-ID: <20160126012519.GM26945@verge.net.au>
-References: <1453770745-12788-1-git-send-email-scientist@fb.com>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-	t=1453771522; bh=ggVeN8IsfD6juFsVFxFLDpY7yh1EEPAaf0AF3lAiOQA=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=Tq3/QADKdaEgzAMG64Fap1vc2/s14L3Eu+bTaX52Fb3T3X8JkIZetgWjsD/A9E+PH
-	 2HDeztr+/ihg3RNj9xGkMAmwSEZMdTJ/IatuMuc742sCU2ZUfioCOvD38u9uq6CZzF
-	 qpDgKweMEJNX5Z6KavJpW8TY/koMSVcGzvhi4SSs=
-Content-Disposition: inline
-In-Reply-To: <1453770745-12788-1-git-send-email-scientist@fb.com>
-Sender: lvs-devel-owner@vger.kernel.org
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH 2/2] netfilter: ipvs/SIP: handle ip_vs_fill_iph_skb_off failure
+Date: Wed, 27 Jan 2016 14:52:02 +0100
+Message-ID: <1453902749-3422685-2-git-send-email-arnd@arndb.de>
+References: <1453902749-3422685-1-git-send-email-arnd@arndb.de>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <1453902749-3422685-1-git-send-email-arnd@arndb.de>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Yannick Brosseau <scientist@fb.com>
-Cc: ja@ssi.bg, lvs-devel@vger.kernel.org
+To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
+Cc: linux-arm-kernel@lists.infradead.org, Arnd Bergmann <arnd@arndb.de>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-On Mon, Jan 25, 2016 at 05:12:25PM -0800, Yannick Brosseau wrote:
-> This have been there for a long time, but does not seem to add value
+ip_vs_fill_iph_skb_off() may not find an IP header, and gcc has
+determined that ip_vs_sip_fill_param() then incorrectly accesses
+the protocol fields:
 
-Thanks, applied.
+net/netfilter/ipvs/ip_vs_pe_sip.c: In function 'ip_vs_sip_fill_param':
+net/netfilter/ipvs/ip_vs_pe_sip.c:76:5: error: 'iph.protocol' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+  if (iph.protocol != IPPROTO_UDP)
+     ^
+net/netfilter/ipvs/ip_vs_pe_sip.c:81:10: error: 'iph.len' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+  dataoff = iph.len + sizeof(struct udphdr);
+          ^
+
+This adds a check for the ip_vs_fill_iph_skb_off() return code
+before looking at the ip header data returned from it.
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Fixes: b0e010c527de ("ipvs: replace ip_vs_fill_ip4hdr with ip_vs_fill_iph_skb_off")
+---
+ net/netfilter/ipvs/ip_vs_pe_sip.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
+index 1b8d594e493a..c4e9ca016a88 100644
+--- a/net/netfilter/ipvs/ip_vs_pe_sip.c
++++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+@@ -70,10 +70,10 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+ 	const char *dptr;
+ 	int retc;
+ 
+-	ip_vs_fill_iph_skb(p->af, skb, false, &iph);
++	retc = ip_vs_fill_iph_skb(p->af, skb, false, &iph);
+ 
+ 	/* Only useful with UDP */
+-	if (iph.protocol != IPPROTO_UDP)
++	if (!retc || iph.protocol != IPPROTO_UDP)
+ 		return -EINVAL;
+ 	/* todo: IPv6 fragments:
+ 	 *       I think this only should be done for the first fragment. /HS
+-- 
+2.7.0
+
