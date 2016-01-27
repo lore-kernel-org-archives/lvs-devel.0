@@ -1,13 +1,15 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH 1/2] netfilter: ipvs: avoid unused variable warnings
-Date: Wed, 27 Jan 2016 22:01:42 +0200 (EET)
-Message-ID: <alpine.LFD.2.11.1601272156590.2353@ja.home.ssi.bg>
+Subject: Re: [PATCH 2/2] netfilter: ipvs/SIP: handle ip_vs_fill_iph_skb_off
+ failure
+Date: Wed, 27 Jan 2016 22:56:08 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1601272241530.2353@ja.home.ssi.bg>
 References: <1453902749-3422685-1-git-send-email-arnd@arndb.de>
+ <1453902749-3422685-2-git-send-email-arnd@arndb.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Return-path: <linux-arm-kernel-bounces+linux-arm-kernel=m.gmane.org@lists.infradead.org>
-In-Reply-To: <1453902749-3422685-1-git-send-email-arnd@arndb.de>
+In-Reply-To: <1453902749-3422685-2-git-send-email-arnd@arndb.de>
 List-Id: <lvs-devel.vger.kernel.org>
 List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-arm-kernel>, 
  <mailto:linux-arm-kernel-request@lists.infradead.org?subject=unsubscribe>
@@ -26,99 +28,60 @@ Cc: Wensong Zhang <wensong@linux-vs.org>, coreteam@netfilter.org, netdev@vger.ke
 
 On Wed, 27 Jan 2016, Arnd Bergmann wrote:
 
-> The proc_create() and remove_proc_entry() functions do not reference
-> their arguments when CONFIG_PROC_FS is disabled, so we get a couple
-> of warnings about unused variables in IPVS:
+> ip_vs_fill_iph_skb_off() may not find an IP header, and gcc has
+> determined that ip_vs_sip_fill_param() then incorrectly accesses
+> the protocol fields:
 > 
-> ipvs/ip_vs_app.c:608:14: warning: unused variable 'net' [-Wunused-variable]
-> ipvs/ip_vs_ctl.c:3950:14: warning: unused variable 'net' [-Wunused-variable]
-> ipvs/ip_vs_ctl.c:3994:14: warning: unused variable 'net' [-Wunused-variable]
+> net/netfilter/ipvs/ip_vs_pe_sip.c: In function 'ip_vs_sip_fill_param':
+> net/netfilter/ipvs/ip_vs_pe_sip.c:76:5: error: 'iph.protocol' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+>   if (iph.protocol != IPPROTO_UDP)
+>      ^
+> net/netfilter/ipvs/ip_vs_pe_sip.c:81:10: error: 'iph.len' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+>   dataoff = iph.len + sizeof(struct udphdr);
+>           ^
 > 
-> This removes the local variables and instead looks them up separately
-> for each use, which obviously avoids the warning.
+> This adds a check for the ip_vs_fill_iph_skb_off() return code
+> before looking at the ip header data returned from it.
 > 
 > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> Fixes: 4c50a8ce2b63 ("netfilter: ipvs: avoid unused variable warning")
+> Fixes: b0e010c527de ("ipvs: replace ip_vs_fill_ip4hdr with ip_vs_fill_iph_skb_off")
 
-	Looks like your previous patch for ip_vs_app_net_cleanup
-was delayed in ipvs-next tree. I guess, Simon should drop it and
-use this one instead when net-next opens:
+	Looks ok to me,
 
 Acked-by: Julian Anastasov <ja@ssi.bg>
 
+	but see below...
+
 > ---
->  net/netfilter/ipvs/ip_vs_app.c |  8 ++------
->  net/netfilter/ipvs/ip_vs_ctl.c | 15 ++++++---------
->  2 files changed, 8 insertions(+), 15 deletions(-)
+>  net/netfilter/ipvs/ip_vs_pe_sip.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
-> index 0328f7250693..299edc6add5a 100644
-> --- a/net/netfilter/ipvs/ip_vs_app.c
-> +++ b/net/netfilter/ipvs/ip_vs_app.c
-> @@ -605,17 +605,13 @@ static const struct file_operations ip_vs_app_fops = {
+> diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
+> index 1b8d594e493a..c4e9ca016a88 100644
+> --- a/net/netfilter/ipvs/ip_vs_pe_sip.c
+> +++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+> @@ -70,10 +70,10 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+>  	const char *dptr;
+>  	int retc;
 >  
->  int __net_init ip_vs_app_net_init(struct netns_ipvs *ipvs)
->  {
-> -	struct net *net = ipvs->net;
-> -
->  	INIT_LIST_HEAD(&ipvs->app_list);
-> -	proc_create("ip_vs_app", 0, net->proc_net, &ip_vs_app_fops);
-> +	proc_create("ip_vs_app", 0, ipvs->net->proc_net, &ip_vs_app_fops);
->  	return 0;
->  }
+> -	ip_vs_fill_iph_skb(p->af, skb, false, &iph);
+> +	retc = ip_vs_fill_iph_skb(p->af, skb, false, &iph);
 >  
->  void __net_exit ip_vs_app_net_cleanup(struct netns_ipvs *ipvs)
->  {
-> -	struct net *net = ipvs->net;
-> -
->  	unregister_ip_vs_app(ipvs, NULL /* all */);
-> -	remove_proc_entry("ip_vs_app", net->proc_net);
-> +	remove_proc_entry("ip_vs_app", ipvs->net->proc_net);
->  }
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index e7c1b052c2a3..bfb4f8372b83 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -3947,7 +3947,6 @@ static struct notifier_block ip_vs_dst_notifier = {
->  
->  int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
->  {
-> -	struct net *net = ipvs->net;
->  	int i, idx;
->  
->  	/* Initialize rs_table */
-> @@ -3974,9 +3973,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
->  
->  	spin_lock_init(&ipvs->tot_stats.lock);
->  
-> -	proc_create("ip_vs", 0, net->proc_net, &ip_vs_info_fops);
-> -	proc_create("ip_vs_stats", 0, net->proc_net, &ip_vs_stats_fops);
-> -	proc_create("ip_vs_stats_percpu", 0, net->proc_net,
-> +	proc_create("ip_vs", 0, ipvs->net->proc_net, &ip_vs_info_fops);
-> +	proc_create("ip_vs_stats", 0, ipvs->net->proc_net, &ip_vs_stats_fops);
-> +	proc_create("ip_vs_stats_percpu", 0, ipvs->net->proc_net,
->  		    &ip_vs_stats_percpu_fops);
->  
->  	if (ip_vs_control_net_init_sysctl(ipvs))
-> @@ -3991,13 +3990,11 @@ err:
->  
->  void __net_exit ip_vs_control_net_cleanup(struct netns_ipvs *ipvs)
->  {
-> -	struct net *net = ipvs->net;
-> -
->  	ip_vs_trash_cleanup(ipvs);
->  	ip_vs_control_net_cleanup_sysctl(ipvs);
-> -	remove_proc_entry("ip_vs_stats_percpu", net->proc_net);
-> -	remove_proc_entry("ip_vs_stats", net->proc_net);
-> -	remove_proc_entry("ip_vs", net->proc_net);
-> +	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
-> +	remove_proc_entry("ip_vs_stats", ipvs->net->proc_net);
-> +	remove_proc_entry("ip_vs", ipvs->net->proc_net);
->  	free_percpu(ipvs->tot_stats.cpustats);
->  }
->  
-> -- 
-> 2.7.0
+>  	/* Only useful with UDP */
+> -	if (iph.protocol != IPPROTO_UDP)
+> +	if (!retc || iph.protocol != IPPROTO_UDP)
+>  		return -EINVAL;
+>  	/* todo: IPv6 fragments:
+>  	 *       I think this only should be done for the first fragment. /HS
+
+	There are other places like this where result is not
+checked because there is always a guarding skb_header_pointer
+check, i.e. ip_vs_fill_iph_skb* should not fail at such point.
+
+	Let us know you want to extend this patch with other such
+calls (including ip_vs_fill_iph_skb_icmp)? May be they will
+need return NF_ACCEPT. I guess, all such changes should be
+for the ipvs-next/net-next tree when it opens.
 
 Regards
 
