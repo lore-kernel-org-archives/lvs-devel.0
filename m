@@ -1,66 +1,50 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH nf 3/3] netfilter: ipvs: handle ip_vs_fill_iph_skb_off failure
-Date: Thu, 18 Feb 2016 09:41:01 +0900
-Message-ID: <1455756061-21834-4-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf 2/3] netfilter: ipvs: allow rescheduling after RST
+Date: Thu, 18 Feb 2016 09:41:00 +0900
+Message-ID: <1455756061-21834-3-git-send-email-horms@verge.net.au>
 References: <1455756061-21834-1-git-send-email-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-	t=1455756076; bh=2mOVxJVXZ6W1SNpjNIPxj5wIp+9XbPgMuJHKLa/dz2o=;
+	t=1455756076; bh=p24bmq5sEmWfkR18lKyP2huqFzcWr+5eFxkFtFg+SP4=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=hMb7dtrMUdW5O26Twd4MvrMh7t4BT8Uj7hZsbykY25WNy/LoqAt9TTrmCPZPQpq89
-	 d7dqsT8+ZGifCbHDEjfSzwpD10SS0XcVESSKjf+28qgau+DLAAmfMGYe/jK1kfpNyx
-	 aPvuZmoHwiDn3tjBghiYdhNpJWInqw6aU8zAXJbc=
+	b=KJkD+qv4V/IIgqkaVguKYvXUpmsYKyDTpbfjqBtBtVn/Vs1r9OUAzj5toWRmzghZ4
+	 /8CkPYbKuL6WBEldZXX0diVlcYpoqOTMbqkz2YJdlGCyWDoXZd9Wqt/JmnbO7bK/Vg
+	 KKekG9bb6la9KWwcrlY/KRI6pj+Ew+ag0x+/aCFY=
 In-Reply-To: <1455756061-21834-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Arnd Bergmann <arnd@arndb.de>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-From: Arnd Bergmann <arnd@arndb.de>
+From: Julian Anastasov <ja@ssi.bg>
 
-ip_vs_fill_iph_skb_off() may not find an IP header, and gcc has
-determined that ip_vs_sip_fill_param() then incorrectly accesses
-the protocol fields:
+"RFC 5961, 4.2. Mitigation" describes a mechanism to request
+client to confirm with RST the restart of TCP connection
+before resending its SYN. As result, IPVS can see SYNs for
+existing connection in CLOSE state. Add check to allow
+rescheduling in this state.
 
-net/netfilter/ipvs/ip_vs_pe_sip.c: In function 'ip_vs_sip_fill_param':
-net/netfilter/ipvs/ip_vs_pe_sip.c:76:5: error: 'iph.protocol' may be used uninitialized in this function [-Werror=maybe-uninitialized]
-  if (iph.protocol != IPPROTO_UDP)
-     ^
-net/netfilter/ipvs/ip_vs_pe_sip.c:81:10: error: 'iph.len' may be used uninitialized in this function [-Werror=maybe-uninitialized]
-  dataoff = iph.len + sizeof(struct udphdr);
-          ^
-
-This adds a check for the ip_vs_fill_iph_skb_off() return code
-before looking at the ip header data returned from it.
-
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-Fixes: b0e010c527de ("ipvs: replace ip_vs_fill_ip4hdr with ip_vs_fill_iph_skb_off")
-Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_pe_sip.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
-index 1b8d594e493a..c4e9ca016a88 100644
---- a/net/netfilter/ipvs/ip_vs_pe_sip.c
-+++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
-@@ -70,10 +70,10 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
- 	const char *dptr;
- 	int retc;
- 
--	ip_vs_fill_iph_skb(p->af, skb, false, &iph);
-+	retc = ip_vs_fill_iph_skb(p->af, skb, false, &iph);
- 
- 	/* Only useful with UDP */
--	if (iph.protocol != IPPROTO_UDP)
-+	if (!retc || iph.protocol != IPPROTO_UDP)
- 		return -EINVAL;
- 	/* todo: IPv6 fragments:
- 	 *       I think this only should be done for the first fragment. /HS
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 4da560005b0e..0c1d3fef9a7c 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1089,6 +1089,7 @@ static inline bool is_new_conn_expected(const struct ip_vs_conn *cp,
+ 	switch (cp->protocol) {
+ 	case IPPROTO_TCP:
+ 		return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
++			cp->state == IP_VS_TCP_S_CLOSE ||
+ 			((conn_reuse_mode & 2) &&
+ 			 (cp->state == IP_VS_TCP_S_FIN_WAIT) &&
+ 			 (cp->flags & IP_VS_CONN_F_NOOUTPUT));
 -- 
 2.1.4
 
