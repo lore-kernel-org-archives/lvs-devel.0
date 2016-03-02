@@ -1,64 +1,56 @@
-From: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>
-Subject: Re: [PATCH nf 2/3] netfilter: ipvs: allow rescheduling after RST
-Date: Thu, 18 Feb 2016 16:17:17 +0300
-Message-ID: <56C5C45D.9050807@cogentembedded.com>
-References: <1455756061-21834-1-git-send-email-horms@verge.net.au>
- <1455756061-21834-3-git-send-email-horms@verge.net.au>
+From: Marco Angaroni <marcoangaroni@gmail.com>
+Subject: [PATCH] ipvs: SIP persistence engine - incorrect search of callid header
+Date: Wed, 2 Mar 2016 13:54:49 +0100
+Message-ID: <CANHHuCXHPbMvmURbgFViLw0Oon4tS9uhpe_DwPM5h_hOCiiHVw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=cogentembedded-com.20150623.gappssmtp.com; s=20150623;
-        h=subject:to:references:cc:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-type:content-transfer-encoding;
-        bh=Ya8JHnVsNaujn51wC4CN3f7hMFUVDgzmNPe+ZW38hpg=;
-        b=ye1dRJzZtbQwuPPuIYRM5eNm9ImpTcofGqbFSvOHCXr6563wXBglg+DMgBrHscQMVk
-         u9/a8aBAyMhl6IPBGAFb5G7swtKVSJjofNJr0AastTZRHz0bnzDeiOc4VBKXi/fxa6Fq
-         +5temOXwKvsekHJpMCsKENjwsI2PNyfC452tB7/E1K+40CexOapku+OV+ZtnUzSC5C0b
-         Kfz2AiLD8vObM/WtMjOzwWvfIQuftGSUZQfKF9xU3sAUQ7Tuho3R77qwHsbpqwxlJNdQ
-         NC3/6OtgL6huDk8m15de4Su5kjg4kPBC0YVY4FOHjYQJna+koxItj++UY4tAmTE6ql2i
-         8D3A==
-In-Reply-To: <1455756061-21834-3-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+        d=gmail.com; s=20120113;
+        h=mime-version:date:message-id:subject:from:to;
+        bh=3TT5RzCG9tjW6bzB7b8PQjOB6b/zDXYFdYsLqO4k1RE=;
+        b=0ZJyWdMuTQeV2E/KwEJOprwZwsATH6SfCwY+9pwBMN2CKCLPDB1B+aHB66WrMxHuDD
+         X1Vv2owubHEZu18TsafY/JRTvfCJEylUC9U5tVHPASBmyh8TxvB/M5xjvT15UxCe0Qr5
+         lgtPvdHQyOB3I+N8aR+Bwdhw1/4O6a0LTdieraJRO1aCknsUuFVDg4eflQEMPZDEv7C7
+         ayg9sl0spm8i/jfJeDjSGrTU+LKA9QV3/X+F9A2JSviJJ+UNqHpNOidjtIHf3QEqvESI
+         snv7BYbxVU1T2/El3qPUmHnRYJmHFxBEAw0nXUbdttx0YTt1QWNVQYWc2hAQ4XmK3GfT
+         ot6g==
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org
 
-Hello.
+Hello,
 
-On 2/18/2016 3:41 AM, Simon Horman wrote:
+issue description is in my previous e-mail:
+http://archive.linuxvirtualserver.org/html/lvs-devel/2016-02/msg00001.html
 
-> From: Julian Anastasov <ja@ssi.bg>
->
-> "RFC 5961, 4.2. Mitigation" describes a mechanism to request
-> client to confirm with RST the restart of TCP connection
-> before resending its SYN. As result, IPVS can see SYNs for
-> existing connection in CLOSE state. Add check to allow
-> rescheduling in this state.
->
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> Signed-off-by: Simon Horman <horms@verge.net.au>
-> ---
->   net/netfilter/ipvs/ip_vs_core.c | 1 +
->   1 file changed, 1 insertion(+)
->
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 4da560005b0e..0c1d3fef9a7c 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1089,6 +1089,7 @@ static inline bool is_new_conn_expected(const struct ip_vs_conn *cp,
->   	switch (cp->protocol) {
->   	case IPPROTO_TCP:
->   		return (cp->state == IP_VS_TCP_S_TIME_WAIT) ||
-> +			cp->state == IP_VS_TCP_S_CLOSE ||
+Below the patch formatted as requested by Julian, applied and tested
+on the latest stable kernel (v4.4.2). Hope this time will be ok.
 
-    I would have been consistent and enclosed this expression into parens as 
-well. BTW, the indentation is not correct anyway.
+Thanks,
+Marco Angaroni
 
->   			((conn_reuse_mode & 2) &&
->   			 (cp->state == IP_VS_TCP_S_FIN_WAIT) &&
->   			 (cp->flags & IP_VS_CONN_F_NOOUTPUT));
 
-MBR, Sergei
+Signed-off-by: Marco Angaroni <marcoangaroni@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_pe_sip.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c
+b/net/netfilter/ipvs/ip_vs_pe_sip.c
+index 1b8d594..b3e0e5b 100644
+--- a/net/netfilter/ipvs/ip_vs_pe_sip.c
++++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
+@@ -88,7 +88,7 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p,
+struct sk_buff *skb)
+        dptr = skb->data + dataoff;
+        datalen = skb->len - dataoff;
+
+-       if (get_callid(dptr, dataoff, datalen, &matchoff, &matchlen))
++       if (get_callid(dptr, 0, datalen, &matchoff, &matchlen))
+                return -EINVAL;
+
+        /* N.B: pe_data is only set on success,
+--
+1.8.3.1
