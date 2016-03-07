@@ -1,72 +1,66 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 4/4] ipvs: correct initial offset of Call-ID header search in SIP persistence engine
-Date: Mon,  7 Mar 2016 12:03:34 +0900
-Message-ID: <1457319814-8027-5-git-send-email-horms@verge.net.au>
+Subject: [PATCH 1/4] ipvs: handle ip_vs_fill_iph_skb_off failure
+Date: Mon,  7 Mar 2016 12:03:31 +0900
+Message-ID: <1457319814-8027-2-git-send-email-horms@verge.net.au>
 References: <1457319814-8027-1-git-send-email-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-	t=1457319820; bh=N6yfHiXyupRqxXkKZ/1FGkljEJUr+7Tfqp+69UFatjo=;
+	t=1457319820; bh=2mOVxJVXZ6W1SNpjNIPxj5wIp+9XbPgMuJHKLa/dz2o=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=fr6fQdO0koLKghl3O1MJ+NCNHzZAL8qrQRl4IoG6Ms4/dydt+rj0AGKpzBFFF0wll
-	 LE+wsezL3+CtxLrpQNaJn8/SjkUbJjJtmf4kePVY5UWm7gbjmUZ80WK0u7kCozz30m
-	 8v5ArEHrRQLjN6O12AcnQ4TVycj8niipq7cmgKdQ=
+	b=S1I9TD1b3WkPv1ba2iOgfAeeSXGb3KuCPh+ClKu4WWMUAtI5fsWFTjnuD8YlPkTdG
+	 aTX5tvxeYYzc6FTnRJncxyRu/VPW1wvERe3EYEc7959Kf5n4sn9ENsWdnTQRN+YYcP
+	 jUZEfgsN3oUy2RefVnRYsjJwVKM0yqpKXDmkSEJ4=
 In-Reply-To: <1457319814-8027-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Marco Angaroni <marcoangaroni@gmail.com>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Arnd Bergmann <arnd@arndb.de>, Simon Horman <horms@verge.net.au>
 
-From: Marco Angaroni <marcoangaroni@gmail.com>
+From: Arnd Bergmann <arnd@arndb.de>
 
-The IPVS SIP persistence engine is not able to parse the SIP header
-"Call-ID" when such header is inserted in the first positions of
-the SIP message.
+ip_vs_fill_iph_skb_off() may not find an IP header, and gcc has
+determined that ip_vs_sip_fill_param() then incorrectly accesses
+the protocol fields:
 
-When IPVS is configured with "--pe sip" option, like for example:
-ipvsadm -A -u 1.2.3.4:5060 -s rr --pe sip -p 120 -o
-some particular messages (see below for details) do not create entries
-in the connection template table, which can be listed with:
-ipvsadm -Lcn --persistent-conn
+net/netfilter/ipvs/ip_vs_pe_sip.c: In function 'ip_vs_sip_fill_param':
+net/netfilter/ipvs/ip_vs_pe_sip.c:76:5: error: 'iph.protocol' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+  if (iph.protocol != IPPROTO_UDP)
+     ^
+net/netfilter/ipvs/ip_vs_pe_sip.c:81:10: error: 'iph.len' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+  dataoff = iph.len + sizeof(struct udphdr);
+          ^
 
-Problematic SIP messages are SIP responses having "Call-ID" header
-positioned just after message first line:
-SIP/2.0 200 OK
-[Call-ID header here]
-[rest of the headers]
+This adds a check for the ip_vs_fill_iph_skb_off() return code
+before looking at the ip header data returned from it.
 
-When "Call-ID" header is positioned down (after a few other headers)
-it is correctly recognized.
-
-This is due to the data offset used in get_callid function call inside
-ip_vs_pe_sip.c file: since dptr already points to the start of the
-SIP message, the value of dataoff should be initially 0.
-Otherwise the header is searched starting from some bytes after the
-first character of the SIP message.
-
-Fixes: 758ff0338722 ("IPVS: sip persistence engine")
-Signed-off-by: Marco Angaroni <marcoangaroni@gmail.com>
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Fixes: b0e010c527de ("ipvs: replace ip_vs_fill_ip4hdr with ip_vs_fill_iph_skb_off")
 Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_pe_sip.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_pe_sip.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_pe_sip.c b/net/netfilter/ipvs/ip_vs_pe_sip.c
-index c4e9ca016a88..0a6eb5c0d9e9 100644
+index 1b8d594e493a..c4e9ca016a88 100644
 --- a/net/netfilter/ipvs/ip_vs_pe_sip.c
 +++ b/net/netfilter/ipvs/ip_vs_pe_sip.c
-@@ -88,7 +88,7 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
- 	dptr = skb->data + dataoff;
- 	datalen = skb->len - dataoff;
+@@ -70,10 +70,10 @@ ip_vs_sip_fill_param(struct ip_vs_conn_param *p, struct sk_buff *skb)
+ 	const char *dptr;
+ 	int retc;
  
--	if (get_callid(dptr, dataoff, datalen, &matchoff, &matchlen))
-+	if (get_callid(dptr, 0, datalen, &matchoff, &matchlen))
+-	ip_vs_fill_iph_skb(p->af, skb, false, &iph);
++	retc = ip_vs_fill_iph_skb(p->af, skb, false, &iph);
+ 
+ 	/* Only useful with UDP */
+-	if (iph.protocol != IPPROTO_UDP)
++	if (!retc || iph.protocol != IPPROTO_UDP)
  		return -EINVAL;
- 
- 	/* N.B: pe_data is only set on success,
+ 	/* todo: IPv6 fragments:
+ 	 *       I think this only should be done for the first fragment. /HS
 -- 
 2.1.4
 
