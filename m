@@ -1,53 +1,60 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCHv2 net-next 0/2] ipvs: drop packet during rescheduling
-Date: Mon, 7 Mar 2016 11:57:45 +0900
-Message-ID: <20160307025745.GB3292@verge.net.au>
-References: <1457183003-7073-1-git-send-email-ja@ssi.bg>
-Mime-Version: 1.0
+Subject: [GIT PULL v2 0/4] IPVS Fixes for v4.5
+Date: Mon,  7 Mar 2016 12:03:30 +0900
+Message-ID: <1457319814-8027-1-git-send-email-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-	t=1457319466; bh=ydhcDeG4IQWoivL4bnbCtePAjU+CUBRbST253PoDvU8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=XP03mUKRSsIsvvJPBP6sfdTkJeEJWf8uzLEXGG+spCazujIW+P9Auo1zc31hwE7Hp
-	 9v5I74OJcVmK/0fz/thZDw7IpOKiYKXcg6A3MkYvlTbvA1y3EEpkcq63EuTx24GhHO
-	 drLDDhXHIo7dDYEQVEMjj/gQ7aWgPrraS+XA2X/Q=
-Content-Disposition: inline
-In-Reply-To: <1457183003-7073-1-git-send-email-ja@ssi.bg>
+	t=1457319820; bh=PUlB0j4jJrrr7TZn9hUm8xRGWYfl/NiuNbS5r5w7LLM=;
+	h=From:To:Cc:Subject:Date:From;
+	b=FQXAarKtET6Fy6fZJOp5nJrfIXcW1+78TTzbE/AXUJUrF0piCseX1newUp8ZZXH9P
+	 1YsjjrO68iRGbcygfnAd/FolckPyNzfWRjKfKp9ZjtFiYOQIF2nlt9AHDe2WKOdXEK
+	 R942rTSdLo/8hfR+QDZHQQsJPU/olhfF2A2iaNiA=
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Jiri Bohac <jbohac@suse.cz>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Sat, Mar 05, 2016 at 03:03:21PM +0200, Julian Anastasov wrote:
-> Jiri Bohac is reporting for a problem with the connection
-> rescheduling mechanism added in 3.10 when new SYNs in
-> connection to dead real server can be redirected to another
-> real server. His solution is to drop SYNs until the IPVS
-> connection and its conntrack are properly removed, so that
-> a new connection can be established later from client's
-> retransmissions. Alternative would be to redirect the
-> conntrack (its reply direction) to the new real server but
-> we do not see such solution.
-> 
-> The second patch addresses another scenario: client restarts
-> TCP connection by reusing the same IPVS connection:
-> 
-> - IPVS conn is established, eg. FTP without persistence
-> - restart client box
-> - start new TCP connection from same port to reuse IPVS conn
-> C: SYN with new SEQ
-> S: ACK with ACK_SEQ=old SEQ
-> C: RST SEQ=old SEQ, IPVS conn:EST->CLOSE
-> retransmit pause
-> C: SYN, still in CLOSE? => DROP, expire IPVS conn
-> Expire IPVS connection
-> retransmit pause
-> C: SYN, create connection
-> 
-> In this case we should allow rescheduling in CLOSE state.
-> In the worst case for this scenario with initial RTO=3 secs
-> the client can be delayed for 9 seconds.
+Hi Pablo,
 
-Thanks, I have queued these up dropping the previous versions
+please consider these IPVS fixes for v4.5 or
+if it is too late please consider them for v4.6.
+
+* Arnd Bergman has corrected an error whereby the SIP persistence engine
+  may incorrectly access protocol fields
+* Julian Anastasov has corrected a problem reported by Jiri Bohac with the
+  connection rescheduling mechanism added in 3.10 when new SYNs in
+  connection to dead real server can be redirected to another real server.
+* Marco Angaroni resolved a problem in the SIP persistence engine
+  whereby the Call-ID could not be found if it was at the beginning of a
+  SIP message.
+
+The following changes since commit 017b1b6d28c479f1ad9a7a41f775545a3e1cba35:
+
+  netfilter: nfnetlink_acct: validate NFACCT_FILTER parameters (2016-02-29 13:27:21 +0100)
+
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v4.5
+
+for you to fetch changes up to 7617a24f83b5d67f4dab1844956be1cebc44aec8:
+
+  ipvs: correct initial offset of Call-ID header search in SIP persistence engine (2016-03-07 11:53:35 +0900)
+
+----------------------------------------------------------------
+Arnd Bergmann (1):
+      ipvs: handle ip_vs_fill_iph_skb_off failure
+
+Julian Anastasov (2):
+      ipvs: drop first packet to redirect conntrack
+      ipvs: allow rescheduling after RST
+
+Marco Angaroni (1):
+      ipvs: correct initial offset of Call-ID header search in SIP persistence engine
+
+ include/net/ip_vs.h               | 17 +++++++++++++++++
+ net/netfilter/ipvs/ip_vs_core.c   | 38 +++++++++++++++++++++++++++++---------
+ net/netfilter/ipvs/ip_vs_pe_sip.c |  6 +++---
+ 3 files changed, 49 insertions(+), 12 deletions(-)
