@@ -1,63 +1,53 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] ipvs: correct initial offset of Call-ID header search in
- SIP persistence engine
-Date: Mon, 7 Mar 2016 11:57:23 +0900
-Message-ID: <20160307025723.GA3292@verge.net.au>
-References: <56dabe8a.wEnEwnUQ23/U/p/3%marcoangaroni@gmail.com>
- <alpine.LFD.2.11.1603051345210.1715@ja.home.ssi.bg>
+Subject: Re: [PATCHv2 net-next 0/2] ipvs: drop packet during rescheduling
+Date: Mon, 7 Mar 2016 11:57:45 +0900
+Message-ID: <20160307025745.GB3292@verge.net.au>
+References: <1457183003-7073-1-git-send-email-ja@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-	t=1457319445; bh=S1H7ftW0R8Ky87RnjWSj82tVF7FWVkp7GSwEiWq1nCk=;
+	t=1457319466; bh=ydhcDeG4IQWoivL4bnbCtePAjU+CUBRbST253PoDvU8=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=oUjABnZzOLFmd+kE+bfhwuxTa3F6AgF2nApiMMm0GWtGxuv9R09PTPsniridUv989
-	 R1hZwpSM9cow8seai9VeZL/Klf4yNvnwpQ+vCEYOmml+BJtTllvV+JFRgcncQ/vREB
-	 FyeXyoc/32WaNPxpuwfZ3HbRjUVKVQIM/sGq9jJ8=
+	b=XP03mUKRSsIsvvJPBP6sfdTkJeEJWf8uzLEXGG+spCazujIW+P9Auo1zc31hwE7Hp
+	 9v5I74OJcVmK/0fz/thZDw7IpOKiYKXcg6A3MkYvlTbvA1y3EEpkcq63EuTx24GhHO
+	 drLDDhXHIo7dDYEQVEMjj/gQ7aWgPrraS+XA2X/Q=
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.11.1603051345210.1715@ja.home.ssi.bg>
+In-Reply-To: <1457183003-7073-1-git-send-email-ja@ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
-Cc: Marco Angaroni <marcoangaroni@gmail.com>, lvs-devel@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org, Jiri Bohac <jbohac@suse.cz>
 
-On Sat, Mar 05, 2016 at 01:47:04PM +0200, Julian Anastasov wrote:
+On Sat, Mar 05, 2016 at 03:03:21PM +0200, Julian Anastasov wrote:
+> Jiri Bohac is reporting for a problem with the connection
+> rescheduling mechanism added in 3.10 when new SYNs in
+> connection to dead real server can be redirected to another
+> real server. His solution is to drop SYNs until the IPVS
+> connection and its conntrack are properly removed, so that
+> a new connection can be established later from client's
+> retransmissions. Alternative would be to redirect the
+> conntrack (its reply direction) to the new real server but
+> we do not see such solution.
 > 
-> 	Hello,
+> The second patch addresses another scenario: client restarts
+> TCP connection by reusing the same IPVS connection:
 > 
-> On Sat, 5 Mar 2016, Marco Angaroni wrote:
+> - IPVS conn is established, eg. FTP without persistence
+> - restart client box
+> - start new TCP connection from same port to reuse IPVS conn
+> C: SYN with new SEQ
+> S: ACK with ACK_SEQ=old SEQ
+> C: RST SEQ=old SEQ, IPVS conn:EST->CLOSE
+> retransmit pause
+> C: SYN, still in CLOSE? => DROP, expire IPVS conn
+> Expire IPVS connection
+> retransmit pause
+> C: SYN, create connection
 > 
-> > The IPVS SIP persistence engine is not able to parse the SIP header
-> > "Call-ID" when such header is inserted in the first positions of
-> > the SIP message.
-> > 
-> > When IPVS is configured with "--pe sip" option, like for example:
-> > ipvsadm -A -u 1.2.3.4:5060 -s rr --pe sip -p 120 -o
-> > some particular messages (see below for details) do not create entries
-> > in the connection template table, which can be listed with:
-> > ipvsadm -Lcn --persistent-conn
-> > 
-> > Problematic SIP messages are SIP responses having "Call-ID" header
-> > positioned just after message first line:
-> > SIP/2.0 200 OK
-> > [Call-ID header here]
-> > [rest of the headers]
-> > 
-> > When "Call-ID" header is positioned down (after a few other headers)
-> > it is correctly recognized.
-> > 
-> > This is due to the data offset used in get_callid function call inside
-> > ip_vs_pe_sip.c file: since dptr already points to the start of the 
-> > SIP message, the value of dataoff should be initially 0. 
-> > Otherwise the header is searched starting from some bytes after the 
-> > first character of the SIP message.
-> > 
-> > Fixes: 758ff0338722 ("IPVS: sip persistence engine")
-> > Signed-off-by: Marco Angaroni <marcoangaroni@gmail.com>
-> 
-> 	Looks good to me. Simon, please apply.
-> 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
+> In this case we should allow rescheduling in CLOSE state.
+> In the worst case for this scenario with initial RTO=3 secs
+> the client can be delayed for 9 seconds.
 
-Thanks, I have tentatively queued this up as a fix for v4.5.
+Thanks, I have queued these up dropping the previous versions
