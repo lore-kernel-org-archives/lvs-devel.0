@@ -1,23 +1,31 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL v2 0/4] IPVS Fixes for v4.5
-Date: Thu, 10 Mar 2016 17:39:08 +0100
-Message-ID: <20160310163908.GA3153@salvia>
-References: <1457319814-8027-1-git-send-email-horms@verge.net.au>
+Subject: [ANNOUNCE] NetDev 1.1 videos now available
+Date: Tue, 15 Mar 2016 13:03:10 +0100
+Message-ID: <20160315120310.GA3655@salvia>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1457319814-8027-1-git-send-email-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: netdev@vger.kernel.org
+Cc: linux-wireless@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev-conference@lists.netfilter.org
 
-On Mon, Mar 07, 2016 at 12:03:30PM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider these IPVS fixes for v4.5 or
-> if it is too late please consider them for v4.6.
+Hi,
 
-Pulled into nf-next, thanks Simon!
+Today we're releasing the NetDev 1.1 videos, you can find them at:
+
+        https://www.youtube.com/channel/UCribHdOMgiD5R3OUDgx2qTg
+
+Regarding papers: Quick reminder to talk presenters that didn't sent
+us yet your paper, we have extended submission deadline to *31th March
+2016*. You only have to send us a minimum of a two pages paper to
+info@netdevconf.org. No more extensions after this!
+
+BTW, for those that already submitted it, you can send us a new
+version of your paper anytime before that deadline, we'll take the
+last submission that you send us as the final copy to be released.
+
+It took us a while to edit and to upload these ~100 Gbytes of videos,
+so thanks for your patience.
