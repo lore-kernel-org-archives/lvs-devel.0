@@ -1,97 +1,112 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH v2] ipvs: don't alter conntrack in OPS mode
-Date: Tue, 12 Apr 2016 23:14:17 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1604122312420.1611@ja.home.ssi.bg>
-References: <5708f21f.jc8RYqMS4IkxB05t%marcoangaroni@gmail.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH] ipvs: handle connections started by real-servers
+Date: Fri, 15 Apr 2016 10:14:42 +1000
+Message-ID: <20160415001442.GC9557@verge.net.au>
+References: <5703e735.EsjlanP0p7ANNSWm%marcoangaroni@gmail.com>
+ <alpine.LFD.2.11.1604091310420.2087@ja.home.ssi.bg>
 Mime-Version: 1.0
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <5708f21f.jc8RYqMS4IkxB05t%marcoangaroni@gmail.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+	t=1460679283; bh=IFNMZNlETld6ydcqRCd0kpKbMZhGI5EHGDfmCp0ZXKw=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=TjL9HpI2XIH7ZVBDfA64g9T9k4OlUoiNykbNM3GDdOEMVJWmUqGfloH35LOQiPWO1
+	 Xx2yO9cjxnVbJD0E4JCX7Mk1gLfRsJdF/R+w0BcftzdukNa9S+zKH/+E1+6w3aCHRA
+	 paFZxG6UoOt7IIi8yVSBLLWItcx5dSTbwU4RyHv0=
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.11.1604091310420.2087@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Marco Angaroni <marcoangaroni@gmail.com>
-Cc: lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="windows-1252"
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Marco Angaroni <marcoangaroni@gmail.com>, lvs-devel@vger.kernel.org
 
+On Sat, Apr 09, 2016 at 01:13:02PM +0300, Julian Anastasov wrote:
+>=20
+> 	Hello,
+>=20
+> On Tue, 5 Apr 2016, Marco Angaroni wrote:
+>=20
+> > When using LVS-NAT and SIP persistence-egine over UDP, the followin=
+g
+> > limitations are present with current implementation:
+> >=20
+> >   1) To actually have load-balancing based on Call-ID header, you n=
+eed to
+> >      use one-packet-scheduling mode. But with one-packet-scheduling=
+ the
+> >      connection is deleted just after packet is forwarded, so SIP r=
+esponses
+> >      coming from real-servers do not match any connection and SNAT =
+is
+> >      not applied.
+> >=20
+> >   2) If you do not use "-o" option, IPVS behaves as normal UDP load
+> >      balancer, so different SIP calls (each one identified by a dif=
+ferent
+> >      Call-ID) coming from the same ip-address/port go to the same
+> >      real-server. So basically you don=E2=80=99t have load-balancin=
+g based on
+> >      Call-ID as intended.
+> >=20
+> >   3) Call-ID is not learned when a new SIP call is started by a rea=
+l-server
+> >      (inside-to-outside direction), but only in the outside-to-insi=
+de
+> >      direction. This would be a general problem for all SIP servers=
+ acting
+> >      as Back2BackUserAgent.
+> >=20
+> > This patch aims to solve problems 1) and 3) while keeping OPS mode
+> > mandatory for SIP-UDP, so that 2) is not a problem anymore.
+> >=20
+> > The basic mechanism implemented is to make packets, that do not mat=
+ch any
+> > existent connection but come from real-servers, create new connecti=
+ons
+> > instead of let them pass without any effect.
+> > When such packets pass through ip_vs_out(), if their source ip addr=
+ess and
+> > source port match a configured real-server, a new connection is
+> > automatically created in the same way as it would have happened if =
+the
+> > packet had come from outside-to-inside direction. A new connection =
+template
+> > is created too if the virtual-service is persistent and there is no
+> > matching connection template found. The new connection automaticall=
+y
+> > created, if the service had "-o" option, is an OPS connection that =
+lasts
+> > only the time to forward the packet, just like it happens on the
+> > ingress side.
+> >=20
+> > The main part of this mechanism is implemented inside a persistent-=
+engine
+> > specific callback (at the moment only SIP persistent engine exists)=
+ and
+> > is triggered only for UDP packets, since connection oriented protoc=
+ols, by
+> > using different set of ports (typically ephemeral ports) to open ne=
+w
+> > outgoing connections, should not need this feature.
+> >=20
+> > The following requisites are needed for automatic connection creati=
+on; if
+> > any is missing the packet simply goes the same way as before.
+> > a) virtual-service is not fwmark based (this is because fwmark serv=
+ices
+> >    do not store address and port of the virtual-service, required t=
+o
+> >    build the connection data).
+> > b) virtual-service and real-servers must not have been configured w=
+ith
+> >    omitted port (this is again to have all data to create the conne=
+ction).
+> >=20
+> > Signed-off-by: Marco Angaroni <marcoangaroni@gmail.com>
+>=20
+> 	Nice addition, thanks! Simon, please apply.
+>=20
+> Acked-by: Julian Anastasov <ja@ssi.bg>
 
-	Hello,
-
-On Sat, 9 Apr 2016, Marco Angaroni wrote:
-
-> When using OPS mode in conjunction with SIP persistent-engine, packets
-> originating from the same ip-address/port could be balanced to different
-> real servers, and (to properly handle SIP responses) OPS connections 
-> are created in the in-out direction too, where ip_vs_update_conntrack()
-> is called to modify the reply tuple.
-> 
-> As a result, there can be collision of conntrack tuples, causing random
-> packet drops, as explained below:
-> 
-> conntrack1: orig=CIP->VIP, reply=RIP1->CIP
-> conntrack2: orig=RIP2->CIP, reply=CIP->VIP
-> 
-> Tuple CIP->VIP is both in orig of conntrack1 and reply of conntrack2.
-> The collision triggers packet drop inside nf_conntrack processing.
-> 
-> In addition, the current implementation deletes the conntrack object at
-> every expire of an OPS connection (once every forwarded packet), to have
-> it recreated from scratch at next packet traversing IPVS.
-> 
-> Since in OPS mode, by definition, we don't expect any associated 
-> response, the choices implemented in this patch are:
-> a) don't call nf_conntrack_alter_reply() for OPS connections inside
->    ip_vs_update_conntrack().
-> b) don't delete the conntrack object at OPS connection expire.
-> 
-> The result is that created conntrack objects for each tuple CIP->VIP,
-> RIP-N->CIP, etc. are left in UNREPLIED state and not modified by IPVS
-> OPS connection management. This eliminates packet drops and leaves
-> a single conntrack object for each tuple packets are sent from.
-> 
-> Signed-off-by: Marco Angaroni <marcoangaroni@gmail.com>
-
-	Thanks! Looks good to me. Simon, please apply.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  net/netfilter/ipvs/ip_vs_conn.c | 3 ++-
->  net/netfilter/ipvs/ip_vs_nfct.c | 4 ++++
->  2 files changed, 6 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index dd75d41..292365f 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -836,7 +836,8 @@ static void ip_vs_conn_expire(unsigned long data)
->  		if (cp->control)
->  			ip_vs_control_del(cp);
->  
-> -		if (cp->flags & IP_VS_CONN_F_NFCT) {
-> +		if ((cp->flags & IP_VS_CONN_F_NFCT) &&
-> +		    !(cp->flags & IP_VS_CONN_F_ONE_PACKET)) {
->  			/* Do not access conntracks during subsys cleanup
->  			 * because nf_conntrack_find_get can not be used after
->  			 * conntrack cleanup for the net.
-> diff --git a/net/netfilter/ipvs/ip_vs_nfct.c b/net/netfilter/ipvs/ip_vs_nfct.c
-> index 30434fb..f04fd8d 100644
-> --- a/net/netfilter/ipvs/ip_vs_nfct.c
-> +++ b/net/netfilter/ipvs/ip_vs_nfct.c
-> @@ -93,6 +93,10 @@ ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp, int outin)
->  	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
->  		return;
->  
-> +	/* Never alter conntrack for OPS conns (no reply is expected) */
-> +	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
-> +		return;
-> +
->  	/* Alter reply only in original direction */
->  	if (CTINFO2DIR(ctinfo) != IP_CT_DIR_ORIGINAL)
->  		return;
-> -- 
-> 1.8.3.1
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Thanks, applied.
