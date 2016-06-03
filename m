@@ -1,135 +1,89 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: update real-server binding of outgoing connections
- in SIP-pe
-Date: Mon, 16 May 2016 22:59:42 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1605162258001.1938@ja.home.ssi.bg>
-References: <573a00d1.QuXMcymwFEM1R+Xz%marcoangaroni@gmail.com>
-Mime-Version: 1.0
+From: Michal Kubecek <mkubecek@suse.cz>
+Subject: [PATCH ipvs-next] ipvs: count pre-established TCP states as active
+Date: Fri,  3 Jun 2016 17:56:50 +0200 (CEST)
+Message-ID: <20160603155650.292BEA0E60@unicorn.suse.cz>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <573a00d1.QuXMcymwFEM1R+Xz%marcoangaroni@gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marco Angaroni <marcoangaroni@gmail.com>
-Cc: lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
+To: lvs-devel@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>
 
+Some users observed that "least connection" distribution algorithm doesn't
+handle well bursts of TCP connections from reconnecting clients after
+a node or network failure.
 
-	Hello,
+This is because the algorithm counts active connection as worth 256
+inactive ones where for TCP, "active" only means TCP connections in
+ESTABLISHED state. In case of a connection burst, new connections are
+handled before previous ones have finished the three way handshaking so
+that all are still counted as "inactive", i.e. cheap ones. The become
+"active" quickly but at that time, all of them are already assigned to one
+real server (or few), resulting in highly unbalanced distribution.
 
-On Mon, 16 May 2016, Marco Angaroni wrote:
+Address this by counting the "pre-established" states as "active".
 
-> Previous patch that introduced handling of outgoing packets in SIP
-> persistent-engine did not call ip_vs_check_template() in case packet was
-> matching a connection template. Assumption was that real-server was 
-> healthy, since it was sending a packet just in that moment.
-> 
-> There are however real-server fault conditions requiring that association
-> between call-id and real-server (represented by connection template)
-> gets updated. Here is an example of the sequence of events:
->   1) RS1 is a back2back user agent that handled call-id1 and call-id2
->   2) RS1 is down and was marked as unavailable
->   3) new message from outside comes to IPVS with call-id1
->   4) IPVS reschedules the message to RS2, which becomes new call handler
->   5) RS2 forwards the message outside, translating call-id1 to call-id2
->   6) inside pe->conn_out() IPVS matches call-id2 with existing template
->   7) IPVS does not change association call-id2 <-> RS1
->   8) new message comes from client with call-id2
->   9) IPVS reschedules the message to a real-server potentially different
->      from RS2, which is now the correct destination
-> 
-> This patch introduces ip_vs_check_template() call in the handling of
-> outgoing packets for SIP-pe. And also introduces a second optional
-> argument for ip_vs_check_template() that allows to check if dest
-> associated to a connection template is the same dest that was identified
-> as the source of the packet. This is to change the real-server bound to a
-> particular call-id independently from its availability status: the idea
-> is that it's more reliable, for in->out direction (where internal
-> network can be considered trusted), to always associate a call-id with
-> the last real-server that used it in one of its messages. Think about
-> above sequence of events where, just after step 5, RS1 returns instead
-> to be available.
-> 
-> Comparison of dests is done by simply comparing pointers to struct
-> ip_vs_dest; there should be no cases where struct ip_vs_dest keeps its
-> memory address, but represent a different real-server in terms of
-> ip-address / port.
-> 
-> Signed-off-by: Marco Angaroni <marcoangaroni@gmail.com>
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ net/netfilter/ipvs/ip_vs_proto_tcp.c | 25 +++++++++++++++++++++++--
+ 1 file changed, 23 insertions(+), 2 deletions(-)
 
-	Looks good to me.
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index d7024b2ed769..5117bcb7d2f0 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -395,6 +395,20 @@ static const char *const tcp_state_name_table[IP_VS_TCP_S_LAST+1] = {
+ 	[IP_VS_TCP_S_LAST]		=	"BUG!",
+ };
+ 
++static const bool tcp_state_active_table[IP_VS_TCP_S_LAST] = {
++	[IP_VS_TCP_S_NONE]		=	false,
++	[IP_VS_TCP_S_ESTABLISHED]	=	true,
++	[IP_VS_TCP_S_SYN_SENT]		=	true,
++	[IP_VS_TCP_S_SYN_RECV]		=	true,
++	[IP_VS_TCP_S_FIN_WAIT]		=	false,
++	[IP_VS_TCP_S_TIME_WAIT]		=	false,
++	[IP_VS_TCP_S_CLOSE]		=	false,
++	[IP_VS_TCP_S_CLOSE_WAIT]	=	false,
++	[IP_VS_TCP_S_LAST_ACK]		=	false,
++	[IP_VS_TCP_S_LISTEN]		=	false,
++	[IP_VS_TCP_S_SYNACK]		=	true,
++};
++
+ #define sNO IP_VS_TCP_S_NONE
+ #define sES IP_VS_TCP_S_ESTABLISHED
+ #define sSS IP_VS_TCP_S_SYN_SENT
+@@ -418,6 +432,13 @@ static const char * tcp_state_name(int state)
+ 	return tcp_state_name_table[state] ? tcp_state_name_table[state] : "?";
+ }
+ 
++static bool tcp_state_active(int state)
++{
++	if (state >= IP_VS_TCP_S_LAST)
++		return false;
++	return tcp_state_active_table[state];
++}
++
+ static struct tcp_states_t tcp_states [] = {
+ /*	INPUT */
+ /*        sNO, sES, sSS, sSR, sFW, sTW, sCL, sCW, sLA, sLI, sSA	*/
+@@ -540,12 +561,12 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+ 
+ 		if (dest) {
+ 			if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
+-			    (new_state != IP_VS_TCP_S_ESTABLISHED)) {
++			    !tcp_state_active(new_state)) {
+ 				atomic_dec(&dest->activeconns);
+ 				atomic_inc(&dest->inactconns);
+ 				cp->flags |= IP_VS_CONN_F_INACTIVE;
+ 			} else if ((cp->flags & IP_VS_CONN_F_INACTIVE) &&
+-				   (new_state == IP_VS_TCP_S_ESTABLISHED)) {
++				   tcp_state_active(new_state)) {
+ 				atomic_inc(&dest->activeconns);
+ 				atomic_dec(&dest->inactconns);
+ 				cp->flags &= ~IP_VS_CONN_F_INACTIVE;
+-- 
+2.8.3
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  include/net/ip_vs.h             | 2 +-
->  net/netfilter/ipvs/ip_vs_conn.c | 5 +++--
->  net/netfilter/ipvs/ip_vs_core.c | 5 +++--
->  3 files changed, 7 insertions(+), 5 deletions(-)
-> 
-> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-> index 7eff508..290595e 100644
-> --- a/include/net/ip_vs.h
-> +++ b/include/net/ip_vs.h
-> @@ -1232,7 +1232,7 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp);
->  const char *ip_vs_state_name(__u16 proto, int state);
->  
->  void ip_vs_tcp_conn_listen(struct ip_vs_conn *cp);
-> -int ip_vs_check_template(struct ip_vs_conn *ct);
-> +int ip_vs_check_template(struct ip_vs_conn *ct, struct ip_vs_dest *cdest);
->  void ip_vs_random_dropentry(struct netns_ipvs *ipvs);
->  int ip_vs_conn_init(void);
->  void ip_vs_conn_cleanup(void);
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index 2cb3c62..096a451 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -762,7 +762,7 @@ static int expire_quiescent_template(struct netns_ipvs *ipvs,
->   *	If available, return 1, otherwise invalidate this connection
->   *	template and return 0.
->   */
-> -int ip_vs_check_template(struct ip_vs_conn *ct)
-> +int ip_vs_check_template(struct ip_vs_conn *ct, struct ip_vs_dest *cdest)
->  {
->  	struct ip_vs_dest *dest = ct->dest;
->  	struct netns_ipvs *ipvs = ct->ipvs;
-> @@ -772,7 +772,8 @@ int ip_vs_check_template(struct ip_vs_conn *ct)
->  	 */
->  	if ((dest == NULL) ||
->  	    !(dest->flags & IP_VS_DEST_F_AVAILABLE) ||
-> -	    expire_quiescent_template(ipvs, dest)) {
-> +	    expire_quiescent_template(ipvs, dest) ||
-> +	    (cdest && (dest != cdest))) {
->  		IP_VS_DBG_BUF(9, "check_template: dest not available for "
->  			      "protocol %s s:%s:%d v:%s:%d "
->  			      "-> d:%s:%d\n",
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index a97de51..ad99837 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -321,7 +321,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
->  
->  	/* Check if a template already exists */
->  	ct = ip_vs_ct_in_get(&param);
-> -	if (!ct || !ip_vs_check_template(ct)) {
-> +	if (!ct || !ip_vs_check_template(ct, NULL)) {
->  		struct ip_vs_scheduler *sched;
->  
->  		/*
-> @@ -1153,7 +1153,8 @@ struct ip_vs_conn *ip_vs_new_conn_out(struct ip_vs_service *svc,
->  						  vport, &param) < 0)
->  			return NULL;
->  		ct = ip_vs_ct_in_get(&param);
-> -		if (!ct) {
-> +		/* check if template exists and points to the same dest */
-> +		if (!ct || !ip_vs_check_template(ct, dest)) {
->  			ct = ip_vs_conn_new(&param, dest->af, daddr, dport,
->  					    IP_VS_CONN_F_TEMPLATE, dest, 0);
->  			if (!ct) {
-> -- 
-> 1.8.3.1
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
