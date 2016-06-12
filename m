@@ -1,36 +1,103 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL] IPVS Fixes for v4.7
-Date: Mon, 6 Jun 2016 13:20:20 +0200
-Message-ID: <20160606112020.GA3555@salvia>
-References: <1465205077-15139-1-git-send-email-horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH ipvs-next] ipvs: count pre-established TCP states as
+ active
+Date: Sun, 12 Jun 2016 18:27:39 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1606121825110.2021@ja.home.ssi.bg>
+References: <20160603155650.292BEA0E60@unicorn.suse.cz>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1465205077-15139-1-git-send-email-horms@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20160603155650.292BEA0E60@unicorn.suse.cz>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Marco Angaroni <marcoangaroni@gmail.com>
+To: Michal Kubecek <mkubecek@suse.cz>
+Cc: lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>
 
-On Mon, Jun 06, 2016 at 06:24:36PM +0900, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider this IPVS fix for v4.7.
-> 
-> The fix from Marco corrects the handling of outgoing connections
-> which use the SIP-pe such that the binding of a real-server
-> is updated when needed. This was an omission from changes
-> introduced by Marco in v4.7 to allow handling of outgoing connections
-> by the SIP-pe.
-> 
-> The following changes since commit 7b7eba0f3515fca3296b8881d583f7c1042f5226:
-> 
->   netfilter: x_tables: don't reject valid target size on some architectures (2016-06-02 14:09:33 +0200)
-> 
-> are available in the git repository at:
-> 
->   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v4.7
 
-Pulled, thanks Simon.
+	Hello,
+
+On Fri, 3 Jun 2016, Michal Kubecek wrote:
+
+> Some users observed that "least connection" distribution algorithm doesn't
+> handle well bursts of TCP connections from reconnecting clients after
+> a node or network failure.
+> 
+> This is because the algorithm counts active connection as worth 256
+> inactive ones where for TCP, "active" only means TCP connections in
+> ESTABLISHED state. In case of a connection burst, new connections are
+> handled before previous ones have finished the three way handshaking so
+> that all are still counted as "inactive", i.e. cheap ones. The become
+> "active" quickly but at that time, all of them are already assigned to one
+> real server (or few), resulting in highly unbalanced distribution.
+> 
+> Address this by counting the "pre-established" states as "active".
+> 
+> Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+	Simon, please apply!
+
+> ---
+>  net/netfilter/ipvs/ip_vs_proto_tcp.c | 25 +++++++++++++++++++++++--
+>  1 file changed, 23 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> index d7024b2ed769..5117bcb7d2f0 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> @@ -395,6 +395,20 @@ static const char *const tcp_state_name_table[IP_VS_TCP_S_LAST+1] = {
+>  	[IP_VS_TCP_S_LAST]		=	"BUG!",
+>  };
+>  
+> +static const bool tcp_state_active_table[IP_VS_TCP_S_LAST] = {
+> +	[IP_VS_TCP_S_NONE]		=	false,
+> +	[IP_VS_TCP_S_ESTABLISHED]	=	true,
+> +	[IP_VS_TCP_S_SYN_SENT]		=	true,
+> +	[IP_VS_TCP_S_SYN_RECV]		=	true,
+> +	[IP_VS_TCP_S_FIN_WAIT]		=	false,
+> +	[IP_VS_TCP_S_TIME_WAIT]		=	false,
+> +	[IP_VS_TCP_S_CLOSE]		=	false,
+> +	[IP_VS_TCP_S_CLOSE_WAIT]	=	false,
+> +	[IP_VS_TCP_S_LAST_ACK]		=	false,
+> +	[IP_VS_TCP_S_LISTEN]		=	false,
+> +	[IP_VS_TCP_S_SYNACK]		=	true,
+> +};
+> +
+>  #define sNO IP_VS_TCP_S_NONE
+>  #define sES IP_VS_TCP_S_ESTABLISHED
+>  #define sSS IP_VS_TCP_S_SYN_SENT
+> @@ -418,6 +432,13 @@ static const char * tcp_state_name(int state)
+>  	return tcp_state_name_table[state] ? tcp_state_name_table[state] : "?";
+>  }
+>  
+> +static bool tcp_state_active(int state)
+> +{
+> +	if (state >= IP_VS_TCP_S_LAST)
+> +		return false;
+> +	return tcp_state_active_table[state];
+> +}
+> +
+>  static struct tcp_states_t tcp_states [] = {
+>  /*	INPUT */
+>  /*        sNO, sES, sSS, sSR, sFW, sTW, sCL, sCW, sLA, sLI, sSA	*/
+> @@ -540,12 +561,12 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+>  
+>  		if (dest) {
+>  			if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
+> -			    (new_state != IP_VS_TCP_S_ESTABLISHED)) {
+> +			    !tcp_state_active(new_state)) {
+>  				atomic_dec(&dest->activeconns);
+>  				atomic_inc(&dest->inactconns);
+>  				cp->flags |= IP_VS_CONN_F_INACTIVE;
+>  			} else if ((cp->flags & IP_VS_CONN_F_INACTIVE) &&
+> -				   (new_state == IP_VS_TCP_S_ESTABLISHED)) {
+> +				   tcp_state_active(new_state)) {
+>  				atomic_inc(&dest->activeconns);
+>  				atomic_dec(&dest->inactconns);
+>  				cp->flags &= ~IP_VS_CONN_F_INACTIVE;
+> -- 
+> 2.8.3
+
+Regards
