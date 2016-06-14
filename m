@@ -1,36 +1,42 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: [PATCH 4/5] ipvs: Lock socket before setting SK_CAN_REUSE
-Date: Mon, 13 Jun 2016 20:18:23 -0700
-Message-ID: <1465874303.7945.181.camel@edumazet-glaptop3.roam.corp.google.com>
-References: <1465868613-26146-1-git-send-email-quentin@armitage.org.uk>
-	 <1465868613-26146-5-git-send-email-quentin@armitage.org.uk>
-	 <1465873924.7945.180.camel@edumazet-glaptop3.roam.corp.google.com>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+From: Quentin Armitage <quentin@armitage.org.uk>
+Subject: [PATCH v2 0/5] ipvs: fix backup sync daemon with IPv6, and minor updates
+Date: Tue, 14 Jun 2016 15:24:17 +0100
+Message-ID: <1465914262-30112-1-git-send-email-quentin@armitage.org.uk>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20120113;
-        h=message-id:subject:from:to:cc:date:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=kzYhMdz3GhARaD7BybyrgEnXWip4NkTg7fyW0RQiHd0=;
-        b=TT/qWwMGiDCmucX088QkbhkofiPlEzgrsKHXMDBYXox7wDvivlFe8Ctlk8ms3aFXxS
-         /e0CDKyBeR2VOQ6Nu1lqwJGfeYq0A70tS7TMddE3GR3Z4Q2QqfqdKV72A49lSQyDPA+B
-         kbzpjXjIrZAEjN+4tW3BlVcw1DlFw4yCN+Ni/+fw1SuaqEQDn9O0z93Z77tsvV2RC1hc
-         uKuFIhns00wtT99bZGrJEnNZFx2Vd7BUdn3mlOMmwFxLWIvO8pj4giCJToMCPFD6IVaD
-         TSNLEFg0E/MYggH7U/2GqiIMj8ktzQd2XFeuqb2jXnzuGoiyhZeFpZUJIIFOFrklO8Cw
-         xpWQ==
-In-Reply-To: <1465873924.7945.180.camel@edumazet-glaptop3.roam.corp.google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Quentin Armitage <quentin@armitage.org.uk>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+Cc: Quentin Armitage <quentin@armitage.org.uk>
 
-On Mon, 2016-06-13 at 20:12 -0700, Eric Dumazet wrote:
+This series of patches arise from discovering that:
+ipvsadm --start-daemon backup --mcast-group IPv6_address ...
+would always fail.
 
-> 
-> Have you tested this patch ?
+The first patch resolves the problem. The second and third patches are
+optimizations that were noticed while investigating the original problem.
+The fourth patch adds a lock which appears to have been omitted, and the
+final patch adds the recently added sync daemon multicast parameters to
+the log messages that are written when the sync daemons start.
 
-Hmm, please ignore this question ;)
+v2 fixes a compile error in a debug message identified by kbuild test robot.
+Now compiles with CONFIG_IP_VS_DEBUG enabled. Patch 2/5 is modified to correct
+the problem, and patch 3/5 is modifed to apply with the modified patch 2/5.
 
+Quentin Armitage (5):
+  ipvs: Enable setting IPv6 multicast address for ipvs sync daemon
+    backup
+  ipvs: Stop calling __dev_get_by_name() repeatedly when starting sync
+    daemon
+  ipvs: Don't check result < 0 after setting result = 0
+  ipvs: Lock socket before setting SK_CAN_REUSE
+  ipvs: log additional sync daemon parameters
+
+ net/netfilter/ipvs/ip_vs_sync.c |  104 +++++++++++++++++++-------------------
+ 1 files changed, 52 insertions(+), 52 deletions(-)
+
+-- 
+1.7.7.6
 
