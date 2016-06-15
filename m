@@ -1,12 +1,12 @@
 From: Quentin Armitage <quentin@armitage.org.uk>
-Subject: [PATCH v3 3/4] ipvs: Don't check result < 0 after setting result = 0
-Date: Wed, 15 Jun 2016 22:42:43 +0100
-Message-ID: <1466026964-14114-4-git-send-email-quentin@armitage.org.uk>
+Subject: [PATCH v3 1/4] ipvs: Enable setting IPv6 multicast address for ipvs
+Date: Wed, 15 Jun 2016 22:42:41 +0100
+Message-ID: <1466026964-14114-2-git-send-email-quentin@armitage.org.uk>
 References: <1465914262-30112-1-git-send-email-quentin@armitage.org.uk>
  <1466026964-14114-1-git-send-email-quentin@armitage.org.uk>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1466026964-14114-1-git-send-email-quentin@armitage.org.uk>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -14,38 +14,71 @@ Content-Transfer-Encoding: 7bit
 To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 Cc: Quentin Armitage <quentin@armitage.org.uk>
 
-Move the block testing result < 0 to avoid the test immediately
-after setting result = 0
+When using HEAD from
+https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git/,
+the command:
+ipvsadm --start-daemon backup --mcast-interface eth0.60 \
+    --mcast-group ff02::1:81
+fails with the error message:
+Argument list too long
+
+whereas both:
+ipvsadm --start-daemon master --mcast-interface eth0.60 \
+    --mcast-group ff02::1:81
+and:
+ipvsadm --start-daemon backup --mcast-interface eth0.60 \
+    --mcast-group 224.0.0.81
+are successful.
+
+The error message "Argument list too long" isn't helpful. The error occurs
+because an IPv6 address is given in backup mode.
+
+The error is in make_receive_sock() in net/netfilter/ipvs/ip_vs_sync.c,
+since it fails to set the interface on the address or the socket before
+calling inet6_bind() (via sock->ops->bind), where the test
+'if (!sk->sk_bound_dev_if)' failed.
+
+Setting sock->sk->sk_bound_dev_if on the socket before calling
+inet6_bind() resolves the issue.
+
+Fixes: d33288172e72 ("ipvs: add more mcast parameters for the sync daemon")
 
 Signed-off-by: Quentin Armitage <quentin@armitage.org.uk>
 ---
- net/netfilter/ipvs/ip_vs_sync.c |   11 ++++++-----
- 1 files changed, 6 insertions(+), 5 deletions(-)
+ net/netfilter/ipvs/ip_vs_sync.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index fbc5ba4..2be99b2 100644
+index 803001a..1b07578 100644
 --- a/net/netfilter/ipvs/ip_vs_sync.c
 +++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1496,13 +1496,14 @@ static struct socket *make_send_sock(struct netns_ipvs *ipvs, int id,
- 	if (result > 0)
- 		set_sock_size(sock->sk, 1, result);
+@@ -1545,7 +1545,8 @@ error:
+ /*
+  *      Set up receiving multicast socket over UDP
+  */
+-static struct socket *make_receive_sock(struct netns_ipvs *ipvs, int id)
++static struct socket *make_receive_sock(struct netns_ipvs *ipvs, int id,
++					int ifindex)
+ {
+ 	/* multicast addr */
+ 	union ipvs_sockaddr mcast_addr;
+@@ -1566,6 +1567,7 @@ static struct socket *make_receive_sock(struct netns_ipvs *ipvs, int id)
+ 		set_sock_size(sock->sk, 0, result);
  
--	if (AF_INET == ipvs->mcfg.mcast_af)
-+	if (ipvs->mcfg.mcast_af == AF_INET) {
- 		result = bind_mcastif_addr(sock, dev);
--	else
-+		if (result < 0) {
-+			pr_err("Error binding address of mcast interface\n");
-+			goto error;
-+		}
-+	} else {
- 		result = 0;
--	if (result < 0) {
--		pr_err("Error binding address of the mcast interface\n");
--		goto error;
- 	}
- 
- 	get_mcast_sockaddr(&mcast_addr, &salen, &ipvs->mcfg, id);
+ 	get_mcast_sockaddr(&mcast_addr, &salen, &ipvs->bcfg, id);
++	sock->sk->sk_bound_dev_if = ifindex;
+ 	result = sock->ops->bind(sock, (struct sockaddr *)&mcast_addr, salen);
+ 	if (result < 0) {
+ 		pr_err("Error binding to the multicast addr\n");
+@@ -1868,7 +1870,7 @@ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *c,
+ 		if (state == IP_VS_STATE_MASTER)
+ 			sock = make_send_sock(ipvs, id);
+ 		else
+-			sock = make_receive_sock(ipvs, id);
++			sock = make_receive_sock(ipvs, id, dev->ifindex);
+ 		if (IS_ERR(sock)) {
+ 			result = PTR_ERR(sock);
+ 			goto outtinfo;
 -- 
 1.7.7.6
 
