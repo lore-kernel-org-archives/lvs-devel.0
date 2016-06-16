@@ -1,96 +1,82 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH v3 0/4] ipvs: fix backup sync daemon with IPv6, and minor
- updates
-Date: Thu, 16 Jun 2016 09:17:24 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1606160912380.2490@ja.home.ssi.bg>
-References: <1465914262-30112-1-git-send-email-quentin@armitage.org.uk> <1466026964-14114-1-git-send-email-quentin@armitage.org.uk>
-Mime-Version: 1.0
+From: Quentin Armitage <quentin@armitage.org.uk>
+Subject: [PATCH v4 net] ipvs: fix bind to link-local mcast IPv6 address in backup
+Date: Thu, 16 Jun 2016 08:00:14 +0100
+Message-ID: <1466060414-12944-1-git-send-email-quentin@armitage.org.uk>
+References: <Message-id: <alpine.LFD.2.11.1606160912380.2490@ja.home.ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1466026964-14114-1-git-send-email-quentin@armitage.org.uk>
+In-Reply-To: <Message-id: <alpine.LFD.2.11.1606160912380.2490@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Quentin Armitage <quentin@armitage.org.uk>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+Cc: Quentin Armitage <quentin@armitage.org.uk>
 
+When using HEAD from
+https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git/,
+the command:
+ipvsadm --start-daemon backup --mcast-interface eth0.60 \
+    --mcast-group ff02::1:81
+fails with the error message:
+Argument list too long
 
-	Hello,
+whereas both:
+ipvsadm --start-daemon master --mcast-interface eth0.60 \
+    --mcast-group ff02::1:81
+and:
+ipvsadm --start-daemon backup --mcast-interface eth0.60 \
+    --mcast-group 224.0.0.81
+are successful.
 
-On Wed, 15 Jun 2016, Quentin Armitage wrote:
+The error message "Argument list too long" isn't helpful. The error occurs
+because an IPv6 address is given in backup mode.
 
-> This series of patches arise from discovering that:
-> ipvsadm --start-daemon backup --mcast-group IPv6_address ...
-> would always fail.
-> 
-> The first patch resolves the problem. The second and third patches are
-> optimizations that were noticed while investigating the original problem.
-> The fourth patch adds a lock which appears to have been omitted, and the
-> final patch adds the recently added sync daemon multicast parameters to
-> the log messages that are written when the sync daemons start.
-> 
-> v2 fixes a compile error in a debug message identified by kbuild test
-> robot. Now compiles with CONFIG_IP_VS_DEBUG enabled. Patch 2/5 is modified
-> to correct the problem, and patch 3/5 is modifed to apply with the
-> modified patch 2/5.
-> 
-> v3 incorporates changes suggested by Julian Anastasov.
-> Patch 1 now sets 'sock->sk->sk_bound_dev_if = ifindex' rather than setting
->         sin6_scope_id. Also remove the locks since unnecessary.
-> Patch 3 shortens the logged message in order not to exceed 80-char limit.
-> Patch 4 Removed, the locks aren't necessary
-> Patch 5 No longer changes indentation of existing pr_info. Also removes <>
->         around commit IDs in commit description.
-> Patches 1, 2, 3, 5 are updated to resolve coding style warnings, and all
-> 	pass with 0 errors, warnings and checks.
-> Patch 5 now becomes patch 4.
-> 
-> The changes have all been tested and work as expected.
-> 
-> Quentin Armitage (4):
->   ipvs: Enable setting IPv6 multicast address for ipvs
->   ipvs: Stop calling __dev_get_by_name() repeatedly when starting sync
->     daemon
->   ipvs: Don't check result < 0 after setting result = 0
->   ipvs: log additional sync daemon parameters
-> 
->  net/netfilter/ipvs/ip_vs_sync.c |  105 +++++++++++++++++++--------------------
->  1 files changed, 52 insertions(+), 53 deletions(-)
-> 
-> -- 
-> 1.7.7.6
+The error is in make_receive_sock() in net/netfilter/ipvs/ip_vs_sync.c,
+since it fails to set the interface on the address or the socket before
+calling inet6_bind() (via sock->ops->bind), where the test
+'if (!sk->sk_bound_dev_if)' failed.
 
-	You should post first patch separately, not as a part
-from the patchset, by specifying the tree:
+Setting sock->sk->sk_bound_dev_if on the socket before calling
+inet6_bind() resolves the issue.
 
-[PATCH v4 net] ipvs: ...
+Fixes: d33288172e72 ("ipvs: add more mcast parameters for the sync daemon")
+Signed-off-by: Quentin Armitage <quentin@armitage.org.uk>
+---
+ net/netfilter/ipvs/ip_vs_sync.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-	The other 3 patches remain in this patchset,
-with added "net-next":
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 803001a..1b07578 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1545,7 +1545,8 @@ error:
+ /*
+  *      Set up receiving multicast socket over UDP
+  */
+-static struct socket *make_receive_sock(struct netns_ipvs *ipvs, int id)
++static struct socket *make_receive_sock(struct netns_ipvs *ipvs, int id,
++					int ifindex)
+ {
+ 	/* multicast addr */
+ 	union ipvs_sockaddr mcast_addr;
+@@ -1566,6 +1567,7 @@ static struct socket *make_receive_sock(struct netns_ipvs *ipvs, int id)
+ 		set_sock_size(sock->sk, 0, result);
+ 
+ 	get_mcast_sockaddr(&mcast_addr, &salen, &ipvs->bcfg, id);
++	sock->sk->sk_bound_dev_if = ifindex;
+ 	result = sock->ops->bind(sock, (struct sockaddr *)&mcast_addr, salen);
+ 	if (result < 0) {
+ 		pr_err("Error binding to the multicast addr\n");
+@@ -1868,7 +1870,7 @@ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *c,
+ 		if (state == IP_VS_STATE_MASTER)
+ 			sock = make_send_sock(ipvs, id);
+ 		else
+-			sock = make_receive_sock(ipvs, id);
++			sock = make_receive_sock(ipvs, id, dev->ifindex);
+ 		if (IS_ERR(sock)) {
+ 			result = PTR_ERR(sock);
+ 			goto outtinfo;
+-- 
+1.7.7.6
 
-[PATCH v4 net-next */3] ipvs: ...
-
-Patch 1:
-
-	It is good to mention that problem happens for link-local
-addresses, not for site/org-local or global scope. By this way
-we are more precise when creating a bugfix, it avoids confusion.
-You can also check again the Subject and the commit message for
-improvements. It is up to you but here is an example:
-
-ipvs: fix bind to link-local mcast IPv6 address in backup
-
-	The empty line between Fixes and Signed-off-by should be
-removed.
-
-Patch 2-3: look OK
-
-Patch 4:
-
-	Some of the fields are unsigned, so %d should be %u:
-sync_maxlen, mcast_port, mcast_af, mcast_ttl
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
