@@ -1,46 +1,101 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT PULL nf-next] IPVS Updates for v4.8
-Date: Thu,  7 Jul 2016 20:40:39 +0200
-Message-ID: <1467916840-17005-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH nf-next] ipvs: count pre-established TCP states as active
+Date: Thu,  7 Jul 2016 20:40:40 +0200
+Message-ID: <1467916840-17005-2-git-send-email-horms@verge.net.au>
+References: <1467916840-17005-1-git-send-email-horms@verge.net.au>
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-	t=1467916846; bh=VeiotfESO0AgEpFFqzweXdnZzImHDzbhSk5xeYeyYjA=;
-	h=From:To:Cc:Subject:Date:From;
-	b=cRYB8DUq6Vl+QsGJBwclJAGVo+31MVg1b9rZaTt74enI0jTIL+NkbrB0Jt2PJ283W
-	 tLKrlbykoDAjgG1qdWQdTnyrlJCMj5A3/IGFJGQB4kcbm4ph6y6Gqcoz4i2NOGpruf
-	 ZyPVg3a5ryfoP/YICtXDaqssFSBr/nZw9qXdViSI=
+	t=1467916845; bh=Ovyep+o0Ar4dWw+S4VOMnckOUztEOYIrCONLKIwx8Rg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=PUW4TYxeC/kORNsJXc38FqxvHPi5vxYGojLjQ00IYsy3Z5FwXsEp3PgKcHj9LPZzF
+	 bC3LBeg/n1bhjNmcsIPEoaH1Xv5OmXs4+hD0ApTfp6qJXqEUrDpGWYGPlOOM7MgOda
+	 6GiTSKqmGhOISMq+Ass0dghrr10XTwTc1E2Mbvyo=
+In-Reply-To: <1467916840-17005-1-git-send-email-horms@verge.net.au>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Michal Kubecek <mkubecek@suse.cz>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Michal Kubecek <mkubecek@suse.cz>
 
-please consider these enhancements to the IPVS. This alters the behaviour
-of the "least connection" schedulers such that pre-established connections
-are included in the active connection count. This avoids overloading
-servers when a large number of new connections arrive in a short space of
-time - e.g. when clients reconnect after a node or network failure.
+Some users observed that "least connection" distribution algorithm doesn't
+handle well bursts of TCP connections from reconnecting clients after
+a node or network failure.
 
+This is because the algorithm counts active connection as worth 256
+inactive ones where for TCP, "active" only means TCP connections in
+ESTABLISHED state. In case of a connection burst, new connections are
+handled before previous ones have finished the three way handshaking so
+that all are still counted as "inactive", i.e. cheap ones. The become
+"active" quickly but at that time, all of them are already assigned to one
+real server (or few), resulting in highly unbalanced distribution.
 
-The following changes since commit c6ac37d8d8843fb1fdc34e4a2a41a4f027ab670c:
+Address this by counting the "pre-established" states as "active".
 
-  netfilter: nf_log: fix error on write NONE to logger choice sysctl (2016-07-05 14:57:57 +0200)
-
-are available in the git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v4.8
-
-for you to fetch changes up to be2cef49904b34dd5f75d96bbc8cd8341bab1bc0:
-
-  ipvs: count pre-established TCP states as active (2016-07-07 20:30:52 +0200)
-
-----------------------------------------------------------------
-Michal Kubecek (1):
-      ipvs: count pre-established TCP states as active
-
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
  net/netfilter/ipvs/ip_vs_proto_tcp.c | 25 +++++++++++++++++++++++--
  1 file changed, 23 insertions(+), 2 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index d7024b2ed769..5117bcb7d2f0 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -395,6 +395,20 @@ static const char *const tcp_state_name_table[IP_VS_TCP_S_LAST+1] = {
+ 	[IP_VS_TCP_S_LAST]		=	"BUG!",
+ };
+ 
++static const bool tcp_state_active_table[IP_VS_TCP_S_LAST] = {
++	[IP_VS_TCP_S_NONE]		=	false,
++	[IP_VS_TCP_S_ESTABLISHED]	=	true,
++	[IP_VS_TCP_S_SYN_SENT]		=	true,
++	[IP_VS_TCP_S_SYN_RECV]		=	true,
++	[IP_VS_TCP_S_FIN_WAIT]		=	false,
++	[IP_VS_TCP_S_TIME_WAIT]		=	false,
++	[IP_VS_TCP_S_CLOSE]		=	false,
++	[IP_VS_TCP_S_CLOSE_WAIT]	=	false,
++	[IP_VS_TCP_S_LAST_ACK]		=	false,
++	[IP_VS_TCP_S_LISTEN]		=	false,
++	[IP_VS_TCP_S_SYNACK]		=	true,
++};
++
+ #define sNO IP_VS_TCP_S_NONE
+ #define sES IP_VS_TCP_S_ESTABLISHED
+ #define sSS IP_VS_TCP_S_SYN_SENT
+@@ -418,6 +432,13 @@ static const char * tcp_state_name(int state)
+ 	return tcp_state_name_table[state] ? tcp_state_name_table[state] : "?";
+ }
+ 
++static bool tcp_state_active(int state)
++{
++	if (state >= IP_VS_TCP_S_LAST)
++		return false;
++	return tcp_state_active_table[state];
++}
++
+ static struct tcp_states_t tcp_states [] = {
+ /*	INPUT */
+ /*        sNO, sES, sSS, sSR, sFW, sTW, sCL, sCW, sLA, sLI, sSA	*/
+@@ -540,12 +561,12 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+ 
+ 		if (dest) {
+ 			if (!(cp->flags & IP_VS_CONN_F_INACTIVE) &&
+-			    (new_state != IP_VS_TCP_S_ESTABLISHED)) {
++			    !tcp_state_active(new_state)) {
+ 				atomic_dec(&dest->activeconns);
+ 				atomic_inc(&dest->inactconns);
+ 				cp->flags |= IP_VS_CONN_F_INACTIVE;
+ 			} else if ((cp->flags & IP_VS_CONN_F_INACTIVE) &&
+-				   (new_state == IP_VS_TCP_S_ESTABLISHED)) {
++				   tcp_state_active(new_state)) {
+ 				atomic_inc(&dest->activeconns);
+ 				atomic_dec(&dest->inactconns);
+ 				cp->flags &= ~IP_VS_CONN_F_INACTIVE;
+-- 
+2.7.0.rc3.207.g0ac5344
+
