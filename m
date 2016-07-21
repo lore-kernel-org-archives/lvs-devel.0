@@ -1,34 +1,42 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL nf] Second Round of IPVS Fixes for v4.7
-Date: Mon, 11 Jul 2016 12:04:42 +0200
-Message-ID: <20160711100442.GB6412@salvia>
-References: <1467916222-15595-1-git-send-email-horms@verge.net.au>
-Mime-Version: 1.0
+From: fgao@ikuai8.com
+Subject: [PATCH 1/1] lvs: Use IS_ERR_OR_NULL(svc) instead of IS_ERR(svc) || svc == NULL
+Date: Fri, 22 Jul 2016 07:55:41 +0800
+Message-ID: <1469145341-15488-1-git-send-email-fgao@ikuai8.com>
 Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1467916222-15595-1-git-send-email-horms@verge.net.au>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Cc: gfree.wind@gmail.com, Gao Feng <fgao@ikuai8.com>
 
-On Thu, Jul 07, 2016 at 08:30:21PM +0200, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider this IPVS fix for v4.7.
-> 
-> The fix from Quentin Armitage allows the backup sync daemon to
-> be bound to a link-local mcast IPv6 address as is already the case
-> for IPv4.
-> 
-> The following changes since commit 62131e5d735226074cba53095545d76b491e5003:
-> 
->   netfilter: nft_meta: set skb->nf_trace appropriately (2016-06-23 14:15:33 +0200)
-> 
-> are available in the git repository at:
-> 
->   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes2-for-v4.7
+From: Gao Feng <fgao@ikuai8.com>
 
-Also pulled, thanks.
+This minor refactoring does not change the logic of function
+ip_vs_genl_dump_dests.
+
+Signed-off-by: Gao Feng <fgao@ikuai8.com>
+---
+ v1: Initial patch
+
+ net/netfilter/ipvs/ip_vs_ctl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index c3c809b..6dc86cc 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3267,7 +3267,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
+ 
+ 
+ 	svc = ip_vs_genl_find_service(ipvs, attrs[IPVS_CMD_ATTR_SERVICE]);
+-	if (IS_ERR(svc) || svc == NULL)
++	if (IS_ERR_OR_NULL(svc))
+ 		goto out_err;
+ 
+ 	/* Dump the destinations */
+-- 
+1.9.1
+
+
