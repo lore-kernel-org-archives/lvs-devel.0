@@ -1,51 +1,52 @@
-From: Jarod Wilson <jarod@redhat.com>
-Subject: Re: [PATCH 1116/1285] Replace numeric parameter like 0444 with macro
-Date: Tue, 2 Aug 2016 15:13:37 -0400
-Message-ID: <20160802191337.GD36313@redhat.com>
-References: <20160802121754.24527-1-baolex.ni@intel.com>
- <alpine.LSU.2.20.1608022006070.25634@nerf40.vanv.qr>
-Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LSU.2.20.1608022006070.25634@nerf40.vanv.qr>
-Sender: netdev-owner@vger.kernel.org
+From: Florian Westphal <fw@strlen.de>
+Subject: [PATCH nf-next] ipvs: use nf_ct_kill helper
+Date: Wed,  3 Aug 2016 02:51:05 +0200
+Message-ID: <1470185465-17983-1-git-send-email-fw@strlen.de>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jan Engelhardt <jengelh@inai.de>
-Cc: Baole Ni <baolex.ni@intel.com>, Linux Networking Developer Mailing List <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org, Netfilter Developer Mailing List <netfilter-devel@vger.kernel.org>, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, chuansheng.liu@intel.com
+To: netfilter-devel@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org, Florian Westphal <fw@strlen.de>
 
-On Tue, Aug 02, 2016 at 08:07:11PM +0200, Jan Engelhardt wrote:
-> 
-> On Tuesday 2016-08-02 14:17, Baole Ni wrote:
-> 
-> >I find that the developers often just specified the numeric value
-> >when calling a macro which is defined with a parameter for access permission.
-> >As we know, these numeric value for access permission have had the corresponding macro,
-> >and that using macro can improve the robustness and readability of the code,
-> >thus, I suggest replacing the numeric parameter with the macro.
-> >
-> > static int ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
-> >-module_param_named(conn_tab_bits, ip_vs_conn_tab_bits, int, 0444);
-> >+module_param_named(conn_tab_bits, ip_vs_conn_tab_bits, int, S_IRUSR | S_IRGRP | S_IROTH);
-> 
-> We have S_IRUGO for this.
+Once timer is removed from nf_conn struct we cannot open-code
+the removal sequence like this anymore.
 
-Aye, for further edification, Baole, please read include/linux/stat.h,
-particularly this part:
+Signed-off-by: Florian Westphal <fw@strlen.de>
+---
+ ipvs maintainers:
 
-#define S_IRWXUGO       (S_IRWXU|S_IRWXG|S_IRWXO)
-#define S_IALLUGO       (S_ISUID|S_ISGID|S_ISVTX|S_IRWXUGO)
-#define S_IRUGO         (S_IRUSR|S_IRGRP|S_IROTH)
-#define S_IWUGO         (S_IWUSR|S_IWGRP|S_IWOTH)
-#define S_IXUGO         (S_IXUSR|S_IXGRP|S_IXOTH)
+ Alternatively I can do a 1:1 replacement of the del_timer() with a
+ test_and_set_bit().
 
-I suspect many of the patches in this set should be using one of the above
-defines instead, never mind the ridiculousness of firing off such a
-massive set at once, with every patch having the same (often not correct)
-title, and the highly questionable benefit of the set to begin with.
+ Please let me know if you would prefer this,
 
+diff --git a/net/netfilter/ipvs/ip_vs_nfct.c b/net/netfilter/ipvs/ip_vs_nfct.c
+index f04fd8d..69ce16e 100644
+--- a/net/netfilter/ipvs/ip_vs_nfct.c
++++ b/net/netfilter/ipvs/ip_vs_nfct.c
+@@ -281,18 +281,7 @@ void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp)
+ 	h = nf_conntrack_find_get(cp->ipvs->net, &nf_ct_zone_dflt, &tuple);
+ 	if (h) {
+ 		ct = nf_ct_tuplehash_to_ctrack(h);
+-		/* Show what happens instead of calling nf_ct_kill() */
+-		if (del_timer(&ct->timeout)) {
+-			IP_VS_DBG(7, "%s: ct=%p, deleted conntrack timer for tuple="
+-				FMT_TUPLE "\n",
+-				__func__, ct, ARG_TUPLE(&tuple));
+-			if (ct->timeout.function)
+-				ct->timeout.function(ct->timeout.data);
+-		} else {
+-			IP_VS_DBG(7, "%s: ct=%p, no conntrack timer for tuple="
+-				FMT_TUPLE "\n",
+-				__func__, ct, ARG_TUPLE(&tuple));
+-		}
++		nf_ct_kill(ct);
+ 		nf_ct_put(ct);
+ 	} else {
+ 		IP_VS_DBG(7, "%s: no conntrack for tuple=" FMT_TUPLE "\n",
 -- 
-Jarod Wilson
-jarod@redhat.com
+2.7.3
 
