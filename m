@@ -1,34 +1,34 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH 2/2] netfilter: correct allowed characters in Call-ID SIP
- header
-Date: Wed, 7 Sep 2016 10:31:34 +0200
-Message-ID: <20160907083134.GB2276@salvia>
-References: <20160830164824._3CVoDOGb%marcoangaroni@gmail.com>
+Subject: Re: [PATCH 0/2] netfilter: allow tab character in SIP headers
+Date: Wed, 7 Sep 2016 13:56:54 +0200
+Message-ID: <20160907115654.GA4460@salvia>
+References: <20160830165222.pAgDVdNXQ%marcoangaroni@gmail.com>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160830164824._3CVoDOGb%marcoangaroni@gmail.com>
-Sender: netfilter-devel-owner@vger.kernel.org
+In-Reply-To: <20160830165222.pAgDVdNXQ%marcoangaroni@gmail.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Marco Angaroni <marcoangaroni@gmail.com>
 Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-On Tue, Aug 30, 2016 at 06:48:24PM +0200, Marco Angaroni wrote:
-> Current parsing methods for SIP header Call-ID do not check correctly all
-> characters allowed by RFC 3261. In particular "," character is allowed 
-> instead of "'" character. As a result Call-ID headers like the following
-> are discarded by IPVS SIP persistence engine.
+On Tue, Aug 30, 2016 at 06:52:22PM +0200, Marco Angaroni wrote:
+> Current parsing methods for SIP headers do not allow the presence of
+> tab characters between header name and header value. As a result Call-ID
+> SIP headers like the following are discarded by IPVS SIP persistence
+> engine:
 > 
-> Call-ID: -.!%*_+`'~()<>:\"/[]?{}
+> "Call-ID\t: mycallid@abcde"
+> "Call-ID:\tmycallid@abcde"
 > 
-> Above example is composed using all non-alphanumeric characters listed
-> in RFC 3261 for Call-ID header syntax.
+> In above examples Call-IDs are represented as strings in C language.
+> Obviously in real message we have byte "09" before/after colon (":").
 > 
-> Proposed fix is in nf_conntrack_sip module; function iswordc() checks this
-> range: (c >= '(' && c <= '/') which includes these characters: ()*+,-./
-> They are all allowed except ",". Instead "'" is not included in the list.
+> Proposed fix is in nf_conntrack_sip module.
+> Function sip_skip_whitespace() should skip tabs in addition to spaces,
+> since in SIP grammar whitespace (WSP) corresponds to space or tab.
 > 
 > Below is an extract of relevant SIP ABNF syntax.
 > 
@@ -46,4 +46,7 @@ On Tue, Aug 30, 2016 at 06:48:24PM +0200, Marco Angaroni wrote:
 >            "/" / "[" / "]" / "?" /
 >            "{" / "}" )
 
-Also applied, thanks.
+Applied this one too. I got confused because patch 0/x is usually the
+cover letter, I suggest you don't use 0/x for patch series in the future.
+
+Thanks!
