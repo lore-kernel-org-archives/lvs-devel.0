@@ -1,14 +1,14 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
 Subject: Re: [PATCH 1/2] netfilter: correct parsing of continuation lines in
  SIP headers
-Date: Mon, 5 Sep 2016 18:12:26 +0200
-Message-ID: <20160905161226.GA14958@salvia>
+Date: Wed, 7 Sep 2016 10:31:16 +0200
+Message-ID: <20160907083116.GA2276@salvia>
 References: <20160830164819.A6zYgiNs5%marcoangaroni@gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <20160830164819.A6zYgiNs5%marcoangaroni@gmail.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -52,37 +52,7 @@ On Tue, Aug 30, 2016 at 06:48:19PM +0200, Marco Angaroni wrote:
 >            ":" / "\" / DQUOTE /
 >            "/" / "[" / "]" / "?" /
 >            "{" / "}" )
-> 
-> Signed-off-by: Marco Angaroni <marcoangaroni@gmail.com>
-> ---
->  net/netfilter/nf_conntrack_sip.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/net/netfilter/nf_conntrack_sip.c b/net/netfilter/nf_conntrack_sip.c
-> index 8971109..c23249e 100644
-> --- a/net/netfilter/nf_conntrack_sip.c
-> +++ b/net/netfilter/nf_conntrack_sip.c
-> @@ -335,8 +335,7 @@ static const char *sip_skip_whitespace(const char *dptr, const char *limit)
->  		if (*dptr != '\r' && *dptr != '\n')
->  			break;
->  		dptr = sip_follow_continuation(dptr, limit);
-> -		if (dptr == NULL)
-> -			return NULL;
-> +		return dptr;
 
-I'd suggest you use the break statement here instead, ie.
+Applied the mangled version, using break; instead.
 
--		if (dptr == NULL)
--			return NULL;
-+		break;
-
->  	}
->  	return dptr;
->  }
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe lvs-devel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks!
