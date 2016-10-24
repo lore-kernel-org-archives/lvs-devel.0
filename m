@@ -1,110 +1,119 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs does not decrement IP ttl
-Date: Mon, 24 Oct 2016 22:19:13 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1610242200270.2276@ja.home.ssi.bg>
-References: <1477329478-26305-1-git-send-email-dwip@linux.vnet.ibm.com>
+Subject: Re: [PATCH] netfilter: ip_vs_sync: fix bogus maybe-uninitialized
+ warning
+Date: Mon, 24 Oct 2016 22:47:54 +0300 (EEST)
+Message-ID: <alpine.LFD.2.11.1610242226310.2276@ja.home.ssi.bg>
+References: <20161024153454.2766113-1-arnd@arndb.de>
 Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="-1463811672-1337701874-1477338476=:2276"
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1477329478-26305-1-git-send-email-dwip@linux.vnet.ibm.com>
+In-Reply-To: <20161024153454.2766113-1-arnd@arndb.de>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Dwip Banerjee <dwip@linux.vnet.ibm.com>
-Cc: lvs-devel@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, Quentin Armitage <quentin@armitage.org.uk>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+---1463811672-1337701874-1477338476=:2276
+Content-Type: TEXT/PLAIN; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
 
 	Hello,
 
-On Mon, 24 Oct 2016, Dwip Banerjee wrote:
+On Mon, 24 Oct 2016, Arnd Bergmann wrote:
 
-> We decrement the IP ttl in all the modes in order to prevent infinite
-> route loops. The changes were done based on Julian Anastasov's
-> suggestions in a prior thread.
+> Building the ip_vs_sync code with CONFIG_OPTIMIZE_INLINING on x86
+> confuses the compiler to the point where it produces a rather
+> dubious warning message:
 > 
-> The ttl based check/discard and the actual decrement are done in
-> __ip_vs_get_out_rt() and in __ip_vs_get_out_rt_v6(), for the IPv6
-> case. decrement_ttl() implements the actual functionality for the
-> two cases.
+> net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.init_seq’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+>   struct ip_vs_sync_conn_options opt;
+>                                  ^~~
+> net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.previous_delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).init_seq’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).previous_delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
 > 
+> The problem appears to be a combination of a number of factors, including
+> the __builtin_bswap32 compiler builtin being slightly odd, having a large
+> amount of code inlined into a single function, and the way that some
+> functions only get partially inlined here.
 > 
-> Signed-off-by: Dwip Banerjee <dwip@linux.vnet.ibm.com>
+> I've spent way too much time trying to work out a way to improve the
+> code, but the best I've come up with is to add an explicit memset
+> right before the ip_vs_seq structure is first initialized here. When
+> the compiler works correctly, this has absolutely no effect, but in the
+> case that produces the warning, the warning disappears.
+> 
+> In the process of analysing this warning, I also noticed that
+> we use memcpy to copy the larger ip_vs_sync_conn_options structure
+> over two members of the ip_vs_conn structure. This works because
+> the layout is identical, but seems error-prone, so I'm changing
+> this in the process to directly copy the two members. This change
+> seemed to have no effect on the object code or the warning, but
+> it deals with the same data, so I kept the two changes together.
+> 
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+
+	OK,
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+	I guess, Simon will take the patch for ipvs-next.
+
 > ---
->  net/netfilter/ipvs/ip_vs_xmit.c |   55 +++++++++++++++++++++++++++++++++++++++
->  1 files changed, 55 insertions(+), 0 deletions(-)
+>  net/netfilter/ipvs/ip_vs_sync.c | 7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-> index 01d3d89..8b11e92 100644
-> --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> @@ -254,6 +254,55 @@ static inline bool ensure_mtu_is_adequate(struct netns_ipvs *ipvs, int skb_af,
->  	return true;
->  }
+> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> index 1b07578bedf3..9350530c16c1 100644
+> --- a/net/netfilter/ipvs/ip_vs_sync.c
+> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> @@ -283,6 +283,7 @@ struct ip_vs_sync_buff {
+>   */
+>  static void ntoh_seq(struct ip_vs_seq *no, struct ip_vs_seq *ho)
+>  {
+> +	memset(ho, 0, sizeof(*ho));
+>  	ho->init_seq       = get_unaligned_be32(&no->init_seq);
+>  	ho->delta          = get_unaligned_be32(&no->delta);
+>  	ho->previous_delta = get_unaligned_be32(&no->previous_delta);
+
+	So, now there is a double write here?
+
+	What about such constructs?:
+
+	*ho = (struct ip_vs_seq) {
+		.init_seq	= get_unaligned_be32(&no->init_seq),
+		...
+	};
+
+	Any difference in the compiled code or warnings?
+
+> @@ -917,8 +918,10 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
+>  			kfree(param->pe_data);
+>  	}
 >  
-> +static inline bool decrement_ttl(int skb_af, struct sk_buff *skb)
-> +{
-> +#ifdef CONFIG_IP_VS_IPV6
-> +	if (skb_af == AF_INET6) {
-> +		struct ipv6hdr *hdr = ipv6_hdr(skb);
-> +		struct dst_entry *dst = skb_dst(skb);
-> +		struct net *net = dev_net(dst->dev);
+> -	if (opt)
+> -		memcpy(&cp->in_seq, opt, sizeof(*opt));
+> +	if (opt) {
+> +		cp->in_seq = opt->in_seq;
+> +		cp->out_seq = opt->out_seq;
 
-	dev_net should not be used anymore, you can check
-the latest changes by Eric W. Biederman:
+	This fix is fine.
 
-git log -p -- net/netfilter/ipvs/ip_vs_xmit.c
-
-	Better to use ipvs->net.
-
-> +
-> +		/* check and decrement ttl */
-> +		if (hdr->hop_limit <= 1) {
-> +			/* Force OUTPUT device used as source address */
-> +			skb->dev = dst->dev;
-> +			icmpv6_send(skb, ICMPV6_TIME_EXCEED,
-> +					 ICMPV6_EXC_HOPLIMIT, 0);
-> +			__IP6_INC_STATS(net, ip6_dst_idev(dst),
-> +					IPSTATS_MIB_INHDRERRORS);
-> +
-> +			return false;
-> +		}
-> +
-> +		/* don't propagate ttl change to cloned packets */
-> +		if (!skb_make_writable(skb, sizeof(struct ipv6hdr)))
-> +			return false;
-
-	Now I see that using hdr after skb_make_writable is
-risky because skb data can be reallocated. Better to use
-ip[v6]_hdr(skb) for all places, i.e. without any hdr/iph ptrs.
-
-> +
-> +		hdr->hop_limit--;
-> +	} else
-> +#endif
-> +	{
-> +		struct iphdr  *iph = ip_hdr(skb);
-> +
-> +		if (iph->ttl <= 1) {
-> +			/* Tell the sender its packet died... */
-> +			__IP_INC_STATS(dev_net(skb_dst(skb)->dev),
-> +				       IPSTATS_MIB_INHDRERRORS);
-> +			icmp_send(skb, ICMP_TIME_EXCEEDED, ICMP_EXC_TTL, 0);
-> +			return false;
-> +		}
-> +
-> +		/* don't propagate ttl change to cloned packets */
-> +		if (!skb_make_writable(skb, sizeof(struct iphdr)))
-> +			return false;
-> +
-> +		/* Decrease ttl */
-> +		ip_decrease_ttl(iph);
 > +	}
-> +
-> +	return true;
-> +}
-> +
+>  	atomic_set(&cp->in_pkts, sysctl_sync_threshold(ipvs));
+>  	cp->state = state;
+>  	cp->old_state = cp->state;
+> -- 
+> 2.9.0
 
 Regards
 
 --
 Julian Anastasov <ja@ssi.bg>
+---1463811672-1337701874-1477338476=:2276--
