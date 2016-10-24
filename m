@@ -1,52 +1,78 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: ip_vs_conn_expire_now may cause timer callback runs on two CPUs
- for a same session
-Date: Mon, 3 Oct 2016 10:49:03 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1610031023520.1805@ja.home.ssi.bg>
-References: <2C44267D-1193-4F59-9A49-356F38E90064@icloud.com> <alpine.LFD.2.11.1610022052320.1911@ja.home.ssi.bg> <1E75A59A-CDE5-42F1-B914-96C4BD2E0916@icloud.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH] netfilter: ip_vs_sync: fix bogus maybe-uninitialized warning
+Date: Mon, 24 Oct 2016 17:34:32 +0200
+Message-ID: <20161024153454.2766113-1-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="-1463811672-1548692487-1475480945=:1805"
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1E75A59A-CDE5-42F1-B914-96C4BD2E0916@icloud.com>
-Sender: lvs-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-To: HePeng <xnhp0320@icloud.com>
-Cc: lvs-devel@vger.kernel.org
-
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
----1463811672-1548692487-1475480945=:1805
-Content-Type: TEXT/PLAIN; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
+Cc: Arnd Bergmann <arnd@arndb.de>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, Quentin Armitage <quentin@armitage.org.uk>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
+Building the ip_vs_sync code with CONFIG_OPTIMIZE_INLINING on x86
+confuses the compiler to the point where it produces a rather
+dubious warning message:
 
-	Hello,
+net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.init_seq’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+  struct ip_vs_sync_conn_options opt;
+                                 ^~~
+net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.previous_delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).init_seq’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).previous_delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
 
-On Mon, 3 Oct 2016, HePeng wrote:
+The problem appears to be a combination of a number of factors, including
+the __builtin_bswap32 compiler builtin being slightly odd, having a large
+amount of code inlined into a single function, and the way that some
+functions only get partially inlined here.
 
-> Hello Julian, 
-> Thank you very much for the reply.
-> 
-> I guess this is the same reason that 
-> instead of using *__ip_vs_conn_get*, 
-> you use *atomic_inc* to the ref of 
-> *cp* in *ip_vs_conn_expire* when fails to unlink *cp*, 
-> since there is no callback is running on other CPUs, the 
-> ref must be large than 0. That is also 
-> one of my questions when I read the code. 
+I've spent way too much time trying to work out a way to improve the
+code, but the best I've come up with is to add an explicit memset
+right before the ip_vs_seq structure is first initialized here. When
+the compiler works correctly, this has absolutely no effect, but in the
+case that produces the warning, the warning disappears.
 
-	Yes, ip_vs_conn_unlink() can see refcnt=2 or more
-in which case it does not change refcnt (1->0) and conn remains
-hashed. But we have to start the timer again, so the pair
-atomic_inc+__ip_vs_conn_put_timer is used. It looks safe
-to call __ip_vs_conn_get, atomic_inc_not_zero will work
-in this case because while in timer callback refcnt can not
-go below 1, even if other CPUs call ip_vs_conn_unhash+
-ip_vs_conn_hash. But atomic_inc is better.
+In the process of analysing this warning, I also noticed that
+we use memcpy to copy the larger ip_vs_sync_conn_options structure
+over two members of the ip_vs_conn structure. This works because
+the layout is identical, but seems error-prone, so I'm changing
+this in the process to directly copy the two members. This change
+seemed to have no effect on the object code or the warning, but
+it deals with the same data, so I kept the two changes together.
 
-Regards
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ net/netfilter/ipvs/ip_vs_sync.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
---
-Julian Anastasov <ja@ssi.bg>
----1463811672-1548692487-1475480945=:1805--
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 1b07578bedf3..9350530c16c1 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -283,6 +283,7 @@ struct ip_vs_sync_buff {
+  */
+ static void ntoh_seq(struct ip_vs_seq *no, struct ip_vs_seq *ho)
+ {
++	memset(ho, 0, sizeof(*ho));
+ 	ho->init_seq       = get_unaligned_be32(&no->init_seq);
+ 	ho->delta          = get_unaligned_be32(&no->delta);
+ 	ho->previous_delta = get_unaligned_be32(&no->previous_delta);
+@@ -917,8 +918,10 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
+ 			kfree(param->pe_data);
+ 	}
+ 
+-	if (opt)
+-		memcpy(&cp->in_seq, opt, sizeof(*opt));
++	if (opt) {
++		cp->in_seq = opt->in_seq;
++		cp->out_seq = opt->out_seq;
++	}
+ 	atomic_set(&cp->in_pkts, sysctl_sync_threshold(ipvs));
+ 	cp->state = state;
+ 	cp->old_state = cp->state;
+-- 
+2.9.0
+
