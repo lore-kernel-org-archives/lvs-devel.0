@@ -1,49 +1,109 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Subject: RE: [PATCH] netfilter: ip_vs_sync: fix bogus maybe-uninitialized
- warning
-Date: Tue, 25 Oct 2016 16:15:16 +0000
-Message-ID: <063D6719AE5E284EB5DD2968C1650D6DB020A210@AcuExch.aculab.com>
-References: <20161024153454.2766113-1-arnd@arndb.de>
- <alpine.LFD.2.11.1610242226310.2276@ja.home.ssi.bg>
- <12460209.DFK3VxnryE@wuerfel>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <12460209.DFK3VxnryE@wuerfel>
-Content-Language: en-US
-Sender: netdev-owner@vger.kernel.org
+From: Dwip Banerjee <dwip@linux.vnet.ibm.com>
+Subject: [PATCH V2] ipvs does not decrement IP ttl
+Date: Tue, 25 Oct 2016 16:41:09 -0500
+Message-ID: <1477431669-2782-1-git-send-email-dwip@linux.vnet.ibm.com>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: 'Arnd Bergmann' <arnd@arndb.de>, Julian Anastasov <ja@ssi.bg>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, Quentin Armitage <quentin@armitage.org.uk>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "coreteam@netfilter.org" <coreteam@netfilter.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+To: lvs-devel@vger.kernel.org
+Cc: dwip@linux.vnet.ibm.com
 
-From: Arnd Bergmann
-> Sent: 24 October 2016 21:22
-> On Monday, October 24, 2016 10:47:54 PM CEST Julian Anastasov wrote:
-> > > diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-> > > index 1b07578bedf3..9350530c16c1 100644
-> > > --- a/net/netfilter/ipvs/ip_vs_sync.c
-> > > +++ b/net/netfilter/ipvs/ip_vs_sync.c
-> > > @@ -283,6 +283,7 @@ struct ip_vs_sync_buff {
-> > >   */
-> > >  static void ntoh_seq(struct ip_vs_seq *no, struct ip_vs_seq *ho)
-> > >  {
-> > > +     memset(ho, 0, sizeof(*ho));
-> > >       ho->init_seq       = get_unaligned_be32(&no->init_seq);
-> > >       ho->delta          = get_unaligned_be32(&no->delta);
-> > >       ho->previous_delta = get_unaligned_be32(&no->previous_delta);
-> >
-> >         So, now there is a double write here?
-> 
-> Correct. I would hope that a sane version of gcc would just not
-> perform the first write. What happens instead is that the version
-> that produces the warning here moves the initialization to the
-> top of the calling function.
+We decrement the IP ttl in all the modes in order to prevent infinite
+route loops. The changes were done based on Julian Anastasov's
+suggestions in a prior thread.
 
-Maybe doing the 3 get_unaligned_be32() before the memset will stop
-the double-writes.
-The problem is that the compiler doesn't know that the two structures
-don't alias each other.
+The ttl based check/discard and the actual decrement are done in
+__ip_vs_get_out_rt() and in __ip_vs_get_out_rt_v6(), for the IPv6
+case. decrement_ttl() implements the actual functionality for the
+two cases.
 
-	David
+
+Signed-off-by: Dwip Banerjee <dwip@linux.vnet.ibm.com>
+---
+ net/netfilter/ipvs/ip_vs_xmit.c |   53 +++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 53 insertions(+), 0 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 01d3d89..724fd29 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -254,6 +254,53 @@ static inline bool ensure_mtu_is_adequate(struct netns_ipvs *ipvs, int skb_af,
+ 	return true;
+ }
+ 
++static inline bool decrement_ttl(struct netns_ipvs *ipvs,
++				 int skb_af,
++				 struct sk_buff *skb)
++{
++	struct net *net = ipvs->net;
++#ifdef CONFIG_IP_VS_IPV6
++	if (skb_af == AF_INET6) {
++		struct dst_entry *dst = skb_dst(skb);
++
++		/* check and decrement ttl */
++		if (ipv6_hdr(skb)->hop_limit <= 1) {
++			/* Force OUTPUT device used as source address */
++			skb->dev = dst->dev;
++			icmpv6_send(skb, ICMPV6_TIME_EXCEED,
++					 ICMPV6_EXC_HOPLIMIT, 0);
++			__IP6_INC_STATS(net, ip6_dst_idev(dst),
++					IPSTATS_MIB_INHDRERRORS);
++
++			return false;
++		}
++
++		/* don't propagate ttl change to cloned packets */
++		if (!skb_make_writable(skb, sizeof(struct ipv6hdr)))
++			return false;
++
++		ipv6_hdr(skb)->hop_limit--;
++	} else
++#endif
++	{
++		if (ip_hdr(skb)->ttl <= 1) {
++			/* Tell the sender its packet died... */
++			__IP_INC_STATS(net, IPSTATS_MIB_INHDRERRORS);
++			icmp_send(skb, ICMP_TIME_EXCEEDED, ICMP_EXC_TTL, 0);
++			return false;
++		}
++
++		/* don't propagate ttl change to cloned packets */
++		if (!skb_make_writable(skb, sizeof(struct iphdr)))
++			return false;
++
++		/* Decrease ttl */
++		ip_decrease_ttl(ip_hdr(skb));
++	}
++
++	return true;
++}
++
+ /* Get route to destination or remote server */
+ static int
+ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+@@ -326,6 +373,9 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 		return local;
+ 	}
+ 
++	if (!decrement_ttl(ipvs, skb_af, skb))
++		goto err_put;
++
+ 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL))) {
+ 		mtu = dst_mtu(&rt->dst);
+ 	} else {
+@@ -473,6 +523,9 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 		return local;
+ 	}
+ 
++	if (!decrement_ttl(ipvs, skb_af, skb))
++		goto err_put;
++
+ 	/* MTU checking */
+ 	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL)))
+ 		mtu = dst_mtu(&rt->dst);
+-- 
+1.7.1
 
