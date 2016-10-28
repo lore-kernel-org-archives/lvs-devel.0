@@ -1,129 +1,68 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH V3] ipvs does not decrement IP ttl
-Date: Wed, 26 Oct 2016 21:35:18 +0300 (EEST)
-Message-ID: <alpine.LFD.2.11.1610262131150.1829@ja.home.ssi.bg>
-References: <1477502082-24852-1-git-send-email-dwip@linux.vnet.ibm.com>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH] netfilter: ip_vs_sync: fix bogus maybe-uninitialized
+ warning
+Date: Fri, 28 Oct 2016 11:34:22 +0200
+Message-ID: <20161028093422.GA29559@salvia>
+References: <20161024153454.2766113-1-arnd@arndb.de>
+ <alpine.LFD.2.11.1610242226310.2276@ja.home.ssi.bg>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1477502082-24852-1-git-send-email-dwip@linux.vnet.ibm.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.11.1610242226310.2276@ja.home.ssi.bg>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: TEXT/PLAIN; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Dwip Banerjee <dwip@linux.vnet.ibm.com>
-Cc: lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
+Content-Type: text/plain; charset="utf-8"
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
+Cc: Arnd Bergmann <arnd@arndb.de>, Wensong Zhang <wensong@linux-vs.org>, Patrick McHardy <kaber@trash.net>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, Quentin Armitage <quentin@armitage.org.uk>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-
-	Hello,
-
-On Wed, 26 Oct 2016, Dwip Banerjee wrote:
-
-> We decrement the IP ttl in all the modes in order to prevent infinite
-> route loops. The changes were done based on Julian Anastasov's
-> suggestions in a prior thread.
+On Mon, Oct 24, 2016 at 10:47:54PM +0300, Julian Anastasov wrote:
 > 
-> The ttl based check/discard and the actual decrement are done in
-> __ip_vs_get_out_rt() and in __ip_vs_get_out_rt_v6(), for the IPv6
-> case. decrement_ttl() implements the actual functionality for the
-> two cases.
+> 	Hello,
 > 
+> On Mon, 24 Oct 2016, Arnd Bergmann wrote:
 > 
-> Signed-off-by: Dwip Banerjee <dwip@linux.vnet.ibm.com>
-
-	Looks good to me, thanks!
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	Simon, please apply to ipvs-next tree, may be
-after fixing the Subject line to contains ipvs: prefix.
-
-> ---
->  net/netfilter/ipvs/ip_vs_xmit.c |   54 +++++++++++++++++++++++++++++++++++++++
->  1 files changed, 54 insertions(+), 0 deletions(-)
+> > Building the ip_vs_sync code with CONFIG_OPTIMIZE_INLINING on x86
+> > confuses the compiler to the point where it produces a rather
+> > dubious warning message:
+> > 
+> > net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.init_seq’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> >   struct ip_vs_sync_conn_options opt;
+> >                                  ^~~
+> > net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> > net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘opt.previous_delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> > net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).init_seq’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> > net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> > net/netfilter/ipvs/ip_vs_sync.c:1073:33: error: ‘*((void *)&opt+12).previous_delta’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
+> > 
+> > The problem appears to be a combination of a number of factors, including
+> > the __builtin_bswap32 compiler builtin being slightly odd, having a large
+> > amount of code inlined into a single function, and the way that some
+> > functions only get partially inlined here.
+> > 
+> > I've spent way too much time trying to work out a way to improve the
+> > code, but the best I've come up with is to add an explicit memset
+> > right before the ip_vs_seq structure is first initialized here. When
+> > the compiler works correctly, this has absolutely no effect, but in the
+> > case that produces the warning, the warning disappears.
+> > 
+> > In the process of analysing this warning, I also noticed that
+> > we use memcpy to copy the larger ip_vs_sync_conn_options structure
+> > over two members of the ip_vs_conn structure. This works because
+> > the layout is identical, but seems error-prone, so I'm changing
+> > this in the process to directly copy the two members. This change
+> > seemed to have no effect on the object code or the warning, but
+> > it deals with the same data, so I kept the two changes together.
+> > 
+> > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-> index 01d3d89..4e1a98f 100644
-> --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> @@ -254,6 +254,54 @@ static inline bool ensure_mtu_is_adequate(struct netns_ipvs *ipvs, int skb_af,
->  	return true;
->  }
->  
-> +static inline bool decrement_ttl(struct netns_ipvs *ipvs,
-> +				 int skb_af,
-> +				 struct sk_buff *skb)
-> +{
-> +	struct net *net = ipvs->net;
-> +
-> +#ifdef CONFIG_IP_VS_IPV6
-> +	if (skb_af == AF_INET6) {
-> +		struct dst_entry *dst = skb_dst(skb);
-> +
-> +		/* check and decrement ttl */
-> +		if (ipv6_hdr(skb)->hop_limit <= 1) {
-> +			/* Force OUTPUT device used as source address */
-> +			skb->dev = dst->dev;
-> +			icmpv6_send(skb, ICMPV6_TIME_EXCEED,
-> +				    ICMPV6_EXC_HOPLIMIT, 0);
-> +			__IP6_INC_STATS(net, ip6_dst_idev(dst),
-> +					IPSTATS_MIB_INHDRERRORS);
-> +
-> +			return false;
-> +		}
-> +
-> +		/* don't propagate ttl change to cloned packets */
-> +		if (!skb_make_writable(skb, sizeof(struct ipv6hdr)))
-> +			return false;
-> +
-> +		ipv6_hdr(skb)->hop_limit--;
-> +	} else
-> +#endif
-> +	{
-> +		if (ip_hdr(skb)->ttl <= 1) {
-> +			/* Tell the sender its packet died... */
-> +			__IP_INC_STATS(net, IPSTATS_MIB_INHDRERRORS);
-> +			icmp_send(skb, ICMP_TIME_EXCEEDED, ICMP_EXC_TTL, 0);
-> +			return false;
-> +		}
-> +
-> +		/* don't propagate ttl change to cloned packets */
-> +		if (!skb_make_writable(skb, sizeof(struct iphdr)))
-> +			return false;
-> +
-> +		/* Decrease ttl */
-> +		ip_decrease_ttl(ip_hdr(skb));
-> +	}
-> +
-> +	return true;
-> +}
-> +
->  /* Get route to destination or remote server */
->  static int
->  __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
-> @@ -326,6 +374,9 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  		return local;
->  	}
->  
-> +	if (!decrement_ttl(ipvs, skb_af, skb))
-> +		goto err_put;
-> +
->  	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL))) {
->  		mtu = dst_mtu(&rt->dst);
->  	} else {
-> @@ -473,6 +524,9 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  		return local;
->  	}
->  
-> +	if (!decrement_ttl(ipvs, skb_af, skb))
-> +		goto err_put;
-> +
->  	/* MTU checking */
->  	if (likely(!(rt_mode & IP_VS_RT_MODE_TUNNEL)))
->  		mtu = dst_mtu(&rt->dst);
-> -- 
-> 1.7.1
+> 	OK,
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
+> 
+> 	I guess, Simon will take the patch for ipvs-next.
 
-Regards
+@Simon: If you have no more pending updates, I can save you one pull
+request for this small fix by placing this.
 
---
-Julian Anastasov <ja@ssi.bg>
+Thanks!
