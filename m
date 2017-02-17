@@ -1,19 +1,19 @@
 From: Hangbin Liu <liuhangbin@gmail.com>
-Subject: [PATCH net 2/4] ipvs: Document sysctl sync_qlen_max and sync_sock_size
-Date: Fri, 17 Feb 2017 14:33:59 +0800
-Message-ID: <1487313241-11361-3-git-send-email-liuhangbin@gmail.com>
+Subject: [PATCH net 3/4] ipvs: Document sysctl sync_ports
+Date: Fri, 17 Feb 2017 14:34:00 +0800
+Message-ID: <1487313241-11361-4-git-send-email-liuhangbin@gmail.com>
 References: <1487313241-11361-1-git-send-email-liuhangbin@gmail.com>
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=/IvGIiTEZGmX57uBJyGcXpLKf60FqS/zlwr7Kr1oOHM=;
-        b=h4TxfWW82oqNC6rFT5iNW4yeBNjz2GO79qyEp7puXHLE0winva9/Z2v4I7ScAGVvna
-         PS6+cGH1lE4w6bfTCexE2MPrbByHQcDjw3UQCLEcof04RTieWilQmgoEFEaBWCGFEkj2
-         lf92X/PSW+tmt3gbWSTKrPsYt1NVNhmgiwNfUbEwl3tk6qAhq+j7eGVF20CysER3ADGS
-         SapZeloBZhFbfvthG3gNvuKYppscrLOakRyO3q/qHBgCUyBL5Jztg4Tx0qBX+yGrLm06
-         jfFoNqgBXIpQoeAmYNQV4fDI6b2RzI7x0EV9HX4iNA5aOe4ws0aVqZ7HoQoNEEbH750P
-         V2rg==
+        bh=QIonc14KXVoY416l8ZU7gYdhf/NolRSFNxlLcJ9h+HE=;
+        b=Q3jSOkRuge4G1czPa/d35G429ooi2NqS1SngL32jp9aqqhyWj+aCGDWF9cIn7yVFEe
+         2DzeGNzGvxZ7ct6JVqHZs3nJoTuF6WeN4gJSS+ZE+gYhwF0iA1CwAix9bzqNCuAsIqPD
+         /QdVOtqIDG8MVcLN1+KNX1qxncHSUyVoirYIyC7RWqo+tGBt/J5sjLo/laY+LkZFoF2/
+         Dvm9AZi1ZHpmZJhGkHqGjRIbtbC92PIDSwHPFZqmvQ+KaW+Kt0dqQDERb3mzyL+lX4j/
+         wXaMCLpsx0s/Wzz/jGD7IrNj2/fzs9/cxscihNm5sGCqkolfhMQ8brqbrzEocz+9JHIw
+         2K3Q==
 In-Reply-To: <1487313241-11361-1-git-send-email-liuhangbin@gmail.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -23,34 +23,29 @@ Content-Transfer-Encoding: 7bit
 To: lvs-devel@vger.kernel.org
 Cc: Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Hangbin Liu <liuhangbin@gmail.com>
 
-Document sysctl sync_qlen_max and sync_sock_size based on commit
-1c003b1580e2 ("ipvs: wakeup master thread").
+Document sysctl sync_ports based on commit f73181c8288f ("ipvs: add support
+for sync threads").
 
 Signed-off-by: Hangbin Liu <liuhangbin@gmail.com>
 ---
- Documentation/networking/ipvs-sysctl.txt | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ Documentation/networking/ipvs-sysctl.txt | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
-index 7acaaa6..7622ba5 100644
+index 7622ba5..e4d9235 100644
 --- a/Documentation/networking/ipvs-sysctl.txt
 +++ b/Documentation/networking/ipvs-sysctl.txt
-@@ -217,6 +217,19 @@ sync_retries - INTEGER
- 	to protect against loss of sync messages. The range of the
- 	sync_retries is from 0 to 3.
+@@ -230,6 +230,14 @@ sync_sock_size - INTEGER
+ 	Configuration of SNDBUF (master) or RCVBUF (slave) socket limit.
+ 	Default value is 0 (preserve system defaults).
  
-+sync_qlen_max - UNSIGNED LONG
++sync_ports - INTEGER
++	default 1
 +
-+	Hard limit for queued sync messages that not sent yet. It defaults to
-+	1/32 of the memory pages but actually represents number of messages.
-+	It will protect us from allocating large parts of memory when the
-+	sending rate is lower than the queuing rate.
-+
-+sync_sock_size - INTEGER
-+	default 0
-+
-+	Configuration of SNDBUF (master) or RCVBUF (slave) socket limit.
-+	Default value is 0 (preserve system defaults).
++	The number of threads that master and backup servers can use for
++	sync traffic. Every thread will use single UDP port, thread 0 will
++	use the default port 8848 while last thread will use port
++	8848+sync_ports-1.
 +
  snat_reroute - BOOLEAN
  	0 - disabled
