@@ -1,56 +1,47 @@
-From: Hangbin Liu <liuhangbin@gmail.com>
-Subject: [PATCHv2 net-next 4/4] ipvs: Document sysctl pmtu_disc
-Date: Mon, 20 Feb 2017 16:31:38 +0800
-Message-ID: <1487579498-18967-5-git-send-email-liuhangbin@gmail.com>
-References: <1487313241-11361-1-git-send-email-liuhangbin@gmail.com>
- <1487579498-18967-1-git-send-email-liuhangbin@gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCHv2 net-next 0/4] update ipvs sysctl document
+Date: Tue, 21 Feb 2017 22:01:44 +0200 (EET)
+Message-ID: <alpine.LFD.2.11.1702212154590.1840@ja.home.ssi.bg>
+References: <1487313241-11361-1-git-send-email-liuhangbin@gmail.com> <1487579498-18967-1-git-send-email-liuhangbin@gmail.com>
+Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=Oz+8e0tSC6UjJmwfxFjnH78bvYCfomg6/V199kyu7tA=;
-        b=RKSNXnnud0EtfW7dR3rZXnPRi8tRuCE8zthYIpWdNxpjlgwVrKbBsVnhSLHmgRQOtR
-         cWKCLWAw+Vownay/OxcUthO410cnp88D2/wqyxEKgtk9y0Qpedoiiqmk/kIIFbCeJ8y6
-         LKI9ZEu+WjqNPaKaoAVGf6dJFRbL4sk3JKyFkRuSpLtbUmduX7uo8ZBxpAGtzq761+rh
-         9RhzpkLIZ1xFsT8mr7bgss/Lef1G0XCUU7Au3hUg1qd60EcVkTptrevRsDxld1iavPJl
-         lQiMQKun15M3JelL/wDGwbk86ankIKVMiXslbQ0F18NhJxvg4SOJfrO8ZFWmS2KOvLna
-         yIYw==
 In-Reply-To: <1487579498-18967-1-git-send-email-liuhangbin@gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: TEXT/PLAIN; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org
-Cc: netdev@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Julian Anastasov <ja@ssi.bg>, Hangbin Liu <liuhangbin@gmail.com>
+To: Hangbin Liu <liuhangbin@gmail.com>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Simon Horman <horms@verge.net.au>
 
-Document sysctl pmtu_disc based on commit 3654e61137db ("ipvs: add
-pmtu_disc option to disable IP DF for TUN packets").
 
-Signed-off-by: Hangbin Liu <liuhangbin@gmail.com>
----
- Documentation/networking/ipvs-sysctl.txt | 8 ++++++++
- 1 file changed, 8 insertions(+)
+	Hello,
 
-diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
-index a6feecd..0568986 100644
---- a/Documentation/networking/ipvs-sysctl.txt
-+++ b/Documentation/networking/ipvs-sysctl.txt
-@@ -175,6 +175,14 @@ nat_icmp_send - BOOLEAN
-         for VS/NAT when the load balancer receives packets from real
-         servers but the connection entries don't exist.
- 
-+pmtu_disc - BOOLEAN
-+	0 - disabled
-+	not 0 - enabled (default)
-+
-+	By default, reject with FRAG_NEEDED all DF packets that exceed
-+	the PMTU, irrespective of the forwarding method. For TUN method
-+	the flag can be disabled to fragment such packets.
-+
- secure_tcp - INTEGER
-         0  - disabled (default)
- 
--- 
-2.5.5
+On Mon, 20 Feb 2017, Hangbin Liu wrote:
 
+> Fix and add some new ipvs sysctl options. Also use tab instead of
+> whitespaces to indent the descriptions.
+> 
+> V2: Fix some descriptions based on Julian's advice.
+> 
+> Hangbin Liu (4):
+>   ipvs: fix sync_threshold description and add sync_refresh_period, sync_retries
+>   ipvs: Document sysctl sync_qlen_max and sync_sock_size
+>   ipvs: Document sysctl sync_ports
+>   ipvs: Document sysctl pmtu_disc
+
+	All patches look ok to me, thanks!
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+	Simon, can we keep this patchset while in merge window?
+
+>  Documentation/networking/ipvs-sysctl.txt | 68 ++++++++++++++++++++++++++++----
+>  1 file changed, 60 insertions(+), 8 deletions(-)
+> 
+> -- 
+> 2.5.5
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
