@@ -1,15 +1,15 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 4/5] ipvs: Document sysctl sync_ports
-Date: Thu, 16 Mar 2017 13:43:14 +0100
-Message-ID: <1489668195-15240-5-git-send-email-horms@verge.net.au>
+Subject: [PATCH 3/5] ipvs: Document sysctl sync_qlen_max and sync_sock_size
+Date: Thu, 16 Mar 2017 13:43:13 +0100
+Message-ID: <1489668195-15240-4-git-send-email-horms@verge.net.au>
 References: <1489668195-15240-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1489668205; bh=zU0YMHze+/VH+r9hXW4rM/Sv4mRk8oVUolVVe5OFOg0=;
+        t=1489668205; bh=OmECVureu8xx0fbR5swuAgAgMPvpCgVKANaI9NNAOxU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=XQeVAWLomd5x+0SGbiIckgHslcKvygOvFnGqdYE03lVLIn1FNSmbypgaU4P/DLIWX
-         extADdSLS2N3gLOjlMY7oMpY+eKAOb4xy7bQcI9Yu5Ftxcnj94kJ7VavwPQWnaC2bn
-         etbmHegMkm4XA9G0qlj0uElZFDIolphh+/9WTwEk=
+        b=sYr6KP0C3+Vp4GQf5PMqivGVDDt757cLfI8ou6+TREZAa8emTmK9nocv92B9AFKa9
+         XHwQkRVPVLVdgfhHswjF3YLZiYtIKm0MlcVyPKNKXrwhhBIdJTXycqt/YE+NiU0ETn
+         r7r6dAjS+jHaB2kYFe9uVSRoBJAiyWZ2wEyQumJM=
 In-Reply-To: <1489668195-15240-1-git-send-email-horms@verge.net.au>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -21,30 +21,36 @@ Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kern
 
 From: Hangbin Liu <liuhangbin@gmail.com>
 
-Document sysctl sync_ports based on commit f73181c8288f ("ipvs: add support
-for sync threads").
+Document sysctl sync_qlen_max and sync_sock_size based on
+commit 1c003b1580e2 ("ipvs: wakeup master thread").
 
 Signed-off-by: Hangbin Liu <liuhangbin@gmail.com>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- Documentation/networking/ipvs-sysctl.txt | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ Documentation/networking/ipvs-sysctl.txt | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
 diff --git a/Documentation/networking/ipvs-sysctl.txt b/Documentation/networking/ipvs-sysctl.txt
-index 159d70b6dff3..a6feecd467cd 100644
+index 7acaaa65451e..159d70b6dff3 100644
 --- a/Documentation/networking/ipvs-sysctl.txt
 +++ b/Documentation/networking/ipvs-sysctl.txt
-@@ -231,6 +231,14 @@ sync_sock_size - INTEGER
- 	Configuration of SNDBUF (master) or RCVBUF (slave) socket limit.
- 	Default value is 0 (preserve system defaults).
+@@ -217,6 +217,20 @@ sync_retries - INTEGER
+ 	to protect against loss of sync messages. The range of the
+ 	sync_retries is from 0 to 3.
  
-+sync_ports - INTEGER
-+	default 1
++sync_qlen_max - UNSIGNED LONG
 +
-+	The number of threads that master and backup servers can use for
-+	sync traffic. Every thread will use single UDP port, thread 0 will
-+	use the default port 8848 while last thread will use port
-+	8848+sync_ports-1.
++	Hard limit for queued sync messages that are not sent yet. It
++	defaults to 1/32 of the memory pages but actually represents
++	number of messages. It will protect us from allocating large
++	parts of memory when the sending rate is lower than the queuing
++	rate.
++
++sync_sock_size - INTEGER
++	default 0
++
++	Configuration of SNDBUF (master) or RCVBUF (slave) socket limit.
++	Default value is 0 (preserve system defaults).
 +
  snat_reroute - BOOLEAN
  	0 - disabled
