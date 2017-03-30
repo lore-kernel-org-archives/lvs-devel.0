@@ -1,69 +1,42 @@
-From: Arushi Singhal <arushisinghal19971997@gmail.com>
-Subject: [PATCH v2] net: netfilter: remove unused variable
-Date: Wed, 29 Mar 2017 20:27:52 +0530
-Message-ID: <20170329145752.GA2756@arushi-HP-Pavilion-Notebook>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH v2] net: netfilter: remove unused variable
+Date: Thu, 30 Mar 2017 14:55:09 +0200
+Message-ID: <20170330125509.GD2980@verge.net.au>
+References: <20170329145752.GA2756@arushi-HP-Pavilion-Notebook>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:mime-version:content-disposition
-         :user-agent;
-        bh=3XQN62EmkyX8Ldsf00IjOVt9RVQiL/EJtBFvd7+JkWM=;
-        b=GF6pqpW3P55fuLjC6a3LaZ+SmHZ5zStFw8qhx2k9Pn43uetmdcTtyWZx93oPM25moz
-         h3ip2qT1HTeoSJSPmDLiH5tHdc1zcN5VzNN8+YngLPB294BdW85876S04EZpPbqHYmu3
-         nsDEdsJXM+Wr1b4M/2x6+1JaxX88HQlvSA7GL9nVoD7nodENq3bNsLZfSXny8f/5jiPG
-         +B+ETsxcmKiejGgm+fUHMzGYI+lnNqa/582EAkYKT0JXpmdYbppXI+gQ5kyg9frCf+Qg
-         1SBad5GYYgFon8fYq7YDRFJ7f0dVpp233H7QhjovlO8A1DGUo58diqEPA3h88wTSEs0R
-         diwA==
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+        t=1490878513; bh=sVL3/hu2EPv1rSFNKzCr2TF4U5DMrJHopkrGKknH8C4=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=Ux7WP1itEw3ziPN77Q5T6GjMCPcgluG8uprezsYCYOMnA2yeBHNo78LK59uDrqVqx
+         aqgcw1TckgCCbGUGrEHz4oQ1QZDexTz4Kfa1Vy2CFl5lzqYO8okp4JUpsJxicctAMQ
+         6X3XT3lEKKfMQ7r/Bi7D8YrNQi1hfgkhl85Pa5Yo=
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20170329145752.GA2756@arushi-HP-Pavilion-Notebook>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: outreachy-kernel@googlegroups.com
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: Arushi Singhal <arushisinghal19971997@gmail.com>
+Cc: outreachy-kernel@googlegroups.com, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-This patch uses the following coccinelle script to remove
-a variable that was simply used to store the return
-value of a function call before returning it:
+On Wed, Mar 29, 2017 at 08:27:52PM +0530, Arushi Singhal wrote:
+> This patch uses the following coccinelle script to remove
+> a variable that was simply used to store the return
+> value of a function call before returning it:
+> 
+> @@
+> identifier len,f;
+> @@
+> 
+> -int len;
+>  ... when != len
+>      when strict
+> -len =
+> +return
+>         f(...);
+> -return len;
+> 
+> Signed-off-by: Arushi Singhal <arushisinghal19971997@gmail.com>
 
-@@
-identifier len,f;
-@@
-
--int len;
- ... when != len
-     when strict
--len =
-+return
-        f(...);
--return len;
-
-Signed-off-by: Arushi Singhal <arushisinghal19971997@gmail.com>
----
-changes in v2
-   - remove extra blank line.
-
- net/netfilter/ipvs/ip_vs_ftp.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index d30c327bb578..c93c93762354 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -482,11 +482,8 @@ static struct pernet_operations ip_vs_ftp_ops = {
- 
- static int __init ip_vs_ftp_init(void)
- {
--	int rv;
--
--	rv = register_pernet_subsys(&ip_vs_ftp_ops);
- 	/* rcu_barrier() is called by netns on error */
--	return rv;
-+	return register_pernet_subsys(&ip_vs_ftp_ops);
- }
- 
- /*
--- 
-2.11.0
-
+Applied with patch prefix updated to "ipvs:".
