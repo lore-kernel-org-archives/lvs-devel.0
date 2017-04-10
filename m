@@ -1,56 +1,80 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 2/3] netfilter: ipvs: Replace kzalloc with kcalloc.
-Date: Mon, 10 Apr 2017 09:58:34 -0700
-Message-ID: <1491843515-1627-3-git-send-email-horms@verge.net.au>
-References: <1491843515-1627-1-git-send-email-horms@verge.net.au>
+From: Aaron Conole <aconole@bytheb.org>
+Subject: [PATCH nf-next] ipvs: remove unused function ip_vs_set_state_timeout
+Date: Mon, 10 Apr 2017 15:50:44 -0400
+Message-ID: <20170410195044.19646-1-aconole@bytheb.org>
 Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1491843523; bh=NvqHA1sFAc1FDdY0vFVSM8YTmxU9Ap1k+My1ta9EyH4=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=B1ke4hSN44zQ5kIQxnxdZdQHnOC5dWluKdYqzv5wL/EEmk9eh725172dRIu5VP4lu
-         Az1D5CToJWX29y01JnK+HZluKSHftrUjrvD8ZP2VrL0UQi0Y6Z9ZraAxxRCpwbf87Q
-         1g1g2HzBAYzT188H6Gjlt/aXtmhWOqZRCL1B1Fwo=
-In-Reply-To: <1491843515-1627-1-git-send-email-horms@verge.net.au>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bytheb-org.20150623.gappssmtp.com; s=20150623;
+        h=from:to:cc:subject:date:message-id;
+        bh=djdE1hmCIJCbqoqGKbQLzLjuSxMMtTQZNGGEjqzTKYs=;
+        b=PBdLv4F0BGBPNxSI9gUelUcUbHO94d6mhDx6AZNV0HQrELZqwN1gVbUfFh39S3e2zH
+         oGgPf8YnsWApc2+qenH4vvhRbkX8jiu8BTILNUyZRuROHDlhsqhoZB0G4fOHjGoAcQqt
+         MqLoNH3QnH7o9iYM3nh3+Uol6ObDAfX9Mdujf/oy5uHZOXzxG2Ctk1cTlUuzIPhcGrBe
+         /jrx4nGh8bCcwb2zt60upYC9cfZ1qq+GPOzcs5ZzCAoTvpYOf6fC69KJ09ubAQYU0pEh
+         KFZoQDgoY3sRTFjkTeIeCLOICKbssFUJagrgBVzPgiRBt6frl8NvvRtfzkts/cemJOYa
+         SVfw==
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Varsha Rao <rvarsha016@gmail.com>
+To: netfilter-devel@vger.kernel.org
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: Varsha Rao <rvarsha016@gmail.com>
+There are no in-tree callers of this function and it isn't exported.
 
-Replace kzalloc with kcalloc. As kcalloc is preferred for allocating an
-array instead of kzalloc. This patch fixes the checkpatch issue.
-
-Signed-off-by: Varsha Rao <rvarsha016@gmail.com>
+Signed-off-by: Aaron Conole <aconole@bytheb.org>
 ---
- net/netfilter/ipvs/ip_vs_sync.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ include/net/ip_vs.h              |  2 --
+ net/netfilter/ipvs/ip_vs_proto.c | 22 ----------------------
+ 2 files changed, 24 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index b03c28084f81..30d6b2cc00a0 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1849,7 +1849,7 @@ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *c,
- 	if (state == IP_VS_STATE_MASTER) {
- 		struct ipvs_master_sync_state *ms;
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 8a4a57b8..c76fedb 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1349,8 +1349,6 @@ int ip_vs_protocol_init(void);
+ void ip_vs_protocol_cleanup(void);
+ void ip_vs_protocol_timeout_change(struct netns_ipvs *ipvs, int flags);
+ int *ip_vs_create_timeout_table(int *table, int size);
+-int ip_vs_set_state_timeout(int *table, int num, const char *const *names,
+-			    const char *name, int to);
+ void ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
+ 			       const struct sk_buff *skb, int offset,
+ 			       const char *msg);
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index 8ae4807..ca880a3 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -193,28 +193,6 @@ ip_vs_create_timeout_table(int *table, int size)
+ }
  
--		ipvs->ms = kzalloc(count * sizeof(ipvs->ms[0]), GFP_KERNEL);
-+		ipvs->ms = kcalloc(count, sizeof(ipvs->ms[0]), GFP_KERNEL);
- 		if (!ipvs->ms)
- 			goto out;
- 		ms = ipvs->ms;
-@@ -1862,7 +1862,7 @@ int start_sync_thread(struct netns_ipvs *ipvs, struct ipvs_sync_daemon_cfg *c,
- 			ms->ipvs = ipvs;
- 		}
- 	} else {
--		array = kzalloc(count * sizeof(struct task_struct *),
-+		array = kcalloc(count, sizeof(struct task_struct *),
- 				GFP_KERNEL);
- 		if (!array)
- 			goto out;
+ 
+-/*
+- *	Set timeout value for state specified by name
+- */
+-int
+-ip_vs_set_state_timeout(int *table, int num, const char *const *names,
+-			const char *name, int to)
+-{
+-	int i;
+-
+-	if (!table || !name || !to)
+-		return -EINVAL;
+-
+-	for (i = 0; i < num; i++) {
+-		if (strcmp(names[i], name))
+-			continue;
+-		table[i] = to * HZ;
+-		return 0;
+-	}
+-	return -ENOENT;
+-}
+-
+-
+ const char * ip_vs_state_name(__u16 proto, int state)
+ {
+ 	struct ip_vs_protocol *pp = ip_vs_proto_get(proto);
 -- 
-2.7.0.rc3.207.g0ac5344
+2.9.3
 
