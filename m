@@ -1,46 +1,53 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH] net: netfilter: ipvs: Replace explicit NULL comparison
-Date: Mon, 10 Apr 2017 13:53:00 +0200
-Message-ID: <20170410115300.GB2155@salvia>
-References: <20170408171805.GA9156@arushi-HP-Pavilion-Notebook>
- <201704090633.AKZxFfWl%fengguang.wu@intel.com>
-Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <201704090633.AKZxFfWl%fengguang.wu@intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Simon Horman <horms@verge.net.au>
+Subject: [GIT 0/3] Second Round of IPVS Updates for v4.12
+Date: Mon, 10 Apr 2017 09:58:32 -0700
+Message-ID: <1491843515-1627-1-git-send-email-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+        t=1491843523; bh=0xqvmHAM3Kf2uSd+9o/MZGD0NS/zhZaATZTybjFvo5g=;
+        h=From:To:Cc:Subject:Date:From;
+        b=DyXWfdYoWw+1If4dW4wTUEuFkU3C08FtEPpGTL0EDw4UsfKEcjAgVVghikezU+CUt
+         2ebyBU87VbEs1K6E3I4QpPaFLSINWfh8Uhe5A0ZXmZ3yeS37CPjgw+LOZ/sp4Sakc/
+         gkDT1msP6qoojnafkWa8AGCesy0nBjO0jJgXAy4w=
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: kbuild test robot <lkp@intel.com>
-Cc: Arushi Singhal <arushisinghal19971997@gmail.com>, kbuild-all@01.org, wensong@linux-vs.org, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-Arushi,
+Hi Pablo,
 
-On Sun, Apr 09, 2017 at 06:21:51AM +0800, kbuild test robot wrote:
-> Hi Arushi,
-> 
-> [auto build test WARNING on ipvs-next/master]
-> [also build test WARNING on v4.11-rc5 next-20170407]
-> [if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
-> 
-> url:    https://github.com/0day-ci/linux/commits/Arushi-Singhal/net-netfilter-ipvs-Replace-explicit-NULL-comparison/20170409-044710
-> base:   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git master
-> config: i386-randconfig-x002-201715 (attached as .config)
-> compiler: gcc-6 (Debian 6.2.0-3) 6.2.0 20160901
-> reproduce:
->         # save the attached .config to linux build tree
->         make ARCH=i386 
-> 
-> All warnings (new ones prefixed by >>):
-> 
->    net/netfilter/ipvs/ip_vs_proto.c: In function 'ip_vs_protocol_net_cleanup':
-> >> net/netfilter/ipvs/ip_vs_proto.c:350:3: warning: suggest parentheses around assignment used as truth value [-Wparentheses]
->       while (pd = ipvs->proto_data_table[i])
->       ^~~~~
+please consider these clean-ups and enhancements to IPVS for v4.12.
 
-This is bad, you have to be more careful in what you do. This is not a
-speed coding contest.
+* Removal unused variable
+* Use kzalloc where appropriate
+* More efficient detection of presence of NAT extension
 
-Showing careful patchset handling, even if you submit less of them, is
-way more prefered in my opinion.
+
+The following changes since commit 592d42ac7fd36408979e09bf2f170f2595dab7b8:
+
+  Merge branch 'qed-IOV-cleanups' (2017-03-21 19:02:38 -0700)
+
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git ipvs2-for-v4.12
+
+for you to fetch changes up to e24113769960980579610ecfd657bb17f19373a3:
+
+  ipvs: remove unused variable (2017-03-30 14:54:47 +0200)
+
+----------------------------------------------------------------
+Arushi Singhal (1):
+      ipvs: remove unused variable
+
+Florian Westphal (1):
+      netfilter: ipvs: don't check for presence of nat extension
+
+Varsha Rao (1):
+      netfilter: ipvs: Replace kzalloc with kcalloc.
+
+ net/netfilter/ipvs/ip_vs_ftp.c  | 7 ++-----
+ net/netfilter/ipvs/ip_vs_sync.c | 4 ++--
+ 2 files changed, 4 insertions(+), 7 deletions(-)
