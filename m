@@ -1,53 +1,65 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT 0/3] Second Round of IPVS Updates for v4.12
-Date: Mon, 10 Apr 2017 09:58:32 -0700
-Message-ID: <1491843515-1627-1-git-send-email-horms@verge.net.au>
+Subject: [PATCH 3/3] ipvs: remove unused variable
+Date: Mon, 10 Apr 2017 09:58:35 -0700
+Message-ID: <1491843515-1627-4-git-send-email-horms@verge.net.au>
+References: <1491843515-1627-1-git-send-email-horms@verge.net.au>
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1491843523; bh=0xqvmHAM3Kf2uSd+9o/MZGD0NS/zhZaATZTybjFvo5g=;
-        h=From:To:Cc:Subject:Date:From;
-        b=DyXWfdYoWw+1If4dW4wTUEuFkU3C08FtEPpGTL0EDw4UsfKEcjAgVVghikezU+CUt
-         2ebyBU87VbEs1K6E3I4QpPaFLSINWfh8Uhe5A0ZXmZ3yeS37CPjgw+LOZ/sp4Sakc/
-         gkDT1msP6qoojnafkWa8AGCesy0nBjO0jJgXAy4w=
+        t=1491843523; bh=CQ2q5KwNoJcUnep2d3JuQABBKgzp+QOfujnIuwONIq4=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=KJXXSjbZfpnjnq2Mypkp2okFWi9gy+NPCZAMPy0C5/BMm3S6gjT7wWAdEeNbedaVU
+         KG0zhkrW/AGEpMtoADzIzG/Mlb7pO5QcP6CpG5tYxcnON7VZHVqP67FCQ8XjtW8f7R
+         V636boSYVettYZtys5/HeITxmzKOqc4mw8mE0UQw=
+In-Reply-To: <1491843515-1627-1-git-send-email-horms@verge.net.au>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Arushi Singhal <arushisinghal19971997@gmail.com>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Arushi Singhal <arushisinghal19971997@gmail.com>
 
-please consider these clean-ups and enhancements to IPVS for v4.12.
+This patch uses the following coccinelle script to remove
+a variable that was simply used to store the return
+value of a function call before returning it:
 
-* Removal unused variable
-* Use kzalloc where appropriate
-* More efficient detection of presence of NAT extension
+@@
+identifier len,f;
+@@
 
+-int len;
+ ... when != len
+     when strict
+-len =
++return
+        f(...);
+-return len;
 
-The following changes since commit 592d42ac7fd36408979e09bf2f170f2595dab7b8:
+Signed-off-by: Arushi Singhal <arushisinghal19971997@gmail.com>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
+ net/netfilter/ipvs/ip_vs_ftp.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
-  Merge branch 'qed-IOV-cleanups' (2017-03-21 19:02:38 -0700)
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 2e2bf7428cd1..6caf4459e981 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -482,11 +482,8 @@ static struct pernet_operations ip_vs_ftp_ops = {
+ 
+ static int __init ip_vs_ftp_init(void)
+ {
+-	int rv;
+-
+-	rv = register_pernet_subsys(&ip_vs_ftp_ops);
+ 	/* rcu_barrier() is called by netns on error */
+-	return rv;
++	return register_pernet_subsys(&ip_vs_ftp_ops);
+ }
+ 
+ /*
+-- 
+2.7.0.rc3.207.g0ac5344
 
-are available in the git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git ipvs2-for-v4.12
-
-for you to fetch changes up to e24113769960980579610ecfd657bb17f19373a3:
-
-  ipvs: remove unused variable (2017-03-30 14:54:47 +0200)
-
-----------------------------------------------------------------
-Arushi Singhal (1):
-      ipvs: remove unused variable
-
-Florian Westphal (1):
-      netfilter: ipvs: don't check for presence of nat extension
-
-Varsha Rao (1):
-      netfilter: ipvs: Replace kzalloc with kcalloc.
-
- net/netfilter/ipvs/ip_vs_ftp.c  | 7 ++-----
- net/netfilter/ipvs/ip_vs_sync.c | 4 ++--
- 2 files changed, 4 insertions(+), 7 deletions(-)
