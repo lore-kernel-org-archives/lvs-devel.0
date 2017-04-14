@@ -1,57 +1,80 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT 0/3] Second Round of IPVS Updates for v4.12
-Date: Fri, 14 Apr 2017 02:06:25 +0200
-Message-ID: <20170414000625.GB10583@salvia>
-References: <1491843515-1627-1-git-send-email-horms@verge.net.au>
- <20170413230134.GA5724@salvia>
- <20170413235115.GA5948@verge.net.au>
+Subject: Re: [PATCH nf-next] ipvs: remove unused function
+ ip_vs_set_state_timeout
+Date: Fri, 14 Apr 2017 02:13:09 +0200
+Message-ID: <20170414001309.GA28870@salvia>
+References: <20170410195044.19646-1-aconole@bytheb.org>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170413235115.GA5948@verge.net.au>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <20170410195044.19646-1-aconole@bytheb.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: Aaron Conole <aconole@bytheb.org>
+Cc: netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Fri, Apr 14, 2017 at 08:51:19AM +0900, Simon Horman wrote:
-> On Fri, Apr 14, 2017 at 01:01:34AM +0200, Pablo Neira Ayuso wrote:
-> > Hi Simon,
-> > 
-> > On Mon, Apr 10, 2017 at 09:58:32AM -0700, Simon Horman wrote:
-> > > Hi Pablo,
-> > > 
-> > > please consider these clean-ups and enhancements to IPVS for v4.12.
-> > > 
-> > > * Removal unused variable
-> > > * Use kzalloc where appropriate
-> > > * More efficient detection of presence of NAT extension
-> > > 
-> > > 
-> > > The following changes since commit 592d42ac7fd36408979e09bf2f170f2595dab7b8:
-> > > 
-> > >   Merge branch 'qed-IOV-cleanups' (2017-03-21 19:02:38 -0700)
-> > > 
-> > > are available in the git repository at:
-> > > 
-> > >   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git ipvs2-for-v4.12
-> > 
-> > This says:
-> > 
-> > $ git pull
-> > https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git ipvs2-for-v4.12
-> > fatal: Couldn't find remote ref ipvs2-for-v4.12
-> > 
-> > I don't any tag for this name in:
-> > 
-> > https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git/refs/tags
+On Mon, Apr 10, 2017 at 03:50:44PM -0400, Aaron Conole wrote:
+> There are no in-tree callers of this function and it isn't exported.
+
+Simon, let me know if you want to take this, or just add your
+Signed-off-by.
+
+Thanks!
+
+> Signed-off-by: Aaron Conole <aconole@bytheb.org>
+> ---
+>  include/net/ip_vs.h              |  2 --
+>  net/netfilter/ipvs/ip_vs_proto.c | 22 ----------------------
+>  2 files changed, 24 deletions(-)
 > 
-> Sorry about that, it looks like I forgot to push the tag.
-> It should be there now.
-
-I'm hitting a conflict between this and what I have in nf-next.git.
-
-If you can have a look, otherwise I will check tomorrow with fresher
-mind.
+> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> index 8a4a57b8..c76fedb 100644
+> --- a/include/net/ip_vs.h
+> +++ b/include/net/ip_vs.h
+> @@ -1349,8 +1349,6 @@ int ip_vs_protocol_init(void);
+>  void ip_vs_protocol_cleanup(void);
+>  void ip_vs_protocol_timeout_change(struct netns_ipvs *ipvs, int flags);
+>  int *ip_vs_create_timeout_table(int *table, int size);
+> -int ip_vs_set_state_timeout(int *table, int num, const char *const *names,
+> -			    const char *name, int to);
+>  void ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
+>  			       const struct sk_buff *skb, int offset,
+>  			       const char *msg);
+> diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+> index 8ae4807..ca880a3 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto.c
+> @@ -193,28 +193,6 @@ ip_vs_create_timeout_table(int *table, int size)
+>  }
+>  
+>  
+> -/*
+> - *	Set timeout value for state specified by name
+> - */
+> -int
+> -ip_vs_set_state_timeout(int *table, int num, const char *const *names,
+> -			const char *name, int to)
+> -{
+> -	int i;
+> -
+> -	if (!table || !name || !to)
+> -		return -EINVAL;
+> -
+> -	for (i = 0; i < num; i++) {
+> -		if (strcmp(names[i], name))
+> -			continue;
+> -		table[i] = to * HZ;
+> -		return 0;
+> -	}
+> -	return -ENOENT;
+> -}
+> -
+> -
+>  const char * ip_vs_state_name(__u16 proto, int state)
+>  {
+>  	struct ip_vs_protocol *pp = ip_vs_proto_get(proto);
+> -- 
+> 2.9.3
+> 
