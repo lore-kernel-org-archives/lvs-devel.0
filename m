@@ -1,63 +1,34 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT 0/3] Second Round of IPVS Updates for v4.12
-Date: Sat, 15 Apr 2017 10:59:13 +0200
-Message-ID: <20170415085913.GA3652@salvia>
-References: <1491843515-1627-1-git-send-email-horms@verge.net.au>
- <20170413230134.GA5724@salvia>
- <20170413235115.GA5948@verge.net.au>
- <20170414000625.GB10583@salvia>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH nf-next] ipvs: remove unused function
+ ip_vs_set_state_timeout
+Date: Mon, 17 Apr 2017 07:34:59 +0900
+Message-ID: <20170416223457.GA18680@verge.net.au>
+References: <20170410195044.19646-1-aconole@bytheb.org>
+ <20170414001309.GA28870@salvia>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+        t=1492382104; bh=vwFbpEgTf+9rwEORMzbU3qpzp4OyBj850M2x9PHzEV0=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=r6JpTaDPX08RCjxLHkbJj/YudtRk9IrCkJUZTbLl0RvPJdVY+UFqSg3ofvUoAQw3T
+         0cpNyQVdcfPF3yCnMYSv79WAF/X26GX+EKN4gBBmPluWurMfZ0t8E4j9LGljPWlDHg
+         Nz40BrbF+GxJgsjH86R79fq1GFqsABtEUJzzEdcE=
 Content-Disposition: inline
-In-Reply-To: <20170414000625.GB10583@salvia>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <20170414001309.GA28870@salvia>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Aaron Conole <aconole@bytheb.org>, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Fri, Apr 14, 2017 at 02:06:25AM +0200, Pablo Neira Ayuso wrote:
-> On Fri, Apr 14, 2017 at 08:51:19AM +0900, Simon Horman wrote:
-> > On Fri, Apr 14, 2017 at 01:01:34AM +0200, Pablo Neira Ayuso wrote:
-> > > Hi Simon,
-> > > 
-> > > On Mon, Apr 10, 2017 at 09:58:32AM -0700, Simon Horman wrote:
-> > > > Hi Pablo,
-> > > > 
-> > > > please consider these clean-ups and enhancements to IPVS for v4.12.
-> > > > 
-> > > > * Removal unused variable
-> > > > * Use kzalloc where appropriate
-> > > > * More efficient detection of presence of NAT extension
-> > > > 
-> > > > 
-> > > > The following changes since commit 592d42ac7fd36408979e09bf2f170f2595dab7b8:
-> > > > 
-> > > >   Merge branch 'qed-IOV-cleanups' (2017-03-21 19:02:38 -0700)
-> > > > 
-> > > > are available in the git repository at:
-> > > > 
-> > > >   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git ipvs2-for-v4.12
-> > > 
-> > > This says:
-> > > 
-> > > $ git pull
-> > > https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git ipvs2-for-v4.12
-> > > fatal: Couldn't find remote ref ipvs2-for-v4.12
-> > > 
-> > > I don't any tag for this name in:
-> > > 
-> > > https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git/refs/tags
-> > 
-> > Sorry about that, it looks like I forgot to push the tag.
-> > It should be there now.
+On vr, apr 14, 2017 at 02:13:09 +0200, Pablo Neira Ayuso wrote:
+> On Mon, Apr 10, 2017 at 03:50:44PM -0400, Aaron Conole wrote:
+> > There are no in-tree callers of this function and it isn't exported.
 > 
-> I'm hitting a conflict between this and what I have in nf-next.git.
-> 
-> If you can have a look, otherwise I will check tomorrow with fresher
-> mind.
+> Simon, let me know if you want to take this, or just add your
+> Signed-off-by.
 
-Fixed this here.
+Hi Pablo,
 
-Pulled, thanks.
+I will take this.
