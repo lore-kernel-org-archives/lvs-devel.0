@@ -1,34 +1,88 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH nf-next] ipvs: remove unused function
- ip_vs_set_state_timeout
-Date: Mon, 17 Apr 2017 07:34:59 +0900
-Message-ID: <20170416223457.GA18680@verge.net.au>
-References: <20170410195044.19646-1-aconole@bytheb.org>
- <20170414001309.GA28870@salvia>
-Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1492382104; bh=vwFbpEgTf+9rwEORMzbU3qpzp4OyBj850M2x9PHzEV0=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=r6JpTaDPX08RCjxLHkbJj/YudtRk9IrCkJUZTbLl0RvPJdVY+UFqSg3ofvUoAQw3T
-         0cpNyQVdcfPF3yCnMYSv79WAF/X26GX+EKN4gBBmPluWurMfZ0t8E4j9LGljPWlDHg
-         Nz40BrbF+GxJgsjH86R79fq1GFqsABtEUJzzEdcE=
-Content-Disposition: inline
-In-Reply-To: <20170414001309.GA28870@salvia>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Paolo Abeni <pabeni@redhat.com>
+Subject: [PATCH] ipvs: explicitly forbid ipv6 service/dest creation if ipv6 mod is disabled
+Date: Thu, 20 Apr 2017 11:44:16 +0200
+Message-ID: <2a5c88ca5670baade900e2b1f05a0dcc9927a29d.1492681122.git.pabeni@redhat.com>
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Filter: OpenDKIM Filter v2.11.0 mx1.redhat.com F1462C054921
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Aaron Conole <aconole@bytheb.org>, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: netfilter-devel@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org
 
-On vr, apr 14, 2017 at 02:13:09 +0200, Pablo Neira Ayuso wrote:
-> On Mon, Apr 10, 2017 at 03:50:44PM -0400, Aaron Conole wrote:
-> > There are no in-tree callers of this function and it isn't exported.
-> 
-> Simon, let me know if you want to take this, or just add your
-> Signed-off-by.
+When creating a new ipvs service, ipv6 addresses are always accepted
+if CONFIG_IP_VS_IPV6 is enabled. On dest creation the address family
+is not explicitly checked.
 
-Hi Pablo,
+This allows the user-space to configure ipvs services even if the
+system is booted with ipv6.disable=1. On specific configuration, ipvs
+can try to call ipv6 routing code at setup time, causing the kernel to
+oops due to fib6_rules_ops being NULL.
 
-I will take this.
+This change addresses the issue adding a check for the ipv6
+module being enabled while validating ipv6 service operations and
+adding the same validation for dest operations.
+
+According to git history, this issue is apparently present since
+the introduction of ipv6 support, and the oops can be triggered
+since commit 09571c7ae30865ad ("IPVS: Add function to determine
+if IPv6 address is local")
+
+Fixes: 09571c7ae30865ad ("IPVS: Add function to determine if IPv6 address is local")
+Signed-off-by: Paolo Abeni <pabeni@redhat.com>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c | 22 +++++++++++++++++-----
+ 1 file changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 5aeb0dd..4d753be 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3078,6 +3078,17 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
+ 	return skb->len;
+ }
+ 
++static bool ip_vs_is_af_valid(int af)
++{
++	if (af == AF_INET)
++		return true;
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6 && ipv6_mod_enabled())
++		return true;
++#endif
++	return false;
++}
++
+ static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
+ 				    struct ip_vs_service_user_kern *usvc,
+ 				    struct nlattr *nla, int full_entry,
+@@ -3104,11 +3115,7 @@ static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
+ 	memset(usvc, 0, sizeof(*usvc));
+ 
+ 	usvc->af = nla_get_u16(nla_af);
+-#ifdef CONFIG_IP_VS_IPV6
+-	if (usvc->af != AF_INET && usvc->af != AF_INET6)
+-#else
+-	if (usvc->af != AF_INET)
+-#endif
++	if (!ip_vs_is_af_valid(usvc->af))
+ 		return -EAFNOSUPPORT;
+ 
+ 	if (nla_fwmark) {
+@@ -3610,6 +3617,11 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 		if (udest.af == 0)
+ 			udest.af = svc->af;
+ 
++		if (!ip_vs_is_af_valid(udest.af)) {
++			ret = -EAFNOSUPPORT;
++			goto out;
++		}
++
+ 		if (udest.af != svc->af && cmd != IPVS_CMD_DEL_DEST) {
+ 			/* The synchronization protocol is incompatible
+ 			 * with mixed family services
+-- 
+2.9.3
+
