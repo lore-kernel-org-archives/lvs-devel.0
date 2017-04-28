@@ -1,74 +1,48 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 1/2] ipvs: remove unused function ip_vs_set_state_timeout
-Date: Fri, 28 Apr 2017 12:11:58 +0200
-Message-ID: <20170428101159.9810-2-horms@verge.net.au>
-References: <20170428101159.9810-1-horms@verge.net.au>
+Subject: [GIT PULL 0/2] Third Round of IPVS Updates for v4.12
+Date: Fri, 28 Apr 2017 12:11:57 +0200
+Message-ID: <20170428101159.9810-1-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1493374324; bh=S/k+keJlHh4YLG4ZmCwFGDE39iIPNBfK/KUsMWOBpLY=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=kWW/jr/Gtsy3530iE5oa2EwHfqea56ZB+y/I8azqDvrSr9qQPDgcYxIfmCzHC0j3k
-         NPKF0QFHM/pE0DVyc11NUqe3T0G8Gbcm0umsWPAajojWz2a6iQdp2H13vQ8rkAD09h
-         QP0T4l4twgl5Hab+tZxhNt6N5ELkLcmawt7dM1hI=
-In-Reply-To: <20170428101159.9810-1-horms@verge.net.au>
+        t=1493374324; bh=lMt+yzU92BXN8p1/t2+/FRTGRQJdcE88nU8CCrpW7GU=;
+        h=From:To:Cc:Subject:Date:From;
+        b=epA7yWSi7r38+hSsB/rVTAgcXqs3yoQn0aogdw2wSnwm2DfQZ3WDxPkOHPFdlM9ej
+         UOS2kc1TNvD8VHKUAk+m67qAMGDNDn4P44ovUZw/4FOUAHT0rXZUD3YKxZ9xa7JZ18
+         tDWJU+Qa7thKfKdJA2wbf3vihrTNdHBdouh0O5HE=
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Aaron Conole <aconole@bytheb.org>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-From: Aaron Conole <aconole@bytheb.org>
+Hi Pablo,
 
-There are no in-tree callers of this function and it isn't exported.
+please consider these enhancements to IPVS for v4.12.
+If it is too late for v4.12 then please consider them for v4.13.
 
-Signed-off-by: Aaron Conole <aconole@bytheb.org>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
+* Remove unused function
+* Correct comparison of unsigned value
+
+The following changes since commit 9a08ecfe74d7796ddc92ec312d3b7eaeba5a7c22:
+
+  netfilter: don't attach a nat extension by default (2017-04-26 09:30:22 +0200)
+
+are available in the git repository at:
+
+  http://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs3-for-v4.12
+
+for you to fetch changes up to fb90e8dedb465bd06512f718b139ed8680d26dbe:
+
+  ipvs: change comparison on sync_refresh_period (2017-04-28 12:00:10 +0200)
+
+----------------------------------------------------------------
+Aaron Conole (2):
+      ipvs: remove unused function ip_vs_set_state_timeout
+      ipvs: change comparison on sync_refresh_period
+
  include/net/ip_vs.h              |  2 --
  net/netfilter/ipvs/ip_vs_proto.c | 22 ----------------------
- 2 files changed, 24 deletions(-)
-
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 632082300e77..4f4f786255ef 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1349,8 +1349,6 @@ int ip_vs_protocol_init(void);
- void ip_vs_protocol_cleanup(void);
- void ip_vs_protocol_timeout_change(struct netns_ipvs *ipvs, int flags);
- int *ip_vs_create_timeout_table(int *table, int size);
--int ip_vs_set_state_timeout(int *table, int num, const char *const *names,
--			    const char *name, int to);
- void ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
- 			       const struct sk_buff *skb, int offset,
- 			       const char *msg);
-diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-index 8ae480715cea..ca880a3ad033 100644
---- a/net/netfilter/ipvs/ip_vs_proto.c
-+++ b/net/netfilter/ipvs/ip_vs_proto.c
-@@ -193,28 +193,6 @@ ip_vs_create_timeout_table(int *table, int size)
- }
- 
- 
--/*
-- *	Set timeout value for state specified by name
-- */
--int
--ip_vs_set_state_timeout(int *table, int num, const char *const *names,
--			const char *name, int to)
--{
--	int i;
--
--	if (!table || !name || !to)
--		return -EINVAL;
--
--	for (i = 0; i < num; i++) {
--		if (strcmp(names[i], name))
--			continue;
--		table[i] = to * HZ;
--		return 0;
--	}
--	return -ENOENT;
--}
--
+ net/netfilter/ipvs/ip_vs_sync.c  |  2 +-
+ 3 files changed, 1 insertion(+), 25 deletions(-)
