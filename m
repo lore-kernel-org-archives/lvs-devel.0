@@ -1,99 +1,74 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 1/1] ipvs: explicitly forbid ipv6 service/dest creation if ipv6 mod is disabled
-Date: Fri, 28 Apr 2017 12:11:54 +0200
-Message-ID: <20170428101154.9750-2-horms@verge.net.au>
-References: <20170428101154.9750-1-horms@verge.net.au>
+Subject: [PATCH 1/2] ipvs: remove unused function ip_vs_set_state_timeout
+Date: Fri, 28 Apr 2017 12:11:58 +0200
+Message-ID: <20170428101159.9810-2-horms@verge.net.au>
+References: <20170428101159.9810-1-horms@verge.net.au>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1493374320; bh=uHuXPm4fMrCB+6Cx2hl1avL/Hdul5F7xWzrK12EB4I4=;
+        t=1493374324; bh=S/k+keJlHh4YLG4ZmCwFGDE39iIPNBfK/KUsMWOBpLY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=B6tINYtVGJPUTYp8gQu35xI+l+QjRhcjG4Ihe9GRzC+dtcJZy/iUdjgZ9AghRpboK
-         /qFOCi4/mRfy3IunPJK9bw/Owx/SoE99QZdmmKM33Mb0FnwAgZHLv4kkuENCaO321x
-         pgDfEA29rFiDiOUnTO2K/5+wBCM4GwcNjsAaWCPg=
-In-Reply-To: <20170428101154.9750-1-horms@verge.net.au>
+        b=kWW/jr/Gtsy3530iE5oa2EwHfqea56ZB+y/I8azqDvrSr9qQPDgcYxIfmCzHC0j3k
+         NPKF0QFHM/pE0DVyc11NUqe3T0G8Gbcm0umsWPAajojWz2a6iQdp2H13vQ8rkAD09h
+         QP0T4l4twgl5Hab+tZxhNt6N5ELkLcmawt7dM1hI=
+In-Reply-To: <20170428101159.9810-1-horms@verge.net.au>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Aaron Conole <aconole@bytheb.org>, Simon Horman <horms@verge.net.au>
 
-From: Paolo Abeni <pabeni@redhat.com>
+From: Aaron Conole <aconole@bytheb.org>
 
-When creating a new ipvs service, ipv6 addresses are always accepted
-if CONFIG_IP_VS_IPV6 is enabled. On dest creation the address family
-is not explicitly checked.
+There are no in-tree callers of this function and it isn't exported.
 
-This allows the user-space to configure ipvs services even if the
-system is booted with ipv6.disable=1. On specific configuration, ipvs
-can try to call ipv6 routing code at setup time, causing the kernel to
-oops due to fib6_rules_ops being NULL.
-
-This change addresses the issue adding a check for the ipv6
-module being enabled while validating ipv6 service operations and
-adding the same validation for dest operations.
-
-According to git history, this issue is apparently present since
-the introduction of ipv6 support, and the oops can be triggered
-since commit 09571c7ae30865ad ("IPVS: Add function to determine
-if IPv6 address is local")
-
-Fixes: 09571c7ae30865ad ("IPVS: Add function to determine if IPv6 address is local")
-Signed-off-by: Paolo Abeni <pabeni@redhat.com>
-Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Aaron Conole <aconole@bytheb.org>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 22 +++++++++++++++++-----
- 1 file changed, 17 insertions(+), 5 deletions(-)
+ include/net/ip_vs.h              |  2 --
+ net/netfilter/ipvs/ip_vs_proto.c | 22 ----------------------
+ 2 files changed, 24 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 5aeb0dde6ccc..4d753beaac32 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3078,6 +3078,17 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
- 	return skb->len;
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 632082300e77..4f4f786255ef 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1349,8 +1349,6 @@ int ip_vs_protocol_init(void);
+ void ip_vs_protocol_cleanup(void);
+ void ip_vs_protocol_timeout_change(struct netns_ipvs *ipvs, int flags);
+ int *ip_vs_create_timeout_table(int *table, int size);
+-int ip_vs_set_state_timeout(int *table, int num, const char *const *names,
+-			    const char *name, int to);
+ void ip_vs_tcpudp_debug_packet(int af, struct ip_vs_protocol *pp,
+ 			       const struct sk_buff *skb, int offset,
+ 			       const char *msg);
+diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
+index 8ae480715cea..ca880a3ad033 100644
+--- a/net/netfilter/ipvs/ip_vs_proto.c
++++ b/net/netfilter/ipvs/ip_vs_proto.c
+@@ -193,28 +193,6 @@ ip_vs_create_timeout_table(int *table, int size)
  }
  
-+static bool ip_vs_is_af_valid(int af)
-+{
-+	if (af == AF_INET)
-+		return true;
-+#ifdef CONFIG_IP_VS_IPV6
-+	if (af == AF_INET6 && ipv6_mod_enabled())
-+		return true;
-+#endif
-+	return false;
-+}
-+
- static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
- 				    struct ip_vs_service_user_kern *usvc,
- 				    struct nlattr *nla, int full_entry,
-@@ -3104,11 +3115,7 @@ static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
- 	memset(usvc, 0, sizeof(*usvc));
  
- 	usvc->af = nla_get_u16(nla_af);
--#ifdef CONFIG_IP_VS_IPV6
--	if (usvc->af != AF_INET && usvc->af != AF_INET6)
--#else
--	if (usvc->af != AF_INET)
--#endif
-+	if (!ip_vs_is_af_valid(usvc->af))
- 		return -EAFNOSUPPORT;
- 
- 	if (nla_fwmark) {
-@@ -3610,6 +3617,11 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 		if (udest.af == 0)
- 			udest.af = svc->af;
- 
-+		if (!ip_vs_is_af_valid(udest.af)) {
-+			ret = -EAFNOSUPPORT;
-+			goto out;
-+		}
-+
- 		if (udest.af != svc->af && cmd != IPVS_CMD_DEL_DEST) {
- 			/* The synchronization protocol is incompatible
- 			 * with mixed family services
--- 
-2.12.2.816.g2cccc81164
-
+-/*
+- *	Set timeout value for state specified by name
+- */
+-int
+-ip_vs_set_state_timeout(int *table, int num, const char *const *names,
+-			const char *name, int to)
+-{
+-	int i;
+-
+-	if (!table || !name || !to)
+-		return -EINVAL;
+-
+-	for (i = 0; i < num; i++) {
+-		if (strcmp(names[i], name))
+-			continue;
+-		table[i] = to * HZ;
+-		return 0;
+-	}
+-	return -ENOENT;
+-}
+-
