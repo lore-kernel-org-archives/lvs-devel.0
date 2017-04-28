@@ -1,51 +1,99 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [GIT 0/1] IPVS Fixes for v4.11
-Date: Fri, 28 Apr 2017 11:58:15 +0200
-Message-ID: <20170428095816.6588-1-horms@verge.net.au>
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Subject: [PATCH 1/1] ipvs: explicitly forbid ipv6 service/dest creation if ipv6 mod is disabled
+Date: Fri, 28 Apr 2017 11:58:16 +0200
+Message-ID: <20170428095816.6588-2-horms@verge.net.au>
+References: <20170428095816.6588-1-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1493373520; bh=8La49DFEUxue/Wqy1hqJZZPbNOxGLX40VM2It42istM=;
-        h=From:To:Cc:Subject:Date:From;
-        b=JtHu/O/A57IbyZveKhQNnptsFsy6ypZQ6R4OHI7cuwQG/4HTeQu3STdKjK6JZ8lgp
-         sTcyC3J0eTHAOqPU64lpEu/Jay1G85PejsKGyWkMYFJRRKnQdGPuZ1nGBbeap75FZr
-         DOAdO6cWXAZi1L9uF+E9zOsExEINWVmgVoxAahUg=
-Sender: lvs-devel-owner@vger.kernel.org
+        t=1493373522; bh=uHuXPm4fMrCB+6Cx2hl1avL/Hdul5F7xWzrK12EB4I4=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=dHVSVERmLo0Ff1din823yrzC03qULD8TJ4sQOT7fWjrDzrlvFyMp7cLKgz549Rbmn
+         deFQQvsA+MXN+wgrr1jw6/l9p6oTKPBxQfplqUH/36SXIPdwql8GlqBctmw399RLwg
+         mY2lph0SWGQGEFn1dgrxAo905aYoWuLZBmo4LKg8=
+In-Reply-To: <20170428095816.6588-1-horms@verge.net.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@verge.net.au>
 
-Hi Pablo,
+From: Paolo Abeni <pabeni@redhat.com>
 
-please consider this fix to IPVS for v4.11.
-Or if it is too late for v4.11 please consider it for v4.12.
-I would also like it considered for stable.
+When creating a new ipvs service, ipv6 addresses are always accepted
+if CONFIG_IP_VS_IPV6 is enabled. On dest creation the address family
+is not explicitly checked.
 
-* Explicitly forbid ipv6 service/dest creation if ipv6 mod is disabled
-  to avoid oops caused by IPVS accesing IPv6 routing code in such
-  circumstances.
+This allows the user-space to configure ipvs services even if the
+system is booted with ipv6.disable=1. On specific configuration, ipvs
+can try to call ipv6 routing code at setup time, causing the kernel to
+oops due to fib6_rules_ops being NULL.
 
-The following changes since commit 1debdc8f9ebd07daf140e417b3841596911e0066:
+This change addresses the issue adding a check for the ipv6
+module being enabled while validating ipv6 service operations and
+adding the same validation for dest operations.
 
-  sh_eth: unmap DMA buffers when freeing rings (2017-04-18 22:04:32 -0400)
+According to git history, this issue is apparently present since
+the introduction of ipv6 support, and the oops can be triggered
+since commit 09571c7ae30865ad ("IPVS: Add function to determine
+if IPv6 address is local")
 
-are available in the git repository at:
-
-  http://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git ipvs-fixes-for-v4.11
-
-for you to fetch changes up to 8f8688b0d483ff06236808ab5fc8bc83c5eaa8d9:
-
-  ipvs: explicitly forbid ipv6 service/dest creation if ipv6 mod is disabled (2017-04-24 11:53:55 +0200)
-
-----------------------------------------------------------------
-Paolo Abeni (1):
-      ipvs: explicitly forbid ipv6 service/dest creation if ipv6 mod is disabled
-
+Fixes: 09571c7ae30865ad ("IPVS: Add function to determine if IPv6 address is local")
+Signed-off-by: Paolo Abeni <pabeni@redhat.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+---
  net/netfilter/ipvs/ip_vs_ctl.c | 22 +++++++++++++++++-----
  1 file changed, 17 insertions(+), 5 deletions(-)
 
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 5aeb0dde6ccc..4d753beaac32 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3078,6 +3078,17 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
+ 	return skb->len;
+ }
+ 
++static bool ip_vs_is_af_valid(int af)
++{
++	if (af == AF_INET)
++		return true;
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6 && ipv6_mod_enabled())
++		return true;
++#endif
++	return false;
++}
++
+ static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
+ 				    struct ip_vs_service_user_kern *usvc,
+ 				    struct nlattr *nla, int full_entry,
+@@ -3104,11 +3115,7 @@ static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
+ 	memset(usvc, 0, sizeof(*usvc));
+ 
+ 	usvc->af = nla_get_u16(nla_af);
+-#ifdef CONFIG_IP_VS_IPV6
+-	if (usvc->af != AF_INET && usvc->af != AF_INET6)
+-#else
+-	if (usvc->af != AF_INET)
+-#endif
++	if (!ip_vs_is_af_valid(usvc->af))
+ 		return -EAFNOSUPPORT;
+ 
+ 	if (nla_fwmark) {
+@@ -3610,6 +3617,11 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 		if (udest.af == 0)
+ 			udest.af = svc->af;
+ 
++		if (!ip_vs_is_af_valid(udest.af)) {
++			ret = -EAFNOSUPPORT;
++			goto out;
++		}
++
+ 		if (udest.af != svc->af && cmd != IPVS_CMD_DEL_DEST) {
+ 			/* The synchronization protocol is incompatible
+ 			 * with mixed family services
 -- 
 2.12.2.816.g2cccc81164
 
