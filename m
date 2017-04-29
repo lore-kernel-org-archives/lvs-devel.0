@@ -1,41 +1,105 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL v2 0/1] IPVS Fixes for v4.11
-Date: Fri, 28 Apr 2017 16:24:45 +0200
-Message-ID: <20170428142445.GA9408@salvia>
-References: <20170428101154.9750-1-horms@verge.net.au>
-Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170428101154.9750-1-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCH net] ipvs: SNAT packet replies only for NATed connections
+Date: Sat, 29 Apr 2017 20:33:09 +0300
+Message-ID: <20170429173309.16305-1-ja@ssi.bg>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, Nick Moriarty <nick.moriarty@york.ac.uk>
 
-On Fri, Apr 28, 2017 at 12:11:53PM +0200, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider this fix to IPVS for v4.11.
-> Or if it is too late for v4.11 please consider it for v4.12.
-> I would also like it considered for stable.
-> 
-> * Explicitly forbid ipv6 service/dest creation if ipv6 mod is disabled
->   to avoid oops caused by IPVS accesing IPv6 routing code in such
->   circumstances.
-> 
-> Change since v1 of pull request:
-> * Rebase on nf
-> * Correct URL; it should be ipvs not ipvs-next
-> 
-> 
-> The following changes since commit 9dd2ab609eef736d5639e0de1bcc2e71e714b28e:
-> 
->   netfilter: Wrong icmp6 checksum for ICMPV6_TIME_EXCEED in reverse SNATv6 path (2017-04-25 11:10:38 +0200)
-> 
-> are available in the git repository at:
-> 
->   http://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git ipvs-fixes-for-v4.11
+We do not check if packet from real server is for NAT
+connection before performing SNAT. This causes problems
+for setups that use DR/TUN and allow local clients to
+access the real server directly, for example:
 
-Pulled into nf, thanks Simon.
+- local client in director creates IPVS-DR/TUN connection
+CIP->VIP and the request packets are routed to RIP.
+Talks are finished but IPVS connection is not expired yet.
+
+- second local client creates non-IPVS connection CIP->RIP
+with same reply tuple RIP->CIP and when replies are received
+on LOCAL_IN we wrongly assign them for the first client
+connection because RIP->CIP matches the reply direction.
+As result, IPVS SNATs replies for non-IPVS connections.
+
+The problem is more visible to local UDP clients but in rare
+cases it can happen also for TCP or remote clients when the
+real server sends the reply traffic via the director.
+
+So, better to be more precise for the reply traffic.
+As replies are not expected for DR/TUN connections, better
+to not touch them.
+
+Reported-by: Nick Moriarty <nick.moriarty@york.ac.uk>
+Tested-by: Nick Moriarty <nick.moriarty@york.ac.uk>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+
+I know that 4.11 is to be released soon, I prefer this patch
+to linger in the net tree during the 4.12-rc cycle.
+
+ net/netfilter/ipvs/ip_vs_core.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index db40050..ee44ed5 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -849,10 +849,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ {
+ 	unsigned int verdict = NF_DROP;
+ 
+-	if (IP_VS_FWD_METHOD(cp) != 0) {
+-		pr_err("shouldn't reach here, because the box is on the "
+-		       "half connection in the tun/dr module.\n");
+-	}
++	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
++		goto ignore_cp;
+ 
+ 	/* Ensure the checksum is correct */
+ 	if (!skb_csum_unnecessary(skb) && ip_vs_checksum_complete(skb, ihl)) {
+@@ -886,6 +884,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ 		ip_vs_notrack(skb);
+ 	else
+ 		ip_vs_update_conntrack(skb, cp, 0);
++
++ignore_cp:
+ 	verdict = NF_ACCEPT;
+ 
+ out:
+@@ -1385,8 +1385,11 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
+ 	 */
+ 	cp = pp->conn_out_get(ipvs, af, skb, &iph);
+ 
+-	if (likely(cp))
++	if (likely(cp)) {
++		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
++			goto ignore_cp;
+ 		return handle_response(af, skb, pd, cp, &iph, hooknum);
++	}
+ 
+ 	/* Check for real-server-started requests */
+ 	if (atomic_read(&ipvs->conn_out_counter)) {
+@@ -1444,9 +1447,15 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
+ 			}
+ 		}
+ 	}
++
++out:
+ 	IP_VS_DBG_PKT(12, af, pp, skb, iph.off,
+ 		      "ip_vs_out: packet continues traversal as normal");
+ 	return NF_ACCEPT;
++
++ignore_cp:
++	__ip_vs_conn_put(cp);
++	goto out;
+ }
+ 
+ /*
+-- 
+2.9.3
+
