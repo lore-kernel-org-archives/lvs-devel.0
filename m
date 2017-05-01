@@ -1,11 +1,9 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH 3.2.88,3.4.113 -stable 1/3] ipvs: SNAT packet replies only for NATed connections
-Date: Mon,  1 May 2017 16:45:35 +0300
-Message-ID: <20170501134537.4715-2-ja@ssi.bg>
-References: <20170501134537.4715-1-ja@ssi.bg>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <20170501134537.4715-1-ja@ssi.bg>
-Sender: netfilter-devel-owner@vger.kernel.org
+Subject: [PATCH -stable 0/3] ipvs: patches for stable
+Date: Mon,  1 May 2017 16:45:34 +0300
+Message-ID: <20170501134537.4715-1-ja@ssi.bg>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,90 +11,14 @@ Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
 
-We do not check if packet from real server is for NAT
-connection before performing SNAT. This causes problems
-for setups that use DR/TUN and allow local clients to
-access the real server directly, for example:
+	Hello,
 
-- local client in director creates IPVS-DR/TUN connection
-CIP->VIP and the request packets are routed to RIP.
-Talks are finished but IPVS connection is not expired yet.
+The following patches are rediffs for "ipvs: SNAT packet replies
+only for NATed connections" for different stable kernels:
 
-- second local client creates non-IPVS connection CIP->RIP
-with same reply tuple RIP->CIP and when replies are received
-on LOCAL_IN we wrongly assign them for the first client
-connection because RIP->CIP matches the reply direction.
-As result, IPVS SNATs replies for non-IPVS connections.
+The official patch for the net tree (will come from Simon) works for:
+4.9.25, 4.10.13, 4.11, net tree
 
-The problem is more visible to local UDP clients but in rare
-cases it can happen also for TCP or remote clients when the
-real server sends the reply traffic via the director.
-
-So, better to be more precise for the reply traffic.
-As replies are not expected for DR/TUN connections, better
-to not touch them.
-
-Reported-by: Nick Moriarty <nick.moriarty@york.ac.uk>
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- net/netfilter/ipvs/ip_vs_core.c | 19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 197ed93..3152091 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -795,10 +795,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- {
- 	unsigned int verdict = NF_DROP;
- 
--	if (IP_VS_FWD_METHOD(cp) != 0) {
--		pr_err("shouldn't reach here, because the box is on the "
--		       "half connection in the tun/dr module.\n");
--	}
-+	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-+		goto ignore_cp;
- 
- 	/* Ensure the checksum is correct */
- 	if (!skb_csum_unnecessary(skb) && ip_vs_checksum_complete(skb, ihl)) {
-@@ -832,6 +830,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 		ip_vs_notrack(skb);
- 	else
- 		ip_vs_update_conntrack(skb, cp, 0);
-+
-+ignore_cp:
- 	verdict = NF_ACCEPT;
- 
- out:
-@@ -1178,8 +1178,11 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
- 	 */
- 	cp = pp->conn_out_get(af, skb, &iph, iph.len, 0);
- 
--	if (likely(cp))
-+	if (likely(cp)) {
-+		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-+			goto ignore_cp;
- 		return handle_response(af, skb, pd, cp, iph.len, hooknum);
-+	}
- 	if (sysctl_nat_icmp_send(net) &&
- 	    (pp->protocol == IPPROTO_TCP ||
- 	     pp->protocol == IPPROTO_UDP ||
-@@ -1225,9 +1228,15 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
- 			}
- 		}
- 	}
-+
-+out:
- 	IP_VS_DBG_PKT(12, af, pp, skb, 0,
- 		      "ip_vs_out: packet continues traversal as normal");
- 	return NF_ACCEPT;
-+
-+ignore_cp:
-+	__ip_vs_conn_put(cp);
-+	goto out;
- }
- 
- /*
--- 
-2.9.3
-
+Patch 1: 3.2.88, 3.4.113
+Patch 2: 3.10.105, 3.12.73, 3.16.43, 4.1.39
+Patch 3: 4.4.65
