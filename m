@@ -1,41 +1,56 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL 0/1] IPVS Fixes for v4.12
-Date: Mon, 15 May 2017 18:45:34 +0200
-Message-ID: <20170515164534.GA3918@salvia>
-References: <1494236923-8015-1-git-send-email-horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH] netfilter: Remove duplicated rcu_read_lock.
+Date: Wed, 24 May 2017 15:25:41 +0300 (EEST)
+Message-ID: <alpine.LFD.2.20.1705241508270.9575@ja.home.ssi.bg>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1494236923-8015-1-git-send-email-horms@verge.net.au>
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+To: Taehee Yoo <ap420073@gmail.com>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Mon, May 08, 2017 at 11:48:42AM +0200, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider this fix to IPVS for v4.12.
-> 
-> * It is a fix from Julian Anastasov to only SNAT SNAT packet replies only for
->   NATed connections
-> 
-> 
-> My understanding is that this fix is appropriate for 4.9.25, 4.10.13, 4.11
-> as well as the nf tree. Julian has separately posted backports for other
-> -stable kernels; please see:
-> 
-> * [PATCH 3.2.88,3.4.113 -stable 1/3] ipvs: SNAT packet replies only for
->         NATed connections
-> * [PATCH 3.10.105,3.12.73,3.16.43,4.1.39 -stable 2/3] ipvs: SNAT packet
->         replies only for NATed connections 
-> * [PATCH 4.4.65 -stable 3/3] ipvs: SNAT packet replies only for NATed
->         connections
 
-Pulled, thanks.
+	Hello,
 
-Please, resubmit your stable backport patches once this patch hits
-Linus' linux.git tree, Cc: stable@lists.kernel.org, I'll be glad to
-ack them.
+	The IPVS part from patch looks good but can be extended
+to also remove rcu_read_lock and rcu_read_unlock from:
+
+1. all app_conn_bind methods because ip_vs_bind_app() is called
+always under RCU lock from ip_vs_try_bind_dest() and ip_vs_conn_new().
+I.e. from sctp_app_conn_bind, tcp_app_conn_bind and udp_app_conn_bind.
+
+2. ip_vs_xmit.c, all locks
+
+	IMHO, using comments instead of locks is not needed, it is
+enough that the commit message explains why RCU locks are removed
+
+	More details:
+
+In IPVS we have the following contexts:
+- packet RX/TX: does not need locks because packets come from hooks
+- sync msg RX: backup server uses RCU locks while registering new conns
+- ip_vs_ctl.c: configuration get/set, RCU locks needed
+- xt_ipvs.c: It is a NF match
+
+As result, rcu_read_lock and rcu_read_unlock can be removed from:
+- ip_vs_core.c: all
+- ip_vs_ctl.c:
+	- from ip_vs_has_real_service
+	- all other places need the RCU locking
+- ip_vs_ftp.c: all
+- ip_vs_proto_sctp.c: all
+- ip_vs_proto_tcp.c: all
+- ip_vs_proto_udp.c: all
+- ip_vs_xmit.c: all (contains only packet processing)
+
+Locks should remain in:
+- ip_vs_conn.c
+- ip_vs_pe.c
+- ip_vs_sync.c
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
