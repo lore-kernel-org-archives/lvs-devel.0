@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCHv2 3.2.90,3.4.113 -stable 1/3] ipvs: SNAT packet replies only for NATed connections
-Date: Mon, 17 Jul 2017 09:59:51 +0300
-Message-ID: <20170717065953.23403-2-ja@ssi.bg>
+Subject: [PATCHv2 4.4.77 -stable 3/3] ipvs: SNAT packet replies only for NATed connections
+Date: Mon, 17 Jul 2017 09:59:53 +0300
+Message-ID: <20170717065953.23403-4-ja@ssi.bg>
 References: <20170717065953.23403-1-ja@ssi.bg>
 Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <20170717065953.23403-1-ja@ssi.bg>
@@ -43,10 +43,10 @@ Signed-off-by: Julian Anastasov <ja@ssi.bg>
  1 file changed, 14 insertions(+), 5 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 197ed93..3152091 100644
+index 4da5600..dd1649c 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -795,10 +795,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+@@ -845,10 +845,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
  {
  	unsigned int verdict = NF_DROP;
  
@@ -59,7 +59,7 @@ index 197ed93..3152091 100644
  
  	/* Ensure the checksum is correct */
  	if (!skb_csum_unnecessary(skb) && ip_vs_checksum_complete(skb, ihl)) {
-@@ -832,6 +830,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+@@ -882,6 +880,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
  		ip_vs_notrack(skb);
  	else
  		ip_vs_update_conntrack(skb, cp, 0);
@@ -68,26 +68,26 @@ index 197ed93..3152091 100644
  	verdict = NF_ACCEPT;
  
  out:
-@@ -1178,8 +1178,11 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+@@ -1242,8 +1242,11 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
  	 */
- 	cp = pp->conn_out_get(af, skb, &iph, iph.len, 0);
+ 	cp = pp->conn_out_get(ipvs, af, skb, &iph);
  
 -	if (likely(cp))
 +	if (likely(cp)) {
 +		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
 +			goto ignore_cp;
- 		return handle_response(af, skb, pd, cp, iph.len, hooknum);
+ 		return handle_response(af, skb, pd, cp, &iph, hooknum);
 +	}
- 	if (sysctl_nat_icmp_send(net) &&
+ 	if (sysctl_nat_icmp_send(ipvs) &&
  	    (pp->protocol == IPPROTO_TCP ||
  	     pp->protocol == IPPROTO_UDP ||
-@@ -1225,9 +1228,15 @@ ip_vs_out(unsigned int hooknum, struct sk_buff *skb, int af)
+@@ -1285,9 +1288,15 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
  			}
  		}
  	}
 +
 +out:
- 	IP_VS_DBG_PKT(12, af, pp, skb, 0,
+ 	IP_VS_DBG_PKT(12, af, pp, skb, iph.off,
  		      "ip_vs_out: packet continues traversal as normal");
  	return NF_ACCEPT;
 +
