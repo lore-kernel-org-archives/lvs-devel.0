@@ -1,102 +1,108 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCHv2 4.4.77 -stable 3/3] ipvs: SNAT packet replies only for NATed connections
-Date: Mon, 17 Jul 2017 09:59:53 +0300
-Message-ID: <20170717065953.23403-4-ja@ssi.bg>
-References: <20170717065953.23403-1-ja@ssi.bg>
+From: =?UTF-8?B?5p2O5pil?= <pickup112@gmail.com>
+Subject: LVS TCP package fragment
+Date: Mon, 17 Jul 2017 22:04:52 +0800
+Message-ID: <CAGpjB9LEJrVUmdhe-mV+y7VaXwinyHCN0w9Y36gQEYy34mpWpg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20170717065953.23403-1-ja@ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to
+         :content-transfer-encoding;
+        bh=UdfVGm6WlyRNBLV1INdXV9tLNICtAacKF1wzzI11DP8=;
+        b=ZL/Eu806EPSSBgsbe6GyXu6Bssb49s9a8oYR3F3d0GXOMGmy52kWN8N2591VItzFEe
+         wBcesuMIIBKcjfHeZoujRLLZ7POEbRWjTtq/CWICoy95eIw2bWplw6JZWmScs9ELVdC2
+         WaH4Cn5RBqQEU66V6eR+mERnEwKgDR7WsJNF9LBDJAeFjOX8S4peWLDHDEcJT5GHT3S0
+         rNBZyBsG+OSRXbtjU34mXRXhELG/vRPDinQUBicdbkPZnzrSu+3T0z/mflFrR/vCgcRQ
+         4K6KaXLCtxiqNAIjRy461hnIYYLprUm9qqyd+q08GXH1uIjNvPIU/3FoHBlVYDFFLRvB
+         dk1g==
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="windows-1252"
+To: lvs-devel@vger.kernel.org
 
-We do not check if packet from real server is for NAT
-connection before performing SNAT. This causes problems
-for setups that use DR/TUN and allow local clients to
-access the real server directly, for example:
+I have meet a very strange problem in my LVS environment.
 
-- local client in director creates IPVS-DR/TUN connection
-CIP->VIP and the request packets are routed to RIP.
-Talks are finished but IPVS connection is not expired yet.
 
-- second local client creates non-IPVS connection CIP->RIP
-with same reply tuple RIP->CIP and when replies are received
-on LOCAL_IN we wrongly assign them for the first client
-connection because RIP->CIP matches the reply direction.
-As result, IPVS SNATs replies for non-IPVS connections.
+when I connect to mysqld real server, mysql client is ok.
+when I connect to LVS to access to the real server, mysql client report err=
+or.
 
-The problem is more visible to local UDP clients but in rare
-cases it can happen also for TCP or remote clients when the
-real server sends the reply traffic via the director.
 
-So, better to be more precise for the reply traffic.
-As replies are not expected for DR/TUN connections, better
-to not touch them.
+I config the LVS as DR mode like this:
+```
+ipvsadm -A -t 158.222.165.185:3306 -s wrr
+ipvsadm -a -t 158.222.165.185:3306 -r 158.222.165.125:3306 -g -w 100
+```
 
-Reported-by: Nick Moriarty <nick.moriarty@york.ac.uk>
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- net/netfilter/ipvs/ip_vs_core.c | 19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 4da5600..dd1649c 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -845,10 +845,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- {
- 	unsigned int verdict = NF_DROP;
- 
--	if (IP_VS_FWD_METHOD(cp) != 0) {
--		pr_err("shouldn't reach here, because the box is on the "
--		       "half connection in the tun/dr module.\n");
--	}
-+	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-+		goto ignore_cp;
- 
- 	/* Ensure the checksum is correct */
- 	if (!skb_csum_unnecessary(skb) && ip_vs_checksum_complete(skb, ihl)) {
-@@ -882,6 +880,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 		ip_vs_notrack(skb);
- 	else
- 		ip_vs_update_conntrack(skb, cp, 0);
-+
-+ignore_cp:
- 	verdict = NF_ACCEPT;
- 
- out:
-@@ -1242,8 +1242,11 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
- 	 */
- 	cp = pp->conn_out_get(ipvs, af, skb, &iph);
- 
--	if (likely(cp))
-+	if (likely(cp)) {
-+		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-+			goto ignore_cp;
- 		return handle_response(af, skb, pd, cp, &iph, hooknum);
-+	}
- 	if (sysctl_nat_icmp_send(ipvs) &&
- 	    (pp->protocol == IPPROTO_TCP ||
- 	     pp->protocol == IPPROTO_UDP ||
-@@ -1285,9 +1288,15 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
- 			}
- 		}
- 	}
-+
-+out:
- 	IP_VS_DBG_PKT(12, af, pp, skb, iph.off,
- 		      "ip_vs_out: packet continues traversal as normal");
- 	return NF_ACCEPT;
-+
-+ignore_cp:
-+	__ip_vs_conn_put(cp);
-+	goto out;
- }
- 
- /*
--- 
-2.9.3
 
+And I have tcpdump the package on the LVS and real server.
+Sync/Sync+ack/ack of Three-way Handshake is ok=EF=BC=8Cand four-way handsha=
+ke is ok.
+But when mysql client send the login request (user/password) package,
+the package fragment.
+
+
+As show as follows,The LVS received the package and send it the real
+server correct(length 252).
+But real server get a fragment of the package (length 248) and a error
+chksum. It have missed the 4 bytes fragment of the package.
+
+
+Here is the package I have ```tcpdump -lnnneeevvv``` on the LVS.
+* 9c:dc:71:4d:49:d0 =3D 158.222.165.126 is the client
+* 24:8a:07:64:7f:21 =3D 158.222.165.185 is the VIP and the director
+* 24:8a:07:64:56:41 =3D 158.222.165.185 is the real server
+
+
+LVS package:
+```
+19:12:22.229356 9c:dc:71:4d:49:d0 > 24:8a:07:64:7f:21, ethertype IPv4
+(0x0800), length 252: (tos 0x8, ttl 64, id 56669, offset 0, flags
+[DF], proto TCP (6), l
+    158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
+0x5d97 (correct), seq 0:198, ack 83, win 115, length 198
+19:12:22.229367 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
+(0x0800), length 252: (tos 0x8, ttl 64, id 56669, offset 0, flags
+[DF], proto TCP (6), l
+    158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
+0x5d97 (correct), seq 0:198, ack 83, win 115, length 198
+```
+
+
+real server packages:
+```
+19:12:21.803118 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
+(0x0800), length 248: (tos 0x8, ttl 64, id 56668, offset 0, flags
+[DF], proto TCP (6), l
+    158.222.165.126.37691 > 158.222.165.185.3306: Flags [.], cksum
+0x5d97 (incorrect -> 0x4883), seq 1:195, ack 83, win 115, length 194
+19:12:21.803126 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
+(0x0800), length 60: (tos 0x8, ttl 64, id 56669, offset 0, flags [DF],
+proto TCP (6), le
+    158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
+0x7973 (incorrect -> 0x5fb3), seq 199, ack 83, win 115, length 0
+```
+
+
+
+* we run the test on rhel6.7 with ipvsadm v1.26 2008/5/15 (compiled
+with popt and IPVS v1.2.1)
+* our network engineer have mirror the port of LVS and report that the
+package is fragmented from LVS director.
+* we have replace the broadcom network card to mellanox netword card,
+but it still the same problem
+
+
+And I have not config net.ipv4.ip_forward =3D 1 accord to
+http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.LVS-DR.html
+But if I config "net.ipv4.ip_forward =3D 1 ", there are no package
+fragment. MySQL connect to mysqld (throught LVS) successfully.
+
+
+Have any one meet the problem, do you resolve it ? Or any one can help
+to fix it.
+
+--=20
+pickup.li
