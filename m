@@ -1,79 +1,24 @@
-From: Taehee Yoo <ap420073@gmail.com>
-Subject: Re: [PATCH] netfilter: Remove duplicated rcu_read_lock.
-Date: Tue, 30 May 2017 00:12:04 +0900
-Message-ID: <CAMArcTXviyp7acsv+eRYW7yGseWj+THLQ4GPg04NJieTd3SegA@mail.gmail.com>
-References: <alpine.LFD.2.20.1705241508270.9575@ja.home.ssi.bg>
-Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:in-reply-to:references:from:date:message-id:subject:to
-         :cc;
-        bh=sKwVXmykEQrQtl70KNbVWbbXmGM8xNx/3ZGZ9fxg/7o=;
-        b=MkYk9cjo/nloPWC/i5OoqQXB1x9n7xblI1P9H9/atu1fEcqTTYx5BUxsPWLv7F9goe
-         zUfoiR6+Dss38CrA3rhniqKfs6Mnr8dyJ091edkO9w1YCku7Zk69iGwWx47bNoYyeNCq
-         ZC4ydHym4/DsVEV5sWQOy/h3jJ7F1hZjLUG8dJJgxExcfYhWu+lfb7ZvS900KaPOprQy
-         oGvajdzejcADmYyjMnnm/uy8yXjQTM0kAmkHaEIOQBPz/ZDyb3QUfhm5qIkyZ/sBVgt8
-         gpYFnjJwMvNCTnZy5chtWl8PAHS6/S2PK610imXRm+5AgEfTHRDC7f4d6yE3G3RhPzqW
-         dCDg==
-In-Reply-To: <alpine.LFD.2.20.1705241508270.9575@ja.home.ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [PATCHv2 -stable 0/3] ipvs: patches for stable
+Date: Mon, 17 Jul 2017 09:59:50 +0300
+Message-ID: <20170717065953.23403-1-ja@ssi.bg>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, Netfilter Developer Mailing List <netfilter-devel@vger.kernel.org>, lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
 
-2017-05-24 21:25 GMT+09:00 Julian Anastasov <ja@ssi.bg>:
->
->         Hello,
->
->         The IPVS part from patch looks good but can be extended
-> to also remove rcu_read_lock and rcu_read_unlock from:
->
-> 1. all app_conn_bind methods because ip_vs_bind_app() is called
-> always under RCU lock from ip_vs_try_bind_dest() and ip_vs_conn_new().
-> I.e. from sctp_app_conn_bind, tcp_app_conn_bind and udp_app_conn_bind.
->
-> 2. ip_vs_xmit.c, all locks
->
->         IMHO, using comments instead of locks is not needed, it is
-> enough that the commit message explains why RCU locks are removed
->
-I agree that. so I'll remove comments in v2 patch.
+	Hello,
 
->         More details:
->
-> In IPVS we have the following contexts:
-> - packet RX/TX: does not need locks because packets come from hooks
-> - sync msg RX: backup server uses RCU locks while registering new conns
-> - ip_vs_ctl.c: configuration get/set, RCU locks needed
-> - xt_ipvs.c: It is a NF match
->
-This comments are very helpful for me.
+The following patches are backports for commit 3c5ab3f395d6
+("ipvs: SNAT packet replies only for NATed connections")
+which comes with 4.12.
 
-> As result, rcu_read_lock and rcu_read_unlock can be removed from:
-> - ip_vs_core.c: all
-> - ip_vs_ctl.c:
->         - from ip_vs_has_real_service
->         - all other places need the RCU locking
-> - ip_vs_ftp.c: all
-> - ip_vs_proto_sctp.c: all
-> - ip_vs_proto_tcp.c: all
-> - ip_vs_proto_udp.c: all
-> - ip_vs_xmit.c: all (contains only packet processing)
->
-> Locks should remain in:
-> - ip_vs_conn.c
-> - ip_vs_pe.c
-> - ip_vs_sync.c
->
-> Regards
->
-> --
-> Julian Anastasov <ja@ssi.bg>
+Patch 1: 3.2.90, 3.4.113
+Patch 2: 3.10.107, 3.16.45, 4.1.42
+Patch 3: 4.4.77
 
-Thank you so much for helpful review!
-I'll make a v2 patch included your suggestion.
-
-Thanks a lot!
+The original commit can be directly applied to 4.9.38 and 4.11.11
