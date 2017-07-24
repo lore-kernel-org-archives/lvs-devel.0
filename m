@@ -1,7 +1,7 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
+From: Willy Tarreau <w@1wt.eu>
 Subject: Re: [3.10.y,3.16.y,4.1.y,netfilter/ipvs] please, apply 3c5ab3f395d6
-Date: Mon, 24 Jul 2017 12:00:35 +0200
-Message-ID: <20170724100035.GA3879@salvia>
+Date: Mon, 24 Jul 2017 13:51:37 +0200
+Message-ID: <20170724115137.GB31085@1wt.eu>
 References: <20170724095805.GA3807@salvia>
 Mime-Version: 1.0
 Return-path: <stable-owner@vger.kernel.org>
@@ -11,8 +11,10 @@ Sender: stable-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Willy Tarreau <w@1wt.eu>, Ben Hutchings <ben@decadent.org.uk>, "Levin, Alexander (Sasha Levin)" <alexander.levin@verizon.com>
-Cc: stable@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Ben Hutchings <ben@decadent.org.uk>, "Levin, Alexander (Sasha Levin)" <alexander.levin@verizon.com>, stable@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+
+Hi Pablo!
 
 On Mon, Jul 24, 2017 at 11:58:05AM +0200, Pablo Neira Ayuso wrote:
 > Hi Willy, Ben & Sasha,
@@ -26,13 +28,11 @@ On Mon, Jul 24, 2017 at 11:58:05AM +0200, Pablo Neira Ayuso wrote:
 >     ipvs: SNAT packet replies only for NATed connections
 > 
 > to stable 3.2.y.
-            ^^^^^
-This is obviously wrong, this should be instead: 3.10.y, 3.16.y and
-4.1.y.
-
+> 
 > Julian made a backport for you, that is available at Netfilter's
 > patchwork:
 > 
 >         http://patchwork.ozlabs.org/patch/789258/
-> 
-> Thanks!
+
+Now queued for 3.10.107, thanks!
+Willy
