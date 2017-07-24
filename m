@@ -1,29 +1,32 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Paolo Schiro <paolo@schiro.it>
 Subject: Re: LVS TCP package fragment
-Date: Wed, 19 Jul 2017 10:25:17 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1707191016360.2130@ja.home.ssi.bg>
+Date: Mon, 24 Jul 2017 10:47:47 +0200
+Message-ID: <a308974f-9f14-0bd8-1d60-1032def3822e@schiro.it>
 References: <CAGpjB9LEJrVUmdhe-mV+y7VaXwinyHCN0w9Y36gQEYy34mpWpg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; BOUNDARY="-1463811672-1162392699-1500449117=:2130"
+Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=mailserver.it;
+        s=mailsrv; t=1500886068;
+        bh=u9wV6RREmFLvCrqeVf8ZlRDZ1YLNiKalIoYECDQiURo=;
+        h=Subject:To:References:From:Date:In-Reply-To;
+        b=MllrSeyozHulI9OKje6zpqQGcbaJMn3DKdDXAtDJoNp+gpeels7uzpn90EIiSVD9M
+         D4SJkaOqzVbX5TUpJLzx9GT5boK1MRMOMm4be/g4J6lTpPfDzfnXaZAHeynXXfZC1b
+         NYPDpDK11uFmy9vq4xhhQ6bLwOlVNBm8uCA05ybSTAvi3CbY4X3sShAjQFmXG3fVqU
+         Hws1R7ITVziLhdUlKGg2bGyjGt++ZZ5wOv6Z1W3ttGeo9ZRL9Mcd5tdgE7WOJLf0ss
+         rMf00x6BWemUBENSoEKMOO2q57HX4fYY32SSgBsCu9kwrkUkhF3VbxZzSONz/+Ajqz
+         FbZ7sbO1fkotA==
 In-Reply-To: <CAGpjB9LEJrVUmdhe-mV+y7VaXwinyHCN0w9Y36gQEYy34mpWpg@mail.gmail.com>
+Content-Language: it-IT
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: =?UTF-8?B?5p2O5pil?= <pickup112@gmail.com>
-Cc: lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"; format="flowed"
+To: =?UTF-8?B?5p2O5pil?= <pickup112@gmail.com>, lvs-devel@vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Checksum problems are usally caused by ethernet offloads.
+try play with ethtool -k -K.
 
----1463811672-1162392699-1500449117=:2130
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-
-
-	Hello,
-
-On Mon, 17 Jul 2017, 李春 wrote:
-
+Il 17/07/2017 16:04, 李春 ha scritto:
 > I have meet a very strange problem in my LVS environment.
 > 
 > 
@@ -62,12 +65,12 @@ On Mon, 17 Jul 2017, 李春 wrote:
 > 19:12:22.229356 9c:dc:71:4d:49:d0 > 24:8a:07:64:7f:21, ethertype IPv4
 > (0x0800), length 252: (tos 0x8, ttl 64, id 56669, offset 0, flags
 > [DF], proto TCP (6), l
->     158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
+>      158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
 > 0x5d97 (correct), seq 0:198, ack 83, win 115, length 198
 > 19:12:22.229367 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
 > (0x0800), length 252: (tos 0x8, ttl 64, id 56669, offset 0, flags
 > [DF], proto TCP (6), l
->     158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
+>      158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
 > 0x5d97 (correct), seq 0:198, ack 83, win 115, length 198
 > ```
 > 
@@ -77,12 +80,12 @@ On Mon, 17 Jul 2017, 李春 wrote:
 > 19:12:21.803118 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
 > (0x0800), length 248: (tos 0x8, ttl 64, id 56668, offset 0, flags
 > [DF], proto TCP (6), l
->     158.222.165.126.37691 > 158.222.165.185.3306: Flags [.], cksum
+>      158.222.165.126.37691 > 158.222.165.185.3306: Flags [.], cksum
 > 0x5d97 (incorrect -> 0x4883), seq 1:195, ack 83, win 115, length 194
 > 19:12:21.803126 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
 > (0x0800), length 60: (tos 0x8, ttl 64, id 56669, offset 0, flags [DF],
 > proto TCP (6), le
->     158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
+>      158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
 > 0x7973 (incorrect -> 0x5fb3), seq 199, ack 83, win 115, length 0
 > ```
 > 
@@ -104,20 +107,5 @@ On Mon, 17 Jul 2017, 李春 wrote:
 > 
 > Have any one meet the problem, do you resolve it ? Or any one can help
 > to fix it.
+> 
 
-	There can be a problem with fragments but your
-tcpdump output does not show such fragments, even in
-previous emails. According to 'man tcpdump':
-
-Fragmented Internet datagrams are printed as
-	(frag id:size@offset+)
-	(frag id:size@offset)
-
-	What exactly is the kernel version (uname -a) ?
-You can use such minimum options: tcpdump -s0 -lennn -vvv ...
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
----1463811672-1162392699-1500449117=:2130--
