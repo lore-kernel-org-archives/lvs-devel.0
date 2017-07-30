@@ -1,37 +1,56 @@
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Subject: Re: [4.4.y,netfilter/ipvs] please, apply 3c5ab3f395d6
-Date: Mon, 24 Jul 2017 16:36:15 -0700
-Message-ID: <20170724233615.GB4315@kroah.com>
-References: <20170724095940.GA3853@salvia>
-Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170724095940.GA3853@salvia>
-Sender: netfilter-devel-owner@vger.kernel.org
+From: Arvind Yadav <arvind.yadav.cs@gmail.com>
+Subject: [PATCH] netfilter: ipvs: Fix space before '[' error.
+Date: Sun, 30 Jul 2017 12:29:25 +0530
+Message-ID: <3b2fae111371a2abd12d6838e825452a3c9bd4fa.1501397734.git.arvind.yadav.cs@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=PT9nePDPCVJkhTchqgrSkGP3FR44Gpp06mlPX6BTlEk=;
+        b=Jl7IUxZ3m4wTcZ1RA4ZQyjxc4UzV2bEsa5OBvBS4oFZoduYlNaSSfGK0nf1uYfKSQv
+         MZiLrjaXS66XtaqLEqEq78u1cYXMlfEucHLHNvSOEs/TRQnTqkvkZQl4xwdvYd40qoIb
+         Eordw8sUr14JRg0GvYGd1DeVBtp5vOyw4VspuOgdrcxznKCF1AzmPrKqmrmKlkKAWIHi
+         jCxcc578nsyusp5yPrMw2g4mv1re4wXAqA9B4iaE/MQddekWTZt+5ltwS99HodkXQUB/
+         /3u1EGfBOZA03c72PNAvoFzw7SydrlL6ILz45BZyOHCc/h9BHF5yKT1mrfE2+fZeFEwx
+         5Oeg==
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: stable@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.ne
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-On Mon, Jul 24, 2017 at 11:59:40AM +0200, Pablo Neira Ayuso wrote:
-> Hi Greg,
-> 
-> Please, apply this commit:
-> 
-> commit 3c5ab3f395d66a9e4e937fcfdf6ebc63894f028b
-> Author: Julian Anastasov <ja@ssi.bg>
-> Date:   Sat Apr 29 20:33:09 2017 +0300
-> 
->     ipvs: SNAT packet replies only for NATed connections
-> 
-> to stable 4.4.y.
-> 
-> Julian made a backport for you, in case cherry-pick doesn't work, that
-> is available at Netfilter's patchwork:
-> 
->         http://patchwork.ozlabs.org/patch/789260/
+Fix checkpatch.pl error:
+ERROR: space prohibited before open square bracket '['.
 
-Thanks for that, I've also applied the original to the 4.9-stable tree.
+Signed-off-by: Arvind Yadav <arvind.yadav.cs@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_proto_tcp.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-greg k-h
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 12dc8d5..4fc17fc 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -439,7 +439,7 @@ static bool tcp_state_active(int state)
+ 	return tcp_state_active_table[state];
+ }
+ 
+-static struct tcp_states_t tcp_states [] = {
++static struct tcp_states_t tcp_states[] = {
+ /*	INPUT */
+ /*        sNO, sES, sSS, sSR, sFW, sTW, sCL, sCW, sLA, sLI, sSA	*/
+ /*syn*/ {{sSR, sES, sES, sSR, sSR, sSR, sSR, sSR, sSR, sSR, sSR }},
+@@ -462,7 +462,7 @@ static struct tcp_states_t tcp_states [] = {
+ /*rst*/ {{sCL, sCL, sCL, sSR, sCL, sCL, sCL, sCL, sLA, sLI, sCL }},
+ };
+ 
+-static struct tcp_states_t tcp_states_dos [] = {
++static struct tcp_states_t tcp_states_dos[] = {
+ /*	INPUT */
+ /*        sNO, sES, sSS, sSR, sFW, sTW, sCL, sCW, sLA, sLI, sSA	*/
+ /*syn*/ {{sSR, sES, sES, sSR, sSR, sSR, sSR, sSR, sSR, sSR, sSA }},
+-- 
+2.7.4
+
