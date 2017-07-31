@@ -1,53 +1,67 @@
-From: Emanuele Rocca <ema@wikimedia.org>
-Subject: [PATCH] ipvsadm: check if a virtual service exists before attempting removal
-Date: Mon, 31 Jul 2017 14:35:55 +0200
-Message-ID: <20170731123555.10639-1-ema@wikimedia.org>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=wikimedia.org; s=google;
-        h=from:to:cc:subject:date:message-id;
-        bh=u6n/ijef8nrAqMRfgXfZX/QYf1yTc38/q9yhRcmxyDQ=;
-        b=UtlYZOmlFkcvU+sNYSRq4/xqh/2jqtqjGxuKnB2k8UE3ImQLlppPUoIGQT2Ifk+Vb9
-         szay4FOMfQGn6wQ9O/ByvUQ86Xv7ZxTJlWKkaU+/6diA0JWtYjJ/EB8N8tuYGXhd1vDG
-         nzVS8X4c2+77i4lGArd43Chs86mROMCVS5nAE=
-Sender: lvs-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
+From: "Levin, Alexander (Sasha Levin)" <alexander.levin@verizon.com>
+Subject: Re: [3.10.y,3.16.y,4.1.y,netfilter/ipvs] please, apply 3c5ab3f395d6
+Date: Mon, 31 Jul 2017 13:22:03 +0000
+Message-ID: <20170731132409.bnf7ai3ssvp4eaay@sasha-lappy>
+References: <20170724095805.GA3807@salvia>
+Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Emanuele Rocca <ema@wikimedia.org>
+Content-Transfer-Encoding: quoted-printable
+Return-path: <stable-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=verizon.com; i=@verizon.com; q=dns/txt; s=corp;
+  t=1501507408; x=1533043408;
+  h=from:to:cc:subject:date:message-id:references:
+   in-reply-to:content-id:content-transfer-encoding:
+   mime-version;
+  bh=5NlMS04VrVw5SeaMVXhDJxymj73eXZPANB3RQyymB5I=;
+  b=E0+g4+ueT85O6S9tL13CqUWfBsIIuUPRcpi3dOCgBx3+10zzmJqzV4/r
+   /f8tbGTV20axe8z4DYxWfJBL/A5ytflRAO9+F3OaxOs4U6I04tkuJbCQh
+   S5T7BLFQbDWi6Pv9ayf2u1QQcpGz14vZpjNtvnmf22cS0/nZwMz/0frH5
+   s=;
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=verizon.com; i=@verizon.com; q=dns/txt; s=corp;
+  t=1501507329; x=1533043329;
+  h=from:to:cc:subject:date:message-id:references:
+   in-reply-to:content-id:content-transfer-encoding:
+   mime-version;
+  bh=5NlMS04VrVw5SeaMVXhDJxymj73eXZPANB3RQyymB5I=;
+  b=o2PTDM1AB4shA0jkkzvtAIu+ygKbqF6TiEC2pBHl/u6oFJ3OueVUgis1
+   nDJ0pMZ59VckhsoB/jhrmGacYhg0bAmztBPlepMvoXclpAPISL9CsB5+2
+   g/Z00865LPwGSviX+1usGhtxrX4e14Tt0fpwarRlpYm0j3gy5eVnrYwjx
+   A=;
+In-Reply-To: <20170724095805.GA3807@salvia>
+Content-Language: en-US
+Content-ID: <0E61505E43F92C48BBA62CC162BECF4B@vzwcorp.com>
+Sender: stable-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Willy Tarreau <w@1wt.eu>, Ben Hutchings <ben@decadent.org.uk>, "stable@vger.kernel.org" <stable@vger.kernel.org>, Julian Anastasov <ja@ssi.bg>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, Simon Horman <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
 
-Removing a non-existing service results in a confusing "Memory
-allocation problem" error message:
+On Mon, Jul 24, 2017 at 11:58:05AM +0200, Pablo Neira Ayuso wrote:
+>Hi Willy, Ben & Sasha,
+>
+>Please, apply this commit:
+>
+>commit 3c5ab3f395d66a9e4e937fcfdf6ebc63894f028b
+>Author: Julian Anastasov <ja@ssi.bg>
+>Date:   Sat Apr 29 20:33:09 2017 +0300
+>
+>    ipvs: SNAT packet replies only for NATed connections
+>
+>to stable 3.2.y.
+>
+>Julian made a backport for you, that is available at Netfilter's
+>patchwork:
+>
+>        https://urldefense.proofpoint.com/v2/url?u=3Dhttp-3A__patchwork.oz=
+labs.org_patch_789258_&d=3DDwIBAg&c=3DudBTRvFvXC5Dhqg7UHpJlPps3mZ3LRxpb6__0=
+PomBTQ&r=3DbUtaaC9mlBij4OjEG_D-KMy3t3Ka3bY06suGz7ewY7g&m=3D8r6j7k5Ngp3u1KUX=
+59uzAOt9dYNCQIS7iOZrIRS1icQ&s=3D7LrBh53VONaL-HCc-lGJeepxYWC4NG09UtvVSU8Fyrc=
+&e=3D
 
-        # ipvsadm -D -t example.org:80
-        Memory allocation problem
+Applied for 4.1, thanks!
 
-Check if the given service exists before attempting removal. Inform the
-user if the service is not defined.
+--=20
 
-Signed-off-by: Emanuele Rocca <ema@wikimedia.org>
----
- ipvsadm.c | 5 +++++
- 1 file changed, 5 insertions(+)
-
-diff --git a/ipvsadm.c b/ipvsadm.c
-index 1a28d72..f958b11 100644
---- a/ipvsadm.c
-+++ b/ipvsadm.c
-@@ -942,6 +942,11 @@ static int process_options(int argc, char **argv, int reading_stdin)
- 		break;
- 
- 	case CMD_DEL:
-+		if (!(ipvs_get_service(ce.svc.fwmark, ce.svc.af, ce.svc.protocol,
-+						   ce.svc.addr, ce.svc.port))) {
-+			fprintf(stderr, "No such service\n");
-+			exit(1);
-+		}
- 		result = ipvs_del_service(&ce.svc);
- 		break;
- 
--- 
-2.13.3
-
+Thanks,
+Sasha=
