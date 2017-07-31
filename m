@@ -1,29 +1,53 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] netfilter: ipvs: Fix space before '[' error.
-Date: Mon, 31 Jul 2017 10:15:49 +0200
-Message-ID: <20170731081549.GC17242@verge.net.au>
-References: <3b2fae111371a2abd12d6838e825452a3c9bd4fa.1501397734.git.arvind.yadav.cs@gmail.com>
-Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1501488967; bh=SwolE+7zCi7LrOYjLK+AV/Y6j4W3ZxnMVXy0uihA8Pw=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=FE/MVM5x8cSijrOKpyFdOpra1dYrUdbFgNY04WvFrfwZtiRlzCPCplkI6xHvtOMBb
-         73CcgGk9DZYTpQGpZaLsb0PW3rfLAp5OUJDPdCaE08rezG3hW5i2Z7hGGWeDvQQcp+
-         9JHy6tOvDH5QQstiGpn0JQ5nn4aqHw4QrHW7fN8E=
-Content-Disposition: inline
-In-Reply-To: <3b2fae111371a2abd12d6838e825452a3c9bd4fa.1501397734.git.arvind.yadav.cs@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Emanuele Rocca <ema@wikimedia.org>
+Subject: [PATCH] ipvsadm: check if a virtual service exists before attempting removal
+Date: Mon, 31 Jul 2017 14:35:55 +0200
+Message-ID: <20170731123555.10639-1-ema@wikimedia.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=wikimedia.org; s=google;
+        h=from:to:cc:subject:date:message-id;
+        bh=u6n/ijef8nrAqMRfgXfZX/QYf1yTc38/q9yhRcmxyDQ=;
+        b=UtlYZOmlFkcvU+sNYSRq4/xqh/2jqtqjGxuKnB2k8UE3ImQLlppPUoIGQT2Ifk+Vb9
+         szay4FOMfQGn6wQ9O/ByvUQ86Xv7ZxTJlWKkaU+/6diA0JWtYjJ/EB8N8tuYGXhd1vDG
+         nzVS8X4c2+77i4lGArd43Chs86mROMCVS5nAE=
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Arvind Yadav <arvind.yadav.cs@gmail.com>
-Cc: wensong@linux-vs.org, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.ne, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Emanuele Rocca <ema@wikimedia.org>
 
-On Sun, Jul 30, 2017 at 12:29:25PM +0530, Arvind Yadav wrote:
-> Fix checkpatch.pl error:
-> ERROR: space prohibited before open square bracket '['.
-> 
-> Signed-off-by: Arvind Yadav <arvind.yadav.cs@gmail.com>
+Removing a non-existing service results in a confusing "Memory
+allocation problem" error message:
 
-Thanks, applied for v4.14.
+        # ipvsadm -D -t example.org:80
+        Memory allocation problem
+
+Check if the given service exists before attempting removal. Inform the
+user if the service is not defined.
+
+Signed-off-by: Emanuele Rocca <ema@wikimedia.org>
+---
+ ipvsadm.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/ipvsadm.c b/ipvsadm.c
+index 1a28d72..f958b11 100644
+--- a/ipvsadm.c
++++ b/ipvsadm.c
+@@ -942,6 +942,11 @@ static int process_options(int argc, char **argv, int reading_stdin)
+ 		break;
+ 
+ 	case CMD_DEL:
++		if (!(ipvs_get_service(ce.svc.fwmark, ce.svc.af, ce.svc.protocol,
++						   ce.svc.addr, ce.svc.port))) {
++			fprintf(stderr, "No such service\n");
++			exit(1);
++		}
+ 		result = ipvs_del_service(&ce.svc);
+ 		break;
+ 
+-- 
+2.13.3
+
