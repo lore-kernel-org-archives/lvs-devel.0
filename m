@@ -1,60 +1,38 @@
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH] ipvsadm: catch the original errno from netlink answer
-Date: Fri, 11 Aug 2017 15:50:47 +0200
-Message-ID: <20170811155047.46cb6b67@redhat.com>
-References: <20170805113828.9951-1-ja@ssi.bg>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20170805113828.9951-1-ja@ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+From: Xin Long <lucien.xin@gmail.com>
+Subject: [PATCH net 0/2] netfilter: ipvs: some fixes in sctp_conn_schedule
+Date: Sun, 20 Aug 2017 13:38:06 +0800
+Message-ID: <cover.1503207076.git.lucien.xin@gmail.com>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=Z/ULjR4vd5Y3m8DDb5j4z2mmHqo72ZhLI2ChtBNVkcY=;
+        b=g/pi5fwvwaCEKH7CsXB40rOBG2173oIRNqRtKAJ+TifqrYCNTD23BGtiMWsu07bjNd
+         YS/cDcsd6ExE9/JmuwVNrCd0gfct4XjlUyNoCrqZWWi7b+qXwAT++uLC89yDozaakri9
+         +DynKYiaiHlLA6zlX5N//9atnWsHw3qDvmzajegxVqTn3w0NRFAhj0JCAdc3w8dYK0UH
+         Zbkmme6FaMLmXt51N1eyPGEbupGeBLzTBJl7Msc0ToaDJxxFLBYDdttpjdVB3hdiKOvf
+         f58csND9aMIhQHhU9WVqPXMytujs2xliVHPmmwUTYgRBRKFq/xrlpbdBqnESH3yZmdEt
+         65Gw==
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Emanuele Rocca <ema@wikimedia.org>, brouer@redhat.com
+Content-Transfer-Encoding: 7bit
+To: netfilter-devel@vger.kernel.org
+Cc: pablo@netfilter.org, Alex Gartrell <agartrell@fb.com>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, horms@verge.net.au, ja@ssi.bg, wensong@linux-vs.org
 
-On Sat,  5 Aug 2017 14:38:28 +0300
-Julian Anastasov <ja@ssi.bg> wrote:
+Patch 1/2 fixes the regression introduced by commit 5e26b1b3abce.
+Patch 2/2 makes ipvs not create conn for sctp ABORT packet.
 
-> nl_recvmsgs_default() returns NLE_* error codes and not
-> errno values. As result, attempt to delete virtual service
-> returns NLE_OBJ_NOTFOUND (12) which matches the ENOMEM value.
-> 
-> Problem as reported by Emanuele Rocca:
-> 
-> ipvsadm -D -t example.org:80
-> Memory allocation problem
-> 
-> Fix it by providing generic error handler to catch the errno
-> value as returned in netlink answer. By this way all netlink
-> commands will get proper error string. The problem is present
-> only when ipvsadm is compiled with libnl.
-> 
-> ipvsadm -D -t example.org:80
-> No such service
-> 
-> Reported-by: Emanuele Rocca <ema@wikimedia.org>
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Xin Long (2):
+  netfilter: ipvs: fix the issue that sctp_conn_schedule drops non-INIT
+    packet
+  netfilter: ipvs: do not create conn for ABORT packet in
+    sctp_conn_schedule
 
-I've gone through the full call path from the kernel via netlink, and I
-was going to claim that we also needed to handle errno "-EEXIST" in the
-ipvsadm translation function ipvs_strerror().  Note, this fix uses the
-errno "-ESRCH".
-
-As kernel function ip_vs_del_service() return -EEXIST (if svc==NULL)
- http://elixir.free-electrons.com/linux/v4.12.5/source/net/netfilter/ipvs/ip_vs_ctl.c#L1480
-
-BUT a closer look shows that -EEXIST will never get returned by
-ip_vs_del_service() as all callers of this function does a svc==NULL
-check and return "-ESRCH" instead.
-
-Thus, this patch is correct, but the kernel code is confusing ;-)
-
-Applied:
- https://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git/commit/?id=f8cff0808a24b
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
 -- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+2.1.0
+
