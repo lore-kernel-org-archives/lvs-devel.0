@@ -1,49 +1,41 @@
-From: Arthur Gautier <baloo@gandi.net>
-Subject: Re: [PATCH] libipvs: discrepancy with libnl genlmsg_put
-Date: Thu, 5 Oct 2017 17:20:04 +0000
-Message-ID: <20171005172004.shovu7sftamaid5i@khany>
-References: <20170927153105.7222-1-baloo@gandi.net>
- <20171005120333.3de32b15@redhat.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH 13/14] netfilter/ipvs: Use %pS printk format for direct
+ addresses
+Date: Mon, 9 Oct 2017 07:52:24 +0200
+Message-ID: <20171009055224.GB31804@verge.net.au>
+References: <1504729681-3504-1-git-send-email-deller@gmx.de>
+ <1504729681-3504-14-git-send-email-deller@gmx.de>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+        t=1507528346; bh=hrPwU7Tx5ArgSJ5CsGl6Ao0Wb2Ov9+E3bUAmN+QhAmY=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=Rerb1RgJMan6w13KH0raAJK5Etu49ACu4R1QI0xlVkSGLkWZGkwNes7ij+MDbXYB3
+         hnnX8K28tEbDSiQWQ766fnHFWgWmFcPQMJmdEdRIa9g0FfrGsP3nPidf5fGcutlqmZ
+         tYyYcJDd8uIZB11L/VAJYPpE/ptgQow0cuahQvrs=
 Content-Disposition: inline
-In-Reply-To: <20171005120333.3de32b15@redhat.com>
+In-Reply-To: <1504729681-3504-14-git-send-email-deller@gmx.de>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: Helge Deller <deller@gmx.de>
+Cc: linux-kernel@vger.kernel.org, Sergey Senozhatsky <sergey.senozhatsky@gmail.com>, Petr Mladek <pmladek@suse.com>, Andrew Morton <akpm@linux-foundation.org>, Wensong Zhang <wensong@linux-vs.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>
 
-On Thu, Oct 05, 2017 at 12:03:33PM +0200, Jesper Dangaard Brouer wrote:
-> On Wed, 27 Sep 2017 15:31:05 +0000
-> baloo@gandi.net wrote:
+On Wed, Sep 06, 2017 at 10:28:00PM +0200, Helge Deller wrote:
+> The debug and error printk functions in ipvs uses wrongly the %pF instead of
+> the %pS printk format specifier for printing symbols for the address returned
+> by _builtin_return_address(0). Fix it for the ia64, ppc64 and parisc64
+> architectures.
 > 
-> > From: Arthur Gautier <baloo@gandi.net>
-> > 
-> > There is a mixup between NL_AUTO_PORT and NL_AUTO_PID. The
-> > first should be used with genlmsg_put while the second with
-> > nlmsg_put.
-> > 
-> > This is not a problem, because both NL_AUTO_PORT and NL_AUTO_PID
-> > have the same value, but still a discrepancy with libnl documentation.
-> > 
-> > see documentation of genlmsg_put here:
-> >   http://www.infradead.org/~tgr/libnl/doc/api/group__genl.html#ga9a86a71bbba6961d41b8a75f62f9e946
-> > 
-> > Cc: Julian Anastasov <ja@ssi.bg>
-> > Cc: Simon Horman <horms@verge.net.au>
-> > Cc: Jesper Dangaard Brouer <brouer@redhat.com>
-> > Signed-off-by: Arthur Gautier <baloo@gandi.net>
-> > ---
-> 
-> Applied this here:
->  https://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git/commit/?id=76c12701481
-> 
-> Thank you Arthur for bringing this discrepancy in-order :-)
+> Signed-off-by: Helge Deller <deller@gmx.de>
+> Cc: Wensong Zhang <wensong@linux-vs.org>
+> Cc: netdev@vger.kernel.org
+> Cc: lvs-devel@vger.kernel.org
+> Cc: netfilter-devel@vger.kernel.org
 
-My OCD says thank you.
+Sorry for the delay in processing this.
 
--- 
-\o/ Arthur
- G  Gandi.net
+Acked-by: Simon Horman <horms@verge.net.au>
+
+Pablo, could you take this through the nf-next tree directly?
