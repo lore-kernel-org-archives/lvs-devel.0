@@ -1,97 +1,128 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: Fix inappropriate output of procfs
-Date: Sun, 15 Oct 2017 17:11:28 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1710151709450.2100@ja.home.ssi.bg>
-References: <20171015115406.GA11429@nuc02.localdomain>
+From: "Gustavo A. R. Silva" <garsilva@embeddedor.com>
+Subject: [PATCH] netfilter: mark expected switch fall-throughs
+Date: Thu, 19 Oct 2017 09:06:16 -0500
+Message-ID: <20171019140616.GA15989@embeddedor.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20171015115406.GA11429@nuc02.localdomain>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: KUWAZAWA Takuya <albatross0@gmail.com>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
+Cc: netfilter-devel@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, "Gustavo A. R. Silva" <garsilva@embeddedor.com>
 
+In preparation to enabling -Wimplicit-fallthrough, mark switch cases
+where we are expecting to fall through.
 
-	Hello,
+Notice that in some cases I placed the "fall through" comment on its own
+line, which is what GCC is expecting to find.
 
-On Sun, 15 Oct 2017, KUWAZAWA Takuya wrote:
+Signed-off-by: Gustavo A. R. Silva <garsilva@embeddedor.com>
+---
+This code was tested by compilation only (GCC 7.2.0 was used).
+Please, verify if the actual intention of the code is to fall through.
 
-> Information about ipvs in different network namespace can be seen via procfs.
-> 
-> How to reproduce:
-> 
->   # ip netns add ns01
->   # ip netns add ns02
->   # ip netns exec ns01 ip a add dev lo 127.0.0.1/8
->   # ip netns exec ns02 ip a add dev lo 127.0.0.1/8
->   # ip netns exec ns01 ipvsadm -A -t 10.1.1.1:80
->   # ip netns exec ns02 ipvsadm -A -t 10.1.1.2:80
-> 
-> The ipvsadm displays information about its own network namespace only.
-> 
->   # ip netns exec ns01 ipvsadm -Ln
->   IP Virtual Server version 1.2.1 (size=4096)
->   Prot LocalAddress:Port Scheduler Flags
->     -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
->   TCP  10.1.1.1:80 wlc
-> 
->   # ip netns exec ns02 ipvsadm -Ln
->   IP Virtual Server version 1.2.1 (size=4096)
->   Prot LocalAddress:Port Scheduler Flags
->     -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
->   TCP  10.1.1.2:80 wlc
-> 
-> But I can see information about other network namespace via procfs.
-> 
->   # ip netns exec ns01 cat /proc/net/ip_vs
->   IP Virtual Server version 1.2.1 (size=4096)
->   Prot LocalAddress:Port Scheduler Flags
->     -> RemoteAddress:Port Forward Weight ActiveConn InActConn
->   TCP  0A010101:0050 wlc
->   TCP  0A010102:0050 wlc
-> 
->   # ip netns exec ns02 cat /proc/net/ip_vs
->   IP Virtual Server version 1.2.1 (size=4096)
->   Prot LocalAddress:Port Scheduler Flags
->     -> RemoteAddress:Port Forward Weight ActiveConn InActConn
->   TCP  0A010102:0050 wlc
-> 
-> Signed-off-by: KUWAZAWA Takuya <albatross0@gmail.com>
+ net/netfilter/ipset/ip_set_core.c      | 3 ++-
+ net/netfilter/ipvs/ip_vs_proto_tcp.c   | 1 +
+ net/netfilter/ipvs/ip_vs_proto_udp.c   | 1 +
+ net/netfilter/nf_conntrack_h323_asn1.c | 3 +++
+ net/netfilter/nft_cmp.c                | 2 ++
+ net/netfilter/x_tables.c               | 3 ++-
+ 6 files changed, 11 insertions(+), 2 deletions(-)
 
-	Looks good to me
+diff --git a/net/netfilter/ipset/ip_set_core.c b/net/netfilter/ipset/ip_set_core.c
+index cf84f7b..72f654a 100644
+--- a/net/netfilter/ipset/ip_set_core.c
++++ b/net/netfilter/ipset/ip_set_core.c
+@@ -1386,7 +1386,8 @@ ip_set_dump_start(struct sk_buff *skb, struct netlink_callback *cb)
+ 				goto next_set;
+ 			if (set->variant->uref)
+ 				set->variant->uref(set, cb, true);
+-			/* Fall through and add elements */
++			/* add elements */
++			/* fall through */
+ 		default:
+ 			rcu_read_lock_bh();
+ 			ret = set->variant->list(set, skb, cb);
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 1c6e101..569631d 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -315,6 +315,7 @@ tcp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp)
+ 	switch (skb->ip_summed) {
+ 	case CHECKSUM_NONE:
+ 		skb->csum = skb_checksum(skb, tcphoff, skb->len - tcphoff, 0);
++		/* fall through */
+ 	case CHECKSUM_COMPLETE:
+ #ifdef CONFIG_IP_VS_IPV6
+ 		if (af == AF_INET6) {
+diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+index 30e11cd..c15ef7c 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_udp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+@@ -319,6 +319,7 @@ udp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp)
+ 		case CHECKSUM_NONE:
+ 			skb->csum = skb_checksum(skb, udphoff,
+ 						 skb->len - udphoff, 0);
++			/* fall through */
+ 		case CHECKSUM_COMPLETE:
+ #ifdef CONFIG_IP_VS_IPV6
+ 			if (af == AF_INET6) {
+diff --git a/net/netfilter/nf_conntrack_h323_asn1.c b/net/netfilter/nf_conntrack_h323_asn1.c
+index 89b2e46..7336e5c 100644
+--- a/net/netfilter/nf_conntrack_h323_asn1.c
++++ b/net/netfilter/nf_conntrack_h323_asn1.c
+@@ -250,12 +250,15 @@ static unsigned int get_uint(bitstr_t *bs, int b)
+ 	case 4:
+ 		v |= *bs->cur++;
+ 		v <<= 8;
++		/* fall through */
+ 	case 3:
+ 		v |= *bs->cur++;
+ 		v <<= 8;
++		/* fall through */
+ 	case 2:
+ 		v |= *bs->cur++;
+ 		v <<= 8;
++		/* fall through */
+ 	case 1:
+ 		v |= *bs->cur++;
+ 		break;
+diff --git a/net/netfilter/nft_cmp.c b/net/netfilter/nft_cmp.c
+index c2945eb..fa90a84 100644
+--- a/net/netfilter/nft_cmp.c
++++ b/net/netfilter/nft_cmp.c
+@@ -44,6 +44,7 @@ static void nft_cmp_eval(const struct nft_expr *expr,
+ 	case NFT_CMP_LT:
+ 		if (d == 0)
+ 			goto mismatch;
++		/* fall through */
+ 	case NFT_CMP_LTE:
+ 		if (d > 0)
+ 			goto mismatch;
+@@ -51,6 +52,7 @@ static void nft_cmp_eval(const struct nft_expr *expr,
+ 	case NFT_CMP_GT:
+ 		if (d == 0)
+ 			goto mismatch;
++		/* fall through */
+ 	case NFT_CMP_GTE:
+ 		if (d < 0)
+ 			goto mismatch;
+diff --git a/net/netfilter/x_tables.c b/net/netfilter/x_tables.c
+index d8571f4..fa5cdd0 100644
+--- a/net/netfilter/x_tables.c
++++ b/net/netfilter/x_tables.c
+@@ -1382,7 +1382,8 @@ static void *xt_mttg_seq_next(struct seq_file *seq, void *v, loff_t *ppos,
+ 		trav->curr = trav->curr->next;
+ 		if (trav->curr != trav->head)
+ 			break;
+-		/* fallthru, _stop will unlock */
++		/* _stop will unlock */
++		/* fall through */
+ 	default:
+ 		return NULL;
+ 	}
+-- 
+2.7.4
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	Simon, please apply to ipvs tree.
-
-> ---
->  net/netfilter/ipvs/ip_vs_ctl.c | 4 ++++
->  1 file changed, 4 insertions(+)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index 4f940d7..b3245f9 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -2034,12 +2034,16 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
->  		seq_puts(seq,
->  			 "  -> RemoteAddress:Port Forward Weight ActiveConn InActConn\n");
->  	} else {
-> +		struct net *net = seq_file_net(seq);
-> +		struct netns_ipvs *ipvs = net_ipvs(net);
->  		const struct ip_vs_service *svc = v;
->  		const struct ip_vs_iter *iter = seq->private;
->  		const struct ip_vs_dest *dest;
->  		struct ip_vs_scheduler *sched = rcu_dereference(svc->scheduler);
->  		char *sched_name = sched ? sched->name : "none";
->  
-> +		if (svc->ipvs != ipvs)
-> +			return 0;
->  		if (iter->table == ip_vs_svc_table) {
->  #ifdef CONFIG_IP_VS_IPV6
->  			if (svc->af == AF_INET6)
-> -- 
-> 1.8.3.1
-
-Regards
