@@ -1,128 +1,231 @@
-From: "Gustavo A. R. Silva" <garsilva@embeddedor.com>
-Subject: [PATCH] netfilter: mark expected switch fall-throughs
-Date: Thu, 19 Oct 2017 09:06:16 -0500
-Message-ID: <20171019140616.GA15989@embeddedor.com>
+From: Kees Cook <keescook@chromium.org>
+Subject: [PATCH] netfilter: ipvs: Convert timers to use timer_setup()
+Date: Tue, 24 Oct 2017 01:45:21 -0700
+Message-ID: <20171024084521.GA23684@beast>
 Mime-Version: 1.0
 Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=chromium.org; s=google;
+        h=date:from:to:cc:subject:message-id:mime-version:content-disposition;
+        bh=vRcYEzbZZFiz7fJ6upIX/Lco3Ua3AM8mVF61C3MczO4=;
+        b=mKGpTzNpUl8CnsmHwlua87gRTw5PfUtNI5P9mW4I0nkdwPpRbn1+KRxV2+UZWhwi5k
+         nLlbTZMPq4zaj8EJqMPJ2HlO4rHx7iWlvBFdWZElt9wHZ5voUmiHf5pukIQRiDhESBFp
+         r2FcnwHOsfk44vhgBAbN+u0vH5nVwo/K2FyJo=
 Content-Disposition: inline
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
-Cc: netfilter-devel@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, "Gustavo A. R. Silva" <garsilva@embeddedor.com>
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-In preparation to enabling -Wimplicit-fallthrough, mark switch cases
-where we are expecting to fall through.
+In preparation for unconditionally passing the struct timer_list pointer to
+all timer callbacks, switch to using the new timer_setup() and from_timer()
+to pass the timer pointer explicitly.
 
-Notice that in some cases I placed the "fall through" comment on its own
-line, which is what GCC is expecting to find.
-
-Signed-off-by: Gustavo A. R. Silva <garsilva@embeddedor.com>
+Cc: Wensong Zhang <wensong@linux-vs.org>
+Cc: Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>
+Cc: Florian Westphal <fw@strlen.de>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: netdev@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org
+Cc: netfilter-devel@vger.kernel.org
+Cc: coreteam@netfilter.org
+Signed-off-by: Kees Cook <keescook@chromium.org>
 ---
-This code was tested by compilation only (GCC 7.2.0 was used).
-Please, verify if the actual intention of the code is to fall through.
+ net/netfilter/ipvs/ip_vs_conn.c  | 10 +++++-----
+ net/netfilter/ipvs/ip_vs_ctl.c   |  7 +++----
+ net/netfilter/ipvs/ip_vs_est.c   |  6 +++---
+ net/netfilter/ipvs/ip_vs_lblc.c  | 11 ++++++-----
+ net/netfilter/ipvs/ip_vs_lblcr.c | 11 ++++++-----
+ 5 files changed, 23 insertions(+), 22 deletions(-)
 
- net/netfilter/ipset/ip_set_core.c      | 3 ++-
- net/netfilter/ipvs/ip_vs_proto_tcp.c   | 1 +
- net/netfilter/ipvs/ip_vs_proto_udp.c   | 1 +
- net/netfilter/nf_conntrack_h323_asn1.c | 3 +++
- net/netfilter/nft_cmp.c                | 2 ++
- net/netfilter/x_tables.c               | 3 ++-
- 6 files changed, 11 insertions(+), 2 deletions(-)
-
-diff --git a/net/netfilter/ipset/ip_set_core.c b/net/netfilter/ipset/ip_set_core.c
-index cf84f7b..72f654a 100644
---- a/net/netfilter/ipset/ip_set_core.c
-+++ b/net/netfilter/ipset/ip_set_core.c
-@@ -1386,7 +1386,8 @@ ip_set_dump_start(struct sk_buff *skb, struct netlink_callback *cb)
- 				goto next_set;
- 			if (set->variant->uref)
- 				set->variant->uref(set, cb, true);
--			/* Fall through and add elements */
-+			/* add elements */
-+			/* fall through */
- 		default:
- 			rcu_read_lock_bh();
- 			ret = set->variant->list(set, skb, cb);
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index 1c6e101..569631d 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -315,6 +315,7 @@ tcp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp)
- 	switch (skb->ip_summed) {
- 	case CHECKSUM_NONE:
- 		skb->csum = skb_checksum(skb, tcphoff, skb->len - tcphoff, 0);
-+		/* fall through */
- 	case CHECKSUM_COMPLETE:
- #ifdef CONFIG_IP_VS_IPV6
- 		if (af == AF_INET6) {
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index 30e11cd..c15ef7c 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -319,6 +319,7 @@ udp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp)
- 		case CHECKSUM_NONE:
- 			skb->csum = skb_checksum(skb, udphoff,
- 						 skb->len - udphoff, 0);
-+			/* fall through */
- 		case CHECKSUM_COMPLETE:
- #ifdef CONFIG_IP_VS_IPV6
- 			if (af == AF_INET6) {
-diff --git a/net/netfilter/nf_conntrack_h323_asn1.c b/net/netfilter/nf_conntrack_h323_asn1.c
-index 89b2e46..7336e5c 100644
---- a/net/netfilter/nf_conntrack_h323_asn1.c
-+++ b/net/netfilter/nf_conntrack_h323_asn1.c
-@@ -250,12 +250,15 @@ static unsigned int get_uint(bitstr_t *bs, int b)
- 	case 4:
- 		v |= *bs->cur++;
- 		v <<= 8;
-+		/* fall through */
- 	case 3:
- 		v |= *bs->cur++;
- 		v <<= 8;
-+		/* fall through */
- 	case 2:
- 		v |= *bs->cur++;
- 		v <<= 8;
-+		/* fall through */
- 	case 1:
- 		v |= *bs->cur++;
- 		break;
-diff --git a/net/netfilter/nft_cmp.c b/net/netfilter/nft_cmp.c
-index c2945eb..fa90a84 100644
---- a/net/netfilter/nft_cmp.c
-+++ b/net/netfilter/nft_cmp.c
-@@ -44,6 +44,7 @@ static void nft_cmp_eval(const struct nft_expr *expr,
- 	case NFT_CMP_LT:
- 		if (d == 0)
- 			goto mismatch;
-+		/* fall through */
- 	case NFT_CMP_LTE:
- 		if (d > 0)
- 			goto mismatch;
-@@ -51,6 +52,7 @@ static void nft_cmp_eval(const struct nft_expr *expr,
- 	case NFT_CMP_GT:
- 		if (d == 0)
- 			goto mismatch;
-+		/* fall through */
- 	case NFT_CMP_GTE:
- 		if (d < 0)
- 			goto mismatch;
-diff --git a/net/netfilter/x_tables.c b/net/netfilter/x_tables.c
-index d8571f4..fa5cdd0 100644
---- a/net/netfilter/x_tables.c
-+++ b/net/netfilter/x_tables.c
-@@ -1382,7 +1382,8 @@ static void *xt_mttg_seq_next(struct seq_file *seq, void *v, loff_t *ppos,
- 		trav->curr = trav->curr->next;
- 		if (trav->curr != trav->head)
- 			break;
--		/* fallthru, _stop will unlock */
-+		/* _stop will unlock */
-+		/* fall through */
- 	default:
- 		return NULL;
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 3d2ac71a83ec..3a43b3470331 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -104,7 +104,7 @@ static inline void ct_write_unlock_bh(unsigned int key)
+ 	spin_unlock_bh(&__ip_vs_conntbl_lock_array[key&CT_LOCKARRAY_MASK].l);
+ }
+ 
+-static void ip_vs_conn_expire(unsigned long data);
++static void ip_vs_conn_expire(struct timer_list *t);
+ 
+ /*
+  *	Returns hash value for IPVS connection entry
+@@ -457,7 +457,7 @@ EXPORT_SYMBOL_GPL(ip_vs_conn_out_get_proto);
+ static void __ip_vs_conn_put_notimer(struct ip_vs_conn *cp)
+ {
+ 	__ip_vs_conn_put(cp);
+-	ip_vs_conn_expire((unsigned long)cp);
++	ip_vs_conn_expire(&cp->timer);
+ }
+ 
+ /*
+@@ -817,9 +817,9 @@ static void ip_vs_conn_rcu_free(struct rcu_head *head)
+ 	kmem_cache_free(ip_vs_conn_cachep, cp);
+ }
+ 
+-static void ip_vs_conn_expire(unsigned long data)
++static void ip_vs_conn_expire(struct timer_list *t)
+ {
+-	struct ip_vs_conn *cp = (struct ip_vs_conn *)data;
++	struct ip_vs_conn *cp = from_timer(cp, t, timer);
+ 	struct netns_ipvs *ipvs = cp->ipvs;
+ 
+ 	/*
+@@ -909,7 +909,7 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
  	}
+ 
+ 	INIT_HLIST_NODE(&cp->c_list);
+-	setup_timer(&cp->timer, ip_vs_conn_expire, (unsigned long)cp);
++	timer_setup(&cp->timer, ip_vs_conn_expire, 0);
+ 	cp->ipvs	   = ipvs;
+ 	cp->af		   = p->af;
+ 	cp->daf		   = dest_af;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 4f940d7eb2f7..b47e266c6eca 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1146,9 +1146,9 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 	return 0;
+ }
+ 
+-static void ip_vs_dest_trash_expire(unsigned long data)
++static void ip_vs_dest_trash_expire(struct timer_list *t)
+ {
+-	struct netns_ipvs *ipvs = (struct netns_ipvs *)data;
++	struct netns_ipvs *ipvs = from_timer(ipvs, t, dest_trash_timer);
+ 	struct ip_vs_dest *dest, *next;
+ 	unsigned long now = jiffies;
+ 
+@@ -4019,8 +4019,7 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
+ 
+ 	INIT_LIST_HEAD(&ipvs->dest_trash);
+ 	spin_lock_init(&ipvs->dest_trash_lock);
+-	setup_timer(&ipvs->dest_trash_timer, ip_vs_dest_trash_expire,
+-		    (unsigned long) ipvs);
++	timer_setup(&ipvs->dest_trash_timer, ip_vs_dest_trash_expire, 0);
+ 	atomic_set(&ipvs->ftpsvc_counter, 0);
+ 	atomic_set(&ipvs->nullsvc_counter, 0);
+ 	atomic_set(&ipvs->conn_out_counter, 0);
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 457c6c193e13..489055091a9b 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -97,12 +97,12 @@ static void ip_vs_read_cpu_stats(struct ip_vs_kstats *sum,
+ }
+ 
+ 
+-static void estimation_timer(unsigned long arg)
++static void estimation_timer(struct timer_list *t)
+ {
+ 	struct ip_vs_estimator *e;
+ 	struct ip_vs_stats *s;
+ 	u64 rate;
+-	struct netns_ipvs *ipvs = (struct netns_ipvs *)arg;
++	struct netns_ipvs *ipvs = from_timer(ipvs, t, est_timer);
+ 
+ 	spin_lock(&ipvs->est_lock);
+ 	list_for_each_entry(e, &ipvs->est_list, list) {
+@@ -192,7 +192,7 @@ int __net_init ip_vs_estimator_net_init(struct netns_ipvs *ipvs)
+ {
+ 	INIT_LIST_HEAD(&ipvs->est_list);
+ 	spin_lock_init(&ipvs->est_lock);
+-	setup_timer(&ipvs->est_timer, estimation_timer, (unsigned long)ipvs);
++	timer_setup(&ipvs->est_timer, estimation_timer, 0);
+ 	mod_timer(&ipvs->est_timer, jiffies + 2 * HZ);
+ 	return 0;
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+index b6aa4a970c6e..d625179de485 100644
+--- a/net/netfilter/ipvs/ip_vs_lblc.c
++++ b/net/netfilter/ipvs/ip_vs_lblc.c
+@@ -106,6 +106,7 @@ struct ip_vs_lblc_table {
+ 	struct rcu_head		rcu_head;
+ 	struct hlist_head	bucket[IP_VS_LBLC_TAB_SIZE];  /* hash bucket */
+ 	struct timer_list       periodic_timer; /* collect stale entries */
++	struct ip_vs_service	*svc;		/* pointer back to service */
+ 	atomic_t                entries;        /* number of entries */
+ 	int                     max_size;       /* maximum size of entries */
+ 	int                     rover;          /* rover for expire check */
+@@ -294,10 +295,10 @@ static inline void ip_vs_lblc_full_check(struct ip_vs_service *svc)
+  *             of the table.
+  *      The full expiration check is for this purpose now.
+  */
+-static void ip_vs_lblc_check_expire(unsigned long data)
++static void ip_vs_lblc_check_expire(struct timer_list *t)
+ {
+-	struct ip_vs_service *svc = (struct ip_vs_service *) data;
+-	struct ip_vs_lblc_table *tbl = svc->sched_data;
++	struct ip_vs_lblc_table *tbl = from_timer(tbl, t, periodic_timer);
++	struct ip_vs_service *svc = tbl->svc;
+ 	unsigned long now = jiffies;
+ 	int goal;
+ 	int i, j;
+@@ -369,12 +370,12 @@ static int ip_vs_lblc_init_svc(struct ip_vs_service *svc)
+ 	tbl->rover = 0;
+ 	tbl->counter = 1;
+ 	tbl->dead = 0;
++	tbl->svc = svc;
+ 
+ 	/*
+ 	 *    Hook periodic timer for garbage collection
+ 	 */
+-	setup_timer(&tbl->periodic_timer, ip_vs_lblc_check_expire,
+-			(unsigned long)svc);
++	timer_setup(&tbl->periodic_timer, ip_vs_lblc_check_expire, 0);
+ 	mod_timer(&tbl->periodic_timer, jiffies + CHECK_EXPIRE_INTERVAL);
+ 
+ 	return 0;
+diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+index c13ff575f9f7..84c57b62a588 100644
+--- a/net/netfilter/ipvs/ip_vs_lblcr.c
++++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+@@ -278,6 +278,7 @@ struct ip_vs_lblcr_table {
+ 	atomic_t                entries;        /* number of entries */
+ 	int                     max_size;       /* maximum size of entries */
+ 	struct timer_list       periodic_timer; /* collect stale entries */
++	struct ip_vs_service	*svc;		/* pointer back to service */
+ 	int                     rover;          /* rover for expire check */
+ 	int                     counter;        /* counter for no expire */
+ 	bool			dead;
+@@ -458,10 +459,10 @@ static inline void ip_vs_lblcr_full_check(struct ip_vs_service *svc)
+  *             of the table.
+  *      The full expiration check is for this purpose now.
+  */
+-static void ip_vs_lblcr_check_expire(unsigned long data)
++static void ip_vs_lblcr_check_expire(struct timer_list *t)
+ {
+-	struct ip_vs_service *svc = (struct ip_vs_service *) data;
+-	struct ip_vs_lblcr_table *tbl = svc->sched_data;
++	struct ip_vs_lblcr_table *tbl = from_timer(tbl, t, periodic_timer);
++	struct ip_vs_service *svc = tbl->svc;
+ 	unsigned long now = jiffies;
+ 	int goal;
+ 	int i, j;
+@@ -532,12 +533,12 @@ static int ip_vs_lblcr_init_svc(struct ip_vs_service *svc)
+ 	tbl->rover = 0;
+ 	tbl->counter = 1;
+ 	tbl->dead = 0;
++	tbl->svc = svc;
+ 
+ 	/*
+ 	 *    Hook periodic timer for garbage collection
+ 	 */
+-	setup_timer(&tbl->periodic_timer, ip_vs_lblcr_check_expire,
+-			(unsigned long)svc);
++	timer_setup(&tbl->periodic_timer, ip_vs_lblcr_check_expire, 0);
+ 	mod_timer(&tbl->periodic_timer, jiffies + CHECK_EXPIRE_INTERVAL);
+ 
+ 	return 0;
 -- 
 2.7.4
 
+
+-- 
+Kees Cook
+Pixel Security
