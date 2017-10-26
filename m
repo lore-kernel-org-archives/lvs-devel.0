@@ -1,97 +1,114 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: ipvs problem with container
-Date: Wed, 25 Oct 2017 22:01:05 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1710252152520.1851@ja.home.ssi.bg>
-References: <CAK-cHazJX03jwFkcfFz2Xtin82f3jhnvMVU_QdK+qeSXXVNWsw@mail.gmail.com>
-Mime-Version: 1.0
+From: gfree.wind@vip.163.com
+Subject: [PATCH nf-next 1/1] ipvs: Remove useless ipvsh param of frag_safe_skb_hp
+Date: Thu, 26 Oct 2017 16:52:31 +0800
+Message-ID: <1509007951-8243-1-git-send-email-gfree.wind@vip.163.com>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <CAK-cHazJX03jwFkcfFz2Xtin82f3jhnvMVU_QdK+qeSXXVNWsw@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ye Yin <hustcat@gmail.com>
-Cc: lvs-devel@vger.kernel.org
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg
+Cc: lvs-devel@vger.kernel.org, Gao Feng <gfree.wind@vip.163.com>
+
+From: Gao Feng <gfree.wind@vip.163.com>
+
+The param of frag_safe_skb_hp, ipvsh, isn't used now. So remove it and
+change the callers' codes.
+
+Signed-off-by: Gao Feng <gfree.wind@vip.163.com>
+---
+ include/net/ip_vs.h             |  3 +--
+ net/netfilter/ipvs/ip_vs_conn.c |  2 +-
+ net/netfilter/ipvs/ip_vs_core.c | 12 ++++++------
+ 3 files changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 4f4f786..6fccd24 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -68,8 +68,7 @@ struct ip_vs_iphdr {
+ };
+ 
+ static inline void *frag_safe_skb_hp(const struct sk_buff *skb, int offset,
+-				      int len, void *buffer,
+-				      const struct ip_vs_iphdr *ipvsh)
++				      int len, void *buffer)
+ {
+ 	return skb_header_pointer(skb, offset, len, buffer);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 3d2ac71a..9ee73cf 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -322,7 +322,7 @@ struct ip_vs_conn *ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
+ {
+ 	__be16 _ports[2], *pptr;
+ 
+-	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
++	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports);
+ 	if (pptr == NULL)
+ 		return 1;
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 5cb7cac..5f6f73c 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -433,7 +433,7 @@ struct ip_vs_conn *
+ 	/*
+ 	 * IPv6 frags, only the first hit here.
+ 	 */
+-	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
++	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports);
+ 	if (pptr == NULL)
+ 		return NULL;
+ 
+@@ -566,7 +566,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 	struct netns_ipvs *ipvs = svc->ipvs;
+ 	struct net *net = ipvs->net;
+ 
+-	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports, iph);
++	pptr = frag_safe_skb_hp(skb, iph->len, sizeof(_ports), _ports);
+ 	if (!pptr)
+ 		return NF_DROP;
+ 	dport = likely(!ip_vs_iph_inverse(iph)) ? pptr[1] : pptr[0];
+@@ -982,7 +982,7 @@ static int ip_vs_out_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 	unsigned int offset;
+ 
+ 	*related = 1;
+-	ic = frag_safe_skb_hp(skb, ipvsh->len, sizeof(_icmph), &_icmph, ipvsh);
++	ic = frag_safe_skb_hp(skb, ipvsh->len, sizeof(_icmph), &_icmph);
+ 	if (ic == NULL)
+ 		return NF_DROP;
+ 
+@@ -1214,7 +1214,7 @@ static struct ip_vs_conn *__ip_vs_rs_conn_out(unsigned int hooknum,
+ 		return NULL;
+ 
+ 	pptr = frag_safe_skb_hp(skb, iph->len,
+-				sizeof(_ports), _ports, iph);
++				sizeof(_ports), _ports);
+ 	if (!pptr)
+ 		return NULL;
+ 
+@@ -1407,7 +1407,7 @@ static struct ip_vs_conn *__ip_vs_rs_conn_out(unsigned int hooknum,
+ 		__be16 _ports[2], *pptr;
+ 
+ 		pptr = frag_safe_skb_hp(skb, iph.len,
+-					 sizeof(_ports), _ports, &iph);
++					 sizeof(_ports), _ports);
+ 		if (pptr == NULL)
+ 			return NF_ACCEPT;	/* Not for me */
+ 		if (ip_vs_has_real_service(ipvs, af, iph.protocol, &iph.saddr,
+@@ -1741,7 +1741,7 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 
+ 	*related = 1;
+ 
+-	ic = frag_safe_skb_hp(skb, iph->len, sizeof(_icmph), &_icmph, iph);
++	ic = frag_safe_skb_hp(skb, iph->len, sizeof(_icmph), &_icmph);
+ 	if (ic == NULL)
+ 		return NF_DROP;
+ 
+-- 
+1.9.1
 
 
-	Hello,
-
-On Wed, 25 Oct 2017, Ye Yin wrote:
-
-> Hi, all,
-> 
-> We run ipvs at host and container in the same host at the same time,
-> and ipvs at host will transport network traffic to ipvs in the
-> container. Then some problem happended to us, the detail is as
-> follows:
-> 
-> 
->  ________________              _____________
-> |                       ___|___      |container1        |
-> | host bridge     |_vethA_|----|192.168.1.232  |
-> |192.168.1.193/26  |             |____________|
-> |                       ___|___        _____________
-> |                      |_vethB_|----|container2        |
-> |________________|            |192.168.1.233  |
->                                             |_____________|
-> 
-> container1 and container2 connected each other by bridge on the host,
-> which is the gateway of the two containers. Run ipvs on the host with
-> VIP 172.17.169.208.
-> 
-> host:
-> $ ipvsadm -l -n
-> IP Virtual Server version 1.2.1 (size=4096)
-> Prot LocalAddress:Port Scheduler Flags
->   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-> TCP  172.17.169.208:80 rr
->   -> 192.168.1.233:80             Masq    1      0          0
-> 
-> container2:
-> $ ipvsadm -l -n
-> IP Virtual Server version 1.2.1 (size=4096)
-> Prot LocalAddress:Port Scheduler Flags
->   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-> TCP  192.168.1.233:80 rr
->   -> 14.17.xx.yyy:80              Masq    0      0          0
-> 
-> telnet from container1 to container2:
-> 
-> access by ipvs at host will failed:
-> 
-> $ telnet 172.17.169.208 80
-> Trying 172.17.169.208...
-> telnet: connect to address 172.17.169.208: Connection refused
-> 
-> direct access ipvs in container will success:
-> $ telnet 192.168.1.233 80
-> Trying 192.168.1.233...
-> Connected to 192.168.1.233.
-> Escape character is '^]'.
-> ^]
-> telnet  quit
-> Connection closed.
-> 
-> 
-> I think it's  the ipvs_property flag make ipvs in container return
-> NF_ACCEPT for network traffic, which make traffic go up to tcp layer.
-> Please see ip_vs_in.
-> 
-> We should clear this flag when SKB's netns has changed, Any idea?
-
-	Good idea. Are you able to test after adding such line to
-net/core/skbuff.c:skb_scrub_packet()?:
-
-	skb->ipvs_property = 0;
-
-	Just after nf_reset_trace(skb);
-
-	On success we should provide a patch instead that adds
-some ipvs_property_reset(skb) func in include/linux/skbuff.h that
-depends on the IS_ENABLED(CONFIG_IP_VS), just like it is done
-for nf_reset().
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
