@@ -1,78 +1,120 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] netfilter/ipvs: clear ipvs_property flag when SKB net
- namespace changed
-Date: Sat, 28 Oct 2017 13:33:09 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1710281301090.1835@ja.home.ssi.bg>
-References: <1509008225-19614-1-git-send-email-hustcat@gmail.com>
+Subject: Re: ipvs problem with container
+Date: Sat, 28 Oct 2017 13:35:35 +0300 (EEST)
+Message-ID: <alpine.LFD.2.20.1710281333530.1835@ja.home.ssi.bg>
+References: <CAK-cHazJX03jwFkcfFz2Xtin82f3jhnvMVU_QdK+qeSXXVNWsw@mail.gmail.com> <alpine.LFD.2.20.1710252152520.1851@ja.home.ssi.bg> <CAK-cHay6Ttj8kwV-va6pyD3aChUyddmBzdsiTMDkNXVhZ7c0HA@mail.gmail.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1509008225-19614-1-git-send-email-hustcat@gmail.com>
+In-Reply-To: <CAK-cHay6Ttj8kwV-va6pyD3aChUyddmBzdsiTMDkNXVhZ7c0HA@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Ye Yin <hustcat@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, willemb@google.com, edumazet@google.com, johannes.berg@intel.com, dcaratti@redhat.com, pabeni@redhat.com, f.fainelli@gmail.com, fw@strlen.de, soheil@google.com, dwindsor@gmail.com, elena.reshetova@intel.com, tom@quantonium.net, Jason@zx2c4.com, linux-kernel <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org, Wei Zhou <chouryzhou@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
+Cc: lvs-devel@vger.kernel.org
 
 
 	Hello,
 
 On Thu, 26 Oct 2017, Ye Yin wrote:
 
-> When run ipvs in two different network namespace at the same host, and one
-> ipvs transport network traffic to the other network namespace ipvs.
-> 'ipvs_property' flag will make the second ipvs take no effect. So we should
-> clear 'ipvs_property' when SKB network namespace changed.
+> Hi, Julian,
 > 
-> Signed-off-by: Ye Yin <hustcat@gmail.com>
-> Signed-off-by: Wei Zhou <chouryzhou@gmail.com>
+> We have test and confirmed successful about your suggestion. Thanks very much.
 
-	Patch looks good to me. ipvs_property was added long ago
-but skb_scrub_packet() is more recent (3.11), so:
+	Very good, thanks! I just acked it. Not sure who
+will get it, DaveM (net tree) or Simon (ipvs tree).
 
-Fixes: 621e84d6f373 ("dev: introduce skb_scrub_packet()")
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-
-	I guess, DaveM can apply it directly as a bugfix
-to the net tree.
-
-> ---
->  include/linux/skbuff.h | 7 +++++++
->  net/core/skbuff.c      | 1 +
->  2 files changed, 8 insertions(+)
+> And I have submited a patch , please see
+> https://www.mail-archive.com/netdev@vger.kernel.org/msg196160.html
 > 
-> diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-> index 72299ef..d448a48 100644
-> --- a/include/linux/skbuff.h
-> +++ b/include/linux/skbuff.h
-> @@ -3770,6 +3770,13 @@ static inline void nf_reset_trace(struct sk_buff *skb)
->  #endif
->  }
->  
-> +static inline void ipvs_reset(struct sk_buff *skb)
-> +{
-> +#if IS_ENABLED(CONFIG_IP_VS)
-> +	skb->ipvs_property = 0;
-> +#endif
-> +}
-> +
->  /* Note: This doesn't put any conntrack and bridge info in dst. */
->  static inline void __nf_copy(struct sk_buff *dst, const struct sk_buff *src,
->  			     bool copy)
-> diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-> index 2465607..e140ba4 100644
-> --- a/net/core/skbuff.c
-> +++ b/net/core/skbuff.c
-> @@ -4864,6 +4864,7 @@ void skb_scrub_packet(struct sk_buff *skb, bool xnet)
->  	if (!xnet)
->  		return;
->  
-> +	ipvs_reset(skb);
->  	skb_orphan(skb);
->  	skb->mark = 0;
->  }
-> -- 
-> 1.7.12.4
+> Regards,
+> Ye
+> 
+> On Thu, Oct 26, 2017 at 3:01 AM, Julian Anastasov <ja@ssi.bg> wrote:
+> >
+> >         Hello,
+> >
+> > On Wed, 25 Oct 2017, Ye Yin wrote:
+> >
+> >> Hi, all,
+> >>
+> >> We run ipvs at host and container in the same host at the same time,
+> >> and ipvs at host will transport network traffic to ipvs in the
+> >> container. Then some problem happended to us, the detail is as
+> >> follows:
+> >>
+> >>
+> >>  ________________              _____________
+> >> |                       ___|___      |container1        |
+> >> | host bridge     |_vethA_|----|192.168.1.232  |
+> >> |192.168.1.193/26  |             |____________|
+> >> |                       ___|___        _____________
+> >> |                      |_vethB_|----|container2        |
+> >> |________________|            |192.168.1.233  |
+> >>                                             |_____________|
+> >>
+> >> container1 and container2 connected each other by bridge on the host,
+> >> which is the gateway of the two containers. Run ipvs on the host with
+> >> VIP 172.17.169.208.
+> >>
+> >> host:
+> >> $ ipvsadm -l -n
+> >> IP Virtual Server version 1.2.1 (size=4096)
+> >> Prot LocalAddress:Port Scheduler Flags
+> >>   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+> >> TCP  172.17.169.208:80 rr
+> >>   -> 192.168.1.233:80             Masq    1      0          0
+> >>
+> >> container2:
+> >> $ ipvsadm -l -n
+> >> IP Virtual Server version 1.2.1 (size=4096)
+> >> Prot LocalAddress:Port Scheduler Flags
+> >>   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+> >> TCP  192.168.1.233:80 rr
+> >>   -> 14.17.xx.yyy:80              Masq    0      0          0
+> >>
+> >> telnet from container1 to container2:
+> >>
+> >> access by ipvs at host will failed:
+> >>
+> >> $ telnet 172.17.169.208 80
+> >> Trying 172.17.169.208...
+> >> telnet: connect to address 172.17.169.208: Connection refused
+> >>
+> >> direct access ipvs in container will success:
+> >> $ telnet 192.168.1.233 80
+> >> Trying 192.168.1.233...
+> >> Connected to 192.168.1.233.
+> >> Escape character is '^]'.
+> >> ^]
+> >> telnet  quit
+> >> Connection closed.
+> >>
+> >>
+> >> I think it's  the ipvs_property flag make ipvs in container return
+> >> NF_ACCEPT for network traffic, which make traffic go up to tcp layer.
+> >> Please see ip_vs_in.
+> >>
+> >> We should clear this flag when SKB's netns has changed, Any idea?
+> >
+> >         Good idea. Are you able to test after adding such line to
+> > net/core/skbuff.c:skb_scrub_packet()?:
+> >
+> >         skb->ipvs_property = 0;
+> >
+> >         Just after nf_reset_trace(skb);
+> >
+> >         On success we should provide a patch instead that adds
+> > some ipvs_property_reset(skb) func in include/linux/skbuff.h that
+> > depends on the IS_ENABLED(CONFIG_IP_VS), just like it is done
+> > for nf_reset().
+> >
+> > Regards
+> >
+> > --
+> > Julian Anastasov <ja@ssi.bg>
+> 
 
 Regards
 
