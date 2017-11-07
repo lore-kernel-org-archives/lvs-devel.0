@@ -1,67 +1,50 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH] ipvs: Fix inappropriate output of procfs
-Date: Mon, 6 Nov 2017 15:26:47 +0100
-Message-ID: <20171106142647.GA8571@salvia>
-References: <20171015115406.GA11429@nuc02.localdomain>
- <alpine.LFD.2.20.1710151709450.2100@ja.home.ssi.bg>
+Subject: Re: [PATCH] netfilter: mark expected switch fall-throughs
+Date: Tue, 7 Nov 2017 02:07:29 +0100
+Message-ID: <20171107010729.GA23302@salvia>
+References: <20171019140616.GA15989@embeddedor.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.20.1710151709450.2100@ja.home.ssi.bg>
-Sender: lvs-devel-owner@vger.kernel.org
+In-Reply-To: <20171019140616.GA15989@embeddedor.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: KUWAZAWA Takuya <albatross0@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: "Gustavo A. R. Silva" <garsilva@embeddedor.com>
+Cc: Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org
 
-On Sun, Oct 15, 2017 at 05:11:28PM +0300, Julian Anastasov wrote:
-> On Sun, 15 Oct 2017, KUWAZAWA Takuya wrote:
-> 
-> > Information about ipvs in different network namespace can be seen via procfs.
-> > 
-> > How to reproduce:
-> > 
-> >   # ip netns add ns01
-> >   # ip netns add ns02
-> >   # ip netns exec ns01 ip a add dev lo 127.0.0.1/8
-> >   # ip netns exec ns02 ip a add dev lo 127.0.0.1/8
-> >   # ip netns exec ns01 ipvsadm -A -t 10.1.1.1:80
-> >   # ip netns exec ns02 ipvsadm -A -t 10.1.1.2:80
-> > 
-> > The ipvsadm displays information about its own network namespace only.
-> > 
-> >   # ip netns exec ns01 ipvsadm -Ln
-> >   IP Virtual Server version 1.2.1 (size=4096)
-> >   Prot LocalAddress:Port Scheduler Flags
-> >     -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-> >   TCP  10.1.1.1:80 wlc
-> > 
-> >   # ip netns exec ns02 ipvsadm -Ln
-> >   IP Virtual Server version 1.2.1 (size=4096)
-> >   Prot LocalAddress:Port Scheduler Flags
-> >     -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-> >   TCP  10.1.1.2:80 wlc
-> > 
-> > But I can see information about other network namespace via procfs.
-> > 
-> >   # ip netns exec ns01 cat /proc/net/ip_vs
-> >   IP Virtual Server version 1.2.1 (size=4096)
-> >   Prot LocalAddress:Port Scheduler Flags
-> >     -> RemoteAddress:Port Forward Weight ActiveConn InActConn
-> >   TCP  0A010101:0050 wlc
-> >   TCP  0A010102:0050 wlc
-> > 
-> >   # ip netns exec ns02 cat /proc/net/ip_vs
-> >   IP Virtual Server version 1.2.1 (size=4096)
-> >   Prot LocalAddress:Port Scheduler Flags
-> >     -> RemoteAddress:Port Forward Weight ActiveConn InActConn
-> >   TCP  0A010102:0050 wlc
-> > 
-> > Signed-off-by: KUWAZAWA Takuya <albatross0@gmail.com>
-> 
-> 	Looks good to me
-> 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
+Hi Gustavo,
 
-Applied, thanks.
+On Thu, Oct 19, 2017 at 09:06:16AM -0500, Gustavo A. R. Silva wrote:
+> diff --git a/net/netfilter/ipset/ip_set_core.c b/net/netfilter/ipset/ip_set_core.c
+> index cf84f7b..72f654a 100644
+> --- a/net/netfilter/ipset/ip_set_core.c
+> +++ b/net/netfilter/ipset/ip_set_core.c
+> @@ -1386,7 +1386,8 @@ ip_set_dump_start(struct sk_buff *skb, struct netlink_callback *cb)
+>  				goto next_set;
+>  			if (set->variant->uref)
+>  				set->variant->uref(set, cb, true);
+> -			/* Fall through and add elements */
+> +			/* add elements */
+> +			/* fall through */
+
+Just replace this comment by /* fall through */, I think it's enough
+to remember that this is intentional.
+
+>  		default:
+>  			rcu_read_lock_bh();
+>  			ret = set->variant->list(set, skb, cb);
+[...]
+> diff --git a/net/netfilter/x_tables.c b/net/netfilter/x_tables.c
+> index d8571f4..fa5cdd0 100644
+> --- a/net/netfilter/x_tables.c
+> +++ b/net/netfilter/x_tables.c
+> @@ -1382,7 +1382,8 @@ static void *xt_mttg_seq_next(struct seq_file *seq, void *v, loff_t *ppos,
+>  		trav->curr = trav->curr->next;
+>  		if (trav->curr != trav->head)
+>  			break;
+> -		/* fallthru, _stop will unlock */
+> +		/* _stop will unlock */
+
+Same thing here, thanks!
