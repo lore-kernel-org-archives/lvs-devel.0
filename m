@@ -1,66 +1,36 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH nf-next 1/1] ipvs: Remove useless ipvsh param of
+Subject: Re: [PATCH nf-next] netfilter: ipvs: Remove useless ipvsh param of
  frag_safe_skb_hp
-Date: Wed, 22 Nov 2017 19:12:47 +0100
-Message-ID: <20171122181246.7sviegi56xz2zydc@verge.net.au>
-References: <1509007951-8243-1-git-send-email-gfree.wind@vip.163.com>
- <alpine.LFD.2.20.1710281338250.1835@ja.home.ssi.bg>
- <20171102144742.v6ifgldhwqczqmjt@verge.net.au>
- <20171113080058.tss2jzrkursfho67@verge.net.au>
- <20171113083308.zmebtb2u5jct2tub@verge.net.au>
- <alpine.LFD.2.20.1711131104340.2022@ja.home.ssi.bg>
+Date: Wed, 22 Nov 2017 19:14:28 +0100
+Message-ID: <20171122181428.qaqyodgflfmhtm25@verge.net.au>
+References: <1510585098-27428-1-git-send-email-gfree.wind@vip.163.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1511374395; bh=WUpe/UKOANGa9b1r7P0nfqyIc7S4kS5byTDZXZLZnO4=;
+        t=1511374496; bh=D+ZppiBwHYM043hj7WrpX2lWST266qloAb49Tx0JQ2M=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=JKco/39Flu9P31NgMXQ3rMrMRllX5XkIWENhH/qP1drWyXBftOKvVSxkbe37kUMiz
-         jfkgqDLGi+DD8WEOfcpjRu602i8dfrK66Q7OulZEjSr3/JcTkOJBurMNGAy62njS5j
-         BKq+grgHqMB/syskNcSoLtGBTlrYqvaM3kYGo1Cw=
+        b=hFy0HhrvE9vBw/xBZOYaNu4513y4kb3l9Iy3hdxc6l/bOem3wvCrcI9jqqcimC/WV
+         BPphKWg2jHCuP/FrAuHsqisSH1ZSmX1alG6+yO3uIY1pYW0vVg7cbUh/lpDiqu5R/t
+         A0Rp8PpvKYrrnGfo50mp2dMk3g6NJCX5dAD49wiY=
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.20.1711131104340.2022@ja.home.ssi.bg>
+In-Reply-To: <1510585098-27428-1-git-send-email-gfree.wind@vip.163.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Gao Feng <gfree.wind@vip.163.com>, Wensong Zhang <wensong@linux-vs.org>, lvs-devel@vger.kernel.org
+To: gfree.wind@vip.163.com
+Cc: wensong@linux-vs.org, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-On Mon, Nov 13, 2017 at 11:09:03AM +0200, Julian Anastasov wrote:
+On Mon, Nov 13, 2017 at 10:58:18PM +0800, gfree.wind@vip.163.com wrote:
+> From: Gao Feng <gfree.wind@vip.163.com>
 > 
-> 	Hello,
+> The param of frag_safe_skb_hp, ipvsh, isn't used now. So remove it and
+> update the callers' codes too.
 > 
-> On Mon, 13 Nov 2017, Simon Horman wrote:
-> 
-> > On Mon, Nov 13, 2017 at 09:00:59AM +0100, Simon Horman wrote:
-> > > On Thu, Nov 02, 2017 at 03:47:43PM +0100, Simon Horman wrote:
-> > > > On Sat, Oct 28, 2017 at 01:39:43PM +0300, Julian Anastasov wrote:
-> > > > > 
-> > > > > 	Hello,
-> > > > > 
-> > > > > On Thu, 26 Oct 2017, gfree.wind@vip.163.com wrote:
-> > > > > 
-> > > > > > From: Gao Feng <gfree.wind@vip.163.com>
-> > > > > > 
-> > > > > > The param of frag_safe_skb_hp, ipvsh, isn't used now. So remove it and
-> > > > > > change the callers' codes.
-> > > > > > 
-> > > > > > Signed-off-by: Gao Feng <gfree.wind@vip.163.com>
-> > > > > 
-> > > > > 	Looks good to me. Simon, please apply to ipvs-next tree.
-> > > > > 
-> > > > > Acked-by: Julian Anastasov <ja@ssi.bg>
-> > > > 
-> > > > Signed-off-by: Simon Horman <horms@verge.net.au>
-> > > > 
-> > > > Pablo, can you take this one?
-> > > 
-> > > I think I would rather it go via Pablo's tree and in turn net-next
-> > > as that is the normal route for IPVS patches.
-> > 
-> > I seem to have responded to the wrong email here.
-> 
-> 	Recently we see only few small patches for -next, so
-> you can write to Pablo to take them directly.
+> Signed-off-by: Gao Feng <gfree.wind@vip.163.com>
+> ---
+>  Simon advise me send the patch to netfilter group
 
-Yes, agreed.
+Acked-by: Simon Horman <horms+renesas@verge.net.au>
+
+Pablo, can you take this through the nf-next tree?
