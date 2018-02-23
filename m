@@ -1,134 +1,220 @@
-From: =?UTF-8?B?5p2O5pil?= <pickup112@gmail.com>
-Subject: Re: LVS TCP package fragment
-Date: Tue, 26 Dec 2017 21:42:42 +0800
-Message-ID: <CAGpjB9La3ZH0+xJ8RcuidjsB3asXfBOY_Z2JKeeUApOortwtAg@mail.gmail.com>
-References: <CAGpjB9LEJrVUmdhe-mV+y7VaXwinyHCN0w9Y36gQEYy34mpWpg@mail.gmail.com>
- <a308974f-9f14-0bd8-1d60-1032def3822e@schiro.it>
+From: Vincent Li <vincent.mc.li@gmail.com>
+Subject: IPVS trouble shooting tips in Kubernetes kube-proxy
+	ipvs mode
+Date: Fri, 23 Feb 2018 15:43:40 -0800
+Message-ID: <CAK3+h2yaFw-TtA-UQ6CxSeTYXDcO0v0CJ-u8z+94=ond2xAj2g@mail.gmail.com>
+Reply-To: "LinuxVirtualServer.org users mailing list."
+	<lvs-users@linuxvirtualserver.org>
 Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:in-reply-to:references:from:date:message-id:subject:to
-         :cc:content-transfer-encoding;
-        bh=S/m3eQkATLol3DLOtg681e3SdnW33XjRIOj3RxmH0co=;
-        b=mqR+79K925y0E/nJT6Fbx1u+V3+jSQGWbjNRWOwB9WlEb57ngH8LDa8nCATBynyVDo
-         6mQ1JTWsu8ZwOt7p8vEnEh+lE20BHVfGQtrnyaElxTNeI4MikhA7pVNME5nPSQeNBih4
-         qJODfyZrdQYMLa0bqet2GpsB21bTf426636JEdl7ZhOREWhAgHquSb/jOOq1CTL7MO/2
-         xwNlJNmkuV4TWHW4SQFa4y/O41zMU4V2BFTCaZPITfiEcdIwS6QVTILZQ9L79zQLylhG
-         CCDBbQW/rKuep4fRF3H2WJZacow9SE0lprGx/3rgcFUFuQO6a/D+Vvyq6BMBoYz8sPH7
-         jWDA==
-In-Reply-To: <a308974f-9f14-0bd8-1d60-1032def3822e@schiro.it>
-Sender: lvs-devel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Paolo Schiro <paolo@schiro.it>
-Cc: lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmail.com; s=20161025;
+	h=mime-version:from:date:message-id:subject:to;
+	bh=RuRik8PKo3/jywoizpjS+wGyhwCm3SYgxIBGdd2YoO4=;
+	b=FJwkMonFDC1nr9nlCc3R4FMSqzZn8Db1OwOVWhXpcO5QtAmTys/IOZP7EDEmhhjWnM
+	cdpxzDJ0mQ2Mm9wte4nQmGXLTm3wZE4hJqXfbAyekejnjtUHDDRzuvKVmHQMx0sdTunS
+	OQab8mgfBUm1OLOq4J52Df73kP3m+KvrgOtLcb+0dKxPqYdlW4G5JyCAkzJSqlDCOEN7
+	+zEVS5ul/3ND9gNWfLOhhqjaitKGU71a3NsxwR1cyFlWt76RlXXXShrRcihQCh4ORODC
+	n13VVkB1jtCJ7gvuXbGQ8hfH2Nw/fWA8CzeR7Tg1z4c3dXCCbmA3ciz2vfTMQWMV1wMk
+	Fe1A==
+List-Id: <lvs-devel.vger.kernel.org>
+List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
+	<mailto:lvs-users-request@linuxvirtualserver.org?subject=unsubscribe>
+List-Archive: <http://lists.graemef.net/pipermail/lvs-users>
+List-Post: <mailto:lvs-users@linuxvirtualserver.org>
+List-Help: <mailto:lvs-users-request@linuxvirtualserver.org?subject=help>
+List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
+	<mailto:lvs-users-request@linuxvirtualserver.org?subject=subscribe>
+Sender: lvs-users-bounces@linuxvirtualserver.org
+Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
+To: "LinuxVirtualServer.org users mailing list." <lvs-users@linuxvirtualserver.org>, lvs-devel@vger.kernel.org
 
-Thanks for reply.
-It seems not the problem of checksum.
-Because the LVS send a 252 length package and checksum of 0x5d97, but
-real server get a 248 package with the same checksum 0x5d97.
+Hi
 
-I still want to  check the environment of checksum offload on the LVS serve=
-r.
-But unfortunately we can not reproduce the problem on  "net.ipv4.ip_forward=
- =3D 0"
+I am experimenting Kubernetes kube-proxy ipvs mode in my lab and
+kube-proxy end up with ipvs service as below on both k8s master node
+and worker node:
 
+k8s master node:
 
-2017-07-24 16:47 GMT+08:00 Paolo Schiro <paolo@schiro.it>:
-> Checksum problems are usally caused by ethernet offloads.
-> try play with ethtool -k -K.
->
-> Il 17/07/2017 16:04, =E6=9D=8E=E6=98=A5 ha scritto:
->>
->> I have meet a very strange problem in my LVS environment.
->>
->>
->> when I connect to mysqld real server, mysql client is ok.
->> when I connect to LVS to access to the real server, mysql client report
->> error.
->>
->>
->> I config the LVS as DR mode like this:
->> ```
->> ipvsadm -A -t 158.222.165.185:3306 -s wrr
->> ipvsadm -a -t 158.222.165.185:3306 -r 158.222.165.125:3306 -g -w 100
->> ```
->>
->>
->>
->> And I have tcpdump the package on the LVS and real server.
->> Sync/Sync+ack/ack of Three-way Handshake is ok=EF=BC=8Cand four-way hand=
-shake is
->> ok.
->> But when mysql client send the login request (user/password) package,
->> the package fragment.
->>
->>
->> As show as follows,The LVS received the package and send it the real
->> server correct(length 252).
->> But real server get a fragment of the package (length 248) and a error
->> chksum. It have missed the 4 bytes fragment of the package.
->>
->>
->> Here is the package I have ```tcpdump -lnnneeevvv``` on the LVS.
->> * 9c:dc:71:4d:49:d0 =3D 158.222.165.126 is the client
->> * 24:8a:07:64:7f:21 =3D 158.222.165.185 is the VIP and the director
->> * 24:8a:07:64:56:41 =3D 158.222.165.185 is the real server
->>
->>
->> LVS package:
->> ```
->> 19:12:22.229356 9c:dc:71:4d:49:d0 > 24:8a:07:64:7f:21, ethertype IPv4
->> (0x0800), length 252: (tos 0x8, ttl 64, id 56669, offset 0, flags
->> [DF], proto TCP (6), l
->>      158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
->> 0x5d97 (correct), seq 0:198, ack 83, win 115, length 198
->> 19:12:22.229367 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
->> (0x0800), length 252: (tos 0x8, ttl 64, id 56669, offset 0, flags
->> [DF], proto TCP (6), l
->>      158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
->> 0x5d97 (correct), seq 0:198, ack 83, win 115, length 198
->> ```
->>
->>
->> real server packages:
->> ```
->> 19:12:21.803118 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
->> (0x0800), length 248: (tos 0x8, ttl 64, id 56668, offset 0, flags
->> [DF], proto TCP (6), l
->>      158.222.165.126.37691 > 158.222.165.185.3306: Flags [.], cksum
->> 0x5d97 (incorrect -> 0x4883), seq 1:195, ack 83, win 115, length 194
->> 19:12:21.803126 24:8a:07:64:7f:21 > 24:8a:07:64:56:41, ethertype IPv4
->> (0x0800), length 60: (tos 0x8, ttl 64, id 56669, offset 0, flags [DF],
->> proto TCP (6), le
->>      158.222.165.126.37691 > 158.222.165.185.3306: Flags [P.], cksum
->> 0x7973 (incorrect -> 0x5fb3), seq 199, ack 83, win 115, length 0
->> ```
->>
->>
->>
->> * we run the test on rhel6.7 with ipvsadm v1.26 2008/5/15 (compiled
->> with popt and IPVS v1.2.1)
->> * our network engineer have mirror the port of LVS and report that the
->> package is fragmented from LVS director.
->> * we have replace the broadcom network card to mellanox netword card,
->> but it still the same problem
->>
->>
->> And I have not config net.ipv4.ip_forward =3D 1 accord to
->> http://www.austintek.com/LVS/LVS-HOWTO/HOWTO/LVS-HOWTO.LVS-DR.html
->> But if I config "net.ipv4.ip_forward =3D 1 ", there are no package
->> fragment. MySQL connect to mysqld (throught LVS) successfully.
->>
->>
->> Have any one meet the problem, do you resolve it ? Or any one can help
->> to fix it.
->>
->
+[root@centos-k8s kubernetes]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  10.0.0.1:443 rr persistent 10800
+  -> 192.168.1.168:6443           Masq    1      1          0
+TCP  10.0.0.10:53 rr
+  -> 10.244.0.28:53               Masq    1      0          0
+UDP  10.0.0.10:53 rr
+  -> 10.244.0.28:53               Masq    1      0          0
 
 
 
---=20
-pickup.lichun =E6=9D=8E=E6=98=A5
+k8s worker node:
+
+[root@centos-k8s-node1 kubernetes]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  10.0.0.1:443 rr persistent 10800
+  -> 192.168.1.168:6443           Masq    1      0          0
+TCP  10.0.0.10:53 rr
+  -> 10.244.0.28:53               Masq    1      0          0
+UDP  10.0.0.10:53 rr
+  -> 10.244.0.28:53               Masq    1      0          0
+
+the problem is on k8s worker node, telnet can't reach to 10.0.0.1:443.
+
+[root@centos-k8s-node1 kubernetes]# telnet 10.0.0.1 443
+Trying 10.0.0.1...
+^C
+
+on k8s master node, I can telnet to ipvs service 10.0.0.1:443 fine,
+
+[root@centos-k8s kubernetes]# telnet 10.0.0.1 443
+Trying 10.0.0.1...
+Connected to 10.0.0.1.
+Escape character is '^]'.
+^]
+telnet>
+
+
+the real ip:port 192.168.1.168:6443 is k8s api services running on k8s
+master node
+
+[root@centos-k8s kubernetes]# ip addr show dev eth1
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1400 qdisc pfifo_fast
+state UP qlen 1000
+    link/ether 52:54:00:cf:91:8e brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.168/24 brd 192.168.1.255 scope global eth1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::fdfd:fb1f:204f:e03f/64 scope link
+       valid_lft forever preferred_lft forever
+
+both k8s master and worker node has dummy interface kube-ipvs0 with ip
+10.0.0.1 automatically setup by kube-proxy ipvs
+
+[root@centos-k8s kubernetes]# ip addr show dev kube-ipvs0
+6: kube-ipvs0: <BROADCAST,NOARP> mtu 1500 qdisc noop state DOWN
+    link/ether 06:a9:58:8e:c6:a5 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.0.1/32 brd 10.0.0.1 scope global kube-ipvs0
+       valid_lft forever preferred_lft forever
+    inet 10.0.0.10/32 brd 10.0.0.10 scope global kube-ipvs0
+       valid_lft forever preferred_lft forever
+
+on worker node, when I telnet 10.0.0.1, ideally, 10.0.0.1 should be
+DNAT to 192.168.1.168...but when run tcpdump on interface lo or
+kube-ipvs0 or real interface eth1, I see nothing, no SYN, arp...
+packet.
+
+
+ this leads me to think would this ipvs rule actually work with a
+dummy interface with a dummy virtual ip, and real ip on a separate
+machine?
+
+I thought there might be some iptables rule configured by kube-proxy
+dropping the packet, here is iptables rule setup by Kubernetes
+kube-proxy on the worker node:
+
+filter table
+
+[root@centos-k8s-node1 kubernetes]# iptables -n -L
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+KUBE-FIREWALL  all  --  0.0.0.0/0            0.0.0.0/0
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+DOCKER-ISOLATION  all  --  0.0.0.0/0            0.0.0.0/0
+DOCKER     all  --  0.0.0.0/0            0.0.0.0/0
+ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0            ctstate
+RELATED,ESTABLISHED
+ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0
+ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+KUBE-FIREWALL  all  --  0.0.0.0/0            0.0.0.0/0
+
+Chain DOCKER (1 references)
+target     prot opt source               destination
+
+Chain DOCKER-ISOLATION (1 references)
+target     prot opt source               destination
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0
+
+Chain KUBE-FIREWALL (2 references)
+target     prot opt source               destination
+DROP       all  --  0.0.0.0/0            0.0.0.0/0            /*
+kubernetes firewall for dropping marked packets */ mark match
+0x8000/0x8000
+
+nat table:
+
+[root@centos-k8s-node1 kubernetes]# iptables -t nat -n -L
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination
+KUBE-SERVICES  all  --  0.0.0.0/0            0.0.0.0/0            /*
+kubernetes service portals */
+DOCKER     all  --  0.0.0.0/0            0.0.0.0/0            ADDRTYPE
+match dst-type LOCAL
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+KUBE-SERVICES  all  --  0.0.0.0/0            0.0.0.0/0            /*
+kubernetes service portals */
+DOCKER     all  --  0.0.0.0/0           !127.0.0.0/8          ADDRTYPE
+match dst-type LOCAL
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination
+KUBE-POSTROUTING  all  --  0.0.0.0/0            0.0.0.0/0
+/* kubernetes postrouting rules */
+MASQUERADE  all  --  172.17.0.0/16        0.0.0.0/0
+
+Chain DOCKER (2 references)
+target     prot opt source               destination
+RETURN     all  --  0.0.0.0/0            0.0.0.0/0
+
+Chain KUBE-FIRE-WALL (0 references)
+target     prot opt source               destination
+
+Chain KUBE-MARK-DROP (0 references)
+target     prot opt source               destination
+MARK       all  --  0.0.0.0/0            0.0.0.0/0            MARK or 0x8000
+
+Chain KUBE-MARK-MASQ (0 references)
+target     prot opt source               destination
+MARK       all  --  0.0.0.0/0            0.0.0.0/0            MARK or 0x4000
+
+Chain KUBE-POSTROUTING (1 references)
+target     prot opt source               destination
+MASQUERADE  all  --  0.0.0.0/0            0.0.0.0/0            /*
+kubernetes service traffic requiring SNAT */ mark match 0x4000/0x4000
+MASQUERADE  all  --  0.0.0.0/0            0.0.0.0/0
+match-set KUBE-LOOP-BACK dst,dst,src
+
+Chain KUBE-SERVICES (2 references)
+target     prot opt source               destination
+
+
+Do you suspect any iptables rule will be dropping the packet quietly ?
+
+is there anything else in ipvs I could  to trace to the origin of the problem?
+
+FYI, I have full detail lab information in
+https://github.com/kubernetes/kubernetes/issues/60161
+
+I also have same problems with kube-proxy iptables mode, but i am
+hoping tracing through ipvs ( I am more comfortable trouble shooting
+ipvs than trouble shooting iptables :)) I maybe  able to find what
+configured wrong or what potential bugs I hit in kubernetes kube-proxy
+network
+
+Regards,
+
+Vincent
