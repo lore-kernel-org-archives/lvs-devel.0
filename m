@@ -1,42 +1,61 @@
-From: Kirill Tkhai <ktkhai-5HdwGun5lf+gSpxsJD1C4w@public.gmane.org>
-Subject: Re: [PATCH net-next 0/6] Converting pernet_operations
-	(part #8)
-Date: Sun, 18 Mar 2018 00:13:27 +0300
-Message-ID: <a340a7c9-015d-19ed-e6db-e787a9b128d5@virtuozzo.com>
-References: <152110491273.28582.13804059107038714030.stgit@localhost.localdomain>
-	<20180317.170757.485564313326587221.davem@davemloft.net>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: possible deadlock in rtnl_lock (5)
+Date: Tue, 27 Mar 2018 22:52:36 +0300 (EEST)
+Message-ID: <alpine.LFD.2.20.1803272227370.3460@ja.home.ssi.bg>
+References: <000000000000f7826f0568630354@google.com> <20180327115001.GC26275@breakpoint.cc>
 Mime-Version: 1.0
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20180327115001.GC26275@breakpoint.cc>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Return-path: <ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=virtuozzo.com;
-	s=selector1; h=From:Date:Subject:Message-ID:Content-Type:MIME-Version; 
-	bh=7LJdxoFuF28DGTnEWQXbs32U4feFoQwXViuB0MAxw64=;
-	b=a84VQKIl9TDiisFApg9PmgkZJ1zUyltqiyNpN7vHDwaXs5mfa0nAFv3pRo31Ky8MBucqmm42/xyp8m6cS3QcYe5RNff2k8IwlufveJ2E6G3dx+RZexlLc0UX+f/WiYpnh6/ZkAoMtKXUupg75O47ESFDsVkgmnd8OjizAQ6CHeo=
-In-Reply-To: <20180317.170757.485564313326587221.davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
-Content-Language: en-US
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <https://mail.openvswitch.org/mailman/options/ovs-dev>,
-	<mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://mail.openvswitch.org/pipermail/ovs-dev/>
-List-Post: <mailto:ovs-dev-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-List-Help: <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=help>
-List-Subscribe: <https://mail.openvswitch.org/mailman/listinfo/ovs-dev>,
-	<mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=subscribe>
-Sender: ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org
-Errors-To: ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org
-To: David Miller <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
-Cc: dev-yBygre7rU0TnMu66kgdUjQ@public.gmane.org, wensong-ud5FBsm0p/xg9hUCZPvPmw@public.gmane.org, dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, roopa-qUQiAmfTcIp+XZJcv9eMoEEOCMrvLtNR@public.gmane.org, dsahern-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, fw-HFFVJYpyMKqzQB+pC5nmwQ@public.gmane.org, jchapman-Bm0nJX+W7e9BDgjK7y7TUQ@public.gmane.org, lvs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ja-FgGsKACvmQM@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org, amine.kherbouche-pdR9zngts4EAvxtiuMwx3w@public.gmane.org, kadlec-K40Dz/62t/MgiyqX0sVFJYdd74u8MsAO@public.gmane.org, rshearma-43mecJUBy8ZBDgjK7y7TUQ@public.gmane.org, g.nault-pHk1y4uTXVDytLWWfqlThQ@public.gmane.org, pablo-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org
+To: Florian Westphal <fw@strlen.de>
+Cc: syzbot <syzbot+a46d6abf9d56b1365a72@syzkaller.appspotmail.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, syzkaller-bugs@googlegroups.com
 
-On 18.03.2018 00:07, David Miller wrote:
-> From: Kirill Tkhai <ktkhai-5HdwGun5lf+gSpxsJD1C4w@public.gmane.org>
-> Date: Thu, 15 Mar 2018 12:10:47 +0300
-> 
->> this series continues to review and to convert pernet_operations
->> to make them possible to be executed in parallel for several
->> net namespaces at the same time. There are different operations
->> over the tree, mostly are ipvs.
-> 
-> Series applied, thanks Kirill.
 
-Thanks, David!
+	Hello,
+
+On Tue, 27 Mar 2018, Florian Westphal wrote:
+
+> syzbot <syzbot+a46d6abf9d56b1365a72@syzkaller.appspotmail.com> wrote:
+> [ cc Julian and trimming cc list ]
+> 
+> > syzkaller688027/4497 is trying to acquire lock:
+> >  (rtnl_mutex){+.+.}, at: [<00000000bb14d7fb>] rtnl_lock+0x17/0x20
+> > net/core/rtnetlink.c:74
+> 
+> > but task is already holding lock:
+> > IPVS: stopping backup sync thread 4495 ...
+> >  (rtnl_mutex){+.+.}, at: [<00000000bb14d7fb>] rtnl_lock+0x17/0x20
+> > net/core/rtnetlink.c:74
+> > 
+> > other info that might help us debug this:
+> >  Possible unsafe locking scenario:
+> > 
+> >        CPU0
+> >        ----
+> >   lock(rtnl_mutex);
+> >   lock(rtnl_mutex);
+> > 
+> >  *** DEADLOCK ***
+> > 
+> >  May be due to missing lock nesting notation
+> 
+> Looks like this is real, commit e0b26cc997d57305b4097711e12e13992580ae34
+> ("ipvs: call rtnl_lock early") added rtnl_lock when starting sync thread
+> but socket close invokes rtnl_lock too:
+
+	I see, thanks! I'll have to move the locks into
+start_sync_thread and to split make_{send,receive}_sock
+to {make,setup}_{send,receive}_sock ...
+
+> > stack backtrace:
+> >  rtnl_lock+0x17/0x20 net/core/rtnetlink.c:74
+> >  ip_mc_drop_socket+0x88/0x230 net/ipv4/igmp.c:2643
+> >  inet_release+0x4e/0x1c0 net/ipv4/af_inet.c:413
+> >  sock_release+0x8d/0x1e0 net/socket.c:595
+> >  start_sync_thread+0x2213/0x2b70 net/netfilter/ipvs/ip_vs_sync.c:1924
+> >  do_ip_vs_set_ctl+0x1139/0x1cc0 net/netfilter/ipvs/ip_vs_ctl.c:2389
+
+Regards
