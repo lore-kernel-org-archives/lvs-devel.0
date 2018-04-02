@@ -1,56 +1,78 @@
-From: Vincent Bernat <vincent@bernat.im>
-Subject: Re: [PATCH net-next v1] ipvs: add consistent source hashing scheduling
-Date: Mon, 02 Apr 2018 19:57:12 +0200
-Message-ID: <m3zi2lcwzr.fsf@luffy.cx>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH net-next v1] ipvs: add consistent source hashing
+ scheduling
+Date: Mon, 2 Apr 2018 22:05:00 +0300 (EEST)
+Message-ID: <alpine.LFD.2.20.1804022145370.1734@ja.home.ssi.bg>
 References: <20180402172025.7380-1-vincent@bernat.im>
-        <63c63fab-12ed-8b15-e00e-dc54e5c144eb@gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
 Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed; d=bernat.im; h=from:to:cc
-        :subject:references:date:in-reply-to:message-id:mime-version
-        :content-type; s=postfix; bh=hC6sEKuAf4oQA5sLhQnzzKMJgZw=; b=xpw
-        X9j9a0mk6Y/+Ee2JfHh2Z1ddxiU6Q3De1//O1hP4AOnz+rjvmuuYLYLShh7gfM/H
-        ig1pWjvlwdhJ36bkTVce828upON7ZxF+vNB2mZM8Oy3GscK6aJvfj72pb2EeLq/E
-        7VlqAM0g2oGlha3ATXGSe+m+tzbJCwWiAT9AhN+o=
-In-Reply-To: <63c63fab-12ed-8b15-e00e-dc54e5c144eb@gmail.com> (Eric Dumazet's
-        message of "Mon, 2 Apr 2018 10:33:27 -0700")
+In-Reply-To: <20180402172025.7380-1-vincent@bernat.im>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Vincent Bernat <vincent@bernat.im>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Inju Song <inju.song@navercorp.com>
 
- =E2=9D=A6  2 avril 2018 10:33 -0700, Eric Dumazet <eric.dumazet@gmail.com>=
-=C2=A0:
 
->> +static inline u32
->> +ip_vs_csh_permutation(struct ip_vs_dest *d, int j)
->> +{
->> +	u32 offset, skip;
->> +	__be32 addr_fold =3D d->addr.ip;
->> +
->> +#ifdef CONFIG_IP_VS_IPV6
->> +	if (d->af =3D=3D AF_INET6)
->> +		addr_fold =3D d->addr.ip6[0]^d->addr.ip6[1]^
->> +			d->addr.ip6[2]^d->addr.ip6[3];
->> +#endif
->> +	addr_fold =3D ntohl(addr_fold) + ntohs(d->port);
->> +	offset =3D hash_32(addr_fold, 32) % IP_VS_CSH_TAB_SIZE;
->> +	skip =3D (hash_32(addr_fold + 1, 32) % (IP_VS_CSH_TAB_SIZE - 1)) + 1;
->> +	return (offset + j * skip) % IP_VS_CSH_TAB_SIZE;
->> +}
->> +
->
-> This does not look very strong to me, particularly the IPv6 folding
->
-> I would rather use __ipv6_addr_jhash() instead of ipv6_addr_hash(),
-> even if it is hard coded ;)
+	Hello,
 
-I can switch to ipv6_addr_hash(). However, switching to
-__ipv6_addr_jhash seems useless as I would need to hardcode the initial
-value: people use source hashing to get the same result from one host to
-another. Am I missing something?
---=20
-Each module should do one thing well.
-            - The Elements of Programming Style (Kernighan & Plauger)
+On Mon, 2 Apr 2018, Vincent Bernat wrote:
+
+> Based on Google's Maglev algorithm [1][2], this scheduler builds a
+> lookup table in a way disruption is minimized when a change
+> occurs. This helps in case of active/active setup without
+> synchronization. Like for classic source hashing, this lookup table is
+> used to assign connections to a real server.
+> 
+> Both source address and port are used to compute the hash (unlike sh
+> where this is optional).
+> 
+> Weights are correctly handled. Unlike sh, servers with a weight of 0
+> are considered as absent. Also, unlike sh, when a server becomes
+> unavailable due to a threshold, no fallback is possible: doing so
+> would seriously impair the the usefulness of using a consistent hash.
+> 
+> There is a small hack to detect when all real servers have a weight of
+> 0. It relies on the fact it is not possible for the weight of a real
+> server to change during the execution of the assignment. I believe
+> this is the case as modifications through netlink are subject to a
+> mutex, but the use of atomic_read() is unsettling.
+> 
+> The value of 65537 for the hash table size is currently not modifiable
+> at compile-time. This is the value suggested in the Maglev
+> paper. Another possible value is 257 (for small tests) and 655373 (for
+> very large setups).
+> 
+> [1]: https://research.google.com/pubs/pub44824.html
+> [2]: https://blog.acolyer.org/2016/03/21/maglev-a-fast-and-reliable-software-network-load-balancer/
+
+	Sorry to say it but may be you missed the discussion
+on lvs-devel about the new MH scheduler implemented by Inju Song:
+
+https://www.spinics.net/lists/lvs-devel/msg04928.html
+http://archive.linuxvirtualserver.org/html/lvs-devel/2018-03/msg00023.html
+
+	In the last 6 months we fixed all issues and I acked
+v4 just yesterday:
+
+http://archive.linuxvirtualserver.org/html/lvs-devel/2018-04/msg00003.html
+
+	This scheduler supports:
+
+- tables with different size (prime): IP_VS_MH_TAB_INDEX
+- gcd of weights: ip_vs_mh_gcd_weight
+- shifted weights: ip_vs_mh_shift_weight
+- weight can be changed any time
+
+> Signed-off-by: Vincent Bernat <vincent@bernat.im>
+> ---
+>  include/net/ip_vs.h            |  27 ++++
+>  net/netfilter/ipvs/Kconfig     |  13 ++
+>  net/netfilter/ipvs/Makefile    |   1 +
+>  net/netfilter/ipvs/ip_vs_csh.c | 339 +++++++++++++++++++++++++++++++++++++++++
+>  net/netfilter/ipvs/ip_vs_sh.c  |  32 +---
+>  5 files changed, 381 insertions(+), 31 deletions(-)
+>  create mode 100644 net/netfilter/ipvs/ip_vs_csh.c
+
+Regards
