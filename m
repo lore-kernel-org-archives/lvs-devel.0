@@ -1,66 +1,82 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 2/5] netfilter: ipvs: Keep latest weight of destination
-Date: Thu, 19 Apr 2018 10:56:11 +0200
-Message-ID: <20180419085614.7437-3-horms@verge.net.au>
-References: <20180419085614.7437-1-horms@verge.net.au>
+Subject: [GIT PULL 0/5] IPVS Updates for v4.18
+Date: Thu, 19 Apr 2018 10:56:09 +0200
+Message-ID: <20180419085614.7437-1-horms@verge.net.au>
+Mime-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1524128186; bh=z7BueV0I7xqWZRCfGCUh+nBXGeiTcV63FL8ClYygRPg=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=DE8Yj6MvS6SnUpOrzen9gWV38Z8L/taSjJJrNHqBQJwArJ2dRrip5hY2x/YQvlOZC
-         zLyn5UpntIaZ5Bu1536XU5cnExnVK4V0hIYp/9fsrY3DnMn0NLWFlpL9T0gOYCdqU/
-         ifAG+laSwO+sHvKGJWHuSDQfyEyJ8rR3P4/32At0=
-In-Reply-To: <20180419085614.7437-1-horms@verge.net.au>
+        t=1524128186; bh=c1jeE8c+lFfr6tDWvZXN7D8X3KUXzvsJqQ5UI5woVRs=;
+        h=From:To:Cc:Subject:Date:From;
+        b=k/vji2NZlIMyzDEfmAfzHiIs8xnbp9/ctOjf7UN6Wlv8kY4dP46JprsUOz62vVoY/
+         LZCRtER9GH5oaXqBn38EzH8naWQZzd7Hm9Nlg75OcSvia6LQ5ZaVDsRa1SRsK4m2Kr
+         xA9CSRwyh1oQEOUTssf0Z7gx39SRmFfZmsj+QduA=
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Inju Song <inju.song@navercorp.com>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-From: Inju Song <inju.song@navercorp.com>
+Hi Pablo,
 
-The hashing table in scheduler such as source hash or maglev hash
-should ignore the changed weight to 0 and allow changing the weight
-from/to non-0 values. So, struct ip_vs_dest needs to keep weight
-with latest non-0 weight.
+please consider these IPVS enhancements for v4.18.
 
-Signed-off-by: Inju Song <inju.song@navercorp.com>
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
----
- include/net/ip_vs.h            | 1 +
- net/netfilter/ipvs/ip_vs_ctl.c | 4 ++++
- 2 files changed, 5 insertions(+)
+* Whitepace cleanup
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index eb0bec043c96..0ac795b41ab8 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -668,6 +668,7 @@ struct ip_vs_dest {
- 	volatile unsigned int	flags;		/* dest status flags */
- 	atomic_t		conn_flags;	/* flags to copy to conn */
- 	atomic_t		weight;		/* server weight */
-+	atomic_t		last_weight;	/* server latest weight */
- 
- 	refcount_t		refcnt;		/* reference counter */
- 	struct ip_vs_stats      stats;          /* statistics */
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 5ebde4b15810..b91bb70ece92 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -821,6 +821,10 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	if (add && udest->af != svc->af)
- 		ipvs->mixed_address_family_dests++;
- 
-+	/* keep the last_weight with latest non-0 weight */
-+	if (add || udest->weight != 0)
-+		atomic_set(&dest->last_weight, udest->weight);
-+
- 	/* set the weight and the flags */
- 	atomic_set(&dest->weight, udest->weight);
- 	conn_flags = udest->conn_flags & IP_VS_CONN_F_DEST_MASK;
--- 
-2.11.0
+* Add Maglev hashing algorithm as a IPVS scheduler
 
+  Inju Song says "Implements the Google's Maglev hashing algorithm as a
+  IPVS scheduler.  Basically it provides consistent hashing but offers some
+  special features about disruption and load balancing.
+
+  1) minimal disruption: when the set of destinations changes,
+     a connection will likely be sent to the same destination
+     as it was before.
+
+  2) load balancing: each destination will receive an almost
+     equal number of connections.
+
+ Seel also: [3.4 Consistent Hasing] in
+ https://www.usenix.org/system/files/conference/nsdi16/nsdi16-paper-eisenbud.pdf
+ "
+
+* Fix to correct implementation of Knuth's multiplicative hashing
+  which is used in sh/dh/lblc/lblcr algorithms. Instead the
+  implementation provided by the hash_32() macro is used.
+
+The following changes since commit 159f02977b2feb18a4bece5e586c838a6d26d44b:
+
+  Merge branch 'net-mvneta-improve-suspend-resume' (2018-04-02 11:14:03 -0400)
+
+are available in the git repository at:
+
+  http://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-for-v4.18
+
+for you to fetch changes up to 9a17740e0ea1c9b1edd89836bb27c76272f54641:
+
+  ipvs: fix multiplicative hashing in sh/dh/lblc/lblcr algorithms (2018-04-09 10:15:27 +0300)
+
+----------------------------------------------------------------
+Arvind Yadav (1):
+      netfilter: ipvs: Fix space before '[' error.
+
+Inju Song (3):
+      netfilter: ipvs: Keep latest weight of destination
+      netfilter: ipvs: Add Maglev hashing scheduler
+      netfilter: ipvs: Add configurations of Maglev hashing
+
+Vincent Bernat (1):
+      ipvs: fix multiplicative hashing in sh/dh/lblc/lblcr algorithms
+
+ include/net/ip_vs.h                  |   1 +
+ net/netfilter/ipvs/Kconfig           |  37 +++
+ net/netfilter/ipvs/Makefile          |   1 +
+ net/netfilter/ipvs/ip_vs_ctl.c       |   4 +
+ net/netfilter/ipvs/ip_vs_dh.c        |   3 +-
+ net/netfilter/ipvs/ip_vs_lblc.c      |   3 +-
+ net/netfilter/ipvs/ip_vs_lblcr.c     |   3 +-
+ net/netfilter/ipvs/ip_vs_mh.c        | 540 +++++++++++++++++++++++++++++++++++
+ net/netfilter/ipvs/ip_vs_proto_tcp.c |   4 +-
+ net/netfilter/ipvs/ip_vs_sh.c        |   3 +-
+ 10 files changed, 593 insertions(+), 6 deletions(-)
+ create mode 100644 net/netfilter/ipvs/ip_vs_mh.c
