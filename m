@@ -1,108 +1,118 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 4/5] netfilter: ipvs: Add configurations of Maglev hashing
-Date: Thu, 19 Apr 2018 10:56:13 +0200
-Message-ID: <20180419085614.7437-5-horms@verge.net.au>
+Subject: [PATCH 5/5] ipvs: fix multiplicative hashing in sh/dh/lblc/lblcr algorithms
+Date: Thu, 19 Apr 2018 10:56:14 +0200
+Message-ID: <20180419085614.7437-6-horms@verge.net.au>
 References: <20180419085614.7437-1-horms@verge.net.au>
-Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
 Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1524128186; bh=hYXNTyIDluujfZPWPMhqo/8ixuC1DEfTHBCovWh6OQg=;
+        t=1524128188; bh=RjwnAa3ldt96n72m9CGOcLioN7+hGyd0eaxuUI5gc9Q=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=FtgoQYgtXRDZK1TBSKQYeLCOuoYjBUe2koRpd5/LIRAP1NssbTuLwO2hZd8PN0AQm
-         EeBwdI4ZeEBknx+mxX6gSYHC4wGMfzsPgvv1cD3bAAd/MujuTN54BEaYodvConIoJE
-         a+fbhvZUrXLUBvlxYY+y5f3PQ561NOncWk7u6CD8=
+        b=NFDKd0Ty3bOmYqhKDDU4IpLYKGm3bDh6ki1oektylDQgF6zSMbSJVJz2iKQzFpgme
+         uhPdb3gbkln+Y1mlcBshH41cFOz8Ti/Vy/uqCMVcUpep/N/NNwwrEBVUZs25TgIAKx
+         NmllONtbLlOuHL3RFB/Zyo7h8DqsAsL15ukCQ8ik=
 In-Reply-To: <20180419085614.7437-1-horms@verge.net.au>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Inju Song <inju.song@navercorp.com>, Simon Horman <horms@verge.net.au>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Vincent Bernat <vincent@bernat.im>, Simon Horman <horms@verge.net.au>
 
-From: Inju Song <inju.song@navercorp.com>
+From: Vincent Bernat <vincent@bernat.im>
 
-To build the maglev hashing scheduler, add some configuration
-to Kconfig and Makefile.
+The sh/dh/lblc/lblcr algorithms are using Knuth's multiplicative
+hashing incorrectly. Replace its use by the hash_32() macro, which
+correctly implements this algorithm. It doesn't use the same constant,
+but it shouldn't matter.
 
- - The compile configurations of MH are added to the Kconfig.
-
- - The MH build rule is added to the Makefile.
-
-Signed-off-by: Inju Song <inju.song@navercorp.com>
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Vincent Bernat <vincent@bernat.im>
+Acked-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Simon Horman <horms@verge.net.au>
 ---
- net/netfilter/ipvs/Kconfig  | 37 +++++++++++++++++++++++++++++++++++++
- net/netfilter/ipvs/Makefile |  1 +
- 2 files changed, 38 insertions(+)
+ net/netfilter/ipvs/ip_vs_dh.c    | 3 ++-
+ net/netfilter/ipvs/ip_vs_lblc.c  | 3 ++-
+ net/netfilter/ipvs/ip_vs_lblcr.c | 3 ++-
+ net/netfilter/ipvs/ip_vs_sh.c    | 3 ++-
+ 4 files changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-index b32fb0dbe237..05dc1b77e466 100644
---- a/net/netfilter/ipvs/Kconfig
-+++ b/net/netfilter/ipvs/Kconfig
-@@ -225,6 +225,25 @@ config	IP_VS_SH
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
-=20
-+config	IP_VS_MH
-+	tristate "maglev hashing scheduling"
-+	---help---
-+	  The maglev consistent hashing scheduling algorithm provides the
-+	  Google's Maglev hashing algorithm as a IPVS scheduler. It assigns
-+	  network connections to the servers through looking up a statically
-+	  assigned special hash table called the lookup table. Maglev hashing
-+	  is to assign a preference list of all the lookup table positions
-+	  to each destination.
-+
-+	  Through this operation, The maglev hashing gives an almost equal
-+	  share of the lookup table to each of the destinations and provides
-+	  minimal disruption by using the lookup table. When the set of
-+	  destinations changes, a connection will likely be sent to the same
-+	  destination as it was before.
-+
-+	  If you want to compile it in kernel, say Y. To compile it as a
-+	  module, choose M here. If unsure, say N.
-+
- config	IP_VS_SED
- 	tristate "shortest expected delay scheduling"
- 	---help---
-@@ -266,6 +285,24 @@ config IP_VS_SH_TAB_BITS
- 	  needs to be large enough to effectively fit all the destinations
- 	  multiplied by their respective weights.
-=20
-+comment 'IPVS MH scheduler'
-+
-+config IP_VS_MH_TAB_INDEX
-+	int "IPVS maglev hashing table index of size (the prime numbers)"
-+	range 8 17
-+	default 12
-+	---help---
-+	  The maglev hashing scheduler maps source IPs to destinations
-+	  stored in a hash table. This table is assigned by a preference
-+	  list of the positions to each destination until all slots in
-+	  the table are filled. The index determines the prime for size of
-+	  the table as=A0251, 509, 1021, 2039, 4093, 8191, 16381, 32749,
-+	  65521 or 131071.=A0When using weights to allow destinations to
-+	  receive more connections,=A0the table is assigned an amount
-+	  proportional to the weights specified.=A0The table needs to be large
-+	  enough to effectively fit all the destinations multiplied by their
-+	  respective weights.
-+
- comment 'IPVS application helper'
-=20
- config	IP_VS_FTP
-diff --git a/net/netfilter/ipvs/Makefile b/net/netfilter/ipvs/Makefile
-index c552993fa4b9..bfce2677fda2 100644
---- a/net/netfilter/ipvs/Makefile
-+++ b/net/netfilter/ipvs/Makefile
-@@ -33,6 +33,7 @@ obj-$(CONFIG_IP_VS_LBLC) +=3D ip_vs_lblc.o
- obj-$(CONFIG_IP_VS_LBLCR) +=3D ip_vs_lblcr.o
- obj-$(CONFIG_IP_VS_DH) +=3D ip_vs_dh.o
- obj-$(CONFIG_IP_VS_SH) +=3D ip_vs_sh.o
-+obj-$(CONFIG_IP_VS_MH) +=3D ip_vs_mh.o
- obj-$(CONFIG_IP_VS_SED) +=3D ip_vs_sed.o
- obj-$(CONFIG_IP_VS_NQ) +=3D ip_vs_nq.o
-=20
---=20
+diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
+index 75f798f8e83b..07459e71d907 100644
+--- a/net/netfilter/ipvs/ip_vs_dh.c
++++ b/net/netfilter/ipvs/ip_vs_dh.c
+@@ -43,6 +43,7 @@
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ #include <linux/skbuff.h>
++#include <linux/hash.h>
+ 
+ #include <net/ip_vs.h>
+ 
+@@ -81,7 +82,7 @@ static inline unsigned int ip_vs_dh_hashkey(int af, const union nf_inet_addr *ad
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
+ #endif
+-	return (ntohl(addr_fold)*2654435761UL) & IP_VS_DH_TAB_MASK;
++	return hash_32(ntohl(addr_fold), IP_VS_DH_TAB_BITS);
+ }
+ 
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+index 3057e453bf31..08147fc6400c 100644
+--- a/net/netfilter/ipvs/ip_vs_lblc.c
++++ b/net/netfilter/ipvs/ip_vs_lblc.c
+@@ -48,6 +48,7 @@
+ #include <linux/kernel.h>
+ #include <linux/skbuff.h>
+ #include <linux/jiffies.h>
++#include <linux/hash.h>
+ 
+ /* for sysctl */
+ #include <linux/fs.h>
+@@ -160,7 +161,7 @@ ip_vs_lblc_hashkey(int af, const union nf_inet_addr *addr)
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
+ #endif
+-	return (ntohl(addr_fold)*2654435761UL) & IP_VS_LBLC_TAB_MASK;
++	return hash_32(ntohl(addr_fold), IP_VS_LBLC_TAB_BITS);
+ }
+ 
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+index 92adc04557ed..9b6a6c9e9cfa 100644
+--- a/net/netfilter/ipvs/ip_vs_lblcr.c
++++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+@@ -47,6 +47,7 @@
+ #include <linux/jiffies.h>
+ #include <linux/list.h>
+ #include <linux/slab.h>
++#include <linux/hash.h>
+ 
+ /* for sysctl */
+ #include <linux/fs.h>
+@@ -323,7 +324,7 @@ ip_vs_lblcr_hashkey(int af, const union nf_inet_addr *addr)
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
+ #endif
+-	return (ntohl(addr_fold)*2654435761UL) & IP_VS_LBLCR_TAB_MASK;
++	return hash_32(ntohl(addr_fold), IP_VS_LBLCR_TAB_BITS);
+ }
+ 
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
+index 16aaac6eedc9..1e01c782583a 100644
+--- a/net/netfilter/ipvs/ip_vs_sh.c
++++ b/net/netfilter/ipvs/ip_vs_sh.c
+@@ -96,7 +96,8 @@ ip_vs_sh_hashkey(int af, const union nf_inet_addr *addr,
+ 		addr_fold = addr->ip6[0]^addr->ip6[1]^
+ 			    addr->ip6[2]^addr->ip6[3];
+ #endif
+-	return (offset + (ntohs(port) + ntohl(addr_fold))*2654435761UL) &
++	return (offset + hash_32(ntohs(port) + ntohl(addr_fold),
++				 IP_VS_SH_TAB_BITS)) &
+ 		IP_VS_SH_TAB_MASK;
+ }
+ 
+-- 
 2.11.0
 
