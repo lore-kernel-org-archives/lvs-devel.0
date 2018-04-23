@@ -1,10 +1,10 @@
-From: syzbot <syzbot+3e9695f147fb529aa9bc@syzkaller.appspotmail.com>
-Subject: KMSAN: uninit-value in ip_vs_lblc_check_expire
+From: syzbot <syzbot+3dfdea57819073a04f21@syzkaller.appspotmail.com>
+Subject: KMSAN: uninit-value in ip_vs_lblcr_check_expire
 Date: Mon, 23 Apr 2018 06:28:01 -0700
-Message-ID: <000000000000c66d94056a84011d@google.com>
+Message-ID: <000000000000c9559c056a8401a6@google.com>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"; format="flowed"; delsp="yes"
 Content-Transfer-Encoding: 7bit
@@ -17,27 +17,30 @@ https://github.com/google/kmsan.git/master commit
 d2d741e5d1898dfde1a75ea3d29a9a3e2edf0617 (Sun Apr 22 15:05:22 2018 +0000)
 kmsan: add initialization for shmem pages
 syzbot dashboard link:  
-https://syzkaller.appspot.com/bug?extid=3e9695f147fb529aa9bc
+https://syzkaller.appspot.com/bug?extid=3dfdea57819073a04f21
 
-So far this crash happened 3 times on  
+So far this crash happened 2 times on  
 https://github.com/google/kmsan.git/master.
 Unfortunately, I don't have any reproducer for this crash yet.
 Raw console output:  
-https://syzkaller.appspot.com/x/log.txt?id=5822255644803072
+https://syzkaller.appspot.com/x/log.txt?id=6285034612850688
 Kernel config: https://syzkaller.appspot.com/x/.config?id=328654897048964367
 compiler: clang version 7.0.0 (trunk 329391)
 
 IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+3e9695f147fb529aa9bc@syzkaller.appspotmail.com
+Reported-by: syzbot+3dfdea57819073a04f21@syzkaller.appspotmail.com
 It will help syzbot understand when the bug is fixed. See footer for  
 details.
 If you forward the report, please keep this part and the footer.
 
-kernel msg: ebtables bug: please report to author: bad policy
+RDX: 0000000000000000 RSI: 0000000020000080 RDI: 0000000000000013
+RBP: 000000000072bea0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000014
+R13: 00000000000004f3 R14: 00000000006fa768 R15: 0000000000000000
 ==================================================================
-BUG: KMSAN: uninit-value in ip_vs_lblc_check_expire+0xe62/0xf10  
-net/netfilter/ipvs/ip_vs_lblc.c:315
-CPU: 0 PID: 11383 Comm: syz-executor3 Not tainted 4.16.0+ #86
+BUG: KMSAN: uninit-value in ip_vs_lblcr_check_expire+0x1551/0x1600  
+net/netfilter/ipvs/ip_vs_lblcr.c:479
+CPU: 0 PID: 13883 Comm: syz-executor4 Not tainted 4.16.0+ #86
 Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
 Google 01/01/2011
 Call Trace:
@@ -46,7 +49,7 @@ Call Trace:
   dump_stack+0x185/0x1d0 lib/dump_stack.c:53
   kmsan_report+0x142/0x240 mm/kmsan/kmsan.c:1067
   __msan_warning_32+0x6c/0xb0 mm/kmsan/kmsan_instr.c:683
-  ip_vs_lblc_check_expire+0xe62/0xf10 net/netfilter/ipvs/ip_vs_lblc.c:315
+  ip_vs_lblcr_check_expire+0x1551/0x1600 net/netfilter/ipvs/ip_vs_lblcr.c:479
   call_timer_fn+0x26a/0x5a0 kernel/time/timer.c:1326
   expire_timers kernel/time/timer.c:1363 [inline]
   __run_timers+0xda7/0x11c0 kernel/time/timer.c:1666
@@ -60,38 +63,46 @@ Call Trace:
   </IRQ>
 RIP: 0010:native_restore_fl arch/x86/include/asm/irqflags.h:37 [inline]
 RIP: 0010:arch_local_irq_restore arch/x86/include/asm/irqflags.h:78 [inline]
-RIP: 0010:vprintk_emit+0xcb2/0xff0 kernel/printk/printk.c:1899
-RSP: 0018:ffff8801c2a1f0d8 EFLAGS: 00000296 ORIG_RAX: ffffffffffffff12
-RAX: 0000000000000296 RBX: ffff8801574c4418 RCX: 0000000000040000
-RDX: ffffc900033a6000 RSI: 00000000000001bf RDI: 00000000000001c0
-RBP: ffff8801c2a1f1f8 R08: 000000219bfd8445 R09: ffff8801fd6d615d
-R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
-R13: ffffffff8b300430 R14: 0000000000000000 R15: 0000000000000000
-  vprintk_default+0x90/0xa0 kernel/printk/printk.c:1955
-  vprintk_func+0x517/0x700 kernel/printk/printk_safe.c:379
-  printk+0x1b6/0x1f0 kernel/printk/printk.c:1991
-  translate_table+0x474/0x5e10 net/bridge/netfilter/ebtables.c:846
-  do_replace_finish+0x1258/0x2ea0 net/bridge/netfilter/ebtables.c:1002
-  do_replace+0x707/0x770 net/bridge/netfilter/ebtables.c:1141
-  do_ebt_set_ctl+0x2ab/0x3c0 net/bridge/netfilter/ebtables.c:1518
-  nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
-  nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
-  ip_setsockopt+0x24b/0x2b0 net/ipv4/ip_sockglue.c:1261
-  udp_setsockopt+0x108/0x1b0 net/ipv4/udp.c:2406
-  ipv6_setsockopt+0x30c/0x340 net/ipv6/ipv6_sockglue.c:917
-  udpv6_setsockopt+0x110/0x1c0 net/ipv6/udp.c:1422
-  sock_common_setsockopt+0x136/0x170 net/core/sock.c:2975
-  SYSC_setsockopt+0x4b8/0x570 net/socket.c:1849
-  SyS_setsockopt+0x76/0xa0 net/socket.c:1828
+RIP: 0010:dump_stack+0x1af/0x1d0 lib/dump_stack.c:58
+RSP: 0018:ffff880156a2ef00 EFLAGS: 00000286 ORIG_RAX: ffffffffffffff12
+RAX: ffff8801fddc2590 RBX: ffff88014f62c418 RCX: ffff880000000000
+RDX: ffff8801fd9c2590 RSI: aaaaaaaaaaaab000 RDI: ffffea0000000000
+RBP: ffff880156a2ef48 R08: 0000000001080000 R09: 0000000000000002
+R10: 0000000000000000 R11: 0000000000000000 R12: 00000000cf000109
+R13: 0000000000000286 R14: 0000000000000000 R15: 0000000000000000
+  fail_dump lib/fault-inject.c:51 [inline]
+  should_fail+0x87b/0xab0 lib/fault-inject.c:149
+  should_failslab+0x279/0x2a0 mm/failslab.c:32
+  slab_pre_alloc_hook mm/slab.h:422 [inline]
+  slab_alloc_node mm/slub.c:2663 [inline]
+  slab_alloc mm/slub.c:2745 [inline]
+  kmem_cache_alloc+0x136/0xb90 mm/slub.c:2750
+  dst_alloc+0x295/0x860 net/core/dst.c:104
+  __ip6_dst_alloc net/ipv6/route.c:361 [inline]
+  ip6_rt_cache_alloc+0x445/0xd00 net/ipv6/route.c:1061
+  ip6_pol_route+0x3f19/0x5da0 net/ipv6/route.c:1751
+  ip6_pol_route_output+0xe6/0x110 net/ipv6/route.c:1892
+  fib6_rule_lookup+0x494/0x720 net/ipv6/fib6_rules.c:87
+  ip6_route_output_flags+0x4fa/0x590 net/ipv6/route.c:1920
+  ip6_dst_lookup_tail+0x2fe/0x1a60 net/ipv6/ip6_output.c:992
+  ip6_dst_lookup_flow+0xfc/0x270 net/ipv6/ip6_output.c:1093
+  rawv6_sendmsg+0x1b05/0x4fb0 net/ipv6/raw.c:908
+  inet_sendmsg+0x48d/0x740 net/ipv4/af_inet.c:764
+  sock_sendmsg_nosec net/socket.c:630 [inline]
+  sock_sendmsg net/socket.c:640 [inline]
+  ___sys_sendmsg+0xec0/0x1310 net/socket.c:2046
+  __sys_sendmsg net/socket.c:2080 [inline]
+  SYSC_sendmsg+0x2a3/0x3d0 net/socket.c:2091
+  SyS_sendmsg+0x54/0x80 net/socket.c:2087
   do_syscall_64+0x309/0x430 arch/x86/entry/common.c:287
   entry_SYSCALL_64_after_hwframe+0x3d/0xa2
 RIP: 0033:0x455389
-RSP: 002b:00007f470c9e3c68 EFLAGS: 00000246 ORIG_RAX: 0000000000000036
-RAX: ffffffffffffffda RBX: 00007f470c9e46d4 RCX: 0000000000455389
-RDX: 0000000000000080 RSI: 0000000000000000 RDI: 0000000000000013
-RBP: 000000000072bea0 R08: 0000000000000dd0 R09: 0000000000000000
-R10: 0000000020000dc0 R11: 0000000000000246 R12: 00000000ffffffff
-R13: 000000000000051d R14: 00000000006fab58 R15: 0000000000000000
+RSP: 002b:00007fa5b1000c68 EFLAGS: 00000246 ORIG_RAX: 000000000000002e
+RAX: ffffffffffffffda RBX: 00007fa5b10016d4 RCX: 0000000000455389
+RDX: 0000000000000000 RSI: 0000000020000080 RDI: 0000000000000013
+RBP: 000000000072bea0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000014
+R13: 00000000000004f3 R14: 00000000006fa768 R15: 0000000000000000
 
 Uninit was created at:
   kmsan_save_stack_with_flags mm/kmsan/kmsan.c:278 [inline]
@@ -105,14 +116,14 @@ Uninit was created at:
   kmalloc_large include/linux/slab.h:446 [inline]
   __kmalloc+0x332/0x350 mm/slub.c:3778
   kmalloc include/linux/slab.h:517 [inline]
-  ip_vs_lblc_init_svc+0x57/0x310 net/netfilter/ipvs/ip_vs_lblc.c:355
+  ip_vs_lblcr_init_svc+0x57/0x310 net/netfilter/ipvs/ip_vs_lblcr.c:518
   ip_vs_bind_scheduler+0xa4/0x1e0 net/netfilter/ipvs/ip_vs_sched.c:51
   ip_vs_add_service+0xa91/0x1d70 net/netfilter/ipvs/ip_vs_ctl.c:1265
   do_ip_vs_set_ctl+0x25c8/0x2790 net/netfilter/ipvs/ip_vs_ctl.c:2457
   nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
   nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
   ip_setsockopt+0x24b/0x2b0 net/ipv4/ip_sockglue.c:1261
-  raw_setsockopt+0x2e5/0x350 net/ipv4/raw.c:870
+  dccp_setsockopt+0x1c3/0x1f0 net/dccp/proto.c:576
   sock_common_setsockopt+0x136/0x170 net/core/sock.c:2975
   SYSC_setsockopt+0x4b8/0x570 net/socket.c:1849
   SyS_setsockopt+0x76/0xa0 net/socket.c:1828
