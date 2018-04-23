@@ -1,118 +1,140 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: [PATCH 5/5] ipvs: fix multiplicative hashing in sh/dh/lblc/lblcr algorithms
-Date: Thu, 19 Apr 2018 10:56:14 +0200
-Message-ID: <20180419085614.7437-6-horms@verge.net.au>
-References: <20180419085614.7437-1-horms@verge.net.au>
-Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1524128188; bh=RjwnAa3ldt96n72m9CGOcLioN7+hGyd0eaxuUI5gc9Q=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=NFDKd0Ty3bOmYqhKDDU4IpLYKGm3bDh6ki1oektylDQgF6zSMbSJVJz2iKQzFpgme
-         uhPdb3gbkln+Y1mlcBshH41cFOz8Ti/Vy/uqCMVcUpep/N/NNwwrEBVUZs25TgIAKx
-         NmllONtbLlOuHL3RFB/Zyo7h8DqsAsL15ukCQ8ik=
-In-Reply-To: <20180419085614.7437-1-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
+From: syzbot <syzbot+3e9695f147fb529aa9bc@syzkaller.appspotmail.com>
+Subject: KMSAN: uninit-value in ip_vs_lblc_check_expire
+Date: Mon, 23 Apr 2018 06:28:01 -0700
+Message-ID: <000000000000c66d94056a84011d@google.com>
+Mime-Version: 1.0
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"; format="flowed"; delsp="yes"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Vincent Bernat <vincent@bernat.im>, Simon Horman <horms@verge.net.au>
+To: coreteam@netfilter.org, davem@davemloft.net, fw@strlen.de, horms@verge.net.au, ja@ssi.bg, kadlec@blackhole.kfki.hu, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, wensong@linux-vs.org
 
-From: Vincent Bernat <vincent@bernat.im>
+Hello,
 
-The sh/dh/lblc/lblcr algorithms are using Knuth's multiplicative
-hashing incorrectly. Replace its use by the hash_32() macro, which
-correctly implements this algorithm. It doesn't use the same constant,
-but it shouldn't matter.
+syzbot hit the following crash on  
+https://github.com/google/kmsan.git/master commit
+d2d741e5d1898dfde1a75ea3d29a9a3e2edf0617 (Sun Apr 22 15:05:22 2018 +0000)
+kmsan: add initialization for shmem pages
+syzbot dashboard link:  
+https://syzkaller.appspot.com/bug?extid=3e9695f147fb529aa9bc
 
-Signed-off-by: Vincent Bernat <vincent@bernat.im>
-Acked-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
+So far this crash happened 3 times on  
+https://github.com/google/kmsan.git/master.
+Unfortunately, I don't have any reproducer for this crash yet.
+Raw console output:  
+https://syzkaller.appspot.com/x/log.txt?id=5822255644803072
+Kernel config: https://syzkaller.appspot.com/x/.config?id=328654897048964367
+compiler: clang version 7.0.0 (trunk 329391)
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+3e9695f147fb529aa9bc@syzkaller.appspotmail.com
+It will help syzbot understand when the bug is fixed. See footer for  
+details.
+If you forward the report, please keep this part and the footer.
+
+kernel msg: ebtables bug: please report to author: bad policy
+==================================================================
+BUG: KMSAN: uninit-value in ip_vs_lblc_check_expire+0xe62/0xf10  
+net/netfilter/ipvs/ip_vs_lblc.c:315
+CPU: 0 PID: 11383 Comm: syz-executor3 Not tainted 4.16.0+ #86
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  <IRQ>
+  __dump_stack lib/dump_stack.c:17 [inline]
+  dump_stack+0x185/0x1d0 lib/dump_stack.c:53
+  kmsan_report+0x142/0x240 mm/kmsan/kmsan.c:1067
+  __msan_warning_32+0x6c/0xb0 mm/kmsan/kmsan_instr.c:683
+  ip_vs_lblc_check_expire+0xe62/0xf10 net/netfilter/ipvs/ip_vs_lblc.c:315
+  call_timer_fn+0x26a/0x5a0 kernel/time/timer.c:1326
+  expire_timers kernel/time/timer.c:1363 [inline]
+  __run_timers+0xda7/0x11c0 kernel/time/timer.c:1666
+  run_timer_softirq+0x43/0x70 kernel/time/timer.c:1692
+  __do_softirq+0x56d/0x93d kernel/softirq.c:285
+  invoke_softirq kernel/softirq.c:365 [inline]
+  irq_exit+0x202/0x240 kernel/softirq.c:405
+  exiting_irq+0xe/0x10 arch/x86/include/asm/apic.h:541
+  smp_apic_timer_interrupt+0x64/0x90 arch/x86/kernel/apic/apic.c:1055
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:857
+  </IRQ>
+RIP: 0010:native_restore_fl arch/x86/include/asm/irqflags.h:37 [inline]
+RIP: 0010:arch_local_irq_restore arch/x86/include/asm/irqflags.h:78 [inline]
+RIP: 0010:vprintk_emit+0xcb2/0xff0 kernel/printk/printk.c:1899
+RSP: 0018:ffff8801c2a1f0d8 EFLAGS: 00000296 ORIG_RAX: ffffffffffffff12
+RAX: 0000000000000296 RBX: ffff8801574c4418 RCX: 0000000000040000
+RDX: ffffc900033a6000 RSI: 00000000000001bf RDI: 00000000000001c0
+RBP: ffff8801c2a1f1f8 R08: 000000219bfd8445 R09: ffff8801fd6d615d
+R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+R13: ffffffff8b300430 R14: 0000000000000000 R15: 0000000000000000
+  vprintk_default+0x90/0xa0 kernel/printk/printk.c:1955
+  vprintk_func+0x517/0x700 kernel/printk/printk_safe.c:379
+  printk+0x1b6/0x1f0 kernel/printk/printk.c:1991
+  translate_table+0x474/0x5e10 net/bridge/netfilter/ebtables.c:846
+  do_replace_finish+0x1258/0x2ea0 net/bridge/netfilter/ebtables.c:1002
+  do_replace+0x707/0x770 net/bridge/netfilter/ebtables.c:1141
+  do_ebt_set_ctl+0x2ab/0x3c0 net/bridge/netfilter/ebtables.c:1518
+  nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
+  nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
+  ip_setsockopt+0x24b/0x2b0 net/ipv4/ip_sockglue.c:1261
+  udp_setsockopt+0x108/0x1b0 net/ipv4/udp.c:2406
+  ipv6_setsockopt+0x30c/0x340 net/ipv6/ipv6_sockglue.c:917
+  udpv6_setsockopt+0x110/0x1c0 net/ipv6/udp.c:1422
+  sock_common_setsockopt+0x136/0x170 net/core/sock.c:2975
+  SYSC_setsockopt+0x4b8/0x570 net/socket.c:1849
+  SyS_setsockopt+0x76/0xa0 net/socket.c:1828
+  do_syscall_64+0x309/0x430 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x3d/0xa2
+RIP: 0033:0x455389
+RSP: 002b:00007f470c9e3c68 EFLAGS: 00000246 ORIG_RAX: 0000000000000036
+RAX: ffffffffffffffda RBX: 00007f470c9e46d4 RCX: 0000000000455389
+RDX: 0000000000000080 RSI: 0000000000000000 RDI: 0000000000000013
+RBP: 000000000072bea0 R08: 0000000000000dd0 R09: 0000000000000000
+R10: 0000000020000dc0 R11: 0000000000000246 R12: 00000000ffffffff
+R13: 000000000000051d R14: 00000000006fab58 R15: 0000000000000000
+
+Uninit was created at:
+  kmsan_save_stack_with_flags mm/kmsan/kmsan.c:278 [inline]
+  kmsan_alloc_meta_for_pages+0x161/0x3a0 mm/kmsan/kmsan.c:814
+  kmsan_alloc_page+0x82/0xe0 mm/kmsan/kmsan.c:868
+  __alloc_pages_nodemask+0xf5b/0x5dc0 mm/page_alloc.c:4283
+  alloc_pages_current+0x6b5/0x970 mm/mempolicy.c:2055
+  alloc_pages include/linux/gfp.h:494 [inline]
+  kmalloc_order mm/slab_common.c:1164 [inline]
+  kmalloc_order_trace+0xb9/0x390 mm/slab_common.c:1175
+  kmalloc_large include/linux/slab.h:446 [inline]
+  __kmalloc+0x332/0x350 mm/slub.c:3778
+  kmalloc include/linux/slab.h:517 [inline]
+  ip_vs_lblc_init_svc+0x57/0x310 net/netfilter/ipvs/ip_vs_lblc.c:355
+  ip_vs_bind_scheduler+0xa4/0x1e0 net/netfilter/ipvs/ip_vs_sched.c:51
+  ip_vs_add_service+0xa91/0x1d70 net/netfilter/ipvs/ip_vs_ctl.c:1265
+  do_ip_vs_set_ctl+0x25c8/0x2790 net/netfilter/ipvs/ip_vs_ctl.c:2457
+  nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
+  nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
+  ip_setsockopt+0x24b/0x2b0 net/ipv4/ip_sockglue.c:1261
+  raw_setsockopt+0x2e5/0x350 net/ipv4/raw.c:870
+  sock_common_setsockopt+0x136/0x170 net/core/sock.c:2975
+  SYSC_setsockopt+0x4b8/0x570 net/socket.c:1849
+  SyS_setsockopt+0x76/0xa0 net/socket.c:1828
+  do_syscall_64+0x309/0x430 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x3d/0xa2
+==================================================================
+
+
 ---
- net/netfilter/ipvs/ip_vs_dh.c    | 3 ++-
- net/netfilter/ipvs/ip_vs_lblc.c  | 3 ++-
- net/netfilter/ipvs/ip_vs_lblcr.c | 3 ++-
- net/netfilter/ipvs/ip_vs_sh.c    | 3 ++-
- 4 files changed, 8 insertions(+), 4 deletions(-)
+This bug is generated by a dumb bot. It may contain errors.
+See https://goo.gl/tpsmEJ for details.
+Direct all questions to syzkaller@googlegroups.com.
 
-diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
-index 75f798f8e83b..07459e71d907 100644
---- a/net/netfilter/ipvs/ip_vs_dh.c
-+++ b/net/netfilter/ipvs/ip_vs_dh.c
-@@ -43,6 +43,7 @@
- #include <linux/module.h>
- #include <linux/kernel.h>
- #include <linux/skbuff.h>
-+#include <linux/hash.h>
- 
- #include <net/ip_vs.h>
- 
-@@ -81,7 +82,7 @@ static inline unsigned int ip_vs_dh_hashkey(int af, const union nf_inet_addr *ad
- 		addr_fold = addr->ip6[0]^addr->ip6[1]^
- 			    addr->ip6[2]^addr->ip6[3];
- #endif
--	return (ntohl(addr_fold)*2654435761UL) & IP_VS_DH_TAB_MASK;
-+	return hash_32(ntohl(addr_fold), IP_VS_DH_TAB_BITS);
- }
- 
- 
-diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
-index 3057e453bf31..08147fc6400c 100644
---- a/net/netfilter/ipvs/ip_vs_lblc.c
-+++ b/net/netfilter/ipvs/ip_vs_lblc.c
-@@ -48,6 +48,7 @@
- #include <linux/kernel.h>
- #include <linux/skbuff.h>
- #include <linux/jiffies.h>
-+#include <linux/hash.h>
- 
- /* for sysctl */
- #include <linux/fs.h>
-@@ -160,7 +161,7 @@ ip_vs_lblc_hashkey(int af, const union nf_inet_addr *addr)
- 		addr_fold = addr->ip6[0]^addr->ip6[1]^
- 			    addr->ip6[2]^addr->ip6[3];
- #endif
--	return (ntohl(addr_fold)*2654435761UL) & IP_VS_LBLC_TAB_MASK;
-+	return hash_32(ntohl(addr_fold), IP_VS_LBLC_TAB_BITS);
- }
- 
- 
-diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
-index 92adc04557ed..9b6a6c9e9cfa 100644
---- a/net/netfilter/ipvs/ip_vs_lblcr.c
-+++ b/net/netfilter/ipvs/ip_vs_lblcr.c
-@@ -47,6 +47,7 @@
- #include <linux/jiffies.h>
- #include <linux/list.h>
- #include <linux/slab.h>
-+#include <linux/hash.h>
- 
- /* for sysctl */
- #include <linux/fs.h>
-@@ -323,7 +324,7 @@ ip_vs_lblcr_hashkey(int af, const union nf_inet_addr *addr)
- 		addr_fold = addr->ip6[0]^addr->ip6[1]^
- 			    addr->ip6[2]^addr->ip6[3];
- #endif
--	return (ntohl(addr_fold)*2654435761UL) & IP_VS_LBLCR_TAB_MASK;
-+	return hash_32(ntohl(addr_fold), IP_VS_LBLCR_TAB_BITS);
- }
- 
- 
-diff --git a/net/netfilter/ipvs/ip_vs_sh.c b/net/netfilter/ipvs/ip_vs_sh.c
-index 16aaac6eedc9..1e01c782583a 100644
---- a/net/netfilter/ipvs/ip_vs_sh.c
-+++ b/net/netfilter/ipvs/ip_vs_sh.c
-@@ -96,7 +96,8 @@ ip_vs_sh_hashkey(int af, const union nf_inet_addr *addr,
- 		addr_fold = addr->ip6[0]^addr->ip6[1]^
- 			    addr->ip6[2]^addr->ip6[3];
- #endif
--	return (offset + (ntohs(port) + ntohl(addr_fold))*2654435761UL) &
-+	return (offset + hash_32(ntohs(port) + ntohl(addr_fold),
-+				 IP_VS_SH_TAB_BITS)) &
- 		IP_VS_SH_TAB_MASK;
- }
- 
--- 
-2.11.0
-
+syzbot will keep track of this bug report.
+If you forgot to add the Reported-by tag, once the fix for this bug is  
+merged
+into any tree, please reply to this email with:
+#syz fix: exact-commit-title
+To mark this as a duplicate of another syzbot report, please reply with:
+#syz dup: exact-subject-of-another-report
+If it's a one-off invalid bug report, please reply with:
+#syz invalid
+Note: if the crash happens again, it will cause creation of a new bug  
+report.
+Note: all commands must start from beginning of the line in the email body.
