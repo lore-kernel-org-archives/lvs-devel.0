@@ -1,84 +1,98 @@
-From: syzbot <syzbot+aac887f77319868646df@syzkaller.appspotmail.com>
-Subject: kernel BUG at lib/string.c:LINE! (4)
-Date: Wed, 16 May 2018 08:35:03 -0700
-Message-ID: <0000000000006764b4056c5476d9@google.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: kernel BUG at lib/string.c:LINE! (4)
+Date: Thu, 17 May 2018 01:43:36 +0300 (EEST)
+Message-ID: <alpine.LFD.2.20.1805170141240.9640@ja.home.ssi.bg>
+References: <0000000000006764b4056c5476d9@google.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: base64
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <0000000000006764b4056c5476d9@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"; format="flowed"; delsp="yes"
-To: coreteam@netfilter.org, davem@davemloft.net, fw@strlen.de, horms@verge.net.au, ja@ssi.bg, kadlec@blackhole.kfki.hu, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, wensong@linux-vs.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: syzbot <syzbot+aac887f77319868646df@syzkaller.appspotmail.com>
+Cc: coreteam@netfilter.org, davem@davemloft.net, fw@strlen.de, horms@verge.net.au, kadlec@blackhole.kfki.hu, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, wensong@linux-vs.org
 
-SGVsbG8sDQoNCnN5emJvdCBmb3VuZCB0aGUgZm9sbG93aW5nIGNyYXNoIG9uOg0KDQpIRUFEIGNv
-bW1pdDogICAgMGI3ZDk5Nzg0MDZmIE1lcmdlIGJyYW5jaCAnTWljcm9zZW1pLU9jZWxvdC1FdGhl
-cm5ldC1zd2l0Yy4uDQpnaXQgdHJlZTogICAgICAgbmV0LW5leHQNCmNvbnNvbGUgb3V0cHV0OiBo
-dHRwczovL3N5emthbGxlci5hcHBzcG90LmNvbS94L2xvZy50eHQ/eD0xNmU5MTAxNzgwMDAwMA0K
-a2VybmVsIGNvbmZpZzogIGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvLmNvbmZpZz94
-PWI2MzJkOGUyYzJhYjJjMQ0KZGFzaGJvYXJkIGxpbms6IGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNw
-b3QuY29tL2J1Zz9leHRpZD1hYWM4ODdmNzczMTk4Njg2NDZkZg0KY29tcGlsZXI6ICAgICAgIGdj
-YyAoR0NDKSA4LjAuMSAyMDE4MDQxMyAoZXhwZXJpbWVudGFsKQ0Kc3l6a2FsbGVyIHJlcHJvOmh0
-dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvcmVwcm8uc3l6P3g9MTY2NWQ2Mzc4MDAwMDAN
-CkMgcmVwcm9kdWNlcjogICBodHRwczovL3N5emthbGxlci5hcHBzcG90LmNvbS94L3JlcHJvLmM/
-eD0xMDUxNzEwNzgwMDAwMA0KDQpJTVBPUlRBTlQ6IGlmIHlvdSBmaXggdGhlIGJ1ZywgcGxlYXNl
-IGFkZCB0aGUgZm9sbG93aW5nIHRhZyB0byB0aGUgY29tbWl0Og0KUmVwb3J0ZWQtYnk6IHN5emJv
-dCthYWM4ODdmNzczMTk4Njg2NDZkZkBzeXprYWxsZXIuYXBwc3BvdG1haWwuY29tDQoNCklQVlM6
-IFVua25vd24gbWNhc3QgaW50ZXJmYWNlOiB2ZXRoMV90b++/vWHvv73vv73vv73vv70NCklQVlM6
-IFVua25vd24gbWNhc3QgaW50ZXJmYWNlOiB2ZXRoMV90b++/vWHvv73vv73vv73vv70NCklQVlM6
-IFVua25vd24gbWNhc3QgaW50ZXJmYWNlOiB2ZXRoMV90b++/vWHvv73vv73vv73vv70NCmRldGVj
-dGVkIGJ1ZmZlciBvdmVyZmxvdyBpbiBzdHJsZW4NCi0tLS0tLS0tLS0tLVsgY3V0IGhlcmUgXS0t
-LS0tLS0tLS0tLQ0Ka2VybmVsIEJVRyBhdCBsaWIvc3RyaW5nLmM6MTA1MiENCmludmFsaWQgb3Bj
-b2RlOiAwMDAwIFsjMV0gU01QIEtBU0FODQpEdW1waW5nIGZ0cmFjZSBidWZmZXI6DQogICAgKGZ0
-cmFjZSBidWZmZXIgZW1wdHkpDQpNb2R1bGVzIGxpbmtlZCBpbjoNCkNQVTogMSBQSUQ6IDM3MyBD
-b21tOiBzeXotZXhlY3V0b3I5MzYgTm90IHRhaW50ZWQgNC4xNy4wLXJjNCsgIzQ1DQpIYXJkd2Fy
-ZSBuYW1lOiBHb29nbGUgR29vZ2xlIENvbXB1dGUgRW5naW5lL0dvb2dsZSBDb21wdXRlIEVuZ2lu
-ZSwgQklPUyAgDQpHb29nbGUgMDEvMDEvMjAxMQ0KUklQOiAwMDEwOmZvcnRpZnlfcGFuaWMrMHgx
-My8weDIwIGxpYi9zdHJpbmcuYzoxMDUxDQpSU1A6IDAwMTg6ZmZmZjg4MDFjOTc2ZjgwMCBFRkxB
-R1M6IDAwMDEwMjgyDQpSQVg6IDAwMDAwMDAwMDAwMDAwMjIgUkJYOiAwMDAwMDAwMDAwMDAwMDQw
-IFJDWDogMDAwMDAwMDAwMDAwMDAwMA0KUkRYOiAwMDAwMDAwMDAwMDAwMDIyIFJTSTogZmZmZmZm
-ZmY4MTYwZjZmMSBSREk6IGZmZmZlZDAwMzkyZWRlZjYNClJCUDogZmZmZjg4MDFjOTc2ZjgwMCBS
-MDg6IGZmZmY4ODAxY2Y0YzYyYzAgUjA5OiBmZmZmZWQwMDNiNWU0ZmIwDQpSMTA6IGZmZmZlZDAw
-M2I1ZTRmYjAgUjExOiBmZmZmODgwMWRhZjI3ZDg3IFIxMjogZmZmZjg4MDFjOTc2ZmEyMA0KUjEz
-OiBmZmZmODgwMWM5NzZmYWU0IFIxNDogZmZmZjg4MDFjOTc2ZmFlMCBSMTU6IDAwMDAwMDAwMDAw
-MDA0OGINCkZTOiAgMDAwMDdmZDk5Zjc1ZTcwMCgwMDAwKSBHUzpmZmZmODgwMWRhZjAwMDAwKDAw
-MDApIGtubEdTOjAwMDAwMDAwMDAwMDAwMDANCkNTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBD
-UjA6IDAwMDAwMDAwODAwNTAwMzMNCkNSMjogMDAwMDAwMDAyMDAwMDFjMCBDUjM6IDAwMDAwMDAx
-ZDY4NDMwMDAgQ1I0OiAwMDAwMDAwMDAwMTQwNmUwDQpEUjA6IDAwMDAwMDAwMDAwMDAwMDAgRFIx
-OiAwMDAwMDAwMDAwMDAwMDAwIERSMjogMDAwMDAwMDAwMDAwMDAwMA0KRFIzOiAwMDAwMDAwMDAw
-MDAwMDAwIERSNjogMDAwMDAwMDBmZmZlMGZmMCBEUjc6IDAwMDAwMDAwMDAwMDA0MDANCkNhbGwg
-VHJhY2U6DQogIHN0cmxlbiBpbmNsdWRlL2xpbnV4L3N0cmluZy5oOjI3MCBbaW5saW5lXQ0KICBz
-dHJsY3B5IGluY2x1ZGUvbGludXgvc3RyaW5nLmg6MjkzIFtpbmxpbmVdDQogIGRvX2lwX3ZzX3Nl
-dF9jdGwrMHgzMWMvMHgxZDAwIG5ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jdGwuYzoyMzg4DQog
-IG5mX3NvY2tvcHQgbmV0L25ldGZpbHRlci9uZl9zb2Nrb3B0LmM6MTA2IFtpbmxpbmVdDQogIG5m
-X3NldHNvY2tvcHQrMHg3ZC8weGQwIG5ldC9uZXRmaWx0ZXIvbmZfc29ja29wdC5jOjExNQ0KICBp
-cF9zZXRzb2Nrb3B0KzB4ZDgvMHhmMCBuZXQvaXB2NC9pcF9zb2NrZ2x1ZS5jOjEyNTMNCiAgdWRw
-X3NldHNvY2tvcHQrMHg2Mi8weGEwIG5ldC9pcHY0L3VkcC5jOjI0ODcNCiAgaXB2Nl9zZXRzb2Nr
-b3B0KzB4MTQ5LzB4MTcwIG5ldC9pcHY2L2lwdjZfc29ja2dsdWUuYzo5MTcNCiAgdGNwX3NldHNv
-Y2tvcHQrMHg5My8weGUwIG5ldC9pcHY0L3RjcC5jOjMwNTcNCiAgc29ja19jb21tb25fc2V0c29j
-a29wdCsweDlhLzB4ZTAgbmV0L2NvcmUvc29jay5jOjMwNDYNCiAgX19zeXNfc2V0c29ja29wdCsw
-eDFiZC8weDM5MCBuZXQvc29ja2V0LmM6MTkwMw0KICBfX2RvX3N5c19zZXRzb2Nrb3B0IG5ldC9z
-b2NrZXQuYzoxOTE0IFtpbmxpbmVdDQogIF9fc2Vfc3lzX3NldHNvY2tvcHQgbmV0L3NvY2tldC5j
-OjE5MTEgW2lubGluZV0NCiAgX194NjRfc3lzX3NldHNvY2tvcHQrMHhiZS8weDE1MCBuZXQvc29j
-a2V0LmM6MTkxMQ0KICBkb19zeXNjYWxsXzY0KzB4MWIxLzB4ODAwIGFyY2gveDg2L2VudHJ5L2Nv
-bW1vbi5jOjI4Nw0KICBlbnRyeV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJhbWUrMHg0OS8weGJlDQpS
-SVA6IDAwMzM6MHg0NDczNjkNClJTUDogMDAyYjowMDAwN2ZkOTlmNzVkZGE4IEVGTEFHUzogMDAw
-MDAyNDYgT1JJR19SQVg6IDAwMDAwMDAwMDAwMDAwMzYNClJBWDogZmZmZmZmZmZmZmZmZmZkYSBS
-Qlg6IDAwMDAwMDAwMDA2ZTM5ZTQgUkNYOiAwMDAwMDAwMDAwNDQ3MzY5DQpSRFg6IDAwMDAwMDAw
-MDAwMDA0OGIgUlNJOiAwMDAwMDAwMDAwMDAwMDAwIFJESTogMDAwMDAwMDAwMDAwMDAwMw0KUkJQ
-OiAwMDAwMDAwMDAwMDAwMDAwIFIwODogMDAwMDAwMDAwMDAwMDAxOCBSMDk6IDAwMDAwMDAwMDAw
-MDAwMDANClIxMDogMDAwMDAwMDAyMDAwMDFjMCBSMTE6IDAwMDAwMDAwMDAwMDAyNDYgUjEyOiAw
-MDAwMDAwMDAwNmUzOWUwDQpSMTM6IDc1YTFmZjkzZjA4OTYxOTUgUjE0OiA2Zjc0NWYzMTY4NzQ2
-NTc2IFIxNTogMDAwMDAwMDAwMDAwMDAwMQ0KQ29kZTogMDggNWIgNDEgNWMgNDEgNWQgNDEgNWUg
-NDEgNWYgNWQgYzMgMGYgMGIgNDggODkgZGYgZTggZDIgOGYgNDggZmEgZWIgIA0KZGUgNTUgNDgg
-ODkgZmUgNDggYzcgYzcgNjAgNjUgNjQgODggNDggODkgZTUgZTggOTEgZGQgZjMgZjkgPDBmPiAw
-YiA5MCA5MCAgDQo5MCA5MCA5MCA5MCA5MCA5MCA5MCA5MCA5MCA1NSA0OCA4OSBlNSA0MSA1NyA0
-MSA1Ng0KUklQOiBmb3J0aWZ5X3BhbmljKzB4MTMvMHgyMCBsaWIvc3RyaW5nLmM6MTA1MSBSU1A6
-IGZmZmY4ODAxYzk3NmY4MDANCi0tLVsgZW5kIHRyYWNlIDYyNDA0NmYyZDlhZjc3MDIgXS0tLQ0K
-DQoNCi0tLQ0KVGhpcyBidWcgaXMgZ2VuZXJhdGVkIGJ5IGEgYm90LiBJdCBtYXkgY29udGFpbiBl
-cnJvcnMuDQpTZWUgaHR0cHM6Ly9nb28uZ2wvdHBzbUVKIGZvciBtb3JlIGluZm9ybWF0aW9uIGFi
-b3V0IHN5emJvdC4NCnN5emJvdCBlbmdpbmVlcnMgY2FuIGJlIHJlYWNoZWQgYXQgc3l6a2FsbGVy
-QGdvb2dsZWdyb3Vwcy5jb20uDQoNCnN5emJvdCB3aWxsIGtlZXAgdHJhY2sgb2YgdGhpcyBidWcg
-cmVwb3J0LiBTZWU6DQpodHRwczovL2dvby5nbC90cHNtRUojYnVnLXN0YXR1cy10cmFja2luZyBm
-b3IgaG93IHRvIGNvbW11bmljYXRlIHdpdGggIA0Kc3l6Ym90Lg0Kc3l6Ym90IGNhbiB0ZXN0IHBh
-dGNoZXMgZm9yIHRoaXMgYnVnLCBmb3IgZGV0YWlscyBzZWU6DQpodHRwczovL2dvby5nbC90cHNt
-RUojdGVzdGluZy1wYXRjaGVzDQo=
+
+	Hello,
+
+On Wed, 16 May 2018, syzbot wrote:
+
+> Hello,
+> 
+> syzbot found the following crash on:
+> 
+> HEAD commit:    0b7d9978406f Merge branch 'Microsemi-Ocelot-Ethernet-switc..
+> git tree:       net-next
+> console output: https://syzkaller.appspot.com/x/log.txt?x=16e91017800000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=b632d8e2c2ab2c1
+> dashboard link: https://syzkaller.appspot.com/bug?extid=aac887f77319868646df
+> compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+> syzkaller repro:https://syzkaller.appspot.com/x/repro.syz?x=1665d637800000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=10517107800000
+> 
+> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> Reported-by: syzbot+aac887f77319868646df@syzkaller.appspotmail.com
+> 
+> IPVS: Unknown mcast interface: veth1_to???a????????????
+> IPVS: Unknown mcast interface: veth1_to???a????????????
+> IPVS: Unknown mcast interface: veth1_to???a????????????
+> detected buffer overflow in strlen
+> ------------[ cut here ]------------
+> kernel BUG at lib/string.c:1052!
+> invalid opcode: 0000 [#1] SMP KASAN
+> Dumping ftrace buffer:
+>   (ftrace buffer empty)
+> Modules linked in:
+> CPU: 1 PID: 373 Comm: syz-executor936 Not tainted 4.17.0-rc4+ #45
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google
+> 01/01/2011
+> RIP: 0010:fortify_panic+0x13/0x20 lib/string.c:1051
+> RSP: 0018:ffff8801c976f800 EFLAGS: 00010282
+> RAX: 0000000000000022 RBX: 0000000000000040 RCX: 0000000000000000
+> RDX: 0000000000000022 RSI: ffffffff8160f6f1 RDI: ffffed00392edef6
+> RBP: ffff8801c976f800 R08: ffff8801cf4c62c0 R09: ffffed003b5e4fb0
+> R10: ffffed003b5e4fb0 R11: ffff8801daf27d87 R12: ffff8801c976fa20
+> R13: ffff8801c976fae4 R14: ffff8801c976fae0 R15: 000000000000048b
+> FS:  00007fd99f75e700(0000) GS:ffff8801daf00000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00000000200001c0 CR3: 00000001d6843000 CR4: 00000000001406e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> Call Trace:
+> strlen include/linux/string.h:270 [inline]
+> strlcpy include/linux/string.h:293 [inline]
+> do_ip_vs_set_ctl+0x31c/0x1d00 net/netfilter/ipvs/ip_vs_ctl.c:2388
+> nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
+> nf_setsockopt+0x7d/0xd0 net/netfilter/nf_sockopt.c:115
+> ip_setsockopt+0xd8/0xf0 net/ipv4/ip_sockglue.c:1253
+> udp_setsockopt+0x62/0xa0 net/ipv4/udp.c:2487
+> ipv6_setsockopt+0x149/0x170 net/ipv6/ipv6_sockglue.c:917
+> tcp_setsockopt+0x93/0xe0 net/ipv4/tcp.c:3057
+> sock_common_setsockopt+0x9a/0xe0 net/core/sock.c:3046
+> __sys_setsockopt+0x1bd/0x390 net/socket.c:1903
+> __do_sys_setsockopt net/socket.c:1914 [inline]
+> __se_sys_setsockopt net/socket.c:1911 [inline]
+> __x64_sys_setsockopt+0xbe/0x150 net/socket.c:1911
+> do_syscall_64+0x1b1/0x800 arch/x86/entry/common.c:287
+> entry_SYSCALL_64_after_hwframe+0x49/0xbe
+> RIP: 0033:0x447369
+> RSP: 002b:00007fd99f75dda8 EFLAGS: 00000246 ORIG_RAX: 0000000000000036
+> RAX: ffffffffffffffda RBX: 00000000006e39e4 RCX: 0000000000447369
+> RDX: 000000000000048b RSI: 0000000000000000 RDI: 0000000000000003
+> RBP: 0000000000000000 R08: 0000000000000018 R09: 0000000000000000
+> R10: 00000000200001c0 R11: 0000000000000246 R12: 00000000006e39e0
+> R13: 75a1ff93f0896195 R14: 6f745f3168746576 R15: 0000000000000001
+> Code: 08 5b 41 5c 41 5d 41 5e 41 5f 5d c3 0f 0b 48 89 df e8 d2 8f 48 fa eb de
+> 55 48 89 fe 48 c7 c7 60 65 64 88 48 89 e5 e8 91 dd f3 f9 <0f> 0b 90 90 90 90
+> 90 90 90 90 90 90 90 55 48 89 e5 41 57 41 56
+> RIP: fortify_panic+0x13/0x20 lib/string.c:1051 RSP: ffff8801c976f800
+> ---[ end trace 624046f2d9af7702 ]---
+
+	Just to let you know that I tested a patch with
+the syzbot, will do more tests before submitting...
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
