@@ -1,56 +1,84 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH RFC net-next] net: ipvs: Adjust gso_size for
- IPPROTO_TCP
-Date: Mon, 7 May 2018 20:00:22 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1805071951590.24273@ja.home.ssi.bg>
-References: <20180419212324.1542504-1-kafai@fb.com> <alpine.LFD.2.20.1805020932270.1964@ja.home.ssi.bg> <20180502171041.s3euld6i7hm6bw5c@kafai-mbp> <alpine.LFD.2.20.1805022143360.3301@ja.home.ssi.bg> <20180503070114.bcuusvzga45klccs@kafai-mbp>
- <alpine.LFD.2.20.1805051515450.1895@ja.home.ssi.bg> <20180507162229.5ndsjremhfdtbeqj@kafai-mbp.dhcp.thefacebook.com>
+From: syzbot <syzbot+aac887f77319868646df@syzkaller.appspotmail.com>
+Subject: kernel BUG at lib/string.c:LINE! (4)
+Date: Wed, 16 May 2018 08:35:03 -0700
+Message-ID: <0000000000006764b4056c5476d9@google.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20180507162229.5ndsjremhfdtbeqj@kafai-mbp.dhcp.thefacebook.com>
-Sender: netdev-owner@vger.kernel.org
+Content-Transfer-Encoding: base64
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Martin KaFai Lau <kafai@fb.com>
-Cc: netdev@vger.kernel.org, David Ahern <dsahern@gmail.com>, Tom Herbert <tom@herbertland.com>, Eric Dumazet <eric.dumazet@gmail.com>, Nikita Shirokov <tehnerd@fb.com>, kernel-team@fb.com, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"; format="flowed"; delsp="yes"
+To: coreteam@netfilter.org, davem@davemloft.net, fw@strlen.de, horms@verge.net.au, ja@ssi.bg, kadlec@blackhole.kfki.hu, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, wensong@linux-vs.org
 
-
-	Hello,
-
-On Mon, 7 May 2018, Martin KaFai Lau wrote:
-
-> On Sat, May 05, 2018 at 03:58:25PM +0300, Julian Anastasov wrote:
-> > 
-> > 	So, except the RTF_LOCAL check in __ip6_rt_update_pmtu
-> > we should have no other issues. Only one minor bit is strange to me,
-> > why rt6_insert_exception warns for RTF_PCPU if rt6_cache_allowed_for_pmtu
-> > allows it when returning true...
-> hmm...I am not sure I follow this bits.  Where is the warn?
-
-        if (ort->rt6i_flags & (RTF_CACHE | RTF_PCPU))
-                ort = ort->from;
-
-	Sorry, my fault, I missed above re-assignment...
-
-        WARN_ON_ONCE(ort->rt6i_flags & (RTF_CACHE | RTF_PCPU));
-
-> Note that "nrt6" and "from" are passed to rt6_insert_exception()
-> instead of "rt6".
-> 
-> > 
-> > 	Also, commit 0d3f6d297bfb allows rt6_do_update_pmtu() for
-> > routes without RTF_CACHE, RTF_PCPU and rt6i_node. Should we
-> > restrict rt6_do_update_pmtu only to RTF_CACHE routes?
-> > 
-> >  	if (!rt6_cache_allowed_for_pmtu(rt6)) {
-> > -		rt6_do_update_pmtu(rt6, mtu);
-> The existing rt6_do_update_pmtu() looks correct.
-> The mtu of the dst created by icmp6_dst_alloc()
-> needs to be udpated and this dst does not have
-> the RTF_CACHE.
-
-	Aha, ok. I thought, only RTF_CACHE routes can
-hold PMTU.
-
-Regards
+SGVsbG8sDQoNCnN5emJvdCBmb3VuZCB0aGUgZm9sbG93aW5nIGNyYXNoIG9uOg0KDQpIRUFEIGNv
+bW1pdDogICAgMGI3ZDk5Nzg0MDZmIE1lcmdlIGJyYW5jaCAnTWljcm9zZW1pLU9jZWxvdC1FdGhl
+cm5ldC1zd2l0Yy4uDQpnaXQgdHJlZTogICAgICAgbmV0LW5leHQNCmNvbnNvbGUgb3V0cHV0OiBo
+dHRwczovL3N5emthbGxlci5hcHBzcG90LmNvbS94L2xvZy50eHQ/eD0xNmU5MTAxNzgwMDAwMA0K
+a2VybmVsIGNvbmZpZzogIGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvLmNvbmZpZz94
+PWI2MzJkOGUyYzJhYjJjMQ0KZGFzaGJvYXJkIGxpbms6IGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNw
+b3QuY29tL2J1Zz9leHRpZD1hYWM4ODdmNzczMTk4Njg2NDZkZg0KY29tcGlsZXI6ICAgICAgIGdj
+YyAoR0NDKSA4LjAuMSAyMDE4MDQxMyAoZXhwZXJpbWVudGFsKQ0Kc3l6a2FsbGVyIHJlcHJvOmh0
+dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvcmVwcm8uc3l6P3g9MTY2NWQ2Mzc4MDAwMDAN
+CkMgcmVwcm9kdWNlcjogICBodHRwczovL3N5emthbGxlci5hcHBzcG90LmNvbS94L3JlcHJvLmM/
+eD0xMDUxNzEwNzgwMDAwMA0KDQpJTVBPUlRBTlQ6IGlmIHlvdSBmaXggdGhlIGJ1ZywgcGxlYXNl
+IGFkZCB0aGUgZm9sbG93aW5nIHRhZyB0byB0aGUgY29tbWl0Og0KUmVwb3J0ZWQtYnk6IHN5emJv
+dCthYWM4ODdmNzczMTk4Njg2NDZkZkBzeXprYWxsZXIuYXBwc3BvdG1haWwuY29tDQoNCklQVlM6
+IFVua25vd24gbWNhc3QgaW50ZXJmYWNlOiB2ZXRoMV90b++/vWHvv73vv73vv73vv70NCklQVlM6
+IFVua25vd24gbWNhc3QgaW50ZXJmYWNlOiB2ZXRoMV90b++/vWHvv73vv73vv73vv70NCklQVlM6
+IFVua25vd24gbWNhc3QgaW50ZXJmYWNlOiB2ZXRoMV90b++/vWHvv73vv73vv73vv70NCmRldGVj
+dGVkIGJ1ZmZlciBvdmVyZmxvdyBpbiBzdHJsZW4NCi0tLS0tLS0tLS0tLVsgY3V0IGhlcmUgXS0t
+LS0tLS0tLS0tLQ0Ka2VybmVsIEJVRyBhdCBsaWIvc3RyaW5nLmM6MTA1MiENCmludmFsaWQgb3Bj
+b2RlOiAwMDAwIFsjMV0gU01QIEtBU0FODQpEdW1waW5nIGZ0cmFjZSBidWZmZXI6DQogICAgKGZ0
+cmFjZSBidWZmZXIgZW1wdHkpDQpNb2R1bGVzIGxpbmtlZCBpbjoNCkNQVTogMSBQSUQ6IDM3MyBD
+b21tOiBzeXotZXhlY3V0b3I5MzYgTm90IHRhaW50ZWQgNC4xNy4wLXJjNCsgIzQ1DQpIYXJkd2Fy
+ZSBuYW1lOiBHb29nbGUgR29vZ2xlIENvbXB1dGUgRW5naW5lL0dvb2dsZSBDb21wdXRlIEVuZ2lu
+ZSwgQklPUyAgDQpHb29nbGUgMDEvMDEvMjAxMQ0KUklQOiAwMDEwOmZvcnRpZnlfcGFuaWMrMHgx
+My8weDIwIGxpYi9zdHJpbmcuYzoxMDUxDQpSU1A6IDAwMTg6ZmZmZjg4MDFjOTc2ZjgwMCBFRkxB
+R1M6IDAwMDEwMjgyDQpSQVg6IDAwMDAwMDAwMDAwMDAwMjIgUkJYOiAwMDAwMDAwMDAwMDAwMDQw
+IFJDWDogMDAwMDAwMDAwMDAwMDAwMA0KUkRYOiAwMDAwMDAwMDAwMDAwMDIyIFJTSTogZmZmZmZm
+ZmY4MTYwZjZmMSBSREk6IGZmZmZlZDAwMzkyZWRlZjYNClJCUDogZmZmZjg4MDFjOTc2ZjgwMCBS
+MDg6IGZmZmY4ODAxY2Y0YzYyYzAgUjA5OiBmZmZmZWQwMDNiNWU0ZmIwDQpSMTA6IGZmZmZlZDAw
+M2I1ZTRmYjAgUjExOiBmZmZmODgwMWRhZjI3ZDg3IFIxMjogZmZmZjg4MDFjOTc2ZmEyMA0KUjEz
+OiBmZmZmODgwMWM5NzZmYWU0IFIxNDogZmZmZjg4MDFjOTc2ZmFlMCBSMTU6IDAwMDAwMDAwMDAw
+MDA0OGINCkZTOiAgMDAwMDdmZDk5Zjc1ZTcwMCgwMDAwKSBHUzpmZmZmODgwMWRhZjAwMDAwKDAw
+MDApIGtubEdTOjAwMDAwMDAwMDAwMDAwMDANCkNTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBD
+UjA6IDAwMDAwMDAwODAwNTAwMzMNCkNSMjogMDAwMDAwMDAyMDAwMDFjMCBDUjM6IDAwMDAwMDAx
+ZDY4NDMwMDAgQ1I0OiAwMDAwMDAwMDAwMTQwNmUwDQpEUjA6IDAwMDAwMDAwMDAwMDAwMDAgRFIx
+OiAwMDAwMDAwMDAwMDAwMDAwIERSMjogMDAwMDAwMDAwMDAwMDAwMA0KRFIzOiAwMDAwMDAwMDAw
+MDAwMDAwIERSNjogMDAwMDAwMDBmZmZlMGZmMCBEUjc6IDAwMDAwMDAwMDAwMDA0MDANCkNhbGwg
+VHJhY2U6DQogIHN0cmxlbiBpbmNsdWRlL2xpbnV4L3N0cmluZy5oOjI3MCBbaW5saW5lXQ0KICBz
+dHJsY3B5IGluY2x1ZGUvbGludXgvc3RyaW5nLmg6MjkzIFtpbmxpbmVdDQogIGRvX2lwX3ZzX3Nl
+dF9jdGwrMHgzMWMvMHgxZDAwIG5ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jdGwuYzoyMzg4DQog
+IG5mX3NvY2tvcHQgbmV0L25ldGZpbHRlci9uZl9zb2Nrb3B0LmM6MTA2IFtpbmxpbmVdDQogIG5m
+X3NldHNvY2tvcHQrMHg3ZC8weGQwIG5ldC9uZXRmaWx0ZXIvbmZfc29ja29wdC5jOjExNQ0KICBp
+cF9zZXRzb2Nrb3B0KzB4ZDgvMHhmMCBuZXQvaXB2NC9pcF9zb2NrZ2x1ZS5jOjEyNTMNCiAgdWRw
+X3NldHNvY2tvcHQrMHg2Mi8weGEwIG5ldC9pcHY0L3VkcC5jOjI0ODcNCiAgaXB2Nl9zZXRzb2Nr
+b3B0KzB4MTQ5LzB4MTcwIG5ldC9pcHY2L2lwdjZfc29ja2dsdWUuYzo5MTcNCiAgdGNwX3NldHNv
+Y2tvcHQrMHg5My8weGUwIG5ldC9pcHY0L3RjcC5jOjMwNTcNCiAgc29ja19jb21tb25fc2V0c29j
+a29wdCsweDlhLzB4ZTAgbmV0L2NvcmUvc29jay5jOjMwNDYNCiAgX19zeXNfc2V0c29ja29wdCsw
+eDFiZC8weDM5MCBuZXQvc29ja2V0LmM6MTkwMw0KICBfX2RvX3N5c19zZXRzb2Nrb3B0IG5ldC9z
+b2NrZXQuYzoxOTE0IFtpbmxpbmVdDQogIF9fc2Vfc3lzX3NldHNvY2tvcHQgbmV0L3NvY2tldC5j
+OjE5MTEgW2lubGluZV0NCiAgX194NjRfc3lzX3NldHNvY2tvcHQrMHhiZS8weDE1MCBuZXQvc29j
+a2V0LmM6MTkxMQ0KICBkb19zeXNjYWxsXzY0KzB4MWIxLzB4ODAwIGFyY2gveDg2L2VudHJ5L2Nv
+bW1vbi5jOjI4Nw0KICBlbnRyeV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJhbWUrMHg0OS8weGJlDQpS
+SVA6IDAwMzM6MHg0NDczNjkNClJTUDogMDAyYjowMDAwN2ZkOTlmNzVkZGE4IEVGTEFHUzogMDAw
+MDAyNDYgT1JJR19SQVg6IDAwMDAwMDAwMDAwMDAwMzYNClJBWDogZmZmZmZmZmZmZmZmZmZkYSBS
+Qlg6IDAwMDAwMDAwMDA2ZTM5ZTQgUkNYOiAwMDAwMDAwMDAwNDQ3MzY5DQpSRFg6IDAwMDAwMDAw
+MDAwMDA0OGIgUlNJOiAwMDAwMDAwMDAwMDAwMDAwIFJESTogMDAwMDAwMDAwMDAwMDAwMw0KUkJQ
+OiAwMDAwMDAwMDAwMDAwMDAwIFIwODogMDAwMDAwMDAwMDAwMDAxOCBSMDk6IDAwMDAwMDAwMDAw
+MDAwMDANClIxMDogMDAwMDAwMDAyMDAwMDFjMCBSMTE6IDAwMDAwMDAwMDAwMDAyNDYgUjEyOiAw
+MDAwMDAwMDAwNmUzOWUwDQpSMTM6IDc1YTFmZjkzZjA4OTYxOTUgUjE0OiA2Zjc0NWYzMTY4NzQ2
+NTc2IFIxNTogMDAwMDAwMDAwMDAwMDAwMQ0KQ29kZTogMDggNWIgNDEgNWMgNDEgNWQgNDEgNWUg
+NDEgNWYgNWQgYzMgMGYgMGIgNDggODkgZGYgZTggZDIgOGYgNDggZmEgZWIgIA0KZGUgNTUgNDgg
+ODkgZmUgNDggYzcgYzcgNjAgNjUgNjQgODggNDggODkgZTUgZTggOTEgZGQgZjMgZjkgPDBmPiAw
+YiA5MCA5MCAgDQo5MCA5MCA5MCA5MCA5MCA5MCA5MCA5MCA5MCA1NSA0OCA4OSBlNSA0MSA1NyA0
+MSA1Ng0KUklQOiBmb3J0aWZ5X3BhbmljKzB4MTMvMHgyMCBsaWIvc3RyaW5nLmM6MTA1MSBSU1A6
+IGZmZmY4ODAxYzk3NmY4MDANCi0tLVsgZW5kIHRyYWNlIDYyNDA0NmYyZDlhZjc3MDIgXS0tLQ0K
+DQoNCi0tLQ0KVGhpcyBidWcgaXMgZ2VuZXJhdGVkIGJ5IGEgYm90LiBJdCBtYXkgY29udGFpbiBl
+cnJvcnMuDQpTZWUgaHR0cHM6Ly9nb28uZ2wvdHBzbUVKIGZvciBtb3JlIGluZm9ybWF0aW9uIGFi
+b3V0IHN5emJvdC4NCnN5emJvdCBlbmdpbmVlcnMgY2FuIGJlIHJlYWNoZWQgYXQgc3l6a2FsbGVy
+QGdvb2dsZWdyb3Vwcy5jb20uDQoNCnN5emJvdCB3aWxsIGtlZXAgdHJhY2sgb2YgdGhpcyBidWcg
+cmVwb3J0LiBTZWU6DQpodHRwczovL2dvby5nbC90cHNtRUojYnVnLXN0YXR1cy10cmFja2luZyBm
+b3IgaG93IHRvIGNvbW11bmljYXRlIHdpdGggIA0Kc3l6Ym90Lg0Kc3l6Ym90IGNhbiB0ZXN0IHBh
+dGNoZXMgZm9yIHRoaXMgYnVnLCBmb3IgZGV0YWlscyBzZWU6DQpodHRwczovL2dvby5nbC90cHNt
+RUojdGVzdGluZy1wYXRjaGVzDQo=
