@@ -1,165 +1,137 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: drop templates for never established TCP
- connections
-Date: Tue, 22 May 2018 10:51:47 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1805220913400.2113@ja.home.ssi.bg>
-References: <20180521172707.14106-1-mkoutny@suse.com>
+Subject: [PATCH] libipvs: fix some buffer sizes
+Date: Thu, 24 May 2018 23:37:45 +0300
+Message-ID: <20180524203745.25950-1-ja@ssi.bg>
+Reply-To: "LinuxVirtualServer.org users mailing list."
+	<lvs-users@linuxvirtualserver.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; BOUNDARY="-1463811672-586259141-1526975510=:2113"
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20180521172707.14106-1-mkoutny@suse.com>
-Sender: netdev-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-To: =?UTF-8?Q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>
-Cc: wensong@linux-vs.org, horms@verge.net.au, mkubecek@suse.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org>
+List-Id: <lvs-devel.vger.kernel.org>
+List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
+	<mailto:lvs-users-request@linuxvirtualserver.org?subject=unsubscribe>
+List-Archive: <http://lists.graemef.net/pipermail/lvs-users>
+List-Post: <mailto:lvs-users@linuxvirtualserver.org>
+List-Help: <mailto:lvs-users-request@linuxvirtualserver.org?subject=help>
+List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
+	<mailto:lvs-users-request@linuxvirtualserver.org?subject=subscribe>
+Sender: lvs-users-bounces@linuxvirtualserver.org
+Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Simon Horman <horms@verge.net.au>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Size or length? Here is the answer:
 
----1463811672-586259141-1526975510=:2113
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+- IP_VS_SCHEDNAME_MAXLEN and IP_VS_IFNAME_MAXLEN are sizes
+because they are used in kernel structures exported to user
+space for the old setsockopt interface. We can not change
+these structures in the kernel.
 
+- IP_VS_PENAME_MAXLEN and IP_VS_PEDATA_MAXLEN are max lengths
+because they are not exported to the old interface.
 
-	Hello,
+As result:
+- buffers should have space for NUL terminator
+- strncpy should use sizeof(buffer) - 1 as max length
 
-On Mon, 21 May 2018, Michal Koutný wrote:
+As we change the libipvs structures, their users should be
+recompiled.
 
-> IPVS includes protection against filling the ip_vs_conn_tab by dropping 1/32 of
-> feasible entries every second. The template entries (for persistent services)
-> are never directly deleted by this mechanism but when a picked TCP connection
-> entry is being dropped (1), the respective template entry is dropped too
-> (realized by expiring 60 seconds after the connection entry being dropped).
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ ipvsadm.c         | 8 ++++----
+ libipvs/ip_vs.h   | 4 ++--
+ libipvs/libipvs.c | 7 ++++---
+ 3 files changed, 10 insertions(+), 9 deletions(-)
 
-	We try to drop the template in ip_vs_random_dropentry()
-but I guess kernel/time/timer.c:enqueue_timer() puts both timers
-in reverse order for expiration by using hlist_add_head().
+diff --git a/ipvsadm.c b/ipvsadm.c
+index 1a28d72..7695006 100644
+--- a/ipvsadm.c
++++ b/ipvsadm.c
+@@ -595,7 +595,7 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 		case 's':
+ 			set_option(options, OPT_SCHEDULER);
+ 			strncpy(ce->svc.sched_name,
+-				optarg, IP_VS_SCHEDNAME_MAXLEN);
++				optarg, IP_VS_SCHEDNAME_MAXLEN - 1);
+ 			break;
+ 		case 'p':
+ 			set_option(options, OPT_PERSISTENT);
+@@ -670,7 +670,7 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 		case TAG_MCAST_INTERFACE:
+ 			set_option(options, OPT_MCAST);
+ 			strncpy(ce->daemon.mcast_ifn,
+-				optarg, IP_VS_IFNAME_MAXLEN);
++				optarg, IP_VS_IFNAME_MAXLEN - 1);
+ 			break;
+ 		case 'I':
+ 			set_option(options, OPT_SYNCID);
+@@ -1415,8 +1415,8 @@ static void print_conn(char *buf, unsigned int format)
+ 	unsigned int    expires;
+ 	unsigned short  af = AF_INET;
+ 	unsigned short  daf = AF_INET;
+-	char		pe_name[IP_VS_PENAME_MAXLEN];
+-	char		pe_data[IP_VS_PEDATA_MAXLEN];
++	char		pe_name[IP_VS_PENAME_MAXLEN + 1];
++	char		pe_data[IP_VS_PEDATA_MAXLEN + 1];
+ 
+ 	int n;
+ 	char temp1[INET6_ADDRSTRLEN], temp2[INET6_ADDRSTRLEN], temp3[INET6_ADDRSTRLEN];
+diff --git a/libipvs/ip_vs.h b/libipvs/ip_vs.h
+index 774ff96..e57d55a 100644
+--- a/libipvs/ip_vs.h
++++ b/libipvs/ip_vs.h
+@@ -144,7 +144,7 @@ struct ip_vs_service_user {
+ 	__be32			netmask;	/* persistent netmask */
+ 	u_int16_t		af;
+ 	union nf_inet_addr	addr;
+-	char			pe_name[IP_VS_PENAME_MAXLEN];
++	char			pe_name[IP_VS_PENAME_MAXLEN + 1];
+ };
+ 
+ struct ip_vs_dest_kern {
+@@ -267,7 +267,7 @@ struct ip_vs_service_entry {
+ 
+ 	u_int16_t		af;
+ 	union nf_inet_addr	addr;
+-	char			pe_name[IP_VS_PENAME_MAXLEN];
++	char			pe_name[IP_VS_PENAME_MAXLEN + 1];
+ 
+ 	/* statistics, 64-bit */
+ 	struct ip_vs_stats64	stats64;
+diff --git a/libipvs/libipvs.c b/libipvs/libipvs.c
+index a843243..9be7700 100644
+--- a/libipvs/libipvs.c
++++ b/libipvs/libipvs.c
+@@ -719,7 +719,7 @@ static int ipvs_services_parse_cb(struct nl_msg *msg, void *arg)
+ 
+ 	strncpy(get->entrytable[i].sched_name,
+ 		nla_get_string(svc_attrs[IPVS_SVC_ATTR_SCHED_NAME]),
+-		IP_VS_SCHEDNAME_MAXLEN);
++		IP_VS_SCHEDNAME_MAXLEN - 1);
+ 
+ 	if (svc_attrs[IPVS_SVC_ATTR_PE_NAME])
+ 		strncpy(get->entrytable[i].pe_name,
+@@ -1199,7 +1199,7 @@ static int ipvs_daemon_parse_cb(struct nl_msg *msg, void *arg)
+ 	u[i].state = nla_get_u32(daemon_attrs[IPVS_DAEMON_ATTR_STATE]);
+ 	strncpy(u[i].mcast_ifn,
+ 		nla_get_string(daemon_attrs[IPVS_DAEMON_ATTR_MCAST_IFN]),
+-		IP_VS_IFNAME_MAXLEN);
++		IP_VS_IFNAME_MAXLEN - 1);
+ 	u[i].syncid = nla_get_u32(daemon_attrs[IPVS_DAEMON_ATTR_SYNC_ID]);
+ 
+ 	a = daemon_attrs[IPVS_DAEMON_ATTR_SYNC_MAXLEN];
+@@ -1265,7 +1265,8 @@ ipvs_daemon_t *ipvs_get_daemon(void)
+ 	}
+ 	for (i = 0; i < 2; i++) {
+ 		u[i].state = dmk[i].state;
+-		strncpy(u[i].mcast_ifn, dmk[i].mcast_ifn, IP_VS_IFNAME_MAXLEN);
++		strncpy(u[i].mcast_ifn, dmk[i].mcast_ifn,
++			IP_VS_IFNAME_MAXLEN - 1);
+ 		u[i].syncid = dmk[i].syncid;
+ 	}
+ 	return u;
+-- 
+2.9.5
 
-> There is another mechanism that removes connection entries when they
-> time out (2), in this case the associated template entry is not deleted.
-> Under SYN flood template entries would accumulate (due to their entry
-> longer timeout).
-
-	There is also ip_vs_todrop() called in tcp_conn_schedule().
-It just drops specific part from the SYNs on memory pressure.
-
-> The accumulation takes place also with drop_entry being enabled. Roughly
-> 15% ((31/32)^60) of SYN_RECV connections survive the dropping mechanism
-> (1) and are removed by the timeout mechanism (2)(defaults to 60 seconds
-> for SYN_RECV), thus template entries would still accumulate.
-> 
-> The patch ensures that when a connection entry times out, we also remove the
-> template entry from the table. To prevent breaking persistent services (since
-> the connection may time out in already established state) we add a new entry
-> flag to protect templates what spawned at least one established TCP connection.
-> 
-> Cc: Michal Kubeček <mkubecek@suse.com>
-> Signed-off-by: Michal Koutný <mkoutny@suse.com>
-> ---
->  include/uapi/linux/ip_vs.h           | 33 +++++++++++++++++----------------
->  net/netfilter/ipvs/ip_vs_conn.c      | 10 +++++++++-
->  net/netfilter/ipvs/ip_vs_core.c      | 15 ++++++++++++++-
->  net/netfilter/ipvs/ip_vs_proto_tcp.c |  6 ++++++
->  4 files changed, 46 insertions(+), 18 deletions(-)
-> 
-> diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-> index 1c916b2f89dc..ef3bbc001fcd 100644
-> --- a/include/uapi/linux/ip_vs.h
-> +++ b/include/uapi/linux/ip_vs.h
-> @@ -79,22 +79,23 @@
->   *      IPVS Connection Flags
->   *      Only flags 0..15 are sent to backup server
->   */
-> -#define IP_VS_CONN_F_FWD_MASK	0x0007		/* mask for the fwd methods */
-> -#define IP_VS_CONN_F_MASQ	0x0000		/* masquerading/NAT */
-> -#define IP_VS_CONN_F_LOCALNODE	0x0001		/* local node */
-> -#define IP_VS_CONN_F_TUNNEL	0x0002		/* tunneling */
-> -#define IP_VS_CONN_F_DROUTE	0x0003		/* direct routing */
-> -#define IP_VS_CONN_F_BYPASS	0x0004		/* cache bypass */
-> -#define IP_VS_CONN_F_SYNC	0x0020		/* entry created by sync */
-> -#define IP_VS_CONN_F_HASHED	0x0040		/* hashed entry */
-> -#define IP_VS_CONN_F_NOOUTPUT	0x0080		/* no output packets */
-> -#define IP_VS_CONN_F_INACTIVE	0x0100		/* not established */
-> -#define IP_VS_CONN_F_OUT_SEQ	0x0200		/* must do output seq adjust */
-> -#define IP_VS_CONN_F_IN_SEQ	0x0400		/* must do input seq adjust */
-> -#define IP_VS_CONN_F_SEQ_MASK	0x0600		/* in/out sequence mask */
-> -#define IP_VS_CONN_F_NO_CPORT	0x0800		/* no client port set yet */
-> -#define IP_VS_CONN_F_TEMPLATE	0x1000		/* template, not connection */
-> -#define IP_VS_CONN_F_ONE_PACKET	0x2000		/* forward only one packet */
-> +#define IP_VS_CONN_F_FWD_MASK		0x0007		/* mask for the fwd methods */
-> +#define IP_VS_CONN_F_MASQ		0x0000		/* masquerading/NAT */
-> +#define IP_VS_CONN_F_LOCALNODE		0x0001		/* local node */
-> +#define IP_VS_CONN_F_TUNNEL		0x0002		/* tunneling */
-> +#define IP_VS_CONN_F_DROUTE		0x0003		/* direct routing */
-> +#define IP_VS_CONN_F_BYPASS		0x0004		/* cache bypass */
-> +#define IP_VS_CONN_F_SYNC		0x0020		/* entry created by sync */
-> +#define IP_VS_CONN_F_HASHED		0x0040		/* hashed entry */
-> +#define IP_VS_CONN_F_NOOUTPUT		0x0080		/* no output packets */
-> +#define IP_VS_CONN_F_INACTIVE		0x0100		/* not established */
-> +#define IP_VS_CONN_F_OUT_SEQ		0x0200		/* must do output seq adjust */
-> +#define IP_VS_CONN_F_IN_SEQ		0x0400		/* must do input seq adjust */
-> +#define IP_VS_CONN_F_SEQ_MASK		0x0600		/* in/out sequence mask */
-> +#define IP_VS_CONN_F_NO_CPORT		0x0800		/* no client port set yet */
-> +#define IP_VS_CONN_F_TEMPLATE		0x1000		/* template, not connection */
-> +#define IP_VS_CONN_F_ONE_PACKET		0x2000		/* forward only one packet */
-> +#define IP_VS_CONN_F_TMPL_PERSISTED	0x4000		/* template, confirmed persistent */
->  
->  /* Initial bits allowed in backup server */
->  #define IP_VS_CONN_F_BACKUP_MASK (IP_VS_CONN_F_FWD_MASK | \
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index 370abbf6f421..6afc606a388c 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -820,6 +820,7 @@ static void ip_vs_conn_rcu_free(struct rcu_head *head)
->  static void ip_vs_conn_expire(struct timer_list *t)
->  {
->  	struct ip_vs_conn *cp = from_timer(cp, t, timer);
-> +	struct ip_vs_conn *cp_c;
->  	struct netns_ipvs *ipvs = cp->ipvs;
->  
->  	/*
-> @@ -834,8 +835,15 @@ static void ip_vs_conn_expire(struct timer_list *t)
->  		del_timer(&cp->timer);
->  
->  		/* does anybody control me? */
-> -		if (cp->control)
-> +		cp_c = cp->control;
-> +		if (cp_c) {
->  			ip_vs_control_del(cp);
-> +			if (cp_c->flags & IP_VS_CONN_F_TEMPLATE &&
-> +			    !(cp_c->flags & IP_VS_CONN_F_TMPL_PERSISTED)) {
-> +				IP_VS_DBG(4, "del conn template\n");
-> +				ip_vs_conn_expire_now(cp_c);
-
-	So, we have current conn expired after 60 seconds
-in IP_VS_TCP_S_SYN_RECV state and possibly other conns
-in same state that are not expired yet.
-
-	Another option is just to use something like:
-
-	if (cp_c) {
-		ip_vs_control_del(cp);
-		/* Restart cp_c timer only for last conn */
-		if (!atomic_read(&cp_c->n_control) &&
-		    (cp_c->flags & IP_VS_CONN_F_TEMPLATE) &&
-		    /* Some func to decide when to drop cp_c:
-		     * - it can be for SYN state
-		     * - it can be when cp was dropped on load
-		     */
-		    cp->state == IP_VS_TCP_S_SYN_RECV) {
-			IP_VS_DBG(4, "del conn template\n");
-			ip_vs_conn_expire_now(cp_c);
-		}
-	}
-
-	It is not perfect, i.e. it does not know if there was
-some conn that was established in the past:
-
-- CONN1: SYN, SYN+ACK, ESTABLISH, FIN, FIN+ACK, expire
-- CONN2: expire in SYN state, drop tpl before persistent timeout
-
-	But it should work in the general case.
-Anyways, give me some days to think more on this issue.
-
-Regards
----1463811672-586259141-1526975510=:2113--
