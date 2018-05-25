@@ -1,7 +1,7 @@
-From: Simon Horman <horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH] libipvs: fix some buffer sizes
-Date: Fri, 25 May 2018 11:34:19 +0200
-Message-ID: <20180525093414.hftwiqgunkpkvm6q@verge.net.au>
+Date: Fri, 25 May 2018 21:48:31 +0300 (EEST)
+Message-ID: <alpine.LFD.2.20.1805252144090.3447@ja.home.ssi.bg>
 References: <20180524203745.25950-1-ja@ssi.bg>
 	<20180525092935.39a68441@redhat.com>
 Reply-To: "LinuxVirtualServer.org users mailing list."
@@ -10,13 +10,6 @@ Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-	t=1527240862; bh=PevVtQzrmT3nAJzSPAZz+1zkToFEXp945U7PYgB+dKg=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=gvxLG0rF/C9QZGv4qj/3jYvpKRk2vQsnQS0GzyRfhQBQvFWoRkAkXh1QegZfNmZx5
-	3SauXO9t8kukl9CCnL4xq/NboK0OhHUIEPgXEndDP3cx1EHffc+sOHMj1p0TNyVPYb
-	DPHUiAV+ujkeIkgqp5NmlR+MbbdWBTIBgfG+fzLg=
-Content-Disposition: inline
 In-Reply-To: <20180525092935.39a68441@redhat.com>
 List-Id: <lvs-devel.vger.kernel.org>
 List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
@@ -29,9 +22,13 @@ List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
 Sender: lvs-users-bounces@linuxvirtualserver.org
 Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
 To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Simon Horman <horms@verge.net.au>
 
-On Fri, May 25, 2018 at 09:29:35AM +0200, Jesper Dangaard Brouer wrote:
+
+	Hello,
+
+On Fri, 25 May 2018, Jesper Dangaard Brouer wrote:
+
 > 
 > On Thu, 24 May 2018 23:37:45 +0300 Julian Anastasov <ja@ssi.bg> wrote:
 > 
@@ -56,8 +53,16 @@ On Fri, May 25, 2018 at 09:29:35AM +0200, Jesper Dangaard Brouer wrote:
 > 
 > This all looks fine to me.  I'll give other people a little time to
 > review and ACK, before I apply this.
-> 
+
+	Thanks!
+
 > (To Julian) did you find this by manual review, or did you use some tool
 > to find these?
 
-Acked-by: Simon Horman <horms@verge.net.au>
+	As you noticed the kernel patch, all started with
+the syzkaller report, then by manual review...
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
