@@ -1,52 +1,36 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] libipvs: fix some buffer sizes
-Date: Tue, 29 May 2018 21:56:17 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1805292154160.3304@ja.home.ssi.bg>
-References: <20180524203745.25950-1-ja@ssi.bg>
-	<20180525092935.39a68441@redhat.com>
-	<alpine.LFD.2.20.1805252144090.3447@ja.home.ssi.bg>
-	<20180529160655.673cd177@redhat.com>
-Reply-To: "LinuxVirtualServer.org users mailing list."
-	<lvs-users@linuxvirtualserver.org>
+From: Martin KaFai Lau <kafai@fb.com>
+Subject: Re: [PATCH RFC net-next] net: ipvs: Adjust gso_size for IPPROTO_TCP
+Date: Tue, 5 Jun 2018 14:31:28 -0700
+Message-ID: <20180605213128.tlskvjhuk6vx3m6r@kafai-mbp.dhcp.thefacebook.com>
+References: <20180419212324.1542504-1-kafai@fb.com>
+ <alpine.LFD.2.20.1805020932270.1964@ja.home.ssi.bg>
+ <20180502171041.s3euld6i7hm6bw5c@kafai-mbp>
+ <alpine.LFD.2.20.1805022143360.3301@ja.home.ssi.bg>
+ <20180503070114.bcuusvzga45klccs@kafai-mbp>
+ <alpine.LFD.2.20.1805051515450.1895@ja.home.ssi.bg>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fb.com; h=date : from : to : cc :
+ subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=facebook; bh=ru+sm9uU612fw7BMg9V/8HahlnMQH3FtGSnciIPdM1s=;
+ b=A0qmoCAHN5YnWiy/okm2yS9BHHX2mk9XwJrwcqto7B3QUg3GDpSpMOrY8BSEvLFRIqEM
+ 30QDH7ncNDUL6xfhC1Je5znWHQNxJYJY076tqxJbCt0byT24PwgtV3CzKUxMWRNYmP78
+ bZv0cH7biQT8VGK1HNI+q2uvr5swVHtq8iQ= 
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.20.1805051515450.1895@ja.home.ssi.bg>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org>
-In-Reply-To: <20180529160655.673cd177@redhat.com>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
-	<mailto:lvs-users-request@linuxvirtualserver.org?subject=unsubscribe>
-List-Archive: <http://lists.graemef.net/pipermail/lvs-users>
-List-Post: <mailto:lvs-users@linuxvirtualserver.org>
-List-Help: <mailto:lvs-users-request@linuxvirtualserver.org?subject=help>
-List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
-	<mailto:lvs-users-request@linuxvirtualserver.org?subject=subscribe>
-Sender: lvs-users-bounces@linuxvirtualserver.org
-Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Simon Horman <horms@verge.net.au>, Ryan O'Hara <rohara@redhat.com>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: netdev@vger.kernel.org, David Ahern <dsahern@gmail.com>, Tom Herbert <tom@herbertland.com>, Eric Dumazet <eric.dumazet@gmail.com>, Nikita Shirokov <tehnerd@fb.com>, kernel-team@fb.com, lvs-devel@vger.kernel.org
 
+On Sat, May 05, 2018 at 03:58:25PM +0300, Julian Anastasov wrote:
+> 	So, except the RTF_LOCAL check in __ip6_rt_update_pmtu
+> we should have no other issues. 
+Hi Julian,
 
-	Hello,
+Do you have a chance to work on the IPv6 side?
 
-On Tue, 29 May 2018, Jesper Dangaard Brouer wrote:
-
-> Applied:
->  https://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git/commit/?id=5cd1778489c52
->  
-> > > (To Julian) did you find this by manual review, or did you use some tool
-> > > to find these?  
-> > 
-> > 	As you noticed the kernel patch, all started with
-> > the syzkaller report, then by manual review...
-> 
-> I added a note to the commit desc, pointing to the kernel commit,
-> gracefully reminding future distro backporters that the kernel side
-> also have issues in this area ;-)
-
-	Very good, thanks!
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Thanks,
+Martin
