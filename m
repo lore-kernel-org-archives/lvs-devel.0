@@ -1,50 +1,42 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net] ipv6: allow PMTU exceptions to local routes
-Date: Mon, 11 Jun 2018 02:02:54 +0300
-Message-ID: <20180610230254.6347-1-ja@ssi.bg>
+From: David Ahern <dsahern@gmail.com>
+Subject: Re: [PATCH net] ipv6: allow PMTU exceptions to local routes
+Date: Mon, 11 Jun 2018 07:55:07 -0600
+Message-ID: <685977d8-0cce-8085-e8e4-4fd8e051c4d6@gmail.com>
+References: <20180610230254.6347-1-ja@ssi.bg>
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=SLxQtLSrL9RdyFitxWm589c3sOsIgbdj+ZHr20H/rjA=;
+        b=tCiy/T5XmRgb6RWyIQBIUQiGd/2ekjTQbHoKxGoze13p7PkeyRW/e7zZ7K4GkRLzHy
+         77B1vqfYu3/yRvmZZsZ1crnYeJmbxcXleZx/0jaQrg9ZLH/tu8q3B3E4pns0y0ZhSq9e
+         1Qo38tHOcTqjCo34GD17Vvho7zMi/d3e6mGehuti9tDht7DqVA/onG29xb/O2g0yobVc
+         64d6mxfzcROGPejzIw0dAJgBf0E/4MOK7yYbnmLiKF0bgCGcEhrHUDB0u+8qh1po/t1P
+         od1HxCFnJSFs3JAnpPyZ1z/E7HoUMie2EQaF/d3S7ApXSRzKb886FGAae/zbtfKmWU3S
+         J6DQ==
+In-Reply-To: <20180610230254.6347-1-ja@ssi.bg>
+Content-Language: en-US
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
+To: Julian Anastasov <ja@ssi.bg>, David Miller <davem@davemloft.net>
 Cc: netdev@vger.kernel.org, Martin KaFai Lau <kafai@fb.com>, kernel-team@fb.com, lvs-devel@vger.kernel.org
 
-IPVS setups with local client and remote tunnel server need
-to create exception for the local virtual IP. What we do is to
-change PMTU from 64KB (on "lo") to 1460 in the common case.
+On 6/10/18 5:02 PM, Julian Anastasov wrote:
+> IPVS setups with local client and remote tunnel server need
+> to create exception for the local virtual IP. What we do is to
+> change PMTU from 64KB (on "lo") to 1460 in the common case.
+> 
+> Suggested-by: Martin KaFai Lau <kafai@fb.com>
+> Fixes: 45e4fd26683c ("ipv6: Only create RTF_CACHE routes after encountering pmtu exception")
+> Fixes: 7343ff31ebf0 ("ipv6: Don't create clones of host routes.")
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> ---
+>  net/ipv6/route.c | 3 ---
+>  1 file changed, 3 deletions(-)
+> 
 
-Suggested-by: Martin KaFai Lau <kafai@fb.com>
-Fixes: 45e4fd26683c ("ipv6: Only create RTF_CACHE routes after encountering pmtu exception")
-Fixes: 7343ff31ebf0 ("ipv6: Don't create clones of host routes.")
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- net/ipv6/route.c | 3 ---
- 1 file changed, 3 deletions(-)
-
-Note: I failed to build 2.6.38 kernel for the test but I think
-commit 7343ff31ebf0 looks as the one that added the restriction
-to change PMTU for local IPs.
-
-So, I'm not sure from how long time the issue with local IPVS
-clients and tunnelling method exists. May be it worked between
-2.6.28 and 2.6.37.
-
-diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index fb95698..86a0e43 100644
---- a/net/ipv6/route.c
-+++ b/net/ipv6/route.c
-@@ -2307,9 +2307,6 @@ static void __ip6_rt_update_pmtu(struct dst_entry *dst, const struct sock *sk,
- 	const struct in6_addr *daddr, *saddr;
- 	struct rt6_info *rt6 = (struct rt6_info *)dst;
- 
--	if (rt6->rt6i_flags & RTF_LOCAL)
--		return;
--
- 	if (dst_metric_locked(dst, RTAX_MTU))
- 		return;
- 
--- 
-2.9.5
-
+Acked-by: David Ahern <dsahern@gmail.com>
