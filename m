@@ -1,74 +1,83 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: [PATCH] ipvs: don't show negative times in ip_vs_conn
-Date: Fri, 20 Jul 2018 09:21:03 -0700
-Message-ID: <c5ab4cd8-71d9-c190-7f7a-c85dd1aad91b@gmail.com>
-References: <20180720151957.24791-1-mcroce@redhat.com>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=4i3vJ7Ys+8jOdLzxUQQPkB0PFec6+Kf8W8IJkVfnYtY=;
-        b=lz3adz5zhRJO84OoQ5UBHBDiMWKq/Y8tLpdrrT8FzT3bhVNmyn09yqYgiH6cMUJkUS
-         oTbZKF7cxnnMGN8PWyfXSmlgbVOSyRGBFqgUT1WDWazgkII/xs6aFu6J028LSApSs17y
-         j7Qt9QRD01TIC+C0q+bEMWNHfwVwRTh5v33c+4bOA44NEAu98vybT3HxfF7v21I6kufo
-         /qeX1AOVgOXGFmG6zDkR4+5wv5gdNdNjcyEaXfycbQyh1R5F/uyrP+m4GZziifJsgPKd
-         QR+OUKmXbrftfWAwLbqqTPxNCFYruJy9k6tgfU5zP3ZZyuWTwynGaXHTi8FDTYBPoHvw
-         2XIQ==
-In-Reply-To: <20180720151957.24791-1-mcroce@redhat.com>
-Content-Language: en-US
-Sender: netdev-owner@vger.kernel.org
+From: Tan Hu <tan.hu@zte.com.cn>
+Subject: [PATCH] ipvs: fix race between ip_vs_conn_new() and ip_vs_del_dest()
+Date: Tue, 24 Jul 2018 16:12:33 +0800
+Message-ID: <1532419953-5517-1-git-send-email-tan.hu@zte.com.cn>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Matteo Croce <mcroce@redhat.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, netfilter-devel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
 
+We came across infinite loop in ipvs when using ipvs in docker
+env.
 
+When ipvs receives new packets and cannot find an ipvs connection,
+it will create a new connection, then if the dest is unavailable
+(i.e. IP_VS_DEST_F_AVAILABLE), the packet will be dropped sliently.
 
-On 07/20/2018 08:19 AM, Matteo Croce wrote:
-> Since commit 500462a9de65 ("timers: Switch to a non-cascading wheel"),
-> timers duration can last even 12.5% more than the scheduled interval.
->
-> Signed-off-by: Matteo Croce <mcroce@redhat.com>
-> ---
->  net/netfilter/ipvs/ip_vs_conn.c | 22 ++++++++++++++--------
->  1 file changed, 14 insertions(+), 8 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index 99e0aa350dc5..c78c48a6d53f 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -1066,6 +1066,12 @@ static void ip_vs_conn_seq_stop(struct seq_file *seq, void *v)
->  	rcu_read_unlock();
->  }
->  
-> +static unsigned int time_left(unsigned long time)
-> +{
-> +	return time_is_after_jiffies(time) ?
-> +		jiffies_to_msecs(time - jiffies) / 1000 : 0;
-> +}
+But if the dropped packet is the first packet of this connection,
+the connection control timer never has a chance to start and the
+ipvs connection cannot be released. This will lead to memory leak, or
+infinite loop in cleanup_net() when net namespace is released like
+this:
 
+    ip_vs_conn_net_cleanup at ffffffffa0a9f31a [ip_vs]
+    __ip_vs_cleanup at ffffffffa0a9f60a [ip_vs]
+    ops_exit_list at ffffffff81567a49
+    cleanup_net at ffffffff81568b40
+    process_one_work at ffffffff810a851b
+    worker_thread at ffffffff810a9356
+    kthread at ffffffff810b0b6f
+    ret_from_fork at ffffffff81697a18
 
-I would suggest adding jiffies_delta_to_msecs(), because we will need elsewhere,
-like in inet_sk_diag_fill()
+race condition:
+    CPU1                           CPU2
+    ip_vs_in()
+      ip_vs_conn_new()
+                                   ip_vs_del_dest()
+                                     __ip_vs_unlink_dest()
+                                       ~IP_VS_DEST_F_AVAILABLE
+      cp->dest && !IP_VS_DEST_F_AVAILABLE
+      __ip_vs_conn_put
+      ...
+      cleanup_net  ---> infinite looping
 
+Fix this by checking whether the timer already started.
 
-diff --git a/include/linux/jiffies.h b/include/linux/jiffies.h
-index a27cf66523279c1a5d4aaa0d0087f1e9d48d170f..fa928242567db30769839ac8738be5dc58e372ab 100644
---- a/include/linux/jiffies.h
-+++ b/include/linux/jiffies.h
-@@ -447,6 +447,11 @@ static inline clock_t jiffies_delta_to_clock_t(long delta)
-        return jiffies_to_clock_t(max(0L, delta));
- }
+Signed-off-by: Tan Hu <tan.hu@zte.com.cn>
+Reviewed-by: Jiang Biao <jiang.biao2@zte.com.cn>
+---
+ net/netfilter/ipvs/ip_vs_core.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 0679dd1..ca9e7cc 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1972,13 +1972,17 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+ 		/* the destination server is not available */
  
-+static inline unsigned int jiffies_delta_to_msecs(long delta)
-+{
-+       return jiffies_to_msecs(max(0L, delta));
-+}
++		/* when timer already started, silently drop the packet.*/
++		if (timer_pending(&cp->timer))
++			__ip_vs_conn_put(cp);
++		else
++			ip_vs_conn_put(cp);
 +
- extern unsigned long clock_t_to_jiffies(unsigned long x);
- extern u64 jiffies_64_to_clock_t(u64 x);
- extern u64 nsec_to_clock_t(u64 x);
+ 		if (sysctl_expire_nodest_conn(ipvs)) {
+ 			/* try to expire the connection immediately */
+ 			ip_vs_conn_expire_now(cp);
+ 		}
+-		/* don't restart its timer, and silently
+-		   drop the packet. */
+-		__ip_vs_conn_put(cp);
++
+ 		return NF_DROP;
+ 	}
+ 
+-- 
+1.8.3.1
 
