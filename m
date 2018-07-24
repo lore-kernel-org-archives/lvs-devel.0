@@ -1,106 +1,27 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: fix race between ip_vs_conn_new() and
- ip_vs_del_dest()
-Date: Tue, 24 Jul 2018 22:47:12 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1807242216100.3314@ja.home.ssi.bg>
-References: <1532419953-5517-1-git-send-email-tan.hu@zte.com.cn>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 1/4] treewide: convert ISO_8859-1 text comments to utf-8
+Date: Tue, 24 Jul 2018 14:00:10 -0700
+Message-ID: <20180724140010.e24a9964fd340afe2d98a994@linux-foundation.org>
+References: <20180724111600.4158975-1-arnd@arndb.de>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1532419953-5517-1-git-send-email-tan.hu@zte.com.cn>
-Sender: netdev-owner@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180724111600.4158975-1-arnd@arndb.de>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Tan Hu <tan.hu@zte.com.cn>
-Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Joe Perches <joe@perches.com>, Samuel Ortiz <sameo@linux.intel.com>, "David S. Miller" <davem@davemloft.net>, Rob Herring <robh+dt@kernel.org>, Michael Ellerman <mpe@ellerman.id.au>, Jonathan Cameron <jic23@kernel.org>, linux-wireless@vger.kernel.org, netdev@vger.kernel.org, devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-crypto@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, linux-iio@vger.kernel.org, linux-pm@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
+On Tue, 24 Jul 2018 13:13:25 +0200 Arnd Bergmann <arnd@arndb.de> wrote:
 
-	Hello,
-
-On Tue, 24 Jul 2018, Tan Hu wrote:
-
-> We came across infinite loop in ipvs when using ipvs in docker
-> env.
+> Almost all files in the kernel are either plain text or UTF-8
+> encoded. A couple however are ISO_8859-1, usually just a few
+> characters in a C comments, for historic reasons.
 > 
-> When ipvs receives new packets and cannot find an ipvs connection,
-> it will create a new connection, then if the dest is unavailable
-> (i.e. IP_VS_DEST_F_AVAILABLE), the packet will be dropped sliently.
-> 
-> But if the dropped packet is the first packet of this connection,
-> the connection control timer never has a chance to start and the
-> ipvs connection cannot be released. This will lead to memory leak, or
-> infinite loop in cleanup_net() when net namespace is released like
-> this:
-> 
->     ip_vs_conn_net_cleanup at ffffffffa0a9f31a [ip_vs]
->     __ip_vs_cleanup at ffffffffa0a9f60a [ip_vs]
->     ops_exit_list at ffffffff81567a49
->     cleanup_net at ffffffff81568b40
->     process_one_work at ffffffff810a851b
->     worker_thread at ffffffff810a9356
->     kthread at ffffffff810b0b6f
->     ret_from_fork at ffffffff81697a18
-> 
-> race condition:
->     CPU1                           CPU2
->     ip_vs_in()
->       ip_vs_conn_new()
->                                    ip_vs_del_dest()
->                                      __ip_vs_unlink_dest()
->                                        ~IP_VS_DEST_F_AVAILABLE
->       cp->dest && !IP_VS_DEST_F_AVAILABLE
->       __ip_vs_conn_put
->       ...
->       cleanup_net  ---> infinite looping
-> 
-> Fix this by checking whether the timer already started.
+> This converts them all to UTF-8 for consistency.
 
-	Looks like an old bug...
+Was "consistency" the only rationale?  The discussion is now outside my
+memory horizon but I thought there were other reasons.
 
-> 
-> Signed-off-by: Tan Hu <tan.hu@zte.com.cn>
-> Reviewed-by: Jiang Biao <jiang.biao2@zte.com.cn>
-> ---
->  net/netfilter/ipvs/ip_vs_core.c | 10 +++++++---
->  1 file changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 0679dd1..ca9e7cc 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1972,13 +1972,17 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
->  	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
->  		/* the destination server is not available */
-
-		Add: u32 flags = cp->flags;
-
->  
-> +		/* when timer already started, silently drop the packet.*/
-> +		if (timer_pending(&cp->timer))
-> +			__ip_vs_conn_put(cp);
-> +		else
-> +			ip_vs_conn_put(cp);
-
-	When ip_vs_conn_put is called for IP_VS_CONN_F_ONE_PACKET
-it is possible to call ip_vs_conn_expire and to free cp with
-ip_vs_conn_rcu_free immediately. What we can do is to avoid the
-ip_vs_conn_expire_now call in such case by reading the flags
-early (as above) and adding the needed check (as below).
-
-> +
->  		if (sysctl_expire_nodest_conn(ipvs)) {
-
-	Add !(flags & IP_VS_CONN_F_ONE_PACKET) check in above 'if'.
-
->  			/* try to expire the connection immediately */
->  			ip_vs_conn_expire_now(cp);
->  		}
-> -		/* don't restart its timer, and silently
-> -		   drop the packet. */
-> -		__ip_vs_conn_put(cp);
-> +
->  		return NF_DROP;
->  	}
->  
-
-Regards
+Will we be getting a checkpatch rule to keep things this way?
