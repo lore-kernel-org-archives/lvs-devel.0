@@ -1,64 +1,84 @@
-From: Michael Ellerman <mpe@ellerman.id.au>
-Subject: Re: [PATCH 1/4] treewide: convert ISO_8859-1 text comments to utf-8
-Date: Wed, 25 Jul 2018 14:20:25 +1000
-Message-ID: <87o9ewx7xy.fsf@concordia.ellerman.id.au>
-References: <20180724111600.4158975-1-arnd@arndb.de>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH v2] ipvs: fix race between ip_vs_conn_new() and
+ ip_vs_del_dest()
+Date: Wed, 25 Jul 2018 08:53:43 +0300 (EEST)
+Message-ID: <alpine.LFD.2.20.1807250849100.2794@ja.home.ssi.bg>
+References: <1532486980-17844-1-git-send-email-tan.hu@zte.com.cn>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180724111600.4158975-1-arnd@arndb.de>
+In-Reply-To: <1532486980-17844-1-git-send-email-tan.hu@zte.com.cn>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Arnd Bergmann <arnd@arndb.de>, Andrew Morton <akpm@linux-foundation.org>
-Cc: Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>, Samuel Ortiz <sameo@linux.intel.com>, "David S. Miller" <davem@davemloft.net>, Rob Herring <robh+dt@kernel.org>, Jonathan Cameron <jic23@kernel.org>, linux-wireless@vger.kernel.org, netdev@vger.kernel.org, devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-crypto@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, linux-iio@vger.kernel.org, linux-pm@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Tan Hu <tan.hu@zte.com.cn>
+Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
 
-Arnd Bergmann <arnd@arndb.de> writes:
 
-> Almost all files in the kernel are either plain text or UTF-8
-> encoded. A couple however are ISO_8859-1, usually just a few
-> characters in a C comments, for historic reasons.
->
-> This converts them all to UTF-8 for consistency.
->
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+	Hello,
+
+On Wed, 25 Jul 2018, Tan Hu wrote:
+
+> We came across infinite loop in ipvs when using ipvs in docker
+> env.
+> 
+> When ipvs receives new packets and cannot find an ipvs connection,
+> it will create a new connection, then if the dest is unavailable
+> (i.e. IP_VS_DEST_F_AVAILABLE), the packet will be dropped sliently.
+> 
+> But if the dropped packet is the first packet of this connection,
+> the connection control timer never has a chance to start and the
+> ipvs connection cannot be released. This will lead to memory leak, or
+> infinite loop in cleanup_net() when net namespace is released like
+> this:
+> 
+>     ip_vs_conn_net_cleanup at ffffffffa0a9f31a [ip_vs]
+>     __ip_vs_cleanup at ffffffffa0a9f60a [ip_vs]
+>     ops_exit_list at ffffffff81567a49
+>     cleanup_net at ffffffff81568b40
+>     process_one_work at ffffffff810a851b
+>     worker_thread at ffffffff810a9356
+>     kthread at ffffffff810b0b6f
+>     ret_from_fork at ffffffff81697a18
+> 
+> race condition:
+>     CPU1                           CPU2
+>     ip_vs_in()
+>       ip_vs_conn_new()
+>                                    ip_vs_del_dest()
+>                                      __ip_vs_unlink_dest()
+>                                        ~IP_VS_DEST_F_AVAILABLE
+>       cp->dest && !IP_VS_DEST_F_AVAILABLE
+>       __ip_vs_conn_put
+>     ...
+>     cleanup_net  ---> infinite looping
+> 
+> Fix this by checking whether the timer already started.
+> 
+> Signed-off-by: Tan Hu <tan.hu@zte.com.cn>
+> Reviewed-by: Jiang Biao <jiang.biao2@zte.com.cn>
 > ---
-...
->  drivers/crypto/vmx/ghashp8-ppc.pl             |  12 +-
-...
-> diff --git a/drivers/crypto/vmx/ghashp8-ppc.pl b/drivers/crypto/vmx/ghashp8-ppc.pl
-> index f746af271460..38b06503ede0 100644
-> --- a/drivers/crypto/vmx/ghashp8-ppc.pl
-> +++ b/drivers/crypto/vmx/ghashp8-ppc.pl
-> @@ -129,9 +129,9 @@ $code=<<___;
->  	 le?vperm	$IN,$IN,$IN,$lemask
->  	vxor		$zero,$zero,$zero
+> v2: fix use-after-free in CONN_ONE_PACKET case suggested by Julian Anastasov
+> 
+>  net/netfilter/ipvs/ip_vs_core.c | 15 +++++++++++----
+>  1 file changed, 11 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index 0679dd1..a17104f 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -1972,13 +1972,20 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
+>  	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+>  		/* the destination server is not available */
 >  
-> -	vpmsumd		$Xl,$IN,$Hl		# H.loXi.lo
-> -	vpmsumd		$Xm,$IN,$H		# H.hiXi.lo+H.loXi.hi
-> -	vpmsumd		$Xh,$IN,$Hh		# H.hiXi.hi
-> +	vpmsumd		$Xl,$IN,$Hl		# H.lo·Xi.lo
-> +	vpmsumd		$Xm,$IN,$H		# H.hi·Xi.lo+H.lo·Xi.hi
-> +	vpmsumd		$Xh,$IN,$Hh		# H.hi·Xi.hi
->  
->  	vpmsumd		$t2,$Xl,$xC2		# 1st phase
->  
-> @@ -187,11 +187,11 @@ $code=<<___;
->  .align	5
->  Loop:
->  	 subic		$len,$len,16
-> -	vpmsumd		$Xl,$IN,$Hl		# H.loXi.lo
-> +	vpmsumd		$Xl,$IN,$Hl		# H.lo·Xi.lo
->  	 subfe.		r0,r0,r0		# borrow?-1:0
-> -	vpmsumd		$Xm,$IN,$H		# H.hiXi.lo+H.loXi.hi
-> +	vpmsumd		$Xm,$IN,$H		# H.hi·Xi.lo+H.lo·Xi.hi
->  	 and		r0,r0,$len
-> -	vpmsumd		$Xh,$IN,$Hh		# H.hiXi.hi
-> +	vpmsumd		$Xh,$IN,$Hh		# H.hi·Xi.hi
->  	 add		$inp,$inp,r0
->  
->  	vpmsumd		$t2,$Xl,$xC2		# 1st phase
+> -		if (sysctl_expire_nodest_conn(ipvs)) {
+> +		__u32 flags = cp->flags; 
 
-Acked-by: Michael Ellerman <mpe@ellerman.id.au> (powerpc)
+	Ops, now scripts/checkpatch.pl --strict /tmp/file.patch
+is complaining about extra trailing space in above line.
+You can also remove the empty line above the new code...
 
-cheers
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
