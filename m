@@ -1,110 +1,109 @@
-From: Joe Perches <joe-6d6DIl74uiNBDgjK7y7TUQ@public.gmane.org>
-Subject: Re: [PATCH 1/4] treewide: convert ISO_8859-1 text comments to utf-8
-Date: Wed, 25 Jul 2018 08:33:47 -0700
-Message-ID: <0fa2951559a9618c635d5a1fc6d4e32a5b795826.camel@perches.com>
-References: <20180724111600.4158975-1-arnd@arndb.de>
-         <20180724140010.e24a9964fd340afe2d98a994@linux-foundation.org>
-         <aa39b6d15f44555cb79d5ebdef74aeab19003d6a.camel@perches.com>
-         <20180724175531.75276cf4e539124aa9e27177@linux-foundation.org>
-         <CAK8P3a3tOuP1FVS7oD1UhO5s4C+fLkL8VT3eCpRnSxBZxKzf6A@mail.gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH v3] ipvs: fix race between ip_vs_conn_new() and
+ ip_vs_del_dest()
+Date: Wed, 25 Jul 2018 22:12:48 +0300 (EEST)
+Message-ID: <alpine.LFD.2.20.1807252208320.2437@ja.home.ssi.bg>
+References: <1532503387-3800-1-git-send-email-tan.hu@zte.com.cn>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <linux-wireless-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <CAK8P3a3tOuP1FVS7oD1UhO5s4C+fLkL8VT3eCpRnSxBZxKzf6A-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-wireless-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1532503387-3800-1-git-send-email-tan.hu@zte.com.cn>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-Cc: Samuel Ortiz <sameo-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Rob Herring <robh+dt-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Michael Ellerman <mpe-Gsx/Oe8HsFggBc27wqDAHg@public.gmane.org>, Jonathan Cameron <jic23-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-wireless <linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Networking <netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, DTML <devicetree-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Linux ARM <linux-arm-kernel-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org>, "open list:HARDWARE RANDOM NUMBER GENERATOR CORE" <linux-crypto-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linuxppc-dev <linuxppc-dev-uLR06cmDAlY/bJ5BZ2RsiQ@public.gmane.org>, linux-iio-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux PM list <linux-pm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, lvs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, coreteam-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org
+Content-Transfer-Encoding: 7bit
+To: Tan Hu <tan.hu@zte.com.cn>
+Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
 
-On Wed, 2018-07-25 at 15:12 +0200, Arnd Bergmann wrote:
-> tools/perf/tests/.gitignore:
->                             LLVM byte-codes, uncompressed
-> On Wed, Jul 25, 2018 at 2:55 AM, Andrew Morton
-> <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org> wrote:
-> > On Tue, 24 Jul 2018 17:13:20 -0700 Joe Perches <joe-6d6DIl74uiNBDgjK7y7TUQ@public.gmane.org> wrote:
-> > 
-> > > On Tue, 2018-07-24 at 14:00 -0700, Andrew Morton wrote:
-> > > > On Tue, 24 Jul 2018 13:13:25 +0200 Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org> wrote:
-> > > > > Almost all files in the kernel are either plain text or UTF-8
-> > > > > encoded. A couple however are ISO_8859-1, usually just a few
-> > > > > characters in a C comments, for historic reasons.
-> > > > > This converts them all to UTF-8 for consistency.
-> > > 
-> > > []
-> > > > Will we be getting a checkpatch rule to keep things this way?
-> > > 
-> > > How would that be done?
-> > 
-> > I'm using this, seems to work.
-> > 
-> >         if ! file $p | grep -q -P ", ASCII text|, UTF-8 Unicode text"
-> >         then
-> >                 echo $p: weird charset
-> >         fi
+
+	Hello,
+
+On Wed, 25 Jul 2018, Tan Hu wrote:
+
+> We came across infinite loop in ipvs when using ipvs in docker
+> env.
 > 
-> There are a couple of files that my version of 'find' incorrectly identified as
-> something completely different, like:
+> When ipvs receives new packets and cannot find an ipvs connection,
+> it will create a new connection, then if the dest is unavailable
+> (i.e. IP_VS_DEST_F_AVAILABLE), the packet will be dropped sliently.
 > 
-> Documentation/devicetree/bindings/pinctrl/pinctrl-sx150x.txt:
->             SemOne archive data
-> Documentation/devicetree/bindings/rtc/epson,rtc7301.txt:
->             Microsoft Document Imaging Format
-> Documentation/filesystems/nfs/pnfs-block-server.txt:
->             PPMN archive data
-> arch/arm/boot/dts/bcm283x-rpi-usb-host.dtsi:
->         Sendmail frozen configuration  - version = "host";
-> Documentation/networking/segmentation-offloads.txt:
->         StuffIt Deluxe Segment (data) : gmentation Offloads in the
-> Linux Networking Stack
-> arch/sparc/include/asm/visasm.h:                              SAS 7+
-> arch/xtensa/kernel/setup.c:                                         ,
-> init=0x454c, stat=0x090a, dev=0x2009, bas=0x2020
-> drivers/cpufreq/powernow-k8.c:
-> TI-XX Graphing Calculator (FLASH)
-> tools/testing/selftests/net/forwarding/tc_shblocks.sh:
->                             Minix filesystem, V2 (big endian)
-> tools/perf/tests/.gitignore:
->                             LLVM byte-codes, uncompressed
+> But if the dropped packet is the first packet of this connection,
+> the connection control timer never has a chance to start and the
+> ipvs connection cannot be released. This will lead to memory leak, or
+> infinite loop in cleanup_net() when net namespace is released like
+> this:
 > 
-> All of the above seem to be valid ASCII or UTF-8 files, so the check
-> above will lead
-> to false-positives, but it may be good enough as they are the
-> exception, and may be
-> bugs in 'file'.
+>     ip_vs_conn_net_cleanup at ffffffffa0a9f31a [ip_vs]
+>     __ip_vs_cleanup at ffffffffa0a9f60a [ip_vs]
+>     ops_exit_list at ffffffff81567a49
+>     cleanup_net at ffffffff81568b40
+>     process_one_work at ffffffff810a851b
+>     worker_thread at ffffffff810a9356
+>     kthread at ffffffff810b0b6f
+>     ret_from_fork at ffffffff81697a18
 > 
-> Not sure if we need to worry about 'file' not being installed.
+> race condition:
+>     CPU1                           CPU2
+>     ip_vs_in()
+>       ip_vs_conn_new()
+>                                    ip_vs_del_dest()
+>                                      __ip_vs_unlink_dest()
+>                                        ~IP_VS_DEST_F_AVAILABLE
+>       cp->dest && !IP_VS_DEST_F_AVAILABLE
+>       __ip_vs_conn_put
+>     ...
+>     cleanup_net  ---> infinite looping
+> 
+> Fix this by checking whether the timer already started.
+> 
+> Signed-off-by: Tan Hu <tan.hu@zte.com.cn>
+> Reviewed-by: Jiang Biao <jiang.biao2@zte.com.cn>
 
-checkpatch works on patches so I think the test isn't
-really relevant.  It has to use the appropriate email
-header that sets the charset.
+	v3 looks good to me,
 
-perhaps:
----
- scripts/checkpatch.pl | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+Acked-by: Julian Anastasov <ja@ssi.bg>
 
-diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
-index 34e4683de7a3..57355fbd2d28 100755
---- a/scripts/checkpatch.pl
-+++ b/scripts/checkpatch.pl
-@@ -2765,9 +2765,13 @@ sub process {
- # Check if there is UTF-8 in a commit log when a mail header has explicitly
- # declined it, i.e defined some charset where it is missing.
- 		if ($in_header_lines &&
--		    $rawline =~ /^Content-Type:.+charset="(.+)".*$/ &&
--		    $1 !~ /utf-8/i) {
--			$non_utf8_charset = 1;
-+		    $rawline =~ /^Content-Type:.+charset="?([^\s;"]+)/) {
-+			my $charset = $1;
-+			$non_utf8_charset = 1 if ($charset !~ /^utf-8$/i);
-+			if ($charset !~ /^(?:us-ascii|utf-8|iso-8859-1)$/) {
-+				WARN("PATCH_CHARSET",
-+				     "Unpreferred email header charset '$charset'\n" . $herecurr);
-+			}
- 		}
- 
- 		if ($in_commit_log && $non_utf8_charset && $realfile =~ /^$/ &&
+	Simon and Pablo, this can be applied to ipvs/nf tree...
 
+> ---
+> v2: fix use-after-free in CONN_ONE_PACKET case suggested by Julian Anastasov
+> v3: remove trailing whitespace for patch checking 
+> 
+>  net/netfilter/ipvs/ip_vs_core.c | 15 +++++++++++----
+>  1 file changed, 11 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index 0679dd1..a17104f 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -1972,13 +1972,20 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
+>  	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+>  		/* the destination server is not available */
+> 
+> -		if (sysctl_expire_nodest_conn(ipvs)) {
+> +		__u32 flags = cp->flags;
+> +
+> +		/* when timer already started, silently drop the packet.*/
+> +		if (timer_pending(&cp->timer))
+> +			__ip_vs_conn_put(cp);
+> +		else
+> +			ip_vs_conn_put(cp);
+> +
+> +		if (sysctl_expire_nodest_conn(ipvs) &&
+> +		    !(flags & IP_VS_CONN_F_ONE_PACKET)) {
+>  			/* try to expire the connection immediately */
+>  			ip_vs_conn_expire_now(cp);
+>  		}
+> -		/* don't restart its timer, and silently
+> -		   drop the packet. */
+> -		__ip_vs_conn_put(cp);
+> +
+>  		return NF_DROP;
+>  	}
+> 
+> --
+> 1.8.3.1
 
+Regards
 
+--
+Julian Anastasov <ja@ssi.bg>
