@@ -1,76 +1,84 @@
-From: <tan.hu@zte.com.cn>
-Subject: =?UTF-8?B?UmU6IFJlOiBbUEFUQ0ggdjJdIGlwdnM6IGZpeCByYWNlIGJldHdlZW4gaXBfdnNfY29ubl9uZXcoKSBhbmRpcF92c19kZWxfZGVzdCgp?=
-Date: Wed, 25 Jul 2018 15:15:49 +0800 (CST)
-Message-ID: <201807251515493276583@zte.com.cn>
-References: <alpine.LFD.2.20.1807250849100.2794@ja.home.ssi.bg>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH 1/4] treewide: convert ISO_8859-1 text comments to utf-8
+Date: Wed, 25 Jul 2018 15:12:11 +0200
+Message-ID: <CAK8P3a3tOuP1FVS7oD1UhO5s4C+fLkL8VT3eCpRnSxBZxKzf6A@mail.gmail.com>
+References: <20180724111600.4158975-1-arnd@arndb.de> <20180724140010.e24a9964fd340afe2d98a994@linux-foundation.org>
+ <aa39b6d15f44555cb79d5ebdef74aeab19003d6a.camel@perches.com> <20180724175531.75276cf4e539124aa9e27177@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-        boundary="=====_001_next====="
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.20.1807250849100.2794@ja.home.ssi.bg>
-References: 1532486980-17844-1-git-send-email-tan.hu@zte.com.cn,alpine.LFD.2.20.1807250849100.2794@ja.home.ssi.bg
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:sender:in-reply-to:references:from:date:message-id
+         :subject:to:cc;
+        bh=jGj9s/g4GLrYFxbyFC0AOyW5LdQ4r/aEycEFCxeJLCA=;
+        b=p91YA/ffQah5rkSeyKFZKx9fc6ktMNTr0YNmrP28/YNzCzKBjaG61wEJlB1Rf/TG61
+         2cNcBiFfBCb4uAb6PmBjRiuoGGMGPCSXnHoZV5xfJ42a0PADtWhUjvekZNQw53y51ZQd
+         RyfKjOfA0K4rpBOummR/j41wqxVV0zmODY4KQNZmDOh9PQevwQNMXdkCMwEYiis7kHVZ
+         jRHRwsLjQgFQfAAif7OHcddeuu9Zb892fgc2t6bWU6Z8asv1nEkmLvAreSkWW57p98t+
+         RFiUIaHioQLZjHlRVmh6FdgrZdtwtMfFoRZ5atNWfeXrDQpc+K96STXafuRPUsH2eQhy
+         J2nQ==
+In-Reply-To: <20180724175531.75276cf4e539124aa9e27177@linux-foundation.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: ja@ssi.bg
-Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Joe Perches <joe@perches.com>, Samuel Ortiz <sameo@linux.intel.com>, "David S. Miller" <davem@davemloft.net>, Rob Herring <robh+dt@kernel.org>, Michael Ellerman <mpe@ellerman.id.au>, Jonathan Cameron <jic23@kernel.org>, linux-wireless <linux-wireless@vger.kernel.org>, Networking <netdev@vger.kernel.org>, DTML <devicetree@vger.kernel.org>, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, Linux ARM <linux-arm-kernel@lists.infradead.org>, "open list:HARDWARE RANDOM NUMBER GENERATOR CORE" <linux-crypto@vger.kernel.org>, linuxppc-dev <linuxppc-dev@lists.ozlabs.org>, linux-iio@vger.kernel.org, Linux PM list <linux-pm@vger.kernel.org>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
+tools/perf/tests/.gitignore:
+                            LLVM byte-codes, uncompressed
+On Wed, Jul 25, 2018 at 2:55 AM, Andrew Morton
+<akpm@linux-foundation.org> wrote:
+> On Tue, 24 Jul 2018 17:13:20 -0700 Joe Perches <joe@perches.com> wrote:
+>
+>> On Tue, 2018-07-24 at 14:00 -0700, Andrew Morton wrote:
+>> > On Tue, 24 Jul 2018 13:13:25 +0200 Arnd Bergmann <arnd@arndb.de> wrote:
+>> > > Almost all files in the kernel are either plain text or UTF-8
+>> > > encoded. A couple however are ISO_8859-1, usually just a few
+>> > > characters in a C comments, for historic reasons.
+>> > > This converts them all to UTF-8 for consistency.
+>> []
+>> > Will we be getting a checkpatch rule to keep things this way?
+>>
+>> How would that be done?
+>
+> I'm using this, seems to work.
+>
+>         if ! file $p | grep -q -P ", ASCII text|, UTF-8 Unicode text"
+>         then
+>                 echo $p: weird charset
+>         fi
 
+There are a couple of files that my version of 'find' incorrectly identified as
+something completely different, like:
 
---=====_001_next=====
-Content-Type: multipart/alternative;
-	boundary="=====_003_next====="
+Documentation/devicetree/bindings/pinctrl/pinctrl-sx150x.txt:
+            SemOne archive data
+Documentation/devicetree/bindings/rtc/epson,rtc7301.txt:
+            Microsoft Document Imaging Format
+Documentation/filesystems/nfs/pnfs-block-server.txt:
+            PPMN archive data
+arch/arm/boot/dts/bcm283x-rpi-usb-host.dtsi:
+        Sendmail frozen configuration  - version = "host";
+Documentation/networking/segmentation-offloads.txt:
+        StuffIt Deluxe Segment (data) : gmentation Offloads in the
+Linux Networking Stack
+arch/sparc/include/asm/visasm.h:                              SAS 7+
+arch/xtensa/kernel/setup.c:                                         ,
+init=0x454c, stat=0x090a, dev=0x2009, bas=0x2020
+drivers/cpufreq/powernow-k8.c:
+TI-XX Graphing Calculator (FLASH)
+tools/testing/selftests/net/forwarding/tc_shblocks.sh:
+                            Minix filesystem, V2 (big endian)
+tools/perf/tests/.gitignore:
+                            LLVM byte-codes, uncompressed
 
+All of the above seem to be valid ASCII or UTF-8 files, so the check
+above will lead
+to false-positives, but it may be good enough as they are the
+exception, and may be
+bugs in 'file'.
 
---=====_003_next=====
-Content-Type: text/plain;
-	charset="UTF-8"
-Content-Transfer-Encoding: base64
+Not sure if we need to worry about 'file' not being installed.
 
-VGhhbmtzLCBwYXRjaC12MyBoYXMgYmVlbiBzZW50LiBwbGVhc2UgY2hlY2sgaXQgYWdhaW4uCgo+
-IEhlbGxvLAo+IAo+IE9uIFdlZCwgMjUgSnVsIDIwMTgsIFRhbiBIdSB3cm90ZToKPiAKPiA+IFdl
-IGNhbWUgYWNyb3NzIGluZmluaXRlIGxvb3AgaW4gaXB2cyB3aGVuIHVzaW5nIGlwdnMgaW4gZG9j
-a2VyCj4gPiBlbnYuCj4gPgo+ID4gV2hlbiBpcHZzIHJlY2VpdmVzIG5ldyBwYWNrZXRzIGFuZCBj
-YW5ub3QgZmluZCBhbiBpcHZzIGNvbm5lY3Rpb24sCj4gPiBpdCB3aWxsIGNyZWF0ZSBhIG5ldyBj
-b25uZWN0aW9uLCB0aGVuIGlmIHRoZSBkZXN0IGlzIHVuYXZhaWxhYmxlCj4gPiAoaS5lLiBJUF9W
-U19ERVNUX0ZfQVZBSUxBQkxFKSwgdGhlIHBhY2tldCB3aWxsIGJlIGRyb3BwZWQgc2xpZW50bHku
-Cj4gPgo+ID4gQnV0IGlmIHRoZSBkcm9wcGVkIHBhY2tldCBpcyB0aGUgZmlyc3QgcGFja2V0IG9m
-IHRoaXMgY29ubmVjdGlvbiwKPiA+IHRoZSBjb25uZWN0aW9uIGNvbnRyb2wgdGltZXIgbmV2ZXIg
-aGFzIGEgY2hhbmNlIHRvIHN0YXJ0IGFuZCB0aGUKPiA+IGlwdnMgY29ubmVjdGlvbiBjYW5ub3Qg
-YmUgcmVsZWFzZWQuIFRoaXMgd2lsbCBsZWFkIHRvIG1lbW9yeSBsZWFrLCBvcgo+ID4gaW5maW5p
-dGUgbG9vcCBpbiBjbGVhbnVwX25ldCgpIHdoZW4gbmV0IG5hbWVzcGFjZSBpcyByZWxlYXNlZCBs
-aWtlCj4gPiB0aGlzOgo+ID4KPiA+IGlwX3ZzX2Nvbm5fbmV0X2NsZWFudXAgYXQgZmZmZmZmZmZh
-MGE5ZjMxYSBbaXBfdnNdCj4gPiBfX2lwX3ZzX2NsZWFudXAgYXQgZmZmZmZmZmZhMGE5ZjYwYSBb
-aXBfdnNdCj4gPiBvcHNfZXhpdF9saXN0IGF0IGZmZmZmZmZmODE1NjdhNDkKPiA+IGNsZWFudXBf
-bmV0IGF0IGZmZmZmZmZmODE1NjhiNDAKPiA+IHByb2Nlc3Nfb25lX3dvcmsgYXQgZmZmZmZmZmY4
-MTBhODUxYgo+ID4gd29ya2VyX3RocmVhZCBhdCBmZmZmZmZmZjgxMGE5MzU2Cj4gPiBrdGhyZWFk
-IGF0IGZmZmZmZmZmODEwYjBiNmYKPiA+IHJldF9mcm9tX2ZvcmsgYXQgZmZmZmZmZmY4MTY5N2Ex
-OAo+ID4KPiA+IHJhY2UgY29uZGl0aW9uOgo+ID4gQ1BVMSBDUFUyCj4gPiBpcF92c19pbigpCj4g
-PiBpcF92c19jb25uX25ldygpCj4gPiBpcF92c19kZWxfZGVzdCgpCj4gPiBfX2lwX3ZzX3VubGlu
-a19kZXN0KCkKPiA+IH5JUF9WU19ERVNUX0ZfQVZBSUxBQkxFCj4gPiBjcC0+ZGVzdCAmJiAhSVBf
-VlNfREVTVF9GX0FWQUlMQUJMRQo+ID4gX19pcF92c19jb25uX3B1dAo+ID4gLi4uCj4gPiBjbGVh
-bnVwX25ldCAtLS0+IGluZmluaXRlIGxvb3BpbmcKPiA+Cj4gPiBGaXggdGhpcyBieSBjaGVja2lu
-ZyB3aGV0aGVyIHRoZSB0aW1lciBhbHJlYWR5IHN0YXJ0ZWQuCj4gPgo+ID4gU2lnbmVkLW9mZi1i
-eTogVGFuIEh1IDx0YW4uaHVAenRlLmNvbS5jbj4KPiA+IFJldmlld2VkLWJ5OiBKaWFuZyBCaWFv
-IDxqaWFuZy5iaWFvMkB6dGUuY29tLmNuPgo+ID4gLS0tCj4gPiB2MjogZml4IHVzZS1hZnRlci1m
-cmVlIGluIENPTk5fT05FX1BBQ0tFVCBjYXNlIHN1Z2dlc3RlZCBieSBKdWxpYW4gQW5hc3Rhc292
-Cj4gPgo+ID4gbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYyB8IDE1ICsrKysrKysrKysr
-LS0tLQo+ID4gMSBmaWxlIGNoYW5nZWQsIDExIGluc2VydGlvbnMoKyksIDQgZGVsZXRpb25zKC0p
-Cj4gPgo+ID4gZGlmZiAtLWdpdCBhL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMgYi9u
-ZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfY29yZS5jCj4gPiBpbmRleCAwNjc5ZGQxLi5hMTcxMDRm
-IDEwMDY0NAo+ID4gLS0tIGEvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYwo+ID4gKysr
-IGIvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYwo+ID4gQEAgLTE5NzIsMTMgKzE5NzIs
-MjAgQEAgc3RhdGljIGludCBpcF92c19pbl9pY21wX3Y2KHN0cnVjdCBuZXRuc19pcHZzICppcHZz
-LCBzdHJ1Y3Qgc2tfYnVmZiAqc2tiLAo+ID4gaWYgKGNwLT5kZXN0ICYmICEoY3AtPmRlc3QtPmZs
-YWdzICYgSVBfVlNfREVTVF9GX0FWQUlMQUJMRSkpIHsKPiA+IC8qIHRoZSBkZXN0aW5hdGlvbiBz
-ZXJ2ZXIgaXMgbm90IGF2YWlsYWJsZSAqLwo+ID4KPiA+IC0gaWYgKHN5c2N0bF9leHBpcmVfbm9k
-ZXN0X2Nvbm4oaXB2cykpIHsKPiA+ICsgX191MzIgZmxhZ3MgPSBjcC0+ZmxhZ3M7Cj4gCj4gT3Bz
-LCBub3cgc2NyaXB0cy9jaGVja3BhdGNoLnBsIC0tc3RyaWN0IC90bXAvZmlsZS5wYXRjaAo+IGlz
-IGNvbXBsYWluaW5nIGFib3V0IGV4dHJhIHRyYWlsaW5nIHNwYWNlIGluIGFib3ZlIGxpbmUuCj4g
-WW91IGNhbiBhbHNvIHJlbW92ZSB0aGUgZW1wdHkgbGluZSBhYm92ZSB0aGUgbmV3IGNvZGUuLi4K
-PiAKPiBSZWdhcmRz
-
-
---=====_003_next=====--
-
---=====_001_next=====--
-
+       Arnd
