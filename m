@@ -1,90 +1,76 @@
-From: Tan Hu <tan.hu@zte.com.cn>
-Subject: [PATCH v3] ipvs: fix race between ip_vs_conn_new() and ip_vs_del_dest()
-Date: Wed, 25 Jul 2018 15:23:07 +0800
-Message-ID: <1532503387-3800-1-git-send-email-tan.hu@zte.com.cn>
+From: <tan.hu@zte.com.cn>
+Subject: =?UTF-8?B?UmU6IFJlOiBbUEFUQ0ggdjJdIGlwdnM6IGZpeCByYWNlIGJldHdlZW4gaXBfdnNfY29ubl9uZXcoKSBhbmRpcF92c19kZWxfZGVzdCgp?=
+Date: Wed, 25 Jul 2018 15:15:49 +0800 (CST)
+Message-ID: <201807251515493276583@zte.com.cn>
+References: <alpine.LFD.2.20.1807250849100.2794@ja.home.ssi.bg>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+        boundary="=====_001_next====="
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.20.1807250849100.2794@ja.home.ssi.bg>
+References: 1532486980-17844-1-git-send-email-tan.hu@zte.com.cn,alpine.LFD.2.20.1807250849100.2794@ja.home.ssi.bg
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
+To: ja@ssi.bg
+Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
 
-We came across infinite loop in ipvs when using ipvs in docker
-env.
 
-When ipvs receives new packets and cannot find an ipvs connection,
-it will create a new connection, then if the dest is unavailable
-(i.e. IP_VS_DEST_F_AVAILABLE), the packet will be dropped sliently.
 
-But if the dropped packet is the first packet of this connection,
-the connection control timer never has a chance to start and the
-ipvs connection cannot be released. This will lead to memory leak, or
-infinite loop in cleanup_net() when net namespace is released like
-this:
+--=====_001_next=====
+Content-Type: multipart/alternative;
+	boundary="=====_003_next====="
 
-    ip_vs_conn_net_cleanup at ffffffffa0a9f31a [ip_vs]
-    __ip_vs_cleanup at ffffffffa0a9f60a [ip_vs]
-    ops_exit_list at ffffffff81567a49
-    cleanup_net at ffffffff81568b40
-    process_one_work at ffffffff810a851b
-    worker_thread at ffffffff810a9356
-    kthread at ffffffff810b0b6f
-    ret_from_fork at ffffffff81697a18
 
-race condition:
-    CPU1                           CPU2
-    ip_vs_in()
-      ip_vs_conn_new()
-                                   ip_vs_del_dest()
-                                     __ip_vs_unlink_dest()
-                                       ~IP_VS_DEST_F_AVAILABLE
-      cp->dest && !IP_VS_DEST_F_AVAILABLE
-      __ip_vs_conn_put
-    ...
-    cleanup_net  ---> infinite looping
+--=====_003_next=====
+Content-Type: text/plain;
+	charset="UTF-8"
+Content-Transfer-Encoding: base64
 
-Fix this by checking whether the timer already started.
+VGhhbmtzLCBwYXRjaC12MyBoYXMgYmVlbiBzZW50LiBwbGVhc2UgY2hlY2sgaXQgYWdhaW4uCgo+
+IEhlbGxvLAo+IAo+IE9uIFdlZCwgMjUgSnVsIDIwMTgsIFRhbiBIdSB3cm90ZToKPiAKPiA+IFdl
+IGNhbWUgYWNyb3NzIGluZmluaXRlIGxvb3AgaW4gaXB2cyB3aGVuIHVzaW5nIGlwdnMgaW4gZG9j
+a2VyCj4gPiBlbnYuCj4gPgo+ID4gV2hlbiBpcHZzIHJlY2VpdmVzIG5ldyBwYWNrZXRzIGFuZCBj
+YW5ub3QgZmluZCBhbiBpcHZzIGNvbm5lY3Rpb24sCj4gPiBpdCB3aWxsIGNyZWF0ZSBhIG5ldyBj
+b25uZWN0aW9uLCB0aGVuIGlmIHRoZSBkZXN0IGlzIHVuYXZhaWxhYmxlCj4gPiAoaS5lLiBJUF9W
+U19ERVNUX0ZfQVZBSUxBQkxFKSwgdGhlIHBhY2tldCB3aWxsIGJlIGRyb3BwZWQgc2xpZW50bHku
+Cj4gPgo+ID4gQnV0IGlmIHRoZSBkcm9wcGVkIHBhY2tldCBpcyB0aGUgZmlyc3QgcGFja2V0IG9m
+IHRoaXMgY29ubmVjdGlvbiwKPiA+IHRoZSBjb25uZWN0aW9uIGNvbnRyb2wgdGltZXIgbmV2ZXIg
+aGFzIGEgY2hhbmNlIHRvIHN0YXJ0IGFuZCB0aGUKPiA+IGlwdnMgY29ubmVjdGlvbiBjYW5ub3Qg
+YmUgcmVsZWFzZWQuIFRoaXMgd2lsbCBsZWFkIHRvIG1lbW9yeSBsZWFrLCBvcgo+ID4gaW5maW5p
+dGUgbG9vcCBpbiBjbGVhbnVwX25ldCgpIHdoZW4gbmV0IG5hbWVzcGFjZSBpcyByZWxlYXNlZCBs
+aWtlCj4gPiB0aGlzOgo+ID4KPiA+IGlwX3ZzX2Nvbm5fbmV0X2NsZWFudXAgYXQgZmZmZmZmZmZh
+MGE5ZjMxYSBbaXBfdnNdCj4gPiBfX2lwX3ZzX2NsZWFudXAgYXQgZmZmZmZmZmZhMGE5ZjYwYSBb
+aXBfdnNdCj4gPiBvcHNfZXhpdF9saXN0IGF0IGZmZmZmZmZmODE1NjdhNDkKPiA+IGNsZWFudXBf
+bmV0IGF0IGZmZmZmZmZmODE1NjhiNDAKPiA+IHByb2Nlc3Nfb25lX3dvcmsgYXQgZmZmZmZmZmY4
+MTBhODUxYgo+ID4gd29ya2VyX3RocmVhZCBhdCBmZmZmZmZmZjgxMGE5MzU2Cj4gPiBrdGhyZWFk
+IGF0IGZmZmZmZmZmODEwYjBiNmYKPiA+IHJldF9mcm9tX2ZvcmsgYXQgZmZmZmZmZmY4MTY5N2Ex
+OAo+ID4KPiA+IHJhY2UgY29uZGl0aW9uOgo+ID4gQ1BVMSBDUFUyCj4gPiBpcF92c19pbigpCj4g
+PiBpcF92c19jb25uX25ldygpCj4gPiBpcF92c19kZWxfZGVzdCgpCj4gPiBfX2lwX3ZzX3VubGlu
+a19kZXN0KCkKPiA+IH5JUF9WU19ERVNUX0ZfQVZBSUxBQkxFCj4gPiBjcC0+ZGVzdCAmJiAhSVBf
+VlNfREVTVF9GX0FWQUlMQUJMRQo+ID4gX19pcF92c19jb25uX3B1dAo+ID4gLi4uCj4gPiBjbGVh
+bnVwX25ldCAtLS0+IGluZmluaXRlIGxvb3BpbmcKPiA+Cj4gPiBGaXggdGhpcyBieSBjaGVja2lu
+ZyB3aGV0aGVyIHRoZSB0aW1lciBhbHJlYWR5IHN0YXJ0ZWQuCj4gPgo+ID4gU2lnbmVkLW9mZi1i
+eTogVGFuIEh1IDx0YW4uaHVAenRlLmNvbS5jbj4KPiA+IFJldmlld2VkLWJ5OiBKaWFuZyBCaWFv
+IDxqaWFuZy5iaWFvMkB6dGUuY29tLmNuPgo+ID4gLS0tCj4gPiB2MjogZml4IHVzZS1hZnRlci1m
+cmVlIGluIENPTk5fT05FX1BBQ0tFVCBjYXNlIHN1Z2dlc3RlZCBieSBKdWxpYW4gQW5hc3Rhc292
+Cj4gPgo+ID4gbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYyB8IDE1ICsrKysrKysrKysr
+LS0tLQo+ID4gMSBmaWxlIGNoYW5nZWQsIDExIGluc2VydGlvbnMoKyksIDQgZGVsZXRpb25zKC0p
+Cj4gPgo+ID4gZGlmZiAtLWdpdCBhL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMgYi9u
+ZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfY29yZS5jCj4gPiBpbmRleCAwNjc5ZGQxLi5hMTcxMDRm
+IDEwMDY0NAo+ID4gLS0tIGEvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYwo+ID4gKysr
+IGIvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYwo+ID4gQEAgLTE5NzIsMTMgKzE5NzIs
+MjAgQEAgc3RhdGljIGludCBpcF92c19pbl9pY21wX3Y2KHN0cnVjdCBuZXRuc19pcHZzICppcHZz
+LCBzdHJ1Y3Qgc2tfYnVmZiAqc2tiLAo+ID4gaWYgKGNwLT5kZXN0ICYmICEoY3AtPmRlc3QtPmZs
+YWdzICYgSVBfVlNfREVTVF9GX0FWQUlMQUJMRSkpIHsKPiA+IC8qIHRoZSBkZXN0aW5hdGlvbiBz
+ZXJ2ZXIgaXMgbm90IGF2YWlsYWJsZSAqLwo+ID4KPiA+IC0gaWYgKHN5c2N0bF9leHBpcmVfbm9k
+ZXN0X2Nvbm4oaXB2cykpIHsKPiA+ICsgX191MzIgZmxhZ3MgPSBjcC0+ZmxhZ3M7Cj4gCj4gT3Bz
+LCBub3cgc2NyaXB0cy9jaGVja3BhdGNoLnBsIC0tc3RyaWN0IC90bXAvZmlsZS5wYXRjaAo+IGlz
+IGNvbXBsYWluaW5nIGFib3V0IGV4dHJhIHRyYWlsaW5nIHNwYWNlIGluIGFib3ZlIGxpbmUuCj4g
+WW91IGNhbiBhbHNvIHJlbW92ZSB0aGUgZW1wdHkgbGluZSBhYm92ZSB0aGUgbmV3IGNvZGUuLi4K
+PiAKPiBSZWdhcmRz
 
-Signed-off-by: Tan Hu <tan.hu@zte.com.cn>
-Reviewed-by: Jiang Biao <jiang.biao2@zte.com.cn>
----
-v2: fix use-after-free in CONN_ONE_PACKET case suggested by Julian Anastasov
-v3: remove trailing whitespace for patch checking 
 
- net/netfilter/ipvs/ip_vs_core.c | 15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+--=====_003_next=====--
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 0679dd1..a17104f 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1972,13 +1972,20 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
- 		/* the destination server is not available */
-
--		if (sysctl_expire_nodest_conn(ipvs)) {
-+		__u32 flags = cp->flags;
-+
-+		/* when timer already started, silently drop the packet.*/
-+		if (timer_pending(&cp->timer))
-+			__ip_vs_conn_put(cp);
-+		else
-+			ip_vs_conn_put(cp);
-+
-+		if (sysctl_expire_nodest_conn(ipvs) &&
-+		    !(flags & IP_VS_CONN_F_ONE_PACKET)) {
- 			/* try to expire the connection immediately */
- 			ip_vs_conn_expire_now(cp);
- 		}
--		/* don't restart its timer, and silently
--		   drop the packet. */
--		__ip_vs_conn_put(cp);
-+
- 		return NF_DROP;
- 	}
-
---
-1.8.3.1
+--=====_001_next=====--
 
