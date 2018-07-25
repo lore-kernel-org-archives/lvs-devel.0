@@ -1,86 +1,64 @@
-From: <tan.hu@zte.com.cn>
-Subject: =?UTF-8?B?UmU6IFJlOiBbUEFUQ0hdIGlwdnM6IGZpeCByYWNlIGJldHdlZW4gaXBfdnNfY29ubl9uZXcoKSBhbmRpcF92c19kZWxfZGVzdCgp?=
-Date: Wed, 25 Jul 2018 10:46:37 +0800 (CST)
-Message-ID: <201807251046372965178@zte.com.cn>
-References: <alpine.LFD.2.20.1807242216100.3314@ja.home.ssi.bg>
+From: Michael Ellerman <mpe@ellerman.id.au>
+Subject: Re: [PATCH 1/4] treewide: convert ISO_8859-1 text comments to utf-8
+Date: Wed, 25 Jul 2018 14:20:25 +1000
+Message-ID: <87o9ewx7xy.fsf@concordia.ellerman.id.au>
+References: <20180724111600.4158975-1-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-        boundary="=====_001_next====="
+Content-Transfer-Encoding: 8bit
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.20.1807242216100.3314@ja.home.ssi.bg>
-References: 1532419953-5517-1-git-send-email-tan.hu@zte.com.cn,alpine.LFD.2.20.1807242216100.3314@ja.home.ssi.bg
+In-Reply-To: <20180724111600.4158975-1-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-To: ja@ssi.bg
-Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
+Content-Type: text/plain; charset="utf-8"
+To: Arnd Bergmann <arnd@arndb.de>, Andrew Morton <akpm@linux-foundation.org>
+Cc: Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>, Samuel Ortiz <sameo@linux.intel.com>, "David S. Miller" <davem@davemloft.net>, Rob Herring <robh+dt@kernel.org>, Jonathan Cameron <jic23@kernel.org>, linux-wireless@vger.kernel.org, netdev@vger.kernel.org, devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-crypto@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, linux-iio@vger.kernel.org, linux-pm@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
+Arnd Bergmann <arnd@arndb.de> writes:
 
+> Almost all files in the kernel are either plain text or UTF-8
+> encoded. A couple however are ISO_8859-1, usually just a few
+> characters in a C comments, for historic reasons.
+>
+> This converts them all to UTF-8 for consistency.
+>
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+> ---
+...
+>  drivers/crypto/vmx/ghashp8-ppc.pl             |  12 +-
+...
+> diff --git a/drivers/crypto/vmx/ghashp8-ppc.pl b/drivers/crypto/vmx/ghashp8-ppc.pl
+> index f746af271460..38b06503ede0 100644
+> --- a/drivers/crypto/vmx/ghashp8-ppc.pl
+> +++ b/drivers/crypto/vmx/ghashp8-ppc.pl
+> @@ -129,9 +129,9 @@ $code=<<___;
+>  	 le?vperm	$IN,$IN,$IN,$lemask
+>  	vxor		$zero,$zero,$zero
+>  
+> -	vpmsumd		$Xl,$IN,$Hl		# H.loXi.lo
+> -	vpmsumd		$Xm,$IN,$H		# H.hiXi.lo+H.loXi.hi
+> -	vpmsumd		$Xh,$IN,$Hh		# H.hiXi.hi
+> +	vpmsumd		$Xl,$IN,$Hl		# H.lo·Xi.lo
+> +	vpmsumd		$Xm,$IN,$H		# H.hi·Xi.lo+H.lo·Xi.hi
+> +	vpmsumd		$Xh,$IN,$Hh		# H.hi·Xi.hi
+>  
+>  	vpmsumd		$t2,$Xl,$xC2		# 1st phase
+>  
+> @@ -187,11 +187,11 @@ $code=<<___;
+>  .align	5
+>  Loop:
+>  	 subic		$len,$len,16
+> -	vpmsumd		$Xl,$IN,$Hl		# H.loXi.lo
+> +	vpmsumd		$Xl,$IN,$Hl		# H.lo·Xi.lo
+>  	 subfe.		r0,r0,r0		# borrow?-1:0
+> -	vpmsumd		$Xm,$IN,$H		# H.hiXi.lo+H.loXi.hi
+> +	vpmsumd		$Xm,$IN,$H		# H.hi·Xi.lo+H.lo·Xi.hi
+>  	 and		r0,r0,$len
+> -	vpmsumd		$Xh,$IN,$Hh		# H.hiXi.hi
+> +	vpmsumd		$Xh,$IN,$Hh		# H.hi·Xi.hi
+>  	 add		$inp,$inp,r0
+>  
+>  	vpmsumd		$t2,$Xl,$xC2		# 1st phase
 
---=====_001_next=====
-Content-Type: multipart/alternative;
-	boundary="=====_003_next====="
+Acked-by: Michael Ellerman <mpe@ellerman.id.au> (powerpc)
 
-
---=====_003_next=====
-Content-Type: text/plain;
-	charset="UTF-8"
-Content-Transfer-Encoding: base64
-
-VGhhbmtzIGZvciB5b3VyIHJldmlld2luZywgSSBoYXZlIHNlbnQgcGF0Y2gtdjIsIHBsZWFzZSBj
-aGVjayBpdC4KCj4gSGVsbG8sCj4gCj4gT24gVHVlLCAyNCBKdWwgMjAxOCwgVGFuIEh1IHdyb3Rl
-Ogo+IAo+ID4gV2UgY2FtZSBhY3Jvc3MgaW5maW5pdGUgbG9vcCBpbiBpcHZzIHdoZW4gdXNpbmcg
-aXB2cyBpbiBkb2NrZXIKPiA+IGVudi4KPiA+Cj4gPiBXaGVuIGlwdnMgcmVjZWl2ZXMgbmV3IHBh
-Y2tldHMgYW5kIGNhbm5vdCBmaW5kIGFuIGlwdnMgY29ubmVjdGlvbiwKPiA+IGl0IHdpbGwgY3Jl
-YXRlIGEgbmV3IGNvbm5lY3Rpb24sIHRoZW4gaWYgdGhlIGRlc3QgaXMgdW5hdmFpbGFibGUKPiA+
-IChpLmUuIElQX1ZTX0RFU1RfRl9BVkFJTEFCTEUpLCB0aGUgcGFja2V0IHdpbGwgYmUgZHJvcHBl
-ZCBzbGllbnRseS4KPiA+Cj4gPiBCdXQgaWYgdGhlIGRyb3BwZWQgcGFja2V0IGlzIHRoZSBmaXJz
-dCBwYWNrZXQgb2YgdGhpcyBjb25uZWN0aW9uLAo+ID4gdGhlIGNvbm5lY3Rpb24gY29udHJvbCB0
-aW1lciBuZXZlciBoYXMgYSBjaGFuY2UgdG8gc3RhcnQgYW5kIHRoZQo+ID4gaXB2cyBjb25uZWN0
-aW9uIGNhbm5vdCBiZSByZWxlYXNlZC4gVGhpcyB3aWxsIGxlYWQgdG8gbWVtb3J5IGxlYWssIG9y
-Cj4gPiBpbmZpbml0ZSBsb29wIGluIGNsZWFudXBfbmV0KCkgd2hlbiBuZXQgbmFtZXNwYWNlIGlz
-IHJlbGVhc2VkIGxpa2UKPiA+IHRoaXM6Cj4gPgo+ID4gaXBfdnNfY29ubl9uZXRfY2xlYW51cCBh
-dCBmZmZmZmZmZmEwYTlmMzFhIFtpcF92c10KPiA+IF9faXBfdnNfY2xlYW51cCBhdCBmZmZmZmZm
-ZmEwYTlmNjBhIFtpcF92c10KPiA+IG9wc19leGl0X2xpc3QgYXQgZmZmZmZmZmY4MTU2N2E0OQo+
-ID4gY2xlYW51cF9uZXQgYXQgZmZmZmZmZmY4MTU2OGI0MAo+ID4gcHJvY2Vzc19vbmVfd29yayBh
-dCBmZmZmZmZmZjgxMGE4NTFiCj4gPiB3b3JrZXJfdGhyZWFkIGF0IGZmZmZmZmZmODEwYTkzNTYK
-PiA+IGt0aHJlYWQgYXQgZmZmZmZmZmY4MTBiMGI2Zgo+ID4gcmV0X2Zyb21fZm9yayBhdCBmZmZm
-ZmZmZjgxNjk3YTE4Cj4gPgo+ID4gcmFjZSBjb25kaXRpb246Cj4gPiBDUFUxIENQVTIKPiA+IGlw
-X3ZzX2luKCkKPiA+IGlwX3ZzX2Nvbm5fbmV3KCkKPiA+IGlwX3ZzX2RlbF9kZXN0KCkKPiA+IF9f
-aXBfdnNfdW5saW5rX2Rlc3QoKQo+ID4gfklQX1ZTX0RFU1RfRl9BVkFJTEFCTEUKPiA+IGNwLT5k
-ZXN0ICYmICFJUF9WU19ERVNUX0ZfQVZBSUxBQkxFCj4gPiBfX2lwX3ZzX2Nvbm5fcHV0Cj4gPiAu
-Li4KPiA+IGNsZWFudXBfbmV0IC0tLT4gaW5maW5pdGUgbG9vcGluZwo+ID4KPiA+IEZpeCB0aGlz
-IGJ5IGNoZWNraW5nIHdoZXRoZXIgdGhlIHRpbWVyIGFscmVhZHkgc3RhcnRlZC4KPiAKPiBMb29r
-cyBsaWtlIGFuIG9sZCBidWcuLi4KPiAKPiA+Cj4gPiBTaWduZWQtb2ZmLWJ5OiBUYW4gSHUgPHRh
-bi5odUB6dGUuY29tLmNuPgo+ID4gUmV2aWV3ZWQtYnk6IEppYW5nIEJpYW8gPGppYW5nLmJpYW8y
-QHp0ZS5jb20uY24+Cj4gPiAtLS0KPiA+IG5ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMg
-fCAxMCArKysrKysrLS0tCj4gPiAxIGZpbGUgY2hhbmdlZCwgNyBpbnNlcnRpb25zKCspLCAzIGRl
-bGV0aW9ucygtKQo+ID4KPiA+IGRpZmYgLS1naXQgYS9uZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNf
-Y29yZS5jIGIvbmV0L25ldGZpbHRlci9pcHZzL2lwX3ZzX2NvcmUuYwo+ID4gaW5kZXggMDY3OWRk
-MS4uY2E5ZTdjYyAxMDA2NDQKPiA+IC0tLSBhL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3Jl
-LmMKPiA+ICsrKyBiL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMKPiA+IEBAIC0xOTcy
-LDEzICsxOTcyLDE3IEBAIHN0YXRpYyBpbnQgaXBfdnNfaW5faWNtcF92NihzdHJ1Y3QgbmV0bnNf
-aXB2cyAqaXB2cywgc3RydWN0IHNrX2J1ZmYgKnNrYiwKPiA+IGlmIChjcC0+ZGVzdCAmJiAhKGNw
-LT5kZXN0LT5mbGFncyAmIElQX1ZTX0RFU1RfRl9BVkFJTEFCTEUpKSB7Cj4gPiAvKiB0aGUgZGVz
-dGluYXRpb24gc2VydmVyIGlzIG5vdCBhdmFpbGFibGUgKi8KPiAKPiBBZGQ6IHUzMiBmbGFncyA9
-IGNwLT5mbGFnczsKPiAKPiA+Cj4gPiArIC8qIHdoZW4gdGltZXIgYWxyZWFkeSBzdGFydGVkLCBz
-aWxlbnRseSBkcm9wIHRoZSBwYWNrZXQuKi8KPiA+ICsgaWYgKHRpbWVyX3BlbmRpbmcoJmNwLT50
-aW1lcikpCj4gPiArIF9faXBfdnNfY29ubl9wdXQoY3ApOwo+ID4gKyBlbHNlCj4gPiArIGlwX3Zz
-X2Nvbm5fcHV0KGNwKTsKPiAKPiBXaGVuIGlwX3ZzX2Nvbm5fcHV0IGlzIGNhbGxlZCBmb3IgSVBf
-VlNfQ09OTl9GX09ORV9QQUNLRVQKPiBpdCBpcyBwb3NzaWJsZSB0byBjYWxsIGlwX3ZzX2Nvbm5f
-ZXhwaXJlIGFuZCB0byBmcmVlIGNwIHdpdGgKPiBpcF92c19jb25uX3JjdV9mcmVlIGltbWVkaWF0
-ZWx5LiBXaGF0IHdlIGNhbiBkbyBpcyB0byBhdm9pZCB0aGUKPiBpcF92c19jb25uX2V4cGlyZV9u
-b3cgY2FsbCBpbiBzdWNoIGNhc2UgYnkgcmVhZGluZyB0aGUgZmxhZ3MKPiBlYXJseSAoYXMgYWJv
-dmUpIGFuZCBhZGRpbmcgdGhlIG5lZWRlZCBjaGVjayAoYXMgYmVsb3cpLgo+IAo+ID4gKwo+ID4g
-aWYgKHN5c2N0bF9leHBpcmVfbm9kZXN0X2Nvbm4oaXB2cykpIHsKPiAKPiBBZGQgIShmbGFncyAm
-IElQX1ZTX0NPTk5fRl9PTkVfUEFDS0VUKSBjaGVjayBpbiBhYm92ZSAnaWYnLgo+IAo+ID4gLyog
-dHJ5IHRvIGV4cGlyZSB0aGUgY29ubmVjdGlvbiBpbW1lZGlhdGVseSAqLwo+ID4gaXBfdnNfY29u
-bl9leHBpcmVfbm93KGNwKTsKPiA+IH0KPiA+IC0gLyogZG9uJ3QgcmVzdGFydCBpdHMgdGltZXIs
-IGFuZCBzaWxlbnRseQo+ID4gLSBkcm9wIHRoZSBwYWNrZXQuICovCj4gPiAtIF9faXBfdnNfY29u
-bl9wdXQoY3ApOwo+ID4gKwo+ID4gcmV0dXJuIE5GX0RST1A7Cj4gPiB9Cj4gPgo+IAo+IFJlZ2Fy
-ZHM=
-
-
---=====_003_next=====--
-
---=====_001_next=====--
-
+cheers
