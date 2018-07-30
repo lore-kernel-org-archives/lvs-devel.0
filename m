@@ -1,109 +1,78 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH v3] ipvs: fix race between ip_vs_conn_new() and
- ip_vs_del_dest()
-Date: Wed, 25 Jul 2018 22:12:48 +0300 (EEST)
-Message-ID: <alpine.LFD.2.20.1807252208320.2437@ja.home.ssi.bg>
-References: <1532503387-3800-1-git-send-email-tan.hu@zte.com.cn>
+From: Matteo Croce <mcroce@redhat.com>
+Subject: Re: [PATCH] ipvs: don't show negative times in ip_vs_conn
+Date: Mon, 30 Jul 2018 17:49:14 +0000
+Message-ID: <CAGnkfhzxz715p23PH+QgK2zduhv95O85wa92ktBRtw5xy1sZ8w@mail.gmail.com>
+References: <20180720151957.24791-1-mcroce@redhat.com> <ff823fec-0c37-80f9-9bcf-515357c5209a@gmail.com>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1532503387-3800-1-git-send-email-tan.hu@zte.com.cn>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <ff823fec-0c37-80f9-9bcf-515357c5209a@gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Tan Hu <tan.hu@zte.com.cn>
-Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
+To: eric.dumazet@gmail.com
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, netdev <netdev@vger.kernel.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, netfilter-devel@vger.kernel.org
 
-
-	Hello,
-
-On Wed, 25 Jul 2018, Tan Hu wrote:
-
-> We came across infinite loop in ipvs when using ipvs in docker
-> env.
-> 
-> When ipvs receives new packets and cannot find an ipvs connection,
-> it will create a new connection, then if the dest is unavailable
-> (i.e. IP_VS_DEST_F_AVAILABLE), the packet will be dropped sliently.
-> 
-> But if the dropped packet is the first packet of this connection,
-> the connection control timer never has a chance to start and the
-> ipvs connection cannot be released. This will lead to memory leak, or
-> infinite loop in cleanup_net() when net namespace is released like
-> this:
-> 
->     ip_vs_conn_net_cleanup at ffffffffa0a9f31a [ip_vs]
->     __ip_vs_cleanup at ffffffffa0a9f60a [ip_vs]
->     ops_exit_list at ffffffff81567a49
->     cleanup_net at ffffffff81568b40
->     process_one_work at ffffffff810a851b
->     worker_thread at ffffffff810a9356
->     kthread at ffffffff810b0b6f
->     ret_from_fork at ffffffff81697a18
-> 
-> race condition:
->     CPU1                           CPU2
->     ip_vs_in()
->       ip_vs_conn_new()
->                                    ip_vs_del_dest()
->                                      __ip_vs_unlink_dest()
->                                        ~IP_VS_DEST_F_AVAILABLE
->       cp->dest && !IP_VS_DEST_F_AVAILABLE
->       __ip_vs_conn_put
->     ...
->     cleanup_net  ---> infinite looping
-> 
-> Fix this by checking whether the timer already started.
-> 
-> Signed-off-by: Tan Hu <tan.hu@zte.com.cn>
-> Reviewed-by: Jiang Biao <jiang.biao2@zte.com.cn>
-
-	v3 looks good to me,
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	Simon and Pablo, this can be applied to ipvs/nf tree...
-
-> ---
-> v2: fix use-after-free in CONN_ONE_PACKET case suggested by Julian Anastasov
-> v3: remove trailing whitespace for patch checking 
-> 
->  net/netfilter/ipvs/ip_vs_core.c | 15 +++++++++++----
->  1 file changed, 11 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 0679dd1..a17104f 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1972,13 +1972,20 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
->  	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
->  		/* the destination server is not available */
-> 
-> -		if (sysctl_expire_nodest_conn(ipvs)) {
-> +		__u32 flags = cp->flags;
+On Fri, Jul 20, 2018 at 4:19 PM Eric Dumazet <eric.dumazet@gmail.com> wrote:
+>
+>
+>
+> On 07/20/2018 08:19 AM, Matteo Croce wrote:
+> > Since commit 500462a9de65 ("timers: Switch to a non-cascading wheel"),
+> > timers duration can last even 12.5% more than the scheduled interval.
+> >
+> > Signed-off-by: Matteo Croce <mcroce@redhat.com>
+> > ---
+> >  net/netfilter/ipvs/ip_vs_conn.c | 22 ++++++++++++++--------
+> >  1 file changed, 14 insertions(+), 8 deletions(-)
+> >
+> > diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+> > index 99e0aa350dc5..c78c48a6d53f 100644
+> > --- a/net/netfilter/ipvs/ip_vs_conn.c
+> > +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> > @@ -1066,6 +1066,12 @@ static void ip_vs_conn_seq_stop(struct seq_file *seq, void *v)
+> >       rcu_read_unlock();
+> >  }
+> >
+> > +static unsigned int time_left(unsigned long time)
+> > +{
+> > +     return time_is_after_jiffies(time) ?
+> > +             jiffies_to_msecs(time - jiffies) / 1000 : 0;
+> > +}
+>
+>
+> I would suggest adding jiffies_delta_to_msecs(), because we will need elsewhere,
+> like in inet_sk_diag_fill()
+>
+>
+> diff --git a/include/linux/jiffies.h b/include/linux/jiffies.h
+> index a27cf66523279c1a5d4aaa0d0087f1e9d48d170f..fa928242567db30769839ac8738be5dc58e372ab 100644
+> --- a/include/linux/jiffies.h
+> +++ b/include/linux/jiffies.h
+> @@ -447,6 +447,11 @@ static inline clock_t jiffies_delta_to_clock_t(long delta)
+>         return jiffies_to_clock_t(max(0L, delta));
+>  }
+>
+> +static inline unsigned int jiffies_delta_to_msecs(long delta)
+> +{
+> +       return jiffies_to_msecs(max(0L, delta));
+> +}
 > +
-> +		/* when timer already started, silently drop the packet.*/
-> +		if (timer_pending(&cp->timer))
-> +			__ip_vs_conn_put(cp);
-> +		else
-> +			ip_vs_conn_put(cp);
-> +
-> +		if (sysctl_expire_nodest_conn(ipvs) &&
-> +		    !(flags & IP_VS_CONN_F_ONE_PACKET)) {
->  			/* try to expire the connection immediately */
->  			ip_vs_conn_expire_now(cp);
->  		}
-> -		/* don't restart its timer, and silently
-> -		   drop the packet. */
-> -		__ip_vs_conn_put(cp);
-> +
->  		return NF_DROP;
->  	}
-> 
-> --
-> 1.8.3.1
+>  extern unsigned long clock_t_to_jiffies(unsigned long x);
+>  extern u64 jiffies_64_to_clock_t(u64 x);
+>  extern u64 nsec_to_clock_t(u64 x);
+>
 
-Regards
+Hi Eric,
+What about a function which returns directly the delta from a
+timestamp, and 0 if elapsed?
+So we can rely on time_is_after_jiffies() for overflows, it should be
+less error prone.
 
---
-Julian Anastasov <ja@ssi.bg>
+static unsigned int jiffies_delta_to_msecs(unsigned long time)
+{
+     return time_is_after_jiffies(time) ?
+             jiffies_to_msecs(time - jiffies) / 1000 : 0;
+}
+
+
