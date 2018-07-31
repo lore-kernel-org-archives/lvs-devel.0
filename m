@@ -1,34 +1,124 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH net v2 0/2] fix glitch in IPVS /proc handlers
-Date: Tue, 31 Jul 2018 18:28:22 +0200
-Message-ID: <20180731162822.egqgbh6rbekoqvqk@verge.net.au>
-References: <20180731160333.12215-1-mcroce@redhat.com>
+Subject: Re: [PATCH v3] ipvs: fix race between ip_vs_conn_new() and
+ ip_vs_del_dest()
+Date: Tue, 31 Jul 2018 18:54:21 +0200
+Message-ID: <20180731165421.ee265xghmbqcy54g@verge.net.au>
+References: <1532503387-3800-1-git-send-email-tan.hu@zte.com.cn>
+ <alpine.LFD.2.20.1807252208320.2437@ja.home.ssi.bg>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
-        t=1533054504; bh=VfdABBSpGHyugdI4ZqR4MI2jShXgsXdBpylueiGzHbg=;
+        t=1533056064; bh=XNXJS4tHsNmYTDWeXNHXQGpmX1RfWhVl449EjLmdtt4=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=ZFD16cWbfJygEYo662BC2GRMRGxninCs7kT0C6OwKpVZEJqFADQVItGs9XqNU0yCc
-         bPPCzzqYVXWlxRh3TSUnLPYG7KXJg+xQywFSpiWcGcpZh5CN45a4AkpAnzjd03MntI
-         Igz6iCmxav4B0iHkHciRjfuEBGMy1AzjxCzSJMZY=
+        b=DfBpkHMqe0W4sXmzLqxqh8iAnt5lfEwpr2TmpKluP9f651CknPZjsZGm2c59AJrJ/
+         uAcMSOvwydvQjVkse4hysKJzNaEOy+RflmVt7unxveWPUhva/Ub1c8ftzYFokZNZeh
+         AUuVwX4I1ydRZ+IaUdwE9+LgPcAMV19sSnb9hcEk=
 Content-Disposition: inline
-In-Reply-To: <20180731160333.12215-1-mcroce@redhat.com>
-Sender: netdev-owner@vger.kernel.org
+In-Reply-To: <alpine.LFD.2.20.1807252208320.2437@ja.home.ssi.bg>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Matteo Croce <mcroce@redhat.com>, Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, netfilter-devel@vger.kernel.org, Eric Dumazet <eric.dumazet@gmail.com>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Tan Hu <tan.hu@zte.com.cn>, wensong@linux-vs.org, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
 
-On Tue, Jul 31, 2018 at 06:03:31PM +0200, Matteo Croce wrote:
-> Fix a bug which shows negative values in IPVS /proc handlers.
-> Also add an helper function to calculate a time delta
+On Wed, Jul 25, 2018 at 10:12:48PM +0300, Julian Anastasov wrote:
 > 
-> Matteo Croce (2):
->   jiffies: add utility function to calculate delta in ms
->   ipvs: don't show negative times in ip_vs_conn
+> 	Hello,
+> 
+> On Wed, 25 Jul 2018, Tan Hu wrote:
+> 
+> > We came across infinite loop in ipvs when using ipvs in docker
+> > env.
+> > 
+> > When ipvs receives new packets and cannot find an ipvs connection,
+> > it will create a new connection, then if the dest is unavailable
+> > (i.e. IP_VS_DEST_F_AVAILABLE), the packet will be dropped sliently.
+> > 
+> > But if the dropped packet is the first packet of this connection,
+> > the connection control timer never has a chance to start and the
+> > ipvs connection cannot be released. This will lead to memory leak, or
+> > infinite loop in cleanup_net() when net namespace is released like
+> > this:
+> > 
+> >     ip_vs_conn_net_cleanup at ffffffffa0a9f31a [ip_vs]
+> >     __ip_vs_cleanup at ffffffffa0a9f60a [ip_vs]
+> >     ops_exit_list at ffffffff81567a49
+> >     cleanup_net at ffffffff81568b40
+> >     process_one_work at ffffffff810a851b
+> >     worker_thread at ffffffff810a9356
+> >     kthread at ffffffff810b0b6f
+> >     ret_from_fork at ffffffff81697a18
+> > 
+> > race condition:
+> >     CPU1                           CPU2
+> >     ip_vs_in()
+> >       ip_vs_conn_new()
+> >                                    ip_vs_del_dest()
+> >                                      __ip_vs_unlink_dest()
+> >                                        ~IP_VS_DEST_F_AVAILABLE
+> >       cp->dest && !IP_VS_DEST_F_AVAILABLE
+> >       __ip_vs_conn_put
+> >     ...
+> >     cleanup_net  ---> infinite looping
+> > 
+> > Fix this by checking whether the timer already started.
+> > 
+> > Signed-off-by: Tan Hu <tan.hu@zte.com.cn>
+> > Reviewed-by: Jiang Biao <jiang.biao2@zte.com.cn>
+> 
+> 	v3 looks good to me,
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
+> 
+> 	Simon and Pablo, this can be applied to ipvs/nf tree...
 
 Acked-by: Simon Horman <horms@verge.net.au>
 
-Pablo, please consider taking these via the nf tree.
+Pablo, please consider this for the nf tree.
 
+> 
+> > ---
+> > v2: fix use-after-free in CONN_ONE_PACKET case suggested by Julian Anastasov
+> > v3: remove trailing whitespace for patch checking 
+> > 
+> >  net/netfilter/ipvs/ip_vs_core.c | 15 +++++++++++----
+> >  1 file changed, 11 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> > index 0679dd1..a17104f 100644
+> > --- a/net/netfilter/ipvs/ip_vs_core.c
+> > +++ b/net/netfilter/ipvs/ip_vs_core.c
+> > @@ -1972,13 +1972,20 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
+> >  	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+> >  		/* the destination server is not available */
+> > 
+> > -		if (sysctl_expire_nodest_conn(ipvs)) {
+> > +		__u32 flags = cp->flags;
+> > +
+> > +		/* when timer already started, silently drop the packet.*/
+> > +		if (timer_pending(&cp->timer))
+> > +			__ip_vs_conn_put(cp);
+> > +		else
+> > +			ip_vs_conn_put(cp);
+> > +
+> > +		if (sysctl_expire_nodest_conn(ipvs) &&
+> > +		    !(flags & IP_VS_CONN_F_ONE_PACKET)) {
+> >  			/* try to expire the connection immediately */
+> >  			ip_vs_conn_expire_now(cp);
+> >  		}
+> > -		/* don't restart its timer, and silently
+> > -		   drop the packet. */
+> > -		__ip_vs_conn_put(cp);
+> > +
+> >  		return NF_DROP;
+> >  	}
+> > 
+> > --
+> > 1.8.3.1
+> 
+> Regards
+> 
+> --
+> Julian Anastasov <ja@ssi.bg>
+> 
