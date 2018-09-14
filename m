@@ -1,10 +1,10 @@
-From: syzbot <syzbot+23b5f9e7caf61d9a3898@syzkaller.appspotmail.com>
-Subject: KMSAN: uninit-value in do_ip_vs_set_ctl
-Date: Fri, 14 Sep 2018 11:23:04 -0700
-Message-ID: <00000000000015a13b0575d8eae8@google.com>
+From: syzbot <syzbot+c86cf7903306a6c201ba@syzkaller.appspotmail.com>
+Subject: KMSAN: uninit-value in strlcpy (2)
+Date: Fri, 14 Sep 2018 11:23:03 -0700
+Message-ID: <00000000000012463d0575d8eace@google.com>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"; format="flowed"; delsp="yes"
 Content-Transfer-Encoding: 7bit
@@ -14,26 +14,26 @@ Hello,
 
 syzbot found the following crash on:
 
-HEAD commit:    06b2df0593a8 kmsan: unpoison only the created pages in get..
+HEAD commit:    9822946c7fee kmsan: update .config.example to v4.17-rc5
 git tree:       https://github.com/google/kmsan.git/master
-console output: https://syzkaller.appspot.com/x/log.txt?x=11a6ae37800000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=4ca1e57bafa8ab1f
-dashboard link: https://syzkaller.appspot.com/bug?extid=23b5f9e7caf61d9a3898
+console output: https://syzkaller.appspot.com/x/log.txt?x=169a5197800000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=9fa436d3ae606638
+dashboard link: https://syzkaller.appspot.com/bug?extid=c86cf7903306a6c201ba
 compiler:       clang version 7.0.0 (trunk 329391)
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=14008417800000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=11deb017800000
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=15d1b87b800000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=11235417800000
 
 IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+23b5f9e7caf61d9a3898@syzkaller.appspotmail.com
+Reported-by: syzbot+c86cf7903306a6c201ba@syzkaller.appspotmail.com
 
 random: sshd: uninitialized urandom read (32 bytes read)
 random: sshd: uninitialized urandom read (32 bytes read)
 random: sshd: uninitialized urandom read (32 bytes read)
 random: sshd: uninitialized urandom read (32 bytes read)
 ==================================================================
-BUG: KMSAN: uninit-value in do_ip_vs_set_ctl+0x15ac/0x2760  
-net/netfilter/ipvs/ip_vs_ctl.c:2424
-CPU: 1 PID: 4464 Comm: syz-executor844 Not tainted 4.17.0-rc3+ #94
+BUG: KMSAN: uninit-value in strlen lib/string.c:482 [inline]
+BUG: KMSAN: uninit-value in strlcpy+0x68/0x1c0 lib/string.c:142
+CPU: 0 PID: 4506 Comm: syz-executor160 Not tainted 4.17.0-rc5+ #95
 Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
 Google 01/01/2011
 Call Trace:
@@ -41,11 +41,15 @@ Call Trace:
   dump_stack+0x185/0x1d0 lib/dump_stack.c:113
   kmsan_report+0x142/0x240 mm/kmsan/kmsan.c:1084
   __msan_warning_32+0x6c/0xb0 mm/kmsan/kmsan_instr.c:683
-  do_ip_vs_set_ctl+0x15ac/0x2760 net/netfilter/ipvs/ip_vs_ctl.c:2424
+  strlen lib/string.c:482 [inline]
+  strlcpy+0x68/0x1c0 lib/string.c:142
+  do_ip_vs_set_ctl+0x3f1/0x2760 net/netfilter/ipvs/ip_vs_ctl.c:2384
   nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
   nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
   ip_setsockopt+0x24b/0x2b0 net/ipv4/ip_sockglue.c:1253
-  raw_setsockopt+0x2e5/0x350 net/ipv4/raw.c:868
+  udp_setsockopt+0x108/0x1b0 net/ipv4/udp.c:2416
+  ipv6_setsockopt+0x30c/0x340 net/ipv6/ipv6_sockglue.c:917
+  tcp_setsockopt+0x1bb/0x1f0 net/ipv4/tcp.c:2891
   sock_common_setsockopt+0x136/0x170 net/core/sock.c:3039
   __sys_setsockopt+0x4af/0x560 net/socket.c:1903
   __do_sys_setsockopt net/socket.c:1914 [inline]
@@ -53,13 +57,13 @@ Call Trace:
   __x64_sys_setsockopt+0x15c/0x1c0 net/socket.c:1911
   do_syscall_64+0x154/0x220 arch/x86/entry/common.c:287
   entry_SYSCALL_64_after_hwframe+0x44/0xa9
-RIP: 0033:0x43fca9
-RSP: 002b:00007fff7a4795b8 EFLAGS: 00000213 ORIG_RAX: 0000000000000036
-RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fca9
-RDX: 0000000000000480 RSI: 0000000000000000 RDI: 0000000000000003
-RBP: 00000000006ca018 R08: 0000000000000000 R09: 00000000004002c8
-R10: 0000000000000000 R11: 0000000000000213 R12: 00000000004015d0
-R13: 0000000000401660 R14: 0000000000000000 R15: 0000000000000000
+RIP: 0033:0x43fce9
+RSP: 002b:00007ffea6b1dd08 EFLAGS: 00000213 ORIG_RAX: 0000000000000036
+RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fce9
+RDX: 000000000000048b RSI: 0000000000000000 RDI: 0000000000000003
+RBP: 00000000006ca018 R08: 0000000000000018 R09: 00000000004002c8
+R10: 00000000200001c0 R11: 0000000000000213 R12: 0000000000401610
+R13: 00000000004016a0 R14: 0000000000000000 R15: 0000000000000000
 
 Local variable description: ----arg@do_ip_vs_set_ctl
 Variable was created at:
