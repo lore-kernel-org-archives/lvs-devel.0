@@ -1,33 +1,83 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH v3] ipvs: fix race between ip_vs_conn_new() and
- ip_vs_del_dest()
-Date: Fri, 3 Aug 2018 13:25:16 +0200
-Message-ID: <20180803112516.zexgzi4hewvy6oo6@salvia>
-References: <1532503387-3800-1-git-send-email-tan.hu@zte.com.cn>
- <alpine.LFD.2.20.1807252208320.2437@ja.home.ssi.bg>
- <20180731165421.ee265xghmbqcy54g@verge.net.au>
+From: syzbot <syzbot+23b5f9e7caf61d9a3898@syzkaller.appspotmail.com>
+Subject: KMSAN: uninit-value in do_ip_vs_set_ctl
+Date: Fri, 14 Sep 2018 11:23:04 -0700
+Message-ID: <00000000000015a13b0575d8eae8@google.com>
 Mime-Version: 1.0
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20180731165421.ee265xghmbqcy54g@verge.net.au>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"; format="flowed"; delsp="yes"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Julian Anastasov <ja@ssi.bg>, Tan Hu <tan.hu@zte.com.cn>, wensong@linux-vs.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, zhong.weidong@zte.com.cn, jiang.biao2@zte.com.cn
+To: coreteam@netfilter.org, davem@davemloft.net, fw@strlen.de, horms@verge.net.au, ja@ssi.bg, kadlec@blackhole.kfki.hu, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, wensong@linux-vs.org
 
-On Tue, Jul 31, 2018 at 06:54:21PM +0200, Simon Horman wrote:
-> On Wed, Jul 25, 2018 at 10:12:48PM +0300, Julian Anastasov wrote:
-[...]
-> > 	v3 looks good to me,
-> > 
-> > Acked-by: Julian Anastasov <ja@ssi.bg>
-> > 
-> > 	Simon and Pablo, this can be applied to ipvs/nf tree...
-> 
-> Acked-by: Simon Horman <horms@verge.net.au>
-> 
-> Pablo, please consider this for the nf tree.
+Hello,
 
-Applied, thanks!
+syzbot found the following crash on:
+
+HEAD commit:    06b2df0593a8 kmsan: unpoison only the created pages in get..
+git tree:       https://github.com/google/kmsan.git/master
+console output: https://syzkaller.appspot.com/x/log.txt?x=11a6ae37800000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=4ca1e57bafa8ab1f
+dashboard link: https://syzkaller.appspot.com/bug?extid=23b5f9e7caf61d9a3898
+compiler:       clang version 7.0.0 (trunk 329391)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=14008417800000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=11deb017800000
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+23b5f9e7caf61d9a3898@syzkaller.appspotmail.com
+
+random: sshd: uninitialized urandom read (32 bytes read)
+random: sshd: uninitialized urandom read (32 bytes read)
+random: sshd: uninitialized urandom read (32 bytes read)
+random: sshd: uninitialized urandom read (32 bytes read)
+==================================================================
+BUG: KMSAN: uninit-value in do_ip_vs_set_ctl+0x15ac/0x2760  
+net/netfilter/ipvs/ip_vs_ctl.c:2424
+CPU: 1 PID: 4464 Comm: syz-executor844 Not tainted 4.17.0-rc3+ #94
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x185/0x1d0 lib/dump_stack.c:113
+  kmsan_report+0x142/0x240 mm/kmsan/kmsan.c:1084
+  __msan_warning_32+0x6c/0xb0 mm/kmsan/kmsan_instr.c:683
+  do_ip_vs_set_ctl+0x15ac/0x2760 net/netfilter/ipvs/ip_vs_ctl.c:2424
+  nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
+  nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
+  ip_setsockopt+0x24b/0x2b0 net/ipv4/ip_sockglue.c:1253
+  raw_setsockopt+0x2e5/0x350 net/ipv4/raw.c:868
+  sock_common_setsockopt+0x136/0x170 net/core/sock.c:3039
+  __sys_setsockopt+0x4af/0x560 net/socket.c:1903
+  __do_sys_setsockopt net/socket.c:1914 [inline]
+  __se_sys_setsockopt net/socket.c:1911 [inline]
+  __x64_sys_setsockopt+0x15c/0x1c0 net/socket.c:1911
+  do_syscall_64+0x154/0x220 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x43fca9
+RSP: 002b:00007fff7a4795b8 EFLAGS: 00000213 ORIG_RAX: 0000000000000036
+RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fca9
+RDX: 0000000000000480 RSI: 0000000000000000 RDI: 0000000000000003
+RBP: 00000000006ca018 R08: 0000000000000000 R09: 00000000004002c8
+R10: 0000000000000000 R11: 0000000000000213 R12: 00000000004015d0
+R13: 0000000000401660 R14: 0000000000000000 R15: 0000000000000000
+
+Local variable description: ----arg@do_ip_vs_set_ctl
+Variable was created at:
+  read_pnet include/net/net_namespace.h:288 [inline]
+  sock_net include/net/sock.h:2306 [inline]
+  do_ip_vs_set_ctl+0x93/0x2760 net/netfilter/ipvs/ip_vs_ctl.c:2347
+  nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
+  nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
+==================================================================
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with  
+syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
