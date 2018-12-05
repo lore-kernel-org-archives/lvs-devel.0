@@ -1,17 +1,17 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 067/123] ipvs: call ip_vs_dst_notifier earlier than ipv6_dev_notf
-Date: Wed,  5 Dec 2018 04:34:59 -0500
-Message-ID: <20181205093555.5386-67-sashal@kernel.org>
-References: <20181205093555.5386-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 33/69] ipvs: call ip_vs_dst_notifier earlier than ipv6_dev_notf
+Date: Wed,  5 Dec 2018 04:42:11 -0500
+Message-ID: <20181205094247.6556-33-sashal@kernel.org>
+References: <20181205094247.6556-1-sashal@kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1544002783;
-        bh=kYbBHPNA0BJ95HPT27pKF4De/+rzbTVWgzIp29GsCKk=;
+        s=default; t=1544003110;
+        bh=+71XqT/kHNtNtv25Xq4+IPsd8KD1z3DXcGFneNtV45s=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=GIKh9zVoL/ACNklOeXpPRB6i+knnO8PEM/r78klh6tfFZnJlYpRxb92zfYrF66Qcj
-         TZPbSdRow1JXLUrL/eIfUIgqa7j94TzRAMTJwjNWOCuMOshYi6F7nYwQqHBxWpbs0T
-         fZD4Nts/eqHef/dpXX6aGohRPxP+V2wnL0Ii1ghU=
-In-Reply-To: <20181205093555.5386-1-sashal@kernel.org>
+        b=xTSMl0KW+rLr9Dob30WOhf1KcVMkSkIxMYUIb3L2VKfDzVw95Y6eXDdrxH22uGV7J
+         fzd6IF9wH9ePW3Ecq79GAbJyE6UlgiVJQJ4xaDoi4HoXtP56FLCNZr7jIsJjAxiq8h
+         +Vg3Tr59psACT71aoT+7yeQK7beaPC8hkAtL34Qk=
+In-Reply-To: <20181205094247.6556-1-sashal@kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -58,10 +58,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 3 insertions(+)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 62eefea48973..518364f4abcc 100644
+index 327ebe786eeb..2f45c3ce77ef 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -3980,6 +3980,9 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
+@@ -4012,6 +4012,9 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
  
  static struct notifier_block ip_vs_dst_notifier = {
  	.notifier_call = ip_vs_dst_event,
