@@ -1,87 +1,76 @@
-From: syzbot <syzbot+c86cf7903306a6c201ba@syzkaller.appspotmail.com>
-Subject: KMSAN: uninit-value in strlcpy (2)
-Date: Fri, 14 Sep 2018 11:23:03 -0700
-Message-ID: <00000000000012463d0575d8eace@google.com>
-Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Sender: netdev-owner@vger.kernel.org
+From: Sasha Levin <sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 067/123] ipvs: call ip_vs_dst_notifier earlier than ipv6_dev_notf
+Date: Wed,  5 Dec 2018 04:34:59 -0500
+Message-ID: <20181205093555.5386-67-sashal@kernel.org>
+References: <20181205093555.5386-1-sashal@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1544002783;
+        bh=kYbBHPNA0BJ95HPT27pKF4De/+rzbTVWgzIp29GsCKk=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=GIKh9zVoL/ACNklOeXpPRB6i+knnO8PEM/r78klh6tfFZnJlYpRxb92zfYrF66Qcj
+         TZPbSdRow1JXLUrL/eIfUIgqa7j94TzRAMTJwjNWOCuMOshYi6F7nYwQqHBxWpbs0T
+         fZD4Nts/eqHef/dpXX6aGohRPxP+V2wnL0Ii1ghU=
+In-Reply-To: <20181205093555.5386-1-sashal@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"; delsp="yes"
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: coreteam@netfilter.org, davem@davemloft.net, fw@strlen.de, horms@verge.net.au, ja@ssi.bg, kadlec@blackhole.kfki.hu, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, wensong@linux-vs.org
+To: stable@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Xin Long <lucien.xin@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
-Hello,
+From: Xin Long <lucien.xin@gmail.com>
 
-syzbot found the following crash on:
+[ Upstream commit 2a31e4bd9ad255ee40809b5c798c4b1c2b09703b ]
 
-HEAD commit:    9822946c7fee kmsan: update .config.example to v4.17-rc5
-git tree:       https://github.com/google/kmsan.git/master
-console output: https://syzkaller.appspot.com/x/log.txt?x=169a5197800000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=9fa436d3ae606638
-dashboard link: https://syzkaller.appspot.com/bug?extid=c86cf7903306a6c201ba
-compiler:       clang version 7.0.0 (trunk 329391)
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=15d1b87b800000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=11235417800000
+ip_vs_dst_event is supposed to clean up all dst used in ipvs'
+destinations when a net dev is going down. But it works only
+when the dst's dev is the same as the dev from the event.
 
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+c86cf7903306a6c201ba@syzkaller.appspotmail.com
+Now with the same priority but late registration,
+ip_vs_dst_notifier is always called later than ipv6_dev_notf
+where the dst's dev is set to lo for NETDEV_DOWN event.
 
-random: sshd: uninitialized urandom read (32 bytes read)
-random: sshd: uninitialized urandom read (32 bytes read)
-random: sshd: uninitialized urandom read (32 bytes read)
-random: sshd: uninitialized urandom read (32 bytes read)
-==================================================================
-BUG: KMSAN: uninit-value in strlen lib/string.c:482 [inline]
-BUG: KMSAN: uninit-value in strlcpy+0x68/0x1c0 lib/string.c:142
-CPU: 0 PID: 4506 Comm: syz-executor160 Not tainted 4.17.0-rc5+ #95
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
-Google 01/01/2011
-Call Trace:
-  __dump_stack lib/dump_stack.c:77 [inline]
-  dump_stack+0x185/0x1d0 lib/dump_stack.c:113
-  kmsan_report+0x142/0x240 mm/kmsan/kmsan.c:1084
-  __msan_warning_32+0x6c/0xb0 mm/kmsan/kmsan_instr.c:683
-  strlen lib/string.c:482 [inline]
-  strlcpy+0x68/0x1c0 lib/string.c:142
-  do_ip_vs_set_ctl+0x3f1/0x2760 net/netfilter/ipvs/ip_vs_ctl.c:2384
-  nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
-  nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
-  ip_setsockopt+0x24b/0x2b0 net/ipv4/ip_sockglue.c:1253
-  udp_setsockopt+0x108/0x1b0 net/ipv4/udp.c:2416
-  ipv6_setsockopt+0x30c/0x340 net/ipv6/ipv6_sockglue.c:917
-  tcp_setsockopt+0x1bb/0x1f0 net/ipv4/tcp.c:2891
-  sock_common_setsockopt+0x136/0x170 net/core/sock.c:3039
-  __sys_setsockopt+0x4af/0x560 net/socket.c:1903
-  __do_sys_setsockopt net/socket.c:1914 [inline]
-  __se_sys_setsockopt net/socket.c:1911 [inline]
-  __x64_sys_setsockopt+0x15c/0x1c0 net/socket.c:1911
-  do_syscall_64+0x154/0x220 arch/x86/entry/common.c:287
-  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-RIP: 0033:0x43fce9
-RSP: 002b:00007ffea6b1dd08 EFLAGS: 00000213 ORIG_RAX: 0000000000000036
-RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fce9
-RDX: 000000000000048b RSI: 0000000000000000 RDI: 0000000000000003
-RBP: 00000000006ca018 R08: 0000000000000018 R09: 00000000004002c8
-R10: 00000000200001c0 R11: 0000000000000213 R12: 0000000000401610
-R13: 00000000004016a0 R14: 0000000000000000 R15: 0000000000000000
+As the dst's dev lo is not the same as the dev from the event
+in ip_vs_dst_event, ip_vs_dst_notifier doesn't actually work.
+Also as these dst have to wait for dest_trash_timer to clean
+them up. It would cause some non-permanent kernel warnings:
 
-Local variable description: ----arg@do_ip_vs_set_ctl
-Variable was created at:
-  read_pnet include/net/net_namespace.h:288 [inline]
-  sock_net include/net/sock.h:2306 [inline]
-  do_ip_vs_set_ctl+0x93/0x2760 net/netfilter/ipvs/ip_vs_ctl.c:2347
-  nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
-  nf_setsockopt+0x476/0x4d0 net/netfilter/nf_sockopt.c:115
-==================================================================
+  unregister_netdevice: waiting for br0 to become free. Usage count = 3
 
+To fix it, call ip_vs_dst_notifier earlier than ipv6_dev_notf
+by increasing its priority to ADDRCONF_NOTIFY_PRIORITY + 5.
 
+Note that for ipv4 route fib_netdev_notifier doesn't set dst's
+dev to lo in NETDEV_DOWN event, so this fix is only needed when
+IP_VS_IPV6 is defined.
+
+Fixes: 7a4f0761fce3 ("IPVS: init and cleanup restructuring")
+Reported-by: Li Shuang <shuali@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Acked-by: Simon Horman <horms@verge.net.au>
+Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ net/netfilter/ipvs/ip_vs_ctl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with  
-syzbot.
-syzbot can test patches for this bug, for details see:
-https://goo.gl/tpsmEJ#testing-patches
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 62eefea48973..518364f4abcc 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3980,6 +3980,9 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
+ 
+ static struct notifier_block ip_vs_dst_notifier = {
+ 	.notifier_call = ip_vs_dst_event,
++#ifdef CONFIG_IP_VS_IPV6
++	.priority = ADDRCONF_NOTIFY_PRIORITY + 5,
++#endif
+ };
+ 
+ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
+-- 
+2.17.1
+
