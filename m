@@ -1,8 +1,7 @@
 From: Quentin Armitage <quentin@armitage.org.uk>
-Subject: [PATCH 0/3] ipvsadm: Document/add support for fo/ovf/mh
-	schedulers
-Date: Fri, 04 Jan 2019 20:26:27 +0000
-Message-ID: <1546633587.3577.11.camel@armitage.org.uk>
+Subject: [PATCH 1/3] ipvsadm: Document support of fo scheduler
+Date: Fri, 04 Jan 2019 20:26:38 +0000
+Message-ID: <1546633598.3577.12.camel@armitage.org.uk>
 Reply-To: quentin@armitage.org.uk, "LinuxVirtualServer.org users mailing list."
 	<lvs-users@linuxvirtualserver.org>
 Mime-Version: 1.0
@@ -22,20 +21,34 @@ Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
 To: Jesper Dangaard Brouer <brouer@redhat.com>, Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org
 
-The kernel supports the fo, ovf and mh IPVS schedulers, but ipvsadm has not
-yet been updated to document/support them. Currently ipvsadm can support them,
-but users of ipvsadm will not be aware of their existence without reading the
-kernel sources.
 
-The following patches document support for these schedulers, and also adds
-new flags mh-fallback and mh-port.
+Signed-off-by: Quentin Armitage <quentin@armitage.org.uk>
+---
+ SCHEDULERS | 2 +-
+ ipvsadm.8  | 4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
 
-Quentin Armitage (3):
-  ipvsadm: Document support of fo scheduler
-  ipvsadm: Document support of ovf scheduler
-  ipvsadm: Add support for mh scheduler
-
- SCHEDULERS |  2 +-
- ipvsadm.8  | 19 +++++++++++++++++++
- ipvsadm.c  | 31 +++++++++++++++++++++++++++----
- 3 files changed, 47 insertions(+), 5 deletions(-)
+diff --git a/SCHEDULERS b/SCHEDULERS
+index 84ba299..a782bea 100644
+--- a/SCHEDULERS
++++ b/SCHEDULERS
+@@ -1 +1 @@
+-rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq
++rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq|fo
+diff --git a/ipvsadm.8 b/ipvsadm.8
+index dad1712..c05e577 100644
+--- a/ipvsadm.8
++++ b/ipvsadm.8
+@@ -267,6 +267,10 @@ fixed service rate (weight) of the ith server.
+ \fBnq\fR - Never Queue: assigns an incoming job to an idle server if
+ there is, instead of waiting for a fast one; if all the servers are
+ busy, it adopts the Shortest Expected Delay policy to assign the job.
++.sp
++\fBfo\fR - Weighted Failover: assigns an incoming job to the highest
++weighted available server and overflows to the next when the number
++of connections exceeds its weight.
+ .TP
+ .B -p, --persistent [\fItimeout\fP]
+ Specify that a virtual service is persistent. If this option is
+-- 
+2.13.7
