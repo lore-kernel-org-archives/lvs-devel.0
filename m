@@ -1,8 +1,7 @@
 From: Quentin Armitage <quentin@armitage.org.uk>
-Subject: Subject: [PATCH v2 2/3] Document support of ovf
-	scheduler
-Date: Wed, 16 Jan 2019 22:55:35 +0000
-Message-ID: <1547679335.3577.212.camel@armitage.org.uk>
+Subject: [PATCH v2 3/3] Add support for mh scheduler
+Date: Wed, 16 Jan 2019 22:55:47 +0000
+Message-ID: <1547679347.3577.213.camel@armitage.org.uk>
 Reply-To: quentin@armitage.org.uk, "LinuxVirtualServer.org users mailing list."
 	<lvs-users@linuxvirtualserver.org>
 Mime-Version: 1.0
@@ -24,31 +23,85 @@ To: Julian Anastasov <ja@ssi.bg>, Jesper Dangaard Brouer <brouer@redhat.com>, Si
 
 Signed-off-by: Quentin Armitage <quentin@armitage.org.uk>
 ---
- SCHEDULERS | 2 +-
- ipvsadm.8  | 6 ++++++
- 2 files changed, 7 insertions(+), 1 deletion(-)
+ SCHEDULERS      |  2 +-
+ ipvsadm.8       |  9 +++++++++
+ ipvsadm.c       | 17 +++++++++++++++--
+ libipvs/ip_vs.h |  3 +++
+ 4 files changed, 28 insertions(+), 3 deletions(-)
 
 diff --git a/SCHEDULERS b/SCHEDULERS
-index a782bea..187c07d 100644
+index 187c07d..06d3357 100644
 --- a/SCHEDULERS
 +++ b/SCHEDULERS
 @@ -1 +1 @@
--rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq|fo
-+rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq|fo|ovf
+-rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq|fo|ovf
++rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq|fo|ovf|mh
 diff --git a/ipvsadm.8 b/ipvsadm.8
-index f9e953e..79db006 100644
+index 79db006..1b25888 100644
 --- a/ipvsadm.8
 +++ b/ipvsadm.8
-@@ -270,6 +270,12 @@ busy, it adopts the Shortest Expected Delay policy to assign the job.
- .sp
- \fBfo\fR - Weighted Failover: assigns an incoming job to the server
- with the highest weight that is currently available.
+@@ -276,6 +276,15 @@ with the highest weight that is currently available and overflows
+ to the next when active connections exceed the node's weight. Note
+ that this scheduler might not be suitable for UDP because it only uses
+ active connections.
 +.sp
-+\fBovf\fR - Weighted Overflow: assigns an incoming job to the server
-+with the highest weight that is currently available and overflows
-+to the next when active connections exceed the node's weight. Note
-+that this scheduler might not be suitable for UDP because it only uses
-+active connections.
++\fBmh\fR - Maglev Hashing: assigns incoming jobs based on Google's
++Maglev hashing algorithm, providing an almost equal share of jobs to
++each real server and provides minimal disruption. When the set of real
++servers changes, a connection will likely be sent to the same real
++server as it was before.
++This scheduler has two flags: mh-fallback, which enables fallback to a
++different server if the selected server was unavailable, and mh-port,
++which adds the source port number to the hash computation.
  .TP
  .B -p, --persistent [\fItimeout\fP]
  Specify that a virtual service is persistent. If this option is
+diff --git a/ipvsadm.c b/ipvsadm.c
+index 7695006..0cb2b68 100644
+--- a/ipvsadm.c
++++ b/ipvsadm.c
+@@ -1145,6 +1145,16 @@ static unsigned int parse_sched_flags(const char *sched, char *optarg)
+ 			if (strcmp(sched, "sh"))
+ 				fail(2, "incompatible scheduler flag `%s'",
+ 				     flag);
++		} else if (!strcmp(flag, "mh-fallback")) {
++			flags |= IP_VS_SVC_F_SCHED_MH_FALLBACK;
++			if (strcmp(sched, "mh"))
++				fail(2, "incompatible scheduler flag `%s'",
++				     flag);
++		} else if (!strcmp(flag, "mh-port")) {
++			flags |= IP_VS_SVC_F_SCHED_MH_PORT;
++			if (strcmp(sched, "mh"))
++				fail(2, "incompatible scheduler flag `%s'",
++				     flag);
+ 		} else {
+ 			fail(2, "invalid scheduler flag `%s'", flag);
+ 		}
+@@ -1589,8 +1599,11 @@ static void print_sched_flags(ipvs_service_entry_t *se)
+ 			strcat(flags, "sh-fallback,");
+ 		if (se->flags & IP_VS_SVC_F_SCHED_SH_PORT)
+ 			strcat(flags, "sh-port,");
+-		if (se->flags & IP_VS_SVC_F_SCHED3)
+-			strcat(flags, "flag-3,");
++	} else if (!strcmp(se->sched_name, "mh")) {
++		if (se->flags & IP_VS_SVC_F_SCHED_MH_FALLBACK)
++			strcat(flags, "mh-fallback,");
++		if (se->flags & IP_VS_SVC_F_SCHED_MH_PORT)
++			strcat(flags, "mh-port,");
+ 	} else {
+ 		if (se->flags & IP_VS_SVC_F_SCHED1)
+ 			strcat(flags, "flag-1,");
+diff --git a/libipvs/ip_vs.h b/libipvs/ip_vs.h
+index e57d55a..ad0141c 100644
+--- a/libipvs/ip_vs.h
++++ b/libipvs/ip_vs.h
+@@ -36,6 +36,9 @@
+ #define IP_VS_SVC_F_SCHED_SH_FALLBACK	IP_VS_SVC_F_SCHED1 /* SH fallback */
+ #define IP_VS_SVC_F_SCHED_SH_PORT	IP_VS_SVC_F_SCHED2 /* SH use port */
+ 
++#define IP_VS_SVC_F_SCHED_MH_FALLBACK	IP_VS_SVC_F_SCHED1 /* MH fallback */
++#define IP_VS_SVC_F_SCHED_MH_PORT	IP_VS_SVC_F_SCHED2 /* MH use port */
++
+ 
+ /*
+  *      IPVS sync daemon states
