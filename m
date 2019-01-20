@@ -1,193 +1,236 @@
-From: Matteo Croce <mcroce@redhat.com>
-Subject: [PATCH ipvs-next] ipvs: use indirect call wrappers
-Date: Sat, 19 Jan 2019 15:25:35 +0100
-Message-ID: <20190119142535.29572-1-mcroce@redhat.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH ipvs-next] ipvs: avoid indirect calls when calculating
+ checksums
+Date: Sun, 20 Jan 2019 14:11:31 +0200 (EET)
+Message-ID: <alpine.LFD.2.21.1901201410480.20940@ja.home.ssi.bg>
+References: <20190119142238.29319-1-mcroce@redhat.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20190119142238.29319-1-mcroce@redhat.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Paolo Abeni <pabeni@redhat.com>
+Content-Transfer-Encoding: 7bit
+To: Matteo Croce <mcroce@redhat.com>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>
 
-Use the new indirect call wrappers in IPVS when calling the TCP or UDP
-protocol specific functions.
-This avoids an indirect calls in IPVS, and reduces the performance
-impact of the Spectre mitigation.
 
-Signed-off-by: Matteo Croce <mcroce@redhat.com>
----
- net/netfilter/ipvs/ip_vs_core.c      | 49 +++++++++++++++++++++++-----
- net/netfilter/ipvs/ip_vs_proto_tcp.c |  3 +-
- net/netfilter/ipvs/ip_vs_proto_udp.c |  3 +-
- 3 files changed, 45 insertions(+), 10 deletions(-)
+	Hello,
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index fe9abf3cc10a..e969dad66991 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -53,6 +53,7 @@
- #endif
- 
- #include <net/ip_vs.h>
-+#include <linux/indirect_call_wrapper.h>
- 
- 
- EXPORT_SYMBOL(register_ip_vs_scheduler);
-@@ -70,6 +71,29 @@ EXPORT_SYMBOL(ip_vs_get_debug_level);
- #endif
- EXPORT_SYMBOL(ip_vs_new_conn_out);
- 
-+#ifdef CONFIG_IP_VS_PROTO_TCP
-+INDIRECT_CALLABLE_DECLARE(int
-+	tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
-+#endif
-+
-+#ifdef CONFIG_IP_VS_PROTO_UDP
-+INDIRECT_CALLABLE_DECLARE(int
-+	udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
-+#endif
-+
-+#if defined(CONFIG_IP_VS_PROTO_TCP) && defined(CONFIG_IP_VS_PROTO_UDP)
-+#define SNAT_CALL(f, ...) \
-+	INDIRECT_CALL_2(f, tcp_snat_handler, udp_snat_handler, __VA_ARGS__)
-+#elif defined(CONFIG_IP_VS_PROTO_TCP)
-+#define SNAT_CALL(f, ...) INDIRECT_CALL_1(f, tcp_snat_handler, __VA_ARGS__)
-+#elif defined(CONFIG_IP_VS_PROTO_UDP)
-+#define SNAT_CALL(f, ...) INDIRECT_CALL_1(f, udp_snat_handler, __VA_ARGS__)
-+#else
-+#define SNAT_CALL(f, ...) f(__VA_ARGS__)
-+#endif
-+
- static unsigned int ip_vs_net_id __read_mostly;
- /* netns cnt used for uniqueness */
- static atomic_t ipvs_netns_cnt = ATOMIC_INIT(0);
-@@ -478,7 +502,9 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 	 */
- 	if ((!skb->dev || skb->dev->flags & IFF_LOOPBACK)) {
- 		iph->hdr_flags ^= IP_VS_HDR_INVERSE;
--		cp = pp->conn_in_get(svc->ipvs, svc->af, skb, iph);
-+		cp = INDIRECT_CALL_1(pp->conn_in_get,
-+				     ip_vs_conn_in_get_proto, svc->ipvs,
-+				     svc->af, skb, iph);
- 		iph->hdr_flags ^= IP_VS_HDR_INVERSE;
- 
- 		if (cp) {
-@@ -972,7 +998,8 @@ static int ip_vs_out_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 	ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, true, &ciph);
- 
- 	/* The embedded headers contain source and dest in reverse order */
--	cp = pp->conn_out_get(ipvs, AF_INET, skb, &ciph);
-+	cp = INDIRECT_CALL_1(pp->conn_out_get, ip_vs_conn_out_get_proto,
-+			     ipvs, AF_INET, skb, &ciph);
- 	if (!cp)
- 		return NF_ACCEPT;
- 
-@@ -1028,7 +1055,8 @@ static int ip_vs_out_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 		return NF_ACCEPT;
- 
- 	/* The embedded headers contain source and dest in reverse order */
--	cp = pp->conn_out_get(ipvs, AF_INET6, skb, &ciph);
-+	cp = INDIRECT_CALL_1(pp->conn_out_get, ip_vs_conn_out_get_proto,
-+			     ipvs, AF_INET6, skb, &ciph);
- 	if (!cp)
- 		return NF_ACCEPT;
- 
-@@ -1263,7 +1291,8 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 		goto drop;
- 
- 	/* mangle the packet */
--	if (pp->snat_handler && !pp->snat_handler(skb, pp, cp, iph))
-+	if (pp->snat_handler &&
-+	    !SNAT_CALL(pp->snat_handler, skb, pp, cp, iph))
- 		goto drop;
- 
- #ifdef CONFIG_IP_VS_IPV6
-@@ -1389,7 +1418,8 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
- 	/*
- 	 * Check if the packet belongs to an existing entry
- 	 */
--	cp = pp->conn_out_get(ipvs, af, skb, &iph);
-+	cp = INDIRECT_CALL_1(pp->conn_out_get, ip_vs_conn_out_get_proto,
-+			     ipvs, af, skb, &iph);
- 
- 	if (likely(cp)) {
- 		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-@@ -1644,7 +1674,8 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
- 	/* The embedded headers contain source and dest in reverse order.
- 	 * For IPIP this is error for request, not for reply.
- 	 */
--	cp = pp->conn_in_get(ipvs, AF_INET, skb, &ciph);
-+	cp = INDIRECT_CALL_1(pp->conn_in_get, ip_vs_conn_in_get_proto,
-+			     ipvs, AF_INET, skb, &ciph);
- 
- 	if (!cp) {
- 		int v;
-@@ -1796,7 +1827,8 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 	/* The embedded headers contain source and dest in reverse order
- 	 * if not from localhost
- 	 */
--	cp = pp->conn_in_get(ipvs, AF_INET6, skb, &ciph);
-+	cp = INDIRECT_CALL_1(pp->conn_in_get, ip_vs_conn_in_get_proto,
-+			     ipvs, AF_INET6, skb, &ciph);
- 
- 	if (!cp) {
- 		int v;
-@@ -1925,7 +1957,8 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
- 	/*
- 	 * Check if the packet belongs to an existing connection entry
- 	 */
--	cp = pp->conn_in_get(ipvs, af, skb, &iph);
-+	cp = INDIRECT_CALL_1(pp->conn_in_get, ip_vs_conn_in_get_proto,
-+			     ipvs, af, skb, &iph);
- 
- 	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
- 	if (conn_reuse_mode && !iph.fragoffs && is_new_conn(skb, &iph) && cp) {
-diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-index 6a275f989085..479419759983 100644
---- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-@@ -28,6 +28,7 @@
- #include <net/ip6_checksum.h>
- #include <linux/netfilter.h>
- #include <linux/netfilter_ipv4.h>
-+#include <linux/indirect_call_wrapper.h>
- 
- #include <net/ip_vs.h>
- 
-@@ -146,7 +147,7 @@ tcp_partial_csum_update(int af, struct tcphdr *tcph,
- }
- 
- 
--static int
-+INDIRECT_CALLABLE_SCOPE int
- tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph)
- {
-diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
-index 3285718264d5..646c384910fb 100644
---- a/net/netfilter/ipvs/ip_vs_proto_udp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
-@@ -23,6 +23,7 @@
- #include <linux/netfilter.h>
- #include <linux/netfilter_ipv4.h>
- #include <linux/udp.h>
-+#include <linux/indirect_call_wrapper.h>
- 
- #include <net/ip_vs.h>
- #include <net/ip.h>
-@@ -136,7 +137,7 @@ udp_partial_csum_update(int af, struct udphdr *uhdr,
- }
- 
- 
--static int
-+INDIRECT_CALLABLE_SCOPE int
- udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph)
- {
--- 
-2.20.1
+On Sat, 19 Jan 2019, Matteo Croce wrote:
 
+> The function pointer ip_vs_protocol->csum_check is only used in protocol
+> specific code, and never in the generic one.
+> Remove the function pointer from struct ip_vs_protocol and call the
+> checksum functions directly.
+> This reduces the performance impact of the Spectre mitigation, and
+> should give a small improvement even with RETPOLINES disabled.
+> 
+> Signed-off-by: Matteo Croce <mcroce@redhat.com>
+
+	Looks good to me, thanks!
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+> ---
+>  include/net/ip_vs.h                     |  3 ---
+>  net/netfilter/ipvs/ip_vs_proto_ah_esp.c |  2 --
+>  net/netfilter/ipvs/ip_vs_proto_sctp.c   |  8 +++++---
+>  net/netfilter/ipvs/ip_vs_proto_tcp.c    | 12 +++++++-----
+>  net/netfilter/ipvs/ip_vs_proto_udp.c    | 12 +++++++-----
+>  5 files changed, 19 insertions(+), 18 deletions(-)
+> 
+> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> index a0d2e0bb9a94..047f9a5ccaad 100644
+> --- a/include/net/ip_vs.h
+> +++ b/include/net/ip_vs.h
+> @@ -453,9 +453,6 @@ struct ip_vs_protocol {
+>  	int (*dnat_handler)(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  			    struct ip_vs_conn *cp, struct ip_vs_iphdr *iph);
+>  
+> -	int (*csum_check)(int af, struct sk_buff *skb,
+> -			  struct ip_vs_protocol *pp);
+> -
+>  	const char *(*state_name)(int state);
+>  
+>  	void (*state_transition)(struct ip_vs_conn *cp, int direction,
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+> index 5320d39976e1..480598cb0f05 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_ah_esp.c
+> @@ -129,7 +129,6 @@ struct ip_vs_protocol ip_vs_protocol_ah = {
+>  	.conn_out_get =		ah_esp_conn_out_get,
+>  	.snat_handler =		NULL,
+>  	.dnat_handler =		NULL,
+> -	.csum_check =		NULL,
+>  	.state_transition =	NULL,
+>  	.register_app =		NULL,
+>  	.unregister_app =	NULL,
+> @@ -152,7 +151,6 @@ struct ip_vs_protocol ip_vs_protocol_esp = {
+>  	.conn_out_get =		ah_esp_conn_out_get,
+>  	.snat_handler =		NULL,
+>  	.dnat_handler =		NULL,
+> -	.csum_check =		NULL,
+>  	.state_transition =	NULL,
+>  	.register_app =		NULL,
+>  	.unregister_app =	NULL,
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> index b0cd7d08f2a7..bc3d1625ecc8 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> @@ -9,6 +9,9 @@
+>  #include <net/sctp/checksum.h>
+>  #include <net/ip_vs.h>
+>  
+> +static int
+> +sctp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp);
+> +
+>  static int
+>  sctp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+>  		   struct ip_vs_proto_data *pd,
+> @@ -105,7 +108,7 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		int ret;
+>  
+>  		/* Some checks before mangling */
+> -		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+> +		if (!sctp_csum_check(cp->af, skb, pp))
+>  			return 0;
+>  
+>  		/* Call application helper if needed */
+> @@ -152,7 +155,7 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		int ret;
+>  
+>  		/* Some checks before mangling */
+> -		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+> +		if (!sctp_csum_check(cp->af, skb, pp))
+>  			return 0;
+>  
+>  		/* Call application helper if needed */
+> @@ -587,7 +590,6 @@ struct ip_vs_protocol ip_vs_protocol_sctp = {
+>  	.conn_out_get	= ip_vs_conn_out_get_proto,
+>  	.snat_handler	= sctp_snat_handler,
+>  	.dnat_handler	= sctp_dnat_handler,
+> -	.csum_check	= sctp_csum_check,
+>  	.state_name	= sctp_state_name,
+>  	.state_transition = sctp_state_transition,
+>  	.app_conn_bind	= sctp_app_conn_bind,
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> index 1770fc6ce960..6a275f989085 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> @@ -31,6 +31,9 @@
+>  
+>  #include <net/ip_vs.h>
+>  
+> +static int
+> +tcp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp);
+> +
+>  static int
+>  tcp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+>  		  struct ip_vs_proto_data *pd,
+> @@ -166,7 +169,7 @@ tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		int ret;
+>  
+>  		/* Some checks before mangling */
+> -		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+> +		if (!tcp_csum_check(cp->af, skb, pp))
+>  			return 0;
+>  
+>  		/* Call application helper if needed */
+> @@ -192,7 +195,7 @@ tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		tcp_fast_csum_update(cp->af, tcph, &cp->daddr, &cp->vaddr,
+>  				     cp->dport, cp->vport);
+>  		if (skb->ip_summed == CHECKSUM_COMPLETE)
+> -			skb->ip_summed = (cp->app && pp->csum_check) ?
+> +			skb->ip_summed = cp->app ?
+>  					 CHECKSUM_UNNECESSARY : CHECKSUM_NONE;
+>  	} else {
+>  		/* full checksum calculation */
+> @@ -244,7 +247,7 @@ tcp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		int ret;
+>  
+>  		/* Some checks before mangling */
+> -		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+> +		if (!tcp_csum_check(cp->af, skb, pp))
+>  			return 0;
+>  
+>  		/*
+> @@ -275,7 +278,7 @@ tcp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		tcp_fast_csum_update(cp->af, tcph, &cp->vaddr, &cp->daddr,
+>  				     cp->vport, cp->dport);
+>  		if (skb->ip_summed == CHECKSUM_COMPLETE)
+> -			skb->ip_summed = (cp->app && pp->csum_check) ?
+> +			skb->ip_summed = cp->app ?
+>  					 CHECKSUM_UNNECESSARY : CHECKSUM_NONE;
+>  	} else {
+>  		/* full checksum calculation */
+> @@ -736,7 +739,6 @@ struct ip_vs_protocol ip_vs_protocol_tcp = {
+>  	.conn_out_get =		ip_vs_conn_out_get_proto,
+>  	.snat_handler =		tcp_snat_handler,
+>  	.dnat_handler =		tcp_dnat_handler,
+> -	.csum_check =		tcp_csum_check,
+>  	.state_name =		tcp_state_name,
+>  	.state_transition =	tcp_state_transition,
+>  	.app_conn_bind =	tcp_app_conn_bind,
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+> index 0f53c49025f8..3285718264d5 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_udp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+> @@ -28,6 +28,9 @@
+>  #include <net/ip.h>
+>  #include <net/ip6_checksum.h>
+>  
+> +static int
+> +udp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp);
+> +
+>  static int
+>  udp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+>  		  struct ip_vs_proto_data *pd,
+> @@ -156,7 +159,7 @@ udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		int ret;
+>  
+>  		/* Some checks before mangling */
+> -		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+> +		if (!udp_csum_check(cp->af, skb, pp))
+>  			return 0;
+>  
+>  		/*
+> @@ -186,7 +189,7 @@ udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		udp_fast_csum_update(cp->af, udph, &cp->daddr, &cp->vaddr,
+>  				     cp->dport, cp->vport);
+>  		if (skb->ip_summed == CHECKSUM_COMPLETE)
+> -			skb->ip_summed = (cp->app && pp->csum_check) ?
+> +			skb->ip_summed = cp->app ?
+>  					 CHECKSUM_UNNECESSARY : CHECKSUM_NONE;
+>  	} else {
+>  		/* full checksum calculation */
+> @@ -239,7 +242,7 @@ udp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		int ret;
+>  
+>  		/* Some checks before mangling */
+> -		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+> +		if (!udp_csum_check(cp->af, skb, pp))
+>  			return 0;
+>  
+>  		/*
+> @@ -270,7 +273,7 @@ udp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		udp_fast_csum_update(cp->af, udph, &cp->vaddr, &cp->daddr,
+>  				     cp->vport, cp->dport);
+>  		if (skb->ip_summed == CHECKSUM_COMPLETE)
+> -			skb->ip_summed = (cp->app && pp->csum_check) ?
+> +			skb->ip_summed = cp->app ?
+>  					 CHECKSUM_UNNECESSARY : CHECKSUM_NONE;
+>  	} else {
+>  		/* full checksum calculation */
+> @@ -494,7 +497,6 @@ struct ip_vs_protocol ip_vs_protocol_udp = {
+>  	.conn_out_get =		ip_vs_conn_out_get_proto,
+>  	.snat_handler =		udp_snat_handler,
+>  	.dnat_handler =		udp_dnat_handler,
+> -	.csum_check =		udp_csum_check,
+>  	.state_transition =	udp_state_transition,
+>  	.state_name =		udp_state_name,
+>  	.register_app =		udp_register_app,
+> -- 
+> 2.20.1
+
+Regards
