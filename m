@@ -1,19 +1,19 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 3.18 04/18] ipvs: Fix signed integer overflow when setsockopt timeout
-Date: Sat, 23 Feb 2019 16:11:21 -0500
-Message-ID: <20190223211135.203082-4-sashal@kernel.org>
-References: <20190223211135.203082-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 05/26] ipvs: Fix signed integer overflow when setsockopt timeout
+Date: Sat, 23 Feb 2019 16:10:26 -0500
+Message-ID: <20190223211047.202725-5-sashal@kernel.org>
+References: <20190223211047.202725-1-sashal@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <stable-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1550956301;
-        bh=D4GLoDbhDpYPgEAKqxbJTvF9uYgDNcErvVJczgVwb3E=;
+        s=default; t=1550956256;
+        bh=10cr7PejezyuovDhyFTA/LxItolyjHELA1dLVH+nphY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=oPfZqAxpDsMT9syJrf8hi+5sFys+NEfwO+FyS6+EwncTrg0zyyVLRqEkDBFJeqZAc
-         80Yb2fDH/aIM1NWO3MMbHhfWWmVkaEMR5oYlojYCEe06pGHvq021CLEaqqtR8gzZnc
-         KplXHgLRPXlqusmnrc5etrINAFX+vAgu51Qxy9dg=
-In-Reply-To: <20190223211135.203082-1-sashal@kernel.org>
+        b=woJWwH4A5CDUSWwX2sXVi27FiVFhLLfUT1+/SmbjhZ/LuLrCnaGWqY4qe341Sf04R
+         o9frrmHwJ+D5HWxBVsxF2xg493B2MCwPpFBf1C4zyslgg3/+Cg7kBVSH5pYbdTMXeu
+         QvYCBTyhbu30RU70qdJ0puf74ytuyClNMz4pdt8c=
+In-Reply-To: <20190223211047.202725-1-sashal@kernel.org>
 Sender: stable-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -83,10 +83,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 12 insertions(+)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 9b1452e8e868f..444a0cb33e979 100644
+index 3167ec76903a2..56c62b65923f1 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2182,6 +2182,18 @@ static int ip_vs_set_timeout(struct net *net, struct ip_vs_timeout_user *u)
+@@ -2217,6 +2217,18 @@ static int ip_vs_set_timeout(struct netns_ipvs *ipvs, struct ip_vs_timeout_user
  		  u->tcp_fin_timeout,
  		  u->udp_timeout);
  
@@ -104,7 +104,7 @@ index 9b1452e8e868f..444a0cb33e979 100644
 +
  #ifdef CONFIG_IP_VS_PROTO_TCP
  	if (u->tcp_timeout) {
- 		pd = ip_vs_proto_data_get(net, IPPROTO_TCP);
+ 		pd = ip_vs_proto_data_get(ipvs, IPPROTO_TCP);
 -- 
 2.19.1
 
