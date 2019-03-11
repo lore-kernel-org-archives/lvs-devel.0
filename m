@@ -1,20 +1,20 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.14 17/27] ipvs: fix dependency on nf_defrag_ipv6
-Date: Mon, 11 Mar 2019 15:58:14 -0400
-Message-ID: <20190311195824.139043-17-sashal@kernel.org>
-References: <20190311195824.139043-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.20 33/52] ipvs: fix dependency on nf_defrag_ipv6
+Date: Mon, 11 Mar 2019 15:54:57 -0400
+Message-ID: <20190311195516.137772-33-sashal@kernel.org>
+References: <20190311195516.137772-1-sashal@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1552334331;
-        bh=Qqw5E0jowqj2BSqx8AnJtPT+6VfE8ziDEpX7XBXDxYo=;
+        s=default; t=1552334176;
+        bh=MgS5vH4cOQBaWwogD2sXt6fd3B8H8+0P5xhj/bLe8SY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=k/aVJjVF3MX+2pzeuZsZLY9s0v4mZacay0bDmy+JYl7gRhRgRF7wkSv3k37lCC0dt
-         uvdlC3EJixyCn8bHSLTRDKZtDuGuHLMWKcDvIxvjHsWlTYhAZq7iAGgJQh5AF4C6cE
-         LppGPKg9q46DdUeszipR7r2++wPG2IsJPPBQoHvM=
-In-Reply-To: <20190311195824.139043-1-sashal@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+        b=LHshnBFynFtHfn78Fyg6MEYDIF2ekXXHJxfcEacZiQ1Q6kFVy98v7odzk2iNzVdws
+         VXuMhbMVCdSH5VEoer4je5MYO85c3Pp37ke3BRlTdIfgAcLpfEKKfGUo1uSXqq9E2k
+         +1cIALdf2HtJi5kzozXbyvE2VG+u2WNj96jHdkz8=
+In-Reply-To: <20190311195516.137772-1-sashal@kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
@@ -47,7 +47,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  3 files changed, 15 insertions(+), 6 deletions(-)
 
 diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-index b32fb0dbe237..3f8e490d1133 100644
+index cad48d07c818..8401cefd9f65 100644
 --- a/net/netfilter/ipvs/Kconfig
 +++ b/net/netfilter/ipvs/Kconfig
 @@ -29,6 +29,7 @@ config	IP_VS_IPV6
@@ -59,10 +59,10 @@ index b32fb0dbe237..3f8e490d1133 100644
  	  Add IPv6 support to IPVS.
  
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 1bd53b1e7672..4278f5c947ab 100644
+index fe9abf3cc10a..235205c93e14 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1524,14 +1524,12 @@ ip_vs_try_to_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+@@ -1536,14 +1536,12 @@ ip_vs_try_to_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
  		/* sorry, all this trouble for a no-hit :) */
  		IP_VS_DBG_PKT(12, af, pp, skb, iph->off,
  			      "ip_vs_in: packet continues traversal as normal");
@@ -82,7 +82,7 @@ index 1bd53b1e7672..4278f5c947ab 100644
  		return 0;
  	}
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 2f45c3ce77ef..a683d7f52bcb 100644
+index 432141f04af3..3321f9dcd470 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
 @@ -43,6 +43,7 @@
@@ -93,7 +93,7 @@ index 2f45c3ce77ef..a683d7f52bcb 100644
  #endif
  #include <net/route.h>
  #include <net/sock.h>
-@@ -888,6 +889,7 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
+@@ -895,6 +896,7 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
  {
  	struct ip_vs_dest *dest;
  	unsigned int atype, i;
@@ -101,7 +101,7 @@ index 2f45c3ce77ef..a683d7f52bcb 100644
  
  	EnterFunction(2);
  
-@@ -898,6 +900,10 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
+@@ -905,6 +907,10 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
  			atype & IPV6_ADDR_LINKLOCAL) &&
  			!__ip_vs_addr_is_local_v6(svc->ipvs->net, &udest->addr.in6))
  			return -EINVAL;
@@ -112,7 +112,7 @@ index 2f45c3ce77ef..a683d7f52bcb 100644
  	} else
  #endif
  	{
-@@ -1221,6 +1227,10 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
+@@ -1228,6 +1234,10 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
  			ret = -EINVAL;
  			goto out_err;
  		}
