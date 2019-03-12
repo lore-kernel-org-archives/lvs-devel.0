@@ -1,7 +1,7 @@
 From: Jacky Hu <hengqing.hu@gmail.com>
 Subject: [PATCH] ipvs: allow tunneling with gue encapsulation
-Date: Tue, 12 Mar 2019 14:58:35 +0800
-Message-ID: <20190312065835.19251-1-hengqing.hu@gmail.com>
+Date: Tue, 12 Mar 2019 15:12:18 +0800
+Message-ID: <20190312071218.21905-1-hengqing.hu@gmail.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <linux-kernel-owner@vger.kernel.org>
@@ -10,17 +10,17 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         h=from:to:cc:subject:date:message-id:mime-version
          :content-transfer-encoding;
         bh=DITBBTDueFMwgO9c43r4QUnl5fmEGfsFdxK6pS4NikQ=;
-        b=G9s2MZ3vaLoDkFwdaFR3YRLiQmWbMq51AaDFVahT4YmghTysQGLytVDJxOvU1TYmqE
-         sjrpUPX10RMN1v2YfefOR/xhriqzuIxmHYUL49v/BzbXSEJI+GuJep0fCJfxAy0Y/LkJ
-         MQp98LZCCQGzqKT4B9McHbJh9YEwrAy9tsxqDMVSEc3PDJcIRE2CvS1QSOdnJlWhYg6X
-         oO3sGt0cfOTMQuSFVWp3hPTmix3Fs1Z0JV/6XOlSPTwiiMWeLMIuSyYROWFkLYVvfVD2
-         Ar8sHMXpLUWLsNyrAQo/A7TjmcvNqmMNATzFGbAcsGraSX5tkaqxw55aotQC/toZIyjm
-         RGmQ==
+        b=NaRTbkxXSNxzdQTO9Nz4CCC82K4WzcFVl8VbOYZXMwBWymJZudJBC/DufVjx2rHYnK
+         X/R2ugk0+0iy2vWL12iBWx2dYGRBsTY/eOzM+gWER7ACihezeDTUlpXblHP/kWCBOijH
+         QIhIiIKzjrw822GiIjbVR0bIqZBCZtMd3uJIVYd28S4PXUE8Cfz7OPa3JiF3+NyvohyZ
+         BIG/Uf+gpAD8rIX1B4Z71d2c/00FOFGYNSI6zbqihTuVnjO5TNyZoC1X4b8K/Vwd81pi
+         BUP+KPqbC5PVC9mcS4QQ/XMHEV/TksUd+Sc2Tw+TSr+afHCxCQu784PGTsuKmEVffiTz
+         x9BQ==
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: 
-Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, Jacky Hu <hengqing.hu@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+To: hengqing.hu@gmail.com
+Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
 ipip packets are blocked in some public cloud environments, this patch
 allows gue encapsulation with the tunneling method, which would make
