@@ -1,128 +1,249 @@
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.20 33/52] ipvs: fix dependency on nf_defrag_ipv6
-Date: Mon, 11 Mar 2019 15:54:57 -0400
-Message-ID: <20190311195516.137772-33-sashal@kernel.org>
-References: <20190311195516.137772-1-sashal@kernel.org>
+From: Jacky Hu <hengqing.hu@gmail.com>
+Subject: [PATCH] ipvs: allow tunneling with gue encapsulation
+Date: Tue, 12 Mar 2019 14:58:35 +0800
+Message-ID: <20190312065835.19251-1-hengqing.hu@gmail.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1552334176;
-        bh=MgS5vH4cOQBaWwogD2sXt6fd3B8H8+0P5xhj/bLe8SY=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=LHshnBFynFtHfn78Fyg6MEYDIF2ekXXHJxfcEacZiQ1Q6kFVy98v7odzk2iNzVdws
-         VXuMhbMVCdSH5VEoer4je5MYO85c3Pp37ke3BRlTdIfgAcLpfEKKfGUo1uSXqq9E2k
-         +1cIALdf2HtJi5kzozXbyvE2VG+u2WNj96jHdkz8=
-In-Reply-To: <20190311195516.137772-1-sashal@kernel.org>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=DITBBTDueFMwgO9c43r4QUnl5fmEGfsFdxK6pS4NikQ=;
+        b=G9s2MZ3vaLoDkFwdaFR3YRLiQmWbMq51AaDFVahT4YmghTysQGLytVDJxOvU1TYmqE
+         sjrpUPX10RMN1v2YfefOR/xhriqzuIxmHYUL49v/BzbXSEJI+GuJep0fCJfxAy0Y/LkJ
+         MQp98LZCCQGzqKT4B9McHbJh9YEwrAy9tsxqDMVSEc3PDJcIRE2CvS1QSOdnJlWhYg6X
+         oO3sGt0cfOTMQuSFVWp3hPTmix3Fs1Z0JV/6XOlSPTwiiMWeLMIuSyYROWFkLYVvfVD2
+         Ar8sHMXpLUWLsNyrAQo/A7TjmcvNqmMNATzFGbAcsGraSX5tkaqxw55aotQC/toZIyjm
+         RGmQ==
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Andrea Claudi <aclaudi@redhat.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+To: 
+Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, Jacky Hu <hengqing.hu@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
-From: Andrea Claudi <aclaudi@redhat.com>
+ipip packets are blocked in some public cloud environments, this patch
+allows gue encapsulation with the tunneling method, which would make
+tunneling working in those environments.
 
-[ Upstream commit 098e13f5b21d3398065fce8780f07a3ef62f4812 ]
-
-ipvs relies on nf_defrag_ipv6 module to manage IPv6 fragmentation,
-but lacks proper Kconfig dependencies and does not explicitly
-request defrag features.
-
-As a result, if netfilter hooks are not loaded, when IPv6 fragmented
-packet are handled by ipvs only the first fragment makes through.
-
-Fix it properly declaring the dependency on Kconfig and registering
-netfilter hooks on ip_vs_add_service() and ip_vs_new_dest().
-
-Reported-by: Li Shuang <shuali@redhat.com>
-Signed-off-by: Andrea Claudi <aclaudi@redhat.com>
-Acked-by: Julian Anastasov <ja@ssi.bg>
-Acked-by: Simon Horman <horms@verge.net.au>
-Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: Jacky Hu <hengqing.hu@gmail.com>
 ---
- net/netfilter/ipvs/Kconfig      |  1 +
- net/netfilter/ipvs/ip_vs_core.c | 10 ++++------
- net/netfilter/ipvs/ip_vs_ctl.c  | 10 ++++++++++
- 3 files changed, 15 insertions(+), 6 deletions(-)
+ include/uapi/linux/ip_vs.h      | 17 +++++++-
+ net/netfilter/ipvs/ip_vs_ctl.c  |  4 +-
+ net/netfilter/ipvs/ip_vs_xmit.c | 71 ++++++++++++++++++++++++++++++++-
+ 3 files changed, 87 insertions(+), 5 deletions(-)
 
-diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-index cad48d07c818..8401cefd9f65 100644
---- a/net/netfilter/ipvs/Kconfig
-+++ b/net/netfilter/ipvs/Kconfig
-@@ -29,6 +29,7 @@ config	IP_VS_IPV6
- 	bool "IPv6 support for IPVS"
- 	depends on IPV6 = y || IP_VS = IPV6
- 	select IP6_NF_IPTABLES
-+	select NF_DEFRAG_IPV6
- 	---help---
- 	  Add IPv6 support to IPVS.
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index 1c916b2f89dc..6637e45b93f4 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -96,13 +96,25 @@
+ #define IP_VS_CONN_F_TEMPLATE	0x1000		/* template, not connection */
+ #define IP_VS_CONN_F_ONE_PACKET	0x2000		/* forward only one packet */
  
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index fe9abf3cc10a..235205c93e14 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1536,14 +1536,12 @@ ip_vs_try_to_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
- 		/* sorry, all this trouble for a no-hit :) */
- 		IP_VS_DBG_PKT(12, af, pp, skb, iph->off,
- 			      "ip_vs_in: packet continues traversal as normal");
--		if (iph->fragoffs) {
--			/* Fragment that couldn't be mapped to a conn entry
--			 * is missing module nf_defrag_ipv6
--			 */
--			IP_VS_DBG_RL("Unhandled frag, load nf_defrag_ipv6\n");
++/* tunneling with gue */
++#define IP_VS_CONN_F_GUE	0x0008
 +
-+		/* Fragment couldn't be mapped to a conn entry */
-+		if (iph->fragoffs)
- 			IP_VS_DBG_PKT(7, af, pp, skb, iph->off,
- 				      "unhandled fragment");
--		}
++/* gue destination port bit 0 */
++#define IP_VS_CONN_F_GUE_PORT_LSB	0x4000
 +
- 		*verdict = NF_ACCEPT;
- 		return 0;
- 	}
++/* gue destination port bit 1-15 */
++#define IP_VS_CONN_F_GUE_PORT_MSB	0xFFFFE0000
++
+ /* Initial bits allowed in backup server */
+ #define IP_VS_CONN_F_BACKUP_MASK (IP_VS_CONN_F_FWD_MASK | \
+ 				  IP_VS_CONN_F_NOOUTPUT | \
+ 				  IP_VS_CONN_F_INACTIVE | \
+ 				  IP_VS_CONN_F_SEQ_MASK | \
+ 				  IP_VS_CONN_F_NO_CPORT | \
+-				  IP_VS_CONN_F_TEMPLATE \
++				  IP_VS_CONN_F_TEMPLATE | \
++				  IP_VS_CONN_F_GUE | \
++				  IP_VS_CONN_F_GUE_PORT_MSB | \
++				  IP_VS_CONN_F_GUE_PORT_LSB \
+ 				 )
+ 
+ /* Bits allowed to update in backup server */
+@@ -116,6 +128,9 @@
+ #define IP_VS_CONN_F_DEST_MASK (IP_VS_CONN_F_FWD_MASK | \
+ 				IP_VS_CONN_F_ONE_PACKET | \
+ 				IP_VS_CONN_F_NFCT | \
++				IP_VS_CONN_F_GUE | \
++				IP_VS_CONN_F_GUE_PORT_MSB | \
++				IP_VS_CONN_F_GUE_PORT_LSB | \
+ 				0)
+ 
+ #define IP_VS_SCHEDNAME_MAXLEN	16
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 432141f04af3..3321f9dcd470 100644
+index 432141f04af3..cecfb52cdea4 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -43,6 +43,7 @@
- #ifdef CONFIG_IP_VS_IPV6
- #include <net/ipv6.h>
- #include <net/ip6_route.h>
-+#include <net/netfilter/ipv6/nf_defrag_ipv6.h>
- #endif
- #include <net/route.h>
- #include <net/sock.h>
-@@ -895,6 +896,7 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- {
- 	struct ip_vs_dest *dest;
- 	unsigned int atype, i;
-+	int ret = 0;
- 
- 	EnterFunction(2);
- 
-@@ -905,6 +907,10 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
- 			atype & IPV6_ADDR_LINKLOCAL) &&
- 			!__ip_vs_addr_is_local_v6(svc->ipvs->net, &udest->addr.in6))
+@@ -3169,7 +3169,7 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
+ 	    nla_put_be16(skb, IPVS_DEST_ATTR_PORT, dest->port) ||
+ 	    nla_put_u32(skb, IPVS_DEST_ATTR_FWD_METHOD,
+ 			(atomic_read(&dest->conn_flags) &
+-			 IP_VS_CONN_F_FWD_MASK)) ||
++			 IP_VS_CONN_F_DEST_MASK)) ||
+ 	    nla_put_u32(skb, IPVS_DEST_ATTR_WEIGHT,
+ 			atomic_read(&dest->weight)) ||
+ 	    nla_put_u32(skb, IPVS_DEST_ATTR_U_THRESH, dest->u_threshold) ||
+@@ -3305,7 +3305,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
  			return -EINVAL;
-+
-+		ret = nf_defrag_ipv6_enable(svc->ipvs->net);
-+		if (ret)
-+			return ret;
- 	} else
- #endif
- 	{
-@@ -1228,6 +1234,10 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 			ret = -EINVAL;
- 			goto out_err;
- 		}
-+
-+		ret = nf_defrag_ipv6_enable(ipvs->net);
-+		if (ret)
-+			goto out_err;
- 	}
- #endif
  
+ 		udest->conn_flags = nla_get_u32(nla_fwd)
+-				    & IP_VS_CONN_F_FWD_MASK;
++				    & IP_VS_CONN_F_DEST_MASK;
+ 		udest->weight = nla_get_u32(nla_weight);
+ 		udest->u_threshold = nla_get_u32(nla_u_thresh);
+ 		udest->l_threshold = nla_get_u32(nla_l_thresh);
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 473cce2a5231..2667b587b91d 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -32,6 +32,7 @@
+ #include <linux/slab.h>
+ #include <linux/tcp.h>                  /* for tcphdr */
+ #include <net/ip.h>
++#include <net/gue.h>
+ #include <net/tcp.h>                    /* for csum_tcpudp_magic */
+ #include <net/udp.h>
+ #include <net/icmp.h>                   /* for icmp_send */
+@@ -989,6 +990,42 @@ static inline int __tun_gso_type_mask(int encaps_af, int orig_af)
+ 	}
+ }
+ 
++static int
++__build_gue_header(struct net *net, struct sk_buff *skb,
++		   struct ip_vs_conn *cp, __u8 *next_protocol)
++{
++	__be16 dport;
++	__be16 sport;
++	struct udphdr  *udph;	/* Our new UDP header */
++	struct guehdr  *gueh;	/* Our new GUE header */
++
++	skb_push(skb, sizeof(struct guehdr));
++
++	gueh = (struct guehdr *)skb->data;
++
++	gueh->control = 0;
++	gueh->version = 0;
++	gueh->hlen = 0;
++	gueh->flags = 0;
++	gueh->proto_ctype = *next_protocol;
++
++	skb_push(skb, sizeof(struct udphdr));
++	skb_reset_transport_header(skb);
++
++	udph = udp_hdr(skb);
++
++	dport = htons(((cp->flags >> 16) & 0xFFFE) | ((cp->flags >> 14) & 1));
++	sport = udp_flow_src_port(net, skb, 0, 0, false);
++	udph->dest = dport;
++	udph->source = sport;
++	udph->len = htons(skb->len);
++	udph->check = 0;
++
++	*next_protocol = IPPROTO_UDP;
++
++	return 0;
++}
++
+ /*
+  *   IP Tunneling transmitter
+  *
+@@ -1025,6 +1062,8 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	struct iphdr  *iph;			/* Our new IP header */
+ 	unsigned int max_headroom;		/* The extra header space needed */
+ 	int ret, local;
++	bool gue = false;
++	int type;
+ 
+ 	EnterFunction(10);
+ 
+@@ -1041,11 +1080,16 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	rt = skb_rtable(skb);
+ 	tdev = rt->dst.dev;
+ 
++	gue = (bool)(cp->flags & IP_VS_CONN_F_GUE);
++
+ 	/*
+ 	 * Okay, now see if we can stuff it in the buffer as-is.
+ 	 */
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
+ 
++	if (gue)
++		max_headroom += sizeof(struct udphdr) + sizeof(struct guehdr);
++
+ 	/* We only care about the df field if sysctl_pmtu_disc(ipvs) is set */
+ 	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
+ 	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
+@@ -1054,11 +1098,19 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	if (IS_ERR(skb))
+ 		goto tx_error;
+ 
+-	if (iptunnel_handle_offloads(skb, __tun_gso_type_mask(AF_INET, cp->af)))
++	if (gue)
++		type = SKB_GSO_UDP_TUNNEL;
++	else
++		type = __tun_gso_type_mask(AF_INET, cp->af);
++
++	if (iptunnel_handle_offloads(skb, type))
+ 		goto tx_error;
+ 
+ 	skb->transport_header = skb->network_header;
+ 
++	if (gue)
++		__build_gue_header(dev_net(tdev), skb, cp, &next_protocol);
++
+ 	skb_push(skb, sizeof(struct iphdr));
+ 	skb_reset_network_header(skb);
+ 	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
+@@ -1112,6 +1164,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	struct ipv6hdr  *iph;		/* Our new IP header */
+ 	unsigned int max_headroom;	/* The extra header space needed */
+ 	int ret, local;
++	bool gue = false;
++	int type;
+ 
+ 	EnterFunction(10);
+ 
+@@ -1129,22 +1183,35 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 	rt = (struct rt6_info *) skb_dst(skb);
+ 	tdev = rt->dst.dev;
+ 
++	gue = (bool)(cp->flags & IP_VS_CONN_F_GUE);
++
+ 	/*
+ 	 * Okay, now see if we can stuff it in the buffer as-is.
+ 	 */
+ 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
+ 
++	if (gue)
++		max_headroom += sizeof(struct udphdr) + sizeof(struct guehdr);
++
+ 	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
+ 					 &next_protocol, &payload_len,
+ 					 &dsfield, &ttl, NULL);
+ 	if (IS_ERR(skb))
+ 		goto tx_error;
+ 
+-	if (iptunnel_handle_offloads(skb, __tun_gso_type_mask(AF_INET6, cp->af)))
++	if (gue)
++		type = SKB_GSO_UDP_TUNNEL;
++	else
++		type = __tun_gso_type_mask(AF_INET6, cp->af);
++
++	if (iptunnel_handle_offloads(skb, type))
+ 		goto tx_error;
+ 
+ 	skb->transport_header = skb->network_header;
+ 
++	if (gue)
++		__build_gue_header(dev_net(tdev), skb, cp, &next_protocol);
++
+ 	skb_push(skb, sizeof(struct ipv6hdr));
+ 	skb_reset_network_header(skb);
+ 	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
 -- 
-2.19.1
+2.21.0
 
