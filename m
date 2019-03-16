@@ -1,26 +1,26 @@
 From: Jacky Hu <hengqing.hu@gmail.com>
-Subject: [PATCH v2] ipvs: allow tunneling with gue encapsulation
-Date: Sat, 16 Mar 2019 14:06:33 +0800
-Message-ID: <20190316060635.2594-1-hengqing.hu@gmail.com>
+Subject: [PATCH v3] ipvs: allow tunneling with gue encapsulation
+Date: Sat, 16 Mar 2019 15:20:07 +0800
+Message-ID: <20190316072009.2247-1-hengqing.hu@gmail.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=IWpaJYdzs3B2aCAoo45V/yz77usHnIUihf40NWutgn4=;
-        b=CiEYAYNpIUpGMuOFWDYZEcbv1NonL8xHjZmLMytDNcB97B/50UmAcYXCyQ156jUqsi
-         xvaYG1KcLM2AJkouzfPaGKw4Hyr7cDKzG2KpSLa0Rk66E25EstmZO2jhMe+0dBJY/KW1
-         otvTAvKI11kNcENpkIvTAEMm+siq4wsfjOAiMVj4UZXNK4rDftMDXtkmr6OIM8Tm6QcR
-         CGgndZTFffcaQSFbn6CbZC3d5mrByvEW8BO1woob85VDAs1kG1h7GglPNBF2nm66AAoZ
-         w+PQ7bmxNZ0zF9c9v1Qtlhxl5pLPb+fYzUXqjHdSm3K0xA1nOD9hzRsKaqjzuwrpES3U
-         cVtg==
-Sender: linux-kernel-owner@vger.kernel.org
+        bh=KX48vGF/vUvl6LQsjst8ZJ5JsYca9JC37bwXx5bNbuY=;
+        b=ab4B0HYN/+fAly/O0CFC3K6lmSGejxwD5PSZEDss6q5TuWrk+om5Hz5+FaEPU6ozEl
+         pHudZn51axcCSIo1W8rUVpUmQXGeh9lH9JMcKMmMZ7MAefHGRRvas1OEvij4v6fT/LCU
+         lfFqNvVfctVniRXWRFROnjAaNgn/qyg72Wr/+pr7/nnPjqRHu2JVcPCPwW3/YiiTdInI
+         tEKO0THwHe6rnRKV6vuWaQmcQUNih7Lfjf76cqRM35Ohr/b81OsmjvisRzeSJxOXiTDI
+         lzUz9jaErUw28i26t6DBwOruExhzsQXlP3ErOeYEKbEuYO4hFGMiy5urfrQGU98PoXk1
+         sqZA==
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: hengqing.hu@gmail.com
-Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
 ipip packets are blocked in some public cloud environments, this patch
 allows gue encapsulation with the tunneling method, which would make
@@ -29,10 +29,10 @@ tunneling working in those environments.
 Signed-off-by: Jacky Hu <hengqing.hu@gmail.com>
 ---
  include/net/ip_vs.h             |  5 ++
- include/uapi/linux/ip_vs.h      | 17 +++++++
- net/netfilter/ipvs/ip_vs_ctl.c  | 20 +++++++-
- net/netfilter/ipvs/ip_vs_xmit.c | 85 +++++++++++++++++++++++++++++++--
- 4 files changed, 122 insertions(+), 5 deletions(-)
+ include/uapi/linux/ip_vs.h      | 17 ++++++
+ net/netfilter/ipvs/ip_vs_ctl.c  | 20 ++++++-
+ net/netfilter/ipvs/ip_vs_xmit.c | 93 +++++++++++++++++++++++++++++++--
+ 4 files changed, 130 insertions(+), 5 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
 index a0d2e0bb9a94..56c1770b00fe 100644
@@ -171,7 +171,7 @@ index 432141f04af3..48509b03a5ea 100644
  
  	return 0;
 diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 473cce2a5231..3efb46a14163 100644
+index 473cce2a5231..e748c5605b04 100644
 --- a/net/netfilter/ipvs/ip_vs_xmit.c
 +++ b/net/netfilter/ipvs/ip_vs_xmit.c
 @@ -32,6 +32,7 @@
@@ -242,7 +242,7 @@ index 473cce2a5231..3efb46a14163 100644
  		goto tx_error;
  	if (local)
  		return ip_vs_send_or_cont(NFPROTO_IPV4, skb, cp, 1);
-@@ -1046,6 +1084,13 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+@@ -1046,6 +1084,14 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	 */
  	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
  
@@ -251,21 +251,24 @@ index 473cce2a5231..3efb46a14163 100644
 +	switch (tun_type) {
 +	case IP_VS_CONN_F_TUNNEL_TYPE_GUE:
 +		max_headroom += sizeof(struct udphdr) + sizeof(struct guehdr);
++		break;
 +	}
 +
  	/* We only care about the df field if sysctl_pmtu_disc(ipvs) is set */
  	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
  	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
-@@ -1054,11 +1099,23 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+@@ -1054,11 +1100,26 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
  	if (IS_ERR(skb))
  		goto tx_error;
  
 -	if (iptunnel_handle_offloads(skb, __tun_gso_type_mask(AF_INET, cp->af)))
 +	switch (tun_type) {
-+	case IP_VS_CONN_F_TUNNEL_TYPE_IPIP:
-+		gso_type = __tun_gso_type_mask(AF_INET, cp->af);
 +	case IP_VS_CONN_F_TUNNEL_TYPE_GUE:
 +		gso_type = SKB_GSO_UDP_TUNNEL;
++		break;
++	default:
++		gso_type = __tun_gso_type_mask(AF_INET, cp->af);
++		break;
 +	}
 +
 +	if (iptunnel_handle_offloads(skb, gso_type))
@@ -276,12 +279,13 @@ index 473cce2a5231..3efb46a14163 100644
 +	switch (tun_type) {
 +	case IP_VS_CONN_F_TUNNEL_TYPE_GUE:
 +		__build_gue_header(dev_net(tdev), skb, cp, &next_protocol);
++		break;
 +	}
 +
  	skb_push(skb, sizeof(struct iphdr));
  	skb_reset_network_header(skb);
  	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
-@@ -1112,6 +1169,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+@@ -1112,6 +1173,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
  	struct ipv6hdr  *iph;		/* Our new IP header */
  	unsigned int max_headroom;	/* The extra header space needed */
  	int ret, local;
@@ -289,7 +293,7 @@ index 473cce2a5231..3efb46a14163 100644
  
  	EnterFunction(10);
  
-@@ -1121,7 +1179,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+@@ -1121,7 +1183,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
  				      IP_VS_RT_MODE_LOCAL |
  				      IP_VS_RT_MODE_NON_LOCAL |
  				      IP_VS_RT_MODE_TUNNEL);
@@ -298,7 +302,7 @@ index 473cce2a5231..3efb46a14163 100644
  		goto tx_error;
  	if (local)
  		return ip_vs_send_or_cont(NFPROTO_IPV6, skb, cp, 1);
-@@ -1134,17 +1192,36 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+@@ -1134,17 +1196,40 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
  	 */
  	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
  
@@ -307,6 +311,7 @@ index 473cce2a5231..3efb46a14163 100644
 +	switch (tun_type) {
 +	case IP_VS_CONN_F_TUNNEL_TYPE_GUE:
 +		max_headroom += sizeof(struct udphdr) + sizeof(struct guehdr);
++		break;
 +	}
 +
  	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
@@ -317,10 +322,12 @@ index 473cce2a5231..3efb46a14163 100644
  
 -	if (iptunnel_handle_offloads(skb, __tun_gso_type_mask(AF_INET6, cp->af)))
 +	switch (tun_type) {
-+	case IP_VS_CONN_F_TUNNEL_TYPE_IPIP:
-+		gso_type = __tun_gso_type_mask(AF_INET, cp->af);
 +	case IP_VS_CONN_F_TUNNEL_TYPE_GUE:
 +		gso_type = SKB_GSO_UDP_TUNNEL;
++		break;
++	default:
++		gso_type = __tun_gso_type_mask(AF_INET, cp->af);
++		break;
 +	}
 +
 +	if (iptunnel_handle_offloads(skb, gso_type))
@@ -331,6 +338,7 @@ index 473cce2a5231..3efb46a14163 100644
 +	switch (tun_type) {
 +	case IP_VS_CONN_F_TUNNEL_TYPE_GUE:
 +		__build_gue_header(dev_net(tdev), skb, cp, &next_protocol);
++		break;
 +	}
 +
  	skb_push(skb, sizeof(struct ipv6hdr));
