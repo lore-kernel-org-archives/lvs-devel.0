@@ -1,36 +1,31 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
 Subject: Re: [PATCH v5] ipvs: allow tunneling with gue encapsulation
-Date: Thu, 21 Mar 2019 22:28:27 +0200 (EET)
-Message-ID: <alpine.LFD.2.21.1903212225550.4187@ja.home.ssi.bg>
+Date: Mon, 25 Mar 2019 11:46:40 +0100
+Message-ID: <20190325104639.guok6lrmn6vwg3e6@verge.net.au>
 References: <20190319052656.23933-1-hengqing.hu@gmail.com>
 Mime-Version: 1.0
 Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+        t=1553510802; bh=lAeHvGuHRK4670l/zjhBiu7h+uQWrd+fh+2t9qcrB88=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=e5xxNrvGfRAFd5d2AeklKPKtSFH7SFu4gi/tHx0n5cHJx3rj+pKdxpfj+u8Egq+Zy
+         4Sih0IPi/9auoAmiUGqAk0F/p8yBS/8XWYhss/duZK8VitLL1LPcY/vK04CfvIfRw6
+         x0/hZrmBuzYVPdL/A6sztExcnrIZ1WbujUuRYFtQ=
+Content-Disposition: inline
 In-Reply-To: <20190319052656.23933-1-hengqing.hu@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Jacky Hu <hengqing.hu@gmail.com>
-Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
-
-	Hello,
-
-On Tue, 19 Mar 2019, Jacky Hu wrote:
-
+On Tue, Mar 19, 2019 at 01:26:55PM +0800, Jacky Hu wrote:
 > ipip packets are blocked in some public cloud environments, this patch
 > allows gue encapsulation with the tunneling method, which would make
 > tunneling working in those environments.
 > 
 > Signed-off-by: Jacky Hu <hengqing.hu@gmail.com>
-
-	The patch looks good to me, thanks!
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	I plan to add the needed ICMP-error support for the new tunnel 
-type in the following days, as a followup patch.
-
 > ---
 >  include/net/ip_vs.h             |   5 ++
 >  include/uapi/linux/ip_vs.h      |  11 +++
@@ -111,6 +106,13 @@ type in the following days, as a followup patch.
 >  
 > +	switch (udest->tun_type) {
 > +	case IP_VS_CONN_F_TUNNEL_TYPE_GUE:
+
+Given that tun_type check acts on an integer, as opposed to an enum,
+I don't see that using a switch statement gives us much here,
+and throughout the patch, other than extra verbosity.
+
+Did you consider simply using an if statement?
+
 > +		if (udest->tun_port == 0) {
 > +			pr_err("%s(): tunnel port is zero\n", __func__);
 > +			return -EINVAL;
@@ -422,8 +424,4 @@ type in the following days, as a followup patch.
 >  
 > -- 
 > 2.21.0
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+> 
