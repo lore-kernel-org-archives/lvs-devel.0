@@ -1,32 +1,36 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
 Subject: Re: [PATCH v7] ipvs: allow tunneling with gue encapsulation
-Date: Thu, 28 Mar 2019 01:55:22 +0200 (EET)
-Message-ID: <alpine.LFD.2.21.1903280154400.25953@ja.home.ssi.bg>
+Date: Thu, 28 Mar 2019 10:59:50 +0100
+Message-ID: <20190328095950.66xhna76xndokdp6@verge.net.au>
 References: <20190326103121.31083-1-hengqing.hu@gmail.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=verge.net.au; s=mail;
+        t=1553767192; bh=1US1dGSWmbCG250b2gaVGEPqJmndbMWOetOM7q6ZcrM=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=TS/xZdLaY4HLNIiVUMg40TEkoi9d8Nd2ITWtyRrPfUuZAdT9s2paQcxvguZ+ovPWq
+         8pcBr2RLo7iiMsG3TnQcwZiBuUdP45w+xN8FTabfxkWelXP+rqk0++zfpU1X0wcZ+6
+         4scbU/JAypnt4S4mOev0PBQ70Ph7LQiAhg7m11IQ=
+Content-Disposition: inline
 In-Reply-To: <20190326103121.31083-1-hengqing.hu@gmail.com>
-Sender: netdev-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Jacky Hu <hengqing.hu@gmail.com>
-Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
+Hi Jacky,
 
-	Hello,
-
-On Tue, 26 Mar 2019, Jacky Hu wrote:
-
+On Tue, Mar 26, 2019 at 06:31:21PM +0800, Jacky Hu wrote:
 > ipip packets are blocked in some public cloud environments, this patch
 > allows gue encapsulation with the tunneling method, which would make
 > tunneling working in those environments.
 > 
 > Signed-off-by: Jacky Hu <hengqing.hu@gmail.com>
 
-	The patch looks good to me, thanks!
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
+It would help a lot if you provided a short summary
+of what changed between versions of this patch.
 
 > ---
 >  include/net/ip_vs.h             |  5 ++
@@ -291,6 +295,13 @@ Acked-by: Julian Anastasov <ja@ssi.bg>
 > +	gso_type = __tun_gso_type_mask(AF_INET, cp->af);
 > +	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
 > +		gso_type |= SKB_GSO_UDP_TUNNEL;
+
+Should the gso_type really be __tun_gso_type_mask() | SKB_GSO_UDP_TUNNEL.
+It seems tome that SKB_GSO_UDP_TUNNEL would be more appropriate.
+
+Also, should there be a mechanism to enable cums in the outer header,
+and thus use SKB_GSO_UDP_TUNNEL_CSUM?
+
 > +
 > +	if (iptunnel_handle_offloads(skb, gso_type))
 >  		goto tx_error;
@@ -353,6 +364,9 @@ Acked-by: Julian Anastasov <ja@ssi.bg>
 >  	skb->transport_header = skb->network_header;
 >  
 > +	skb_set_inner_ipproto(skb, next_protocol);
+
+Is the above needed in the non-GUE case?
+
 > +
 > +	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
 > +		ipvs_gue_encap(net, skb, cp, &next_protocol);
@@ -371,5 +385,4 @@ Acked-by: Julian Anastasov <ja@ssi.bg>
 >  
 > -- 
 > 2.21.0
-
-Regards
+> 
