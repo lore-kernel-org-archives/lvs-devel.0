@@ -1,60 +1,44 @@
-From: linmiaohe <linmiaohe@huawei.com>
+From: Eric Dumazet <eric.dumazet@gmail.com>
 Subject: Re: [PATCH] ipvs:set sock send/receive buffer correctly
-Date: Thu, 18 Apr 2019 09:45:59 +0800
-Message-ID: <bbfcccf4-626b-1029-62a6-a82b79edacbb@huawei.com>
+Date: Wed, 17 Apr 2019 19:02:11 -0700
+Message-ID: <a8ed41f3-1576-cbf6-907a-f501b3df189e@gmail.com>
 References: <501e5522-1d69-7c67-a1bc-fd8502d3b5d1@huawei.com>
  <60c11e72-99eb-fcde-e130-a35ecdc1d2d1@gmail.com>
+ <bbfcccf4-626b-1029-62a6-a82b79edacbb@huawei.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <60c11e72-99eb-fcde-e130-a35ecdc1d2d1@gmail.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=s6InVlmwhf7nDs3US5FW36FMkwSol+9ahSHqxp3m2yw=;
+        b=Z9I6BAymfGIMLS9r5mmp2sPOZsCGuZ+ND3z+VHRi98g3k3Lv8UtPuDqVwdMMMJPQoh
+         RQkO8hd+afXPWlK1RFtuSTNGEpZL09zqMnFkHfuGuS8xGKPLzmuAqyF4dKjhSY+A2DOo
+         i+B6vke8Mn66KdVOC1SFsgFV5Ul5TImSKnUIteE3d2bm0iboEsdoI5qUBsxUspo1dSEz
+         Vehxd/tiPJwSmivjpheCMwpARar9uHm0kNhRgrGJYZ9wKvDXz0tTjeKdo7iqiR3wBoDv
+         +0npKuOeH0oix3TWQnfqHUkgtuebPWga/3X+S6xPoPGYaXJkfjodLLylYnZl1JNKxvtd
+         +MAA==
+In-Reply-To: <bbfcccf4-626b-1029-62a6-a82b79edacbb@huawei.com>
 Content-Language: en-US
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Eric Dumazet <eric.dumazet@gmail.com>, wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: linmiaohe <linmiaohe@huawei.com>, Eric Dumazet <eric.dumazet@gmail.com>, wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 Cc: Mingfangsen <mingfangsen@huawei.com>, liujie165@huawei.com
 
 
 
-On 2019/4/17 21:18, Eric Dumazet wrote:
+On 04/17/2019 06:45 PM, linmiaohe wrote:
 > 
-> 
-> On 04/17/2019 02:18 AM, linmiaohe wrote:
->> From: Jie Liu <liujie165@huawei.com>
->>
->> If we set sysctl_wmem_max or sysctl_rmem_max larger than INT_MAX,
->> the send/receive buffer of sock will be an negative value. Same as
->> when the val is larger than INT_MAX/2.
->>
->> Fixes: 1c003b1580e2 ("ipvs: wakeup master thread")
->> Reported-by: Qiang Ning <ningqiang1@huawei.com>
->> Reviewed-by: Miaohe Lin <linmiaohe@huawei.com>
->> Signed-off-by: Jie Liu <liujie165@huawei.com>
->> ---
->>  net/netfilter/ipvs/ip_vs_sync.c | 10 ++++------
->>  1 file changed, 4 insertions(+), 6 deletions(-)
->>
->> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
->> index 2526be6b3d90..c0e4cbed6e74 100644
->> --- a/net/netfilter/ipvs/ip_vs_sync.c
->> +++ b/net/netfilter/ipvs/ip_vs_sync.c
->> @@ -1278,14 +1278,12 @@ static void set_sock_size(struct sock *sk, int mode, int val)
->>  	/* setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &val, sizeof(val)); */
->>  	lock_sock(sk);
->>  	if (mode) {
->> -		val = clamp_t(int, val, (SOCK_MIN_SNDBUF + 1) / 2,
->> -			      sysctl_wmem_max);
->> -		sk->sk_sndbuf = val * 2;
->> +		val = min_t(u32, val, sysctl_wmem_max);
->> +		sk->sk_sndbuf = max_t(int, val * 2, SOCK_MIN_SNDBUF);
-> 
-> What prevents val * 2 to overflow ? 
-> 
-> Code in sock_setsockopt() looks quite different.
-> .
-> 
-In fact, I just implemented this function with reference to
-sock_setsockopt(). When val * 2 overflow, we will set the
-buffer as SOCK_MIN_SNDBUF, just as sock_setsockopt() do.
 
+> In fact, I just implemented this function with reference to
+> sock_setsockopt(). When val * 2 overflow, we will set the
+> buffer as SOCK_MIN_SNDBUF, just as sock_setsockopt() do.
+> 
+
+I do not think so.
+
+Please check latest linux kernel, not some old version.
+
+commit 4057765f2dee79cb92f9067909477303360be8d3    sock: consistent handling of extreme SO_SNDBUF/SO_RCVBUF values
