@@ -1,19 +1,19 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.9 17/25] ipvs: do not schedule icmp errors from tunnels
-Date: Tue,  7 May 2019 01:41:14 -0400
-Message-ID: <20190507054123.32514-17-sashal@kernel.org>
-References: <20190507054123.32514-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 11/14] ipvs: do not schedule icmp errors from tunnels
+Date: Tue,  7 May 2019 01:42:13 -0400
+Message-ID: <20190507054218.340-11-sashal@kernel.org>
+References: <20190507054218.340-1-sashal@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <linux-kernel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1557207723;
-        bh=tw/ZK2MiLfteMwogSB2X8LZjAsBVawNDkiDoHhMj7O0=;
+        s=default; t=1557207762;
+        bh=+kACfupaAaVCm6jAKa9+y7DVVVVW7QKdcJ+pTqSk9fU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=OjrjMFZWVccPmTOpzqp0uZm7NwmQoBbR6n/AUGAywMsaqc7OUFcj0W5uXceu7YKA5
-         LaVSLpYW6wJuLMKqgiq2iUEH4tUcPPPn9DwloKSx+6iI7pGbZ2X6vTpJTGZ3IvwhXa
-         VlryTcPkqbUMVGeoR6o1UQVH3zx4DVkeRHOChkn8=
-In-Reply-To: <20190507054123.32514-1-sashal@kernel.org>
+        b=AVUd+kUVgZQ5zo0SSow/O7Sihv59KNOgYQgmnkrHwjBBDtQU4FsZmeksDcBkzdzu3
+         ++v4aHtTm5aet6MPdx9IRlJuTq37NH+CynNsu4JWisMSWK2B/ExXerlRcuNoPSQwg3
+         cF2l4Y3awL9VwPiYS2DBuUC0N+EHQU2pSxhNaapg=
+In-Reply-To: <20190507054218.340-1-sashal@kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -40,10 +40,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index fd186b011a99..8475e8692ff0 100644
+index ac212542a217..c4509a10ce52 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1643,7 +1643,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
+@@ -1484,7 +1484,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
  	if (!cp) {
  		int v;
  
