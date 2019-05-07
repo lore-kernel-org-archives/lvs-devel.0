@@ -1,57 +1,108 @@
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 44/81] ipvs: do not schedule icmp errors from tunnels
-Date: Tue,  7 May 2019 01:35:15 -0400
-Message-ID: <20190507053554.30848-44-sashal@kernel.org>
-References: <20190507053554.30848-1-sashal@kernel.org>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: Subject: [PATCH netfilter] ipvs: Fix crash when ipv6 route
+ unreach
+Date: Tue, 7 May 2019 10:45:33 +0300 (EEST)
+Message-ID: <alpine.LFD.2.21.1905071009060.3512@ja.home.ssi.bg>
+References: <f40bae44-a4b1-868c-3572-3e89c4cadb6a@huawei.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1557207445;
-        bh=3b4zzr5LfvdAV+NCulPVgMQ2AuGASKw4w0VVbW1Kpag=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=AfbDK5XxRoU1UbMgxfH+88gE6mF8uCoRhkhfwHrMyX8iObIuIhZOICIJyXBiarbrv
-         KigZFg4b5eaMe62k7o4avIUj3p+327p89lDJq0wV5XZliDTOV7hjcVtCEhjwomdyPP
-         PamkXL7JCYFmKyaWvbqSafCly7tE+7dMR9oovIVg=
-In-Reply-To: <20190507053554.30848-1-sashal@kernel.org>
+In-Reply-To: <f40bae44-a4b1-868c-3572-3e89c4cadb6a@huawei.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Content-Transfer-Encoding: 7bit
+To: hujunwei <hujunwei4@huawei.com>
+Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, mingfangsen@huawei.com, wangxiaogang3@huawei.com, zhangwenhao8@huawei.com
 
-From: Julian Anastasov <ja@ssi.bg>
 
-[ Upstream commit 0261ea1bd1eb0da5c0792a9119b8655cf33c80a3 ]
+	Hello,
 
-We can receive ICMP errors from client or from
-tunneling real server. While the former can be
-scheduled to real server, the latter should
-not be scheduled, they are decapsulated only when
-existing connection is found.
+On Tue, 7 May 2019, hujunwei wrote:
 
-Fixes: 6044eeffafbe ("ipvs: attempt to schedule icmp packets")
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
-Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- net/netfilter/ipvs/ip_vs_core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> From: Junwei Hu <hujunwei4@huawei.com>
+> 
+> When Tcp send RST packet in ipvs, crash occurs with the following
+> stack trace:
+> 
+> BUG: unable to handle kernel NULL pointer dereference at 0000000000000018
+> PID: 0 COMMAND: "swapper/2"
+> TASK: ffff9ec83889bf40  (1 of 4)  [THREAD_INFO: ffff9ec8388b0000]
+> CPU: 2  STATE: TASK_RUNNING (PANIC)
+>  [exception RIP: __ip_vs_get_out_rt_v6+1250]
+> RIP: ffffffffc0d566f2  RSP: ffff9ec83ed03c68  RFLAGS: 00010246
+> RAX: 0000000000000000  RBX: ffff9ec835e85000  RCX: 000000000005e1f9
+> RDX: 000000000005e1f8  RSI: 0000000000000200  RDI: ffff9ec83e801b00
+> RBP: ffff9ec83ed03cd8   R8: 000000000001bb40   R9: ffffffffc0d5673f
+> R10: ffff9ec83ed1bb40  R11: ffffe2d384d4fdc0  R12: ffff9ec7b7ad5900
+> R13: 0000000000000000  R14: 0000000000000007  R15: ffff9ec8353f7580
+> ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+>  [ffff9ec83ed03ce0] ip_vs_fnat_xmit_v6 at ffffffffc0d5b42c [ip_vs]
+>  [ffff9ec83ed03d70] tcp_send_rst_ipv6 at ffffffffc0d6542a [ip_vs]
+>  [ffff9ec83ed03df8] tcp_conn_expire_handler at ffffffffc0d65823 [ip_vs]
+>  [ffff9ec83ed03e20] ip_vs_conn_expire at ffffffffc0d42373 [ip_vs]
+>  [ffff9ec83ed03e70] call_timer_fn at ffffffffae0a6b58
+>  [ffff9ec83ed03ea8] run_timer_softirq at ffffffffae0a904d
+>  [ffff9ec83ed03f20] __do_softirq at ffffffffae09fa85
+>  [ffff9ec83ed03f90] call_softirq at ffffffffae739dac
+>  [ffff9ec83ed03fa8] do_softirq at ffffffffae02e62b
+>  [ffff9ec83ed03fc0] irq_exit at ffffffffae09fe25
+>  [ffff9ec83ed03fd8] smp_apic_timer_interrupt at ffffffffae73b158
+>  [ffff9ec83ed03ff0] apic_timer_interrupt at ffffffffae737872
+> 
+> TCP connection timeout and send a RST packet, the skb is alloc
+> by alloc_skb, the pointer skb->dev and skb_dst(skb) is NULL,
+> however, ipv6 route unreach at that time, so go into err_unreach.
+> In err_unreach, crash occurs when skb->dev and skb_dst(skb) is NULL.
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 3f963ea22277..a42c1bc7c698 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1647,7 +1647,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
- 	if (!cp) {
- 		int v;
- 
--		if (!sysctl_schedule_icmp(ipvs))
-+		if (ipip || !sysctl_schedule_icmp(ipvs))
- 			return NF_ACCEPT;
- 
- 		if (!ip_vs_try_to_schedule(ipvs, AF_INET, skb, pd, &v, &cp, &ciph))
--- 
-2.20.1
+	I guess, this is a modified IPVS module and the problem
+can not occur in mainline kernel. ip_vs_in() and ip_vs_out() already 
+have check for skb_dst(). May be you generate skb without attached
+route, so skb_dst is NULL. Also, note that decrement_ttl() has similar
+code.
 
+> The code is added by the following patch:
+> commit 326bf17ea5d4 ("ipvs: fix ipv6 route unreach panic")
+> because the ip6_link_failure function requires the skb->dev
+> in icmp6_send with that version.
+> 
+> This patch only fix the problem in specific scene, and icmp6_send in
+> current version is robust against null skb->dev by adding the
+> following patch.
+> commit 8d9336704521
+> ("ipv6: make icmp6_send() robust against null skb->dev")
+> 
+> So I delete the code, make __ip_vs_get_out_rt_v6() robust, when
+> skb->dev and skb_dst(skb) is NULL.
+> 
+> Fixes: 326bf17ea5d4 ("ipvs: fix ipv6 route unreach panic")
+> Signed-off-by: Junwei Hu <hujunwei4@huawei.com>
+> Reported-by: Wenhao Zhang <zhangwenhao8@huawei.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_xmit.c | 7 -------
+>  1 file changed, 7 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+> index 175349fcf91f..e2bb6c223396 100644
+> --- a/net/netfilter/ipvs/ip_vs_xmit.c
+> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
+> @@ -561,13 +561,6 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+>  	return -1;
+> 
+>  err_unreach:
+> -	/* The ip6_link_failure function requires the dev field to be set
+> -	 * in order to get the net (further for the sake of fwmark
+> -	 * reflection).
+> -	 */
+> -	if (!skb->dev)
+> -		skb->dev = skb_dst(skb)->dev;
+> -
+>  	dst_link_failure(skb);
+>  	return -1;
+>  }
+> -- 
+> 2.21.GIT
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
