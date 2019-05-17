@@ -1,12 +1,12 @@
 From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH] ipvs: Fix use-after-free in ip_vs_in
-Date: Thu, 16 May 2019 21:20:45 +0300 (EEST)
-Message-ID: <alpine.LFD.2.21.1905162106550.3687@ja.home.ssi.bg>
+Date: Fri, 17 May 2019 10:30:29 +0300 (EEST)
+Message-ID: <alpine.LFD.2.21.1905171015040.2233@ja.home.ssi.bg>
 References: <20190515093614.21176-1-yuehaibing@huawei.com>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <20190515093614.21176-1-yuehaibing@huawei.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -144,7 +144,20 @@ On Wed, 15 May 2019, YueHaibing wrote:
 > Another scene is ops_free_list call ops_free to free the
 > net_generic directly while __ip_vs_cleanup finished, then
 > calling ip_vs_in will triggers use-after-free.
-> 
+
+	OK, can you instead test and post a patch that moves
+nf_unregister_net_hooks from __ip_vs_cleanup() to
+__ip_vs_dev_cleanup()? You can add commit efe41606184e
+in Fixes line. There is rcu_barrier() in unregister_pernet_device ->
+unregister_pernet_operations that will do the needed grace
+period.
+
+	In a followup patch for net-next I'll drop the
+ipvs->enable flag and will move the nf_register_net_hooks()
+call to ip_vs_add_service() just before the 'svc = kzalloc'
+part. So, for now you do not need to move nf_register_net_hooks.
+As result, hooks will be registered when there are IPVS rules.
+
 > Reported-by: Hulk Robot <hulkci@huawei.com>
 > Fixes: efe41606184e ("ipvs: convert to use pernet nf_hook api")
 > Signed-off-by: YueHaibing <yuehaibing@huawei.com>
@@ -161,29 +174,7 @@ On Wed, 15 May 2019, YueHaibing wrote:
 >  	ip_vs_estimator_net_cleanup(ipvs);
 >  	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
 > +	synchronize_net();
-
-	Grace period in net_exit handler should be avoided.
-It can be added to ip_vs_cleanup() but may be we have to
-reorder the operations, so that we can have single grace
-period. Note that ip_vs_conn_cleanup() already includes
-rcu_barrier() and we can use it to split the cleanups to
-two steps: 1: unregister hooks (__ip_vs_dev_cleanup) to
-stop traffic and 2: cleanups when traffic is stopped.
-
-	Note that the problem should be only when module
-is removed, the case with netns exit in cleanup_net()
-should not cause problem.
-
-	I'll have more time this weekend to reorganize the
-code...
-
 >  	net->ipvs = NULL;
 >  }
->  
-> -- 
-> 2.7.4
 
 Regards
-
---
-Julian Anastasov <ja@ssi.bg>
