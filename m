@@ -1,392 +1,389 @@
 From: Jacky Hu <hengqing.hu@gmail.com>
-Subject: [PATCH v2] ipvs: add checksum support for gue encapsulation
-Date: Sun, 26 May 2019 14:48:19 +0800
-Message-ID: <20190526064819.16420-1-hengqing.hu@gmail.com>
+Subject: [PATCH v6 1/2] ipvsadm: convert options to unsigned
+	long long
+Date: Sun, 26 May 2019 14:50:38 +0800
+Message-ID: <20190526065038.17067-1-hengqing.hu@gmail.com>
+Reply-To: "LinuxVirtualServer.org users mailing list."
+	<lvs-users@linuxvirtualserver.org>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=9Wd+rg1iuxhOjM4+J2HoOX4WKUM4unGvAPSEjWYl5T0=;
-        b=tcNECKj4ucu7VH/wGpyPGfAgrgjnMSj0+zy5t6Ufh5dMY0PWaV2sGdR1J/0LLNnA2e
-         Y9YBnn0btXOjkulJMYQKp0NuyJodOaWBRt4UIofZb8YjXkB4bqzM3qk3c/9KPnGTeBeO
-         20/CDR9nFpBeJeVdZDNUT+TzD4wJtERC8fOooeedOtGhlOvurRWsMD/GifCBzSntt+Vi
-         q3MofA93Wu7ru8ZtYY6E0854Ti1NV4YKIomR/YyDEyfgNhIUElyruVaRSlv9t6r6wa+b
-         EOD/j0albmvAvOyjCNnBvZTCzIVn0MxzCLV9NDHD8yJ1Fn23vKOFhZmKp+NUEtRspumL
-         LFDA==
-Sender: netdev-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmail.com; s=20161025;
+	h=from:to:cc:subject:date:message-id:mime-version
+	:content-transfer-encoding;
+	bh=EO4WccddSt8lmeNZLwjpw+XWgflqd90tyuQMt1T6tdA=;
+	b=aV3Fb1Zli8UHXREa2P1JExZr/I55NBhOk1a1gwCBV+au1Xjccv+hCYKvuSJ8NIgeXy
+	POexPf+g8jA7li4HYvrFh+1D/c4s2QTkKT1gqqX66JwWNp3qlCI5RJoZ2LP2vwTL8LtA
+	cKRWTvWQVHgxmllhAXXZ0vsmWu9Xz5uw4kX4wsJoVIwvf9UsWKIVQkF86zKmtBn/pKz6
+	7bgO1EIaEGTVMGtTe0GT/lSJPDEbE5rALlJYXedtIOPq5ov4DnsMws5XH8SaX10JT+YA
+	cPwta9aHw9LgUHqzuKYE89ijbSMMdKP+dciOpAtTl99dMwotjBGKHJrDJqSFb2vMJsNv
+	LRxg==
+List-Id: <lvs-devel.vger.kernel.org>
+List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
+	<mailto:lvs-users-request@linuxvirtualserver.org?subject=unsubscribe>
+List-Archive: <http://lists.graemef.net/pipermail/lvs-users>
+List-Post: <mailto:lvs-users@linuxvirtualserver.org>
+List-Help: <mailto:lvs-users-request@linuxvirtualserver.org?subject=help>
+List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
+	<mailto:lvs-users-request@linuxvirtualserver.org?subject=subscribe>
+Sender: lvs-users-bounces@linuxvirtualserver.org
+Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
 To: hengqing.hu@gmail.com
-Cc: jacky.hu@walmart.com, jason.niesz@walmart.com, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Cc: lvs-users@linuxvirtualserver.org, lvs-devel@vger.kernel.org, horms@verge.net.au, jacky.hu@walmart.com, brouer@redhat.com, jason.niesz@walmart.com
 
-Add checksum support for gue encapsulation with the tun_flags parameter,
-which could be one of the values below:
-IP_VS_TUNNEL_ENCAP_FLAG_NOCSUM
-IP_VS_TUNNEL_ENCAP_FLAG_CSUM
-IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM
+To allow up to 64 options to be specified.
+Add calculated logarithm constants for existing options.
+Remove opt2name function to avoid recalculation.
 
 Signed-off-by: Jacky Hu <hengqing.hu@gmail.com>
 ---
+v6->v5:
+  1) split the patch into two:
+     - ipvsadm: convert options to unsigned long long
+     - ipvsadm: allow tunneling with gue encapsulation
+  2) do not mix static and dynamic allocation in fwd_tun_info
+  3) use correct nla_get/put function for tun_flags
+  4) fixed || style
+  5) use correct return value for parse_tun_type
+
+v5->v4:
+  1) add checksum support for gue encapsulation
+
+v4->v3:
+  1) removed changes to setsockopt interface
+  2) use correct nla_get/put function for tun_port
+
+v3->v2:
+  1) added missing break statements to a few switch cases
+
 v2->v1:
-  1) removed unnecessary changes to ip_vs_core.c
-  2) use correct nla_get/put function for tun_flags
-  3) use correct gue hdrlen for skb_push in ipvs_gue_encap
-  4) moved declaration of gue_hdrlen and gue_optlen
+  1) pass tun_type and tun_port as new optional parameters
+     instead of a few bits in existing conn_flags parameters
 
- include/net/ip_vs.h             |   2 +
- include/uapi/linux/ip_vs.h      |   7 ++
- net/netfilter/ipvs/ip_vs_ctl.c  |  11 ++-
- net/netfilter/ipvs/ip_vs_xmit.c | 142 ++++++++++++++++++++++++++++----
- 4 files changed, 145 insertions(+), 17 deletions(-)
+ ipvsadm.c | 117 ++++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 69 insertions(+), 48 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b01a94ebfc0e..cb1ad0cc5c7b 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -603,6 +603,7 @@ struct ip_vs_dest_user_kern {
+diff --git a/ipvsadm.c b/ipvsadm.c
+index 0cb2b68..9e7a448 100644
+--- a/ipvsadm.c
++++ b/ipvsadm.c
+@@ -189,6 +189,35 @@ static const char* cmdnames[] = {
+ #define OPT_SYNC_MAXLEN	0x08000000
+ #define NUMBER_OF_OPT		28
  
- 	u16			tun_type;	/* tunnel type */
- 	__be16			tun_port;	/* tunnel port */
-+	u16			tun_flags;	/* tunnel flags */
- };
- 
- 
-@@ -665,6 +666,7 @@ struct ip_vs_dest {
- 	atomic_t		last_weight;	/* server latest weight */
- 	__u16			tun_type;	/* tunnel type */
- 	__be16			tun_port;	/* tunnel port */
-+	__u16			tun_flags;	/* tunnel flags */
- 
- 	refcount_t		refcnt;		/* reference counter */
- 	struct ip_vs_stats      stats;          /* statistics */
-diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-index e34f436fc79d..fa5cf8498474 100644
---- a/include/uapi/linux/ip_vs.h
-+++ b/include/uapi/linux/ip_vs.h
-@@ -131,6 +131,11 @@ enum {
- 	IP_VS_CONN_F_TUNNEL_TYPE_MAX,
- };
- 
-+/* Tunnel encapsulation flags */
-+#define IP_VS_TUNNEL_ENCAP_FLAG_NOCSUM		(0)
-+#define IP_VS_TUNNEL_ENCAP_FLAG_CSUM		(1<<0)
-+#define IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM		(1<<1)
++#define OPTC_NUMERIC		0
++#define OPTC_CONNECTION		1
++#define OPTC_SERVICE		2
++#define OPTC_SCHEDULER		3
++#define OPTC_PERSISTENT		4
++#define OPTC_NETMASK		5
++#define OPTC_SERVER		6
++#define OPTC_FORWARD		7
++#define OPTC_WEIGHT		8
++#define OPTC_UTHRESHOLD		9
++#define OPTC_LTHRESHOLD		10
++#define OPTC_MCAST		11
++#define OPTC_TIMEOUT		12
++#define OPTC_DAEMON		13
++#define OPTC_STATS		14
++#define OPTC_RATE		15
++#define OPTC_THRESHOLDS		16
++#define OPTC_PERSISTENTCONN	17
++#define OPTC_NOSORT		18
++#define OPTC_SYNCID		19
++#define OPTC_EXACT		20
++#define OPTC_ONEPACKET		21
++#define OPTC_PERSISTENCE_ENGINE	22
++#define OPTC_SCHED_FLAGS	23
++#define OPTC_MCAST_GROUP	24
++#define OPTC_MCAST_PORT		25
++#define OPTC_MCAST_TTL		26
++#define OPTC_SYNC_MAXLEN	27
 +
- /*
-  *	The struct ip_vs_service_user and struct ip_vs_dest_user are
-  *	used to set IPVS rules through setsockopt.
-@@ -403,6 +408,8 @@ enum {
+ static const char* optnames[] = {
+ 	"numeric",
+ 	"connection",
+@@ -320,9 +349,9 @@ static unsigned int parse_fwmark(char *buf);
+ static unsigned int parse_sched_flags(const char *sched, char *optarg);
  
- 	IPVS_DEST_ATTR_TUN_PORT,	/* tunnel port */
+ /* check the options based on the commands_v_options table */
+-static void generic_opt_check(int command, int options);
++static void generic_opt_check(int command, unsigned long long options);
+ static void set_command(int *cmd, const int newcmd);
+-static void set_option(unsigned int *options, unsigned int option);
++static void set_option(unsigned long long *options, int optc);
  
-+	IPVS_DEST_ATTR_TUN_FLAGS,	/* tunnel flags */
-+
- 	__IPVS_DEST_ATTR_MAX,
- };
+ static void tryhelp_exit(const char *program, const int exit_status);
+ static void usage_exit(const char *program, const int exit_status);
+@@ -416,7 +445,7 @@ static char *protocol_name(int proto)
  
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index d5847e06350f..ad19ac08622f 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -893,6 +893,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	/* set the tunnel info */
- 	dest->tun_type = udest->tun_type;
- 	dest->tun_port = udest->tun_port;
-+	dest->tun_flags = udest->tun_flags;
+ static int
+ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+-	      unsigned int *options, unsigned int *format)
++	      unsigned long long *options, unsigned int *format)
+ {
+ 	int c, parse;
+ 	poptContext context;
+@@ -575,7 +604,7 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 		case 't':
+ 		case 'u':
+ 		case TAG_SCTP_SERVICE:
+-			set_option(options, OPT_SERVICE);
++			set_option(options, OPTC_SERVICE);
+ 			ce->svc.protocol = option_to_protocol(c);
+ 			parse = parse_service(optarg, &ce->svc);
+ 			if (!(parse & SERVICE_ADDR))
+@@ -583,7 +612,7 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 				     "address[:port] specified");
+ 			break;
+ 		case 'f':
+-			set_option(options, OPT_SERVICE);
++			set_option(options, OPTC_SERVICE);
+ 			/*
+ 			 * Set protocol to a sane values, even
+ 			 * though it is not used
+@@ -593,18 +622,18 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 			ce->svc.fwmark = parse_fwmark(optarg);
+ 			break;
+ 		case 's':
+-			set_option(options, OPT_SCHEDULER);
++			set_option(options, OPTC_SCHEDULER);
+ 			strncpy(ce->svc.sched_name,
+ 				optarg, IP_VS_SCHEDNAME_MAXLEN - 1);
+ 			break;
+ 		case 'p':
+-			set_option(options, OPT_PERSISTENT);
++			set_option(options, OPTC_PERSISTENT);
+ 			ce->svc.flags |= IP_VS_SVC_F_PERSISTENT;
+ 			ce->svc.timeout =
+ 				parse_timeout(optarg, 1, MAX_TIMEOUT);
+ 			break;
+ 		case 'M':
+-			set_option(options, OPT_NETMASK);
++			set_option(options, OPTC_NETMASK);
+ 			if (ce->svc.af != AF_INET6) {
+ 				parse = parse_netmask(optarg, &ce->svc.netmask);
+ 				if (parse != 1)
+@@ -617,7 +646,7 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 			}
+ 			break;
+ 		case 'r':
+-			set_option(options, OPT_SERVER);
++			set_option(options, OPTC_SERVER);
+ 			ipvs_service_t t_dest = ce->svc;
+ 			parse = parse_service(optarg, &t_dest);
+ 			ce->dest.af = t_dest.af;
+@@ -631,84 +660,84 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 				ce->dest.port = ce->svc.port;
+ 			break;
+ 		case 'i':
+-			set_option(options, OPT_FORWARD);
++			set_option(options, OPTC_FORWARD);
+ 			ce->dest.conn_flags = IP_VS_CONN_F_TUNNEL;
+ 			break;
+ 		case 'g':
+-			set_option(options, OPT_FORWARD);
++			set_option(options, OPTC_FORWARD);
+ 			ce->dest.conn_flags = IP_VS_CONN_F_DROUTE;
+ 			break;
+ 		case 'm':
+-			set_option(options, OPT_FORWARD);
++			set_option(options, OPTC_FORWARD);
+ 			ce->dest.conn_flags = IP_VS_CONN_F_MASQ;
+ 			break;
+ 		case 'w':
+-			set_option(options, OPT_WEIGHT);
++			set_option(options, OPTC_WEIGHT);
+ 			if ((ce->dest.weight =
+ 			     string_to_number(optarg, 0, 65535)) == -1)
+ 				fail(2, "illegal weight specified");
+ 			break;
+ 		case 'x':
+-			set_option(options, OPT_UTHRESHOLD);
++			set_option(options, OPTC_UTHRESHOLD);
+ 			if ((ce->dest.u_threshold =
+ 			     string_to_number(optarg, 0, INT_MAX)) == -1)
+ 				fail(2, "illegal u_threshold specified");
+ 			break;
+ 		case 'y':
+-			set_option(options, OPT_LTHRESHOLD);
++			set_option(options, OPTC_LTHRESHOLD);
+ 			if ((ce->dest.l_threshold =
+ 			     string_to_number(optarg, 0, INT_MAX)) == -1)
+ 				fail(2, "illegal l_threshold specified");
+ 			break;
+ 		case 'c':
+-			set_option(options, OPT_CONNECTION);
++			set_option(options, OPTC_CONNECTION);
+ 			break;
+ 		case 'n':
+-			set_option(options, OPT_NUMERIC);
++			set_option(options, OPTC_NUMERIC);
+ 			*format |= FMT_NUMERIC;
+ 			break;
+ 		case TAG_MCAST_INTERFACE:
+-			set_option(options, OPT_MCAST);
++			set_option(options, OPTC_MCAST);
+ 			strncpy(ce->daemon.mcast_ifn,
+ 				optarg, IP_VS_IFNAME_MAXLEN - 1);
+ 			break;
+ 		case 'I':
+-			set_option(options, OPT_SYNCID);
++			set_option(options, OPTC_SYNCID);
+ 			if ((ce->daemon.syncid =
+ 			     string_to_number(optarg, 0, 255)) == -1)
+ 				fail(2, "illegal syncid specified");
+ 			break;
+ 		case TAG_TIMEOUT:
+-			set_option(options, OPT_TIMEOUT);
++			set_option(options, OPTC_TIMEOUT);
+ 			break;
+ 		case TAG_DAEMON:
+-			set_option(options, OPT_DAEMON);
++			set_option(options, OPTC_DAEMON);
+ 			break;
+ 		case TAG_STATS:
+-			set_option(options, OPT_STATS);
++			set_option(options, OPTC_STATS);
+ 			*format |= FMT_STATS;
+ 			break;
+ 		case TAG_RATE:
+-			set_option(options, OPT_RATE);
++			set_option(options, OPTC_RATE);
+ 			*format |= FMT_RATE;
+ 			break;
+ 		case TAG_THRESHOLDS:
+-			set_option(options, OPT_THRESHOLDS);
++			set_option(options, OPTC_THRESHOLDS);
+ 			*format |= FMT_THRESHOLDS;
+ 			break;
+ 		case TAG_PERSISTENTCONN:
+-			set_option(options, OPT_PERSISTENTCONN);
++			set_option(options, OPTC_PERSISTENTCONN);
+ 			*format |= FMT_PERSISTENTCONN;
+ 			break;
+ 		case TAG_NO_SORT:
+-			set_option(options, OPT_NOSORT	);
++			set_option(options, OPTC_NOSORT);
+ 			*format |= FMT_NOSORT;
+ 			break;
+ 		case TAG_SORT:
+ 			/* Sort is the default, this is a no-op for compatibility */
+ 			break;
+ 		case 'X':
+-			set_option(options, OPT_EXACT);
++			set_option(options, OPTC_EXACT);
+ 			*format |= FMT_EXACT;
+ 			break;
+ 		case '6':
+@@ -720,20 +749,20 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 			}
+ 			break;
+ 		case 'o':
+-			set_option(options, OPT_ONEPACKET);
++			set_option(options, OPTC_ONEPACKET);
+ 			ce->svc.flags |= IP_VS_SVC_F_ONEPACKET;
+ 			break;
+ 		case TAG_PERSISTENCE_ENGINE:
+-			set_option(options, OPT_PERSISTENCE_ENGINE);
++			set_option(options, OPTC_PERSISTENCE_ENGINE);
+ 			strncpy(ce->svc.pe_name, optarg, IP_VS_PENAME_MAXLEN);
+ 			break;
+ 		case 'b':
+-			set_option(options, OPT_SCHED_FLAGS);
++			set_option(options, OPTC_SCHED_FLAGS);
+ 			snprintf(sched_flags_arg, sizeof(sched_flags_arg),
+ 				"%s", optarg);
+ 			break;
+ 		case TAG_MCAST_GROUP:
+-			set_option(options, OPT_MCAST_GROUP);
++			set_option(options, OPTC_MCAST_GROUP);
+ 			if (strchr(optarg, ':')) {
+ 				if (inet_pton(AF_INET6, optarg,
+ 					      &ce->daemon.mcast_group) <= 0 ||
+@@ -753,21 +782,21 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 			}
+ 			break;
+ 		case TAG_MCAST_PORT:
+-			set_option(options, OPT_MCAST_PORT);
++			set_option(options, OPTC_MCAST_PORT);
+ 			parse = string_to_number(optarg, 1, 65535);
+ 			if (parse == -1)
+ 				fail(2, "illegal mcast-port specified");
+ 			ce->daemon.mcast_port = parse;
+ 			break;
+ 		case TAG_MCAST_TTL:
+-			set_option(options, OPT_MCAST_TTL);
++			set_option(options, OPTC_MCAST_TTL);
+ 			parse = string_to_number(optarg, 1, 255);
+ 			if (parse == -1)
+ 				fail(2, "illegal mcast-ttl specified");
+ 			ce->daemon.mcast_ttl = parse;
+ 			break;
+ 		case TAG_SYNC_MAXLEN:
+-			set_option(options, OPT_SYNC_MAXLEN);
++			set_option(options, OPTC_SYNC_MAXLEN);
+ 			parse = string_to_number(optarg, 1, 65535 - 20 - 8);
+ 			if (parse == -1)
+ 				fail(2, "illegal sync-maxlen specified");
+@@ -845,7 +874,7 @@ static int restore_table(int argc, char **argv, int reading_stdin)
+ static int process_options(int argc, char **argv, int reading_stdin)
+ {
+ 	struct ipvs_command_entry ce;
+-	unsigned int options = OPT_NONE;
++	unsigned long long options = OPT_NONE;
+ 	unsigned int format = FMT_NONE;
+ 	int result = 0;
  
- 	/* set the IP_VS_CONN_F_NOOUTPUT flag if not masquerading/NAT */
- 	if ((conn_flags & IP_VS_CONN_F_FWD_MASK) != IP_VS_CONN_F_MASQ) {
-@@ -2967,6 +2968,7 @@ static const struct nla_policy ip_vs_dest_policy[IPVS_DEST_ATTR_MAX + 1] = {
- 	[IPVS_DEST_ATTR_ADDR_FAMILY]	= { .type = NLA_U16 },
- 	[IPVS_DEST_ATTR_TUN_TYPE]	= { .type = NLA_U8 },
- 	[IPVS_DEST_ATTR_TUN_PORT]	= { .type = NLA_U16 },
-+	[IPVS_DEST_ATTR_TUN_FLAGS]	= { .type = NLA_U16 },
- };
+@@ -1164,7 +1193,7 @@ static unsigned int parse_sched_flags(const char *sched, char *optarg)
+ }
  
- static int ip_vs_genl_fill_stats(struct sk_buff *skb, int container_type,
-@@ -3273,6 +3275,8 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
- 		       dest->tun_type) ||
- 	    nla_put_be16(skb, IPVS_DEST_ATTR_TUN_PORT,
- 			 dest->tun_port) ||
-+	    nla_put_u16(skb, IPVS_DEST_ATTR_TUN_FLAGS,
-+			dest->tun_flags) ||
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_U_THRESH, dest->u_threshold) ||
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_L_THRESH, dest->l_threshold) ||
- 	    nla_put_u32(skb, IPVS_DEST_ATTR_ACTIVE_CONNS,
-@@ -3393,7 +3397,8 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- 	/* If a full entry was requested, check for the additional fields */
- 	if (full_entry) {
- 		struct nlattr *nla_fwd, *nla_weight, *nla_u_thresh,
--			      *nla_l_thresh, *nla_tun_type, *nla_tun_port;
-+			      *nla_l_thresh, *nla_tun_type, *nla_tun_port,
-+			      *nla_tun_flags;
+ static void
+-generic_opt_check(int command, int options)
++generic_opt_check(int command, unsigned long long options)
+ {
+ 	int i, j;
+ 	int last = 0, count = 0;
+@@ -1173,7 +1202,7 @@ generic_opt_check(int command, int options)
+ 	i = command - CMD_NONE -1;
  
- 		nla_fwd		= attrs[IPVS_DEST_ATTR_FWD_METHOD];
- 		nla_weight	= attrs[IPVS_DEST_ATTR_WEIGHT];
-@@ -3401,6 +3406,7 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- 		nla_l_thresh	= attrs[IPVS_DEST_ATTR_L_THRESH];
- 		nla_tun_type	= attrs[IPVS_DEST_ATTR_TUN_TYPE];
- 		nla_tun_port	= attrs[IPVS_DEST_ATTR_TUN_PORT];
-+		nla_tun_flags	= attrs[IPVS_DEST_ATTR_TUN_FLAGS];
- 
- 		if (!(nla_fwd && nla_weight && nla_u_thresh && nla_l_thresh))
- 			return -EINVAL;
-@@ -3416,6 +3422,9 @@ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
- 
- 		if (nla_tun_port)
- 			udest->tun_port = nla_get_be16(nla_tun_port);
-+
-+		if (nla_tun_flags)
-+			udest->tun_flags = nla_get_u16(nla_tun_flags);
+ 	for (j = 0; j < NUMBER_OF_OPT; j++) {
+-		if (!(options & (1<<j))) {
++		if (!(options & (1ULL<<j))) {
+ 			if (commands_v_options[i][j] == '+')
+ 				fail(2, "You need to supply the '%s' "
+ 				     "option for the '%s' command",
+@@ -1197,15 +1226,6 @@ generic_opt_check(int command, int options)
  	}
+ }
  
- 	return 0;
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 8d6f94b67772..d3392b5b243f 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -40,6 +40,7 @@
- #include <net/ipv6.h>
- #include <net/ip6_route.h>
- #include <net/ip_tunnels.h>
-+#include <net/ip6_checksum.h>
- #include <net/addrconf.h>
- #include <linux/icmpv6.h>
- #include <linux/netfilter.h>
-@@ -385,8 +386,13 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
- 		mtu = dst_mtu(&rt->dst) - sizeof(struct iphdr);
- 		if (!dest)
- 			goto err_put;
--		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
-+		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
- 			mtu -= sizeof(struct udphdr) + sizeof(struct guehdr);
-+			if ((dest->tun_flags &
-+			     IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM) &&
-+			    skb->ip_summed == CHECKSUM_PARTIAL)
-+				mtu -= GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
-+		}
- 		if (mtu < 68) {
- 			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
- 			goto err_put;
-@@ -540,8 +546,13 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
- 		mtu = dst_mtu(&rt->dst) - sizeof(struct ipv6hdr);
- 		if (!dest)
- 			goto err_put;
--		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
-+		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
- 			mtu -= sizeof(struct udphdr) + sizeof(struct guehdr);
-+			if ((dest->tun_flags &
-+			     IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM) &&
-+			    skb->ip_summed == CHECKSUM_PARTIAL)
-+				mtu -= GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
-+		}
- 		if (mtu < IPV6_MIN_MTU) {
- 			IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
- 				     IPV6_MIN_MTU);
-@@ -1006,17 +1017,55 @@ ipvs_gue_encap(struct net *net, struct sk_buff *skb,
- 	__be16 sport = udp_flow_src_port(net, skb, 0, 0, false);
- 	struct udphdr  *udph;	/* Our new UDP header */
- 	struct guehdr  *gueh;	/* Our new GUE header */
-+	size_t hdrlen, optlen = 0;
-+	void *data;
-+	bool need_priv = false;
-+
-+	if ((cp->dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM) &&
-+	    skb->ip_summed == CHECKSUM_PARTIAL) {
-+		optlen += GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
-+		need_priv = true;
-+	}
+-static inline const char *
+-opt2name(int option)
+-{
+-	const char **ptr;
+-	for (ptr = optnames; option > 1; option >>= 1, ptr++);
+-
+-	return *ptr;
+-}
+-
+ static void
+ set_command(int *cmd, const int newcmd)
+ {
+@@ -1215,10 +1235,11 @@ set_command(int *cmd, const int newcmd)
+ }
  
--	skb_push(skb, sizeof(struct guehdr));
-+	hdrlen = sizeof(struct guehdr) + optlen;
-+
-+	skb_push(skb, hdrlen);
+ static void
+-set_option(unsigned int *options, unsigned int option)
++set_option(unsigned long long *options, int optc)
+ {
++	unsigned long long option = 1ULL<<optc;
+ 	if (*options & option)
+-		fail(2, "multiple '%s' options specified", opt2name(option));
++		fail(2, "multiple '%s' options specified", optnames[optc]);
+ 	*options |= option;
+ }
  
- 	gueh = (struct guehdr *)skb->data;
- 
- 	gueh->control = 0;
- 	gueh->version = 0;
--	gueh->hlen = 0;
-+	gueh->hlen = optlen >> 2;
- 	gueh->flags = 0;
- 	gueh->proto_ctype = *next_protocol;
- 
-+	data = &gueh[1];
-+
-+	if (need_priv) {
-+		__be32 *flags = data;
-+		u16 csum_start = skb_checksum_start_offset(skb);
-+		__be16 *pd = data;
-+
-+		gueh->flags |= GUE_FLAG_PRIV;
-+		*flags = 0;
-+		data += GUE_LEN_PRIV;
-+
-+		if (csum_start < hdrlen)
-+			return -EINVAL;
-+
-+		csum_start -= hdrlen;
-+		pd[0] = htons(csum_start);
-+		pd[1] = htons(csum_start + skb->csum_offset);
-+
-+		if (!skb_is_gso(skb)) {
-+			skb->ip_summed = CHECKSUM_NONE;
-+			skb->encapsulation = 0;
-+		}
-+
-+		*flags |= GUE_PFLAG_REMCSUM;
-+		data += GUE_PLEN_REMCSUM;
-+	}
-+
- 	skb_push(skb, sizeof(struct udphdr));
- 	skb_reset_transport_header(skb);
- 
-@@ -1070,6 +1119,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	unsigned int max_headroom;		/* The extra header space needed */
- 	int ret, local;
- 	int tun_type, gso_type;
-+	int tun_flags;
- 
- 	EnterFunction(10);
- 
-@@ -1092,9 +1142,19 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct iphdr);
- 
- 	tun_type = cp->dest->tun_type;
-+	tun_flags = cp->dest->tun_flags;
- 
--	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
--		max_headroom += sizeof(struct udphdr) + sizeof(struct guehdr);
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
-+		size_t gue_hdrlen, gue_optlen = 0;
-+
-+		if ((tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM) &&
-+		    skb->ip_summed == CHECKSUM_PARTIAL) {
-+			gue_optlen += GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
-+		}
-+		gue_hdrlen = sizeof(struct guehdr) + gue_optlen;
-+
-+		max_headroom += sizeof(struct udphdr) + gue_hdrlen;
-+	}
- 
- 	/* We only care about the df field if sysctl_pmtu_disc(ipvs) is set */
- 	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
-@@ -1105,8 +1165,17 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		goto tx_error;
- 
- 	gso_type = __tun_gso_type_mask(AF_INET, cp->af);
--	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
--		gso_type |= SKB_GSO_UDP_TUNNEL;
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
-+		if ((tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM) ||
-+		    (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM))
-+			gso_type |= SKB_GSO_UDP_TUNNEL_CSUM;
-+		else
-+			gso_type |= SKB_GSO_UDP_TUNNEL;
-+		if ((tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM) &&
-+		    skb->ip_summed == CHECKSUM_PARTIAL) {
-+			gso_type |= SKB_GSO_TUNNEL_REMCSUM;
-+		}
-+	}
- 
- 	if (iptunnel_handle_offloads(skb, gso_type))
- 		goto tx_error;
-@@ -1115,8 +1184,19 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 
- 	skb_set_inner_ipproto(skb, next_protocol);
- 
--	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
--		ipvs_gue_encap(net, skb, cp, &next_protocol);
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
-+		bool check = false;
-+
-+		if (ipvs_gue_encap(net, skb, cp, &next_protocol))
-+			goto tx_error;
-+
-+		if ((tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM) ||
-+		    (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM))
-+			check = true;
-+
-+		udp_set_csum(!check, skb, saddr, cp->daddr.ip, skb->len);
-+	}
-+
- 
- 	skb_push(skb, sizeof(struct iphdr));
- 	skb_reset_network_header(skb);
-@@ -1174,6 +1254,7 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	unsigned int max_headroom;	/* The extra header space needed */
- 	int ret, local;
- 	int tun_type, gso_type;
-+	int tun_flags;
- 
- 	EnterFunction(10);
- 
-@@ -1197,9 +1278,19 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr);
- 
- 	tun_type = cp->dest->tun_type;
-+	tun_flags = cp->dest->tun_flags;
- 
--	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
--		max_headroom += sizeof(struct udphdr) + sizeof(struct guehdr);
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
-+		size_t gue_hdrlen, gue_optlen = 0;
-+
-+		if ((tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM) &&
-+		    skb->ip_summed == CHECKSUM_PARTIAL) {
-+			gue_optlen += GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
-+		}
-+		gue_hdrlen = sizeof(struct guehdr) + gue_optlen;
-+
-+		max_headroom += sizeof(struct udphdr) + gue_hdrlen;
-+	}
- 
- 	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
- 					 &next_protocol, &payload_len,
-@@ -1208,8 +1299,17 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		goto tx_error;
- 
- 	gso_type = __tun_gso_type_mask(AF_INET6, cp->af);
--	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
--		gso_type |= SKB_GSO_UDP_TUNNEL;
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
-+		if ((tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM) ||
-+		    (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM))
-+			gso_type |= SKB_GSO_UDP_TUNNEL_CSUM;
-+		else
-+			gso_type |= SKB_GSO_UDP_TUNNEL;
-+		if ((tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM) &&
-+		    skb->ip_summed == CHECKSUM_PARTIAL) {
-+			gso_type |= SKB_GSO_TUNNEL_REMCSUM;
-+		}
-+	}
- 
- 	if (iptunnel_handle_offloads(skb, gso_type))
- 		goto tx_error;
-@@ -1218,8 +1318,18 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
- 
- 	skb_set_inner_ipproto(skb, next_protocol);
- 
--	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE)
--		ipvs_gue_encap(net, skb, cp, &next_protocol);
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
-+		bool check = false;
-+
-+		if (ipvs_gue_encap(net, skb, cp, &next_protocol))
-+			goto tx_error;
-+
-+		if ((tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM) ||
-+		    (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM))
-+			check = true;
-+
-+		udp6_set_csum(!check, skb, &saddr, &cp->daddr.in6, skb->len);
-+	}
- 
- 	skb_push(skb, sizeof(struct ipv6hdr));
- 	skb_reset_network_header(skb);
 -- 
 2.21.0
 
