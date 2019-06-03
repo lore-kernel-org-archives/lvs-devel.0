@@ -1,42 +1,88 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH v4] ipvs: add checksum support for gue encapsulation
-Date: Fri, 31 May 2019 18:22:27 +0200
-Message-ID: <20190531162227.5mbbqqybn6jwausj@salvia>
-References: <20190530001641.504-1-hengqing.hu@gmail.com>
- <alpine.LFD.2.21.1905301008470.4257@ja.home.ssi.bg>
- <20190531083741.dxsat27bnsy72wdv@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: memory leak in nf_hook_entries_grow
+Date: Tue, 4 Jun 2019 00:32:22 +0300 (EEST)
+Message-ID: <alpine.LFD.2.21.1906040021510.3876@ja.home.ssi.bg>
+References: <0000000000002b2262058a70001d@google.com>
 Mime-Version: 1.0
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20190531083741.dxsat27bnsy72wdv@verge.net.au>
+In-Reply-To: <0000000000002b2262058a70001d@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: Julian Anastasov <ja@ssi.bg>, Jacky Hu <hengqing.hu@gmail.com>, jacky.hu@walmart.com, jason.niesz@walmart.com, Wensong Zhang <wensong@linux-vs.org>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+To: syzbot <syzbot+722da59ccb264bc19910@syzkaller.appspotmail.com>
+Cc: coreteam@netfilter.org, "David S. Miller" <davem@davemloft.net>, fw@strlen.de, kadlec@blackhole.kfki.hu, linux-kernel <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, lvs-devel@vger.kernel.org
 
-On Fri, May 31, 2019 at 10:37:41AM +0200, Simon Horman wrote:
-> On Thu, May 30, 2019 at 10:10:15AM +0300, Julian Anastasov wrote:
-> > 
-> > 	Hello,
-> > 
-> > On Thu, 30 May 2019, Jacky Hu wrote:
-> > 
-> > > Add checksum support for gue encapsulation with the tun_flags parameter,
-> > > which could be one of the values below:
-> > > IP_VS_TUNNEL_ENCAP_FLAG_NOCSUM
-> > > IP_VS_TUNNEL_ENCAP_FLAG_CSUM
-> > > IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM
-> > > 
-> > > Signed-off-by: Jacky Hu <hengqing.hu@gmail.com>
-> > 
-> > 	Looks good to me, thanks!
-> > 
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> 
-> Likewise, thanks.
-> 
-> Pablo, pleas consider applying this to nf-next.
 
-Applied, thanks Simon.
+	Hello,
+
+On Mon, 3 Jun 2019, syzbot wrote:
+
+> Hello,
+> 
+> syzbot found the following crash on:
+> 
+> HEAD commit:    3ab4436f Merge tag 'nfsd-5.2-1' of git://linux-nfs.org/~bf..
+> git tree:       upstream
+> console output: https://syzkaller.appspot.com/x/log.txt?x=15feaf82a00000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=50393f7bfe444ff6
+> dashboard link: https://syzkaller.appspot.com/bug?extid=722da59ccb264bc19910
+> compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12f02772a00000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1657b80ea00000
+> 
+> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> Reported-by: syzbot+722da59ccb264bc19910@syzkaller.appspotmail.com
+> 
+> 035][ T7273] IPVS: ftp: loaded support on port[0] = 21
+> BUG: memory leak
+> unreferenced object 0xffff88810acd8a80 (size 96):
+>  comm "syz-executor073", pid 7254, jiffies 4294950560 (age 22.250s)
+>  hex dump (first 32 bytes):
+>    02 00 00 00 00 00 00 00 50 8b bb 82 ff ff ff ff  ........P.......
+>    00 00 00 00 00 00 00 00 00 77 bb 82 ff ff ff ff  .........w......
+>  backtrace:
+>    [<0000000013db61f1>] kmemleak_alloc_recursive include/linux/kmemleak.h:55
+>    [inline]
+>    [<0000000013db61f1>] slab_post_alloc_hook mm/slab.h:439 [inline]
+>    [<0000000013db61f1>] slab_alloc_node mm/slab.c:3269 [inline]
+>    [<0000000013db61f1>] kmem_cache_alloc_node_trace+0x15b/0x2a0 mm/slab.c:3597
+>    [<000000001a27307d>] __do_kmalloc_node mm/slab.c:3619 [inline]
+>    [<000000001a27307d>] __kmalloc_node+0x38/0x50 mm/slab.c:3627
+>    [<0000000025054add>] kmalloc_node include/linux/slab.h:590 [inline]
+>    [<0000000025054add>] kvmalloc_node+0x4a/0xd0 mm/util.c:431
+>    [<0000000050d1bc00>] kvmalloc include/linux/mm.h:637 [inline]
+>    [<0000000050d1bc00>] kvzalloc include/linux/mm.h:645 [inline]
+>    [<0000000050d1bc00>] allocate_hook_entries_size+0x3b/0x60
+>    net/netfilter/core.c:61
+>    [<00000000e8abe142>] nf_hook_entries_grow+0xae/0x270
+>    net/netfilter/core.c:128
+>    [<000000004b94797c>] __nf_register_net_hook+0x9a/0x170
+>    net/netfilter/core.c:337
+>    [<00000000d1545cbc>] nf_register_net_hook+0x34/0xc0
+>    net/netfilter/core.c:464
+>    [<00000000876c9b55>] nf_register_net_hooks+0x53/0xc0
+>    net/netfilter/core.c:480
+>    [<000000002ea868e0>] __ip_vs_init+0xe8/0x170
+>    net/netfilter/ipvs/ip_vs_core.c:2280
+
+	After commit "ipvs: Fix use-after-free in ip_vs_in" we planned
+to call nf_register_net_hooks() only when rule is created but this
+is net-next material and we should not leave leak in the error path.
+I'll post a patch that adds .init handler for ipvs_core_dev_ops, so
+that nf_register_net_hooks() is called there.
+
+> ---
+> This bug is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
+> 
+> syzbot will keep track of this bug report. See:
+> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+> syzbot can test patches for this bug, for details see:
+> https://goo.gl/tpsmEJ#testing-patches
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
