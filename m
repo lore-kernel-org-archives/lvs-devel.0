@@ -1,88 +1,152 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: memory leak in nf_hook_entries_grow
-Date: Tue, 4 Jun 2019 00:32:22 +0300 (EEST)
-Message-ID: <alpine.LFD.2.21.1906040021510.3876@ja.home.ssi.bg>
-References: <0000000000002b2262058a70001d@google.com>
+From: Sasha Levin <sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 06/49] ipvs: Fix use-after-free in ip_vs_in
+Date: Sat,  8 Jun 2019 07:41:47 -0400
+Message-ID: <20190608114232.8731-6-sashal@kernel.org>
+References: <20190608114232.8731-1-sashal@kernel.org>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <0000000000002b2262058a70001d@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+Return-path: <stable-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1559994164;
+        bh=X836q6GtqZFiQBKWjA3+/n6fBmXPiITAFVPbjGmCeqI=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=oGi1k917yDXz1PVsrObTaLdBlxG0F1xYY8drbgYnygEH5Q6hAINn+S3nKYBioK7NC
+         drhp6PM62USoJnn+wJCc+LFCJx3YXpxG3V0lJ4Lu5vERKdlwhwSyIkA/7f/A5+6hBS
+         yhAXN4c7WMibpZOCbOGYywNwwa28x1oQEGw9dCDE=
+In-Reply-To: <20190608114232.8731-1-sashal@kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: syzbot <syzbot+722da59ccb264bc19910@syzkaller.appspotmail.com>
-Cc: coreteam@netfilter.org, "David S. Miller" <davem@davemloft.net>, fw@strlen.de, kadlec@blackhole.kfki.hu, linux-kernel <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, lvs-devel@vger.kernel.org
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: YueHaibing <yuehaibing@huawei.com>, Hulk Robot <hulkci@huawei.com>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
+From: YueHaibing <yuehaibing@huawei.com>
 
-	Hello,
+[ Upstream commit 719c7d563c17b150877cee03a4b812a424989dfa ]
 
-On Mon, 3 Jun 2019, syzbot wrote:
+BUG: KASAN: use-after-free in ip_vs_in.part.29+0xe8/0xd20 [ip_vs]
+Read of size 4 at addr ffff8881e9b26e2c by task sshd/5603
 
-> Hello,
-> 
-> syzbot found the following crash on:
-> 
-> HEAD commit:    3ab4436f Merge tag 'nfsd-5.2-1' of git://linux-nfs.org/~bf..
-> git tree:       upstream
-> console output: https://syzkaller.appspot.com/x/log.txt?x=15feaf82a00000
-> kernel config:  https://syzkaller.appspot.com/x/.config?x=50393f7bfe444ff6
-> dashboard link: https://syzkaller.appspot.com/bug?extid=722da59ccb264bc19910
-> compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12f02772a00000
-> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1657b80ea00000
-> 
-> IMPORTANT: if you fix the bug, please add the following tag to the commit:
-> Reported-by: syzbot+722da59ccb264bc19910@syzkaller.appspotmail.com
-> 
-> 035][ T7273] IPVS: ftp: loaded support on port[0] = 21
-> BUG: memory leak
-> unreferenced object 0xffff88810acd8a80 (size 96):
->  comm "syz-executor073", pid 7254, jiffies 4294950560 (age 22.250s)
->  hex dump (first 32 bytes):
->    02 00 00 00 00 00 00 00 50 8b bb 82 ff ff ff ff  ........P.......
->    00 00 00 00 00 00 00 00 00 77 bb 82 ff ff ff ff  .........w......
->  backtrace:
->    [<0000000013db61f1>] kmemleak_alloc_recursive include/linux/kmemleak.h:55
->    [inline]
->    [<0000000013db61f1>] slab_post_alloc_hook mm/slab.h:439 [inline]
->    [<0000000013db61f1>] slab_alloc_node mm/slab.c:3269 [inline]
->    [<0000000013db61f1>] kmem_cache_alloc_node_trace+0x15b/0x2a0 mm/slab.c:3597
->    [<000000001a27307d>] __do_kmalloc_node mm/slab.c:3619 [inline]
->    [<000000001a27307d>] __kmalloc_node+0x38/0x50 mm/slab.c:3627
->    [<0000000025054add>] kmalloc_node include/linux/slab.h:590 [inline]
->    [<0000000025054add>] kvmalloc_node+0x4a/0xd0 mm/util.c:431
->    [<0000000050d1bc00>] kvmalloc include/linux/mm.h:637 [inline]
->    [<0000000050d1bc00>] kvzalloc include/linux/mm.h:645 [inline]
->    [<0000000050d1bc00>] allocate_hook_entries_size+0x3b/0x60
->    net/netfilter/core.c:61
->    [<00000000e8abe142>] nf_hook_entries_grow+0xae/0x270
->    net/netfilter/core.c:128
->    [<000000004b94797c>] __nf_register_net_hook+0x9a/0x170
->    net/netfilter/core.c:337
->    [<00000000d1545cbc>] nf_register_net_hook+0x34/0xc0
->    net/netfilter/core.c:464
->    [<00000000876c9b55>] nf_register_net_hooks+0x53/0xc0
->    net/netfilter/core.c:480
->    [<000000002ea868e0>] __ip_vs_init+0xe8/0x170
->    net/netfilter/ipvs/ip_vs_core.c:2280
+CPU: 0 PID: 5603 Comm: sshd Not tainted 4.19.39+ #30
+Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2011
+Call Trace:
+ dump_stack+0x71/0xab
+ print_address_description+0x6a/0x270
+ kasan_report+0x179/0x2c0
+ ip_vs_in.part.29+0xe8/0xd20 [ip_vs]
+ ip_vs_in+0xd8/0x170 [ip_vs]
+ nf_hook_slow+0x5f/0xe0
+ __ip_local_out+0x1d5/0x250
+ ip_local_out+0x19/0x60
+ __tcp_transmit_skb+0xba1/0x14f0
+ tcp_write_xmit+0x41f/0x1ed0
+ ? _copy_from_iter_full+0xca/0x340
+ __tcp_push_pending_frames+0x52/0x140
+ tcp_sendmsg_locked+0x787/0x1600
+ ? tcp_sendpage+0x60/0x60
+ ? inet_sk_set_state+0xb0/0xb0
+ tcp_sendmsg+0x27/0x40
+ sock_sendmsg+0x6d/0x80
+ sock_write_iter+0x121/0x1c0
+ ? sock_sendmsg+0x80/0x80
+ __vfs_write+0x23e/0x370
+ vfs_write+0xe7/0x230
+ ksys_write+0xa1/0x120
+ ? __ia32_sys_read+0x50/0x50
+ ? __audit_syscall_exit+0x3ce/0x450
+ do_syscall_64+0x73/0x200
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x7ff6f6147c60
+Code: 73 01 c3 48 8b 0d 28 12 2d 00 f7 d8 64 89 01 48 83 c8 ff c3 66 0f 1f 44 00 00 83 3d 5d 73 2d 00 00 75 10 b8 01 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 31 c3 48 83
+RSP: 002b:00007ffd772ead18 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 0000000000000034 RCX: 00007ff6f6147c60
+RDX: 0000000000000034 RSI: 000055df30a31270 RDI: 0000000000000003
+RBP: 000055df30a31270 R08: 0000000000000000 R09: 0000000000000000
+R10: 00007ffd772ead70 R11: 0000000000000246 R12: 00007ffd772ead74
+R13: 00007ffd772eae20 R14: 00007ffd772eae24 R15: 000055df2f12ddc0
 
-	After commit "ipvs: Fix use-after-free in ip_vs_in" we planned
-to call nf_register_net_hooks() only when rule is created but this
-is net-next material and we should not leave leak in the error path.
-I'll post a patch that adds .init handler for ipvs_core_dev_ops, so
-that nf_register_net_hooks() is called there.
+Allocated by task 6052:
+ kasan_kmalloc+0xa0/0xd0
+ __kmalloc+0x10a/0x220
+ ops_init+0x97/0x190
+ register_pernet_operations+0x1ac/0x360
+ register_pernet_subsys+0x24/0x40
+ 0xffffffffc0ea016d
+ do_one_initcall+0x8b/0x253
+ do_init_module+0xe3/0x335
+ load_module+0x2fc0/0x3890
+ __do_sys_finit_module+0x192/0x1c0
+ do_syscall_64+0x73/0x200
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
 
-> ---
-> This bug is generated by a bot. It may contain errors.
-> See https://goo.gl/tpsmEJ for more information about syzbot.
-> syzbot engineers can be reached at syzkaller@googlegroups.com.
-> 
-> syzbot will keep track of this bug report. See:
-> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-> syzbot can test patches for this bug, for details see:
-> https://goo.gl/tpsmEJ#testing-patches
+Freed by task 6067:
+ __kasan_slab_free+0x130/0x180
+ kfree+0x90/0x1a0
+ ops_free_list.part.7+0xa6/0xc0
+ unregister_pernet_operations+0x18b/0x1f0
+ unregister_pernet_subsys+0x1d/0x30
+ ip_vs_cleanup+0x1d/0xd2f [ip_vs]
+ __x64_sys_delete_module+0x20c/0x300
+ do_syscall_64+0x73/0x200
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
 
-Regards
+The buggy address belongs to the object at ffff8881e9b26600 which belongs to the cache kmalloc-4096 of size 4096
+The buggy address is located 2092 bytes inside of 4096-byte region [ffff8881e9b26600, ffff8881e9b27600)
+The buggy address belongs to the page:
+page:ffffea0007a6c800 count:1 mapcount:0 mapping:ffff888107c0e600 index:0x0 compound_mapcount: 0
+flags: 0x17ffffc0008100(slab|head)
+raw: 0017ffffc0008100 dead000000000100 dead000000000200 ffff888107c0e600
+raw: 0000000000000000 0000000080070007 00000001ffffffff 0000000000000000
+page dumped because: kasan: bad access detected
 
---
-Julian Anastasov <ja@ssi.bg>
+while unregistering ipvs module, ops_free_list calls
+__ip_vs_cleanup, then nf_unregister_net_hooks be called to
+do remove nf hook entries. It need a RCU period to finish,
+however net->ipvs is set to NULL immediately, which will
+trigger NULL pointer dereference when a packet is hooked
+and handled by ip_vs_in where net->ipvs is dereferenced.
+
+Another scene is ops_free_list call ops_free to free the
+net_generic directly while __ip_vs_cleanup finished, then
+calling ip_vs_in will triggers use-after-free.
+
+This patch moves nf_unregister_net_hooks from __ip_vs_cleanup()
+to __ip_vs_dev_cleanup(),  where rcu_barrier() is called by
+unregister_pernet_device -> unregister_pernet_operations,
+that will do the needed grace period.
+
+Reported-by: Hulk Robot <hulkci@huawei.com>
+Fixes: efe41606184e ("ipvs: convert to use pernet nf_hook api")
+Suggested-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: YueHaibing <yuehaibing@huawei.com>
+Acked-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Simon Horman <horms@verge.net.au>
+Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ net/netfilter/ipvs/ip_vs_core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index a42c1bc7c698..62c0e80dcd71 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2280,7 +2280,6 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+-	nf_unregister_net_hooks(net, ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+ 	ip_vs_conn_net_cleanup(ipvs);
+ 	ip_vs_app_net_cleanup(ipvs);
+@@ -2295,6 +2294,7 @@ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	EnterFunction(2);
++	nf_unregister_net_hooks(net, ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
+ 	ipvs->enable = 0;	/* Disable packet reception */
+ 	smp_wmb();
+ 	ip_vs_sync_net_cleanup(ipvs);
+-- 
+2.20.1
+
