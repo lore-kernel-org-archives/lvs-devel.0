@@ -1,19 +1,19 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.14 04/31] ipvs: Fix use-after-free in ip_vs_in
-Date: Sat,  8 Jun 2019 07:46:15 -0400
-Message-ID: <20190608114646.9415-4-sashal@kernel.org>
-References: <20190608114646.9415-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.1 13/70] ipvs: Fix use-after-free in ip_vs_in
+Date: Sat,  8 Jun 2019 07:38:52 -0400
+Message-ID: <20190608113950.8033-13-sashal@kernel.org>
+References: <20190608113950.8033-1-sashal@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <linux-kernel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1559994412;
-        bh=Z7uhBh0Wb9NnA8EX92lFbl7JWfZGdTbu64NvuQKqewE=;
+        s=default; t=1559994008;
+        bh=JXrhQNhjrDdbb4oqxmpIeeXL/JLVBMnK2x4IvI4wPZc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=gvHgKqAKvugwQGzs0tbUYsD+QX/Qs3pTZ0o++rbxjAoEPzxjVz6amucClnxUIS99v
-         FJD7IBh+dyjbtp74vxlOSGYxbcmbMlKU7mVvOO9RwRr0d0tXRKNaXLNZ3s82zAyz0N
-         2GtgD266QOW+HzeUU/v4KzWnkT+UlABaa009g/rQ=
-In-Reply-To: <20190608114646.9415-1-sashal@kernel.org>
+        b=wntV4+6U2YhgG2r3cbScRaXwJ6rcM1ZFLtubW5aaq63iBK+PSzSZsEYYJK8QtccwL
+         2Gv0y/1zp9Mr8JiFoHWcymqEWOcfg4FluJi/PRy9N3f4wBX7YKaynXzoaeKJ7xXjQ0
+         yMEp+F2sEc38qApfBHGkWXL3VRBPQksuUqA6dDa0=
+In-Reply-To: <20190608113950.8033-1-sashal@kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -128,10 +128,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index d1c0378144f3..ee97ce176b9a 100644
+index 14457551bcb4..8ebf21149ec3 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2268,7 +2268,6 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+@@ -2312,7 +2312,6 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
  {
  	struct netns_ipvs *ipvs = net_ipvs(net);
  
@@ -139,7 +139,7 @@ index d1c0378144f3..ee97ce176b9a 100644
  	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
  	ip_vs_conn_net_cleanup(ipvs);
  	ip_vs_app_net_cleanup(ipvs);
-@@ -2283,6 +2282,7 @@ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
+@@ -2327,6 +2326,7 @@ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
  {
  	struct netns_ipvs *ipvs = net_ipvs(net);
  	EnterFunction(2);
