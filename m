@@ -1,20 +1,20 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 06/49] ipvs: Fix use-after-free in ip_vs_in
-Date: Sat,  8 Jun 2019 07:41:47 -0400
-Message-ID: <20190608114232.8731-6-sashal@kernel.org>
-References: <20190608114232.8731-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 04/31] ipvs: Fix use-after-free in ip_vs_in
+Date: Sat,  8 Jun 2019 07:46:15 -0400
+Message-ID: <20190608114646.9415-4-sashal@kernel.org>
+References: <20190608114646.9415-1-sashal@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <stable-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1559994164;
-        bh=X836q6GtqZFiQBKWjA3+/n6fBmXPiITAFVPbjGmCeqI=;
+        s=default; t=1559994412;
+        bh=Z7uhBh0Wb9NnA8EX92lFbl7JWfZGdTbu64NvuQKqewE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=oGi1k917yDXz1PVsrObTaLdBlxG0F1xYY8drbgYnygEH5Q6hAINn+S3nKYBioK7NC
-         drhp6PM62USoJnn+wJCc+LFCJx3YXpxG3V0lJ4Lu5vERKdlwhwSyIkA/7f/A5+6hBS
-         yhAXN4c7WMibpZOCbOGYywNwwa28x1oQEGw9dCDE=
-In-Reply-To: <20190608114232.8731-1-sashal@kernel.org>
-Sender: stable-owner@vger.kernel.org
+        b=gvHgKqAKvugwQGzs0tbUYsD+QX/Qs3pTZ0o++rbxjAoEPzxjVz6amucClnxUIS99v
+         FJD7IBh+dyjbtp74vxlOSGYxbcmbMlKU7mVvOO9RwRr0d0tXRKNaXLNZ3s82zAyz0N
+         2GtgD266QOW+HzeUU/v4KzWnkT+UlABaa009g/rQ=
+In-Reply-To: <20190608114646.9415-1-sashal@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
@@ -128,10 +128,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index a42c1bc7c698..62c0e80dcd71 100644
+index d1c0378144f3..ee97ce176b9a 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2280,7 +2280,6 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
+@@ -2268,7 +2268,6 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
  {
  	struct netns_ipvs *ipvs = net_ipvs(net);
  
@@ -139,7 +139,7 @@ index a42c1bc7c698..62c0e80dcd71 100644
  	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
  	ip_vs_conn_net_cleanup(ipvs);
  	ip_vs_app_net_cleanup(ipvs);
-@@ -2295,6 +2294,7 @@ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
+@@ -2283,6 +2282,7 @@ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
  {
  	struct netns_ipvs *ipvs = net_ipvs(net);
  	EnterFunction(2);
