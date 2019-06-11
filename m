@@ -1,152 +1,91 @@
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 5.1 13/70] ipvs: Fix use-after-free in ip_vs_in
-Date: Sat,  8 Jun 2019 07:38:52 -0400
-Message-ID: <20190608113950.8033-13-sashal@kernel.org>
-References: <20190608113950.8033-1-sashal@kernel.org>
+From: Eric Biggers <ebiggers@kernel.org>
+Subject: Re: memory leak in start_sync_thread
+Date: Mon, 10 Jun 2019 18:06:13 -0700
+Message-ID: <20190611010612.GD220379@gmail.com>
+References: <0000000000006d7e520589f6d3a9@google.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1559994008;
-        bh=JXrhQNhjrDdbb4oqxmpIeeXL/JLVBMnK2x4IvI4wPZc=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=wntV4+6U2YhgG2r3cbScRaXwJ6rcM1ZFLtubW5aaq63iBK+PSzSZsEYYJK8QtccwL
-         2Gv0y/1zp9Mr8JiFoHWcymqEWOcfg4FluJi/PRy9N3f4wBX7YKaynXzoaeKJ7xXjQ0
-         yMEp+F2sEc38qApfBHGkWXL3VRBPQksuUqA6dDa0=
-In-Reply-To: <20190608113950.8033-1-sashal@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+        s=default; t=1560215175;
+        bh=H0wYscaX4spAKhGwci+faRMeUtvVux/Cx2QS70lGKnE=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=rEyFSdOSUyrnB/z7NmdFYurOWXuJ7MHD7xEX757FtCUPczPNs+aDBKovF9B3zz15z
+         e19Evp6mG8ida9dvAJ97iPzj206qBUt7s3S0nFJbzq112/aUhMubeTZk92l6Wxh0+I
+         fyT18NKDuKkZS5mTQVTw65KE7HYmk3GV4pkFuRcQ=
+Content-Disposition: inline
+In-Reply-To: <0000000000006d7e520589f6d3a9@google.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: YueHaibing <yuehaibing@huawei.com>, Hulk Robot <hulkci@huawei.com>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Content-Transfer-Encoding: 7bit
+To: syzbot <syzbot+7e2e50c8adfccd2e5041@syzkaller.appspotmail.com>
+Cc: coreteam@netfilter.org, davem@davemloft.net, fw@strlen.de, horms@verge.net.au, ja@ssi.bg, kadlec@blackhole.kfki.hu, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, wensong@linux-vs.org
 
-From: YueHaibing <yuehaibing@huawei.com>
+On Tue, May 28, 2019 at 11:28:05AM -0700, syzbot wrote:
+> Hello,
+> 
+> syzbot found the following crash on:
+> 
+> HEAD commit:    cd6c84d8 Linux 5.2-rc2
+> git tree:       upstream
+> console output: https://syzkaller.appspot.com/x/log.txt?x=132bd44aa00000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=64479170dcaf0e11
+> dashboard link: https://syzkaller.appspot.com/bug?extid=7e2e50c8adfccd2e5041
+> compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=114b1354a00000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=14b7ad26a00000
+> 
+> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> Reported-by: syzbot+7e2e50c8adfccd2e5041@syzkaller.appspotmail.com
+> 
+> d started: state = MASTER, mcast_ifn = syz_tun, syncid = 0, id = 0
+> BUG: memory leak
+> unreferenced object 0xffff8881206bf700 (size 32):
+>   comm "syz-executor761", pid 7268, jiffies 4294943441 (age 20.470s)
+>   hex dump (first 32 bytes):
+>     00 40 7c 09 81 88 ff ff 80 45 b8 21 81 88 ff ff  .@|......E.!....
+>     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+>   backtrace:
+>     [<0000000057619e23>] kmemleak_alloc_recursive
+> include/linux/kmemleak.h:55 [inline]
+>     [<0000000057619e23>] slab_post_alloc_hook mm/slab.h:439 [inline]
+>     [<0000000057619e23>] slab_alloc mm/slab.c:3326 [inline]
+>     [<0000000057619e23>] kmem_cache_alloc_trace+0x13d/0x280 mm/slab.c:3553
+>     [<0000000086ce5479>] kmalloc include/linux/slab.h:547 [inline]
+>     [<0000000086ce5479>] start_sync_thread+0x5d2/0xe10
+> net/netfilter/ipvs/ip_vs_sync.c:1862
+>     [<000000001a9229cc>] do_ip_vs_set_ctl+0x4c5/0x780
+> net/netfilter/ipvs/ip_vs_ctl.c:2402
+>     [<00000000ece457c8>] nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
+>     [<00000000ece457c8>] nf_setsockopt+0x4c/0x80
+> net/netfilter/nf_sockopt.c:115
+>     [<00000000942f62d4>] ip_setsockopt net/ipv4/ip_sockglue.c:1258 [inline]
+>     [<00000000942f62d4>] ip_setsockopt+0x9b/0xb0 net/ipv4/ip_sockglue.c:1238
+>     [<00000000a56a8ffd>] udp_setsockopt+0x4e/0x90 net/ipv4/udp.c:2616
+>     [<00000000fa895401>] sock_common_setsockopt+0x38/0x50
+> net/core/sock.c:3130
+>     [<0000000095eef4cf>] __sys_setsockopt+0x98/0x120 net/socket.c:2078
+>     [<000000009747cf88>] __do_sys_setsockopt net/socket.c:2089 [inline]
+>     [<000000009747cf88>] __se_sys_setsockopt net/socket.c:2086 [inline]
+>     [<000000009747cf88>] __x64_sys_setsockopt+0x26/0x30 net/socket.c:2086
+>     [<00000000ded8ba80>] do_syscall_64+0x76/0x1a0
+> arch/x86/entry/common.c:301
+>     [<00000000893b4ac8>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+> 
 
-[ Upstream commit 719c7d563c17b150877cee03a4b812a424989dfa ]
+The bug is that ownership of some memory is passed to a kthread started by
+kthread_run(), but the kthread can be stopped before it actually executes the
+threadfn.  See the code in kernel/kthread.c:
 
-BUG: KASAN: use-after-free in ip_vs_in.part.29+0xe8/0xd20 [ip_vs]
-Read of size 4 at addr ffff8881e9b26e2c by task sshd/5603
+        ret = -EINTR;
+        if (!test_bit(KTHREAD_SHOULD_STOP, &self->flags)) {
+                cgroup_kthread_ready();
+                __kthread_parkme(self);
+                ret = threadfn(data);
+        }
 
-CPU: 0 PID: 5603 Comm: sshd Not tainted 4.19.39+ #30
-Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2011
-Call Trace:
- dump_stack+0x71/0xab
- print_address_description+0x6a/0x270
- kasan_report+0x179/0x2c0
- ip_vs_in.part.29+0xe8/0xd20 [ip_vs]
- ip_vs_in+0xd8/0x170 [ip_vs]
- nf_hook_slow+0x5f/0xe0
- __ip_local_out+0x1d5/0x250
- ip_local_out+0x19/0x60
- __tcp_transmit_skb+0xba1/0x14f0
- tcp_write_xmit+0x41f/0x1ed0
- ? _copy_from_iter_full+0xca/0x340
- __tcp_push_pending_frames+0x52/0x140
- tcp_sendmsg_locked+0x787/0x1600
- ? tcp_sendpage+0x60/0x60
- ? inet_sk_set_state+0xb0/0xb0
- tcp_sendmsg+0x27/0x40
- sock_sendmsg+0x6d/0x80
- sock_write_iter+0x121/0x1c0
- ? sock_sendmsg+0x80/0x80
- __vfs_write+0x23e/0x370
- vfs_write+0xe7/0x230
- ksys_write+0xa1/0x120
- ? __ia32_sys_read+0x50/0x50
- ? __audit_syscall_exit+0x3ce/0x450
- do_syscall_64+0x73/0x200
- entry_SYSCALL_64_after_hwframe+0x44/0xa9
-RIP: 0033:0x7ff6f6147c60
-Code: 73 01 c3 48 8b 0d 28 12 2d 00 f7 d8 64 89 01 48 83 c8 ff c3 66 0f 1f 44 00 00 83 3d 5d 73 2d 00 00 75 10 b8 01 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 31 c3 48 83
-RSP: 002b:00007ffd772ead18 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
-RAX: ffffffffffffffda RBX: 0000000000000034 RCX: 00007ff6f6147c60
-RDX: 0000000000000034 RSI: 000055df30a31270 RDI: 0000000000000003
-RBP: 000055df30a31270 R08: 0000000000000000 R09: 0000000000000000
-R10: 00007ffd772ead70 R11: 0000000000000246 R12: 00007ffd772ead74
-R13: 00007ffd772eae20 R14: 00007ffd772eae24 R15: 000055df2f12ddc0
+So, apparently the thread parameters must always be owned by the owner of the
+kthread, not by the kthread itself.  It seems like this would be a common
+mistake in kernel code; I'm surprised this doesn't come up more...
 
-Allocated by task 6052:
- kasan_kmalloc+0xa0/0xd0
- __kmalloc+0x10a/0x220
- ops_init+0x97/0x190
- register_pernet_operations+0x1ac/0x360
- register_pernet_subsys+0x24/0x40
- 0xffffffffc0ea016d
- do_one_initcall+0x8b/0x253
- do_init_module+0xe3/0x335
- load_module+0x2fc0/0x3890
- __do_sys_finit_module+0x192/0x1c0
- do_syscall_64+0x73/0x200
- entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-Freed by task 6067:
- __kasan_slab_free+0x130/0x180
- kfree+0x90/0x1a0
- ops_free_list.part.7+0xa6/0xc0
- unregister_pernet_operations+0x18b/0x1f0
- unregister_pernet_subsys+0x1d/0x30
- ip_vs_cleanup+0x1d/0xd2f [ip_vs]
- __x64_sys_delete_module+0x20c/0x300
- do_syscall_64+0x73/0x200
- entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-The buggy address belongs to the object at ffff8881e9b26600 which belongs to the cache kmalloc-4096 of size 4096
-The buggy address is located 2092 bytes inside of 4096-byte region [ffff8881e9b26600, ffff8881e9b27600)
-The buggy address belongs to the page:
-page:ffffea0007a6c800 count:1 mapcount:0 mapping:ffff888107c0e600 index:0x0 compound_mapcount: 0
-flags: 0x17ffffc0008100(slab|head)
-raw: 0017ffffc0008100 dead000000000100 dead000000000200 ffff888107c0e600
-raw: 0000000000000000 0000000080070007 00000001ffffffff 0000000000000000
-page dumped because: kasan: bad access detected
-
-while unregistering ipvs module, ops_free_list calls
-__ip_vs_cleanup, then nf_unregister_net_hooks be called to
-do remove nf hook entries. It need a RCU period to finish,
-however net->ipvs is set to NULL immediately, which will
-trigger NULL pointer dereference when a packet is hooked
-and handled by ip_vs_in where net->ipvs is dereferenced.
-
-Another scene is ops_free_list call ops_free to free the
-net_generic directly while __ip_vs_cleanup finished, then
-calling ip_vs_in will triggers use-after-free.
-
-This patch moves nf_unregister_net_hooks from __ip_vs_cleanup()
-to __ip_vs_dev_cleanup(),  where rcu_barrier() is called by
-unregister_pernet_device -> unregister_pernet_operations,
-that will do the needed grace period.
-
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Fixes: efe41606184e ("ipvs: convert to use pernet nf_hook api")
-Suggested-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: YueHaibing <yuehaibing@huawei.com>
-Acked-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Simon Horman <horms@verge.net.au>
-Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- net/netfilter/ipvs/ip_vs_core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 14457551bcb4..8ebf21149ec3 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2312,7 +2312,6 @@ static void __net_exit __ip_vs_cleanup(struct net *net)
- {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	nf_unregister_net_hooks(net, ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
- 	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
- 	ip_vs_conn_net_cleanup(ipvs);
- 	ip_vs_app_net_cleanup(ipvs);
-@@ -2327,6 +2326,7 @@ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
- {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 	EnterFunction(2);
-+	nf_unregister_net_hooks(net, ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
- 	ipvs->enable = 0;	/* Disable packet reception */
- 	smp_wmb();
- 	ip_vs_sync_net_cleanup(ipvs);
--- 
-2.20.1
-
+- Eric
