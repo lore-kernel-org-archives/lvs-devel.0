@@ -1,94 +1,202 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: memory leak in start_sync_thread
-Date: Tue, 11 Jun 2019 22:52:54 +0300 (EEST)
-Message-ID: <alpine.LFD.2.21.1906112239410.3387@ja.home.ssi.bg>
-References: <0000000000006d7e520589f6d3a9@google.com> <20190611010612.GD220379@gmail.com>
+From: Vadim Fedorenko <vfedorenko@yandex-team.ru>
+Subject: [PATCH] ipvs: allow tunneling with gre encapsulation
+Date: Tue, 25 Jun 2019 18:59:54 +0300
+Message-ID: <2caa3152-f90d-1ad6-3f98-b07960fed171@yandex-team.ru>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20190611010612.GD220379@gmail.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yandex-team.ru; s=default;
+        t=1561478394; bh=j3Za4mwvXNVcqNaWOAH0WO4UYFFwM7tME+Ca1jP3/m0=;
+        h=Date:Message-ID:Cc:To:Subject:From;
+        b=zdMjhoD1ItE+n+mm0424Eh2c5rsUgNs0S4yXnHpec/RINRbh3pKznPMhwKGZA1RQO
+         OrxMd8r2BHN6auHwuIEqQ28kJsSnp3RpIu17KtfogJJLh9K56l0bMOPJ4KhKJlBRlJ
+         z6bWE/k9n35Pwb8JuAXWCu2AeRF75HU8kmevyW3Q=
+Content-Language: en-US
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: syzbot <syzbot+7e2e50c8adfccd2e5041@syzkaller.appspotmail.com>, coreteam@netfilter.org, davem@davemloft.net, fw@strlen.de, horms@verge.net.au, kadlec@blackhole.kfki.hu, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pablo@netfilter.org, syzkaller-bugs@googlegroups.com, wensong@linux-vs.org
+Content-Type: text/plain; charset="us-ascii"; format="flowed"
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
+windows real servers can handle gre tunnels, this patch allows
+gre encapsulation with the tunneling method, thereby letting ipvs
+be load balancer for windows-based services
 
-	Hello,
+Signed-off-by: Vadim Fedorenko <vfedorenko@yandex-team.ru>
+---
+  include/uapi/linux/ip_vs.h      |  1 +
+  net/netfilter/ipvs/ip_vs_xmit.c | 76 +++++++++++++++++++++++++++++++++++++++++
+  2 files changed, 77 insertions(+)
 
-On Mon, 10 Jun 2019, Eric Biggers wrote:
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index e4f1806..4102ddc 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -128,6 +128,7 @@
+  enum {
+  	IP_VS_CONN_F_TUNNEL_TYPE_IPIP = 0,	/* IPIP */
+  	IP_VS_CONN_F_TUNNEL_TYPE_GUE,		/* GUE */
++	IP_VS_CONN_F_TUNNEL_TYPE_GRE,		/* GRE */
+  	IP_VS_CONN_F_TUNNEL_TYPE_MAX,
+  };
 
-> On Tue, May 28, 2019 at 11:28:05AM -0700, syzbot wrote:
-> > Hello,
-> > 
-> > syzbot found the following crash on:
-> > 
-> > HEAD commit:    cd6c84d8 Linux 5.2-rc2
-> > git tree:       upstream
-> > console output: https://syzkaller.appspot.com/x/log.txt?x=132bd44aa00000
-> > kernel config:  https://syzkaller.appspot.com/x/.config?x=64479170dcaf0e11
-> > dashboard link: https://syzkaller.appspot.com/bug?extid=7e2e50c8adfccd2e5041
-> > compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-> > syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=114b1354a00000
-> > C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=14b7ad26a00000
-> > 
-> > IMPORTANT: if you fix the bug, please add the following tag to the commit:
-> > Reported-by: syzbot+7e2e50c8adfccd2e5041@syzkaller.appspotmail.com
-> > 
-> > d started: state = MASTER, mcast_ifn = syz_tun, syncid = 0, id = 0
-> > BUG: memory leak
-> > unreferenced object 0xffff8881206bf700 (size 32):
-> >   comm "syz-executor761", pid 7268, jiffies 4294943441 (age 20.470s)
-> >   hex dump (first 32 bytes):
-> >     00 40 7c 09 81 88 ff ff 80 45 b8 21 81 88 ff ff  .@|......E.!....
-> >     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-> >   backtrace:
-> >     [<0000000057619e23>] kmemleak_alloc_recursive
-> > include/linux/kmemleak.h:55 [inline]
-> >     [<0000000057619e23>] slab_post_alloc_hook mm/slab.h:439 [inline]
-> >     [<0000000057619e23>] slab_alloc mm/slab.c:3326 [inline]
-> >     [<0000000057619e23>] kmem_cache_alloc_trace+0x13d/0x280 mm/slab.c:3553
-> >     [<0000000086ce5479>] kmalloc include/linux/slab.h:547 [inline]
-> >     [<0000000086ce5479>] start_sync_thread+0x5d2/0xe10
-> > net/netfilter/ipvs/ip_vs_sync.c:1862
-> >     [<000000001a9229cc>] do_ip_vs_set_ctl+0x4c5/0x780
-> > net/netfilter/ipvs/ip_vs_ctl.c:2402
-> >     [<00000000ece457c8>] nf_sockopt net/netfilter/nf_sockopt.c:106 [inline]
-> >     [<00000000ece457c8>] nf_setsockopt+0x4c/0x80
-> > net/netfilter/nf_sockopt.c:115
-> >     [<00000000942f62d4>] ip_setsockopt net/ipv4/ip_sockglue.c:1258 [inline]
-> >     [<00000000942f62d4>] ip_setsockopt+0x9b/0xb0 net/ipv4/ip_sockglue.c:1238
-> >     [<00000000a56a8ffd>] udp_setsockopt+0x4e/0x90 net/ipv4/udp.c:2616
-> >     [<00000000fa895401>] sock_common_setsockopt+0x38/0x50
-> > net/core/sock.c:3130
-> >     [<0000000095eef4cf>] __sys_setsockopt+0x98/0x120 net/socket.c:2078
-> >     [<000000009747cf88>] __do_sys_setsockopt net/socket.c:2089 [inline]
-> >     [<000000009747cf88>] __se_sys_setsockopt net/socket.c:2086 [inline]
-> >     [<000000009747cf88>] __x64_sys_setsockopt+0x26/0x30 net/socket.c:2086
-> >     [<00000000ded8ba80>] do_syscall_64+0x76/0x1a0
-> > arch/x86/entry/common.c:301
-> >     [<00000000893b4ac8>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> > 
-> 
-> The bug is that ownership of some memory is passed to a kthread started by
-> kthread_run(), but the kthread can be stopped before it actually executes the
-> threadfn.  See the code in kernel/kthread.c:
-> 
->         ret = -EINTR;
->         if (!test_bit(KTHREAD_SHOULD_STOP, &self->flags)) {
->                 cgroup_kthread_ready();
->                 __kthread_parkme(self);
->                 ret = threadfn(data);
->         }
-> 
-> So, apparently the thread parameters must always be owned by the owner of the
-> kthread, not by the kthread itself.  It seems like this would be a common
-> mistake in kernel code; I'm surprised this doesn't come up more...
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 71fc6d6..fad3f33 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -29,6 +29,7 @@
+  #include <linux/tcp.h>                  /* for tcphdr */
+  #include <net/ip.h>
+  #include <net/gue.h>
++#include <net/gre.h>
+  #include <net/tcp.h>                    /* for csum_tcpudp_magic */
+  #include <net/udp.h>
+  #include <net/icmp.h>                   /* for icmp_send */
+@@ -389,6 +390,12 @@ static inline bool decrement_ttl(struct netns_ipvs *ipvs,
+  			    skb->ip_summed == CHECKSUM_PARTIAL)
+  				mtu -= GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
+  		}
++		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
++			__be16 tflags = 0;
++			if (dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
++				tflags |= TUNNEL_CSUM;
++			mtu -= gre_calc_hlen(tflags);
++		}
+  		if (mtu < 68) {
+  			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
+  			goto err_put;
+@@ -549,6 +556,12 @@ static inline bool decrement_ttl(struct netns_ipvs *ipvs,
+  			    skb->ip_summed == CHECKSUM_PARTIAL)
+  				mtu -= GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
+  		}
++		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
++			__be16 tflags = 0;
++			if (dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
++				tflags |= TUNNEL_CSUM;
++			mtu -= gre_calc_hlen(tflags);
++		}
+  		if (mtu < IPV6_MIN_MTU) {
+  			IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
+  				     IPV6_MIN_MTU);
+@@ -1079,6 +1092,24 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
+orig_af)
+  	return 0;
+  }
 
-	Thanks! It explains the problem. It was not obvious from the
-fact that only tinfo was reported as a leak, nothing for tinfo->sock.
++static void
++ipvs_gre_encap(struct net *net, struct sk_buff *skb,
++	       struct ip_vs_conn *cp, __u8 *next_protocol)
++{
++	size_t hdrlen;
++	__be16 tflags = 0;
++	__be16 proto = *next_protocol == IPPROTO_IPIP ? htons(ETH_P_IP) : 
+htons(ETH_P_IPV6);
++
++	if (cp->dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
++		tflags |= TUNNEL_CSUM;
++
++	hdrlen = gre_calc_hlen(tflags);
++
++	gre_build_header(skb, hdrlen, tflags, proto, 0, 0);
++
++	*next_protocol = IPPROTO_GRE;
++}
++
+  /*
+   *   IP Tunneling transmitter
+   *
+@@ -1153,6 +1184,18 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
+orig_af)
+  		max_headroom += sizeof(struct udphdr) + gue_hdrlen;
+  	}
 
-	Moving sock_release to owner complicates the locking but
-I'll try to fix it in the following days...
++	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
++		size_t gre_hdrlen;
++		__be16 tflags = 0;
++
++		if (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
++			tflags |= TUNNEL_CSUM;
++
++		gre_hdrlen = gre_calc_hlen(tflags);
++
++		max_headroom += gre_hdrlen;
++	}
++
+  	/* We only care about the df field if sysctl_pmtu_disc(ipvs) is set */
+  	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
+  	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
+@@ -1174,6 +1217,13 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
+orig_af)
+  		}
+  	}
 
-Regards
++	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
++		if (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
++			gso_type |= SKB_GSO_GRE_CSUM;
++		else
++			gso_type |= SKB_GSO_GRE;
++	}
++
+  	if (iptunnel_handle_offloads(skb, gso_type))
+  		goto tx_error;
+
+@@ -1194,6 +1244,9 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
+orig_af)
+  		udp_set_csum(!check, skb, saddr, cp->daddr.ip, skb->len);
+  	}
+
++	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
++		ipvs_gre_encap(net, skb, cp, &next_protocol);
++	}
+
+  	skb_push(skb, sizeof(struct iphdr));
+  	skb_reset_network_header(skb);
+@@ -1289,6 +1342,18 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
+orig_af)
+  		max_headroom += sizeof(struct udphdr) + gue_hdrlen;
+  	}
+
++	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
++		size_t gre_hdrlen;
++		__be16 tflags = 0;
++
++		if (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
++			tflags |= TUNNEL_CSUM;
++
++		gre_hdrlen = gre_calc_hlen(tflags);
++
++		max_headroom += gre_hdrlen;
++	}
++
+  	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
+  					 &next_protocol, &payload_len,
+  					 &dsfield, &ttl, NULL);
+@@ -1308,6 +1373,13 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
+orig_af)
+  		}
+  	}
+
++	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
++		if (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
++			gso_type |= SKB_GSO_GRE_CSUM;
++		else
++			gso_type |= SKB_GSO_GRE;
++	}
++
+  	if (iptunnel_handle_offloads(skb, gso_type))
+  		goto tx_error;
+
+@@ -1328,6 +1400,10 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
+orig_af)
+  		udp6_set_csum(!check, skb, &saddr, &cp->daddr.in6, skb->len);
+  	}
+
++	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
++		ipvs_gre_encap(net, skb, cp, &next_protocol);
++	}
++
+  	skb_push(skb, sizeof(struct ipv6hdr));
+  	skb_reset_network_header(skb);
+  	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
+-- 
+1.9.1
