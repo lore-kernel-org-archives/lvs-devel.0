@@ -1,213 +1,118 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 3/4] staging: rtl8712: reduce stack usage, again
-Date: Fri, 28 Jun 2019 14:37:48 +0200
-Message-ID: <20190628123819.2785504-3-arnd@arndb.de>
+From: Kees Cook <keescook@chromium.org>
+Subject: Re: [PATCH 1/4] [v2] structleak: disable STRUCTLEAK_BYREF in
+ combination with KASAN_STACK
+Date: Fri, 28 Jun 2019 07:48:33 -0700
+Message-ID: <201906280748.910641F1DD@keescook>
 References: <20190628123819.2785504-1-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=chromium.org; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=4+9BQ/9qN/HEB5jYhHOcTVXcrlmUmZtAOZVfYv7/QOA=;
+        b=ofGc0v9hZZwUxfhb5r0SX5BCHeOcj3Ym+G17847226BPeApHLQt5lHVJGZPjPCl6mJ
+         R9yEA1WaiRHbrYKbycxmjkd9zcIuG73DJH0UQtlrraeon+eWgyD9ND/T5MTW0MQaCyTR
+         T/8ILMD0OYRqTF/FvjRgFsB3BtZtKPQ5aqUdQ=
+Content-Disposition: inline
 In-Reply-To: <20190628123819.2785504-1-arnd@arndb.de>
-Sender: netdev-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Kees Cook <keescook@chromium.org>, Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: James Smart <james.smart@broadcom.com>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E . J . Bottomley" <jejb@linux.ibm.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, "David S . Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, James Morris <jmorris@namei.org>, linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Ard Biesheuvel <ard.biesheuvel@linaro.org>, Arnd Bergmann <arnd@arndb.de>, Nishka Dasgupta <nishkadg.linux@gmail.com>
+Content-Transfer-Encoding: 7bit
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>, James Smart <james.smart@broadcom.com>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E . J . Bottomley" <jejb@linux.ibm.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, "David S . Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, c
 
-An earlier patch I sent reduced the stack usage enough to get
-below the warning limit, and I could show this was safe, but with
-GCC_PLUGIN_STRUCTLEAK_BYREF_ALL, it gets worse again because large stack
-variables in the same function no longer overlap:
+On Fri, Jun 28, 2019 at 02:37:46PM +0200, Arnd Bergmann wrote:
+> The combination of KASAN_STACK and GCC_PLUGIN_STRUCTLEAK_BYREF
+> leads to much larger kernel stack usage, as seen from the warnings
+> about functions that now exceed the 2048 byte limit:
+> 
+> drivers/media/i2c/tvp5150.c:253:1: error: the frame size of 3936 bytes is larger than 2048 bytes
+> drivers/media/tuners/r820t.c:1327:1: error: the frame size of 2816 bytes is larger than 2048 bytes
+> drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c:16552:1: error: the frame size of 3144 bytes is larger than 2048 bytes [-Werror=frame-larger-than=]
+> fs/ocfs2/aops.c:1892:1: error: the frame size of 2088 bytes is larger than 2048 bytes
+> fs/ocfs2/dlm/dlmrecovery.c:737:1: error: the frame size of 2088 bytes is larger than 2048 bytes
+> fs/ocfs2/namei.c:1677:1: error: the frame size of 2584 bytes is larger than 2048 bytes
+> fs/ocfs2/super.c:1186:1: error: the frame size of 2640 bytes is larger than 2048 bytes
+> fs/ocfs2/xattr.c:3678:1: error: the frame size of 2176 bytes is larger than 2048 bytes
+> net/bluetooth/l2cap_core.c:7056:1: error: the frame size of 2144 bytes is larger than 2048 bytes [-Werror=frame-larger-than=]
+> net/bluetooth/l2cap_core.c: In function 'l2cap_recv_frame':
+> net/bridge/br_netlink.c:1505:1: error: the frame size of 2448 bytes is larger than 2048 bytes
+> net/ieee802154/nl802154.c:548:1: error: the frame size of 2232 bytes is larger than 2048 bytes
+> net/wireless/nl80211.c:1726:1: error: the frame size of 2224 bytes is larger than 2048 bytes
+> net/wireless/nl80211.c:2357:1: error: the frame size of 4584 bytes is larger than 2048 bytes
+> net/wireless/nl80211.c:5108:1: error: the frame size of 2760 bytes is larger than 2048 bytes
+> net/wireless/nl80211.c:6472:1: error: the frame size of 2112 bytes is larger than 2048 bytes
+> 
+> The structleak plugin was previously disabled for CONFIG_COMPILE_TEST,
+> but meant we missed some bugs, so this time we should address them.
+> 
+> The frame size warnings are distracting, and risking a kernel stack
+> overflow is generally not beneficial to performance, so it may be best
+> to disallow that particular combination. This can be done by turning
+> off either one. I picked the dependency in GCC_PLUGIN_STRUCTLEAK_BYREF
+> and GCC_PLUGIN_STRUCTLEAK_BYREF_ALL, as this option is designed to
+> make uninitialized stack usage less harmful when enabled on its own,
+> but it also prevents KASAN from detecting those cases in which it was
+> in fact needed.
+> 
+> KASAN_STACK is currently implied by KASAN on gcc, but could be made a
+> user selectable option if we want to allow combining (non-stack) KASAN
+> with GCC_PLUGIN_STRUCTLEAK_BYREF.
+> 
+> Note that it would be possible to specifically address the files that
+> print the warning, but presumably the overall stack usage is still
+> significantly higher than in other configurations, so this would not
+> address the full problem.
+> 
+> I could not test this with CONFIG_INIT_STACK_ALL, which may or may not
+> suffer from a similar problem.
+> 
+> Fixes: 81a56f6dcd20 ("gcc-plugins: structleak: Generalize to all variable types")
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 
-drivers/staging/rtl8712/rtl871x_ioctl_linux.c: In function 'translate_scan.isra.2':
-drivers/staging/rtl8712/rtl871x_ioctl_linux.c:322:1: error: the frame size of 1200 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+Acked-by: Kees Cook <keescook@chromium.org>
 
-Split out the largest two blocks in the affected function into two
-separate functions and mark those noinline_for_stack.
+-Kees
 
-Fixes: 8c5af16f7953 ("staging: rtl8712: reduce stack usage")
-Fixes: 81a56f6dcd20 ("gcc-plugins: structleak: Generalize to all variable types")
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- drivers/staging/rtl8712/rtl871x_ioctl_linux.c | 157 ++++++++++--------
- 1 file changed, 88 insertions(+), 69 deletions(-)
+> ---
+> [v2] do it for both GCC_PLUGIN_STRUCTLEAK_BYREF and GCC_PLUGIN_STRUCTLEAK_BYREF_ALL.
+> ---
+>  security/Kconfig.hardening | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/security/Kconfig.hardening b/security/Kconfig.hardening
+> index a1ffe2eb4d5f..af4c979b38ee 100644
+> --- a/security/Kconfig.hardening
+> +++ b/security/Kconfig.hardening
+> @@ -61,6 +61,7 @@ choice
+>  	config GCC_PLUGIN_STRUCTLEAK_BYREF
+>  		bool "zero-init structs passed by reference (strong)"
+>  		depends on GCC_PLUGINS
+> +		depends on !(KASAN && KASAN_STACK=1)
+>  		select GCC_PLUGIN_STRUCTLEAK
+>  		help
+>  		  Zero-initialize any structures on the stack that may
+> @@ -70,9 +71,15 @@ choice
+>  		  exposures, like CVE-2017-1000410:
+>  		  https://git.kernel.org/linus/06e7e776ca4d3654
+>  
+> +		  As a side-effect, this keeps a lot of variables on the
+> +		  stack that can otherwise be optimized out, so combining
+> +		  this with CONFIG_KASAN_STACK can lead to a stack overflow
+> +		  and is disallowed.
+> +
+>  	config GCC_PLUGIN_STRUCTLEAK_BYREF_ALL
+>  		bool "zero-init anything passed by reference (very strong)"
+>  		depends on GCC_PLUGINS
+> +		depends on !(KASAN && KASAN_STACK=1)
+>  		select GCC_PLUGIN_STRUCTLEAK
+>  		help
+>  		  Zero-initialize any stack variables that may be passed
+> -- 
+> 2.20.0
+> 
 
-diff --git a/drivers/staging/rtl8712/rtl871x_ioctl_linux.c b/drivers/staging/rtl8712/rtl871x_ioctl_linux.c
-index a224797cd993..fdc1df99d852 100644
---- a/drivers/staging/rtl8712/rtl871x_ioctl_linux.c
-+++ b/drivers/staging/rtl8712/rtl871x_ioctl_linux.c
-@@ -124,10 +124,91 @@ static inline void handle_group_key(struct ieee_param *param,
- 	}
- }
- 
--static noinline_for_stack char *translate_scan(struct _adapter *padapter,
--				   struct iw_request_info *info,
--				   struct wlan_network *pnetwork,
--				   char *start, char *stop)
-+static noinline_for_stack char *translate_scan_wpa(struct iw_request_info *info,
-+						   struct wlan_network *pnetwork,
-+						   struct iw_event *iwe,
-+						   char *start, char *stop)
-+{
-+	/* parsing WPA/WPA2 IE */
-+	u8 buf[MAX_WPA_IE_LEN];
-+	u8 wpa_ie[255], rsn_ie[255];
-+	u16 wpa_len = 0, rsn_len = 0;
-+	int n, i;
-+
-+	r8712_get_sec_ie(pnetwork->network.IEs,
-+			 pnetwork->network.IELength, rsn_ie, &rsn_len,
-+			 wpa_ie, &wpa_len);
-+	if (wpa_len > 0) {
-+		memset(buf, 0, MAX_WPA_IE_LEN);
-+		n = sprintf(buf, "wpa_ie=");
-+		for (i = 0; i < wpa_len; i++) {
-+			n += snprintf(buf + n, MAX_WPA_IE_LEN - n,
-+						"%02x", wpa_ie[i]);
-+			if (n >= MAX_WPA_IE_LEN)
-+				break;
-+		}
-+		memset(iwe, 0, sizeof(*iwe));
-+		iwe->cmd = IWEVCUSTOM;
-+		iwe->u.data.length = (u16)strlen(buf);
-+		start = iwe_stream_add_point(info, start, stop,
-+			iwe, buf);
-+		memset(iwe, 0, sizeof(*iwe));
-+		iwe->cmd = IWEVGENIE;
-+		iwe->u.data.length = (u16)wpa_len;
-+		start = iwe_stream_add_point(info, start, stop,
-+			iwe, wpa_ie);
-+	}
-+	if (rsn_len > 0) {
-+		memset(buf, 0, MAX_WPA_IE_LEN);
-+		n = sprintf(buf, "rsn_ie=");
-+		for (i = 0; i < rsn_len; i++) {
-+			n += snprintf(buf + n, MAX_WPA_IE_LEN - n,
-+						"%02x", rsn_ie[i]);
-+			if (n >= MAX_WPA_IE_LEN)
-+				break;
-+		}
-+		memset(iwe, 0, sizeof(*iwe));
-+		iwe->cmd = IWEVCUSTOM;
-+		iwe->u.data.length = strlen(buf);
-+		start = iwe_stream_add_point(info, start, stop,
-+			iwe, buf);
-+		memset(iwe, 0, sizeof(*iwe));
-+		iwe->cmd = IWEVGENIE;
-+		iwe->u.data.length = rsn_len;
-+		start = iwe_stream_add_point(info, start, stop, iwe,
-+			rsn_ie);
-+	}
-+
-+	return start;
-+}
-+
-+static noinline_for_stack char *translate_scan_wps(struct iw_request_info *info,
-+						   struct wlan_network *pnetwork,
-+						   struct iw_event *iwe,
-+						   char *start, char *stop)
-+{
-+	/* parsing WPS IE */
-+	u8 wps_ie[512];
-+	uint wps_ielen;
-+
-+	if (r8712_get_wps_ie(pnetwork->network.IEs,
-+	    pnetwork->network.IELength,
-+	    wps_ie, &wps_ielen)) {
-+		if (wps_ielen > 2) {
-+			iwe->cmd = IWEVGENIE;
-+			iwe->u.data.length = (u16)wps_ielen;
-+			start = iwe_stream_add_point(info, start, stop,
-+				iwe, wps_ie);
-+		}
-+	}
-+
-+	return start;
-+}
-+
-+static char *translate_scan(struct _adapter *padapter,
-+			    struct iw_request_info *info,
-+			    struct wlan_network *pnetwork,
-+			    char *start, char *stop)
- {
- 	struct iw_event iwe;
- 	struct ieee80211_ht_cap *pht_capie;
-@@ -240,73 +321,11 @@ static noinline_for_stack char *translate_scan(struct _adapter *padapter,
- 	/* Check if we added any event */
- 	if ((current_val - start) > iwe_stream_lcp_len(info))
- 		start = current_val;
--	/* parsing WPA/WPA2 IE */
--	{
--		u8 buf[MAX_WPA_IE_LEN];
--		u8 wpa_ie[255], rsn_ie[255];
--		u16 wpa_len = 0, rsn_len = 0;
--		int n;
--
--		r8712_get_sec_ie(pnetwork->network.IEs,
--				 pnetwork->network.IELength, rsn_ie, &rsn_len,
--				 wpa_ie, &wpa_len);
--		if (wpa_len > 0) {
--			memset(buf, 0, MAX_WPA_IE_LEN);
--			n = sprintf(buf, "wpa_ie=");
--			for (i = 0; i < wpa_len; i++) {
--				n += snprintf(buf + n, MAX_WPA_IE_LEN - n,
--							"%02x", wpa_ie[i]);
--				if (n >= MAX_WPA_IE_LEN)
--					break;
--			}
--			memset(&iwe, 0, sizeof(iwe));
--			iwe.cmd = IWEVCUSTOM;
--			iwe.u.data.length = (u16)strlen(buf);
--			start = iwe_stream_add_point(info, start, stop,
--				&iwe, buf);
--			memset(&iwe, 0, sizeof(iwe));
--			iwe.cmd = IWEVGENIE;
--			iwe.u.data.length = (u16)wpa_len;
--			start = iwe_stream_add_point(info, start, stop,
--				&iwe, wpa_ie);
--		}
--		if (rsn_len > 0) {
--			memset(buf, 0, MAX_WPA_IE_LEN);
--			n = sprintf(buf, "rsn_ie=");
--			for (i = 0; i < rsn_len; i++) {
--				n += snprintf(buf + n, MAX_WPA_IE_LEN - n,
--							"%02x", rsn_ie[i]);
--				if (n >= MAX_WPA_IE_LEN)
--					break;
--			}
--			memset(&iwe, 0, sizeof(iwe));
--			iwe.cmd = IWEVCUSTOM;
--			iwe.u.data.length = strlen(buf);
--			start = iwe_stream_add_point(info, start, stop,
--				&iwe, buf);
--			memset(&iwe, 0, sizeof(iwe));
--			iwe.cmd = IWEVGENIE;
--			iwe.u.data.length = rsn_len;
--			start = iwe_stream_add_point(info, start, stop, &iwe,
--				rsn_ie);
--		}
--	}
- 
--	{ /* parsing WPS IE */
--		u8 wps_ie[512];
--		uint wps_ielen;
-+	start = translate_scan_wpa(info, pnetwork, &iwe, start, stop);
-+
-+	start = translate_scan_wps(info, pnetwork, &iwe, start, stop);
- 
--		if (r8712_get_wps_ie(pnetwork->network.IEs,
--		    pnetwork->network.IELength,
--		    wps_ie, &wps_ielen)) {
--			if (wps_ielen > 2) {
--				iwe.cmd = IWEVGENIE;
--				iwe.u.data.length = (u16)wps_ielen;
--				start = iwe_stream_add_point(info, start, stop,
--					&iwe, wps_ie);
--			}
--		}
--	}
- 	/* Add quality statistics */
- 	iwe.cmd = IWEVQUAL;
- 	rssi = r8712_signal_scale_mapping(pnetwork->network.Rssi);
 -- 
-2.20.0
-
+Kees Cook
