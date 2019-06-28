@@ -1,66 +1,44 @@
-From: James Smart <james.smart@broadcom.com>
-Subject: Re: [PATCH 2/4] lpfc: reduce stack size with
- CONFIG_GCC_PLUGIN_STRUCTLEAK_VERBOSE
-Date: Fri, 28 Jun 2019 11:57:22 -0700
-Message-ID: <3027eebb-e49f-6db6-ae0a-39a61c0e34e1@broadcom.com>
-References: <20190628123819.2785504-1-arnd@arndb.de>
- <20190628123819.2785504-2-arnd@arndb.de>
+From: Willem de Bruijn <willemdebruijn.kernel@gmail.com>
+Subject: Re: [PATCH 3/4] staging: rtl8712: reduce stack usage, again
+Date: Fri, 28 Jun 2019 15:52:03 -0400
+Message-ID: <CA+FuTSdL=GwjhbERsePAJfbakgEQZb7X51UHw=+4R9dJD3JD4A@mail.gmail.com>
+References: <20190628123819.2785504-1-arnd@arndb.de> <20190628123819.2785504-3-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <linux-kernel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=broadcom.com; s=google;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-transfer-encoding:content-language;
-        bh=GEJr3AqvHre2EqiUp9wkeTIrlXFQndtx5Gxgp/CLC/Y=;
-        b=XoArU2Aw8uy6yHzMzOQ8pchviB6L+RP4fgA/8H3T5PNGYyVaXqKQqTIwc7a4oy+fnV
-         F1iR3tXMQ34FbQ+fE8PXhJfHqbNf+Sn8tcEf7KYCanV+dVUAQA5PC6ql/3/lkLjzI4Cv
-         BT9bbsuFZ5wsJLWle1D+GKJmmk4aHobb+e2eY=
-In-Reply-To: <20190628123819.2785504-2-arnd@arndb.de>
-Content-Language: en-US
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=/Zbt8t4OGSrBZUltQdpu2XfV4/PLifVH/Z0A6OyR0+8=;
+        b=bsREio19ZCYiktCkIASujl5tmzasz+I6GbX0QwjW1yWtrPHLtl8F72d/tP0OV718gu
+         JhET9fkvZSnspuxgKrEOx/1kP1SYjQ7fj0fI/XoKoCGyk+qi6UDO6wRJo+hNRVYcyyxq
+         0JSncshPTPt64doooXNY6ma4/ktV2ka0yVK/xrE/yAYCFGpIjfHmlQ4eCCCi+mJeJUsc
+         8W4PI0vw66GNUmY1JGqXcSHa2CiCZHRkpxNiXv/kZ+fttkGp4qs1PP7G81iPFP6xFUG7
+         n7G6MbZWqfBIpLiVXTzG3xd/E7GrLNqS/TCCUVcsr/qDjsGrDy2eGI721OOsI6wgTV9h
+         S/yg==
+In-Reply-To: <20190628123819.2785504-3-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Arnd Bergmann <arnd@arndb.de>, Kees Cook <keescook@chromium.org>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E.J. Bottomley" <jejb@linux.ibm.com>, "Martin K. Petersen" <martin.petersen@oracle.com>
-Cc: Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, "David S . Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, James Morris <jmorris@namei.org>, linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Ard Biesheuvel <ard.biesheuvel@linaro.org>, Hannes Reinecke <hare@suse.com>, Willy Tarreau <w@1wt.eu>, Silvio Cesare <silvio.cesare@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Kees Cook <keescook@chromium.org>, Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, James Smart <james.smart@broadcom.com>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E . J . Bottomley" <jejb@linux.ibm.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, "David S . Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, James Morris <jmorris@namei.org>, linux-scsi@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>, devel@driverdev.osuosl.org, Network Development <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org
 
-
-
-On 6/28/2019 5:37 AM, Arnd Bergmann wrote:
-> The lpfc_debug_dump_all_queues() function repeatedly calls into
-> lpfc_debug_dump_qe(), which has a temporary 128 byte buffer.
-> This was fine before the introduction of CONFIG_GCC_PLUGIN_STRUCTLEAK_VERBOSE
-> because each instance could occupy the same stack slot. However,
-> now they each get their own copy, which leads to a huge increase
-> in stack usage as seen from the compiler warning:
+On Fri, Jun 28, 2019 at 8:41 AM Arnd Bergmann <arnd@arndb.de> wrote:
 >
-> drivers/scsi/lpfc/lpfc_debugfs.c: In function 'lpfc_debug_dump_all_queues':
-> drivers/scsi/lpfc/lpfc_debugfs.c:6474:1: error: the frame size of 1712 bytes is larger than 100 bytes [-Werror=frame-larger-than=]
+> An earlier patch I sent reduced the stack usage enough to get
+> below the warning limit, and I could show this was safe, but with
+> GCC_PLUGIN_STRUCTLEAK_BYREF_ALL, it gets worse again because large stack
+> variables in the same function no longer overlap:
 >
-> Avoid this by not marking lpfc_debug_dump_qe() as inline so the
-> compiler can choose to emit a static version of this function
-> when it's needed or otherwise silently drop it. As an added benefit,
-> not inlining multiple copies of this function means we save several
-> kilobytes of .text section, reducing the file size from 47kb to 43.
+> drivers/staging/rtl8712/rtl871x_ioctl_linux.c: In function 'translate_scan.isra.2':
+> drivers/staging/rtl8712/rtl871x_ioctl_linux.c:322:1: error: the frame size of 1200 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
 >
-> It is somewhat unusual to have a function that is static but not
-> inline in a header file, but this does not cause problems here
-> because it is only used by other inline functions. It would
-> however seem reasonable to move all the lpfc_debug_dump_* functions
-> into lpfc_debugfs.c and not mark them inline as a later cleanup.
-
-I agree with this cleanup.
-
+> Split out the largest two blocks in the affected function into two
+> separate functions and mark those noinline_for_stack.
 >
+> Fixes: 8c5af16f7953 ("staging: rtl8712: reduce stack usage")
 > Fixes: 81a56f6dcd20 ("gcc-plugins: structleak: Generalize to all variable types")
 > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> ---
->   drivers/scsi/lpfc/lpfc_debugfs.h | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
->
->
 
-Reviewed-by: James Smart <james.smart@broadcom.com>
-
--- james
-
+Reviewed-by: Willem de Bruijn <willemb@google.com>
