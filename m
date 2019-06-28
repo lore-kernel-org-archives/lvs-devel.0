@@ -1,305 +1,213 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 4/4] ipvs: reduce kernel stack usage
-Date: Fri, 28 Jun 2019 14:37:49 +0200
-Message-ID: <20190628123819.2785504-4-arnd@arndb.de>
+Subject: [PATCH 3/4] staging: rtl8712: reduce stack usage, again
+Date: Fri, 28 Jun 2019 14:37:48 +0200
+Message-ID: <20190628123819.2785504-3-arnd@arndb.de>
 References: <20190628123819.2785504-1-arnd@arndb.de>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <20190628123819.2785504-1-arnd@arndb.de>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Kees Cook <keescook@chromium.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>
-Cc: James Smart <james.smart@broadcom.com>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E . J . Bottomley" <jejb@linux.ibm.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, James Morris <jmorris@namei.org>, linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Ard Biesheuvel <ard.biesheuvel@linaro.org>, Arnd Bergmann <arnd@arndb.de>
+To: Kees Cook <keescook@chromium.org>, Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: James Smart <james.smart@broadcom.com>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E . J . Bottomley" <jejb@linux.ibm.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, "David S . Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, James Morris <jmorris@namei.org>, linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Ard Biesheuvel <ard.biesheuvel@linaro.org>, Arnd Bergmann <arnd@arndb.de>, Nishka Dasgupta <nishkadg.linux@gmail.com>
 
-With the new CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL option, the stack
-usage in the ipvs debug output grows because each instance of
-IP_VS_DBG_BUF() now has its own buffer of 160 bytes that add up
-rather than reusing the stack slots:
+An earlier patch I sent reduced the stack usage enough to get
+below the warning limit, and I could show this was safe, but with
+GCC_PLUGIN_STRUCTLEAK_BYREF_ALL, it gets worse again because large stack
+variables in the same function no longer overlap:
 
-net/netfilter/ipvs/ip_vs_core.c: In function 'ip_vs_sched_persist':
-net/netfilter/ipvs/ip_vs_core.c:427:1: error: the frame size of 1052 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
-net/netfilter/ipvs/ip_vs_core.c: In function 'ip_vs_new_conn_out':
-net/netfilter/ipvs/ip_vs_core.c:1231:1: error: the frame size of 1048 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
-net/netfilter/ipvs/ip_vs_ftp.c: In function 'ip_vs_ftp_out':
-net/netfilter/ipvs/ip_vs_ftp.c:397:1: error: the frame size of 1104 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
-net/netfilter/ipvs/ip_vs_ftp.c: In function 'ip_vs_ftp_in':
-net/netfilter/ipvs/ip_vs_ftp.c:555:1: error: the frame size of 1200 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+drivers/staging/rtl8712/rtl871x_ioctl_linux.c: In function 'translate_scan.isra.2':
+drivers/staging/rtl8712/rtl871x_ioctl_linux.c:322:1: error: the frame size of 1200 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
 
-Since printk() already has a way to print IPv4/IPv6 addresses using
-the %pIS format string, use that instead, combined with a macro that
-creates a local sockaddr structure on the stack. These will still
-add up, but the stack frames are now under 200 bytes.
+Split out the largest two blocks in the affected function into two
+separate functions and mark those noinline_for_stack.
 
+Fixes: 8c5af16f7953 ("staging: rtl8712: reduce stack usage")
+Fixes: 81a56f6dcd20 ("gcc-plugins: structleak: Generalize to all variable types")
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
-I'm not sure this actually does what I think it does. Someone
-needs to verify that we correctly print the addresses here.
-I've also only added three files that caused the warning messages
-to be reported. There are still a lot of other instances of
-IP_VS_DBG_BUF() that could be converted the same way after the
-basic idea is confirmed.
----
- include/net/ip_vs.h             | 71 +++++++++++++++++++--------------
- net/netfilter/ipvs/ip_vs_core.c | 44 ++++++++++----------
- net/netfilter/ipvs/ip_vs_ftp.c  | 20 +++++-----
- 3 files changed, 72 insertions(+), 63 deletions(-)
+ drivers/staging/rtl8712/rtl871x_ioctl_linux.c | 157 ++++++++++--------
+ 1 file changed, 88 insertions(+), 69 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 3759167f91f5..3dfbeef67be6 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -227,6 +227,16 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
- 		       sizeof(ip_vs_dbg_buf), addr,			\
- 		       &ip_vs_dbg_idx)
+diff --git a/drivers/staging/rtl8712/rtl871x_ioctl_linux.c b/drivers/staging/rtl8712/rtl871x_ioctl_linux.c
+index a224797cd993..fdc1df99d852 100644
+--- a/drivers/staging/rtl8712/rtl871x_ioctl_linux.c
++++ b/drivers/staging/rtl8712/rtl871x_ioctl_linux.c
+@@ -124,10 +124,91 @@ static inline void handle_group_key(struct ieee_param *param,
+ 	}
+ }
  
-+#define IP_VS_DBG_SOCKADDR4(fam, addr, port)				\
-+	(struct sockaddr*)&(struct sockaddr_in)				\
-+	{ .sin_family = (fam), .sin_addr = (addr)->in, .sin_port = (port) }
-+#define IP_VS_DBG_SOCKADDR6(fam, addr, port)				\
-+	(struct sockaddr*)&(struct sockaddr_in6) \
-+	{ .sin6_family = (fam), .sin6_addr = (addr)->in6, .sin6_port = (port) }
-+#define IP_VS_DBG_SOCKADDR(fam, addr, port) (fam == AF_INET ?		\
-+			IP_VS_DBG_SOCKADDR4(fam, addr, port) :		\
-+			IP_VS_DBG_SOCKADDR6(fam, addr, port))
+-static noinline_for_stack char *translate_scan(struct _adapter *padapter,
+-				   struct iw_request_info *info,
+-				   struct wlan_network *pnetwork,
+-				   char *start, char *stop)
++static noinline_for_stack char *translate_scan_wpa(struct iw_request_info *info,
++						   struct wlan_network *pnetwork,
++						   struct iw_event *iwe,
++						   char *start, char *stop)
++{
++	/* parsing WPA/WPA2 IE */
++	u8 buf[MAX_WPA_IE_LEN];
++	u8 wpa_ie[255], rsn_ie[255];
++	u16 wpa_len = 0, rsn_len = 0;
++	int n, i;
 +
- #define IP_VS_DBG(level, msg, ...)					\
- 	do {								\
- 		if (level <= ip_vs_get_debug_level())			\
-@@ -251,6 +261,7 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
- #else	/* NO DEBUGGING at ALL */
- #define IP_VS_DBG_BUF(level, msg...)  do {} while (0)
- #define IP_VS_ERR_BUF(msg...)  do {} while (0)
-+#define IP_VS_DBG_SOCKADDR(fam, addr, port) NULL
- #define IP_VS_DBG(level, msg...)  do {} while (0)
- #define IP_VS_DBG_RL(msg...)  do {} while (0)
- #define IP_VS_DBG_PKT(level, af, pp, skb, ofs, msg)	do {} while (0)
-@@ -1244,31 +1255,31 @@ static inline void ip_vs_control_del(struct ip_vs_conn *cp)
++	r8712_get_sec_ie(pnetwork->network.IEs,
++			 pnetwork->network.IELength, rsn_ie, &rsn_len,
++			 wpa_ie, &wpa_len);
++	if (wpa_len > 0) {
++		memset(buf, 0, MAX_WPA_IE_LEN);
++		n = sprintf(buf, "wpa_ie=");
++		for (i = 0; i < wpa_len; i++) {
++			n += snprintf(buf + n, MAX_WPA_IE_LEN - n,
++						"%02x", wpa_ie[i]);
++			if (n >= MAX_WPA_IE_LEN)
++				break;
++		}
++		memset(iwe, 0, sizeof(*iwe));
++		iwe->cmd = IWEVCUSTOM;
++		iwe->u.data.length = (u16)strlen(buf);
++		start = iwe_stream_add_point(info, start, stop,
++			iwe, buf);
++		memset(iwe, 0, sizeof(*iwe));
++		iwe->cmd = IWEVGENIE;
++		iwe->u.data.length = (u16)wpa_len;
++		start = iwe_stream_add_point(info, start, stop,
++			iwe, wpa_ie);
++	}
++	if (rsn_len > 0) {
++		memset(buf, 0, MAX_WPA_IE_LEN);
++		n = sprintf(buf, "rsn_ie=");
++		for (i = 0; i < rsn_len; i++) {
++			n += snprintf(buf + n, MAX_WPA_IE_LEN - n,
++						"%02x", rsn_ie[i]);
++			if (n >= MAX_WPA_IE_LEN)
++				break;
++		}
++		memset(iwe, 0, sizeof(*iwe));
++		iwe->cmd = IWEVCUSTOM;
++		iwe->u.data.length = strlen(buf);
++		start = iwe_stream_add_point(info, start, stop,
++			iwe, buf);
++		memset(iwe, 0, sizeof(*iwe));
++		iwe->cmd = IWEVGENIE;
++		iwe->u.data.length = rsn_len;
++		start = iwe_stream_add_point(info, start, stop, iwe,
++			rsn_ie);
++	}
++
++	return start;
++}
++
++static noinline_for_stack char *translate_scan_wps(struct iw_request_info *info,
++						   struct wlan_network *pnetwork,
++						   struct iw_event *iwe,
++						   char *start, char *stop)
++{
++	/* parsing WPS IE */
++	u8 wps_ie[512];
++	uint wps_ielen;
++
++	if (r8712_get_wps_ie(pnetwork->network.IEs,
++	    pnetwork->network.IELength,
++	    wps_ie, &wps_ielen)) {
++		if (wps_ielen > 2) {
++			iwe->cmd = IWEVGENIE;
++			iwe->u.data.length = (u16)wps_ielen;
++			start = iwe_stream_add_point(info, start, stop,
++				iwe, wps_ie);
++		}
++	}
++
++	return start;
++}
++
++static char *translate_scan(struct _adapter *padapter,
++			    struct iw_request_info *info,
++			    struct wlan_network *pnetwork,
++			    char *start, char *stop)
  {
- 	struct ip_vs_conn *ctl_cp = cp->control;
- 	if (!ctl_cp) {
--		IP_VS_ERR_BUF("request control DEL for uncontrolled: "
--			      "%s:%d to %s:%d\n",
--			      IP_VS_DBG_ADDR(cp->af, &cp->caddr),
--			      ntohs(cp->cport),
--			      IP_VS_DBG_ADDR(cp->af, &cp->vaddr),
--			      ntohs(cp->vport));
-+		pr_err("request control DEL for uncontrolled: "
-+		       "%pISp to %pISp\n",
-+		       IP_VS_DBG_SOCKADDR(cp->af, &cp->caddr,
-+		       ntohs(cp->cport)),
-+		       IP_VS_DBG_SOCKADDR(cp->af, &cp->vaddr,
-+		       ntohs(cp->vport)));
- 
- 		return;
- 	}
- 
--	IP_VS_DBG_BUF(7, "DELeting control for: "
--		      "cp.dst=%s:%d ctl_cp.dst=%s:%d\n",
--		      IP_VS_DBG_ADDR(cp->af, &cp->caddr),
--		      ntohs(cp->cport),
--		      IP_VS_DBG_ADDR(cp->af, &ctl_cp->caddr),
--		      ntohs(ctl_cp->cport));
-+	IP_VS_DBG(7, "DELeting control for: "
-+		  "cp.dst=%pISp ctl_cp.dst=%pISp\n",
-+		  IP_VS_DBG_SOCKADDR(cp->af, &cp->caddr,
-+		  ntohs(cp->cport)),
-+		  IP_VS_DBG_SOCKADDR(cp->af, &ctl_cp->caddr,
-+		  ntohs(ctl_cp->cport)));
- 
- 	cp->control = NULL;
- 	if (atomic_read(&ctl_cp->n_control) == 0) {
--		IP_VS_ERR_BUF("BUG control DEL with n=0 : "
--			      "%s:%d to %s:%d\n",
--			      IP_VS_DBG_ADDR(cp->af, &cp->caddr),
--			      ntohs(cp->cport),
--			      IP_VS_DBG_ADDR(cp->af, &cp->vaddr),
--			      ntohs(cp->vport));
-+		pr_err("BUG control DEL with n=0 : "
-+		       "%pISp to %pISp\n",
-+		       IP_VS_DBG_SOCKADDR(cp->af, &cp->caddr,
-+		       ntohs(cp->cport)),
-+		       IP_VS_DBG_SOCKADDR(cp->af, &cp->vaddr,
-+		       ntohs(cp->vport)));
- 
- 		return;
- 	}
-@@ -1279,22 +1290,22 @@ static inline void
- ip_vs_control_add(struct ip_vs_conn *cp, struct ip_vs_conn *ctl_cp)
- {
- 	if (cp->control) {
--		IP_VS_ERR_BUF("request control ADD for already controlled: "
--			      "%s:%d to %s:%d\n",
--			      IP_VS_DBG_ADDR(cp->af, &cp->caddr),
--			      ntohs(cp->cport),
--			      IP_VS_DBG_ADDR(cp->af, &cp->vaddr),
--			      ntohs(cp->vport));
-+		pr_err("request control ADD for already controlled: "
-+		       "%pISp to %pISp\n",
-+		       IP_VS_DBG_SOCKADDR(cp->af, &cp->caddr,
-+		     		     ntohs(cp->cport)),
-+		       IP_VS_DBG_SOCKADDR(cp->af, &cp->vaddr,
-+		     		     ntohs(cp->vport)));
- 
- 		ip_vs_control_del(cp);
- 	}
- 
--	IP_VS_DBG_BUF(7, "ADDing control for: "
--		      "cp.dst=%s:%d ctl_cp.dst=%s:%d\n",
--		      IP_VS_DBG_ADDR(cp->af, &cp->caddr),
--		      ntohs(cp->cport),
--		      IP_VS_DBG_ADDR(cp->af, &ctl_cp->caddr),
--		      ntohs(ctl_cp->cport));
-+	IP_VS_DBG(7, "ADDing control for: "
-+		  "cp.dst=%pISp ctl_cp.dst=%pISp\n",
-+		  IP_VS_DBG_SOCKADDR(cp->af, &cp->caddr,
-+				     ntohs(cp->cport)),
-+		  IP_VS_DBG_SOCKADDR(cp->af, &ctl_cp->caddr,
-+				     ntohs(ctl_cp->cport)));
- 
- 	cp->control = ctl_cp;
- 	atomic_inc(&ctl_cp->n_control);
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index f662f198b458..0277cd3c5446 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -51,7 +51,6 @@
- #include <net/ip_vs.h>
- #include <linux/indirect_call_wrapper.h>
- 
+ 	struct iw_event iwe;
+ 	struct ieee80211_ht_cap *pht_capie;
+@@ -240,73 +321,11 @@ static noinline_for_stack char *translate_scan(struct _adapter *padapter,
+ 	/* Check if we added any event */
+ 	if ((current_val - start) > iwe_stream_lcp_len(info))
+ 		start = current_val;
+-	/* parsing WPA/WPA2 IE */
+-	{
+-		u8 buf[MAX_WPA_IE_LEN];
+-		u8 wpa_ie[255], rsn_ie[255];
+-		u16 wpa_len = 0, rsn_len = 0;
+-		int n;
 -
- EXPORT_SYMBOL(register_ip_vs_scheduler);
- EXPORT_SYMBOL(unregister_ip_vs_scheduler);
- EXPORT_SYMBOL(ip_vs_proto_name);
-@@ -294,11 +293,11 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- #endif
- 		snet.ip = src_addr->ip & svc->netmask;
+-		r8712_get_sec_ie(pnetwork->network.IEs,
+-				 pnetwork->network.IELength, rsn_ie, &rsn_len,
+-				 wpa_ie, &wpa_len);
+-		if (wpa_len > 0) {
+-			memset(buf, 0, MAX_WPA_IE_LEN);
+-			n = sprintf(buf, "wpa_ie=");
+-			for (i = 0; i < wpa_len; i++) {
+-				n += snprintf(buf + n, MAX_WPA_IE_LEN - n,
+-							"%02x", wpa_ie[i]);
+-				if (n >= MAX_WPA_IE_LEN)
+-					break;
+-			}
+-			memset(&iwe, 0, sizeof(iwe));
+-			iwe.cmd = IWEVCUSTOM;
+-			iwe.u.data.length = (u16)strlen(buf);
+-			start = iwe_stream_add_point(info, start, stop,
+-				&iwe, buf);
+-			memset(&iwe, 0, sizeof(iwe));
+-			iwe.cmd = IWEVGENIE;
+-			iwe.u.data.length = (u16)wpa_len;
+-			start = iwe_stream_add_point(info, start, stop,
+-				&iwe, wpa_ie);
+-		}
+-		if (rsn_len > 0) {
+-			memset(buf, 0, MAX_WPA_IE_LEN);
+-			n = sprintf(buf, "rsn_ie=");
+-			for (i = 0; i < rsn_len; i++) {
+-				n += snprintf(buf + n, MAX_WPA_IE_LEN - n,
+-							"%02x", rsn_ie[i]);
+-				if (n >= MAX_WPA_IE_LEN)
+-					break;
+-			}
+-			memset(&iwe, 0, sizeof(iwe));
+-			iwe.cmd = IWEVCUSTOM;
+-			iwe.u.data.length = strlen(buf);
+-			start = iwe_stream_add_point(info, start, stop,
+-				&iwe, buf);
+-			memset(&iwe, 0, sizeof(iwe));
+-			iwe.cmd = IWEVGENIE;
+-			iwe.u.data.length = rsn_len;
+-			start = iwe_stream_add_point(info, start, stop, &iwe,
+-				rsn_ie);
+-		}
+-	}
  
--	IP_VS_DBG_BUF(6, "p-schedule: src %s:%u dest %s:%u "
--		      "mnet %s\n",
--		      IP_VS_DBG_ADDR(svc->af, src_addr), ntohs(src_port),
--		      IP_VS_DBG_ADDR(svc->af, dst_addr), ntohs(dst_port),
--		      IP_VS_DBG_ADDR(svc->af, &snet));
-+	IP_VS_DBG(6, "p-schedule: src %pISp dest %pISp "
-+		      "mnet %pIS\n",
-+		      IP_VS_DBG_SOCKADDR(svc->af, src_addr, ntohs(src_port)),
-+		      IP_VS_DBG_SOCKADDR(svc->af, dst_addr, ntohs(dst_port)),
-+		      IP_VS_DBG_SOCKADDR(svc->af, &snet, 0));
+-	{ /* parsing WPS IE */
+-		u8 wps_ie[512];
+-		uint wps_ielen;
++	start = translate_scan_wpa(info, pnetwork, &iwe, start, stop);
++
++	start = translate_scan_wps(info, pnetwork, &iwe, start, stop);
  
- 	/*
- 	 * As far as we know, FTP is a very complicated network protocol, and
-@@ -566,12 +565,12 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
- 		}
- 	}
- 
--	IP_VS_DBG_BUF(6, "Schedule fwd:%c c:%s:%u v:%s:%u "
--		      "d:%s:%u conn->flags:%X conn->refcnt:%d\n",
-+	IP_VS_DBG(6, "Schedule fwd:%c c:%pISp v:%pISp "
-+		      "d:%pISp conn->flags:%X conn->refcnt:%d\n",
- 		      ip_vs_fwd_tag(cp),
--		      IP_VS_DBG_ADDR(cp->af, &cp->caddr), ntohs(cp->cport),
--		      IP_VS_DBG_ADDR(cp->af, &cp->vaddr), ntohs(cp->vport),
--		      IP_VS_DBG_ADDR(cp->daf, &cp->daddr), ntohs(cp->dport),
-+		      IP_VS_DBG_SOCKADDR(cp->af, &cp->caddr, ntohs(cp->cport)),
-+		      IP_VS_DBG_SOCKADDR(cp->af, &cp->vaddr, ntohs(cp->vport)),
-+		      IP_VS_DBG_SOCKADDR(cp->daf, &cp->daddr, ntohs(cp->dport)),
- 		      cp->flags, refcount_read(&cp->refcnt));
- 
- 	ip_vs_conn_stats(cp, svc);
-@@ -885,8 +884,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 	/* Ensure the checksum is correct */
- 	if (!skb_csum_unnecessary(skb) && ip_vs_checksum_complete(skb, ihl)) {
- 		/* Failed checksum! */
--		IP_VS_DBG_BUF(1, "Forward ICMP: failed checksum from %s!\n",
--			      IP_VS_DBG_ADDR(af, snet));
-+		IP_VS_DBG(1, "Forward ICMP: failed checksum from %pISp!\n",
-+			      IP_VS_DBG_SOCKADDR(af, snet, 0));
- 		goto out;
- 	}
- 
-@@ -1219,13 +1218,13 @@ struct ip_vs_conn *ip_vs_new_conn_out(struct ip_vs_service *svc,
- 	ip_vs_conn_stats(cp, svc);
- 
- 	/* return connection (will be used to handle outgoing packet) */
--	IP_VS_DBG_BUF(6, "New connection RS-initiated:%c c:%s:%u v:%s:%u "
--		      "d:%s:%u conn->flags:%X conn->refcnt:%d\n",
--		      ip_vs_fwd_tag(cp),
--		      IP_VS_DBG_ADDR(cp->af, &cp->caddr), ntohs(cp->cport),
--		      IP_VS_DBG_ADDR(cp->af, &cp->vaddr), ntohs(cp->vport),
--		      IP_VS_DBG_ADDR(cp->af, &cp->daddr), ntohs(cp->dport),
--		      cp->flags, refcount_read(&cp->refcnt));
-+	IP_VS_DBG(6, "New connection RS-initiated:%c c:%pISp v:%pISp "
-+		  "d:%pISp conn->flags:%X conn->refcnt:%d\n",
-+		  ip_vs_fwd_tag(cp),
-+		  IP_VS_DBG_SOCKADDR(cp->af, &cp->caddr, ntohs(cp->cport)),
-+		  IP_VS_DBG_SOCKADDR(cp->af, &cp->vaddr, ntohs(cp->vport)),
-+		  IP_VS_DBG_SOCKADDR(cp->af, &cp->daddr, ntohs(cp->dport)),
-+		  cp->flags, refcount_read(&cp->refcnt));
- 	LeaveFunction(12);
- 	return cp;
- }
-@@ -1931,7 +1930,6 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
- }
- #endif
- 
--
- /*
-  *	Check if it's for virtual services, look it up,
-  *	and send it on its way...
-@@ -1960,10 +1958,10 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
- 		      hooknum != NF_INET_LOCAL_OUT) ||
- 		     !skb_dst(skb))) {
- 		ip_vs_fill_iph_skb(af, skb, false, &iph);
--		IP_VS_DBG_BUF(12, "packet type=%d proto=%d daddr=%s"
-+		IP_VS_DBG(12, "packet type=%d proto=%d daddr=%pIS"
- 			      " ignored in hook %u\n",
- 			      skb->pkt_type, iph.protocol,
--			      IP_VS_DBG_ADDR(af, &iph.daddr), hooknum);
-+			      IP_VS_DBG_SOCKADDR(af, &iph.daddr, 0), hooknum);
- 		return NF_ACCEPT;
- 	}
- 	/* ipvs enabled in this netns ? */
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index cf925906f59b..d57dcc2b4396 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -306,9 +306,9 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 					   &start, &end) != 1)
- 			return 1;
- 
--		IP_VS_DBG_BUF(7, "EPSV response (%s:%u) -> %s:%u detected\n",
--			      IP_VS_DBG_ADDR(cp->af, &from), ntohs(port),
--			      IP_VS_DBG_ADDR(cp->af, &cp->caddr), 0);
-+		IP_VS_DBG(7, "EPSV response (%pISp) -> %pISp detected\n",
-+			  IP_VS_DBG_SOCKADDR(cp->af, &from, ntohs(port)),
-+			  IP_VS_DBG_SOCKADDR(cp->af, &cp->caddr, 0));
- 	} else {
- 		return 1;
- 	}
-@@ -510,15 +510,15 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 					  &to, &port, cp->af,
- 					  &start, &end) == 1) {
- 
--		IP_VS_DBG_BUF(7, "EPRT %s:%u detected\n",
--			      IP_VS_DBG_ADDR(cp->af, &to), ntohs(port));
-+		IP_VS_DBG(7, "EPRT %pISp detected\n",
-+			  IP_VS_DBG_SOCKADDR(cp->af, &to, ntohs(port)));
- 
- 		/* Now update or create a connection entry for it */
--		IP_VS_DBG_BUF(7, "protocol %s %s:%u %s:%u\n",
--			      ip_vs_proto_name(ipvsh->protocol),
--			      IP_VS_DBG_ADDR(cp->af, &to), ntohs(port),
--			      IP_VS_DBG_ADDR(cp->af, &cp->vaddr),
--			      ntohs(cp->vport)-1);
-+		IP_VS_DBG(7, "protocol %s %pISp %pISp\n",
-+			  ip_vs_proto_name(ipvsh->protocol),
-+			  IP_VS_DBG_SOCKADDR(cp->af, &to, ntohs(port)),
-+			  IP_VS_DBG_SOCKADDR(cp->af, &cp->vaddr,
-+			  ntohs(cp->vport)-1));
- 	} else {
- 		return 1;
- 	}
+-		if (r8712_get_wps_ie(pnetwork->network.IEs,
+-		    pnetwork->network.IELength,
+-		    wps_ie, &wps_ielen)) {
+-			if (wps_ielen > 2) {
+-				iwe.cmd = IWEVGENIE;
+-				iwe.u.data.length = (u16)wps_ielen;
+-				start = iwe_stream_add_point(info, start, stop,
+-					&iwe, wps_ie);
+-			}
+-		}
+-	}
+ 	/* Add quality statistics */
+ 	iwe.cmd = IWEVQUAL;
+ 	rssi = r8712_signal_scale_mapping(pnetwork->network.Rssi);
 -- 
 2.20.0
 
