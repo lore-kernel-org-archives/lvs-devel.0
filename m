@@ -1,202 +1,97 @@
-From: Vadim Fedorenko <vfedorenko@yandex-team.ru>
-Subject: [PATCH] ipvs: allow tunneling with gre encapsulation
-Date: Tue, 25 Jun 2019 18:59:54 +0300
-Message-ID: <2caa3152-f90d-1ad6-3f98-b07960fed171@yandex-team.ru>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH 1/4] [v2] structleak: disable STRUCTLEAK_BYREF in combination with KASAN_STACK
+Date: Fri, 28 Jun 2019 14:37:46 +0200
+Message-ID: <20190628123819.2785504-1-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yandex-team.ru; s=default;
-        t=1561478394; bh=j3Za4mwvXNVcqNaWOAH0WO4UYFFwM7tME+Ca1jP3/m0=;
-        h=Date:Message-ID:Cc:To:Subject:From;
-        b=zdMjhoD1ItE+n+mm0424Eh2c5rsUgNs0S4yXnHpec/RINRbh3pKznPMhwKGZA1RQO
-         OrxMd8r2BHN6auHwuIEqQ28kJsSnp3RpIu17KtfogJJLh9K56l0bMOPJ4KhKJlBRlJ
-         z6bWE/k9n35Pwb8JuAXWCu2AeRF75HU8kmevyW3Q=
-Content-Language: en-US
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"; format="flowed"
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: Kees Cook <keescook@chromium.org>, James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>
+Cc: James Smart <james.smart@broadcom.com>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E . J . Bottomley" <jejb@linux.ibm.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, "David S . Miller" <davem@davemloft.net>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Ard Biesheuvel <ard.biesheuvel@linaro.org>, Arnd
 
-windows real servers can handle gre tunnels, this patch allows
-gre encapsulation with the tunneling method, thereby letting ipvs
-be load balancer for windows-based services
+The combination of KASAN_STACK and GCC_PLUGIN_STRUCTLEAK_BYREF
+leads to much larger kernel stack usage, as seen from the warnings
+about functions that now exceed the 2048 byte limit:
 
-Signed-off-by: Vadim Fedorenko <vfedorenko@yandex-team.ru>
+drivers/media/i2c/tvp5150.c:253:1: error: the frame size of 3936 bytes is larger than 2048 bytes
+drivers/media/tuners/r820t.c:1327:1: error: the frame size of 2816 bytes is larger than 2048 bytes
+drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c:16552:1: error: the frame size of 3144 bytes is larger than 2048 bytes [-Werror=frame-larger-than=]
+fs/ocfs2/aops.c:1892:1: error: the frame size of 2088 bytes is larger than 2048 bytes
+fs/ocfs2/dlm/dlmrecovery.c:737:1: error: the frame size of 2088 bytes is larger than 2048 bytes
+fs/ocfs2/namei.c:1677:1: error: the frame size of 2584 bytes is larger than 2048 bytes
+fs/ocfs2/super.c:1186:1: error: the frame size of 2640 bytes is larger than 2048 bytes
+fs/ocfs2/xattr.c:3678:1: error: the frame size of 2176 bytes is larger than 2048 bytes
+net/bluetooth/l2cap_core.c:7056:1: error: the frame size of 2144 bytes is larger than 2048 bytes [-Werror=frame-larger-than=]
+net/bluetooth/l2cap_core.c: In function 'l2cap_recv_frame':
+net/bridge/br_netlink.c:1505:1: error: the frame size of 2448 bytes is larger than 2048 bytes
+net/ieee802154/nl802154.c:548:1: error: the frame size of 2232 bytes is larger than 2048 bytes
+net/wireless/nl80211.c:1726:1: error: the frame size of 2224 bytes is larger than 2048 bytes
+net/wireless/nl80211.c:2357:1: error: the frame size of 4584 bytes is larger than 2048 bytes
+net/wireless/nl80211.c:5108:1: error: the frame size of 2760 bytes is larger than 2048 bytes
+net/wireless/nl80211.c:6472:1: error: the frame size of 2112 bytes is larger than 2048 bytes
+
+The structleak plugin was previously disabled for CONFIG_COMPILE_TEST,
+but meant we missed some bugs, so this time we should address them.
+
+The frame size warnings are distracting, and risking a kernel stack
+overflow is generally not beneficial to performance, so it may be best
+to disallow that particular combination. This can be done by turning
+off either one. I picked the dependency in GCC_PLUGIN_STRUCTLEAK_BYREF
+and GCC_PLUGIN_STRUCTLEAK_BYREF_ALL, as this option is designed to
+make uninitialized stack usage less harmful when enabled on its own,
+but it also prevents KASAN from detecting those cases in which it was
+in fact needed.
+
+KASAN_STACK is currently implied by KASAN on gcc, but could be made a
+user selectable option if we want to allow combining (non-stack) KASAN
+with GCC_PLUGIN_STRUCTLEAK_BYREF.
+
+Note that it would be possible to specifically address the files that
+print the warning, but presumably the overall stack usage is still
+significantly higher than in other configurations, so this would not
+address the full problem.
+
+I could not test this with CONFIG_INIT_STACK_ALL, which may or may not
+suffer from a similar problem.
+
+Fixes: 81a56f6dcd20 ("gcc-plugins: structleak: Generalize to all variable types")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
-  include/uapi/linux/ip_vs.h      |  1 +
-  net/netfilter/ipvs/ip_vs_xmit.c | 76 +++++++++++++++++++++++++++++++++++++++++
-  2 files changed, 77 insertions(+)
+[v2] do it for both GCC_PLUGIN_STRUCTLEAK_BYREF and GCC_PLUGIN_STRUCTLEAK_BYREF_ALL.
+---
+ security/Kconfig.hardening | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-index e4f1806..4102ddc 100644
---- a/include/uapi/linux/ip_vs.h
-+++ b/include/uapi/linux/ip_vs.h
-@@ -128,6 +128,7 @@
-  enum {
-  	IP_VS_CONN_F_TUNNEL_TYPE_IPIP = 0,	/* IPIP */
-  	IP_VS_CONN_F_TUNNEL_TYPE_GUE,		/* GUE */
-+	IP_VS_CONN_F_TUNNEL_TYPE_GRE,		/* GRE */
-  	IP_VS_CONN_F_TUNNEL_TYPE_MAX,
-  };
-
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 71fc6d6..fad3f33 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -29,6 +29,7 @@
-  #include <linux/tcp.h>                  /* for tcphdr */
-  #include <net/ip.h>
-  #include <net/gue.h>
-+#include <net/gre.h>
-  #include <net/tcp.h>                    /* for csum_tcpudp_magic */
-  #include <net/udp.h>
-  #include <net/icmp.h>                   /* for icmp_send */
-@@ -389,6 +390,12 @@ static inline bool decrement_ttl(struct netns_ipvs *ipvs,
-  			    skb->ip_summed == CHECKSUM_PARTIAL)
-  				mtu -= GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
-  		}
-+		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-+			__be16 tflags = 0;
-+			if (dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-+				tflags |= TUNNEL_CSUM;
-+			mtu -= gre_calc_hlen(tflags);
-+		}
-  		if (mtu < 68) {
-  			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
-  			goto err_put;
-@@ -549,6 +556,12 @@ static inline bool decrement_ttl(struct netns_ipvs *ipvs,
-  			    skb->ip_summed == CHECKSUM_PARTIAL)
-  				mtu -= GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
-  		}
-+		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-+			__be16 tflags = 0;
-+			if (dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-+				tflags |= TUNNEL_CSUM;
-+			mtu -= gre_calc_hlen(tflags);
-+		}
-  		if (mtu < IPV6_MIN_MTU) {
-  			IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
-  				     IPV6_MIN_MTU);
-@@ -1079,6 +1092,24 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
-orig_af)
-  	return 0;
-  }
-
-+static void
-+ipvs_gre_encap(struct net *net, struct sk_buff *skb,
-+	       struct ip_vs_conn *cp, __u8 *next_protocol)
-+{
-+	size_t hdrlen;
-+	__be16 tflags = 0;
-+	__be16 proto = *next_protocol == IPPROTO_IPIP ? htons(ETH_P_IP) : 
-htons(ETH_P_IPV6);
+diff --git a/security/Kconfig.hardening b/security/Kconfig.hardening
+index a1ffe2eb4d5f..af4c979b38ee 100644
+--- a/security/Kconfig.hardening
++++ b/security/Kconfig.hardening
+@@ -61,6 +61,7 @@ choice
+ 	config GCC_PLUGIN_STRUCTLEAK_BYREF
+ 		bool "zero-init structs passed by reference (strong)"
+ 		depends on GCC_PLUGINS
++		depends on !(KASAN && KASAN_STACK=1)
+ 		select GCC_PLUGIN_STRUCTLEAK
+ 		help
+ 		  Zero-initialize any structures on the stack that may
+@@ -70,9 +71,15 @@ choice
+ 		  exposures, like CVE-2017-1000410:
+ 		  https://git.kernel.org/linus/06e7e776ca4d3654
+ 
++		  As a side-effect, this keeps a lot of variables on the
++		  stack that can otherwise be optimized out, so combining
++		  this with CONFIG_KASAN_STACK can lead to a stack overflow
++		  and is disallowed.
 +
-+	if (cp->dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-+		tflags |= TUNNEL_CSUM;
-+
-+	hdrlen = gre_calc_hlen(tflags);
-+
-+	gre_build_header(skb, hdrlen, tflags, proto, 0, 0);
-+
-+	*next_protocol = IPPROTO_GRE;
-+}
-+
-  /*
-   *   IP Tunneling transmitter
-   *
-@@ -1153,6 +1184,18 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
-orig_af)
-  		max_headroom += sizeof(struct udphdr) + gue_hdrlen;
-  	}
-
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-+		size_t gre_hdrlen;
-+		__be16 tflags = 0;
-+
-+		if (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-+			tflags |= TUNNEL_CSUM;
-+
-+		gre_hdrlen = gre_calc_hlen(tflags);
-+
-+		max_headroom += gre_hdrlen;
-+	}
-+
-  	/* We only care about the df field if sysctl_pmtu_disc(ipvs) is set */
-  	dfp = sysctl_pmtu_disc(ipvs) ? &df : NULL;
-  	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
-@@ -1174,6 +1217,13 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
-orig_af)
-  		}
-  	}
-
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-+		if (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-+			gso_type |= SKB_GSO_GRE_CSUM;
-+		else
-+			gso_type |= SKB_GSO_GRE;
-+	}
-+
-  	if (iptunnel_handle_offloads(skb, gso_type))
-  		goto tx_error;
-
-@@ -1194,6 +1244,9 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
-orig_af)
-  		udp_set_csum(!check, skb, saddr, cp->daddr.ip, skb->len);
-  	}
-
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-+		ipvs_gre_encap(net, skb, cp, &next_protocol);
-+	}
-
-  	skb_push(skb, sizeof(struct iphdr));
-  	skb_reset_network_header(skb);
-@@ -1289,6 +1342,18 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
-orig_af)
-  		max_headroom += sizeof(struct udphdr) + gue_hdrlen;
-  	}
-
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-+		size_t gre_hdrlen;
-+		__be16 tflags = 0;
-+
-+		if (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-+			tflags |= TUNNEL_CSUM;
-+
-+		gre_hdrlen = gre_calc_hlen(tflags);
-+
-+		max_headroom += gre_hdrlen;
-+	}
-+
-  	skb = ip_vs_prepare_tunneled_skb(skb, cp->af, max_headroom,
-  					 &next_protocol, &payload_len,
-  					 &dsfield, &ttl, NULL);
-@@ -1308,6 +1373,13 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
-orig_af)
-  		}
-  	}
-
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-+		if (tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-+			gso_type |= SKB_GSO_GRE_CSUM;
-+		else
-+			gso_type |= SKB_GSO_GRE;
-+	}
-+
-  	if (iptunnel_handle_offloads(skb, gso_type))
-  		goto tx_error;
-
-@@ -1328,6 +1400,10 @@ static inline int __tun_gso_type_mask(int encaps_af, int 
-orig_af)
-  		udp6_set_csum(!check, skb, &saddr, &cp->daddr.in6, skb->len);
-  	}
-
-+	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-+		ipvs_gre_encap(net, skb, cp, &next_protocol);
-+	}
-+
-  	skb_push(skb, sizeof(struct ipv6hdr));
-  	skb_reset_network_header(skb);
-  	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
+ 	config GCC_PLUGIN_STRUCTLEAK_BYREF_ALL
+ 		bool "zero-init anything passed by reference (very strong)"
+ 		depends on GCC_PLUGINS
++		depends on !(KASAN && KASAN_STACK=1)
+ 		select GCC_PLUGIN_STRUCTLEAK
+ 		help
+ 		  Zero-initialize any stack variables that may be passed
 -- 
-1.9.1
+2.20.0
+
