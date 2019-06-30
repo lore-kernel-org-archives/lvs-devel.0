@@ -1,163 +1,106 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: allow tunneling with gre encapsulation
-Date: Sun, 30 Jun 2019 23:01:53 +0300 (EEST)
-Message-ID: <alpine.LFD.2.21.1906302242150.3788@ja.home.ssi.bg>
-References: <2caa3152-f90d-1ad6-3f98-b07960fed171@yandex-team.ru>
+Subject: Re: [PATCH 4/4] ipvs: reduce kernel stack usage
+Date: Sun, 30 Jun 2019 23:36:41 +0300 (EEST)
+Message-ID: <alpine.LFD.2.21.1906302308280.3788@ja.home.ssi.bg>
+References: <20190628123819.2785504-1-arnd@arndb.de> <20190628123819.2785504-4-arnd@arndb.de>
 Mime-Version: 1.0
 Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <2caa3152-f90d-1ad6-3f98-b07960fed171@yandex-team.ru>
+In-Reply-To: <20190628123819.2785504-4-arnd@arndb.de>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vadim Fedorenko <vfedorenko@yandex-team.ru>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Konstantin Khlebnikov <khlebnikov@yandex-team.ru>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Kees Cook <keescook@chromium.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, James Smart <james.smart@broadcom.com>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E . J . Bottomley" <jejb@linux.ibm.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, James Morris <jmorris@namei.org>, linux-scsi@vger.kernel.org, linux-kernel@vger
 
 
 	Hello,
 
-On Tue, 25 Jun 2019, Vadim Fedorenko wrote:
+On Fri, 28 Jun 2019, Arnd Bergmann wrote:
 
-> windows real servers can handle gre tunnels, this patch allows
-> gre encapsulation with the tunneling method, thereby letting ipvs
-> be load balancer for windows-based services
+> With the new CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL option, the stack
+> usage in the ipvs debug output grows because each instance of
+> IP_VS_DBG_BUF() now has its own buffer of 160 bytes that add up
+> rather than reusing the stack slots:
 > 
-> Signed-off-by: Vadim Fedorenko <vfedorenko@yandex-team.ru>
-
-	Looks like your patch is not encoded properly.
-Check Documentation/process/email-clients.rst for your
-mail client to avoid the format=flowed in Content-Type.
-To be sure, send patch to yourself and try to apply it.
-As alternative, use git send-email to send patches, for example:
-
-git send-email --envelope-sender 'YOUR EMAIL' \
-	[--suppress-from] [--confirm=always] \
-	--to 'TO_EMAIL' --cc 'CC_EMAIL1' --cc 'CC_EMAIL2' \
-	file_or_dir
-
-	You can test it by sending first to yourself only.
-Also, test every patch before sending for problems:
-
-scripts/checkpatch.pl --strict file.patch
-
-	It shows some problems you should fix.
-
-	So, your patch works but you have to send v2 with
-some changes...
-
+> net/netfilter/ipvs/ip_vs_core.c: In function 'ip_vs_sched_persist':
+> net/netfilter/ipvs/ip_vs_core.c:427:1: error: the frame size of 1052 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+> net/netfilter/ipvs/ip_vs_core.c: In function 'ip_vs_new_conn_out':
+> net/netfilter/ipvs/ip_vs_core.c:1231:1: error: the frame size of 1048 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+> net/netfilter/ipvs/ip_vs_ftp.c: In function 'ip_vs_ftp_out':
+> net/netfilter/ipvs/ip_vs_ftp.c:397:1: error: the frame size of 1104 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+> net/netfilter/ipvs/ip_vs_ftp.c: In function 'ip_vs_ftp_in':
+> net/netfilter/ipvs/ip_vs_ftp.c:555:1: error: the frame size of 1200 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+> 
+> Since printk() already has a way to print IPv4/IPv6 addresses using
+> the %pIS format string, use that instead, combined with a macro that
+> creates a local sockaddr structure on the stack. These will still
+> add up, but the stack frames are now under 200 bytes.
+> 
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 > ---
->  include/uapi/linux/ip_vs.h      |  1 +
->  net/netfilter/ipvs/ip_vs_xmit.c | 76
->  +++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 77 insertions(+)
+> I'm not sure this actually does what I think it does. Someone
+> needs to verify that we correctly print the addresses here.
+> I've also only added three files that caused the warning messages
+> to be reported. There are still a lot of other instances of
+> IP_VS_DBG_BUF() that could be converted the same way after the
+> basic idea is confirmed.
+> ---
+>  include/net/ip_vs.h             | 71 +++++++++++++++++++--------------
+>  net/netfilter/ipvs/ip_vs_core.c | 44 ++++++++++----------
+>  net/netfilter/ipvs/ip_vs_ftp.c  | 20 +++++-----
+>  3 files changed, 72 insertions(+), 63 deletions(-)
 > 
-
-> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-> index 71fc6d6..fad3f33 100644
-> --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> @@ -29,6 +29,7 @@
->  #include <linux/tcp.h>                  /* for tcphdr */
->  #include <net/ip.h>
->  #include <net/gue.h>
-> +#include <net/gre.h>
->  #include <net/tcp.h>                    /* for csum_tcpudp_magic */
->  #include <net/udp.h>
->  #include <net/icmp.h>                   /* for icmp_send */
-> @@ -389,6 +390,12 @@ static inline bool decrement_ttl(struct netns_ipvs *ipvs,
->  			    skb->ip_summed == CHECKSUM_PARTIAL)
->  				mtu -= GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
->  		}
-> +		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-> +			__be16 tflags = 0;
-
-	Empty line needed
-
-> +			if (dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-> +				tflags |= TUNNEL_CSUM;
-> +			mtu -= gre_calc_hlen(tflags);
-> +		}
->  		if (mtu < 68) {
->  			IP_VS_DBG_RL("%s(): mtu less than 68\n", __func__);
->  			goto err_put;
-> @@ -549,6 +556,12 @@ static inline bool decrement_ttl(struct netns_ipvs *ipvs,
->  			    skb->ip_summed == CHECKSUM_PARTIAL)
->  				mtu -= GUE_PLEN_REMCSUM + GUE_LEN_PRIV;
->  		}
-> +		if (dest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-> +			__be16 tflags = 0;
-
-	Empty line needed
-
-> +			if (dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-> +				tflags |= TUNNEL_CSUM;
-> +			mtu -= gre_calc_hlen(tflags);
-> +		}
->  		if (mtu < IPV6_MIN_MTU) {
->  			IP_VS_DBG_RL("%s(): mtu less than %d\n", __func__,
->  				     IPV6_MIN_MTU);
-> @@ -1079,6 +1092,24 @@ static inline int __tun_gso_type_mask(int encaps_af,
-> int orig_af)
->  	return 0;
->  }
-> 
-> +static void
-> +ipvs_gre_encap(struct net *net, struct sk_buff *skb,
-> +	       struct ip_vs_conn *cp, __u8 *next_protocol)
-> +{
-> +	size_t hdrlen;
-> +	__be16 tflags = 0;
-> +	__be16 proto = *next_protocol == IPPROTO_IPIP ? htons(ETH_P_IP) :
-> htons(ETH_P_IPV6);
-
-	This line is too long. You can also order the lines from long
-to short.
-
+> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> index 3759167f91f5..3dfbeef67be6 100644
+> --- a/include/net/ip_vs.h
+> +++ b/include/net/ip_vs.h
+> @@ -227,6 +227,16 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+>  		       sizeof(ip_vs_dbg_buf), addr,			\
+>  		       &ip_vs_dbg_idx)
+>  
+> +#define IP_VS_DBG_SOCKADDR4(fam, addr, port)				\
+> +	(struct sockaddr*)&(struct sockaddr_in)				\
+> +	{ .sin_family = (fam), .sin_addr = (addr)->in, .sin_port = (port) }
+> +#define IP_VS_DBG_SOCKADDR6(fam, addr, port)				\
+> +	(struct sockaddr*)&(struct sockaddr_in6) \
+> +	{ .sin6_family = (fam), .sin6_addr = (addr)->in6, .sin6_port = (port) }
+> +#define IP_VS_DBG_SOCKADDR(fam, addr, port) (fam == AF_INET ?		\
+> +			IP_VS_DBG_SOCKADDR4(fam, addr, port) :		\
+> +			IP_VS_DBG_SOCKADDR6(fam, addr, port))
 > +
-> +	if (cp->dest->tun_flags & IP_VS_TUNNEL_ENCAP_FLAG_CSUM)
-> +		tflags |= TUNNEL_CSUM;
+>  #define IP_VS_DBG(level, msg, ...)					\
+>  	do {								\
+>  		if (level <= ip_vs_get_debug_level())			\
+> @@ -251,6 +261,7 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+>  #else	/* NO DEBUGGING at ALL */
+>  #define IP_VS_DBG_BUF(level, msg...)  do {} while (0)
+>  #define IP_VS_ERR_BUF(msg...)  do {} while (0)
+> +#define IP_VS_DBG_SOCKADDR(fam, addr, port) NULL
+>  #define IP_VS_DBG(level, msg...)  do {} while (0)
+>  #define IP_VS_DBG_RL(msg...)  do {} while (0)
+>  #define IP_VS_DBG_PKT(level, af, pp, skb, ofs, msg)	do {} while (0)
+> @@ -1244,31 +1255,31 @@ static inline void ip_vs_control_del(struct ip_vs_conn *cp)
+>  {
+>  	struct ip_vs_conn *ctl_cp = cp->control;
+>  	if (!ctl_cp) {
+> -		IP_VS_ERR_BUF("request control DEL for uncontrolled: "
+> -			      "%s:%d to %s:%d\n",
+> -			      IP_VS_DBG_ADDR(cp->af, &cp->caddr),
+> -			      ntohs(cp->cport),
+> -			      IP_VS_DBG_ADDR(cp->af, &cp->vaddr),
+> -			      ntohs(cp->vport));
+> +		pr_err("request control DEL for uncontrolled: "
+> +		       "%pISp to %pISp\n",
 
-	Many empty lines are not needed...
+	ip_vs_dbg_addr() used compact form (%pI6c), so it would be
+better to use %pISc and %pISpc everywhere in IPVS...
 
-> +
-> +	hdrlen = gre_calc_hlen(tflags);
-> +
-> +	gre_build_header(skb, hdrlen, tflags, proto, 0, 0);
-> +
-> +	*next_protocol = IPPROTO_GRE;
-> +}
-> +
->  /*
->   *   IP Tunneling transmitter
->   *
+	Also, note that before now port was printed with %d and
+ntohs() was used, now port should be in network order, so:
 
-> @@ -1328,6 +1400,10 @@ static inline int __tun_gso_type_mask(int encaps_af,
-> int orig_af)
->  		udp6_set_csum(!check, skb, &saddr, &cp->daddr.in6, skb->len);
->  	}
-> 
-> +	if (tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GRE) {
-> +		ipvs_gre_encap(net, skb, cp, &next_protocol);
-> +	}
-
-	Braces are not needed, at both places where ipvs_gre_encap is 
-called.
-
-> +
->  	skb_push(skb, sizeof(struct ipv6hdr));
->  	skb_reset_network_header(skb);
->  	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
-
-	As part of your patch, the new tunnel type should be registered 
-also in ip_vs_rs_hash(), GRE will use port 0 just like IPIP, eg:
-
-                case IP_VS_CONN_F_TUNNEL_TYPE_IPIP:
-+               case IP_VS_CONN_F_TUNNEL_TYPE_GRE:
-                        port = 0;
-                        break;
-
-	Then I'll post a patch for ip_vs_in_icmp() that strips
-the GRE header from ICMP errors by adding ipvs_gre_decap().
-I also created ipvsadm patch for GRE.
+- ntohs() should be removed
+- htons() should be added, if missing. At first look, this case
+is not present in IPVS, we have only ntohs() usage
 
 Regards
