@@ -1,66 +1,81 @@
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: [ANNOUNCE] ipvsadm release v1.30
-Date: Tue, 2 Jul 2019 12:24:51 +0200
-Message-ID: <20190702122451.556ceb8c@carbon>
+Subject: Re: [PATCH v8 0/2] Allow tunneling with gue
+	encapsulation
+Date: Tue, 2 Jul 2019 13:12:09 +0200
+Message-ID: <20190702131209.57c018ea@carbon>
+References: <20190530080057.8218-1-hengqing.hu@gmail.com>
+	<alpine.LFD.2.21.1905302130360.4725@ja.home.ssi.bg>
+	<20190531084955.7cd4af00@carbon>
+Reply-To: "LinuxVirtualServer.org users mailing list."
+	<lvs-users@linuxvirtualserver.org>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <netdev-owner@vger.kernel.org>
-Sender: netdev-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Julian Anastasov <ja@ssi.bg>
-Cc: brouer@redhat.com, netdev@vger.kernel.org, Ryan O'Hara <rohara@redhat.com>, Arthur Gautier <baloo@gandi.net>, Quentin Armitage <quentin@armitage.org.uk>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org>
+In-Reply-To: <20190531084955.7cd4af00@carbon>
+List-Id: <lvs-devel.vger.kernel.org>
+List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
+	<mailto:lvs-users-request@linuxvirtualserver.org?subject=unsubscribe>
+List-Archive: <http://lists.graemef.net/pipermail/lvs-users>
+List-Post: <mailto:lvs-users@linuxvirtualserver.org>
+List-Help: <mailto:lvs-users-request@linuxvirtualserver.org?subject=help>
+List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
+	<mailto:lvs-users-request@linuxvirtualserver.org?subject=subscribe>
+Sender: lvs-users-bounces@linuxvirtualserver.org
+Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-users@linuxvirtualserver.org, lvs-devel@vger.kernel.org, horms@verge.net.au, jacky.hu@walmart.com, brouer@redhat.com, Jacky Hu <hengqing.hu@gmail.com>, jason.niesz@walmart.com
 
-We are happy to announce the release of ipvsadm v1.30.
+On Fri, 31 May 2019 08:49:55 +0200
+Jesper Dangaard Brouer <brouer@redhat.com> wrote:
 
- ipvsadm is a utility to administer the kernels IPVS/LVS load-balancer service
+> On Thu, 30 May 2019 21:37:34 +0300 (EEST) Julian Anastasov <ja@ssi.bg> wrote:
+> 
+> > On Thu, 30 May 2019, Jacky Hu wrote:
+> >   
+> > > This patchset allows tunneling with gue encapsulation.
+> > >   
+> [...]
+> > 
+> > 	Both patches look ok to me, thanks!
+> > 
+> > Acked-by: Julian Anastasov <ja@ssi.bg>
+> > 
+> > 	Jesper, this patchset is based on the kernel patch
+> > "[PATCH v4] ipvs: add checksum support for gue encapsulation"
+> > which is to be applied to kernel trees. If needed, I can ping
+> > you when the patch is accepted.  
 
-There have not been a ipvsadm release for far too long. This release is
-focused on kernel release v4.18 and below, for adding the missing userspace
-side for the schedulers MH, FO and OVF. There are upcoming change for GUE
-and GRE, that are not part of this release.
+Looks like this commit got applied to the kernel in commit 29930e314da3
+("ipvs: add checksum support for gue encapsulation"), but only net-next.
 
-There have been very little development on the tool, but this release still
-contains userspace config to kernel side features that span many kernel
-releases. Special thanks to Quentin Armitage for adding this userspace side
-support, that was missing in ipvsadm.
+Thus, I've applied this user-side patchset to ipvsadm.
+ https://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git/
 
-This release contains userspace support and/or doc for 3 more schedulers:
- - mh:  Maglev Hashing: added in kernel v4.18
- - ovf (doc): Weighted Overflow: added in kernel v4.3
-   - https://git.kernel.org/torvalds/c/eefa32d3f3c5
- - fo (doc): Weighted FailOver: added in kernel v3.18
-   - https://git.kernel.org/torvalds/c/616a9be25cb9
+As you might have noticed, I've created a release v1.30 prio to applying
+these.  As we have to wait for a kernel release, likely kernel v5.3,
+before making an ipvsadm release with this GUE feature.
 
-This release is based on the kernel.org git tree:
-  https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git/
-
-You can download the tarballs from:
- https://kernel.org/pub/linux/utils/kernel/ipvsadm/
-
-Git tree:
- git://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git
-
-Shortlog:
-
-Arthur Gautier (1):
-      libipvs: discrepancy with libnl genlmsg_put
-
-Jesper Dangaard Brouer (2):
-      Merge: ipvsadm: Document/add support for fo/ovf/mh schedulers
-      Release: Version 1.30
-
-Julian Anastasov (2):
-      ipvsadm: catch the original errno from netlink answer
-      libipvs: fix some buffer sizes
-
-Quentin Armitage (3):
-      Document support of fo scheduler
-      Document support of ovf scheduler
-      Add support for mh scheduler
-
+It should also make it easier for Julian's GRE work, to build on top.
 -- 
 Best regards,
   Jesper Dangaard Brouer
   MSc.CS, Principal Kernel Engineer at Red Hat
   LinkedIn: http://www.linkedin.com/in/brouer
+
+commit 29930e314da3833437a2ddc7b17f6a954f38d8fb
+Author: Jacky Hu <hengqing.hu@gmail.com>
+Date:   Thu May 30 08:16:40 2019 +0800
+
+    ipvs: add checksum support for gue encapsulation
+    
+    Add checksum support for gue encapsulation with the tun_flags parameter,
+    which could be one of the values below:
+    IP_VS_TUNNEL_ENCAP_FLAG_NOCSUM
+    IP_VS_TUNNEL_ENCAP_FLAG_CSUM
+    IP_VS_TUNNEL_ENCAP_FLAG_REMCSUM
+    
+    Signed-off-by: Jacky Hu <hengqing.hu@gmail.com>
+    Signed-off-by: Julian Anastasov <ja@ssi.bg>
+    Signed-off-by: Simon Horman <horms@verge.net.au>
+    Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
