@@ -1,38 +1,80 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: linux-next: Tree for Jul 3 (netfilter/ipvs/)
-Date: Wed, 3 Jul 2019 21:09:53 +0200
-Message-ID: <20190703190953.jybqfokxbgtuijyu@salvia>
-References: <20190703214900.45e94ae4@canb.auug.org.au>
- <406d9741-68ad-f465-1248-64eef05b1350@infradead.org>
- <alpine.LFD.2.21.1907032126220.3226@ja.home.ssi.bg>
-Mime-Version: 1.0
+From: xianfengting221@163.com
+Subject: [PATCH] ipvs: Delete some unused space characters in Kconfig
+Date: Sun,  7 Jul 2019 12:16:49 +0800
+Message-ID: <1562473009-29726-1-git-send-email-xianfengting221@163.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.21.1907032126220.3226@ja.home.ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+        s=s110527; h=From:Subject:Date:Message-Id; bh=obkgI72FnkfilFr+aG
+        Iy9W7IsYqdSbTqaaEZ3FLrriA=; b=DEVuW4gyKlk83j4/+KPUpMZpfvcwWzq2jL
+        1jKT8EcZagpc1Rh7oklwAYNQAYfJppkDaiDbK3pK7ZtJV9VO0nv23OoPCsg0mLCP
+        3jJMl0mcxEuny1vsXSA396kC1pv+XznLfDKawI+FzhplcQQQA2Flo9xeUBBkD8Vq
+        URMtsD/hU=
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Randy Dunlap <rdunlap@infradead.org>, Stephen Rothwell <sfr@canb.auug.org.au>, Linux Next Mailing List <linux-next@vger.kernel.org>, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Hu Haowen <xianfengting221@163.com>
 
-On Wed, Jul 03, 2019 at 09:29:26PM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Wed, 3 Jul 2019, Randy Dunlap wrote:
-> 
-> > On 7/3/19 4:49 AM, Stephen Rothwell wrote:
-> > > Hi all,
-> > > 
-> > > Changes since 20190702:
-> > > 
-> > 
-> > on i386:
-> 
-> 	Oh, well. net/gre.h was included by CONFIG_NF_CONNTRACK, so
-> it is failing when CONFIG_NF_CONNTRACK is not used.
-> 
-> 	Pablo, should I post v2 or just a fix?
+From: Hu Haowen <xianfengting221@163.com>
 
-I let you choose.
+The space characters at the end of lines are always unused and
+not easy to find. This patch deleted some of them I have found
+in Kconfig.
+
+Signed-off-by: Hu Haowen <xianfengting221@163.com>
+---
+
+This is my first patch to the Linux kernel, so please forgive
+me if anything went wrong.
+
+ net/netfilter/ipvs/Kconfig | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index f6f1a0d..54afad5 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -120,7 +120,7 @@ config	IP_VS_RR
+ 
+ 	  If you want to compile it in kernel, say Y. To compile it as a
+ 	  module, choose M here. If unsure, say N.
+- 
++
+ config	IP_VS_WRR
+ 	tristate "weighted round-robin scheduling"
+ 	---help---
+@@ -138,7 +138,7 @@ config	IP_VS_LC
+         tristate "least-connection scheduling"
+ 	---help---
+ 	  The least-connection scheduling algorithm directs network
+-	  connections to the server with the least number of active 
++	  connections to the server with the least number of active
+ 	  connections.
+ 
+ 	  If you want to compile it in kernel, say Y. To compile it as a
+@@ -193,7 +193,7 @@ config  IP_VS_LBLCR
+ 	tristate "locality-based least-connection with replication scheduling"
+ 	---help---
+ 	  The locality-based least-connection with replication scheduling
+-	  algorithm is also for destination IP load balancing. It is 
++	  algorithm is also for destination IP load balancing. It is
+ 	  usually used in cache cluster. It differs from the LBLC scheduling
+ 	  as follows: the load balancer maintains mappings from a target
+ 	  to a set of server nodes that can serve the target. Requests for
+@@ -250,8 +250,8 @@ config	IP_VS_SED
+ 	tristate "shortest expected delay scheduling"
+ 	---help---
+ 	  The shortest expected delay scheduling algorithm assigns network
+-	  connections to the server with the shortest expected delay. The 
+-	  expected delay that the job will experience is (Ci + 1) / Ui if 
++	  connections to the server with the shortest expected delay. The
++	  expected delay that the job will experience is (Ci + 1) / Ui if
+ 	  sent to the ith server, in which Ci is the number of connections
+ 	  on the ith server and Ui is the fixed service rate (weight)
+ 	  of the ith server.
+-- 
+2.7.4
+
+
