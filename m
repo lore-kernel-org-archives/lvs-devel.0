@@ -1,156 +1,87 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH net v3] ipvs: Improve robustness to the ipvs sysctl
-Date: Wed, 31 Jul 2019 20:53:47 +0300 (EEST)
-Message-ID: <alpine.LFD.2.21.1907312052310.3631@ja.home.ssi.bg>
-References: <1997375e-815d-137f-20c9-0829a8587ee9@huawei.com> <4a0476d3-57a4-50e0-cae8-9dffc4f4d556@huawei.com> <5fd55d18-f4e2-a6b4-5c54-db76c05be5df@huawei.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH] ipvs: Delete some unused space characters in Kconfig
+Date: Wed, 10 Jul 2019 09:29:48 +0200
+Message-ID: <20190710072948.mpg4niors42zrqhc@verge.net.au>
+References: <1562473009-29726-1-git-send-email-xianfengting221@163.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <5fd55d18-f4e2-a6b4-5c54-db76c05be5df@huawei.com>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1562473009-29726-1-git-send-email-xianfengting221@163.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: hujunwei <hujunwei4@huawei.com>
-Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@blackhole.kfki.hu, Florian Westphal <fw@strlen.de>, davem@davemloft.net, Florian Westphal <fw@strlen.de>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Mingfangsen <mingfangsen@huawei.com>, wangxiaogang3@huawei.com, xuhanbing@huawei.com
+To: xianfengting221@163.com
+Cc: wensong@linux-vs.org, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 
-
-	Hello,
-
-On Thu, 1 Aug 2019, hujunwei wrote:
-
-> From: Junwei Hu <hujunwei4@huawei.com>
+On Sun, Jul 07, 2019 at 12:16:49PM +0800, xianfengting221@163.com wrote:
+> From: Hu Haowen <xianfengting221@163.com>
 > 
-> The ipvs module parse the user buffer and save it to sysctl,
-> then check if the value is valid. invalid value occurs
-> over a period of time.
-> Here, I add a variable, struct ctl_table tmp, used to read
-> the value from the user buffer, and save only when it is valid.
-> I delete proc_do_sync_mode and use extra1/2 in table for the
-> proc_dointvec_minmax call.
+> The space characters at the end of lines are always unused and
+> not easy to find. This patch deleted some of them I have found
+> in Kconfig.
 > 
-> Fixes: f73181c8288f ("ipvs: add support for sync threads")
-> Signed-off-by: Junwei Hu <hujunwei4@huawei.com>
-> Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	Yep, Acked-by: Julian Anastasov <ja@ssi.bg>
-
+> Signed-off-by: Hu Haowen <xianfengting221@163.com>
 > ---
-> V1->V2:
-> - delete proc_do_sync_mode and use proc_dointvec_minmax call.
-> V2->V3:
-> - update git version
-> ---
->  net/netfilter/ipvs/ip_vs_ctl.c | 69 +++++++++++++++++-----------------
->  1 file changed, 35 insertions(+), 34 deletions(-)
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index 060565e7d227..72189559a1cd 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -1737,12 +1737,18 @@ proc_do_defense_mode(struct ctl_table *table, int write,
->  	int val = *valp;
->  	int rc;
+> This is my first patch to the Linux kernel, so please forgive
+> me if anything went wrong.
+
+Acked-by: Simon Horman <horms+renesas@verge.net.au>
+
+Thanks Hu,
+
+this looks good to me.
+
+Pablo, please consider this for inclusion in nf-next.
+
 > 
-> -	rc = proc_dointvec(table, write, buffer, lenp, ppos);
-> +	struct ctl_table tmp = {
-> +		.data = &val,
-> +		.maxlen = sizeof(int),
-> +		.mode = table->mode,
-> +	};
+>  net/netfilter/ipvs/Kconfig | 10 +++++-----
+>  1 file changed, 5 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+> index f6f1a0d..54afad5 100644
+> --- a/net/netfilter/ipvs/Kconfig
+> +++ b/net/netfilter/ipvs/Kconfig
+> @@ -120,7 +120,7 @@ config	IP_VS_RR
+>  
+>  	  If you want to compile it in kernel, say Y. To compile it as a
+>  	  module, choose M here. If unsure, say N.
+> - 
 > +
-> +	rc = proc_dointvec(&tmp, write, buffer, lenp, ppos);
->  	if (write && (*valp != val)) {
-> -		if ((*valp < 0) || (*valp > 3)) {
-> -			/* Restore the correct value */
-> -			*valp = val;
-> +		if (val < 0 || val > 3) {
-> +			rc = -EINVAL;
->  		} else {
-> +			*valp = val;
->  			update_defense_level(ipvs);
->  		}
->  	}
-> @@ -1756,33 +1762,20 @@ proc_do_sync_threshold(struct ctl_table *table, int write,
->  	int *valp = table->data;
->  	int val[2];
->  	int rc;
-> +	struct ctl_table tmp = {
-> +		.data = &val,
-> +		.maxlen = table->maxlen,
-> +		.mode = table->mode,
-> +	};
-> 
-> -	/* backup the value first */
->  	memcpy(val, valp, sizeof(val));
-> -
-> -	rc = proc_dointvec(table, write, buffer, lenp, ppos);
-> -	if (write && (valp[0] < 0 || valp[1] < 0 ||
-> -	    (valp[0] >= valp[1] && valp[1]))) {
-> -		/* Restore the correct value */
-> -		memcpy(valp, val, sizeof(val));
-> -	}
-> -	return rc;
-> -}
-> -
-> -static int
-> -proc_do_sync_mode(struct ctl_table *table, int write,
-> -		     void __user *buffer, size_t *lenp, loff_t *ppos)
-> -{
-> -	int *valp = table->data;
-> -	int val = *valp;
-> -	int rc;
-> -
-> -	rc = proc_dointvec(table, write, buffer, lenp, ppos);
-> -	if (write && (*valp != val)) {
-> -		if ((*valp < 0) || (*valp > 1)) {
-> -			/* Restore the correct value */
-> -			*valp = val;
-> -		}
-> +	rc = proc_dointvec(&tmp, write, buffer, lenp, ppos);
-> +	if (write) {
-> +		if (val[0] < 0 || val[1] < 0 ||
-> +		    (val[0] >= val[1] && val[1]))
-> +			rc = -EINVAL;
-> +		else
-> +			memcpy(valp, val, sizeof(val));
->  	}
->  	return rc;
->  }
-> @@ -1795,12 +1788,18 @@ proc_do_sync_ports(struct ctl_table *table, int write,
->  	int val = *valp;
->  	int rc;
-> 
-> -	rc = proc_dointvec(table, write, buffer, lenp, ppos);
-> +	struct ctl_table tmp = {
-> +		.data = &val,
-> +		.maxlen = sizeof(int),
-> +		.mode = table->mode,
-> +	};
-> +
-> +	rc = proc_dointvec(&tmp, write, buffer, lenp, ppos);
->  	if (write && (*valp != val)) {
-> -		if (*valp < 1 || !is_power_of_2(*valp)) {
-> -			/* Restore the correct value */
-> +		if (val < 1 || !is_power_of_2(val))
-> +			rc = -EINVAL;
-> +		else
->  			*valp = val;
-> -		}
->  	}
->  	return rc;
->  }
-> @@ -1860,7 +1859,9 @@ static struct ctl_table vs_vars[] = {
->  		.procname	= "sync_version",
->  		.maxlen		= sizeof(int),
->  		.mode		= 0644,
-> -		.proc_handler	= proc_do_sync_mode,
-> +		.proc_handler	= proc_dointvec_minmax,
-> +		.extra1		= SYSCTL_ZERO,
-> +		.extra2		= SYSCTL_ONE,
->  	},
->  	{
->  		.procname	= "sync_ports",
+>  config	IP_VS_WRR
+>  	tristate "weighted round-robin scheduling"
+>  	---help---
+> @@ -138,7 +138,7 @@ config	IP_VS_LC
+>          tristate "least-connection scheduling"
+>  	---help---
+>  	  The least-connection scheduling algorithm directs network
+> -	  connections to the server with the least number of active 
+> +	  connections to the server with the least number of active
+>  	  connections.
+>  
+>  	  If you want to compile it in kernel, say Y. To compile it as a
+> @@ -193,7 +193,7 @@ config  IP_VS_LBLCR
+>  	tristate "locality-based least-connection with replication scheduling"
+>  	---help---
+>  	  The locality-based least-connection with replication scheduling
+> -	  algorithm is also for destination IP load balancing. It is 
+> +	  algorithm is also for destination IP load balancing. It is
+>  	  usually used in cache cluster. It differs from the LBLC scheduling
+>  	  as follows: the load balancer maintains mappings from a target
+>  	  to a set of server nodes that can serve the target. Requests for
+> @@ -250,8 +250,8 @@ config	IP_VS_SED
+>  	tristate "shortest expected delay scheduling"
+>  	---help---
+>  	  The shortest expected delay scheduling algorithm assigns network
+> -	  connections to the server with the shortest expected delay. The 
+> -	  expected delay that the job will experience is (Ci + 1) / Ui if 
+> +	  connections to the server with the shortest expected delay. The
+> +	  expected delay that the job will experience is (Ci + 1) / Ui if
+>  	  sent to the ith server, in which Ci is the number of connections
+>  	  on the ith server and Ui is the fixed service rate (weight)
+>  	  of the ith server.
 > -- 
-> 2.21.GIT
-
-Regards
+> 2.7.4
+> 
+> 
