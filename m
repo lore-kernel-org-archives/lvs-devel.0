@@ -1,132 +1,88 @@
-From: hujunwei <hujunwei4@huawei.com>
-Subject: [PATCH net] ipvs: Improve robustness to the ipvs sysctl
-Date: Mon, 15 Jul 2019 22:48:18 +0800
-Message-ID: <1997375e-815d-137f-20c9-0829a8587ee9@huawei.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [net-next 1/2] ipvs: batch __ip_vs_cleanup
+Date: Mon, 15 Jul 2019 23:39:52 +0300 (EEST)
+Message-ID: <alpine.LFD.2.21.1907152333300.5700@ja.home.ssi.bg>
+References: <1563031186-2101-1-git-send-email-yanhaishuang@cmss.chinamobile.com> <1563031186-2101-2-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Return-path: <netdev-owner@vger.kernel.org>
-Content-Language: en-US
+In-Reply-To: <1563031186-2101-2-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Mingfangsen <mingfangsen@huawei.com>, wangxiaogang3@huawei.com, xuhanbing@huawei.com
+Content-Transfer-Encoding: 7bit
+To: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-From: Junwei Hu <hujunwei4@huawei.com>
 
-The ipvs module parse the user buffer and save it to sysctl,
-then check if the value is valid. invalid value occurs
-over a period of time.
-Here, I add a variable, struct ctl_table tmp, used to read
-the value from the user buffer, and save only when it is valid.
+	Hello,
 
-Fixes: f73181c8288f ("ipvs: add support for sync threads")
-Signed-off-by: Junwei Hu <hujunwei4@huawei.com>
----
- net/netfilter/ipvs/ip_vs_ctl.c | 61 +++++++++++++++++++++++-----------
- 1 file changed, 42 insertions(+), 19 deletions(-)
+On Sat, 13 Jul 2019, Haishuang Yan wrote:
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 741d91aa4a8d..e78fd05f108b 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1680,12 +1680,18 @@ proc_do_defense_mode(struct ctl_table *table, int write,
- 	int val = *valp;
- 	int rc;
+> It's better to batch __ip_vs_cleanup to speedup ipvs
+> connections dismantle.
+> 
+> Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+> ---
+>  include/net/ip_vs.h             |  2 +-
+>  net/netfilter/ipvs/ip_vs_core.c | 29 +++++++++++++++++------------
+>  net/netfilter/ipvs/ip_vs_ctl.c  | 13 ++++++++++---
+>  3 files changed, 28 insertions(+), 16 deletions(-)
+> 
+> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> index 3759167..93e7a25 100644
+> --- a/include/net/ip_vs.h
+> +++ b/include/net/ip_vs.h
+> @@ -1324,7 +1324,7 @@ static inline void ip_vs_control_del(struct ip_vs_conn *cp)
+>  void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+>  void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
+>  void ip_vs_sync_net_cleanup(struct netns_ipvs *ipvs);
+> -void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
+> +void ip_vs_service_nets_cleanup(struct list_head *net_list);
+>  
+>  /* IPVS application functions
+>   * (from ip_vs_app.c)
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index 46f06f9..b4d79b7 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -2402,18 +2402,23 @@ static int __net_init __ip_vs_init(struct net *net)
+>  	return -ENOMEM;
+>  }
+>  
+> -static void __net_exit __ip_vs_cleanup(struct net *net)
+> +static void __net_exit __ip_vs_cleanup_batch(struct list_head *net_list)
+>  {
+> -	struct netns_ipvs *ipvs = net_ipvs(net);
+> -
+> -	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+> -	ip_vs_conn_net_cleanup(ipvs);
+> -	ip_vs_app_net_cleanup(ipvs);
+> -	ip_vs_protocol_net_cleanup(ipvs);
+> -	ip_vs_control_net_cleanup(ipvs);
+> -	ip_vs_estimator_net_cleanup(ipvs);
+> -	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+> -	net->ipvs = NULL;
+> +	struct netns_ipvs *ipvs;
+> +	struct net *net;
+> +	LIST_HEAD(list);
+> +
+> +	ip_vs_service_nets_cleanup(net_list);	/* ip_vs_flush() with locks */
+> +	list_for_each_entry(net, net_list, exit_list) {
 
--	rc = proc_dointvec(table, write, buffer, lenp, ppos);
-+	struct ctl_table tmp = {
-+		.data = &val,
-+		.maxlen = sizeof(int),
-+		.mode = table->mode,
-+	};
-+
-+	rc = proc_dointvec(&tmp, write, buffer, lenp, ppos);
- 	if (write && (*valp != val)) {
--		if ((*valp < 0) || (*valp > 3)) {
--			/* Restore the correct value */
-+		if (val < 0 || val > 3)
-+			rc = -EINVAL;
-+		else {
- 			*valp = val;
--		} else {
- 			update_defense_level(ipvs);
- 		}
- 	}
-@@ -1699,15 +1705,20 @@ proc_do_sync_threshold(struct ctl_table *table, int write,
- 	int *valp = table->data;
- 	int val[2];
- 	int rc;
-+	struct ctl_table tmp = {
-+		.data = &val,
-+		.maxlen = table->maxlen,
-+		.mode = table->mode,
-+	};
+	How much faster is to replace list_for_each_entry in
+ops_exit_list() with this one. IPVS can waste time in calls
+such as kthread_stop() and del_timer_sync() but I'm not sure
+we can solve it easily. What gain do you see in benchmarks?
 
--	/* backup the value first */
- 	memcpy(val, valp, sizeof(val));
--
--	rc = proc_dointvec(table, write, buffer, lenp, ppos);
--	if (write && (valp[0] < 0 || valp[1] < 0 ||
--	    (valp[0] >= valp[1] && valp[1]))) {
--		/* Restore the correct value */
--		memcpy(valp, val, sizeof(val));
-+	rc = proc_dointvec(&tmp, write, buffer, lenp, ppos);
-+	if (write) {
-+		if (val[0] < 0 || val[1] < 0 ||
-+		    (val[0] >= val[1] && val[1]))
-+			rc = -EINVAL;
-+		else
-+			memcpy(valp, val, sizeof(val));
- 	}
- 	return rc;
- }
-@@ -1720,12 +1731,18 @@ proc_do_sync_mode(struct ctl_table *table, int write,
- 	int val = *valp;
- 	int rc;
+> +		ipvs = net_ipvs(net);
+> +		ip_vs_conn_net_cleanup(ipvs);
+> +		ip_vs_app_net_cleanup(ipvs);
+> +		ip_vs_protocol_net_cleanup(ipvs);
+> +		ip_vs_control_net_cleanup(ipvs);
+> +		ip_vs_estimator_net_cleanup(ipvs);
+> +		IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+> +		net->ipvs = NULL;
+> +	}
+>  }
 
--	rc = proc_dointvec(table, write, buffer, lenp, ppos);
-+	struct ctl_table tmp = {
-+		.data = &val,
-+		.maxlen = sizeof(int),
-+		.mode = table->mode,
-+	};
-+
-+	rc = proc_dointvec(&tmp, write, buffer, lenp, ppos);
- 	if (write && (*valp != val)) {
--		if ((*valp < 0) || (*valp > 1)) {
--			/* Restore the correct value */
-+		if (val < 0 || val > 1)
-+			rc = -EINVAL;
-+		else
- 			*valp = val;
--		}
- 	}
- 	return rc;
- }
-@@ -1738,12 +1755,18 @@ proc_do_sync_ports(struct ctl_table *table, int write,
- 	int val = *valp;
- 	int rc;
-
--	rc = proc_dointvec(table, write, buffer, lenp, ppos);
-+	struct ctl_table tmp = {
-+		.data = &val,
-+		.maxlen = sizeof(int),
-+		.mode = table->mode,
-+	};
-+
-+	rc = proc_dointvec(&tmp, write, buffer, lenp, ppos);
- 	if (write && (*valp != val)) {
--		if (*valp < 1 || !is_power_of_2(*valp)) {
--			/* Restore the correct value */
-+		if (val < 1 || !is_power_of_2(val))
-+			rc = -EINVAL;
-+		else
- 			*valp = val;
--		}
- 	}
- 	return rc;
- }
--- 
-2.21.GIT
-
+Regards
