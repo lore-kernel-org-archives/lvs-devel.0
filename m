@@ -1,88 +1,67 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [net-next 1/2] ipvs: batch __ip_vs_cleanup
-Date: Mon, 15 Jul 2019 23:39:52 +0300 (EEST)
-Message-ID: <alpine.LFD.2.21.1907152333300.5700@ja.home.ssi.bg>
-References: <1563031186-2101-1-git-send-email-yanhaishuang@cmss.chinamobile.com> <1563031186-2101-2-git-send-email-yanhaishuang@cmss.chinamobile.com>
+From: yangxingwu <xingwu.yang@gmail.com>
+Subject: Re: [PATCH] ipvs: remove unnecessary space
+Date: Tue, 16 Jul 2019 09:26:44 +0800
+Message-ID: <CA+7U5JvJMTjCuxo8Mf7tiXZADe-q4covYxX7NsG8EMCcJh5mtA@mail.gmail.com>
+References: <20190710074552.74394-1-xingwu.yang@gmail.com> <20190710080609.smxjqe2d5jyro4hv@verge.net.au>
+ <20190715082747.fdlpvekbqyhwx724@salvia>
 Mime-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
 Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1563031186-2101-2-git-send-email-yanhaishuang@cmss.chinamobile.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=OJKGfm4zPYEeDJ64R4ToC+PbXLnEzfGrEQo6pdlpNP8=;
+        b=Z+iDl3zbbSqm+cZ1DbJoZQ4JVZrZS+3NgT6IUkEHLJYLGXYwGLpulc8+qBb5BZMFMx
+         xPbMTzvoEFGE5/p+TG1HXN9HNt5MMfiecWwVQrpA0q8VAssMLnAX/1lr0xHHdr+NxpBg
+         Av/GC8PPSRpyiUDPwNs3PKrgquTN7eSZcc5tMJmyENceBnEonRJZAstLHmsUS3huTSvy
+         +9gAVtOHgCKcHVpyHFXDIem/J5FR+Hos5iDX33J7ejTKL4cHat6reDmk8g3kWxSoUk+q
+         O1dLwAoE2HUNQG9N4PgtU8r6gN6fgdfjWccc4AKPBuzdgEThe5+wpafY1Mr0H3ZfCQlY
+         jP2A==
+In-Reply-To: <20190715082747.fdlpvekbqyhwx724@salvia>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Simon Horman <horms@verge.net.au>, wensong@linux-vs.org, ja@ssi.bg, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
+ok
 
-	Hello,
+I will remove all unnecessary spaces and send the v2 patch
 
-On Sat, 13 Jul 2019, Haishuang Yan wrote:
+Thansk Pablo
 
-> It's better to batch __ip_vs_cleanup to speedup ipvs
-> connections dismantle.
-> 
-> Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-> ---
->  include/net/ip_vs.h             |  2 +-
->  net/netfilter/ipvs/ip_vs_core.c | 29 +++++++++++++++++------------
->  net/netfilter/ipvs/ip_vs_ctl.c  | 13 ++++++++++---
->  3 files changed, 28 insertions(+), 16 deletions(-)
-> 
-> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-> index 3759167..93e7a25 100644
-> --- a/include/net/ip_vs.h
-> +++ b/include/net/ip_vs.h
-> @@ -1324,7 +1324,7 @@ static inline void ip_vs_control_del(struct ip_vs_conn *cp)
->  void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
->  void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
->  void ip_vs_sync_net_cleanup(struct netns_ipvs *ipvs);
-> -void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
-> +void ip_vs_service_nets_cleanup(struct list_head *net_list);
->  
->  /* IPVS application functions
->   * (from ip_vs_app.c)
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 46f06f9..b4d79b7 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -2402,18 +2402,23 @@ static int __net_init __ip_vs_init(struct net *net)
->  	return -ENOMEM;
->  }
->  
-> -static void __net_exit __ip_vs_cleanup(struct net *net)
-> +static void __net_exit __ip_vs_cleanup_batch(struct list_head *net_list)
->  {
-> -	struct netns_ipvs *ipvs = net_ipvs(net);
-> -
-> -	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
-> -	ip_vs_conn_net_cleanup(ipvs);
-> -	ip_vs_app_net_cleanup(ipvs);
-> -	ip_vs_protocol_net_cleanup(ipvs);
-> -	ip_vs_control_net_cleanup(ipvs);
-> -	ip_vs_estimator_net_cleanup(ipvs);
-> -	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
-> -	net->ipvs = NULL;
-> +	struct netns_ipvs *ipvs;
-> +	struct net *net;
-> +	LIST_HEAD(list);
-> +
-> +	ip_vs_service_nets_cleanup(net_list);	/* ip_vs_flush() with locks */
-> +	list_for_each_entry(net, net_list, exit_list) {
-
-	How much faster is to replace list_for_each_entry in
-ops_exit_list() with this one. IPVS can waste time in calls
-such as kthread_stop() and del_timer_sync() but I'm not sure
-we can solve it easily. What gain do you see in benchmarks?
-
-> +		ipvs = net_ipvs(net);
-> +		ip_vs_conn_net_cleanup(ipvs);
-> +		ip_vs_app_net_cleanup(ipvs);
-> +		ip_vs_protocol_net_cleanup(ipvs);
-> +		ip_vs_control_net_cleanup(ipvs);
-> +		ip_vs_estimator_net_cleanup(ipvs);
-> +		IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
-> +		net->ipvs = NULL;
-> +	}
->  }
-
-Regards
+Pablo Neira Ayuso <pablo@netfilter.org> =E4=BA=8E2019=E5=B9=B47=E6=9C=8815=
+=E6=97=A5=E5=91=A8=E4=B8=80 =E4=B8=8B=E5=8D=884:27=E5=86=99=E9=81=93=EF=BC=
+=9A
+>
+> On Wed, Jul 10, 2019 at 10:06:09AM +0200, Simon Horman wrote:
+> > On Wed, Jul 10, 2019 at 03:45:52PM +0800, yangxingwu wrote:
+> > > ---
+> > >  net/netfilter/ipvs/ip_vs_mh.c | 4 ++--
+> > >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > >
+> > > diff --git a/net/netfilter/ipvs/ip_vs_mh.c b/net/netfilter/ipvs/ip_vs=
+_mh.c
+> > > index 94d9d34..98e358e 100644
+> > > --- a/net/netfilter/ipvs/ip_vs_mh.c
+> > > +++ b/net/netfilter/ipvs/ip_vs_mh.c
+> > > @@ -174,8 +174,8 @@ static int ip_vs_mh_populate(struct ip_vs_mh_stat=
+e *s,
+> > >             return 0;
+> > >     }
+> > >
+> > > -   table =3D  kcalloc(BITS_TO_LONGS(IP_VS_MH_TAB_SIZE),
+> > > -                    sizeof(unsigned long), GFP_KERNEL);
+> > > +   table =3D kcalloc(BITS_TO_LONGS(IP_VS_MH_TAB_SIZE),
+> > > +                   sizeof(unsigned long), GFP_KERNEL);
+>
+> May I ask one thing? :-)
+>
+> Please, remove all unnecessary spaces in one go, search for:
+>
+>         git grep "=3D  "
+>
+> in the netfilter tree, and send a v2 for this one.
+>
+> Thanks.
