@@ -1,73 +1,79 @@
-From: yangxingwu <xingwu.yang@gmail.com>
-Subject: Re: [PATCH] ipvs: remove unnecessary space
-Date: Tue, 16 Jul 2019 10:18:01 +0800
-Message-ID: <CA+7U5JsvP5gyO_xRboPsF+m4Zg5g9XCsZwpjqAs4OZqmUqAbeg@mail.gmail.com>
-References: <20190710074552.74394-1-xingwu.yang@gmail.com> <20190710080609.smxjqe2d5jyro4hv@verge.net.au>
- <20190715082747.fdlpvekbqyhwx724@salvia>
-Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
+From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+Subject: Re: [net-next 1/2] ipvs: batch __ip_vs_cleanup
+Date: Thu, 18 Jul 2019 22:16:05 +0800
+Message-ID: <8441EA26-E197-4F40-A6D7-5B7D59AA7F7F@cmss.chinamobile.com>
+References: <1563031186-2101-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
+ <1563031186-2101-2-git-send-email-yanhaishuang@cmss.chinamobile.com>
+ <alpine.LFD.2.21.1907152333300.5700@ja.home.ssi.bg>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Transfer-Encoding: base64
 Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc:content-transfer-encoding;
-        bh=Tn8Q62o1MgY48Mx+DllWlgBdVj6RmFfgXYsNBaQSZ5o=;
-        b=V46i+hrPbWUvgvrzDR/9EzpLX1v1cyAkGkD91Mjz/c9J+pPQpFGu4D+rS+dUFZag+f
-         0hQm+etps2AyanmliTDyA3hkJc/VMkmYtBIaUbogLnh2A5ma0prtiUfI3/a0SpD7tAsh
-         UuZ1TdkZjkhhHc3ypMtJJmt1XKWLVhkCe3L4NFWlXOWoNy0OXbuPnVVdlfs9g0QEB44Q
-         a0I1AeAQ4y5h86sqW6QoMcIo4po3Dp23IgyunOq+ybsBaiS55wWlGv5s/p0fVJpO+DXW
-         5hkTRCN/2p0HAqGjQUIwnmnsoncJ7Q3MhoqEyiF77RoTnJjT7EUHmAdq2/zlDGary92v
-         dKOQ==
-In-Reply-To: <20190715082747.fdlpvekbqyhwx724@salvia>
+In-Reply-To: <alpine.LFD.2.21.1907152333300.5700@ja.home.ssi.bg>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Simon Horman <horms@verge.net.au>, wensong@linux-vs.org, ja@ssi.bg, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="gb2312"
+To: Julian Anastasov <ja@ssi.bg>
+Cc: "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-Pablo
-
-v2 has been sent
-
-I made the following changes:
-
-1. remove all unnecessary spaces in one go
-2. revert bitmap_alloc ( since it's irrelevant to this subject)
-3. chenge subject to "net/netfiler:remove unnecessary space"
-
-thanks
-
-Pablo Neira Ayuso <pablo@netfilter.org> =E4=BA=8E2019=E5=B9=B47=E6=9C=8815=
-=E6=97=A5=E5=91=A8=E4=B8=80 =E4=B8=8B=E5=8D=884:27=E5=86=99=E9=81=93=EF=BC=
-=9A
->
-> On Wed, Jul 10, 2019 at 10:06:09AM +0200, Simon Horman wrote:
-> > On Wed, Jul 10, 2019 at 03:45:52PM +0800, yangxingwu wrote:
-> > > ---
-> > >  net/netfilter/ipvs/ip_vs_mh.c | 4 ++--
-> > >  1 file changed, 2 insertions(+), 2 deletions(-)
-> > >
-> > > diff --git a/net/netfilter/ipvs/ip_vs_mh.c b/net/netfilter/ipvs/ip_vs=
-_mh.c
-> > > index 94d9d34..98e358e 100644
-> > > --- a/net/netfilter/ipvs/ip_vs_mh.c
-> > > +++ b/net/netfilter/ipvs/ip_vs_mh.c
-> > > @@ -174,8 +174,8 @@ static int ip_vs_mh_populate(struct ip_vs_mh_stat=
-e *s,
-> > >             return 0;
-> > >     }
-> > >
-> > > -   table =3D  kcalloc(BITS_TO_LONGS(IP_VS_MH_TAB_SIZE),
-> > > -                    sizeof(unsigned long), GFP_KERNEL);
-> > > +   table =3D kcalloc(BITS_TO_LONGS(IP_VS_MH_TAB_SIZE),
-> > > +                   sizeof(unsigned long), GFP_KERNEL);
->
-> May I ask one thing? :-)
->
-> Please, remove all unnecessary spaces in one go, search for:
->
->         git grep "=3D  "
->
-> in the netfilter tree, and send a v2 for this one.
->
-> Thanks.
+Cj4gT24gMjAxOcTqN9TCMTbI1SwgYXQgyc/O5zQ6MzksIEp1bGlhbiBBbmFzdGFzb3YgPGphQHNz
+aS5iZz4gd3JvdGU6Cj4gCj4gCj4gCUhlbGxvLAo+IAo+IE9uIFNhdCwgMTMgSnVsIDIwMTksIEhh
+aXNodWFuZyBZYW4gd3JvdGU6Cj4gCj4+IEl0J3MgYmV0dGVyIHRvIGJhdGNoIF9faXBfdnNfY2xl
+YW51cCB0byBzcGVlZHVwIGlwdnMKPj4gY29ubmVjdGlvbnMgZGlzbWFudGxlLgo+PiAKPj4gU2ln
+bmVkLW9mZi1ieTogSGFpc2h1YW5nIFlhbiA8eWFuaGFpc2h1YW5nQGNtc3MuY2hpbmFtb2JpbGUu
+Y29tPgo+PiAtLS0KPj4gaW5jbHVkZS9uZXQvaXBfdnMuaCAgICAgICAgICAgICB8ICAyICstCj4+
+IG5ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMgfCAyOSArKysrKysrKysrKysrKysrKy0t
+LS0tLS0tLS0tLQo+PiBuZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfY3RsLmMgIHwgMTMgKysrKysr
+KysrKy0tLQo+PiAzIGZpbGVzIGNoYW5nZWQsIDI4IGluc2VydGlvbnMoKyksIDE2IGRlbGV0aW9u
+cygtKQo+PiAKPj4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbmV0L2lwX3ZzLmggYi9pbmNsdWRlL25l
+dC9pcF92cy5oCj4+IGluZGV4IDM3NTkxNjcuLjkzZTdhMjUgMTAwNjQ0Cj4+IC0tLSBhL2luY2x1
+ZGUvbmV0L2lwX3ZzLmgKPj4gKysrIGIvaW5jbHVkZS9uZXQvaXBfdnMuaAo+PiBAQCAtMTMyNCw3
+ICsxMzI0LDcgQEAgc3RhdGljIGlubGluZSB2b2lkIGlwX3ZzX2NvbnRyb2xfZGVsKHN0cnVjdCBp
+cF92c19jb25uICpjcCkKPj4gdm9pZCBpcF92c19jb250cm9sX25ldF9jbGVhbnVwKHN0cnVjdCBu
+ZXRuc19pcHZzICppcHZzKTsKPj4gdm9pZCBpcF92c19lc3RpbWF0b3JfbmV0X2NsZWFudXAoc3Ry
+dWN0IG5ldG5zX2lwdnMgKmlwdnMpOwo+PiB2b2lkIGlwX3ZzX3N5bmNfbmV0X2NsZWFudXAoc3Ry
+dWN0IG5ldG5zX2lwdnMgKmlwdnMpOwo+PiAtdm9pZCBpcF92c19zZXJ2aWNlX25ldF9jbGVhbnVw
+KHN0cnVjdCBuZXRuc19pcHZzICppcHZzKTsKPj4gK3ZvaWQgaXBfdnNfc2VydmljZV9uZXRzX2Ns
+ZWFudXAoc3RydWN0IGxpc3RfaGVhZCAqbmV0X2xpc3QpOwo+PiAKPj4gLyogSVBWUyBhcHBsaWNh
+dGlvbiBmdW5jdGlvbnMKPj4gICogKGZyb20gaXBfdnNfYXBwLmMpCj4+IGRpZmYgLS1naXQgYS9u
+ZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfY29yZS5jIGIvbmV0L25ldGZpbHRlci9pcHZzL2lwX3Zz
+X2NvcmUuYwo+PiBpbmRleCA0NmYwNmY5Li5iNGQ3OWI3IDEwMDY0NAo+PiAtLS0gYS9uZXQvbmV0
+ZmlsdGVyL2lwdnMvaXBfdnNfY29yZS5jCj4+ICsrKyBiL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92
+c19jb3JlLmMKPj4gQEAgLTI0MDIsMTggKzI0MDIsMjMgQEAgc3RhdGljIGludCBfX25ldF9pbml0
+IF9faXBfdnNfaW5pdChzdHJ1Y3QgbmV0ICpuZXQpCj4+IAlyZXR1cm4gLUVOT01FTTsKPj4gfQo+
+PiAKPj4gLXN0YXRpYyB2b2lkIF9fbmV0X2V4aXQgX19pcF92c19jbGVhbnVwKHN0cnVjdCBuZXQg
+Km5ldCkKPj4gK3N0YXRpYyB2b2lkIF9fbmV0X2V4aXQgX19pcF92c19jbGVhbnVwX2JhdGNoKHN0
+cnVjdCBsaXN0X2hlYWQgKm5ldF9saXN0KQo+PiB7Cj4+IC0Jc3RydWN0IG5ldG5zX2lwdnMgKmlw
+dnMgPSBuZXRfaXB2cyhuZXQpOwo+PiAtCj4+IC0JaXBfdnNfc2VydmljZV9uZXRfY2xlYW51cChp
+cHZzKTsJLyogaXBfdnNfZmx1c2goKSB3aXRoIGxvY2tzICovCj4+IC0JaXBfdnNfY29ubl9uZXRf
+Y2xlYW51cChpcHZzKTsKPj4gLQlpcF92c19hcHBfbmV0X2NsZWFudXAoaXB2cyk7Cj4+IC0JaXBf
+dnNfcHJvdG9jb2xfbmV0X2NsZWFudXAoaXB2cyk7Cj4+IC0JaXBfdnNfY29udHJvbF9uZXRfY2xl
+YW51cChpcHZzKTsKPj4gLQlpcF92c19lc3RpbWF0b3JfbmV0X2NsZWFudXAoaXB2cyk7Cj4+IC0J
+SVBfVlNfREJHKDIsICJpcHZzIG5ldG5zICVkIHJlbGVhc2VkXG4iLCBpcHZzLT5nZW4pOwo+PiAt
+CW5ldC0+aXB2cyA9IE5VTEw7Cj4+ICsJc3RydWN0IG5ldG5zX2lwdnMgKmlwdnM7Cj4+ICsJc3Ry
+dWN0IG5ldCAqbmV0Owo+PiArCUxJU1RfSEVBRChsaXN0KTsKPj4gKwo+PiArCWlwX3ZzX3NlcnZp
+Y2VfbmV0c19jbGVhbnVwKG5ldF9saXN0KTsJLyogaXBfdnNfZmx1c2goKSB3aXRoIGxvY2tzICov
+Cj4+ICsJbGlzdF9mb3JfZWFjaF9lbnRyeShuZXQsIG5ldF9saXN0LCBleGl0X2xpc3QpIHsKPiAK
+PiAJSG93IG11Y2ggZmFzdGVyIGlzIHRvIHJlcGxhY2UgbGlzdF9mb3JfZWFjaF9lbnRyeSBpbgo+
+IG9wc19leGl0X2xpc3QoKSB3aXRoIHRoaXMgb25lLiBJUFZTIGNhbiB3YXN0ZSB0aW1lIGluIGNh
+bGxzCj4gc3VjaCBhcyBrdGhyZWFkX3N0b3AoKSBhbmQgZGVsX3RpbWVyX3N5bmMoKSBidXQgSSdt
+IG5vdCBzdXJlCj4gd2UgY2FuIHNvbHZlIGl0IGVhc2lseS4gV2hhdCBnYWluIGRvIHlvdSBzZWUg
+aW4gYmVuY2htYXJrcz8KCkhpLCAKCkFzIHRoZSBmb2xsb3dpbmcgYmVuY2htYXJrIHRlc3Rpbmcg
+cmVzdWx0cyBzaG93LCB0aGVyZSBpcyBhIGxpdHRsZSBwZXJmb3JtYW5jZSBpbXByb3ZlbWVudDoK
+CiQgIGNhdCBhZGRfZGVsX3Vuc2hhcmUuc2gKIyEvYmluL2Jhc2gKCmZvciBpIGluIGBzZXEgMSAx
+MDBgCiAgICBkbwogICAgIChmb3IgaiBpbiBgc2VxIDEgNDBgIDsgZG8gIHVuc2hhcmUgLW4gaXB2
+c2FkbSAtQSAtdCAxNzIuMTYuJGkuJGo6ODAgPi9kZXYvbnVsbCA7IGRvbmUpICYKICAgIGRvbmUK
+d2FpdDsgZ3JlcCBuZXRfbmFtZXNwYWNlIC9wcm9jL3NsYWJpbmZvCgpCZWZvciBwYXRjaDoKJCAg
+dGltZSBzaCBhZGRfZGVsX3Vuc2hhcmUuc2gKbmV0X25hbWVzcGFjZSAgICAgICA0MDIwICAgNDAy
+MCAgIDQ3MzYgICAgNiAgICA4IDogdHVuYWJsZXMgICAgMCAgICAwICAgIDAgOiBzbGFiZGF0YSAg
+ICA2NzAgICAgNjcwICAgICAgMAoKcmVhbCAgICAwbTguMDg2cwp1c2VyICAgIDBtMi4wMjVzCnN5
+cyAgICAgMG0zNi45NTZzCgpBZnRlciBwYXRjaDoKJCAgdGltZSBzaCBhZGRfZGVsX3Vuc2hhcmUu
+c2gKbmV0X25hbWVzcGFjZSAgICAgICA0MDIwICAgNDAyMCAgIDQ3MzYgICAgNiAgICA4IDogdHVu
+YWJsZXMgICAgMCAgICAwICAgIDAgOiBzbGFiZGF0YSAgICA2NzAgICAgNjcwICAgICAgMAoKcmVh
+bCAgICAwbTcuNjIzcwp1c2VyICAgIDBtMi4wMDNzCnN5cyAgICAgMG0zMi45MzVzCgoKPiAKPj4g
+KwkJaXB2cyA9IG5ldF9pcHZzKG5ldCk7Cj4+ICsJCWlwX3ZzX2Nvbm5fbmV0X2NsZWFudXAoaXB2
+cyk7Cj4+ICsJCWlwX3ZzX2FwcF9uZXRfY2xlYW51cChpcHZzKTsKPj4gKwkJaXBfdnNfcHJvdG9j
+b2xfbmV0X2NsZWFudXAoaXB2cyk7Cj4+ICsJCWlwX3ZzX2NvbnRyb2xfbmV0X2NsZWFudXAoaXB2
+cyk7Cj4+ICsJCWlwX3ZzX2VzdGltYXRvcl9uZXRfY2xlYW51cChpcHZzKTsKPj4gKwkJSVBfVlNf
+REJHKDIsICJpcHZzIG5ldG5zICVkIHJlbGVhc2VkXG4iLCBpcHZzLT5nZW4pOwo+PiArCQluZXQt
+PmlwdnMgPSBOVUxMOwo+PiArCX0KPj4gfQo+IAo+IFJlZ2FyZHMKPiAKPiAtLQo+IEp1bGlhbiBB
+bmFzdGFzb3YgPGphQHNzaS5iZz4KPiAKCgoK
