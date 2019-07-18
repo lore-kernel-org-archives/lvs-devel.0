@@ -1,79 +1,195 @@
-From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Subject: Re: [net-next 1/2] ipvs: batch __ip_vs_cleanup
-Date: Thu, 18 Jul 2019 22:16:05 +0800
-Message-ID: <8441EA26-E197-4F40-A6D7-5B7D59AA7F7F@cmss.chinamobile.com>
-References: <1563031186-2101-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
- <1563031186-2101-2-git-send-email-yanhaishuang@cmss.chinamobile.com>
- <alpine.LFD.2.21.1907152333300.5700@ja.home.ssi.bg>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Transfer-Encoding: base64
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH v2] net/netfilter: remove unnecessary spaces
+Date: Thu, 18 Jul 2019 20:26:08 +0200
+Message-ID: <20190718182608.apjgz5xbpsyvxfp6@salvia>
+References: <20190715082747.fdlpvekbqyhwx724@salvia>
+ <20190716021301.27753-1-xingwu.yang@gmail.com>
+Mime-Version: 1.0
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.21.1907152333300.5700@ja.home.ssi.bg>
+Content-Disposition: inline
+In-Reply-To: <20190716021301.27753-1-xingwu.yang@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="gb2312"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: yangxingwu <xingwu.yang@gmail.com>
+Cc: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, kadlec@blackhole.kfki.hu, fw@strlen.de, davem@davemloft.net, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, joe@perches.com
 
-Cj4gT24gMjAxOcTqN9TCMTbI1SwgYXQgyc/O5zQ6MzksIEp1bGlhbiBBbmFzdGFzb3YgPGphQHNz
-aS5iZz4gd3JvdGU6Cj4gCj4gCj4gCUhlbGxvLAo+IAo+IE9uIFNhdCwgMTMgSnVsIDIwMTksIEhh
-aXNodWFuZyBZYW4gd3JvdGU6Cj4gCj4+IEl0J3MgYmV0dGVyIHRvIGJhdGNoIF9faXBfdnNfY2xl
-YW51cCB0byBzcGVlZHVwIGlwdnMKPj4gY29ubmVjdGlvbnMgZGlzbWFudGxlLgo+PiAKPj4gU2ln
-bmVkLW9mZi1ieTogSGFpc2h1YW5nIFlhbiA8eWFuaGFpc2h1YW5nQGNtc3MuY2hpbmFtb2JpbGUu
-Y29tPgo+PiAtLS0KPj4gaW5jbHVkZS9uZXQvaXBfdnMuaCAgICAgICAgICAgICB8ICAyICstCj4+
-IG5ldC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMgfCAyOSArKysrKysrKysrKysrKysrKy0t
-LS0tLS0tLS0tLQo+PiBuZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfY3RsLmMgIHwgMTMgKysrKysr
-KysrKy0tLQo+PiAzIGZpbGVzIGNoYW5nZWQsIDI4IGluc2VydGlvbnMoKyksIDE2IGRlbGV0aW9u
-cygtKQo+PiAKPj4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbmV0L2lwX3ZzLmggYi9pbmNsdWRlL25l
-dC9pcF92cy5oCj4+IGluZGV4IDM3NTkxNjcuLjkzZTdhMjUgMTAwNjQ0Cj4+IC0tLSBhL2luY2x1
-ZGUvbmV0L2lwX3ZzLmgKPj4gKysrIGIvaW5jbHVkZS9uZXQvaXBfdnMuaAo+PiBAQCAtMTMyNCw3
-ICsxMzI0LDcgQEAgc3RhdGljIGlubGluZSB2b2lkIGlwX3ZzX2NvbnRyb2xfZGVsKHN0cnVjdCBp
-cF92c19jb25uICpjcCkKPj4gdm9pZCBpcF92c19jb250cm9sX25ldF9jbGVhbnVwKHN0cnVjdCBu
-ZXRuc19pcHZzICppcHZzKTsKPj4gdm9pZCBpcF92c19lc3RpbWF0b3JfbmV0X2NsZWFudXAoc3Ry
-dWN0IG5ldG5zX2lwdnMgKmlwdnMpOwo+PiB2b2lkIGlwX3ZzX3N5bmNfbmV0X2NsZWFudXAoc3Ry
-dWN0IG5ldG5zX2lwdnMgKmlwdnMpOwo+PiAtdm9pZCBpcF92c19zZXJ2aWNlX25ldF9jbGVhbnVw
-KHN0cnVjdCBuZXRuc19pcHZzICppcHZzKTsKPj4gK3ZvaWQgaXBfdnNfc2VydmljZV9uZXRzX2Ns
-ZWFudXAoc3RydWN0IGxpc3RfaGVhZCAqbmV0X2xpc3QpOwo+PiAKPj4gLyogSVBWUyBhcHBsaWNh
-dGlvbiBmdW5jdGlvbnMKPj4gICogKGZyb20gaXBfdnNfYXBwLmMpCj4+IGRpZmYgLS1naXQgYS9u
-ZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfY29yZS5jIGIvbmV0L25ldGZpbHRlci9pcHZzL2lwX3Zz
-X2NvcmUuYwo+PiBpbmRleCA0NmYwNmY5Li5iNGQ3OWI3IDEwMDY0NAo+PiAtLS0gYS9uZXQvbmV0
-ZmlsdGVyL2lwdnMvaXBfdnNfY29yZS5jCj4+ICsrKyBiL25ldC9uZXRmaWx0ZXIvaXB2cy9pcF92
-c19jb3JlLmMKPj4gQEAgLTI0MDIsMTggKzI0MDIsMjMgQEAgc3RhdGljIGludCBfX25ldF9pbml0
-IF9faXBfdnNfaW5pdChzdHJ1Y3QgbmV0ICpuZXQpCj4+IAlyZXR1cm4gLUVOT01FTTsKPj4gfQo+
-PiAKPj4gLXN0YXRpYyB2b2lkIF9fbmV0X2V4aXQgX19pcF92c19jbGVhbnVwKHN0cnVjdCBuZXQg
-Km5ldCkKPj4gK3N0YXRpYyB2b2lkIF9fbmV0X2V4aXQgX19pcF92c19jbGVhbnVwX2JhdGNoKHN0
-cnVjdCBsaXN0X2hlYWQgKm5ldF9saXN0KQo+PiB7Cj4+IC0Jc3RydWN0IG5ldG5zX2lwdnMgKmlw
-dnMgPSBuZXRfaXB2cyhuZXQpOwo+PiAtCj4+IC0JaXBfdnNfc2VydmljZV9uZXRfY2xlYW51cChp
-cHZzKTsJLyogaXBfdnNfZmx1c2goKSB3aXRoIGxvY2tzICovCj4+IC0JaXBfdnNfY29ubl9uZXRf
-Y2xlYW51cChpcHZzKTsKPj4gLQlpcF92c19hcHBfbmV0X2NsZWFudXAoaXB2cyk7Cj4+IC0JaXBf
-dnNfcHJvdG9jb2xfbmV0X2NsZWFudXAoaXB2cyk7Cj4+IC0JaXBfdnNfY29udHJvbF9uZXRfY2xl
-YW51cChpcHZzKTsKPj4gLQlpcF92c19lc3RpbWF0b3JfbmV0X2NsZWFudXAoaXB2cyk7Cj4+IC0J
-SVBfVlNfREJHKDIsICJpcHZzIG5ldG5zICVkIHJlbGVhc2VkXG4iLCBpcHZzLT5nZW4pOwo+PiAt
-CW5ldC0+aXB2cyA9IE5VTEw7Cj4+ICsJc3RydWN0IG5ldG5zX2lwdnMgKmlwdnM7Cj4+ICsJc3Ry
-dWN0IG5ldCAqbmV0Owo+PiArCUxJU1RfSEVBRChsaXN0KTsKPj4gKwo+PiArCWlwX3ZzX3NlcnZp
-Y2VfbmV0c19jbGVhbnVwKG5ldF9saXN0KTsJLyogaXBfdnNfZmx1c2goKSB3aXRoIGxvY2tzICov
-Cj4+ICsJbGlzdF9mb3JfZWFjaF9lbnRyeShuZXQsIG5ldF9saXN0LCBleGl0X2xpc3QpIHsKPiAK
-PiAJSG93IG11Y2ggZmFzdGVyIGlzIHRvIHJlcGxhY2UgbGlzdF9mb3JfZWFjaF9lbnRyeSBpbgo+
-IG9wc19leGl0X2xpc3QoKSB3aXRoIHRoaXMgb25lLiBJUFZTIGNhbiB3YXN0ZSB0aW1lIGluIGNh
-bGxzCj4gc3VjaCBhcyBrdGhyZWFkX3N0b3AoKSBhbmQgZGVsX3RpbWVyX3N5bmMoKSBidXQgSSdt
-IG5vdCBzdXJlCj4gd2UgY2FuIHNvbHZlIGl0IGVhc2lseS4gV2hhdCBnYWluIGRvIHlvdSBzZWUg
-aW4gYmVuY2htYXJrcz8KCkhpLCAKCkFzIHRoZSBmb2xsb3dpbmcgYmVuY2htYXJrIHRlc3Rpbmcg
-cmVzdWx0cyBzaG93LCB0aGVyZSBpcyBhIGxpdHRsZSBwZXJmb3JtYW5jZSBpbXByb3ZlbWVudDoK
-CiQgIGNhdCBhZGRfZGVsX3Vuc2hhcmUuc2gKIyEvYmluL2Jhc2gKCmZvciBpIGluIGBzZXEgMSAx
-MDBgCiAgICBkbwogICAgIChmb3IgaiBpbiBgc2VxIDEgNDBgIDsgZG8gIHVuc2hhcmUgLW4gaXB2
-c2FkbSAtQSAtdCAxNzIuMTYuJGkuJGo6ODAgPi9kZXYvbnVsbCA7IGRvbmUpICYKICAgIGRvbmUK
-d2FpdDsgZ3JlcCBuZXRfbmFtZXNwYWNlIC9wcm9jL3NsYWJpbmZvCgpCZWZvciBwYXRjaDoKJCAg
-dGltZSBzaCBhZGRfZGVsX3Vuc2hhcmUuc2gKbmV0X25hbWVzcGFjZSAgICAgICA0MDIwICAgNDAy
-MCAgIDQ3MzYgICAgNiAgICA4IDogdHVuYWJsZXMgICAgMCAgICAwICAgIDAgOiBzbGFiZGF0YSAg
-ICA2NzAgICAgNjcwICAgICAgMAoKcmVhbCAgICAwbTguMDg2cwp1c2VyICAgIDBtMi4wMjVzCnN5
-cyAgICAgMG0zNi45NTZzCgpBZnRlciBwYXRjaDoKJCAgdGltZSBzaCBhZGRfZGVsX3Vuc2hhcmUu
-c2gKbmV0X25hbWVzcGFjZSAgICAgICA0MDIwICAgNDAyMCAgIDQ3MzYgICAgNiAgICA4IDogdHVu
-YWJsZXMgICAgMCAgICAwICAgIDAgOiBzbGFiZGF0YSAgICA2NzAgICAgNjcwICAgICAgMAoKcmVh
-bCAgICAwbTcuNjIzcwp1c2VyICAgIDBtMi4wMDNzCnN5cyAgICAgMG0zMi45MzVzCgoKPiAKPj4g
-KwkJaXB2cyA9IG5ldF9pcHZzKG5ldCk7Cj4+ICsJCWlwX3ZzX2Nvbm5fbmV0X2NsZWFudXAoaXB2
-cyk7Cj4+ICsJCWlwX3ZzX2FwcF9uZXRfY2xlYW51cChpcHZzKTsKPj4gKwkJaXBfdnNfcHJvdG9j
-b2xfbmV0X2NsZWFudXAoaXB2cyk7Cj4+ICsJCWlwX3ZzX2NvbnRyb2xfbmV0X2NsZWFudXAoaXB2
-cyk7Cj4+ICsJCWlwX3ZzX2VzdGltYXRvcl9uZXRfY2xlYW51cChpcHZzKTsKPj4gKwkJSVBfVlNf
-REJHKDIsICJpcHZzIG5ldG5zICVkIHJlbGVhc2VkXG4iLCBpcHZzLT5nZW4pOwo+PiArCQluZXQt
-PmlwdnMgPSBOVUxMOwo+PiArCX0KPj4gfQo+IAo+IFJlZ2FyZHMKPiAKPiAtLQo+IEp1bGlhbiBB
-bmFzdGFzb3YgPGphQHNzaS5iZz4KPiAKCgoK
+Looks good, but you will have to wait until net-next reopens:
+
+http://vger.kernel.org/~davem/net-next.html
+
+Will keep this in my patchwork until that happens.
+
+Thanks.
+
+On Tue, Jul 16, 2019 at 10:13:01AM +0800, yangxingwu wrote:
+> this patch removes extra spaces
+> 
+> Signed-off-by: yangxingwu <xingwu.yang@gmail.com>
+> ---
+>  net/netfilter/ipset/ip_set_hash_gen.h  | 2 +-
+>  net/netfilter/ipset/ip_set_list_set.c  | 2 +-
+>  net/netfilter/ipvs/ip_vs_core.c        | 2 +-
+>  net/netfilter/ipvs/ip_vs_mh.c          | 4 ++--
+>  net/netfilter/ipvs/ip_vs_proto_tcp.c   | 2 +-
+>  net/netfilter/nf_conntrack_ftp.c       | 2 +-
+>  net/netfilter/nf_conntrack_proto_tcp.c | 2 +-
+>  net/netfilter/nfnetlink_log.c          | 4 ++--
+>  net/netfilter/nfnetlink_queue.c        | 4 ++--
+>  net/netfilter/xt_IDLETIMER.c           | 2 +-
+>  10 files changed, 13 insertions(+), 13 deletions(-)
+> 
+> diff --git a/net/netfilter/ipset/ip_set_hash_gen.h b/net/netfilter/ipset/ip_set_hash_gen.h
+> index 10f6196..eb907d2 100644
+> --- a/net/netfilter/ipset/ip_set_hash_gen.h
+> +++ b/net/netfilter/ipset/ip_set_hash_gen.h
+> @@ -954,7 +954,7 @@ struct htype {
+>  		mtype_data_netmask(d, NCIDR_GET(h->nets[j].cidr[0]));
+>  #endif
+>  		key = HKEY(d, h->initval, t->htable_bits);
+> -		n =  rcu_dereference_bh(hbucket(t, key));
+> +		n = rcu_dereference_bh(hbucket(t, key));
+>  		if (!n)
+>  			continue;
+>  		for (i = 0; i < n->pos; i++) {
+> diff --git a/net/netfilter/ipset/ip_set_list_set.c b/net/netfilter/ipset/ip_set_list_set.c
+> index 8ada318..5c2be76 100644
+> --- a/net/netfilter/ipset/ip_set_list_set.c
+> +++ b/net/netfilter/ipset/ip_set_list_set.c
+> @@ -289,7 +289,7 @@ struct list_set {
+>  	if (n &&
+>  	    !(SET_WITH_TIMEOUT(set) &&
+>  	      ip_set_timeout_expired(ext_timeout(n, set))))
+> -		n =  NULL;
+> +		n = NULL;
+>  
+>  	e = kzalloc(set->dsize, GFP_ATOMIC);
+>  	if (!e)
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index 7138556..6b3ae76 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -615,7 +615,7 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+>  		unsigned int flags = (svc->flags & IP_VS_SVC_F_ONEPACKET &&
+>  				      iph->protocol == IPPROTO_UDP) ?
+>  				      IP_VS_CONN_F_ONE_PACKET : 0;
+> -		union nf_inet_addr daddr =  { .all = { 0, 0, 0, 0 } };
+> +		union nf_inet_addr daddr = { .all = { 0, 0, 0, 0 } };
+>  
+>  		/* create a new connection entry */
+>  		IP_VS_DBG(6, "%s(): create a cache_bypass entry\n", __func__);
+> diff --git a/net/netfilter/ipvs/ip_vs_mh.c b/net/netfilter/ipvs/ip_vs_mh.c
+> index 94d9d34..da0280c 100644
+> --- a/net/netfilter/ipvs/ip_vs_mh.c
+> +++ b/net/netfilter/ipvs/ip_vs_mh.c
+> @@ -174,8 +174,8 @@ static int ip_vs_mh_populate(struct ip_vs_mh_state *s,
+>  		return 0;
+>  	}
+>  
+> -	table =  kcalloc(BITS_TO_LONGS(IP_VS_MH_TAB_SIZE),
+> -			 sizeof(unsigned long), GFP_KERNEL);
+> +	table = kcalloc(BITS_TO_LONGS(IP_VS_MH_TAB_SIZE),
+> +			sizeof(unsigned long), GFP_KERNEL);
+>  	if (!table)
+>  		return -ENOMEM;
+>  
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> index 915ac82..c7b46a9 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> @@ -710,7 +710,7 @@ static int __ip_vs_tcp_init(struct netns_ipvs *ipvs, struct ip_vs_proto_data *pd
+>  							sizeof(tcp_timeouts));
+>  	if (!pd->timeout_table)
+>  		return -ENOMEM;
+> -	pd->tcp_state_table =  tcp_states;
+> +	pd->tcp_state_table = tcp_states;
+>  	return 0;
+>  }
+>  
+> diff --git a/net/netfilter/nf_conntrack_ftp.c b/net/netfilter/nf_conntrack_ftp.c
+> index 8c6c11b..26c1ff8 100644
+> --- a/net/netfilter/nf_conntrack_ftp.c
+> +++ b/net/netfilter/nf_conntrack_ftp.c
+> @@ -162,7 +162,7 @@ static int try_rfc959(const char *data, size_t dlen,
+>  	if (length == 0)
+>  		return 0;
+>  
+> -	cmd->u3.ip =  htonl((array[0] << 24) | (array[1] << 16) |
+> +	cmd->u3.ip = htonl((array[0] << 24) | (array[1] << 16) |
+>  				    (array[2] << 8) | array[3]);
+>  	cmd->u.tcp.port = htons((array[4] << 8) | array[5]);
+>  	return length;
+> diff --git a/net/netfilter/nf_conntrack_proto_tcp.c b/net/netfilter/nf_conntrack_proto_tcp.c
+> index 1e2cc83..48f3a67 100644
+> --- a/net/netfilter/nf_conntrack_proto_tcp.c
+> +++ b/net/netfilter/nf_conntrack_proto_tcp.c
+> @@ -1225,7 +1225,7 @@ static int tcp_to_nlattr(struct sk_buff *skb, struct nlattr *nla,
+>  	[CTA_PROTOINFO_TCP_WSCALE_ORIGINAL] = { .type = NLA_U8 },
+>  	[CTA_PROTOINFO_TCP_WSCALE_REPLY]    = { .type = NLA_U8 },
+>  	[CTA_PROTOINFO_TCP_FLAGS_ORIGINAL]  = { .len = sizeof(struct nf_ct_tcp_flags) },
+> -	[CTA_PROTOINFO_TCP_FLAGS_REPLY]	    = { .len =  sizeof(struct nf_ct_tcp_flags) },
+> +	[CTA_PROTOINFO_TCP_FLAGS_REPLY]	    = { .len = sizeof(struct nf_ct_tcp_flags) },
+>  };
+>  
+>  #define TCP_NLATTR_SIZE	( \
+> diff --git a/net/netfilter/nfnetlink_log.c b/net/netfilter/nfnetlink_log.c
+> index 6dee4f9..d69e186 100644
+> --- a/net/netfilter/nfnetlink_log.c
+> +++ b/net/netfilter/nfnetlink_log.c
+> @@ -651,7 +651,7 @@ static void nfulnl_instance_free_rcu(struct rcu_head *head)
+>  	/* FIXME: do we want to make the size calculation conditional based on
+>  	 * what is actually present?  way more branches and checks, but more
+>  	 * memory efficient... */
+> -	size =    nlmsg_total_size(sizeof(struct nfgenmsg))
+> +	size = nlmsg_total_size(sizeof(struct nfgenmsg))
+>  		+ nla_total_size(sizeof(struct nfulnl_msg_packet_hdr))
+>  		+ nla_total_size(sizeof(u_int32_t))	/* ifindex */
+>  		+ nla_total_size(sizeof(u_int32_t))	/* ifindex */
+> @@ -668,7 +668,7 @@ static void nfulnl_instance_free_rcu(struct rcu_head *head)
+>  		+ nla_total_size(sizeof(struct nfgenmsg));	/* NLMSG_DONE */
+>  
+>  	if (in && skb_mac_header_was_set(skb)) {
+> -		size +=   nla_total_size(skb->dev->hard_header_len)
+> +		size += nla_total_size(skb->dev->hard_header_len)
+>  			+ nla_total_size(sizeof(u_int16_t))	/* hwtype */
+>  			+ nla_total_size(sizeof(u_int16_t));	/* hwlen */
+>  	}
+> diff --git a/net/netfilter/nfnetlink_queue.c b/net/netfilter/nfnetlink_queue.c
+> index 89750f7..a1ef6e3 100644
+> --- a/net/netfilter/nfnetlink_queue.c
+> +++ b/net/netfilter/nfnetlink_queue.c
+> @@ -394,7 +394,7 @@ static int nfqnl_put_bridge(struct nf_queue_entry *entry, struct sk_buff *skb)
+>  	char *secdata = NULL;
+>  	u32 seclen = 0;
+>  
+> -	size =    nlmsg_total_size(sizeof(struct nfgenmsg))
+> +	size = nlmsg_total_size(sizeof(struct nfgenmsg))
+>  		+ nla_total_size(sizeof(struct nfqnl_msg_packet_hdr))
+>  		+ nla_total_size(sizeof(u_int32_t))	/* ifindex */
+>  		+ nla_total_size(sizeof(u_int32_t))	/* ifindex */
+> @@ -453,7 +453,7 @@ static int nfqnl_put_bridge(struct nf_queue_entry *entry, struct sk_buff *skb)
+>  	}
+>  
+>  	if (queue->flags & NFQA_CFG_F_UID_GID) {
+> -		size +=  (nla_total_size(sizeof(u_int32_t))	/* uid */
+> +		size += (nla_total_size(sizeof(u_int32_t))	/* uid */
+>  			+ nla_total_size(sizeof(u_int32_t)));	/* gid */
+>  	}
+>  
+> diff --git a/net/netfilter/xt_IDLETIMER.c b/net/netfilter/xt_IDLETIMER.c
+> index 9cec9ea..f56d3ed 100644
+> --- a/net/netfilter/xt_IDLETIMER.c
+> +++ b/net/netfilter/xt_IDLETIMER.c
+> @@ -283,7 +283,7 @@ static int __init idletimer_tg_init(void)
+>  
+>  	idletimer_tg_kobj = &idletimer_tg_device->kobj;
+>  
+> -	err =  xt_register_target(&idletimer_tg);
+> +	err = xt_register_target(&idletimer_tg);
+>  	if (err < 0) {
+>  		pr_debug("couldn't register xt target\n");
+>  		goto out_dev;
+> -- 
+> 1.8.3.1
+> 
