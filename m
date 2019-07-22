@@ -1,61 +1,77 @@
 From: Arnd Bergmann <arnd@arndb.de>
 Subject: Re: [PATCH 4/4] ipvs: reduce kernel stack usage
-Date: Mon, 22 Jul 2019 12:16:51 +0200
-Message-ID: <CAK8P3a03wShPgL85K-0W3UUc3QJWLbbs+ZVAnkKLkqg00vVehw@mail.gmail.com>
-References: <20190628123819.2785504-1-arnd@arndb.de> <20190628123819.2785504-4-arnd@arndb.de>
- <alpine.LFD.2.21.1906302308280.3788@ja.home.ssi.bg>
+Date: Mon, 22 Jul 2019 12:28:59 +0200
+Message-ID: <CAK8P3a0xPDmNDbxRkN6ssobFLu1-JLvMG3MSai844hinj2Bs8A@mail.gmail.com>
+References: <20190628123819.2785504-1-arnd@arndb.de>
+ <20190628123819.2785504-4-arnd@arndb.de>
+ <CA+FuTSexLuu8e1XHaY0ObGi46CgZnBpELecBr+kMgCU29Fa_gw@mail.gmail.com>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.21.1906302308280.3788@ja.home.ssi.bg>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Kees Cook <keescook@chromium.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, James Smart <james.smart@broadcom.com>, Dick Kennedy <dick.kennedy@broadcom.com>, "James E . J . Bottomley" <jejb@linux.ibm.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, Larry Finger <Larry.Finger@lwfinger.net>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, James Morris <jmorris@namei.org>, linux-scsi <linux-scsi@vger.kernel.org>
+Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
+In-Reply-To: <CA+FuTSexLuu8e1XHaY0ObGi46CgZnBpELecBr+kMgCU29Fa_gw@mail.gmail.com>
+List-Id: <lvs-devel.vger.kernel.org>
+List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>, 
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
+List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
+List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
+List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
+List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>, 
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
+Errors-To: driverdev-devel-bounces@linuxdriverproject.org
+Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
+To: Willem de Bruijn <willemdebruijn.kernel@gmail.com>
+Cc: James Morris <jmorris@namei.org>, driverdevel <devel@driverdev.osuosl.org>, linux-scsi <linux-scsi@vger.kernel.org>, James Smart <james.smart@broadcom.com>, Jozsef Kadlecsik <kadlec@netfilter.org>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, coreteam@netfilter.org, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Pablo Neira Ayuso <pablo@netfilter.org>, Wensong Zhang <wensong@linux-vs.org>, Dick Kennedy <dick.kennedy@broadcom.com>, Kees Cook <keescook@chromium.org>, "James E . J . Bottomley" <jejb@linux.ibm.com>, Simon Horman <horms@verge.net.au>, Florian Schilhabel <florian.c.schilhabel@googlemail.com>, "Martin K . Petersen" <martin.petersen@oracle.com>, Ard Biesheuvel <ard.biesheuvel@linaro.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Florian Westphal <fw@strlen.de>, linux-kernel <linux-kernel@vger.kernel.or>
 
-On Sun, Jun 30, 2019 at 10:37 PM Julian Anastasov <ja@ssi.bg> wrote:
-> On Fri, 28 Jun 2019, Arnd Bergmann wrote:
-
-> >       struct ip_vs_conn *ctl_cp = cp->control;
-> >       if (!ctl_cp) {
-> > -             IP_VS_ERR_BUF("request control DEL for uncontrolled: "
-> > -                           "%s:%d to %s:%d\n",
-> > -                           IP_VS_DBG_ADDR(cp->af, &cp->caddr),
-> > -                           ntohs(cp->cport),
-> > -                           IP_VS_DBG_ADDR(cp->af, &cp->vaddr),
-> > -                           ntohs(cp->vport));
-> > +             pr_err("request control DEL for uncontrolled: "
-> > +                    "%pISp to %pISp\n",
-
-(replying a bit late)
-
->         ip_vs_dbg_addr() used compact form (%pI6c), so it would be
-> better to use %pISc and %pISpc everywhere in IPVS...
-
-done
-
->         Also, note that before now port was printed with %d and
-> ntohs() was used, now port should be in network order, so:
+On Fri, Jun 28, 2019 at 9:59 PM Willem de Bruijn
+<willemdebruijn.kernel@gmail.com> wrote:
+> On Fri, Jun 28, 2019 at 8:40 AM Arnd Bergmann <arnd@arndb.de> wrote:
+> >
+> > With the new CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL option, the stack
+> > usage in the ipvs debug output grows because each instance of
+> > IP_VS_DBG_BUF() now has its own buffer of 160 bytes that add up
+> > rather than reusing the stack slots:
+> >
+> > net/netfilter/ipvs/ip_vs_core.c: In function 'ip_vs_sched_persist':
+> > net/netfilter/ipvs/ip_vs_core.c:427:1: error: the frame size of 1052 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+> > net/netfilter/ipvs/ip_vs_core.c: In function 'ip_vs_new_conn_out':
+> > net/netfilter/ipvs/ip_vs_core.c:1231:1: error: the frame size of 1048 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+> > net/netfilter/ipvs/ip_vs_ftp.c: In function 'ip_vs_ftp_out':
+> > net/netfilter/ipvs/ip_vs_ftp.c:397:1: error: the frame size of 1104 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+> > net/netfilter/ipvs/ip_vs_ftp.c: In function 'ip_vs_ftp_in':
+> > net/netfilter/ipvs/ip_vs_ftp.c:555:1: error: the frame size of 1200 bytes is larger than 1024 bytes [-Werror=frame-larger-than=]
+> >
+> > Since printk() already has a way to print IPv4/IPv6 addresses using
+> > the %pIS format string, use that instead,
 >
-> - ntohs() should be removed
+> since these are sockaddr_in and sockaddr_in6, should that have the 'n'
+> specifier to denote network byteorder?
 
-done
+I double-checked the implementation, and don't see that make any difference,
+as 'n' is the default.
 
-> - htons() should be added, if missing. At first look, this case
-> is not present in IPVS, we have only ntohs() usage
+> >  include/net/ip_vs.h             | 71 +++++++++++++++++++--------------
+> >  net/netfilter/ipvs/ip_vs_core.c | 44 ++++++++++----------
+> >  net/netfilter/ipvs/ip_vs_ftp.c  | 20 +++++-----
+> >  3 files changed, 72 insertions(+), 63 deletions(-)
+> >
+> > diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> > index 3759167f91f5..3dfbeef67be6 100644
+> > --- a/include/net/ip_vs.h
+> > +++ b/include/net/ip_vs.h
+> > @@ -227,6 +227,16 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+> >                        sizeof(ip_vs_dbg_buf), addr,                     \
+> >                        &ip_vs_dbg_idx)
+> >
+> > +#define IP_VS_DBG_SOCKADDR4(fam, addr, port)                           \
+> > +       (struct sockaddr*)&(struct sockaddr_in)                         \
+> > +       { .sin_family = (fam), .sin_addr = (addr)->in, .sin_port = (port) }
+>
+> might as well set .sin_family = AF_INET here and AF_INET6 below?
 
-I found one case in ip_vs_ftp_in() that needs it in order to subtract one:
-
-                IP_VS_DBG(7, "protocol %s %pISpc %pISpc\n",
-                          ip_vs_proto_name(ipvsh->protocol),
--                         IP_VS_DBG_SOCKADDR(cp->af, &to, ntohs(port)),
-+                         IP_VS_DBG_SOCKADDR(cp->af, &to, port),
-                          IP_VS_DBG_SOCKADDR(cp->af, &cp->vaddr,
--                                             ntohs(cp->vport)-1));
-+                                            htons(ntohs(cp->vport)-1)));
-
-Thanks for the review, I'll send a new patch after some more
-build testing on the new version.
+That would work just same, but I don't see any advantage. As the family
+and port members are the same between sockaddr_in and sockaddr_in6,
+the compiler can decide to set these regardless to the argument values
+regardless of the condition.
 
        Arnd
