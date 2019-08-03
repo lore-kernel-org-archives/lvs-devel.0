@@ -1,64 +1,42 @@
-From: Quentin Armitage <quentin@armitage.org.uk>
-Subject: [PATCH 1/2] Add --pe sip option in ipvsadm(8) man page
-Date: Thu, 01 Aug 2019 11:55:48 +0100
-Message-ID: <1564656948.3546.66.camel@armitage.org.uk>
-References: <1564656793.3546.64.camel@armitage.org.uk>
-Reply-To: quentin@armitage.org.uk, "LinuxVirtualServer.org users mailing list."
-	<lvs-users@linuxvirtualserver.org>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH net v3] ipvs: Improve robustness to the ipvs sysctl
+Date: Sat, 3 Aug 2019 18:40:15 +0200
+Message-ID: <20190803164015.eiy4hanb27qyrjzz@salvia>
+References: <1997375e-815d-137f-20c9-0829a8587ee9@huawei.com>
+ <4a0476d3-57a4-50e0-cae8-9dffc4f4d556@huawei.com>
+ <5fd55d18-f4e2-a6b4-5c54-db76c05be5df@huawei.com>
+ <alpine.LFD.2.21.1907312052310.3631@ja.home.ssi.bg>
 Mime-Version: 1.0
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.21.1907312052310.3631@ja.home.ssi.bg>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org>
-In-Reply-To: <1564656793.3546.64.camel@armitage.org.uk>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
-	<mailto:lvs-users-request@linuxvirtualserver.org?subject=unsubscribe>
-List-Archive: <http://lists.graemef.net/pipermail/lvs-users>
-List-Post: <mailto:lvs-users@linuxvirtualserver.org>
-List-Help: <mailto:lvs-users-request@linuxvirtualserver.org?subject=help>
-List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
-	<mailto:lvs-users-request@linuxvirtualserver.org?subject=subscribe>
-Sender: lvs-users-bounces@linuxvirtualserver.org
-Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
-To: Jesper Dangaard Brouer <brouer@redhat.com>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Inju Song <inju.song@navercorp.com>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: hujunwei <hujunwei4@huawei.com>, wensong@linux-vs.org, horms@verge.net.au, kadlec@blackhole.kfki.hu, Florian Westphal <fw@strlen.de>, davem@davemloft.net, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Mingfangsen <mingfangsen@huawei.com>, wangxiaogang3@huawei.com, xuhanbing@huawei.com
 
-Signed-off-by: Quentin Armitage <quentin@armitage.org.uk>
----
- ipvsadm.8 | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
- 
-diff --git a/ipvsadm.8 b/ipvsadm.8 
-index 256718e..aaee146 100644
---- a/ipvsadm.8
-+++ b/ipvsadm.8
-@@ -94,11 +94,11 @@ The command has two basic formats for execution:
- The first format manipulates a virtual service and the algorithm for
- assigning service requests to real servers. Optionally, a persistent
- timeout and network mask for the granularity of a persistent service
--may be specified. The second format manipulates a real server that is
--associated with an existing virtual service. When specifying a real
--server, the packet-forwarding method and the weight of the real
--server, relative to other real servers for the virtual service, may be
--specified, otherwise defaults will be used.
-+and a persistence engine may be specified. The second format manipulates
-+a real server that is associated with an existing virtual service.
-+When specifying a real server, the packet-forwarding method and the
-+weight of the real server, relative to other real servers for the
-+virtual service, may be specified, otherwise defaults will be used.
- .SS COMMANDS
- \fBipvsadm\fR(8) recognises the commands described below. Upper-case
- commands maintain virtual services. Lower-case commands maintain real
-@@ -313,6 +313,10 @@ resolve problems with non-persistent cache clusters on the client side.
- IPv6 netmasks should be specified as a prefix length between 1 and 128.
- The default prefix length is 128.
- .TP
-+.B --pe \fIpersistence-engine\fP
-+Specify an alternative persistence engine to be used. Currently the
-+only alternative persistence engine available is sip.
-+.TP
- .B -b, --sched-flags \fIsched-flags\fP
- Set scheduler flags for this virtual server.  \fIsched-flags\fP is a
- comma-separated list of flags.  See the scheduler descriptions for
--- 
-2.13.7
+On Wed, Jul 31, 2019 at 08:53:47PM +0300, Julian Anastasov wrote:
+> 
+> 	Hello,
+> 
+> On Thu, 1 Aug 2019, hujunwei wrote:
+> 
+> > From: Junwei Hu <hujunwei4@huawei.com>
+> > 
+> > The ipvs module parse the user buffer and save it to sysctl,
+> > then check if the value is valid. invalid value occurs
+> > over a period of time.
+> > Here, I add a variable, struct ctl_table tmp, used to read
+> > the value from the user buffer, and save only when it is valid.
+> > I delete proc_do_sync_mode and use extra1/2 in table for the
+> > proc_dointvec_minmax call.
+> > 
+> > Fixes: f73181c8288f ("ipvs: add support for sync threads")
+> > Signed-off-by: Junwei Hu <hujunwei4@huawei.com>
+> > Acked-by: Julian Anastasov <ja@ssi.bg>
+> 
+> 	Yep, Acked-by: Julian Anastasov <ja@ssi.bg>
 
+Applied, thanks.
