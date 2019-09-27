@@ -1,8 +1,10 @@
 From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Subject: [PATCH v2 0/2] ipvs: speedup ipvs netns dismantle
-Date: Fri, 27 Sep 2019 12:54:49 +0800
-Message-ID: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
+Subject: [PATCH v2 1/2] ipvs: batch __ip_vs_cleanup
+Date: Fri, 27 Sep 2019 12:54:50 +0800
+Message-ID: <1569560091-20553-2-git-send-email-yanhaishuang@cmss.chinamobile.com>
+References: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -11,44 +13,106 @@ Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>, "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 
-Implement exit_batch() method to dismantle more ipvs netns
-per round.
+It's better to batch __ip_vs_cleanup to speedup ipvs
+connections dismantle.
 
-Tested:
-$  cat add_del_unshare.sh
-#!/bin/bash
-
-for i in `seq 1 100`
-    do
-     (for j in `seq 1 40` ; do  unshare -n ipvsadm -A -t 172.16.$i.$j:80 >/dev/null ; done) &
-    done
-wait; grep net_namespace /proc/slabinfo
-
-Befor patch:
-$  time sh add_del_unshare.sh
-net_namespace       4020   4020   4736    6    8 : tunables    0    0    0 : slabdata    670    670      0
-
-real    0m8.086s
-user    0m2.025s
-sys     0m36.956s
-
-After patch:
-$  time sh add_del_unshare.sh
-net_namespace       4020   4020   4736    6    8 : tunables    0    0    0 : slabdata    670    670      0
-
-real    0m7.623s
-user    0m2.003s
-sys     0m32.935s
-
-Haishuang Yan (2):
-  ipvs: batch __ip_vs_cleanup
-  ipvs: batch __ip_vs_dev_cleanup
-
+Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+---
+v2: remove unused pointer list
+---
  include/net/ip_vs.h             |  2 +-
- net/netfilter/ipvs/ip_vs_core.c | 47 ++++++++++++++++++++++++-----------------
- net/netfilter/ipvs/ip_vs_ctl.c  | 12 ++++++++---
- 3 files changed, 38 insertions(+), 23 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 28 ++++++++++++++++------------
+ net/netfilter/ipvs/ip_vs_ctl.c  | 12 +++++++++---
+ 3 files changed, 26 insertions(+), 16 deletions(-)
 
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 3759167..93e7a25 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1324,7 +1324,7 @@ static inline void ip_vs_control_del(struct ip_vs_conn *cp)
+ void ip_vs_control_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_estimator_net_cleanup(struct netns_ipvs *ipvs);
+ void ip_vs_sync_net_cleanup(struct netns_ipvs *ipvs);
+-void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs);
++void ip_vs_service_nets_cleanup(struct list_head *net_list);
+ 
+ /* IPVS application functions
+  * (from ip_vs_app.c)
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 8b80ab7..93cfb47 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2402,18 +2402,22 @@ static int __net_init __ip_vs_init(struct net *net)
+ 	return -ENOMEM;
+ }
+ 
+-static void __net_exit __ip_vs_cleanup(struct net *net)
++static void __net_exit __ip_vs_cleanup_batch(struct list_head *net_list)
+ {
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+-
+-	ip_vs_service_net_cleanup(ipvs);	/* ip_vs_flush() with locks */
+-	ip_vs_conn_net_cleanup(ipvs);
+-	ip_vs_app_net_cleanup(ipvs);
+-	ip_vs_protocol_net_cleanup(ipvs);
+-	ip_vs_control_net_cleanup(ipvs);
+-	ip_vs_estimator_net_cleanup(ipvs);
+-	IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+-	net->ipvs = NULL;
++	struct netns_ipvs *ipvs;
++	struct net *net;
++
++	ip_vs_service_nets_cleanup(net_list);	/* ip_vs_flush() with locks */
++	list_for_each_entry(net, net_list, exit_list) {
++		ipvs = net_ipvs(net);
++		ip_vs_conn_net_cleanup(ipvs);
++		ip_vs_app_net_cleanup(ipvs);
++		ip_vs_protocol_net_cleanup(ipvs);
++		ip_vs_control_net_cleanup(ipvs);
++		ip_vs_estimator_net_cleanup(ipvs);
++		IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
++		net->ipvs = NULL;
++	}
+ }
+ 
+ static int __net_init __ip_vs_dev_init(struct net *net)
+@@ -2442,7 +2446,7 @@ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
+ 
+ static struct pernet_operations ipvs_core_ops = {
+ 	.init = __ip_vs_init,
+-	.exit = __ip_vs_cleanup,
++	.exit_batch = __ip_vs_cleanup_batch,
+ 	.id   = &ip_vs_net_id,
+ 	.size = sizeof(struct netns_ipvs),
+ };
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 8b48e7c..153c77b 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1607,14 +1607,20 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
+ 
+ /*
+  *	Delete service by {netns} in the service table.
+- *	Called by __ip_vs_cleanup()
++ *	Called by __ip_vs_batch_cleanup()
+  */
+-void ip_vs_service_net_cleanup(struct netns_ipvs *ipvs)
++void ip_vs_service_nets_cleanup(struct list_head *net_list)
+ {
++	struct netns_ipvs *ipvs;
++	struct net *net;
++
+ 	EnterFunction(2);
+ 	/* Check for "full" addressed entries */
+ 	mutex_lock(&__ip_vs_mutex);
+-	ip_vs_flush(ipvs, true);
++	list_for_each_entry(net, net_list, exit_list) {
++		ipvs = net_ipvs(net);
++		ip_vs_flush(ipvs, true);
++	}
+ 	mutex_unlock(&__ip_vs_mutex);
+ 	LeaveFunction(2);
+ }
 -- 
 1.8.3.1
 
