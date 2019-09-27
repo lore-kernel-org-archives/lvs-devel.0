@@ -1,7 +1,7 @@
 From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Subject: [PATCH v2 3/3] selftests: netfilter: add ipvs tunnel test case
-Date: Fri, 27 Sep 2019 14:21:06 +0800
-Message-ID: <1569565266-31566-4-git-send-email-yanhaishuang@cmss.chinamobile.com>
+Subject: [PATCH v2 2/3] selftests: netfilter: add ipvs nat test case
+Date: Fri, 27 Sep 2019 14:21:05 +0800
+Message-ID: <1569565266-31566-3-git-send-email-yanhaishuang@cmss.chinamobile.com>
 References: <1569565266-31566-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1569565266-31566-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
@@ -13,51 +13,37 @@ Content-Transfer-Encoding: 7bit
 To: Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>
 Cc: Julian Anastasov <ja@ssi.bg>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 
-Test virtual server via ipip tunnel.
+Test virtual server via NAT.
 
 Tested:
 # selftests: netfilter: ipvs.sh
 # Testing DR mode...
 # Testing NAT mode...
-# Testing Tunnel mode...
 # ipvs.sh: PASS
-ok 6 selftests: netfilter: ipvs.sh
 
 Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 ---
-v2: optimize test script
----
- tools/testing/selftests/netfilter/ipvs.sh | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+ tools/testing/selftests/netfilter/ipvs.sh | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/tools/testing/selftests/netfilter/ipvs.sh b/tools/testing/selftests/netfilter/ipvs.sh
-index e95453b..b09994e 100755
+index 658c06b..e95453b 100755
 --- a/tools/testing/selftests/netfilter/ipvs.sh
 +++ b/tools/testing/selftests/netfilter/ipvs.sh
-@@ -174,6 +174,30 @@ test_nat() {
+@@ -160,20 +160,40 @@ test_dr() {
      test_service
  }
  
-+test_tun() {
++test_nat() {
 +    ip netns exec ns0 ip route add ${vip_v4} via ${gip_v4} dev br0
 +
-+    ip netns exec ns1 modprobe ipip
-+    ip netns exec ns1 ip link set tunl0 up
-+    ip netns exec ns1 sysctl -qw net.ipv4.ip_forward=0
-+    ip netns exec ns1 sysctl -qw net.ipv4.conf.all.send_redirects=0
-+    ip netns exec ns1 sysctl -qw net.ipv4.conf.default.send_redirects=0
++    ip netns exec ns1 sysctl -qw net.ipv4.ip_forward=1
 +    ip netns exec ns1 ipvsadm -A -t ${vip_v4}:${port} -s rr
-+    ip netns exec ns1 ipvsadm -a -i -t ${vip_v4}:${port} -r ${rip_v4}:${port}
++    ip netns exec ns1 ipvsadm -a -m -t ${vip_v4}:${port} -r ${rip_v4}:${port}
 +    ip netns exec ns1 ip addr add ${vip_v4}/32 dev lo:1
 +
-+    ip netns exec ns2 modprobe ipip
-+    ip netns exec ns2 ip link set tunl0 up
-+    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.arp_ignore=1
-+    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.arp_announce=2
-+    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.rp_filter=0
-+    ip netns exec ns2 sysctl -qw net.ipv4.conf.tunl0.rp_filter=0
-+    ip netns exec ns2 sysctl -qw net.ipv4.conf.veth21.rp_filter=0
-+    ip netns exec ns2 ip addr add ${vip_v4}/32 dev lo:1
++    ip netns exec ns2 ip link del veth20
++    ip netns exec ns2 ip route add default via ${dip_v4} dev veth21
 +
 +    test_service
 +}
@@ -65,19 +51,27 @@ index e95453b..b09994e 100755
  run_tests() {
  	local errors=
  
-@@ -189,6 +213,12 @@ run_tests() {
- 	test_nat
+ 	echo "Testing DR mode..."
++	cleanup
+ 	setup
+ 	test_dr
  	errors=$(( $errors + $? ))
  
-+	echo "Testing Tunnel mode..."
++	echo "Testing NAT mode..."
 +	cleanup
 +	setup
-+	test_tun
++	test_nat
 +	errors=$(( $errors + $? ))
 +
  	return $errors
  }
  
+ trap cleanup EXIT
+ 
+-cleanup
+ run_tests
+ 
+ if [ $? -ne 0 ]; then
 -- 
 1.8.3.1
 
