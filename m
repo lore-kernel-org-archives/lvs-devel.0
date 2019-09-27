@@ -1,67 +1,83 @@
 From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Subject: [PATCH v2 2/2] ipvs: batch __ip_vs_dev_cleanup
-Date: Fri, 27 Sep 2019 12:54:51 +0800
-Message-ID: <1569560091-20553-3-git-send-email-yanhaishuang@cmss.chinamobile.com>
-References: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
+Subject: [PATCH v2 3/3] selftests: netfilter: add ipvs tunnel test case
+Date: Fri, 27 Sep 2019 14:21:06 +0800
+Message-ID: <1569565266-31566-4-git-send-email-yanhaishuang@cmss.chinamobile.com>
+References: <1569565266-31566-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
+In-Reply-To: <1569565266-31566-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>, "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+To: Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>
+Cc: Julian Anastasov <ja@ssi.bg>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 
-It's better to batch __ip_vs_cleanup to speedup ipvs
-devices dismantle.
+Test virtual server via ipip tunnel.
+
+Tested:
+# selftests: netfilter: ipvs.sh
+# Testing DR mode...
+# Testing NAT mode...
+# Testing Tunnel mode...
+# ipvs.sh: PASS
+ok 6 selftests: netfilter: ipvs.sh
 
 Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 ---
-v2: remove unused pointer list
+v2: optimize test script
 ---
- net/netfilter/ipvs/ip_vs_core.c | 19 ++++++++++++-------
- 1 file changed, 12 insertions(+), 7 deletions(-)
+ tools/testing/selftests/netfilter/ipvs.sh | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 93cfb47..512259f 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2433,14 +2433,19 @@ static int __net_init __ip_vs_dev_init(struct net *net)
- 	return ret;
+diff --git a/tools/testing/selftests/netfilter/ipvs.sh b/tools/testing/selftests/netfilter/ipvs.sh
+index e95453b..b09994e 100755
+--- a/tools/testing/selftests/netfilter/ipvs.sh
++++ b/tools/testing/selftests/netfilter/ipvs.sh
+@@ -174,6 +174,30 @@ test_nat() {
+     test_service
  }
  
--static void __net_exit __ip_vs_dev_cleanup(struct net *net)
-+static void __net_exit __ip_vs_dev_cleanup_batch(struct list_head *net_list)
- {
--	struct netns_ipvs *ipvs = net_ipvs(net);
-+	struct netns_ipvs *ipvs;
-+	struct net *net;
++test_tun() {
++    ip netns exec ns0 ip route add ${vip_v4} via ${gip_v4} dev br0
 +
- 	EnterFunction(2);
--	nf_unregister_net_hooks(net, ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
--	ipvs->enable = 0;	/* Disable packet reception */
--	smp_wmb();
--	ip_vs_sync_net_cleanup(ipvs);
-+	list_for_each_entry(net, net_list, exit_list) {
-+		ipvs = net_ipvs(net);
-+		nf_unregister_net_hooks(net, ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
-+		ipvs->enable = 0;	/* Disable packet reception */
-+		smp_wmb();
-+		ip_vs_sync_net_cleanup(ipvs);
-+	}
- 	LeaveFunction(2);
++    ip netns exec ns1 modprobe ipip
++    ip netns exec ns1 ip link set tunl0 up
++    ip netns exec ns1 sysctl -qw net.ipv4.ip_forward=0
++    ip netns exec ns1 sysctl -qw net.ipv4.conf.all.send_redirects=0
++    ip netns exec ns1 sysctl -qw net.ipv4.conf.default.send_redirects=0
++    ip netns exec ns1 ipvsadm -A -t ${vip_v4}:${port} -s rr
++    ip netns exec ns1 ipvsadm -a -i -t ${vip_v4}:${port} -r ${rip_v4}:${port}
++    ip netns exec ns1 ip addr add ${vip_v4}/32 dev lo:1
++
++    ip netns exec ns2 modprobe ipip
++    ip netns exec ns2 ip link set tunl0 up
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.arp_ignore=1
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.arp_announce=2
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.rp_filter=0
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.tunl0.rp_filter=0
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.veth21.rp_filter=0
++    ip netns exec ns2 ip addr add ${vip_v4}/32 dev lo:1
++
++    test_service
++}
++
+ run_tests() {
+ 	local errors=
+ 
+@@ -189,6 +213,12 @@ run_tests() {
+ 	test_nat
+ 	errors=$(( $errors + $? ))
+ 
++	echo "Testing Tunnel mode..."
++	cleanup
++	setup
++	test_tun
++	errors=$(( $errors + $? ))
++
+ 	return $errors
  }
  
-@@ -2453,7 +2458,7 @@ static void __net_exit __ip_vs_dev_cleanup(struct net *net)
- 
- static struct pernet_operations ipvs_core_dev_ops = {
- 	.init = __ip_vs_dev_init,
--	.exit = __ip_vs_dev_cleanup,
-+	.exit_batch = __ip_vs_dev_cleanup_batch,
- };
- 
- /*
 -- 
 1.8.3.1
 
