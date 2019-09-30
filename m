@@ -1,66 +1,66 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH v2 0/2] ipvs: speedup ipvs netns dismantle
-Date: Mon, 30 Sep 2019 22:08:23 +0300 (EEST)
-Message-ID: <alpine.LFD.2.21.1909302205360.2706@ja.home.ssi.bg>
-References: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
+Subject: Re: [PATCH v2 0/3] selftests: netfilter: introduce test cases for
+ ipvs
+Date: Mon, 30 Sep 2019 23:45:59 +0300 (EEST)
+Message-ID: <alpine.LFD.2.21.1909302343350.16116@ja.home.ssi.bg>
+References: <1569565266-31566-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Mime-Version: 1.0
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
+In-Reply-To: <1569565266-31566-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
+Cc: Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, linux-kernel <linux-kernel@vger.kernel.org>, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
 
 
 	Hello,
 
 On Fri, 27 Sep 2019, Haishuang Yan wrote:
 
-> Implement exit_batch() method to dismantle more ipvs netns
-> per round.
+> This series patch include test cases for ipvs.
 > 
-> Tested:
-> $  cat add_del_unshare.sh
-> #!/bin/bash
+> The test topology is who as below:
+> +--------------------------------------------------------------+
+> |                      |                                       |
+> |         ns0          |         ns1                           |
+> |      -----------     |     -----------    -----------        |
+> |      | veth01  | --------- | veth10  |    | veth12  |        |
+> |      -----------    peer   -----------    -----------        |
+> |           |          |                        |              |
+> |      -----------     |                        |              |
+> |      |  br0    |     |-----------------  peer |--------------|
+> |      -----------     |                        |              |
+> |           |          |                        |              |
+> |      ----------     peer   ----------      -----------       |
+> |      |  veth02 | --------- |  veth20 |     | veth21  |       |
+> |      ----------      |     ----------      -----------       |
+> |                      |         ns2                           |
+> |                      |                                       |
+> +--------------------------------------------------------------+
 > 
-> for i in `seq 1 100`
->     do
->      (for j in `seq 1 40` ; do  unshare -n ipvsadm -A -t 172.16.$i.$j:80 >/dev/null ; done) &
->     done
-> wait; grep net_namespace /proc/slabinfo
+> Test results:
+> # selftests: netfilter: ipvs.sh
+> # Testing DR mode...
+> # Testing NAT mode...
+> # Testing Tunnel mode...
+> # ipvs.sh: PASS
+> ok 6 selftests: netfilter: ipvs.sh
 > 
-> Befor patch:
-> $  time sh add_del_unshare.sh
-> net_namespace       4020   4020   4736    6    8 : tunables    0    0    0 : slabdata    670    670      0
+> Haishuang Yan (3):
+>   selftests: netfilter: add ipvs test script
+>   selftests: netfilter: add ipvs nat test case
+>   selftests: netfilter: add ipvs tunnel test case
 > 
-> real    0m8.086s
-> user    0m2.025s
-> sys     0m36.956s
-> 
-> After patch:
-> $  time sh add_del_unshare.sh
-> net_namespace       4020   4020   4736    6    8 : tunables    0    0    0 : slabdata    670    670      0
-> 
-> real    0m7.623s
-> user    0m2.003s
-> sys     0m32.935s
-> 
-> Haishuang Yan (2):
->   ipvs: batch __ip_vs_cleanup
->   ipvs: batch __ip_vs_dev_cleanup
-> 
->  include/net/ip_vs.h             |  2 +-
->  net/netfilter/ipvs/ip_vs_core.c | 47 ++++++++++++++++++++++++-----------------
->  net/netfilter/ipvs/ip_vs_ctl.c  | 12 ++++++++---
->  3 files changed, 38 insertions(+), 23 deletions(-)
+>  tools/testing/selftests/netfilter/Makefile |   2 +-
+>  tools/testing/selftests/netfilter/ipvs.sh  | 234 +++++++++++++++++++++++++++++
+>  2 files changed, 235 insertions(+), 1 deletion(-)
+>  create mode 100755 tools/testing/selftests/netfilter/ipvs.sh
 
-	Both patches in v2 look good to me, thanks!
+	Patchset v2 looks good to me, thanks!
 
 Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	This is for the -next kernels...
 
 Regards
 
