@@ -1,76 +1,68 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: no need to update skb route entry for local
- destination packets.
-Date: Mon, 30 Sep 2019 21:49:38 +0300 (EEST)
-Message-ID: <alpine.LFD.2.21.1909302146530.2706@ja.home.ssi.bg>
-References: <20190930051455.GA20692@toolchain>
+Subject: Re: [PATCH v2 0/2] ipvs: speedup ipvs netns dismantle
+Date: Mon, 30 Sep 2019 22:08:23 +0300 (EEST)
+Message-ID: <alpine.LFD.2.21.1909302205360.2706@ja.home.ssi.bg>
+References: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20190930051455.GA20692@toolchain>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: zhang kai <zhangkaiheb@126.com>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
 
 
 	Hello,
 
-On Mon, 30 Sep 2019, zhang kai wrote:
+On Fri, 27 Sep 2019, Haishuang Yan wrote:
 
-> In the end of function __ip_vs_get_out_rt/__ip_vs_get_out_rt_v6,the
-> 'local' variable is always zero.
+> Implement exit_batch() method to dismantle more ipvs netns
+> per round.
 > 
-> Signed-off-by: zhang kai <zhangkaiheb@126.com>
+> Tested:
+> $  cat add_del_unshare.sh
+> #!/bin/bash
+> 
+> for i in `seq 1 100`
+>     do
+>      (for j in `seq 1 40` ; do  unshare -n ipvsadm -A -t 172.16.$i.$j:80 >/dev/null ; done) &
+>     done
+> wait; grep net_namespace /proc/slabinfo
+> 
+> Befor patch:
+> $  time sh add_del_unshare.sh
+> net_namespace       4020   4020   4736    6    8 : tunables    0    0    0 : slabdata    670    670      0
+> 
+> real    0m8.086s
+> user    0m2.025s
+> sys     0m36.956s
+> 
+> After patch:
+> $  time sh add_del_unshare.sh
+> net_namespace       4020   4020   4736    6    8 : tunables    0    0    0 : slabdata    670    670      0
+> 
+> real    0m7.623s
+> user    0m2.003s
+> sys     0m32.935s
+> 
+> Haishuang Yan (2):
+>   ipvs: batch __ip_vs_cleanup
+>   ipvs: batch __ip_vs_dev_cleanup
+> 
+>  include/net/ip_vs.h             |  2 +-
+>  net/netfilter/ipvs/ip_vs_core.c | 47 ++++++++++++++++++++++++-----------------
+>  net/netfilter/ipvs/ip_vs_ctl.c  | 12 ++++++++---
+>  3 files changed, 38 insertions(+), 23 deletions(-)
 
-	Looks good to me, thanks!
+	Both patches in v2 look good to me, thanks!
 
 Acked-by: Julian Anastasov <ja@ssi.bg>
 
-	Simon, this is for -next kernels...
-
-> ---
->  net/netfilter/ipvs/ip_vs_xmit.c | 18 ++++++------------
->  1 file changed, 6 insertions(+), 12 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-> index 9c464d24beec..037c7c91044e 100644
-> --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> @@ -407,12 +407,9 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  		goto err_put;
->  
->  	skb_dst_drop(skb);
-> -	if (noref) {
-> -		if (!local)
-> -			skb_dst_set_noref(skb, &rt->dst);
-> -		else
-> -			skb_dst_set(skb, dst_clone(&rt->dst));
-> -	} else
-> +	if (noref)
-> +		skb_dst_set_noref(skb, &rt->dst);
-> +	else
->  		skb_dst_set(skb, &rt->dst);
->  
->  	return local;
-> @@ -574,12 +571,9 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  		goto err_put;
->  
->  	skb_dst_drop(skb);
-> -	if (noref) {
-> -		if (!local)
-> -			skb_dst_set_noref(skb, &rt->dst);
-> -		else
-> -			skb_dst_set(skb, dst_clone(&rt->dst));
-> -	} else
-> +	if (noref)
-> +		skb_dst_set_noref(skb, &rt->dst);
-> +	else
->  		skb_dst_set(skb, &rt->dst);
->  
->  	return local;
-> -- 
-> 2.17.1
+	This is for the -next kernels...
 
 Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
