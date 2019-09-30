@@ -1,57 +1,67 @@
-From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Subject: [PATCH v2 0/3] selftests: netfilter: introduce test cases for ipvs
-Date: Fri, 27 Sep 2019 14:21:03 +0800
-Message-ID: <1569565266-31566-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: zhang kai <zhangkaiheb@126.com>
+Subject: [PATCH] ipvs: no need to update skb route entry for local
+ destination packets.
+Date: Mon, 30 Sep 2019 13:14:55 +0800
+Message-ID: <20190930051455.GA20692@toolchain>
+Mime-Version: 1.0
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=126.com;
+        s=s110527; h=Date:From:Subject:Message-ID:MIME-Version; bh=f4VmT
+        OLjqsdDW7siEPbVTeTGa05H6kPxmqkXSCHcXuY=; b=djrYmuZnBsvgWHcTYkmY6
+        +cRQ2Y3d4aGlycFV9LAMBWfgkNj9PsSQJOEmKomiX+xnSyIyFXNnMIAWACVOC3iO
+        OUdoOSwIDYAeQpMAXQixOIIHYJfcf8bEQab7fn5AoGiqoON4gmee25ve2qlWDJe7
+        ttKIlfAqsmxOURxu3wTp44=
+Content-Disposition: inline
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>
-Cc: Julian Anastasov <ja@ssi.bg>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+To: wensong@linux-vs.org, horms@verge.net.au, lvs-devel@vger.kernel.org, netdev@vger.kernel.org
 
-This series patch include test cases for ipvs.
+In the end of function __ip_vs_get_out_rt/__ip_vs_get_out_rt_v6,the
+'local' variable is always zero.
 
-The test topology is who as below:
-+--------------------------------------------------------------+
-|                      |                                       |
-|         ns0          |         ns1                           |
-|      -----------     |     -----------    -----------        |
-|      | veth01  | --------- | veth10  |    | veth12  |        |
-|      -----------    peer   -----------    -----------        |
-|           |          |                        |              |
-|      -----------     |                        |              |
-|      |  br0    |     |-----------------  peer |--------------|
-|      -----------     |                        |              |
-|           |          |                        |              |
-|      ----------     peer   ----------      -----------       |
-|      |  veth02 | --------- |  veth20 |     | veth21  |       |
-|      ----------      |     ----------      -----------       |
-|                      |         ns2                           |
-|                      |                                       |
-+--------------------------------------------------------------+
+Signed-off-by: zhang kai <zhangkaiheb@126.com>
+---
+ net/netfilter/ipvs/ip_vs_xmit.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
 
-Test results:
-# selftests: netfilter: ipvs.sh
-# Testing DR mode...
-# Testing NAT mode...
-# Testing Tunnel mode...
-# ipvs.sh: PASS
-ok 6 selftests: netfilter: ipvs.sh
-
-Haishuang Yan (3):
-  selftests: netfilter: add ipvs test script
-  selftests: netfilter: add ipvs nat test case
-  selftests: netfilter: add ipvs tunnel test case
-
- tools/testing/selftests/netfilter/Makefile |   2 +-
- tools/testing/selftests/netfilter/ipvs.sh  | 234 +++++++++++++++++++++++++++++
- 2 files changed, 235 insertions(+), 1 deletion(-)
- create mode 100755 tools/testing/selftests/netfilter/ipvs.sh
-
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index 9c464d24beec..037c7c91044e 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -407,12 +407,9 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 		goto err_put;
+ 
+ 	skb_dst_drop(skb);
+-	if (noref) {
+-		if (!local)
+-			skb_dst_set_noref(skb, &rt->dst);
+-		else
+-			skb_dst_set(skb, dst_clone(&rt->dst));
+-	} else
++	if (noref)
++		skb_dst_set_noref(skb, &rt->dst);
++	else
+ 		skb_dst_set(skb, &rt->dst);
+ 
+ 	return local;
+@@ -574,12 +571,9 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 		goto err_put;
+ 
+ 	skb_dst_drop(skb);
+-	if (noref) {
+-		if (!local)
+-			skb_dst_set_noref(skb, &rt->dst);
+-		else
+-			skb_dst_set(skb, dst_clone(&rt->dst));
+-	} else
++	if (noref)
++		skb_dst_set_noref(skb, &rt->dst);
++	else
+ 		skb_dst_set(skb, &rt->dst);
+ 
+ 	return local;
 -- 
-1.8.3.1
-
-
+2.17.1
 
