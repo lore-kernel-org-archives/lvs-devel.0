@@ -1,68 +1,85 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH v2 0/2] ipvs: speedup ipvs netns dismantle
-Date: Tue, 1 Oct 2019 11:54:15 +0200
-Message-ID: <20191001095415.fari4ntiszkbkgxr@verge.net.au>
-References: <1569560091-20553-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
- <alpine.LFD.2.21.1909302205360.2706@ja.home.ssi.bg>
-Mime-Version: 1.0
+From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+Subject: [PATCH v3 3/3] selftests: netfilter: add ipvs tunnel test case
+Date: Tue,  1 Oct 2019 22:19:59 +0800
+Message-ID: <1569939599-1872-4-git-send-email-yanhaishuang@cmss.chinamobile.com>
+References: <1569939599-1872-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.21.1909302205360.2706@ja.home.ssi.bg>
+In-Reply-To: <1569939599-1872-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>, "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>, netfilter-devel@vger.kernel.org
+To: Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 
-On Mon, Sep 30, 2019 at 10:08:23PM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Fri, 27 Sep 2019, Haishuang Yan wrote:
-> 
-> > Implement exit_batch() method to dismantle more ipvs netns
-> > per round.
-> > 
-> > Tested:
-> > $  cat add_del_unshare.sh
-> > #!/bin/bash
-> > 
-> > for i in `seq 1 100`
-> >     do
-> >      (for j in `seq 1 40` ; do  unshare -n ipvsadm -A -t 172.16.$i.$j:80 >/dev/null ; done) &
-> >     done
-> > wait; grep net_namespace /proc/slabinfo
-> > 
-> > Befor patch:
-> > $  time sh add_del_unshare.sh
-> > net_namespace       4020   4020   4736    6    8 : tunables    0    0    0 : slabdata    670    670      0
-> > 
-> > real    0m8.086s
-> > user    0m2.025s
-> > sys     0m36.956s
-> > 
-> > After patch:
-> > $  time sh add_del_unshare.sh
-> > net_namespace       4020   4020   4736    6    8 : tunables    0    0    0 : slabdata    670    670      0
-> > 
-> > real    0m7.623s
-> > user    0m2.003s
-> > sys     0m32.935s
-> > 
-> > Haishuang Yan (2):
-> >   ipvs: batch __ip_vs_cleanup
-> >   ipvs: batch __ip_vs_dev_cleanup
-> > 
-> >  include/net/ip_vs.h             |  2 +-
-> >  net/netfilter/ipvs/ip_vs_core.c | 47 ++++++++++++++++++++++++-----------------
-> >  net/netfilter/ipvs/ip_vs_ctl.c  | 12 ++++++++---
-> >  3 files changed, 38 insertions(+), 23 deletions(-)
-> 
-> 	Both patches in v2 look good to me, thanks!
-> 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
-> 
-> 	This is for the -next kernels...
+Test virtual server via ipip tunnel.
 
-Thanks, applied to ipvs-next.
+Tested:
+# selftests: netfilter: ipvs.sh
+# Testing DR mode...
+# Testing NAT mode...
+# Testing Tunnel mode...
+# ipvs.sh: PASS
+ok 6 selftests: netfilter: ipvs.sh
+
+Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+---
+v2: optimize test script
+---
+ tools/testing/selftests/netfilter/ipvs.sh | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+
+diff --git a/tools/testing/selftests/netfilter/ipvs.sh b/tools/testing/selftests/netfilter/ipvs.sh
+index 270b5da..a8f6e70 100755
+--- a/tools/testing/selftests/netfilter/ipvs.sh
++++ b/tools/testing/selftests/netfilter/ipvs.sh
+@@ -174,6 +174,30 @@ test_nat() {
+     test_service
+ }
+ 
++test_tun() {
++    ip netns exec ns0 ip route add ${vip_v4} via ${gip_v4} dev br0
++
++    ip netns exec ns1 modprobe ipip
++    ip netns exec ns1 ip link set tunl0 up
++    ip netns exec ns1 sysctl -qw net.ipv4.ip_forward=0
++    ip netns exec ns1 sysctl -qw net.ipv4.conf.all.send_redirects=0
++    ip netns exec ns1 sysctl -qw net.ipv4.conf.default.send_redirects=0
++    ip netns exec ns1 ipvsadm -A -t ${vip_v4}:${port} -s rr
++    ip netns exec ns1 ipvsadm -a -i -t ${vip_v4}:${port} -r ${rip_v4}:${port}
++    ip netns exec ns1 ip addr add ${vip_v4}/32 dev lo:1
++
++    ip netns exec ns2 modprobe ipip
++    ip netns exec ns2 ip link set tunl0 up
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.arp_ignore=1
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.arp_announce=2
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.rp_filter=0
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.tunl0.rp_filter=0
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.veth21.rp_filter=0
++    ip netns exec ns2 ip addr add ${vip_v4}/32 dev lo:1
++
++    test_service
++}
++
+ run_tests() {
+ 	local errors=
+ 
+@@ -189,6 +213,12 @@ run_tests() {
+ 	test_nat
+ 	errors=$(( $errors + $? ))
+ 
++	echo "Testing Tunnel mode..."
++	cleanup
++	setup
++	test_tun
++	errors=$(( $errors + $? ))
++
+ 	return $errors
+ }
+ 
+-- 
+1.8.3.1
+
+
+
