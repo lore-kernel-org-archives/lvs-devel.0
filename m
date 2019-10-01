@@ -1,10 +1,8 @@
 From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Subject: [PATCH v3 2/3] selftests: netfilter: add ipvs nat test case
-Date: Tue,  1 Oct 2019 22:19:58 +0800
-Message-ID: <1569939599-1872-3-git-send-email-yanhaishuang@cmss.chinamobile.com>
-References: <1569939599-1872-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
+Subject: [PATCH v3 0/3] selftests: netfilter: introduce test cases for ipvs
+Date: Tue,  1 Oct 2019 22:19:56 +0800
+Message-ID: <1569939599-1872-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1569939599-1872-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 MIME-Version: 1.0
@@ -13,65 +11,45 @@ Content-Transfer-Encoding: 7bit
 To: Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
 Cc: Julian Anastasov <ja@ssi.bg>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 
-Test virtual server via NAT.
+This series patch include test cases for ipvs.
 
-Tested:
+The test topology is who as below:
++--------------------------------------------------------------+
+|                      |                                       |
+|         ns0          |         ns1                           |
+|      -----------     |     -----------    -----------        |
+|      | veth01  | --------- | veth10  |    | veth12  |        |
+|      -----------    peer   -----------    -----------        |
+|           |          |                        |              |
+|      -----------     |                        |              |
+|      |  br0    |     |-----------------  peer |--------------|
+|      -----------     |                        |              |
+|           |          |                        |              |
+|      ----------     peer   ----------      -----------       |
+|      |  veth02 | --------- |  veth20 |     | veth12  |       |
+|      ----------      |     ----------      -----------       |
+|                      |         ns2                           |
+|                      |                                       |
++--------------------------------------------------------------+
+
+Test results:
 # selftests: netfilter: ipvs.sh
 # Testing DR mode...
 # Testing NAT mode...
+# Testing Tunnel mode...
 # ipvs.sh: PASS
+ok 6 selftests: netfilter: ipvs.sh
 
-Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
----
- tools/testing/selftests/netfilter/ipvs.sh | 22 +++++++++++++++++++++-
- 1 file changed, 21 insertions(+), 1 deletion(-)
+Haishuang Yan (3):
+  selftests: netfilter: add ipvs test script
+  selftests: netfilter: add ipvs nat test case
+  selftests: netfilter: add ipvs tunnel test case
 
-diff --git a/tools/testing/selftests/netfilter/ipvs.sh b/tools/testing/selftests/netfilter/ipvs.sh
-index 6201046..270b5da 100755
---- a/tools/testing/selftests/netfilter/ipvs.sh
-+++ b/tools/testing/selftests/netfilter/ipvs.sh
-@@ -160,20 +160,40 @@ test_dr() {
-     test_service
- }
- 
-+test_nat() {
-+    ip netns exec ns0 ip route add ${vip_v4} via ${gip_v4} dev br0
-+
-+    ip netns exec ns1 sysctl -qw net.ipv4.ip_forward=1
-+    ip netns exec ns1 ipvsadm -A -t ${vip_v4}:${port} -s rr
-+    ip netns exec ns1 ipvsadm -a -m -t ${vip_v4}:${port} -r ${rip_v4}:${port}
-+    ip netns exec ns1 ip addr add ${vip_v4}/32 dev lo:1
-+
-+    ip netns exec ns2 ip link del veth20
-+    ip netns exec ns2 ip route add default via ${dip_v4} dev veth21
-+
-+    test_service
-+}
-+
- run_tests() {
- 	local errors=
- 
- 	echo "Testing DR mode..."
-+	cleanup
- 	setup
- 	test_dr
- 	errors=$(( $errors + $? ))
- 
-+	echo "Testing NAT mode..."
-+	cleanup
-+	setup
-+	test_nat
-+	errors=$(( $errors + $? ))
-+
- 	return $errors
- }
- 
- trap cleanup EXIT
- 
--cleanup
- run_tests
- 
- if [ $? -ne 0 ]; then
+ tools/testing/selftests/netfilter/Makefile |   2 +-
+ tools/testing/selftests/netfilter/ipvs.sh  | 234 +++++++++++++++++++++++++++++
+ 2 files changed, 235 insertions(+), 1 deletion(-)
+ create mode 100755 tools/testing/selftests/netfilter/ipvs.sh
+
 -- 
 1.8.3.1
 
