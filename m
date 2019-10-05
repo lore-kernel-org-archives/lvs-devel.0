@@ -1,96 +1,75 @@
-From: Duncan Roe <duncan_roe@optusnet.com.au>
+From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 Subject: Re: [PATCH v3 0/3] selftests: netfilter: introduce test cases for
  ipvs
-Date: Fri, 4 Oct 2019 21:47:45 +1000
-Message-ID: <20191004114745.GB6803@dimstar.local.net>
+Date: Sat, 5 Oct 2019 09:05:37 +0800
+Message-ID: <4C9C0C54-4CC6-49A4-A868-6F7604B1AB2B@cmss.chinamobile.com>
 References: <1569939599-1872-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
  <alpine.LFD.2.21.1910012133330.3887@ja.home.ssi.bg>
  <20191002012726.GB9810@dimstar.local.net>
  <8E2E81F3-8385-4397-9A22-F513E507507D@cmss.chinamobile.com>
-Mime-Version: 1.0
+ <20191004114745.GB6803@dimstar.local.net>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Transfer-Encoding: base64
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <8E2E81F3-8385-4397-9A22-F513E507507D@cmss.chinamobile.com>
+In-Reply-To: <20191004114745.GB6803@dimstar.local.net>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+Content-Type: text/plain; charset="gb2312"
+To: Duncan Roe <duncan_roe@optusnet.com.au>
 Cc: Julian Anastasov <ja@ssi.bg>, Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@verge.net.au>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-On Thu, Oct 03, 2019 at 10:41:06PM +0800, Haishuang Yan wrote:
->
->
-> > On 2019??10??2??, at ????9:27, Duncan Roe <duncan_roe@optusnet.com.au> wrote:
-> >
-> > On Tue, Oct 01, 2019 at 09:34:13PM +0300, Julian Anastasov wrote:
-> >>
-> >> 	Hello,
-> >>
-> >> On Tue, 1 Oct 2019, Haishuang Yan wrote:
-> >>
-> >>> This series patch include test cases for ipvs.
-> >>>
-> >>> The test topology is who as below:
-> >>> +--------------------------------------------------------------+
-> >>> |                      |                                       |
-> >>> |         ns0          |         ns1                           |
-> >>> |      -----------     |     -----------    -----------        |
-> >>> |      | veth01  | --------- | veth10  |    | veth12  |        |
-> >>> |      -----------    peer   -----------    -----------        |
-> >>> |           |          |                        |              |
-> >>> |      -----------     |                        |              |
-> >>> |      |  br0    |     |-----------------  peer |--------------|
-> >>> |      -----------     |                        |              |
-> >>> |           |          |                        |              |
-> >>> |      ----------     peer   ----------      -----------       |
-> >>> |      |  veth02 | --------- |  veth20 |     | veth12  |       |
-> >>> |      ----------      |     ----------      -----------       |
-> >>> |                      |         ns2                           |
-> >>> |                      |                                       |
-> >>> +--------------------------------------------------------------+
-> >>>
-> >>> Test results:
-> >>> # selftests: netfilter: ipvs.sh
-> >>> # Testing DR mode...
-> >>> # Testing NAT mode...
-> >>> # Testing Tunnel mode...
-> >>> # ipvs.sh: PASS
-> >>> ok 6 selftests: netfilter: ipvs.sh
-> >>>
-> >>> Haishuang Yan (3):
-> >>>  selftests: netfilter: add ipvs test script
-> >>>  selftests: netfilter: add ipvs nat test case
-> >>>  selftests: netfilter: add ipvs tunnel test case
-> >>
-> >> Acked-by: Julian Anastasov <ja@ssi.bg>
-> >>
-> >>> tools/testing/selftests/netfilter/Makefile |   2 +-
-> >>> tools/testing/selftests/netfilter/ipvs.sh  | 234 +++++++++++++++++++++++++++++
-> >>> 2 files changed, 235 insertions(+), 1 deletion(-)
-> >>> create mode 100755 tools/testing/selftests/netfilter/ipvs.sh
-> >>
-> >> Regards
-> >>
-> >> --
-> >> Julian Anastasov <ja@ssi.bg>
-> >
-> > I still prefer #!/bin/sh in 1/3. You never know what's in someone's environment
-> >
-> > Cheers ... Duncan.
-> >
->
-> It??s also my preference too. "_"	
->
-> I have tested both #!/bin/bash and #!/bin/sh script, they all works properly.
-
-Enter these 2 lines:
-> ip(){ return 0; }
-> export -f ip
-
-Now try the #!/bin/bash script. If that now fails, try again with #!/bin/bash
-changed to #!/bin/bash -p
-
-Any better now?
-
-Cheers ... Duncan.
+Cj4gT24gMjAxOcTqMTDUwjTI1SwgYXQgz8LO5zc6NDcsIER1bmNhbiBSb2UgPGR1bmNhbl9yb2VA
+b3B0dXNuZXQuY29tLmF1PiB3cm90ZToKPiAKPiBPbiBUaHUsIE9jdCAwMywgMjAxOSBhdCAxMDo0
+MTowNlBNICswODAwLCBIYWlzaHVhbmcgWWFuIHdyb3RlOgo+PiAKPj4gCj4+PiBPbiAyMDE5Pz8x
+MD8/Mj8/LCBhdCA/Pz8/OToyNywgRHVuY2FuIFJvZSA8ZHVuY2FuX3JvZUBvcHR1c25ldC5jb20u
+YXU+IHdyb3RlOgo+Pj4gCj4+PiBPbiBUdWUsIE9jdCAwMSwgMjAxOSBhdCAwOTozNDoxM1BNICsw
+MzAwLCBKdWxpYW4gQW5hc3Rhc292IHdyb3RlOgo+Pj4+IAo+Pj4+IAlIZWxsbywKPj4+PiAKPj4+
+PiBPbiBUdWUsIDEgT2N0IDIwMTksIEhhaXNodWFuZyBZYW4gd3JvdGU6Cj4+Pj4gCj4+Pj4+IFRo
+aXMgc2VyaWVzIHBhdGNoIGluY2x1ZGUgdGVzdCBjYXNlcyBmb3IgaXB2cy4KPj4+Pj4gCj4+Pj4+
+IFRoZSB0ZXN0IHRvcG9sb2d5IGlzIHdobyBhcyBiZWxvdzoKPj4+Pj4gKy0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tKwo+Pj4+PiB8
+ICAgICAgICAgICAgICAgICAgICAgIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICB8Cj4+Pj4+IHwgICAgICAgICBuczAgICAgICAgICAgfCAgICAgICAgIG5zMSAgICAgICAg
+ICAgICAgICAgICAgICAgICAgIHwKPj4+Pj4gfCAgICAgIC0tLS0tLS0tLS0tICAgICB8ICAgICAt
+LS0tLS0tLS0tLSAgICAtLS0tLS0tLS0tLSAgICAgICAgfAo+Pj4+PiB8ICAgICAgfCB2ZXRoMDEg
+IHwgLS0tLS0tLS0tIHwgdmV0aDEwICB8ICAgIHwgdmV0aDEyICB8ICAgICAgICB8Cj4+Pj4+IHwg
+ICAgICAtLS0tLS0tLS0tLSAgICBwZWVyICAgLS0tLS0tLS0tLS0gICAgLS0tLS0tLS0tLS0gICAg
+ICAgIHwKPj4+Pj4gfCAgICAgICAgICAgfCAgICAgICAgICB8ICAgICAgICAgICAgICAgICAgICAg
+ICAgfCAgICAgICAgICAgICAgfAo+Pj4+PiB8ICAgICAgLS0tLS0tLS0tLS0gICAgIHwgICAgICAg
+ICAgICAgICAgICAgICAgICB8ICAgICAgICAgICAgICB8Cj4+Pj4+IHwgICAgICB8ICBicjAgICAg
+fCAgICAgfC0tLS0tLS0tLS0tLS0tLS0tICBwZWVyIHwtLS0tLS0tLS0tLS0tLXwKPj4+Pj4gfCAg
+ICAgIC0tLS0tLS0tLS0tICAgICB8ICAgICAgICAgICAgICAgICAgICAgICAgfCAgICAgICAgICAg
+ICAgfAo+Pj4+PiB8ICAgICAgICAgICB8ICAgICAgICAgIHwgICAgICAgICAgICAgICAgICAgICAg
+ICB8ICAgICAgICAgICAgICB8Cj4+Pj4+IHwgICAgICAtLS0tLS0tLS0tICAgICBwZWVyICAgLS0t
+LS0tLS0tLSAgICAgIC0tLS0tLS0tLS0tICAgICAgIHwKPj4+Pj4gfCAgICAgIHwgIHZldGgwMiB8
+IC0tLS0tLS0tLSB8ICB2ZXRoMjAgfCAgICAgfCB2ZXRoMTIgIHwgICAgICAgfAo+Pj4+PiB8ICAg
+ICAgLS0tLS0tLS0tLSAgICAgIHwgICAgIC0tLS0tLS0tLS0gICAgICAtLS0tLS0tLS0tLSAgICAg
+ICB8Cj4+Pj4+IHwgICAgICAgICAgICAgICAgICAgICAgfCAgICAgICAgIG5zMiAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIHwKPj4+Pj4gfCAgICAgICAgICAgICAgICAgICAgICB8ICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfAo+Pj4+PiArLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0rCj4+Pj4+IAo+Pj4+
+PiBUZXN0IHJlc3VsdHM6Cj4+Pj4+ICMgc2VsZnRlc3RzOiBuZXRmaWx0ZXI6IGlwdnMuc2gKPj4+
+Pj4gIyBUZXN0aW5nIERSIG1vZGUuLi4KPj4+Pj4gIyBUZXN0aW5nIE5BVCBtb2RlLi4uCj4+Pj4+
+ICMgVGVzdGluZyBUdW5uZWwgbW9kZS4uLgo+Pj4+PiAjIGlwdnMuc2g6IFBBU1MKPj4+Pj4gb2sg
+NiBzZWxmdGVzdHM6IG5ldGZpbHRlcjogaXB2cy5zaAo+Pj4+PiAKPj4+Pj4gSGFpc2h1YW5nIFlh
+biAoMyk6Cj4+Pj4+IHNlbGZ0ZXN0czogbmV0ZmlsdGVyOiBhZGQgaXB2cyB0ZXN0IHNjcmlwdAo+
+Pj4+PiBzZWxmdGVzdHM6IG5ldGZpbHRlcjogYWRkIGlwdnMgbmF0IHRlc3QgY2FzZQo+Pj4+PiBz
+ZWxmdGVzdHM6IG5ldGZpbHRlcjogYWRkIGlwdnMgdHVubmVsIHRlc3QgY2FzZQo+Pj4+IAo+Pj4+
+IEFja2VkLWJ5OiBKdWxpYW4gQW5hc3Rhc292IDxqYUBzc2kuYmc+Cj4+Pj4gCj4+Pj4+IHRvb2xz
+L3Rlc3Rpbmcvc2VsZnRlc3RzL25ldGZpbHRlci9NYWtlZmlsZSB8ICAgMiArLQo+Pj4+PiB0b29s
+cy90ZXN0aW5nL3NlbGZ0ZXN0cy9uZXRmaWx0ZXIvaXB2cy5zaCAgfCAyMzQgKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysKPj4+Pj4gMiBmaWxlcyBjaGFuZ2VkLCAyMzUgaW5zZXJ0aW9ucygr
+KSwgMSBkZWxldGlvbigtKQo+Pj4+PiBjcmVhdGUgbW9kZSAxMDA3NTUgdG9vbHMvdGVzdGluZy9z
+ZWxmdGVzdHMvbmV0ZmlsdGVyL2lwdnMuc2gKPj4+PiAKPj4+PiBSZWdhcmRzCj4+Pj4gCj4+Pj4g
+LS0KPj4+PiBKdWxpYW4gQW5hc3Rhc292IDxqYUBzc2kuYmc+Cj4+PiAKPj4+IEkgc3RpbGwgcHJl
+ZmVyICMhL2Jpbi9zaCBpbiAxLzMuIFlvdSBuZXZlciBrbm93IHdoYXQncyBpbiBzb21lb25lJ3Mg
+ZW52aXJvbm1lbnQKPj4+IAo+Pj4gQ2hlZXJzIC4uLiBEdW5jYW4uCj4+PiAKPj4gCj4+IEl0Pz9z
+IGFsc28gbXkgcHJlZmVyZW5jZSB0b28uICJfIgkKPj4gCj4+IEkgaGF2ZSB0ZXN0ZWQgYm90aCAj
+IS9iaW4vYmFzaCBhbmQgIyEvYmluL3NoIHNjcmlwdCwgdGhleSBhbGwgd29ya3MgcHJvcGVybHku
+Cj4gCj4gRW50ZXIgdGhlc2UgMiBsaW5lczoKPj4gaXAoKXsgcmV0dXJuIDA7IH0KPj4gZXhwb3J0
+IC1mIGlwCj4gCj4gTm93IHRyeSB0aGUgIyEvYmluL2Jhc2ggc2NyaXB0LiBJZiB0aGF0IG5vdyBm
+YWlscywgdHJ5IGFnYWluIHdpdGggIyEvYmluL2Jhc2gKPiBjaGFuZ2VkIHRvICMhL2Jpbi9iYXNo
+IC1wCj4gCj4gQW55IGJldHRlciBub3c/Cj4gCj4gQ2hlZXJzIC4uLiBEdW5jYW4uCj4gCkl0oa9z
+IGJldHRlciBub3csIHRoYW5rcyBmb3IgeW91ciBleHBsYW5hdGlvbi4KSW4gdjMgY29tbWl0IEkg
+d2lsbCB1c2UgIyEvYmluL2Jhc2ggLXAgdG8gcHJldmVudCBleHBvcnRpbmcgZnVuY3Rpb24gZnJv
+bSBlbnZpcm9ubWVudCB2YXJpYWJsZXMuCgo=
