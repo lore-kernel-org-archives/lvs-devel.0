@@ -1,75 +1,85 @@
 From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Subject: Re: [PATCH v3 0/3] selftests: netfilter: introduce test cases for
- ipvs
-Date: Sat, 5 Oct 2019 09:05:37 +0800
-Message-ID: <4C9C0C54-4CC6-49A4-A868-6F7604B1AB2B@cmss.chinamobile.com>
-References: <1569939599-1872-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
- <alpine.LFD.2.21.1910012133330.3887@ja.home.ssi.bg>
- <20191002012726.GB9810@dimstar.local.net>
- <8E2E81F3-8385-4397-9A22-F513E507507D@cmss.chinamobile.com>
- <20191004114745.GB6803@dimstar.local.net>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Transfer-Encoding: base64
+Subject: [PATCH v4 3/3] selftests: netfilter: add ipvs tunnel test case
+Date: Sat,  5 Oct 2019 22:37:45 +0800
+Message-ID: <1570286265-15855-4-git-send-email-yanhaishuang@cmss.chinamobile.com>
+References: <1570286265-15855-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20191004114745.GB6803@dimstar.local.net>
+In-Reply-To: <1570286265-15855-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="gb2312"
-To: Duncan Roe <duncan_roe@optusnet.com.au>
-Cc: Julian Anastasov <ja@ssi.bg>, Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@verge.net.au>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 
-Cj4gT24gMjAxOcTqMTDUwjTI1SwgYXQgz8LO5zc6NDcsIER1bmNhbiBSb2UgPGR1bmNhbl9yb2VA
-b3B0dXNuZXQuY29tLmF1PiB3cm90ZToKPiAKPiBPbiBUaHUsIE9jdCAwMywgMjAxOSBhdCAxMDo0
-MTowNlBNICswODAwLCBIYWlzaHVhbmcgWWFuIHdyb3RlOgo+PiAKPj4gCj4+PiBPbiAyMDE5Pz8x
-MD8/Mj8/LCBhdCA/Pz8/OToyNywgRHVuY2FuIFJvZSA8ZHVuY2FuX3JvZUBvcHR1c25ldC5jb20u
-YXU+IHdyb3RlOgo+Pj4gCj4+PiBPbiBUdWUsIE9jdCAwMSwgMjAxOSBhdCAwOTozNDoxM1BNICsw
-MzAwLCBKdWxpYW4gQW5hc3Rhc292IHdyb3RlOgo+Pj4+IAo+Pj4+IAlIZWxsbywKPj4+PiAKPj4+
-PiBPbiBUdWUsIDEgT2N0IDIwMTksIEhhaXNodWFuZyBZYW4gd3JvdGU6Cj4+Pj4gCj4+Pj4+IFRo
-aXMgc2VyaWVzIHBhdGNoIGluY2x1ZGUgdGVzdCBjYXNlcyBmb3IgaXB2cy4KPj4+Pj4gCj4+Pj4+
-IFRoZSB0ZXN0IHRvcG9sb2d5IGlzIHdobyBhcyBiZWxvdzoKPj4+Pj4gKy0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tKwo+Pj4+PiB8
-ICAgICAgICAgICAgICAgICAgICAgIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICB8Cj4+Pj4+IHwgICAgICAgICBuczAgICAgICAgICAgfCAgICAgICAgIG5zMSAgICAgICAg
-ICAgICAgICAgICAgICAgICAgIHwKPj4+Pj4gfCAgICAgIC0tLS0tLS0tLS0tICAgICB8ICAgICAt
-LS0tLS0tLS0tLSAgICAtLS0tLS0tLS0tLSAgICAgICAgfAo+Pj4+PiB8ICAgICAgfCB2ZXRoMDEg
-IHwgLS0tLS0tLS0tIHwgdmV0aDEwICB8ICAgIHwgdmV0aDEyICB8ICAgICAgICB8Cj4+Pj4+IHwg
-ICAgICAtLS0tLS0tLS0tLSAgICBwZWVyICAgLS0tLS0tLS0tLS0gICAgLS0tLS0tLS0tLS0gICAg
-ICAgIHwKPj4+Pj4gfCAgICAgICAgICAgfCAgICAgICAgICB8ICAgICAgICAgICAgICAgICAgICAg
-ICAgfCAgICAgICAgICAgICAgfAo+Pj4+PiB8ICAgICAgLS0tLS0tLS0tLS0gICAgIHwgICAgICAg
-ICAgICAgICAgICAgICAgICB8ICAgICAgICAgICAgICB8Cj4+Pj4+IHwgICAgICB8ICBicjAgICAg
-fCAgICAgfC0tLS0tLS0tLS0tLS0tLS0tICBwZWVyIHwtLS0tLS0tLS0tLS0tLXwKPj4+Pj4gfCAg
-ICAgIC0tLS0tLS0tLS0tICAgICB8ICAgICAgICAgICAgICAgICAgICAgICAgfCAgICAgICAgICAg
-ICAgfAo+Pj4+PiB8ICAgICAgICAgICB8ICAgICAgICAgIHwgICAgICAgICAgICAgICAgICAgICAg
-ICB8ICAgICAgICAgICAgICB8Cj4+Pj4+IHwgICAgICAtLS0tLS0tLS0tICAgICBwZWVyICAgLS0t
-LS0tLS0tLSAgICAgIC0tLS0tLS0tLS0tICAgICAgIHwKPj4+Pj4gfCAgICAgIHwgIHZldGgwMiB8
-IC0tLS0tLS0tLSB8ICB2ZXRoMjAgfCAgICAgfCB2ZXRoMTIgIHwgICAgICAgfAo+Pj4+PiB8ICAg
-ICAgLS0tLS0tLS0tLSAgICAgIHwgICAgIC0tLS0tLS0tLS0gICAgICAtLS0tLS0tLS0tLSAgICAg
-ICB8Cj4+Pj4+IHwgICAgICAgICAgICAgICAgICAgICAgfCAgICAgICAgIG5zMiAgICAgICAgICAg
-ICAgICAgICAgICAgICAgIHwKPj4+Pj4gfCAgICAgICAgICAgICAgICAgICAgICB8ICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfAo+Pj4+PiArLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0rCj4+Pj4+IAo+Pj4+
-PiBUZXN0IHJlc3VsdHM6Cj4+Pj4+ICMgc2VsZnRlc3RzOiBuZXRmaWx0ZXI6IGlwdnMuc2gKPj4+
-Pj4gIyBUZXN0aW5nIERSIG1vZGUuLi4KPj4+Pj4gIyBUZXN0aW5nIE5BVCBtb2RlLi4uCj4+Pj4+
-ICMgVGVzdGluZyBUdW5uZWwgbW9kZS4uLgo+Pj4+PiAjIGlwdnMuc2g6IFBBU1MKPj4+Pj4gb2sg
-NiBzZWxmdGVzdHM6IG5ldGZpbHRlcjogaXB2cy5zaAo+Pj4+PiAKPj4+Pj4gSGFpc2h1YW5nIFlh
-biAoMyk6Cj4+Pj4+IHNlbGZ0ZXN0czogbmV0ZmlsdGVyOiBhZGQgaXB2cyB0ZXN0IHNjcmlwdAo+
-Pj4+PiBzZWxmdGVzdHM6IG5ldGZpbHRlcjogYWRkIGlwdnMgbmF0IHRlc3QgY2FzZQo+Pj4+PiBz
-ZWxmdGVzdHM6IG5ldGZpbHRlcjogYWRkIGlwdnMgdHVubmVsIHRlc3QgY2FzZQo+Pj4+IAo+Pj4+
-IEFja2VkLWJ5OiBKdWxpYW4gQW5hc3Rhc292IDxqYUBzc2kuYmc+Cj4+Pj4gCj4+Pj4+IHRvb2xz
-L3Rlc3Rpbmcvc2VsZnRlc3RzL25ldGZpbHRlci9NYWtlZmlsZSB8ICAgMiArLQo+Pj4+PiB0b29s
-cy90ZXN0aW5nL3NlbGZ0ZXN0cy9uZXRmaWx0ZXIvaXB2cy5zaCAgfCAyMzQgKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysKPj4+Pj4gMiBmaWxlcyBjaGFuZ2VkLCAyMzUgaW5zZXJ0aW9ucygr
-KSwgMSBkZWxldGlvbigtKQo+Pj4+PiBjcmVhdGUgbW9kZSAxMDA3NTUgdG9vbHMvdGVzdGluZy9z
-ZWxmdGVzdHMvbmV0ZmlsdGVyL2lwdnMuc2gKPj4+PiAKPj4+PiBSZWdhcmRzCj4+Pj4gCj4+Pj4g
-LS0KPj4+PiBKdWxpYW4gQW5hc3Rhc292IDxqYUBzc2kuYmc+Cj4+PiAKPj4+IEkgc3RpbGwgcHJl
-ZmVyICMhL2Jpbi9zaCBpbiAxLzMuIFlvdSBuZXZlciBrbm93IHdoYXQncyBpbiBzb21lb25lJ3Mg
-ZW52aXJvbm1lbnQKPj4+IAo+Pj4gQ2hlZXJzIC4uLiBEdW5jYW4uCj4+PiAKPj4gCj4+IEl0Pz9z
-IGFsc28gbXkgcHJlZmVyZW5jZSB0b28uICJfIgkKPj4gCj4+IEkgaGF2ZSB0ZXN0ZWQgYm90aCAj
-IS9iaW4vYmFzaCBhbmQgIyEvYmluL3NoIHNjcmlwdCwgdGhleSBhbGwgd29ya3MgcHJvcGVybHku
-Cj4gCj4gRW50ZXIgdGhlc2UgMiBsaW5lczoKPj4gaXAoKXsgcmV0dXJuIDA7IH0KPj4gZXhwb3J0
-IC1mIGlwCj4gCj4gTm93IHRyeSB0aGUgIyEvYmluL2Jhc2ggc2NyaXB0LiBJZiB0aGF0IG5vdyBm
-YWlscywgdHJ5IGFnYWluIHdpdGggIyEvYmluL2Jhc2gKPiBjaGFuZ2VkIHRvICMhL2Jpbi9iYXNo
-IC1wCj4gCj4gQW55IGJldHRlciBub3c/Cj4gCj4gQ2hlZXJzIC4uLiBEdW5jYW4uCj4gCkl0oa9z
-IGJldHRlciBub3csIHRoYW5rcyBmb3IgeW91ciBleHBsYW5hdGlvbi4KSW4gdjMgY29tbWl0IEkg
-d2lsbCB1c2UgIyEvYmluL2Jhc2ggLXAgdG8gcHJldmVudCBleHBvcnRpbmcgZnVuY3Rpb24gZnJv
-bSBlbnZpcm9ubWVudCB2YXJpYWJsZXMuCgo=
+Test virtual server via ipip tunnel.
+
+Tested:
+# selftests: netfilter: ipvs.sh
+# Testing DR mode...
+# Testing NAT mode...
+# Testing Tunnel mode...
+# ipvs.sh: PASS
+ok 6 selftests: netfilter: ipvs.sh
+
+Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+---
+v2: optimize test script
+---
+ tools/testing/selftests/netfilter/ipvs.sh | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+
+diff --git a/tools/testing/selftests/netfilter/ipvs.sh b/tools/testing/selftests/netfilter/ipvs.sh
+index 2601a7c..48647ae 100755
+--- a/tools/testing/selftests/netfilter/ipvs.sh
++++ b/tools/testing/selftests/netfilter/ipvs.sh
+@@ -174,6 +174,30 @@ test_nat() {
+     test_service
+ }
+ 
++test_tun() {
++    ip netns exec ns0 ip route add ${vip_v4} via ${gip_v4} dev br0
++
++    ip netns exec ns1 modprobe ipip
++    ip netns exec ns1 ip link set tunl0 up
++    ip netns exec ns1 sysctl -qw net.ipv4.ip_forward=0
++    ip netns exec ns1 sysctl -qw net.ipv4.conf.all.send_redirects=0
++    ip netns exec ns1 sysctl -qw net.ipv4.conf.default.send_redirects=0
++    ip netns exec ns1 ipvsadm -A -t ${vip_v4}:${port} -s rr
++    ip netns exec ns1 ipvsadm -a -i -t ${vip_v4}:${port} -r ${rip_v4}:${port}
++    ip netns exec ns1 ip addr add ${vip_v4}/32 dev lo:1
++
++    ip netns exec ns2 modprobe ipip
++    ip netns exec ns2 ip link set tunl0 up
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.arp_ignore=1
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.arp_announce=2
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.all.rp_filter=0
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.tunl0.rp_filter=0
++    ip netns exec ns2 sysctl -qw net.ipv4.conf.veth21.rp_filter=0
++    ip netns exec ns2 ip addr add ${vip_v4}/32 dev lo:1
++
++    test_service
++}
++
+ run_tests() {
+ 	local errors=
+ 
+@@ -189,6 +213,12 @@ run_tests() {
+ 	test_nat
+ 	errors=$(( $errors + $? ))
+ 
++	echo "Testing Tunnel mode..."
++	cleanup
++	setup
++	test_tun
++	errors=$(( $errors + $? ))
++
+ 	return $errors
+ }
+ 
+-- 
+1.8.3.1
+
+
+
