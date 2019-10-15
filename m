@@ -1,50 +1,57 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH v6 0/3] selftests: netfilter: introduce test cases for
- ipvs
-Date: Fri, 11 Oct 2019 11:45:26 +0200
-Message-ID: <20191011094524.ruopnvvh6bedhhgl@verge.net.au>
-References: <1570719055-25110-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
-Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1570719055-25110-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Subject: [PATCH 0/6] [GIT PULL ipvs-next] IPVS updates for v5.5
+Date: Tue, 15 Oct 2019 09:32:06 +0200
+Message-ID: <20191015073212.19394-1-horms@verge.net.au>
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Cc: Shuah Khan <shuah@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, "David S. Miller" <davem@davemloft.net>, Julian Anastasov <ja@ssi.bg>, linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Thu, Oct 10, 2019 at 10:50:52PM +0800, Haishuang Yan wrote:
-> This series patch include test cases for ipvs.
-> 
-> The test topology is who as below:
-> +--------------------------------------------------------------+
-> |                      |                                       |
-> |         ns0          |         ns1                           |
-> |      -----------     |     -----------    -----------        |
-> |      | veth01  | --------- | veth10  |    | veth12  |        |
-> |      -----------    peer   -----------    -----------        |
-> |           |          |                        |              |
-> |      -----------     |                        |              |
-> |      |  br0    |     |-----------------  peer |--------------|
-> |      -----------     |                        |              |
-> |           |          |                        |              |
-> |      ----------     peer   ----------      -----------       |
-> |      |  veth02 | --------- |  veth20 |     | veth12  |       |
-> |      ----------      |     ----------      -----------       |
-> |                      |         ns2                           |
-> |                      |                                       |
-> +--------------------------------------------------------------+
-> 
-> Test results:
-> # selftests: netfilter: ipvs.sh
-> # Testing DR mode...
-> # Testing NAT mode...
-> # Testing Tunnel mode...
-> # ipvs.sh: PASS
-> ok 6 selftests: netfilter: ipvs.sh
-> 
-> Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+Hi Pablo,
 
-Thanks, applied to ipvs-next.
+Please consider these IPVS updates for v5.5.
+
+As there are a few more changes than usual I'm sending a pull request
+rather than asking you to apply the patches directly.
+
+This pull request is based on nf-next.
+
+The following changes since commit f8615bf8a3dabd84bf844c6f888929495039d389:
+
+  netfilter: ipset: move ip_set_get_ip_port() to ip_set_bitmap_port.c. (2019-10-07 23:59:02 +0200)
+
+are available in the git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git tags/ipvs-next-for-v5.5
+
+for you to fetch changes up to 176a52043ab853f1db7581ed02e1096aba78b4d1:
+
+  selftests: netfilter: add ipvs tunnel test case (2019-10-11 10:05:27 +0200)
+
+----------------------------------------------------------------
+Haishuang Yan (5):
+      ipvs: batch __ip_vs_cleanup
+      ipvs: batch __ip_vs_dev_cleanup
+      selftests: netfilter: add ipvs test script
+      selftests: netfilter: add ipvs nat test case
+      selftests: netfilter: add ipvs tunnel test case
+
+zhang kai (1):
+      ipvs: no need to update skb route entry for local destination packets.
+
+ include/net/ip_vs.h                        |   2 +-
+ net/netfilter/ipvs/ip_vs_core.c            |  47 +++---
+ net/netfilter/ipvs/ip_vs_ctl.c             |  12 +-
+ net/netfilter/ipvs/ip_vs_xmit.c            |  18 +--
+ tools/testing/selftests/netfilter/Makefile |   2 +-
+ tools/testing/selftests/netfilter/ipvs.sh  | 228 +++++++++++++++++++++++++++++
+ 6 files changed, 273 insertions(+), 36 deletions(-)
+ create mode 100755 tools/testing/selftests/netfilter/ipvs.sh
+
+-- 
+2.11.0
+
