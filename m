@@ -1,35 +1,50 @@
 From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH trivial] net: Fix various misspellings of "connect"
-Date: Fri, 25 Oct 2019 08:00:03 +0200
-Message-ID: <20191025060000.GA3009@verge.net.au>
-References: <20191024152323.29987-1-geert+renesas@glider.be>
+Subject: [GIT PULL] IPVS fixes for v5.4
+Date: Fri, 25 Oct 2019 13:12:03 +0200
+Message-ID: <20191025111205.30555-1-horms@verge.net.au>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20191024152323.29987-1-geert+renesas@glider.be>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Geert Uytterhoeven <geert+renesas@glider.be>
-Cc: "David S . Miller" <davem@davemloft.net>, Ping-Ke Shih <pkshih@realtek.com>, Kalle Valo <kvalo@codeaurora.org>, Johannes Berg <johannes@sipsolutions.net>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Jiri Kosina <trivial@kernel.org>, netdev@vger.kernel.org, linux-wireless@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
 
-On Thu, Oct 24, 2019 at 05:23:23PM +0200, Geert Uytterhoeven wrote:
-> Fix misspellings of "disconnect", "disconnecting", "connections", and
-> "disconnected".
-> 
-> Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
-> ---
->  drivers/net/wimax/i2400m/usb.c                      | 2 +-
->  drivers/net/wireless/realtek/rtlwifi/rtl8192se/hw.c | 4 ++--
->  include/net/cfg80211.h                              | 2 +-
->  net/netfilter/ipvs/ip_vs_ovf.c                      | 2 +-
->  net/wireless/reg.h                                  | 2 +-
->  5 files changed, 6 insertions(+), 6 deletions(-)
+Hi Pablo,
 
-Thanks Geert,
+please consider these IPVS fixes for v5.4.
 
-for the IPVS portion:
+* Eric Dumazet resolves a race condition in switching the defense level
 
-Acked-by: Simon Horman <horms@verge.net.au>
+* Davide Caratti resolves a race condition in module removal
 
+This pull request is based on nf.
+
+
+The following changes since commit 085461c8976e6cb4d5b608a7b7062f394c51a253:
+
+  netfilter: nf_tables_offload: restore basechain deletion (2019-10-23 13:14:50 +0200)
+
+are available in the Git repository at:
+
+  https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v5.4
+
+for you to fetch changes up to c24b75e0f9239e78105f81c5f03a751641eb07ef:
+
+  ipvs: move old_secure_tcp into struct netns_ipvs (2019-10-24 11:56:02 +0200)
+
+----------------------------------------------------------------
+Davide Caratti (1):
+      ipvs: don't ignore errors in case refcounting ip_vs module fails
+
+Eric Dumazet (1):
+      ipvs: move old_secure_tcp into struct netns_ipvs
+
+ include/net/ip_vs.h              |  1 +
+ net/netfilter/ipvs/ip_vs_app.c   | 12 ++++++++++--
+ net/netfilter/ipvs/ip_vs_ctl.c   | 29 +++++++++++------------------
+ net/netfilter/ipvs/ip_vs_pe.c    |  3 ++-
+ net/netfilter/ipvs/ip_vs_sched.c |  3 ++-
+ net/netfilter/ipvs/ip_vs_sync.c  | 13 ++++++++++---
+ 6 files changed, 36 insertions(+), 25 deletions(-)
