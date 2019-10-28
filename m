@@ -1,37 +1,24 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [GIT PULL] IPVS fixes for v5.4
-Date: Sat, 26 Oct 2019 12:48:24 +0200
-Message-ID: <20191026104824.kareh25qmgfp4tuk@salvia>
-References: <20191025111205.30555-1-horms@verge.net.au>
+From: David Miller <davem@davemloft.net>
+Subject: Re: [PATCH trivial] net: Fix various misspellings of "connect"
+Date: Mon, 28 Oct 2019 13:42:46 -0700 (PDT)
+Message-ID: <20191028.134246.2282811510705892165.davem@davemloft.net>
+References: <20191024152323.29987-1-geert+renesas@glider.be>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20191025111205.30555-1-horms@verge.net.au>
-Sender: netdev-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20191024152323.29987-1-geert+renesas@glider.be>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: Text/Plain; charset="us-ascii"
+To: geert+renesas@glider.be
+Cc: pkshih@realtek.com, kvalo@codeaurora.org, johannes@sipsolutions.net, wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, trivial@kernel.org, netdev@vger.kernel.org, linux-wireless@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Fri, Oct 25, 2019 at 01:12:03PM +0200, Simon Horman wrote:
-> Hi Pablo,
-> 
-> please consider these IPVS fixes for v5.4.
-> 
-> * Eric Dumazet resolves a race condition in switching the defense level
-> 
-> * Davide Caratti resolves a race condition in module removal
-> 
-> This pull request is based on nf.
-> 
-> 
-> The following changes since commit 085461c8976e6cb4d5b608a7b7062f394c51a253:
-> 
->   netfilter: nf_tables_offload: restore basechain deletion (2019-10-23 13:14:50 +0200)
-> 
-> are available in the Git repository at:
-> 
->   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git tags/ipvs-fixes-for-v5.4
+From: Geert Uytterhoeven <geert+renesas@glider.be>
+Date: Thu, 24 Oct 2019 17:23:23 +0200
 
-Pulled, thanks Simon.
+> Fix misspellings of "disconnect", "disconnecting", "connections", and
+> "disconnected".
+> 
+> Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
+
+Applied to net-next.
