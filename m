@@ -1,53 +1,69 @@
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH 0/2] Add missing options to ipvsadm(8)
-Date: Thu, 5 Dec 2019 13:47:22 +0100
-Message-ID: <20191205134722.128a9c15@carbon>
-References: <1564656793.3546.64.camel@armitage.org.uk>
-Reply-To: "LinuxVirtualServer.org users mailing list."
-	<lvs-users@linuxvirtualserver.org>
+Subject: [ANNOUNCE] ipvsadm release v1.31
+Date: Tue, 24 Dec 2019 14:37:45 +0100
+Message-ID: <20191224143745.6bafce3f@carbon>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1575550053;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	content-transfer-encoding:content-transfer-encoding:
-	in-reply-to:in-reply-to:references:references;
-	bh=dCSP+OWY5s+EVxPlUvbauvM3zknf/JnJy1iXOn3yG3Q=;
-	b=DarjII+4eX5lzlHqCHlyaqvVFkD7btWoRZfhx5y5dw8RhZ8/OBEQCEusqn84bxu8vZQSnx
-	BGh+2dIBSicW603KCN1WseJq4RbbC88cBwCmKRdzajiUVvezq0fMl262KYUHouVvEouVMk
-	qb8ILffaAXpzTtIvha5QOU1grnhNk84=
-In-Reply-To: <1564656793.3546.64.camel@armitage.org.uk>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
-	<mailto:lvs-users-request@linuxvirtualserver.org?subject=unsubscribe>
-List-Archive: <http://lists.graemef.net/pipermail/lvs-users>
-List-Post: <mailto:lvs-users@linuxvirtualserver.org>
-List-Help: <mailto:lvs-users-request@linuxvirtualserver.org?subject=help>
-List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
-	<mailto:lvs-users-request@linuxvirtualserver.org?subject=subscribe>
-Sender: lvs-users-bounces@linuxvirtualserver.org
-Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane.org@linuxvirtualserver.org
-To: Quentin Armitage <quentin@armitage.org.uk>
-Cc: lvs-users@linuxvirtualserver.org, Inju Song <inju.song@navercorp.com>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, brouer@redhat.com
+        s=mimecast20190719; t=1577194678;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=RllTSQBanYIj2a+FOREw/6tP9C+MekKkoK3DQ2qokOM=;
+        b=Wz7NIdSvyoB0yKqr0eJtEiU7evuz/r0ssXbV/GAf642LRgY2IwEVgliLOTg6M0Dx/RpUDI
+        e5jBG0W3630jWt1lg2NjliCTcIfBwzDp5U6QfHXb8f15LITM05g33ov4WYvUATYgCf2qbr
+        CxWnoOsSlX1P64ws9c7JMP83DUGpNc0=
+Sender: netdev-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+To: lvs-devel@vger.kernel.org, lvs-users@linuxvirtualserver.org, Julian Anastasov <ja@ssi.bg>, Jacky Hu <hengqing.hu@gmail.com>, Quentin Armitage <quentin@armitage.org.uk>
+Cc: brouer@redhat.com, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, Ryan O'Hara <rohara@redhat.com>, Simon Horman <horms@verge.net.au>, Wensong Zhang <wensong@linux-vs.org>
 
-On Thu, 01 Aug 2019 11:53:13 +0100
-Quentin Armitage <quentin@armitage.org.uk> wrote:
+Merry Xmas,
 
-> Quentin Armitage (2):
->   Add --pe sip option in ipvsadm(8) man page
->   In ipvsadm(8) add using nft or an eBPF program to set a packet mark
-> 
->  ipvsadm.8 | 21 +++++++++++++--------
->  1 file changed, 13 insertions(+), 8 deletions(-)
+We are happy to announce the release of ipvsadm v1.31.
 
-This patchset is now applied to ipvsadm kernel.org git tree.
-Sorry for not doing this sooner.
+ ipvsadm is a utility to administer the kernels IPVS/LVS load-balancer service
 
-https://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git/commit/?id=e904a8cd1d7712
-https://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git/commit/?id=089387716f0252
+This release add support for configuring tunneling with GRE or GUE
+encapsulation. See manpage ipvsadm(8) for --tun-type and --tun-info,
+plus more specific --tun-xxxx options for adjustments. Plus some
+manpage adjustments.
+
+The related kernel side commits:
+- v5.3: 6aedd14b25db ("ipvs: strip gre tunnel headers from icmp errors")
+- v5.3: 6f7b841bc939 ("ipvs: allow tunneling with gre encapsulation")
+- v5.3: 29930e314da3 ("ipvs: add checksum support for gue encapsulation")
+- v5.3: 508f744c0de3 ("ipvs: strip udp tunnel headers from icmp errors")
+- v5.3: 2aa3c9f48bc2 ("ipvs: add function to find tunnels")
+- v5.2: 84c0d5e96f3a ("ipvs: allow tunneling with gue encapsulation")
+
+This release is based on the kernel.org git tree:
+ https://git.kernel.org/cgit/utils/kernel/ipvsadm/ipvsadm.git/
+
+You can download the tarballs from:
+ https://kernel.org/pub/linux/utils/kernel/ipvsadm/
+
+Git tree:
+ git://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git
+
+Shortlog:
+
+Jacky Hu (2):
+      ipvsadm: convert options to unsigned long long
+      ipvsadm: allow tunneling with gue encapsulation
+
+Jesper Dangaard Brouer (2):
+      Merge branch 'GUE-encap'
+      Release: Version 1.31
+
+Julian Anastasov (1):
+      ipvsadm: allow tunneling with gre encapsulation
+
+Quentin Armitage (2):
+      Add --pe sip option in ipvsadm(8) man page
+      In ipvsadm(8) add using nft or an eBPF program to set a packet mark
 
 -- 
 Best regards,
