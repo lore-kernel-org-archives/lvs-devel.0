@@ -1,58 +1,175 @@
 From: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
-Subject: Re: [PATCH] ipvs: optimize tunnel dumps for icmp errors
-Date: Sun, 15 Mar 2020 19:01:26 +0800
-Message-ID: <B4979BD7-480A-43B3-B693-B7839FAF08D2@cmss.chinamobile.com>
-References: <1584253087-8316-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
- <alpine.LFD.2.21.2003151003190.3987@ja.home.ssi.bg>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Transfer-Encoding: base64
+Subject: [PATCH v2] ipvs: optimize tunnel dumps for icmp errors
+Date: Sun, 15 Mar 2020 21:25:41 +0800
+Message-ID: <1584278741-13944-1-git-send-email-yanhaishuang@cmss.chinamobile.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.21.2003151003190.3987@ja.home.ssi.bg>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="gb2312"
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
 
-Cj4gT24gMjAyMMTqM9TCMTXI1SwgYXQgz8LO5zQ6MTcsIEp1bGlhbiBBbmFzdGFzb3YgPGphQHNz
-aS5iZz4gd3JvdGU6Cj4gCj4gCj4gCUhlbGxvLAo+IAo+IE9uIFN1biwgMTUgTWFyIDIwMjAsIEhh
-aXNodWFuZyBZYW4gd3JvdGU6Cj4gCj4+IEFmdGVyIHN0cmlwIEdSRS9VRFAgdHVubmVsIGhlYWRl
-ciBmb3IgaWNtcCBlcnJvcnMsIGl0J3MgYmV0dGVyIHRvIHNob3cKPj4gIklDTVAgZm9yIEdSRS9V
-RFAiIGluc3RlYWQgb2YgIklDTVAgZm9yIElQSVAiIGluIGRlYnVnIG1lc3NhZ2UuCj4+IAo+PiBT
-aWduZWQtb2ZmLWJ5OiBIYWlzaHVhbmcgWWFuIDx5YW5oYWlzaHVhbmdAY21zcy5jaGluYW1vYmls
-ZS5jb20+Cj4+IC0tLQo+PiBuZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNfY29yZS5jIHwgNDEgKysr
-KysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0tLS0tLS0KPj4gMSBmaWxlIGNoYW5nZWQs
-IDIzIGluc2VydGlvbnMoKyksIDE4IGRlbGV0aW9ucygtKQo+PiAKPj4gZGlmZiAtLWdpdCBhL25l
-dC9uZXRmaWx0ZXIvaXB2cy9pcF92c19jb3JlLmMgYi9uZXQvbmV0ZmlsdGVyL2lwdnMvaXBfdnNf
-Y29yZS5jCj4+IGluZGV4IDUxMjI1OWYuLmYzOWFlNmIgMTAwNjQ0Cj4+IC0tLSBhL25ldC9uZXRm
-aWx0ZXIvaXB2cy9pcF92c19jb3JlLmMKPj4gKysrIGIvbmV0L25ldGZpbHRlci9pcHZzL2lwX3Zz
-X2NvcmUuYwo+IAo+PiBAQCAtMTcwMyw4ICsxNzA3LDggQEAgc3RhdGljIGludCBpcHZzX2dyZV9k
-ZWNhcChzdHJ1Y3QgbmV0bnNfaXB2cyAqaXB2cywgc3RydWN0IHNrX2J1ZmYgKnNrYiwKPj4gCQly
-ZXR1cm4gTkZfQUNDRVBUOyAvKiBUaGUgcGFja2V0IGxvb2tzIHdyb25nLCBpZ25vcmUgKi8KPj4g
-CXJhZGRyID0gKHVuaW9uIG5mX2luZXRfYWRkciAqKSZjaWgtPmRhZGRyOwo+PiAKPj4gLQkvKiBT
-cGVjaWFsIGNhc2UgZm9yIGVycm9ycyBmb3IgSVBJUCBwYWNrZXRzICovCj4+IC0JaXBpcCA9IGZh
-bHNlOwo+PiArCS8qIFNwZWNpYWwgY2FzZSBmb3IgZXJyb3JzIGZvciBJUElQL1VEUC9HUkUgdHVu
-bmVsIHBhY2tldHMgKi8KPj4gKwl0dW5uZWwgPSBmYWxzZTsKPiAKPiAJQXQgdGhpcyBwb2ludCBp
-dCBpcyBzYWZlIHRvIHN0b3JlIGNpaC0+cHJvdG9jb2wgaW4gc29tZSBuZXcKPiB2YXIsIGVnLiBv
-dXRlcl9wcm90by4uLgo+IAo+PiBAQCAtMTgwOSwxNyArMTgxMywxOCBAQCBzdGF0aWMgaW50IGlw
-dnNfZ3JlX2RlY2FwKHN0cnVjdCBuZXRuc19pcHZzICppcHZzLCBzdHJ1Y3Qgc2tfYnVmZiAqc2ti
-LAo+PiAJCQl1MzIgbXR1ID0gbnRvaHMoaWMtPnVuLmZyYWcubXR1KTsKPj4gCQkJX19iZTE2IGZy
-YWdfb2ZmID0gY2loLT5mcmFnX29mZjsKPj4gCj4+IC0JCQkvKiBTdHJpcCBvdXRlciBJUCBhbmQg
-SUNNUCwgZ28gdG8gSVBJUCBoZWFkZXIgKi8KPj4gKwkJCS8qIFN0cmlwIG91dGVyIElQIGFuZCBJ
-Q01QLCBnbyB0byBJUElQL1VEUC9HUkUgaGVhZGVyICovCj4+IAkJCWlmIChwc2tiX3B1bGwoc2ti
-LCBpaGwgKyBzaXplb2YoX2ljbXBoKSkgPT0gTlVMTCkKPj4gLQkJCQlnb3RvIGlnbm9yZV9pcGlw
-Owo+PiArCQkJCWdvdG8gaWdub3JlX3R1bm5lbDsKPj4gCQkJb2Zmc2V0MiAtPSBpaGwgKyBzaXpl
-b2YoX2ljbXBoKTsKPj4gCQkJc2tiX3Jlc2V0X25ldHdvcmtfaGVhZGVyKHNrYik7Cj4+IC0JCQlJ
-UF9WU19EQkcoMTIsICJJQ01QIGZvciBJUElQICVwSTQtPiVwSTQ6IG10dT0ldVxuIiwKPj4gLQkJ
-CQkmaXBfaGRyKHNrYiktPnNhZGRyLCAmaXBfaGRyKHNrYiktPmRhZGRyLCBtdHUpOwo+PiArCQkJ
-SVBfVlNfREJHKDEyLCAiSUNNUCBmb3IgJXMgJXBJNC0+JXBJNDogbXR1PSV1XG4iLAo+PiArCQkJ
-CSAgaXBfdnNfcHJvdG9fbmFtZShjaWgtPnByb3RvY29sKSwKPiAKPiAJQmVjYXVzZSBoZXJlIGNp
-aCBwb2ludHMgdG8gdGhlIGVtYmVkZGVkIFVEUC9UQ1AvU0NUUCBJUCBoZWFkZXIsIHNvCj4gd2Ug
-Y2FuIG5vdCBzZWUgR1JFIGhlcmUuIE9yIGl0IGlzIGV2ZW4gYmV0dGVyIGlmIHdlIGRvIG5vdCBh
-ZGQgbW9yZSBjb2RlIAo+IHRvIGlwX3ZzX3Byb3RvX25hbWUoKSwganVzdCB1c2UgY2hhciAqb3V0
-ZXJfcHJvdG8gYW5kIGFzc2lnbiBpdCB3aXRoIAo+ICJJUElQIiAod2hlcmUgaXBpcCB3YXMgc2V0
-KSBhbmQgIlVEUCIvIkdSRSIgKHdoZXJlIHVsZW4gd2FzIHNldCkgYW5kIHByaW50Cj4gb3V0ZXJf
-cHJvdG8gaGVyZS4KWWVzLCB5b3Whr3JlIHJpZ2h0LiBJIHdpbGwgc2VuZCB2MiBjb21taXQgYWNj
-b3JkaW5nIHRvIHlvdXIgc3VnZ2VzdGlvbiwgdGhhbmtzCnZlcnkgbXVjaC4KCj4gCj4+ICsJCQkJ
-ICAmaXBfaGRyKHNrYiktPnNhZGRyLCAmaXBfaGRyKHNrYiktPmRhZGRyLCBtdHUpOwo+IAo+IFJl
-Z2FyZHMKPiAKPiAtLQo+IEp1bGlhbiBBbmFzdGFzb3YgPGphQHNzaS5iZz4KPiAKCgoK
+After strip GRE/UDP tunnel header for icmp errors, it's better to show
+"GRE/UDP" instead of "IPIP" in debug message.
+
+Signed-off-by: Haishuang Yan <yanhaishuang@cmss.chinamobile.com>
+---
+v2: Fix wrong proto message
+---
+ net/netfilter/ipvs/ip_vs_core.c | 46 +++++++++++++++++++++++------------------
+ 1 file changed, 26 insertions(+), 20 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 512259f..d2ac530 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1661,8 +1661,9 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 	struct ip_vs_protocol *pp;
+ 	struct ip_vs_proto_data *pd;
+ 	unsigned int offset, offset2, ihl, verdict;
+-	bool ipip, new_cp = false;
++	bool tunnel, new_cp = false;
+ 	union nf_inet_addr *raddr;
++	char *outer_proto;
+ 
+ 	*related = 1;
+ 
+@@ -1703,8 +1704,8 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 		return NF_ACCEPT; /* The packet looks wrong, ignore */
+ 	raddr = (union nf_inet_addr *)&cih->daddr;
+ 
+-	/* Special case for errors for IPIP packets */
+-	ipip = false;
++	/* Special case for errors for IPIP/UDP/GRE tunnel packets */
++	tunnel = false;
+ 	if (cih->protocol == IPPROTO_IPIP) {
+ 		struct ip_vs_dest *dest;
+ 
+@@ -1721,7 +1722,8 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 		cih = skb_header_pointer(skb, offset, sizeof(_ciph), &_ciph);
+ 		if (cih == NULL)
+ 			return NF_ACCEPT; /* The packet looks wrong, ignore */
+-		ipip = true;
++		tunnel = true;
++		outer_proto = "IPIP";
+ 	} else if ((cih->protocol == IPPROTO_UDP ||	/* Can be UDP encap */
+ 		    cih->protocol == IPPROTO_GRE) &&	/* Can be GRE encap */
+ 		   /* Error for our tunnel must arrive at LOCAL_IN */
+@@ -1729,16 +1731,19 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 		__u8 iproto;
+ 		int ulen;
+ 
+-		/* Non-first fragment has no UDP header */
++		/* Non-first fragment has no UDP/GRE header */
+ 		if (unlikely(cih->frag_off & htons(IP_OFFSET)))
+ 			return NF_ACCEPT;
+ 		offset2 = offset + cih->ihl * 4;
+-		if (cih->protocol == IPPROTO_UDP)
++		if (cih->protocol == IPPROTO_UDP) {
+ 			ulen = ipvs_udp_decap(ipvs, skb, offset2, AF_INET,
+ 					      raddr, &iproto);
+-		else
++			outer_proto = "UDP";
++		} else {
+ 			ulen = ipvs_gre_decap(ipvs, skb, offset2, AF_INET,
+ 					      raddr, &iproto);
++			outer_proto = "GRE";
++		}
+ 		if (ulen > 0) {
+ 			/* Skip IP and UDP/GRE tunnel headers */
+ 			offset = offset2 + ulen;
+@@ -1747,7 +1752,7 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 						 &_ciph);
+ 			if (cih && cih->version == 4 && cih->ihl >= 5 &&
+ 			    iproto == IPPROTO_IPIP)
+-				ipip = true;
++				tunnel = true;
+ 			else
+ 				return NF_ACCEPT;
+ 		}
+@@ -1767,11 +1772,11 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 		      "Checking incoming ICMP for");
+ 
+ 	offset2 = offset;
+-	ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, !ipip, &ciph);
++	ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, !tunnel, &ciph);
+ 	offset = ciph.len;
+ 
+ 	/* The embedded headers contain source and dest in reverse order.
+-	 * For IPIP this is error for request, not for reply.
++	 * For IPIP/UDP/GRE tunnel this is error for request, not for reply.
+ 	 */
+ 	cp = INDIRECT_CALL_1(pp->conn_in_get, ip_vs_conn_in_get_proto,
+ 			     ipvs, AF_INET, skb, &ciph);
+@@ -1779,7 +1784,7 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 	if (!cp) {
+ 		int v;
+ 
+-		if (ipip || !sysctl_schedule_icmp(ipvs))
++		if (tunnel || !sysctl_schedule_icmp(ipvs))
+ 			return NF_ACCEPT;
+ 
+ 		if (!ip_vs_try_to_schedule(ipvs, AF_INET, skb, pd, &v, &cp, &ciph))
+@@ -1797,7 +1802,7 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 		goto out;
+ 	}
+ 
+-	if (ipip) {
++	if (tunnel) {
+ 		__be32 info = ic->un.gateway;
+ 		__u8 type = ic->type;
+ 		__u8 code = ic->code;
+@@ -1809,17 +1814,18 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 			u32 mtu = ntohs(ic->un.frag.mtu);
+ 			__be16 frag_off = cih->frag_off;
+ 
+-			/* Strip outer IP and ICMP, go to IPIP header */
++			/* Strip outer IP and ICMP, go to IPIP/UDP/GRE header */
+ 			if (pskb_pull(skb, ihl + sizeof(_icmph)) == NULL)
+-				goto ignore_ipip;
++				goto ignore_tunnel;
+ 			offset2 -= ihl + sizeof(_icmph);
+ 			skb_reset_network_header(skb);
+-			IP_VS_DBG(12, "ICMP for IPIP %pI4->%pI4: mtu=%u\n",
+-				&ip_hdr(skb)->saddr, &ip_hdr(skb)->daddr, mtu);
++			IP_VS_DBG(12, "ICMP for %s %pI4->%pI4: mtu=%u\n",
++				  outer_proto, &ip_hdr(skb)->saddr,
++				  &ip_hdr(skb)->daddr, mtu);
+ 			ipv4_update_pmtu(skb, ipvs->net, mtu, 0, 0);
+ 			/* Client uses PMTUD? */
+ 			if (!(frag_off & htons(IP_DF)))
+-				goto ignore_ipip;
++				goto ignore_tunnel;
+ 			/* Prefer the resulting PMTU */
+ 			if (dest) {
+ 				struct ip_vs_dest_dst *dest_dst;
+@@ -1832,11 +1838,11 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 				mtu -= sizeof(struct iphdr);
+ 			info = htonl(mtu);
+ 		}
+-		/* Strip outer IP, ICMP and IPIP, go to IP header of
++		/* Strip outer IP, ICMP and IPIP/UDP/GRE, go to IP header of
+ 		 * original request.
+ 		 */
+ 		if (pskb_pull(skb, offset2) == NULL)
+-			goto ignore_ipip;
++			goto ignore_tunnel;
+ 		skb_reset_network_header(skb);
+ 		IP_VS_DBG(12, "Sending ICMP for %pI4->%pI4: t=%u, c=%u, i=%u\n",
+ 			&ip_hdr(skb)->saddr, &ip_hdr(skb)->daddr,
+@@ -1845,7 +1851,7 @@ static int ipvs_gre_decap(struct netns_ipvs *ipvs, struct sk_buff *skb,
+ 		/* ICMP can be shorter but anyways, account it */
+ 		ip_vs_out_stats(cp, skb);
+ 
+-ignore_ipip:
++ignore_tunnel:
+ 		consume_skb(skb);
+ 		verdict = NF_STOLEN;
+ 		goto out;
+-- 
+1.8.3.1
+
+
+
