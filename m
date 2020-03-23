@@ -1,60 +1,88 @@
-From: Alexander Petrovsky <askjuise@gmail.com>
-Subject: Re: Micro ipvsadm patch
-Date: Fri, 20 Mar 2020 21:16:47 +0300
-Message-ID: <CAH57y_R=xUY-MPkFfeoOpH_f3eCLWDKuwW+wtNOKD9JJMjRkTw@mail.gmail.com>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: [lvs-users] Micro ipvsadm patch
+Date: Mon, 23 Mar 2020 09:09:03 +0100
+Message-ID: <20200323090903.0753d01a@carbon>
 References: <CAH57y_TcVNdCe7ciAXX85HzWXPhWgUWvXn2f7r8yWjM2TUNecQ@mail.gmail.com>
-	<20200320133137.3cc59704@carbon>
-Reply-To: "LinuxVirtualServer.org users mailing list."
-	<lvs-users@linuxvirtualserver.org>
+        <20200320133137.3cc59704@carbon>
+        <CAH57y_R=xUY-MPkFfeoOpH_f3eCLWDKuwW+wtNOKD9JJMjRkTw@mail.gmail.com>
 Mime-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1584950956;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=DatnUF98BCsDDqz4v1cS5fMH4kzRB69WiMI1dy/omLE=;
+        b=h3F6DkfqrrHEUFznbO4wK9lj/ItYgKVtAkzocdgVIBBvrtpWVrIZ8mEfbsJa80j4XrQet9
+        hadCZybYuDYMEnvJJDfu6Di+pzBH4XXkQguzGXfLbdLCufhQ2mzTTYkwL4z6D0KobCKlEL
+        4c9pUn662BwA4knIrO1XBsezbJ7rlLI=
+In-Reply-To: <CAH57y_R=xUY-MPkFfeoOpH_f3eCLWDKuwW+wtNOKD9JJMjRkTw@mail.gmail.com>
+Sender: lvs-devel-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Return-path: <lvs-users-bounces+gcll-lvs-users=m.gmane-mx.org@linuxvirtualserver.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmail.com; s=20161025;
-	h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-	:cc; bh=tEzsIB8JIzJYGpYvY04rUZCZdLI1Xbz2DMUq1X8q4os=;
-	b=vHKKMmwgkvfS1FFMqHe5wOIHz21x27QCDXtWze3wPhwB1rMEJWQW6MBU/DdGPzQA0u
-	ylVG9GFXp1ZRMkwjGYYEjIt2Bt+xZwYRT6V9Zsr2pPfZoqNf3ij6Yds61oi1Mb3VeaN9
-	NHLvdL3aGndnoIwLLv9jjlDoY9GfSf9GQfKUmbdbiZigfIyLSgoHljbFXxaMKopjtc4Y
-	g4xF85//J8i6rCuGwmmT7RKSSY9tEEEVxl6Uy+kp2LL7d+p0M+n8mu0A76GdoBU5UbHY
-	oL91eQPUISa5yHOxRMzI7i8OCYgXn8svfpsNbUrkva2pEGDcurC5IwjRSinQE4rED+Ib
-	iUKg==
-In-Reply-To: <20200320133137.3cc59704@carbon>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
-	<mailto:lvs-users-request@linuxvirtualserver.org?subject=unsubscribe>
-List-Archive: <http://lists.graemef.net/pipermail/lvs-users>
-List-Post: <mailto:lvs-users@linuxvirtualserver.org>
-List-Help: <mailto:lvs-users-request@linuxvirtualserver.org?subject=help>
-List-Subscribe: <http://lists.graemef.net/mailman/listinfo/lvs-users>,
-	<mailto:lvs-users-request@linuxvirtualserver.org?subject=subscribe>
-Sender: lvs-users-bounces@linuxvirtualserver.org
-Errors-To: lvs-users-bounces+gcll-lvs-users=m.gmane-mx.org@linuxvirtualserver.org
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: "LinuxVirtualServer.org users mailing list." <lvs-users@linuxvirtualserver.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: Alexander Petrovsky <askjuise@gmail.com>
+Cc: Julian Anastasov <ja@ssi.bg>, "LinuxVirtualServer.org users mailing list." <lvs-users@linuxvirtualserver.org>, Simon Horman <horms@verge.net.au>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, brouer@redhat.com
 
-T2gsIHRoYW5rcy4KCldoZXJlIEkgY2FuIGZpbmQgb3V0IHRoZSBmdWxsIHByb2NlZHVyZT8KCtC/
-0YIsIDIwINC80LDRgNGC0LAgMjAyMCDQsy4g0LIgMTU6MzIsIEplc3BlciBEYW5nYWFyZCBCcm91
-ZXIgPGJyb3VlckByZWRoYXQuY29tPjoKCj4gT24gV2VkLCAxMSBNYXIgMjAyMCAxNTowNTo1OCAr
-MDMwMAo+IEFsZXhhbmRlciBQZXRyb3Zza3kgPGFza2p1aXNlQGdtYWlsLmNvbT4gd3JvdGU6Cj4K
-PiA+IEhlbGxvIQo+ID4KPiA+IFRoaXMgbWljcm8gaXB2c2FkbSBwYXRjaCBmaXhlcyB3cm9uZyAo
-bmVnYXRpdmUpIEZXTUFSSyB2YWx1ZXMKPiA+IHJlcHJlc2VudGF0aW9uOgo+ID4KPiA+ICMgaXB2
-c2FkbSAtTCAtZiAyODgyNDMwODQ5Cj4gPiBQcm90IExvY2FsQWRkcmVzczpQb3J0IFNjaGVkdWxl
-ciBGbGFncwo+ID4gICAtPiBSZW1vdGVBZGRyZXNzOlBvcnQgICAgICAgICAgIEZvcndhcmQgV2Vp
-Z2h0IEFjdGl2ZUNvbm4gSW5BY3RDb25uCj4gPiBGV00gIC0xNDEyNTM2NDQ3IHdsYwo+ID4gICAt
-PiBhYmMubXkuaG9zdC5uZXQuIFR1bm5lbCAgMSAgICAgIDAgICAgICAgICAgMAo+ID4KPgo+IEhp
-IEFsZXhhbmRlciwKPgo+IFlvdXIgcGF0Y2ggc3VibWlzc2lvbiBkb2VzIG5vdCBmb2xsb3cgYWxs
-IHRoZSBwcm9jZWR1cmVzLCBidXQgZ2l2ZW4KPiB0aGlzIGlzIGZhaXJseSB0cml2aWFsLCBhbmQg
-SnVsaWFuIGRpZG4ndCBvYmplY3QsIEkgd2VudCBhaGVhZCBhbmQKPiBhcHBsaWVkIHRoZSBwYXRj
-aCB3aXRoICh5b3VyIFNvQiBhbmQgY3JlZGl0IHRvIHlvdSksIGhlcmU6Cj4KPgo+IGh0dHBzOi8v
-Z2l0Lmtlcm5lbC5vcmcvcHViL3NjbS91dGlscy9rZXJuZWwvaXB2c2FkbS9pcHZzYWRtLmdpdC9j
-b21taXQvP2lkPWU2MWM4Y2RkMWRjYWQKPgo+IC0tCj4gQmVzdCByZWdhcmRzLAo+ICAgSmVzcGVy
-IERhbmdhYXJkIEJyb3Vlcgo+ICAgTVNjLkNTLCBQcmluY2lwYWwgS2VybmVsIEVuZ2luZWVyIGF0
-IFJlZCBIYXQKPiAgIExpbmtlZEluOiBodHRwOi8vd3d3LmxpbmtlZGluLmNvbS9pbi9icm91ZXIK
-Pgo+IC0tCkFsZXhhbmRlciBQZXRyb3Zza3kKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX18KUGxlYXNlIHJlYWQgdGhlIGRvY3VtZW50YXRpb24gYmVmb3JlIHBv
-c3RpbmcgLSBpdCdzIGF2YWlsYWJsZSBhdDoKaHR0cDovL3d3dy5saW51eHZpcnR1YWxzZXJ2ZXIu
-b3JnLwoKTGludXhWaXJ0dWFsU2VydmVyLm9yZyBtYWlsaW5nIGxpc3QgLSBsdnMtdXNlcnNATGlu
-dXhWaXJ0dWFsU2VydmVyLm9yZwpTZW5kIHJlcXVlc3RzIHRvIGx2cy11c2Vycy1yZXF1ZXN0QExp
-bnV4VmlydHVhbFNlcnZlci5vcmcKb3IgZ28gdG8gaHR0cDovL2xpc3RzLmdyYWVtZWYubmV0L21h
-aWxtYW4vbGlzdGluZm8vbHZzLXVzZXJz
+On Fri, 20 Mar 2020 21:16:47 +0300
+Alexander Petrovsky <askjuise@gmail.com> wrote:
+
+> Oh, thanks.
+>=20
+> Where I can find out the full procedure?
+
+As this is a tool that is closely related to the kernel, I/we try to
+follow the kernel submitting patch guidelines, but losely:
+
+ https://www.kernel.org/doc/html/latest/process/submitting-patches.html
+
+--Jesper
+
+
+> =D0=BF=D1=82, 20 =D0=BC=D0=B0=D1=80=D1=82=D0=B0 2020 =D0=B3. =D0=B2 15:32=
+, Jesper Dangaard Brouer <brouer@redhat.com>:
+>=20
+> > On Wed, 11 Mar 2020 15:05:58 +0300
+> > Alexander Petrovsky <askjuise@gmail.com> wrote:
+> > =20
+> > > Hello!
+> > >
+> > > This micro ipvsadm patch fixes wrong (negative) FWMARK values
+> > > representation:
+> > >
+> > > # ipvsadm -L -f 2882430849
+> > > Prot LocalAddress:Port Scheduler Flags =20
+> > >   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn=
+ =20
+> > > FWM  -1412536447 wlc =20
+> > >   -> abc.my.host.net. Tunnel  1      0          0 =20
+> > > =20
+> >
+> > Hi Alexander,
+> >
+> > Your patch submission does not follow all the procedures, but given
+> > this is fairly trivial, and Julian didn't object, I went ahead and
+> > applied the patch with (your SoB and credit to you), here:
+> >
+> >
+> > https://git.kernel.org/pub/scm/utils/kernel/ipvsadm/ipvsadm.git/commit/=
+?id=3De61c8cdd1dcad
+> >
+> > --
+> > Best regards,
+> >   Jesper Dangaard Brouer
+> >   MSc.CS, Principal Kernel Engineer at Red Hat
+> >   LinkedIn: http://www.linkedin.com/in/brouer
+> >
+> > -- =20
+> Alexander Petrovsky
+
+
+
+--=20
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
+
