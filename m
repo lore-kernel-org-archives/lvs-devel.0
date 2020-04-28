@@ -1,29 +1,39 @@
-From: Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH 37/38] docs: networking: convert ipvs-sysctl.txt to ReST
-Date: Tue, 28 Apr 2020 11:08:04 +0200
-Message-ID: <20200428090804.GB14072@vergenet.net>
+From: David Miller <davem@davemloft.net>
+Subject: Re: [PATCH 00/38] net: manually convert files to ReST format -
+ part 1
+Date: Tue, 28 Apr 2020 13:11:43 -0700 (PDT)
+Message-ID: <20200428.131143.378850463944291442.davem@davemloft.net>
 References: <cover.1588024424.git.mchehab+huawei@kernel.org>
- <c47a3042ec7d3f8cb3a44f68eb4cf5c94c075a3c.1588024424.git.mchehab+huawei@kernel.org>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <c47a3042ec7d3f8cb3a44f68eb4cf5c94c075a3c.1588024424.git.mchehab+huawei@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-Cc: Linux Doc Mailing List <linux-doc@vger.kernel.org>, linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Wensong Zhang <wensong@linux-vs.org>, Julian Anastasov <ja@ssi.bg>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Return-path: <linux-hams-owner@vger.kernel.org>
+In-Reply-To: <cover.1588024424.git.mchehab+huawei@kernel.org>
+Sender: linux-hams-owner@vger.kernel.org
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: Text/Plain; charset="us-ascii"
+To: mchehab+huawei@kernel.org
+Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, corbet@lwn.net, netdev@vger.kernel.org, linux-hams@vger.kernel.org, intel-wired-lan@lists.osuosl.org, linux-decnet-user@lists.sourceforge.net, ceph-devel@vger.kernel.org, bpf@vger.kernel.org, linux-atm-general@lists.sourceforge.net, lvs-devel@vger.kernel.org
 
-On Tue, Apr 28, 2020 at 12:01:52AM +0200, Mauro Carvalho Chehab wrote:
-> - add SPDX header;
-> - add a document title;
-> - mark lists as such;
-> - mark code blocks and literals as such;
-> - adjust identation, whitespaces and blank lines;
-> - add to networking/index.rst.
+From: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+Date: Tue, 28 Apr 2020 00:01:15 +0200
+
+> There are very few documents upstream that aren't converted upstream.
 > 
-> Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+> This series convert part of the networking text files into ReST.
+> It is part of a bigger set of patches, which were split on parts,
+> in order to make reviewing task easier.
+> 
+> The full series (including those ones) are at:
+> 
+> 	https://git.linuxtv.org/mchehab/experimental.git/log/?h=net-docs
+> 
+> And the documents, converted to HTML via the building system
+> are at:
+> 
+> 	https://www.infradead.org/~mchehab/kernel_docs/networking/
 
-Acked-by: Simon Horman <horms@verge.net.au>
+These look good as far as I can tell.
 
+Jon, do you mind if I merge this via the networking tree?
+
+Thanks.
