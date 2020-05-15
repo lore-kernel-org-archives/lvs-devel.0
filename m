@@ -1,35 +1,54 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH 00/38] net: manually convert files to ReST format -
- part 1
-Date: Tue, 28 Apr 2020 14:40:53 -0700 (PDT)
-Message-ID: <20200428.144053.1011868905140234992.davem@davemloft.net>
-References: <cover.1588024424.git.mchehab+huawei@kernel.org>
+From: Andrew Sy Kim <kim.andrewsy@gmail.com>
+Subject: [PATCH] netfilter/ipvs: expire no destination UDP connections when expire_nodest_conn=1
+Date: Thu, 14 May 2020 21:35:56 -0400
+Message-ID: <20200515013556.5582-1-kim.andrewsy@gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <linux-hams-owner@vger.kernel.org>
-In-Reply-To: <cover.1588024424.git.mchehab+huawei@kernel.org>
-Sender: linux-hams-owner@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=0VjQ+Ma3qI88glsLS8F0bIG67DtfNMG5fSLchrZlPkw=;
+        b=BZH27tzHemzdhmeAt5qyR6/wV3Rep0NuG5yApKqgOQnaClXU3DcmTpxeToHmrIa15l
+         e/VU6aF7VhSU4G6nrw4DsMvQvfQn5gePKL/mL5Ip1KjkVJequxf52sqv4NWsvQrlyzIl
+         VQ8GsWnQ2KmNG4nUelqamCKaGM4nwe7OEROb4Mv33JGjGkhx/Ed70ZHgjJ2UAt3HbgWe
+         gLdBaa0JYh2H8FCFSy8Q3WEBJ7mcUCNK81II+EB30V2TJ8KFGzjS98HFmUz0+cNkAmBM
+         cuxIoNM2qoSTz/bTGviWjKAFqNQXMd2af7Xrp6THTo6nXJN9TexjHiE7l9BAYNLlpGpL
+         0dkQ==
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: mchehab+huawei@kernel.org
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, corbet@lwn.net, netdev@vger.kernel.org, linux-hams@vger.kernel.org, intel-wired-lan@lists.osuosl.org, linux-decnet-user@lists.sourceforge.net, ceph-devel@vger.kernel.org, bpf@vger.kernel.org, linux-atm-general@lists.sourceforge.net, lvs-devel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: 
+Cc: kim.andrewsy@gmail.com, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>, open list <linux-kernel@vger.kernel.org>
 
-From: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-Date: Tue, 28 Apr 2020 00:01:15 +0200
+When expire_nodest_conn=1 and an IPVS destination is deleted, IPVS
+doesn't expire connections with the IP_VS_CONN_F_ONE_PACKET flag set (any
+UDP connection). If there are many UDP packets to a virtual server from a
+single client and a destination is deleted, many packets are silently
+dropped whenever an existing connection entry with the same source port
+exists. This patch ensures IPVS also expires UDP connections when a
+packet matches an existing connection with no destinations.
 
-> There are very few documents upstream that aren't converted upstream.
-> 
-> This series convert part of the networking text files into ReST.
-> It is part of a bigger set of patches, which were split on parts,
-> in order to make reviewing task easier.
-> 
-> The full series (including those ones) are at:
-> 
-> 	https://git.linuxtv.org/mchehab/experimental.git/log/?h=net-docs
-> 
-> And the documents, converted to HTML via the building system
-> are at:
-> 
-> 	https://www.infradead.org/~mchehab/kernel_docs/networking/
+Signed-off-by: Andrew Sy Kim <kim.andrewsy@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_core.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-Series applied to net-next, thank you.
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index aa6a603a2425..f0535586fe75 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2116,8 +2116,7 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
+ 		else
+ 			ip_vs_conn_put(cp);
+ 
+-		if (sysctl_expire_nodest_conn(ipvs) &&
+-		    !(flags & IP_VS_CONN_F_ONE_PACKET)) {
++		if (sysctl_expire_nodest_conn(ipvs)) {
+ 			/* try to expire the connection immediately */
+ 			ip_vs_conn_expire_now(cp);
+ 		}
+-- 
+2.20.1
+
