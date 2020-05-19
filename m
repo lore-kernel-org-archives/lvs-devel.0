@@ -1,308 +1,129 @@
-From: Andrew Kim <kim.andrewsy@gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH] netfilter/ipvs: immediately expire UDP connections
  matching unavailable destination if expire_nodest_conn=1
-Date: Tue, 19 May 2020 10:18:45 -0400
-Message-ID: <CABc050Fb_aX1tOqyhcLJyVv_RvBRQ9EH_aBkUHtMV6MKb_+m9Q@mail.gmail.com>
-References: <20200515013556.5582-1-kim.andrewsy@gmail.com> <20200517171654.8194-1-kim.andrewsy@gmail.com>
- <alpine.LFD.2.21.2005182027460.4524@ja.home.ssi.bg> <CABc050G-yW-frv0mCmg=hMnC4iOx9Ht2Zv8eoS1cxQ8uKX6NQw@mail.gmail.com>
+Date: Tue, 19 May 2020 22:46:25 +0300 (EEST)
+Message-ID: <alpine.LFD.2.21.2005192139500.3504@ja.home.ssi.bg>
+References: <20200515013556.5582-1-kim.andrewsy@gmail.com> <20200517171654.8194-1-kim.andrewsy@gmail.com> <alpine.LFD.2.21.2005182027460.4524@ja.home.ssi.bg> <CABc050G-yW-frv0mCmg=hMnC4iOx9Ht2Zv8eoS1cxQ8uKX6NQw@mail.gmail.com>
  <CANHHuCW6i0BjLRMYkfY8eZGZJZTnE-NO9EH+-gfH94cc6yYn1A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
+Content-Type: multipart/mixed; boundary="-1463811672-1121648160-1589917585=:3504"
 Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc:content-transfer-encoding;
-        bh=2v5cVIMALEZeOCe9AUN80g80L3FNOhF6glvveRpwVFA=;
-        b=iSR8N/kAOeN+6XftZH9tOlczL62NRBF9Wr+lfL+YQluPicNV2tOvnzBbITewqLcSb1
-         SevDYGcylG+pTcM5cwc5pS9s22x/iVnmIflxgvRU4gida3p8h7NNcQAiq16GbVpqCRnS
-         HgQGpxJaOa+638qLgq2RISA3EADTFzXunD1FD0T+yQeoqaVgsXlNTGLUBlOEhj0GqG2x
-         9dGDrO60Ycznp4aUCHwPuYC8I6tzMrOhKL7mMNSIPHSPZboHh0RvfzPMO0aksDbeKA8W
-         dEo6lxh8+LIxFcLUD0iGRoLBJ4D1SKRWaFxEhfoGvWgWdRyf2OG+kdLL6xFE4ACiNBsv
-         Et3Q==
 In-Reply-To: <CANHHuCW6i0BjLRMYkfY8eZGZJZTnE-NO9EH+-gfH94cc6yYn1A@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
 To: Marco Angaroni <marcoangaroni@gmail.com>
-Cc: Julian Anastasov <ja@ssi.bg>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Jakub Kicinski <kuba@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>
+Cc: Andrew Kim <kim.andrewsy@gmail.com>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Jakub Kicinski <kuba@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>
 
-Hi Marco,
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> could you please confirm if/how this patch is changing any of the?
-> following behaviours, which I=E2=80=99m listing below as per my understan=
-ding?
+---1463811672-1121648160-1589917585=:3504
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-This patch would optimize b) where the chances of packets being silently
-dropped is lower.
 
-> However I'm confused about the references to OPS mode.
-> And why you need to expire all the connections at once: if you expire
-> on a per connection basis, the client experiences the same behaviour
-> (no more re-transmissions), but you avoid the complexities of a new
-> thread.
+	Hello,
 
-I agree for TCP the client would experience the same behavior. This is most=
-ly
-problematic for UDP when there are many entries in the connection hash
-from the same client to 1 destination. If we only expire connections
-on receiving
-packets, there can be many dropped packets before all entries are expired (=
-or
-we reached the UDP timeout). Expiring all UDP packets immediately would
-reduce the number of packets dropped significantly.
+On Tue, 19 May 2020, Marco Angaroni wrote:
 
-Thanks,
-
-Andrew Sy Kim
-
-On Tue, May 19, 2020 at 7:46 AM Marco Angaroni <marcoangaroni@gmail.com> wr=
-ote:
->
 > Hi Andrew, Julian,
->
+> 
 > could you please confirm if/how this patch is changing any of the
-> following behaviours, which I=E2=80=99m listing below as per my understan=
-ding
+> following behaviours, which I’m listing below as per my understanding
 > ?
->
+> 
 > When expire_nodest is set and real-server is unavailable, at the
 > moment the following happens to a packet going through IPVS:
->
+> 
 > a) TCP (or other connection-oriented protocols):
 >    the packet is silently dropped, then the following retransmission
 > causes the generation of a RST from the load-balancer to the client,
 > which will then re-open a new TCP connection
+
+	Yes. It seems we can not create new connection in
+all cases, we should also check with is_new_conn().
+
+	What we have is that two cases are possible depending on 
+conn_reuse_mode, the state of existing connection and whether
+netfilter conntrack is used:
+
+	1. setup expire for old conn, then drop packet
+	2. setup expire for old conn, then create new
+	conn to schedule the packet
+
+	When expiration is set, the timer will fire in the
+next jiffie to remove the connection from hash table. Until
+removed, the connection still can cause drops. Sometimes
+we can simply create new connection with the same tuple,
+so it is possible both connections to coexist for one jiffie
+but the old connection is not reached on lookup.
+
 > b) UDP:
 >    the packet is silently dropped, then the following retransmission
 > is rescheduled to a new real-server
+
+	Yes, we drop while old conn is not expired yet
+
 > c) UDP in OPS mode:
 >    the packet is rescheduled to a new real-server, as no previous
 > connection exists in IPVS connection table, and a new OPS connection
 > is created (but it lasts only the time to transmit the packet)
+
+	Yes, OPS is not affected.
+
 > d) UDP in OPS mode + persistent-template:
 >    the packet is rescheduled to a new real-server, as previous
 > template-connection is invalidated, a new template-connection is
 > created, and a new OPS connection is created (but it lasts only the
 > time to transmit the packet)
->
+
+	Yes, the existing template is ignored when its server
+is unavailable.
+
 > It seems to me that you are trying to optimize case a) and b),
 > avoiding the first step where the packet is silently dropped and
 > consequently avoiding the retransmission.
 > And contextually expire also all the other connections pointing to the
 > unavailable real-sever.
->
+
+	The change will allow immediate scheduling in a new
+connection for any protocol when netfilter conntrack is not
+used:
+
+- TCP: avoids retransmission for SYN
+- UDP: reduces drops from 1 jiffie to 0 (no drops)
+
+	But this single jiffie compared to the delay between
+real server failure and the removal from the IPVS table can be
+negligible. Of course, if real server is removed while it is
+working, with this change we should not see any UDP drops.
+
 > However I'm confused about the references to OPS mode.
 > And why you need to expire all the connections at once: if you expire
 > on a per connection basis, the client experiences the same behaviour
 > (no more re-transmissions), but you avoid the complexities of a new
 > thread.
->
-> Maybe also the documentation of expire_nodest_conn sysctl should be updat=
-ed.
+
+	Such flushing can help when conntrack is used in which
+case the cost is a retransmission or downtime for one jiffie.
+
+> Maybe also the documentation of expire_nodest_conn sysctl should be updated.
 > When it's stated:
->
+> 
 >         If this feature is enabled, the load balancer will expire the
 >         connection immediately when a packet arrives and its
 >         destination server is not available, then the client program
 >         will be notified that the connection is closed
->
+> 
 > I think it should be at least "and the client program" instead of
 > "then the client program".
 > Or a more detailed explanation.
->
-> Thanks
-> Marco Angaroni
->
->
-> Il giorno lun 18 mag 2020 alle ore 22:06 Andrew Kim
-> <kim.andrewsy@gmail.com> ha scritto:
-> >
-> > Hi Julian,
-> >
-> > Thank you for getting back to me. I will update the patch based on
-> > your feedback shortly.
-> >
-> > Regards,
-> >
-> > Andrew
-> >
-> > On Mon, May 18, 2020 at 3:10 PM Julian Anastasov <ja@ssi.bg> wrote:
-> > >
-> > >
-> > >         Hello,
-> > >
-> > > On Sun, 17 May 2020, Andrew Sy Kim wrote:
-> > >
-> > > > If expire_nodest_conn=3D1 and a UDP destination is deleted, IPVS sh=
-ould
-> > > > also expire all matching connections immiediately instead of waitin=
-g for
-> > > > the next matching packet. This is particulary useful when there are=
- a
-> > > > lot of packets coming from a few number of clients. Those clients a=
-re
-> > > > likely to match against existing entries if a source port in the
-> > > > connection hash is reused. When the number of entries in the connec=
-tion
-> > > > tracker is large, we can significantly reduce the number of dropped
-> > > > packets by expiring all connections upon deletion.
-> > > >
-> > > > Signed-off-by: Andrew Sy Kim <kim.andrewsy@gmail.com>
-> > > > ---
-> > > >  include/net/ip_vs.h             |  7 ++++++
-> > > >  net/netfilter/ipvs/ip_vs_conn.c | 38 +++++++++++++++++++++++++++++=
-++++
-> > > >  net/netfilter/ipvs/ip_vs_core.c |  5 -----
-> > > >  net/netfilter/ipvs/ip_vs_ctl.c  |  9 ++++++++
-> > > >  4 files changed, 54 insertions(+), 5 deletions(-)
-> > > >
-> > >
-> > > > diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/i=
-p_vs_conn.c
-> > > > index 02f2f636798d..c69dfbbc3416 100644
-> > > > --- a/net/netfilter/ipvs/ip_vs_conn.c
-> > > > +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> > > > @@ -1366,6 +1366,44 @@ static void ip_vs_conn_flush(struct netns_ip=
-vs *ipvs)
-> > > >               goto flush_again;
-> > > >       }
-> > > >  }
-> > > > +
-> > > > +/*   Flush all the connection entries in the ip_vs_conn_tab with a
-> > > > + *   matching destination.
-> > > > + */
-> > > > +void ip_vs_conn_flush_dest(struct netns_ipvs *ipvs, struct ip_vs_d=
-est *dest)
-> > > > +{
-> > > > +     int idx;
-> > > > +     struct ip_vs_conn *cp, *cp_c;
-> > > > +
-> > > > +     rcu_read_lock();
-> > > > +     for (idx =3D 0; idx < ip_vs_conn_tab_size; idx++) {
-> > > > +             hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_=
-list) {
-> > > > +                     if (cp->ipvs !=3D ipvs)
-> > > > +                             continue;
-> > > > +
-> > > > +                     if (cp->dest !=3D dest)
-> > > > +                             continue;
-> > > > +
-> > > > +                     /* As timers are expired in LIFO order, resta=
-rt
-> > > > +                      * the timer of controlling connection first,=
- so
-> > > > +                      * that it is expired after us.
-> > > > +                      */
-> > > > +                     cp_c =3D cp->control;
-> > > > +                     /* cp->control is valid only with reference t=
-o cp */
-> > > > +                     if (cp_c && __ip_vs_conn_get(cp)) {
-> > > > +                             IP_VS_DBG(4, "del controlling connect=
-ion\n");
-> > > > +                             ip_vs_conn_expire_now(cp_c);
-> > > > +                             __ip_vs_conn_put(cp);
-> > > > +                     }
-> > > > +                     IP_VS_DBG(4, "del connection\n");
-> > > > +                     ip_vs_conn_expire_now(cp);
-> > > > +             }
-> > > > +             cond_resched_rcu();
-> > >
-> > >         Such kind of loop is correct if done in another context:
-> > >
-> > > 1. kthread
-> > > or
-> > > 2. delayed work: mod_delayed_work(system_long_wq, ...)
-> > >
-> > >         Otherwise cond_resched_rcu() can schedule() while holding
-> > > __ip_vs_mutex. Also, it will add long delay if many dests are
-> > > removed.
-> > >
-> > >         If such loop analyzes instead all cp->dest for
-> > > IP_VS_DEST_F_AVAILABLE, it should be done after calling
-> > > __ip_vs_conn_get().
-> > >
-> > > >  static int sysctl_snat_reroute(struct netns_ipvs *ipvs) { return 0=
-; }
-> > > > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip=
-_vs_ctl.c
-> > > > index 8d14a1acbc37..f87c03622874 100644
-> > > > --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> > > > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> > > > @@ -1225,6 +1225,15 @@ ip_vs_del_dest(struct ip_vs_service *svc, st=
-ruct ip_vs_dest_user_kern *udest)
-> > > >        */
-> > > >       __ip_vs_del_dest(svc->ipvs, dest, false);
-> > > >
-> > > > +     /*      If expire_nodest_conn is enabled and protocol is UDP,
-> > > > +      *      attempt best effort flush of all connections with thi=
-s
-> > > > +      *      destination.
-> > > > +      */
-> > > > +     if (sysctl_expire_nodest_conn(svc->ipvs) &&
-> > > > +         dest->protocol =3D=3D IPPROTO_UDP) {
-> > > > +             ip_vs_conn_flush_dest(svc->ipvs, dest);
-> > >
-> > >         Above work should be scheduled from __ip_vs_del_dest().
-> > > Check for UDP is not needed, sysctl_expire_nodest_conn() is for
-> > > all protocols.
-> > >
-> > >         If the flushing is complex to implement, we can still allow
-> > > rescheduling for unavailable dests:
-> > >
-> > > - first we should move this block above the ip_vs_try_to_schedule()
-> > > block because:
-> > >
-> > >         1. the scheduling does not return unavailabel dests, even
-> > >         for persistence, so no need to check new connections for
-> > >         the flag
-> > >
-> > >         2. it will allow to create new connection if dest for
-> > >         existing connection is unavailable
-> > >
-> > >         if (cp && cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILA=
-BLE)) {
-> > >                 /* the destination server is not available */
-> > >
-> > >                 if (sysctl_expire_nodest_conn(ipvs)) {
-> > >                         bool uses_ct =3D ip_vs_conn_uses_conntrack(cp=
-, skb);
-> > >
-> > >                         ip_vs_conn_expire_now(cp);
-> > >                         __ip_vs_conn_put(cp);
-> > >                         if (uses_ct)
-> > >                                 return NF_DROP;
-> > >                         cp =3D NULL;
-> > >                 } else {
-> > >                         __ip_vs_conn_put(cp);
-> > >                         return NF_DROP;
-> > >                 }
-> > >         }
-> > >
-> > >         if (unlikely(!cp)) {
-> > >                 int v;
-> > >
-> > >                 if (!ip_vs_try_to_schedule(ipvs, af, skb, pd, &v, &cp=
-, &iph))
-> > >                         return v;
-> > >         }
-> > >
-> > >         Before now, we always waited one jiffie connection to expire,
-> > > now one packet will:
-> > >
-> > > - schedule expiration for existing connection with unavailable dest,
-> > > as before
-> > >
-> > > - create new connection to available destination that will be found
-> > > first in lists. But it can work only when sysctl var "conntrack" is 0=
-,
-> > > we do not want to create two netfilter conntracks to different
-> > > real servers.
-> > >
-> > >         Note that we intentionally removed the timer_pending() check
-> > > because we can not see existing ONE_PACKET connections in table.
-> > >
-> > > Regards
-> > >
-> > > --
-> > > Julian Anastasov <ja@ssi.bg>
+
+	Yes, if the packet is SYN we can create new connection.
+If it is ACK, the retransmission will get RST.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+---1463811672-1121648160-1589917585=:3504--
