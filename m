@@ -1,290 +1,260 @@
-From: Andrew Kim <kim.andrewsy@gmail.com>
-Subject: Re: [PATCH] netfilter/ipvs: immediately expire no destination
- connections in kthread if expire_nodest_conn=1
-Date: Tue, 26 May 2020 17:47:15 -0400
-Message-ID: <CABc050Hq9hKRHqAM2oNp9e756ASiEHNyU7g3TFqwi2VCmSGB2A@mail.gmail.com>
-References: <alpine.LFD.2.21.2005192139500.3504@ja.home.ssi.bg>
- <20200524213105.14805-1-kim.andrewsy@gmail.com> <alpine.LFD.2.22.394.2005262008500.3853@ja.home.ssi.bg>
+From: Andrew Sy Kim <kim.andrewsy@gmail.com>
+Subject: [PATCH] netfilter/ipvs: queue delayed work to expire no destination connections if expire_nodest_conn=1
+Date: Wed, 27 May 2020 21:41:02 -0400
+Message-ID: <20200528014102.32357-1-kim.andrewsy@gmail.com>
+References: <CABc050Hq9hKRHqAM2oNp9e756ASiEHNyU7g3TFqwi2VCmSGB2A@mail.gmail.com>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=M7KLDbtf3FzSybhaQU61haRtQgSeGbOqqtaEF0CGZyA=;
-        b=MeXCanTk2Daf4LgZMe4wvlJeq3zL8MzceHkHgZfCjXm2Kgoq6dgarESd/sZcVROJNJ
-         Lj7lSoT7SvQnuX8sIrjs6w3dJaQxf+k83sR/KQ+5DWsn6rh7rM1z+5gsL13BkVpXveW7
-         LUfEWz0t0z8/Ga62Yo0SLAbACcFYikZDMwjPjyiAUDX1T0QZmryz0XigOn+My34Vvpt3
-         XXIUQXBXVoHXTbdnxLkfTWd1yny1gi/mljcexvkj8VnwNE+5rRzRiCbtVp/VjW92nR9D
-         lj4ZA9zHdOnELuhyqw4uHhzgd4dDCaPZoTqWQY/29xfgEwmPv5WMr4JItDOU683zQxAC
-         a66g==
-In-Reply-To: <alpine.LFD.2.22.394.2005262008500.3853@ja.home.ssi.bg>
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=0UAuq4wVNFynRMDmAKu8+0PlLZ9xpiajh5Mx4cqmXb8=;
+        b=UtVBQc/pv0LNaYVT3PxdeFRu6cNVsSN/0Q2hKXKTHh2OHGeh0P/e6CXLalXhGCeHBi
+         y1DCcvKY5bEb6e0Ylhkn7mzE70HosL1Euv9ztYlbumTCJsnWEontoppmIhVukjBayMNN
+         67wcnCrDUow5QHjuKma1wp7FFJdMMOc6lY/rk2isFbxnDayFlCXB2xxHtxjGLit0mx7M
+         zpo6yZOyqnAzNRAJCwupiPT1GyQEtS0kzPJEt6Kh/HAdsTgHRtQUHN33e6L+0qE8Z3BQ
+         x8DPo2RulGtW6kVoMDUFcUSuU1Wtqce8IHM2O4odwVe4wbLDqBAfiFWcSheQwJ1Wb93m
+         WMmA==
+In-Reply-To: <CABc050Hq9hKRHqAM2oNp9e756ASiEHNyU7g3TFqwi2VCmSGB2A@mail.gmail.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, "open list:IPVS" <lvs-devel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>
+To: 
+Cc: Julian Anastasov <ja@ssi.bg>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Andrew Sy Kim <kim.andrewsy@gmail.com>
 
-Hi Julian,
+When expire_nodest_conn=1 and a destination is deleted, IPVS does not
+expire the existing connections until the next matching incoming packet.
+If there are many connection entries from a single client to a single
+destination, many packets may get dropped before all the connections are
+expired (more likely with lots of UDP traffic). An optimization can be
+made where upon deletion of a destination, IPVS queues up delayed work
+to immediately expire any connections with a deleted destination. This
+ensures any reused source ports from a client (within the IPVS timeouts)
+are scheduled to new real servers instead of silently dropped.
 
-Thanks for getting back to me. This is my first patch to the kernel so
-I really appreciate your patience reviewing it.
+Signed-off-by: Andrew Sy Kim <kim.andrewsy@gmail.com>
+---
+ include/net/ip_vs.h             |  9 ++++++
+ net/netfilter/ipvs/ip_vs_conn.c | 53 +++++++++++++++++++++++++++++++++
+ net/netfilter/ipvs/ip_vs_core.c | 44 +++++++++++----------------
+ net/netfilter/ipvs/ip_vs_ctl.c  | 12 ++++++++
+ 4 files changed, 92 insertions(+), 26 deletions(-)
 
-I will update the patch based on your comments shortly.
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 83be2d93b407..1636100f7da5 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -884,6 +884,9 @@ struct netns_ipvs {
+ 	atomic_t		nullsvc_counter;
+ 	atomic_t		conn_out_counter;
+ 
++	/* delayed work for expiring no dest connections */
++	struct delayed_work	expire_nodest_conn_work;
++
+ #ifdef CONFIG_SYSCTL
+ 	/* 1/rate drop and drop-entry variables */
+ 	struct delayed_work	defense_work;   /* Work handler */
+@@ -1049,6 +1052,11 @@ static inline int sysctl_conn_reuse_mode(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_conn_reuse_mode;
+ }
+ 
++static inline int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_expire_nodest_conn;
++}
++
+ static inline int sysctl_schedule_icmp(struct netns_ipvs *ipvs)
+ {
+ 	return ipvs->sysctl_schedule_icmp;
+@@ -1232,6 +1240,7 @@ struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ 				  __be16 dport, unsigned int flags,
+ 				  struct ip_vs_dest *dest, __u32 fwmark);
+ void ip_vs_conn_expire_now(struct ip_vs_conn *cp);
++void expire_nodest_conn_handler(struct work_struct *work);
+ 
+ const char *ip_vs_state_name(const struct ip_vs_conn *cp);
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 02f2f636798d..5e802b7fabbb 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -28,6 +28,7 @@
+ #include <linux/module.h>
+ #include <linux/vmalloc.h>
+ #include <linux/proc_fs.h>		/* for proc_net_* */
++#include <linux/workqueue.h>
+ #include <linux/slab.h>
+ #include <linux/seq_file.h>
+ #include <linux/jhash.h>
+@@ -1366,6 +1367,58 @@ static void ip_vs_conn_flush(struct netns_ipvs *ipvs)
+ 		goto flush_again;
+ 	}
+ }
++
++/*	Handler for delayed work for expiring no
++ *	destination connections
++ */
++void expire_nodest_conn_handler(struct work_struct *work)
++{
++	int idx;
++	struct ip_vs_conn *cp, *cp_c;
++	struct ip_vs_dest *dest;
++	struct netns_ipvs *ipvs;
++
++	ipvs = container_of(work, struct netns_ipvs,
++			    expire_nodest_conn_work.work);
++
++	/* netns clean up started, aborted delayed work */
++	if (!ipvs->enable)
++		return;
++
++	/* only start delayed work if expire_nodest_conn=1 */
++	if (!ipvs->sysctl_expire_nodest_conn)
++		return;
++
++	rcu_read_lock();
++	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
++		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
++			if (cp->ipvs != ipvs)
++				continue;
++
++			dest = cp->dest;
++			if (!dest || (dest->flags & IP_VS_DEST_F_AVAILABLE))
++				continue;
++
++			/* As timers are expired in LIFO order, restart
++			 * the timer of controlling connection first, so
++			 * that it is expired after us.
++			 */
++			cp_c = cp->control;
++			/* cp->control is valid only with reference to cp */
++			if (cp_c && __ip_vs_conn_get(cp)) {
++				IP_VS_DBG(4, "del controlling connection\n");
++				ip_vs_conn_expire_now(cp_c);
++				__ip_vs_conn_put(cp);
++			}
++
++			IP_VS_DBG(4, "del connection\n");
++			ip_vs_conn_expire_now(cp);
++		}
++		cond_resched_rcu();
++	}
++	rcu_read_unlock();
++}
++
+ /*
+  * per netns init and exit
+  */
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index aa6a603a2425..c8389936d51a 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -694,11 +694,6 @@ static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_nat_icmp_send;
+ }
+ 
+-static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs)
+-{
+-	return ipvs->sysctl_expire_nodest_conn;
+-}
+-
+ #else
+ 
+ static int sysctl_snat_reroute(struct netns_ipvs *ipvs) { return 0; }
+@@ -2095,36 +2090,33 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
+ 		}
+ 	}
+ 
+-	if (unlikely(!cp)) {
+-		int v;
+-
+-		if (!ip_vs_try_to_schedule(ipvs, af, skb, pd, &v, &cp, &iph))
+-			return v;
+-	}
+-
+-	IP_VS_DBG_PKT(11, af, pp, skb, iph.off, "Incoming packet");
+-
+ 	/* Check the server status */
+-	if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
++	if (cp && cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
+ 		/* the destination server is not available */
+ 
+-		__u32 flags = cp->flags;
+-
+-		/* when timer already started, silently drop the packet.*/
+-		if (timer_pending(&cp->timer))
+-			__ip_vs_conn_put(cp);
+-		else
+-			ip_vs_conn_put(cp);
++		if (sysctl_expire_nodest_conn(ipvs)) {
++			bool uses_ct = ip_vs_conn_uses_conntrack(cp, skb);
+ 
+-		if (sysctl_expire_nodest_conn(ipvs) &&
+-		    !(flags & IP_VS_CONN_F_ONE_PACKET)) {
+-			/* try to expire the connection immediately */
+ 			ip_vs_conn_expire_now(cp);
++			__ip_vs_conn_put(cp);
++			if (uses_ct)
++				return NF_DROP;
++			cp = NULL;
++		} else {
++			__ip_vs_conn_put(cp);
++			return NF_DROP;
+ 		}
++	}
+ 
+-		return NF_DROP;
++	if (unlikely(!cp)) {
++		int v;
++
++		if (!ip_vs_try_to_schedule(ipvs, af, skb, pd, &v, &cp, &iph))
++			return v;
+ 	}
+ 
++	IP_VS_DBG_PKT(11, af, pp, skb, iph.off, "Incoming packet");
++
+ 	ip_vs_in_stats(cp, skb);
+ 	ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd);
+ 	if (cp->packet_xmit)
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 8d14a1acbc37..6eb1afa30c74 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1163,6 +1163,13 @@ static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
+ 	list_add(&dest->t_list, &ipvs->dest_trash);
+ 	dest->idle_start = 0;
+ 	spin_unlock_bh(&ipvs->dest_trash_lock);
++
++	/*	If expire_nodest_conn is enabled and we're not cleaning up,
++	 *	queue up delayed work to expire all no destination connections
++	 */
++	if (sysctl_expire_nodest_conn(ipvs) && !cleanup)
++		queue_delayed_work(system_long_wq,
++				   &ipvs->expire_nodest_conn_work, 1);
+ }
+ 
+ 
+@@ -4065,6 +4072,10 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
+ 	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+ 
++	/* Init delayed work for expiring no dest conn */
++	INIT_DELAYED_WORK(&ipvs->expire_nodest_conn_work,
++			  expire_nodest_conn_handler);
++
+ 	return 0;
+ }
+ 
+@@ -4072,6 +4083,7 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
+ {
+ 	struct net *net = ipvs->net;
+ 
++	cancel_delayed_work_sync(&ipvs->expire_nodest_conn_work);
+ 	cancel_delayed_work_sync(&ipvs->defense_work);
+ 	cancel_work_sync(&ipvs->defense_work.work);
+ 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
+-- 
+2.20.1
 
-Regards,
-
-Andrew Sy Kim
-
-
-On Tue, May 26, 2020 at 5:25 PM Julian Anastasov <ja@ssi.bg> wrote:
->
->
->         Hello,
->
->         Long CC list trimmed...
->
-> On Sun, 24 May 2020, Andrew Sy Kim wrote:
->
-> > If expire_nodest_conn=1 and a destination is deleted, IPVS should
-> > also expire all matching connections immiediately instead of waiting for
-> > the next matching packet. This is particulary useful when there are a
-> > lot of packets coming from a few number of clients. Those clients are
-> > likely to match against existing entries if a source port in the
-> > connection hash is reused. When the number of entries in the connection
-> > tracker is large, we can significantly reduce the number of dropped
-> > packets by expiring all connections upon deletion in a kthread.
-> >
-> > Signed-off-by: Andrew Sy Kim <kim.andrewsy@gmail.com>
-> > ---
-> >  include/net/ip_vs.h             | 12 +++++++++
-> >  net/netfilter/ipvs/ip_vs_conn.c | 48 +++++++++++++++++++++++++++++++++
-> >  net/netfilter/ipvs/ip_vs_core.c | 45 +++++++++++++------------------
-> >  net/netfilter/ipvs/ip_vs_ctl.c  | 16 +++++++++++
-> >  4 files changed, 95 insertions(+), 26 deletions(-)
-> >
->
-> >  /* Get reference to gain full access to conn.
-> >   * By default, RCU read-side critical sections have access only to
-> >   * conn fields and its PE data, see ip_vs_conn_rcu_free() for reference.
-> > diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> > index 02f2f636798d..111fa0e287a2 100644
-> > --- a/net/netfilter/ipvs/ip_vs_conn.c
-> > +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> > @@ -1366,6 +1366,54 @@ static void ip_vs_conn_flush(struct netns_ipvs *ipvs)
-> >               goto flush_again;
-> >       }
-> >  }
-> > +
-> > +/*   Thread function to flush all the connection entries in the
-> > + *   ip_vs_conn_tab with a matching destination.
-> > + */
-> > +int ip_vs_conn_flush_dest(void *data)
-> > +{
-> > +     struct ip_vs_conn_flush_dest_tinfo *tinfo = data;
-> > +     struct netns_ipvs *ipvs = tinfo->ipvs;
-> > +     struct ip_vs_dest *dest = tinfo->dest;
->
->         Starting a kthread just for single dest can cause storms
-> when many dests are used. IMHO, we should work this way:
->
-> - do not use kthreads: they are hard to manage, start only from
-> process context (we can not retry from timer if creating a kthread
-> fails for some reason).
->
-> - use delayed_work, similar to our defense_work but this time
-> we should use queue_delayed_work(system_long_wq,...) instead of
-> schedule_delayed_work(). Just cancel_delayed_work_sync() is needed
-> to stop the work. The callback function will not start the
-> work timer.
->
-> - we will use one work for the netns (struct netns_ipvs *ipvs):
-> __ip_vs_del_dest() will start it for next jiffie (delay=1) to
-> catch more dests for flusing. As result, the first destination
-> will start the work timer, other dests will do nothing while timer
-> is pending. When timer expires, the work is queued to worker,
-> so next dests will start the timer again, even while the work
-> is executing the callback function.
->
-> > +
-> > +     int idx;
-> > +     struct ip_vs_conn *cp, *cp_c;
-> > +
-> > +     IP_VS_DBG_BUF(4, "flushing all connections with destination %s:%d",
-> > +                   IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port));
->
->         We will not provide current dest. Still, above was not
-> safe because we do not hold reference to dest.
->
-> > +
-> > +     rcu_read_lock();
-> > +     for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
-> > +             hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
-> > +                     if (cp->ipvs != ipvs)
-> > +                             continue;
-> > +
-> > +                     if (cp->dest != dest)
-> > +                             continue;
->
->                         struct ip_vs_dest *dest = cp->dest;
->
->                         if (!dest || (dest->flags & IP_VS_DEST_F_AVAILABLE))
->                                 continue;
->
->                         We can access dest because under RCU grace period
->                         we have access to the cp->dest fields. But we
->                         should read cp->dest once as done above.
->
-> > +
-> > +                     /* As timers are expired in LIFO order, restart
-> > +                      * the timer of controlling connection first, so
-> > +                      * that it is expired after us.
-> > +                      */
-> > +                     cp_c = cp->control;
-> > +                     /* cp->control is valid only with reference to cp */
-> > +                     if (cp_c && __ip_vs_conn_get(cp)) {
-> > +                             IP_VS_DBG(4, "del controlling connection\n");
-> > +                             ip_vs_conn_expire_now(cp_c);
-> > +                             __ip_vs_conn_put(cp);
-> > +                     }
-> > +
-> > +                     IP_VS_DBG(4, "del connection\n");
-> > +                     ip_vs_conn_expire_now(cp);
-> > +             }
-> > +             cond_resched_rcu();
->
->                 if (!ipvs->enable)
->                         break;
->
->                 Abort immediately if netns cleanup is started.
->
-> > +     }
-> > +     rcu_read_unlock();
-> > +
-> > +     return 0;
-> > +}
-> > +EXPORT_SYMBOL_GPL(ip_vs_conn_flush_dest);
-> > +
-> >  /*
-> >   * per netns init and exit
-> >   */
-> > diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> > index aa6a603a2425..ff052e57e054 100644
-> > --- a/net/netfilter/ipvs/ip_vs_core.c
-> > +++ b/net/netfilter/ipvs/ip_vs_core.c
-> > @@ -24,6 +24,7 @@
-> >
-> >  #include <linux/module.h>
-> >  #include <linux/kernel.h>
-> > +#include <linux/kthread.h>
-> >  #include <linux/ip.h>
-> >  #include <linux/tcp.h>
-> >  #include <linux/sctp.h>
-> > @@ -694,11 +695,6 @@ static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs)
-> >       return ipvs->sysctl_nat_icmp_send;
-> >  }
-> >
-> > -static int sysctl_expire_nodest_conn(struct netns_ipvs *ipvs)
-> > -{
-> > -     return ipvs->sysctl_expire_nodest_conn;
-> > -}
-> > -
-> >  #else
-> >
-> >  static int sysctl_snat_reroute(struct netns_ipvs *ipvs) { return 0; }
-> > @@ -2095,36 +2091,33 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
-> >               }
-> >       }
-> >
-> > -     if (unlikely(!cp)) {
-> > -             int v;
-> > -
-> > -             if (!ip_vs_try_to_schedule(ipvs, af, skb, pd, &v, &cp, &iph))
-> > -                     return v;
-> > -     }
-> > -
-> > -     IP_VS_DBG_PKT(11, af, pp, skb, iph.off, "Incoming packet");
-> > -
-> >       /* Check the server status */
-> > -     if (cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
-> > +     if (cp && cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
-> >               /* the destination server is not available */
-> >
-> > -             __u32 flags = cp->flags;
-> > -
-> > -             /* when timer already started, silently drop the packet.*/
-> > -             if (timer_pending(&cp->timer))
-> > -                     __ip_vs_conn_put(cp);
-> > -             else
-> > -                     ip_vs_conn_put(cp);
-> > +             if (sysctl_expire_nodest_conn(ipvs)) {
-> > +                     bool uses_ct = ip_vs_conn_uses_conntrack(cp, skb);
-> >
-> > -             if (sysctl_expire_nodest_conn(ipvs) &&
-> > -                 !(flags & IP_VS_CONN_F_ONE_PACKET)) {
-> > -                     /* try to expire the connection immediately */
-> >                       ip_vs_conn_expire_now(cp);
-> > +                     __ip_vs_conn_put(cp);
-> > +                     if (uses_ct)
-> > +                             return NF_DROP;
-> > +                     cp = NULL;
-> > +             } else {
-> > +                     __ip_vs_conn_put(cp);
-> > +                     return NF_DROP;
-> >               }
-> > +     }
-> >
-> > -             return NF_DROP;
-> > +     if (unlikely(!cp)) {
-> > +             int v;
-> > +
-> > +             if (!ip_vs_try_to_schedule(ipvs, af, skb, pd, &v, &cp, &iph))
-> > +                     return v;
-> >       }
-> >
-> > +     IP_VS_DBG_PKT(11, af, pp, skb, iph.off, "Incoming packet");
-> > +
->
->         The above code in ip_vs_in() is correct.
->
-> >       ip_vs_in_stats(cp, skb);
-> >       ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd);
-> >       if (cp->packet_xmit)
-> > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> > index 8d14a1acbc37..fa48268368fc 100644
-> > --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> > @@ -1163,6 +1163,22 @@ static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
-> >       list_add(&dest->t_list, &ipvs->dest_trash);
-> >       dest->idle_start = 0;
-> >       spin_unlock_bh(&ipvs->dest_trash_lock);
-> > +
-> > +     /*      If expire_nodest_conn is enabled, expire all connections
-> > +      *      immediately in a kthread.
-> > +      */
-> > +     if (sysctl_expire_nodest_conn(ipvs)) {
->
->         Looks like we should not start work when 'cleanup' is true, it
-> indicates that we are doing final release of all resources.
->
->         if (sysctl_expire_nodest_conn(ipvs) && !cleanup)
->                 queue_delayed_work(system_long_wq, &ipvs->expire_nodest_work, 1);
->
-> > +             struct ip_vs_conn_flush_dest_tinfo *tinfo = NULL;
-> > +
-> > +             tinfo = kcalloc(1, sizeof(struct ip_vs_conn_flush_dest_tinfo),
-> > +                             GFP_KERNEL);
-> > +             tinfo->ipvs = ipvs;
-> > +             tinfo->dest = dest;
-> > +
-> > +             IP_VS_DBG(3, "flushing connections in kthread\n");
-> > +             kthread_run(ip_vs_conn_flush_dest,
-> > +                         tinfo, "ipvs-flush-dest-conn");
-> > +     }
-> >  }
->
-> Regards
->
-> --
-> Julian Anastasov <ja@ssi.bg>
