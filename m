@@ -1,8 +1,8 @@
 From: Andrew Sy Kim <kim.andrewsy@gmail.com>
 Subject: [PATCH] netfilter/ipvs: queue delayed work to expire no destination connections if expire_nodest_conn=1
-Date: Mon,  8 Jun 2020 13:34:12 -0400
-Message-ID: <20200608173413.13870-1-kim.andrewsy@gmail.com>
-References: <alpine.LFD.2.22.394.2005281954380.4045@ja.home.ssi.bg>
+Date: Mon,  8 Jun 2020 16:20:24 -0400
+Message-ID: <20200608202024.28369-1-kim.andrewsy@gmail.com>
+References: <20200608173413.13870-1-kim.andrewsy@gmail.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <netfilter-devel-owner@vger.kernel.org>
@@ -10,14 +10,14 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=BQfHe5nHe6T64nJZ48xJuQUzNOsqzYNjV6sGWHRurS4=;
-        b=puuml+9+jmfM35SwDwyG9trAffIsVPJBds++JHY9xjCronp2lDcl/8OKgSI5xJPXzv
-         25YVqtEvrByw5S5E/4ew9TsmUi2Cd9IeYMZootnX8yrXX7DsowKoBEQkSEU478yipB7S
-         yzOyi2T+Ghi0V5iNaFvWv6tGrcXbCpJwumo8/ck9EEfzdHZhqKcK/RTpjDGWxdgGbC65
-         LHDHn9gbDA3ENMMy50yl3pdLxhOTANsBgY0X61Nz5wPxMmgzv4ZcXoiFVO+yZKPzECU/
-         hWNMMpGAazjtwnT7eIjYICEJdcP0rw8qiGlErCqIEBzF9/GcIPx3QfYLUnBInwolTJ91
-         mpCQ==
-In-Reply-To: <alpine.LFD.2.22.394.2005281954380.4045@ja.home.ssi.bg>
+        bh=cDeaqtDdFcyCxI5XexCbjnRws95YiVmMvjSuc41+5lc=;
+        b=CK/VjEGfZHxivixLO3DqS49pGtIdbUToWYqJoijho2ccBUnrVtDsRAWTGGbcql8+qo
+         AO9nHRkSaVXEJntSXI+/jllcfkh1/wRA/jqA2F0q6BC9WsFkQqMo64rbznfPBCCUzzJz
+         IErnp42ocPPLNY2Dr8jslM8jYU50FlyyfGfAbnimhL12lVPBxHWdpfv8Ax2XnBkmfUsv
+         TquDJfn0V59ccK/hMFP675fak8Ey+qtmbsVqfB07x694ZsdE1uEA2zCwEtKKcXMy5++m
+         R3B+fG9XLBQiAaI8x7dtA8DBplCeRhNBleIdu6xkmnuzwljO8Kdkf8AxgE8UKvKLE5b/
+         JznA==
+In-Reply-To: <20200608173413.13870-1-kim.andrewsy@gmail.com>
 Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -111,7 +111,7 @@ index 83be2d93b407..49ca61765298 100644
  				 IP_VS_CONN_F_FWD_MASK)
  
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 02f2f636798d..8396ab098953 100644
+index 02f2f636798d..f0d744e8c716 100644
 --- a/net/netfilter/ipvs/ip_vs_conn.c
 +++ b/net/netfilter/ipvs/ip_vs_conn.c
 @@ -1366,6 +1366,49 @@ static void ip_vs_conn_flush(struct netns_ipvs *ipvs)
@@ -153,7 +153,7 @@ index 02f2f636798d..8396ab098953 100644
 +		}
 +		cond_resched_rcu();
 +
-+		/* netns clean up started, aborted delayed work */
++		/* netns clean up started, abort delayed work */
 +		if (!ipvs->enable)
 +			return;
 +	}
@@ -241,15 +241,15 @@ index aa6a603a2425..2508a9caeae8 100644
  	ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd);
  	if (cp->packet_xmit)
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 8d14a1acbc37..24736efac85c 100644
+index 8d14a1acbc37..9e53f517f138 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
 @@ -210,6 +210,17 @@ static void update_defense_level(struct netns_ipvs *ipvs)
  	local_bh_enable();
  }
  
-+/*	Handler for delayed work for expiring no
-+ *	destination connections
++/* Handler for delayed work for expiring no
++ * destination connections
 + */
 +static void expire_nodest_conn_handler(struct work_struct *work)
 +{
@@ -267,8 +267,8 @@ index 8d14a1acbc37..24736efac85c 100644
  	dest->idle_start = 0;
  	spin_unlock_bh(&ipvs->dest_trash_lock);
 +
-+	/*	Queue up delayed work to expire all no estination connections.
-+	 *	No-op when CONFIG_SYSCTL is disabled.
++	/* Queue up delayed work to expire all no estination connections.
++	 * No-op when CONFIG_SYSCTL is disabled.
 +	 */
 +	if (!cleanup)
 +		ip_vs_enqueue_expire_nodest_conns(ipvs);
