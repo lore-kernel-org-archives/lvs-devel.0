@@ -1,110 +1,162 @@
-From: YangYuxi <yx.atom1@gmail.com>
-Subject: [PATCH] ipvs: avoid drop first packet to reuse conntrack
-Date: Thu, 11 Jun 2020 18:01:35 +0800
-Message-ID: <20200611100135.GA19243@VM_111_229_centos>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH] ipvs: avoid drop first packet to reuse conntrack
+Date: Thu, 11 Jun 2020 21:27:18 +0300 (EEST)
+Message-ID: <alpine.LFD.2.22.394.2006112034170.3254@ja.home.ssi.bg>
+References: <20200611092849.GA13977@VM_111_229_centos>
 Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:mime-version:content-disposition
-         :content-transfer-encoding:user-agent;
-        bh=hDcJLQph3XEDbqRIioZiQfkn61SbO41SN1rr45lJWyU=;
-        b=sgeBjL7AljP1Pm5YNHqOcaY5kTJdalizz4L7U25FzemzsMt5QR8hQ5bkYmVqEYLA04
-         GLBNSCNKLKVpHpqzcWe8utWPVwopNTKj8Fs6mhRndKR5t2XUtiilw9+nXxhEiUaPGcH7
-         G0UnoyDSHyYx/FonVIS0TZ7kWvL5IVyh/oFV1q3eh5rvIPzFTih03lKOLdszSHOuZgaO
-         B5pt2ECbqKJ6PtcbEDwRTo9hgY/YnLOCuwVImNUA4x2Z007jmAwejXWfqxRGKV2Hl1wb
-         UygYK/0gNrcnr812aBxsaBsbzbhsPPSFL6Aj+5oR1wDKDTUOx/S84T1tC1JjAw+/RihC
-         M37Q==
-Content-Disposition: inline
-Sender: lvs-devel-owner@vger.kernel.org
+Content-Type: multipart/mixed; boundary="-1463811672-410261613-1591900041=:3254"
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20200611092849.GA13977@VM_111_229_centos>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, yx.atom1@gmail.com
+To: YangYuxi <yx.atom1@gmail.com>
+Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-Since 'commit f719e3754ee2 ("ipvs: drop first packet to
-redirect conntrack")', when a new TCP connection meet
-the conditions that need reschedule, the first syn packet
-is dropped, this cause one second latency for the new
-connection, more discussion about this problem can easy
-search from google, such as:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-1)One second connection delay in masque
-https://marc.info/?t=3D151683118100004&r=3D1&w=3D2
+---1463811672-410261613-1591900041=:3254
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-2)IPVS low throughput=A0#70747
-https://github.com/kubernetes/kubernetes/issues/70747
 
-3)Apache Bench can fill up ipvs service proxy in seconds #544
-https://github.com/cloudnativelabs/kube-router/issues/544
+	Hello,
 
-4)Additional 1s latency in `host -> service IP -> pod`
-https://github.com/kubernetes/kubernetes/issues/90854
+On Thu, 11 Jun 2020, YangYuxi wrote:
 
-The root cause is when the old session is expired, the
-conntrack related to the session is dropped by
-ip_vs_conn_drop_conntrack. The code is as follows:
-```
-static void ip_vs_conn_expire(struct timer_list *t)
-{
-...
+> Since commit f719e3754ee ("ipvs: drop first packet
+> to redirect conntrack"), when a new TCP connection
+> meet the conditions that need reschedule, the first
+> syn packet is dropped, this cause one second latency
+> for the new connection, more discussion about this
+> problem can easy seach from google, such as:
+> 
+> 1)One second connection delay in masque
+> https://marc.info/?t=151683118100004&r=1&w=2
+> 
+> 2)IPVS low throughput #70747
+> https://github.com/kubernetes/kubernetes/issues/70747
+> 
+> 3)Apache Bench can fill up ipvs service proxy in seconds #544
+> https://github.com/cloudnativelabs/kube-router/issues/544
+> 
+> 4)Additional 1s latency in `host -> service IP -> pod`
+> https://github.com/kubernetes/kubernetes/issues/90854
 
-                if ((cp->flags & IP_VS_CONN_F_NFCT) &&
-                    !(cp->flags & IP_VS_CONN_F_ONE_PACKET)) {
-                        /* Do not access conntracks during subsys cleanup
-                         * because nf_conntrack_find_get can not be used af=
-ter
-                         * conntrack cleanup for the net.
-                         */
-                        smp_rmb();
-                        if (ipvs->enable)
-                                ip_vs_conn_drop_conntrack(cp);
-                }
-...
-}
-```
-As the code show, only if the condition  (cp->flags & IP_VS_CONN_F_NFCT)
-is true, ip_vs_conn_drop_conntrack will be called.
-So we solve this bug by following steps:
-1) erase the IP_VS_CONN_F_NFCT flag (it is safely because no packets will
-   use the old session)
-2) call ip_vs_conn_expire_now to release the old session, then the related
-   conntrack will not be dropped
-3) then ipvs unnecessary to drop the first syn packet,
-   it just continue to pass the syn packet to the next process,
-   create a new ipvs session, and the new session will related to
-   the old conntrack(which is reopened by conntrack as a new one),
-   the next whole things is just as normal as that the old session
-   isn't used to exist.
+	Such delays occur only on collision, say some
+client IP creates many connections that lead to
+reusing same client port...
 
-This patch has been verified on our thousands of kubernets node servers on =
-Tencent Inc.
-Signed-off-by: YangYuxi <yx.atom1@gmail.com>
----
- net/netfilter/ipvs/ip_vs_core.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+> The root cause is when the old session is expired, the
+> conntrack related to the session is dropped by
+> ip_vs_conn_drop_conntrack. The code is as follows:
+> ```
+> static void ip_vs_conn_expire(struct timer_list *t)
+> {
+> ...
+> 
+>                 if ((cp->flags & IP_VS_CONN_F_NFCT) &&
+>                     !(cp->flags & IP_VS_CONN_F_ONE_PACKET)) {
+>                         /* Do not access conntracks during subsys cleanup
+>                          * because nf_conntrack_find_get can not be used after
+>                          * conntrack cleanup for the net.
+>                          */
+>                         smp_rmb();
+>                         if (ipvs->enable)
+>                                 ip_vs_conn_drop_conntrack(cp);
+>                 }
+> ...
+> }
+> ```
+> As the code show, only if the condition  (cp->flags & IP_VS_CONN_F_NFCT)
+> is true, ip_vs_conn_drop_conntrack will be called.
+> So we solve this bug by following steps:
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_cor=
-e.c
-index aa6a603a2425..2f750145172f 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2086,11 +2086,11 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs=
-, struct sk_buff *skb,
- 		}
-=20
- 		if (resched) {
-+			if (uses_ct)
-+				cp->flags &=3D ~IP_VS_CONN_F_NFCT;
- 			if (!atomic_read(&cp->n_control))
- 				ip_vs_conn_expire_now(cp);
- 			__ip_vs_conn_put(cp);
--			if (uses_ct)
--				return NF_DROP;
- 			cp =3D NULL;
- 		}
- 	}
---=20
-1.8.3.1
+	Not exactly a bug, we do the delay intentionally.
 
+> 1) erase the IP_VS_CONN_F_NFCT flag (it is safely because no packets will
+>    use the old session)
+> 2) call ip_vs_conn_expire_now to release the old session, then the related
+>    conntrack will not be dropped
+
+	The IPVS connection table allows the newly created
+connection to have priority when next packets lookup for
+connection. That is why we delay only when conntracks are
+used. When they are not used, we can create IPVS connection
+to different real server by creating collision in original
+direction in the IPVS table. When reply packet is received
+it will find its connection.
+
+	IPVS does not create duplicate conntracks. When
+packet is received it will hit existing conntrack or
+new conntrack will be created. This is what happens in
+Netfilter in original direction. Note that active FTP
+can create connection also for packet from real server.
+
+	IPVS simply alters the reply tuple while processing
+this first packet and only when conntrack is not confirmed
+yet, because that is the only possible time to insert the
+both tuples into netfilter hash table:
+
+CIP->VIP(orig),VIP->CIP(reply) becomes CIP->VIP,RIP->CIP
+CIP: Client IP, VIP: Virtual IP, RIP: Real Server IP
+
+	After the new reply tuple is determined, it can not
+be changed after the first packet. That is why we have to
+drop the old conntrack. Then, reply direction will match
+packets from the correct real server.
+
+> 3) then ipvs unnecessary to drop the first syn packet,
+>    it just continue to pass the syn packet to the next process,
+>    create a new ipvs session, and the new session will related to
+>    the old conntrack(which is reopened by conntrack as a new one),
+>    the next whole things is just as normal as that the old session
+>    isn't used to exist.
+
+	If we leave the old conntrack, say with reply
+tuple RIP1->CIP but the IPVS scheduling selects different
+RIP2 for the new IPVS connection which uses the old
+conntrack due to the equal original tuple, we create
+inconsistency.
+
+	We can not be sure if admins use connmarks,
+state matching (-m state), passive FTP (which requires
+conntracks in IPVS), so we can not just go and use
+the old conntrack which points to wrong real server.
+
+	How exactly are relayed the reply packets from
+real servers in your tests? Do you have NF SNAT rules to
+translate the source addresses? Also, it will be good
+to know what is the effect on the passive FTP.
+
+> This patch has been verified on our thousands of kubernets node servers on Tencent Inc.
+> Signed-off-by: YangYuxi <yx.atom1@gmail.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_core.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index aa6a603a2425..2f750145172f 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -2086,11 +2086,11 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
+>  		}
+>  
+>  		if (resched) {
+> +			if (uses_ct)
+> +				cp->flags &= ~IP_VS_CONN_F_NFCT;
+>  			if (!atomic_read(&cp->n_control))
+>  				ip_vs_conn_expire_now(cp);
+>  			__ip_vs_conn_put(cp);
+> -			if (uses_ct)
+> -				return NF_DROP;
+>  			cp = NULL;
+>  		}
+>  	}
+> -- 
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+---1463811672-410261613-1591900041=:3254--
