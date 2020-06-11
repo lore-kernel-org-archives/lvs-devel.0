@@ -1,7 +1,7 @@
 From: YangYuxi <yx.atom1@gmail.com>
 Subject: [PATCH] ipvs: avoid drop first packet to reuse conntrack
-Date: Thu, 11 Jun 2020 17:28:49 +0800
-Message-ID: <20200611092849.GA13977@VM_111_229_centos>
+Date: Thu, 11 Jun 2020 18:01:35 +0800
+Message-ID: <20200611100135.GA19243@VM_111_229_centos>
 Mime-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 Return-path: <lvs-devel-owner@vger.kernel.org>
@@ -9,13 +9,13 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=date:from:to:cc:subject:message-id:mime-version:content-disposition
          :content-transfer-encoding:user-agent;
-        bh=fmkKfLlPm1SX8BMYeiTAVz52U85xymHRgcogEW45OFc=;
-        b=eRXeRYytRbgk0t8K5ew0ycWqsjAnG0y0GuRz4voxnDk4ItqDoBcSDcTiOeC0Bo9QlM
-         Qv7yhKisJa/xIQEpoeD2+B4k0uHNmUdJ/2AtTd2GQBUZ0gpXDVQ8Uuym1e/Yuk30LFof
-         N5DRfMhNPJMX7op+kU8nhlAsiY6/HXmb1FtwVkfSsRQfkTqKEVBnRKPEINA0QnTNi02H
-         uoZMpI3gyUlz2m2Ipe+/BvqhGVb/i7EW5qdfp8v2/jw1HclCr0lCIbWZX2xN9JdyDhtB
-         BKR1dAF7smAkJ5a97O1cjFwdHTIliPTbNiOTUEPdGX/F7iCujV4YRyWa63sylKSWGnUD
-         wXDg==
+        bh=hDcJLQph3XEDbqRIioZiQfkn61SbO41SN1rr45lJWyU=;
+        b=sgeBjL7AljP1Pm5YNHqOcaY5kTJdalizz4L7U25FzemzsMt5QR8hQ5bkYmVqEYLA04
+         GLBNSCNKLKVpHpqzcWe8utWPVwopNTKj8Fs6mhRndKR5t2XUtiilw9+nXxhEiUaPGcH7
+         G0UnoyDSHyYx/FonVIS0TZ7kWvL5IVyh/oFV1q3eh5rvIPzFTih03lKOLdszSHOuZgaO
+         B5pt2ECbqKJ6PtcbEDwRTo9hgY/YnLOCuwVImNUA4x2Z007jmAwejXWfqxRGKV2Hl1wb
+         UygYK/0gNrcnr812aBxsaBsbzbhsPPSFL6Aj+5oR1wDKDTUOx/S84T1tC1JjAw+/RihC
+         M37Q==
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -23,12 +23,12 @@ Content-Type: text/plain; charset="iso-8859-1"
 To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org
 Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, yx.atom1@gmail.com
 
-Since commit f719e3754ee ("ipvs: drop first packet
-to redirect conntrack"), when a new TCP connection
-meet the conditions that need reschedule, the first
-syn packet is dropped, this cause one second latency
-for the new connection, more discussion about this
-problem can easy seach from google, such as:
+Since 'commit f719e3754ee2 ("ipvs: drop first packet to
+redirect conntrack")', when a new TCP connection meet
+the conditions that need reschedule, the first syn packet
+is dropped, this cause one second latency for the new
+connection, more discussion about this problem can easy
+search from google, such as:
 
 1)One second connection delay in masque
 https://marc.info/?t=3D151683118100004&r=3D1&w=3D2
