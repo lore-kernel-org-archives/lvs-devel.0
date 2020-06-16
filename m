@@ -1,7 +1,7 @@
 From: YangYuxi <yx.atom1@gmail.com>
 Subject: [PATCH] ipvs: avoid drop first packet by reusing conntrack
-Date: Tue, 16 Jun 2020 16:28:56 +0800
-Message-ID: <20200616082856.GA22668@VM_111_229_centos>
+Date: Tue, 16 Jun 2020 16:39:13 +0800
+Message-ID: <20200616083913.GA24565@VM_111_229_centos>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
@@ -9,13 +9,13 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=date:from:to:cc:subject:message-id:mime-version:content-disposition
          :content-transfer-encoding:user-agent;
-        bh=ee7JBA4N+BXx5f1zTvLNBRShtRkjIFThGXMYifBNrAc=;
-        b=tGwUKJJP8WXY/P5hsPZn8pNVezAGaIgdZt9w3AW6VLNxdX7DYTJzHzl0q+G1bZtnWe
-         S0mVgam1f+VxKz/ei3gUKeGEDJDnmM0LqIOzN7pUynBKXv3XPIZOeUkF8mu8zbV6Z5ZN
-         vzeIVjJm7Ej4BiybplDSWMhXvJj6/NQxr6k6REuKykFZ2YeLGMj+Umq0R2o3jqUeS8kY
-         dx7Pxq3mWNeGLEuT1SUHhZNpmCh7qgSaK4ubN4aPsEqM6dOE5aBHcddvpWXuJOH/L9qO
-         etFha9VDAnKVp5CXgXaLva3YdxlZ0tjL7rPPfyHKOgQigLI5QmDivClue/BZmgx3143F
-         ECEA==
+        bh=eNyPM9X2/i9pWLHov9MJPoK/TIQ2U6l7XteVn9AsQR0=;
+        b=CozLMfRAuUofkWnz2obZsfwA0YsS5mciwWcItUWz1As5SnSe/McX/1OF5r6qbQrVHW
+         z4I5FcEC242ISDEVDSMIjR9fxYMd5USERJLA1LxPyORkVldPKXDqD14zOcnUD41mGSDY
+         Kl+oS6F3uYmvJO9KYGbIXbJa5OM4Wu41m3HQR/LcpquWYNnZ+zysM+u+8bZzM+FUSCe9
+         iPRjnq6elwTajyHkNHk0m8ZDvTmS/8N1HXp3h4HfOBFXYd0Wj1S3a4gIHT+1zqGp9VmE
+         LQ4zjxsTCcLAyHEAVcJmW3+ltNCQAAuOJleeRmtvdeJfOFKwNZB0QsKTtn/sT0Rjs/Ce
+         c+QA==
 Content-Disposition: inline
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -175,7 +175,7 @@ index 83be2d93b407..052fa87d2a44 100644
  {
  	return 0;
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index aa6a603a2425..d1e9af6b5792 100644
+index aa6a603a2425..06d378394619 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
 @@ -2066,7 +2066,7 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
@@ -192,7 +192,7 @@ index aa6a603a2425..d1e9af6b5792 100644
  
  		if (resched) {
 +			if (uses_ct) {
-+				if (unlikely(!atomic_read(&cp->n_control) && !cp->control) &&
++				if (likely(!atomic_read(&cp->n_control) && !cp->control) &&
 +				    likely(sysctl_conn_reuse_old_conntrack(ipvs)))
 +					cp->flags &= ~IP_VS_CONN_F_NFCT;
 +				else
