@@ -1,248 +1,164 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH net-next] ipvs: register hooks only with services
-Date: Sun, 21 Jun 2020 18:40:30 +0300
-Message-ID: <20200621154030.10998-1-ja@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH net-next] ipvs: avoid expiring many connections from timer
+Date: Tue, 30 Jun 2020 17:19:23 +0200
+Message-ID: <20200630151922.GA12560@vergenet.net>
+References: <20200620100355.4364-1-ja@ssi.bg>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Sender: netfilter-devel-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20200620100355.4364-1-ja@ssi.bg>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>
-Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, netfilter-devel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, netfilter-devel@vger.kernel.org, Andrew Sy Kim <kim.andrewsy@gmail.com>
 
-Keep the IPVS hooks registered in Netfilter only
-while there are configured virtual services. This
-saves CPU cycles while IPVS is loaded but not used.
+Hi Julian,
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- include/net/ip_vs.h             |  5 +++
- net/netfilter/ipvs/ip_vs_core.c | 80 ++++++++++++++++++++++++++-------
- net/netfilter/ipvs/ip_vs_ctl.c  | 23 +++++++++-
- 3 files changed, 89 insertions(+), 19 deletions(-)
+sorry for not noticing this earlier.
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index fe96aa462d05..011f407b76fe 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -874,6 +874,7 @@ struct netns_ipvs {
- 	struct ip_vs_stats		tot_stats;  /* Statistics & est. */
- 
- 	int			num_services;    /* no of virtual services */
-+	int			num_services6;   /* IPv6 virtual services */
- 
- 	/* Trash for destinations */
- 	struct list_head	dest_trash;
-@@ -960,6 +961,7 @@ struct netns_ipvs {
- 	 * are not supported when synchronization is enabled.
- 	 */
- 	unsigned int		mixed_address_family_dests;
-+	unsigned int		hooks_afmask;	/* &1=AF_INET, &2=AF_INET6 */
- };
- 
- #define DEFAULT_SYNC_THRESHOLD	3
-@@ -1668,6 +1670,9 @@ static inline void ip_vs_unregister_conntrack(struct ip_vs_service *svc)
- #endif
- }
- 
-+int ip_vs_register_hooks(struct netns_ipvs *ipvs, unsigned int af);
-+void ip_vs_unregister_hooks(struct netns_ipvs *ipvs, unsigned int af);
-+
- static inline int
- ip_vs_dest_conn_overhead(struct ip_vs_dest *dest)
- {
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 517f6a2ac15a..b4a6b7662f3f 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2258,7 +2258,7 @@ ip_vs_forward_icmp_v6(void *priv, struct sk_buff *skb,
- #endif
- 
- 
--static const struct nf_hook_ops ip_vs_ops[] = {
-+static const struct nf_hook_ops ip_vs_ops4[] = {
- 	/* After packet filtering, change source only for VS/NAT */
- 	{
- 		.hook		= ip_vs_reply4,
-@@ -2304,7 +2304,10 @@ static const struct nf_hook_ops ip_vs_ops[] = {
- 		.hooknum	= NF_INET_FORWARD,
- 		.priority	= 100,
- 	},
-+};
-+
- #ifdef CONFIG_IP_VS_IPV6
-+static const struct nf_hook_ops ip_vs_ops6[] = {
- 	/* After packet filtering, change source only for VS/NAT */
- 	{
- 		.hook		= ip_vs_reply6,
-@@ -2350,8 +2353,64 @@ static const struct nf_hook_ops ip_vs_ops[] = {
- 		.hooknum	= NF_INET_FORWARD,
- 		.priority	= 100,
- 	},
--#endif
- };
-+#endif
-+
-+int ip_vs_register_hooks(struct netns_ipvs *ipvs, unsigned int af)
-+{
-+	const struct nf_hook_ops *ops;
-+	unsigned int count;
-+	unsigned int afmask;
-+	int ret = 0;
-+
-+	if (af == AF_INET6) {
-+#ifdef CONFIG_IP_VS_IPV6
-+		ops = ip_vs_ops6;
-+		count = ARRAY_SIZE(ip_vs_ops6);
-+		afmask = 2;
-+#else
-+		return -EINVAL;
-+#endif
-+	} else {
-+		ops = ip_vs_ops4;
-+		count = ARRAY_SIZE(ip_vs_ops4);
-+		afmask = 1;
-+	}
-+
-+	if (!(ipvs->hooks_afmask & afmask)) {
-+		ret = nf_register_net_hooks(ipvs->net, ops, count);
-+		if (ret >= 0)
-+			ipvs->hooks_afmask |= afmask;
-+	}
-+	return ret;
-+}
-+
-+void ip_vs_unregister_hooks(struct netns_ipvs *ipvs, unsigned int af)
-+{
-+	const struct nf_hook_ops *ops;
-+	unsigned int count;
-+	unsigned int afmask;
-+
-+	if (af == AF_INET6) {
-+#ifdef CONFIG_IP_VS_IPV6
-+		ops = ip_vs_ops6;
-+		count = ARRAY_SIZE(ip_vs_ops6);
-+		afmask = 2;
-+#else
-+		return;
-+#endif
-+	} else {
-+		ops = ip_vs_ops4;
-+		count = ARRAY_SIZE(ip_vs_ops4);
-+		afmask = 1;
-+	}
-+
-+	if (ipvs->hooks_afmask & afmask) {
-+		nf_unregister_net_hooks(ipvs->net, ops, count);
-+		ipvs->hooks_afmask &= ~afmask;
-+	}
-+}
-+
- /*
-  *	Initialize IP Virtual Server netns mem.
-  */
-@@ -2427,19 +2486,6 @@ static void __net_exit __ip_vs_cleanup_batch(struct list_head *net_list)
- 	}
- }
- 
--static int __net_init __ip_vs_dev_init(struct net *net)
--{
--	int ret;
--
--	ret = nf_register_net_hooks(net, ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
--	if (ret < 0)
--		goto hook_fail;
--	return 0;
--
--hook_fail:
--	return ret;
--}
--
- static void __net_exit __ip_vs_dev_cleanup_batch(struct list_head *net_list)
- {
- 	struct netns_ipvs *ipvs;
-@@ -2448,7 +2494,8 @@ static void __net_exit __ip_vs_dev_cleanup_batch(struct list_head *net_list)
- 	EnterFunction(2);
- 	list_for_each_entry(net, net_list, exit_list) {
- 		ipvs = net_ipvs(net);
--		nf_unregister_net_hooks(net, ip_vs_ops, ARRAY_SIZE(ip_vs_ops));
-+		ip_vs_unregister_hooks(ipvs, AF_INET);
-+		ip_vs_unregister_hooks(ipvs, AF_INET6);
- 		ipvs->enable = 0;	/* Disable packet reception */
- 		smp_wmb();
- 		ip_vs_sync_net_cleanup(ipvs);
-@@ -2464,7 +2511,6 @@ static struct pernet_operations ipvs_core_ops = {
- };
- 
- static struct pernet_operations ipvs_core_dev_ops = {
--	.init = __ip_vs_dev_init,
- 	.exit_batch = __ip_vs_dev_cleanup_batch,
- };
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 412656c34f20..0eed388c960b 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1272,6 +1272,7 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 	struct ip_vs_scheduler *sched = NULL;
- 	struct ip_vs_pe *pe = NULL;
- 	struct ip_vs_service *svc = NULL;
-+	int ret_hooks = -1;
- 
- 	/* increase the module use count */
- 	if (!ip_vs_use_count_inc())
-@@ -1313,6 +1314,14 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 	}
- #endif
- 
-+	if ((u->af == AF_INET && !ipvs->num_services) ||
-+	    (u->af == AF_INET6 && !ipvs->num_services6)) {
-+		ret = ip_vs_register_hooks(ipvs, u->af);
-+		if (ret < 0)
-+			goto out_err;
-+		ret_hooks = ret;
-+	}
-+
- 	svc = kzalloc(sizeof(struct ip_vs_service), GFP_KERNEL);
- 	if (svc == NULL) {
- 		IP_VS_DBG(1, "%s(): no memory\n", __func__);
-@@ -1374,6 +1383,8 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 	/* Count only IPv4 services for old get/setsockopt interface */
- 	if (svc->af == AF_INET)
- 		ipvs->num_services++;
-+	else if (svc->af == AF_INET6)
-+		ipvs->num_services6++;
- 
- 	/* Hash the service into the service table */
- 	ip_vs_svc_hash(svc);
-@@ -1385,6 +1396,8 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 
- 
-  out_err:
-+	if (ret_hooks >= 0)
-+		ip_vs_unregister_hooks(ipvs, u->af);
- 	if (svc != NULL) {
- 		ip_vs_unbind_scheduler(svc, sched);
- 		ip_vs_service_free(svc);
-@@ -1500,9 +1513,15 @@ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
- 	struct ip_vs_pe *old_pe;
- 	struct netns_ipvs *ipvs = svc->ipvs;
- 
--	/* Count only IPv4 services for old get/setsockopt interface */
--	if (svc->af == AF_INET)
-+	if (svc->af == AF_INET) {
- 		ipvs->num_services--;
-+		if (!ipvs->num_services)
-+			ip_vs_unregister_hooks(ipvs, svc->af);
-+	} else if (svc->af == AF_INET6) {
-+		ipvs->num_services6--;
-+		if (!ipvs->num_services6)
-+			ip_vs_unregister_hooks(ipvs, svc->af);
-+	}
- 
- 	ip_vs_stop_estimator(svc->ipvs, &svc->stats);
- 
--- 
-2.26.2
+On Sat, Jun 20, 2020 at 01:03:55PM +0300, Julian Anastasov wrote:
+> Add new functions ip_vs_conn_del() and ip_vs_conn_del_put()
+> to release many IPVS connections in process context.
+> They are suitable for connections found in table
+> when we do not want to overload the timers.
+> 
+> Currently, the change is useful for the dropentry delayed
+> work but it will be used also in following patch
+> when flushing connections to failed destinations.
+> 
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> ---
+>  net/netfilter/ipvs/ip_vs_conn.c | 53 +++++++++++++++++++++++----------
+>  net/netfilter/ipvs/ip_vs_ctl.c  |  6 ++--
+>  2 files changed, 42 insertions(+), 17 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+> index 02f2f636798d..b3921ae92740 100644
+> --- a/net/netfilter/ipvs/ip_vs_conn.c
+> +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> @@ -807,6 +807,31 @@ static void ip_vs_conn_rcu_free(struct rcu_head *head)
+>  	kmem_cache_free(ip_vs_conn_cachep, cp);
+>  }
+>  
+> +/* Try to delete connection while not holding reference */
+> +static void ip_vs_conn_del(struct ip_vs_conn *cp)
+> +{
+> +	if (del_timer(&cp->timer)) {
+> +		/* Drop cp->control chain too */
+> +		if (cp->control)
+> +			cp->timeout = 0;
+> +		ip_vs_conn_expire(&cp->timer);
+> +	}
+> +}
+> +
+> +/* Try to delete connection while holding reference */
+> +static void ip_vs_conn_del_put(struct ip_vs_conn *cp)
+> +{
+> +	if (del_timer(&cp->timer)) {
+> +		/* Drop cp->control chain too */
+> +		if (cp->control)
+> +			cp->timeout = 0;
+> +		__ip_vs_conn_put(cp);
+> +		ip_vs_conn_expire(&cp->timer);
+> +	} else {
+> +		__ip_vs_conn_put(cp);
+> +	}
+> +}
+> +
+>  static void ip_vs_conn_expire(struct timer_list *t)
+>  {
+>  	struct ip_vs_conn *cp = from_timer(cp, t, timer);
+> @@ -827,14 +852,17 @@ static void ip_vs_conn_expire(struct timer_list *t)
+>  
+>  		/* does anybody control me? */
+>  		if (ct) {
+> +			bool has_ref = !cp->timeout && __ip_vs_conn_get(ct);
+> +
+>  			ip_vs_control_del(cp);
+>  			/* Drop CTL or non-assured TPL if not used anymore */
+> -			if (!cp->timeout && !atomic_read(&ct->n_control) &&
+> +			if (has_ref && !atomic_read(&ct->n_control) &&
+>  			    (!(ct->flags & IP_VS_CONN_F_TEMPLATE) ||
+>  			     !(ct->state & IP_VS_CTPL_S_ASSURED))) {
+>  				IP_VS_DBG(4, "drop controlling connection\n");
+> -				ct->timeout = 0;
+> -				ip_vs_conn_expire_now(ct);
+> +				ip_vs_conn_del_put(ct);
 
+Previously this code did not put the ct, now it does.
+Is that intentional.
+
+> +			} else if (has_ref) {
+> +				__ip_vs_conn_put(ct);
+>  			}
+>  		}
+>  
+> @@ -1317,8 +1345,7 @@ void ip_vs_random_dropentry(struct netns_ipvs *ipvs)
+>  
+>  drop:
+>  			IP_VS_DBG(4, "drop connection\n");
+> -			cp->timeout = 0;
+> -			ip_vs_conn_expire_now(cp);
+> +			ip_vs_conn_del(cp);
+>  		}
+>  		cond_resched_rcu();
+>  	}
+> @@ -1341,19 +1368,15 @@ static void ip_vs_conn_flush(struct netns_ipvs *ipvs)
+>  		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
+>  			if (cp->ipvs != ipvs)
+>  				continue;
+> -			/* As timers are expired in LIFO order, restart
+> -			 * the timer of controlling connection first, so
+> -			 * that it is expired after us.
+> -			 */
+> +			if (atomic_read(&cp->n_control))
+> +				continue;
+>  			cp_c = cp->control;
+> -			/* cp->control is valid only with reference to cp */
+> -			if (cp_c && __ip_vs_conn_get(cp)) {
+> +			IP_VS_DBG(4, "del connection\n");
+> +			ip_vs_conn_del(cp);
+> +			if (cp_c && !atomic_read(&cp_c->n_control)) {
+>  				IP_VS_DBG(4, "del controlling connection\n");
+> -				ip_vs_conn_expire_now(cp_c);
+> -				__ip_vs_conn_put(cp);
+> +				ip_vs_conn_del(cp_c);
+
+Conversely, previously this code put the ct, now it doesn't.
+Is that also intentional?
+
+>  			}
+> -			IP_VS_DBG(4, "del connection\n");
+> -			ip_vs_conn_expire_now(cp);
+>  		}
+>  		cond_resched_rcu();
+>  	}
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index 412656c34f20..1a231f518e3f 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> @@ -224,7 +224,8 @@ static void defense_work_handler(struct work_struct *work)
+>  	update_defense_level(ipvs);
+>  	if (atomic_read(&ipvs->dropentry))
+>  		ip_vs_random_dropentry(ipvs);
+> -	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+> +	queue_delayed_work(system_long_wq, &ipvs->defense_work,
+> +			   DEFENSE_TIMER_PERIOD);
+>  }
+>  #endif
+>  
+> @@ -4063,7 +4064,8 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+>  	ipvs->sysctl_tbl = tbl;
+>  	/* Schedule defense work */
+>  	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
+> -	schedule_delayed_work(&ipvs->defense_work, DEFENSE_TIMER_PERIOD);
+> +	queue_delayed_work(system_long_wq, &ipvs->defense_work,
+> +			   DEFENSE_TIMER_PERIOD);
+>  
+>  	return 0;
+>  }
+> -- 
+> 2.26.2
+> 
