@@ -1,89 +1,44 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: fix the connection sync failed in some cases
-Date: Wed, 15 Jul 2020 20:35:42 +0300 (EEST)
-Message-ID: <alpine.LFD.2.23.451.2007152016420.6034@ja.home.ssi.bg>
-References: <1594796027-66136-1-git-send-email-geffrey.guo@huawei.com>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH net-next] ipvs: queue delayed work to expire no
+ destination connections if expire_nodest_conn=1
+Date: Wed, 15 Jul 2020 20:54:42 +0200
+Message-ID: <20200715185442.GA19665@salvia>
+References: <20200708161245.GB14873@salvia>
+ <20200708161638.13584-1-kim.andrewsy@gmail.com>
+ <alpine.LFD.2.23.451.2007082006311.3373@ja.home.ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1594796027-66136-1-git-send-email-geffrey.guo@huawei.com>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.23.451.2007082006311.3373@ja.home.ssi.bg>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: guodeqing <geffrey.guo@huawei.com>
-Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Andrew Sy Kim <kim.andrewsy@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-
-	Hello,
-
-On Wed, 15 Jul 2020, guodeqing wrote:
-
-> The sync_thread_backup only checks sk_receive_queue is empty or not,
-> there is a situation which cannot sync the connection entries when
-> sk_receive_queue is empty and sk_rmem_alloc is larger than sk_rcvbuf,
-> the sync packets are dropped in __udp_enqueue_schedule_skb, this is
-> because the packets in reader_queue is not read, so the rmem is
-> not reclaimed.
-
-	Good catch. We missed this change in UDP...
-
-> Here I add the check of whether the reader_queue of the udp sock is
-> empty or not to solve this problem.
+On Wed, Jul 08, 2020 at 08:19:55PM +0300, Julian Anastasov wrote:
 > 
-> Fixes: 7c13f97ffde6 ("udp: do fwd memory scheduling on dequeue")
-
-	Why this commit and not 2276f58ac589 which adds
-reader_queue to udp_poll() ? May be both?
-
-> Reported-by: zhouxudong <zhouxudong8@huawei.com>
-> Signed-off-by: guodeqing <geffrey.guo@huawei.com>
-> ---
->  net/netfilter/ipvs/ip_vs_sync.c | 12 ++++++++----
->  1 file changed, 8 insertions(+), 4 deletions(-)
+> 	Hello,
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-> index 605e0f6..abe8d63 100644
-> --- a/net/netfilter/ipvs/ip_vs_sync.c
-> +++ b/net/netfilter/ipvs/ip_vs_sync.c
-> @@ -1717,6 +1717,8 @@ static int sync_thread_backup(void *data)
->  {
->  	struct ip_vs_sync_thread_data *tinfo = data;
->  	struct netns_ipvs *ipvs = tinfo->ipvs;
-> +	struct sock *sk = tinfo->sock->sk;
-> +	struct udp_sock *up = udp_sk(sk);
->  	int len;
->  
->  	pr_info("sync thread started: state = BACKUP, mcast_ifn = %s, "
-> @@ -1724,12 +1726,14 @@ static int sync_thread_backup(void *data)
->  		ipvs->bcfg.mcast_ifn, ipvs->bcfg.syncid, tinfo->id);
->  
->  	while (!kthread_should_stop()) {
-> -		wait_event_interruptible(*sk_sleep(tinfo->sock->sk),
-> -			 !skb_queue_empty(&tinfo->sock->sk->sk_receive_queue)
-> -			 || kthread_should_stop());
-> +		wait_event_interruptible(*sk_sleep(sk),
-> +					 !skb_queue_empty(&sk->sk_receive_queue) ||
-> +					 !skb_queue_empty(&up->reader_queue) ||
+> On Wed, 8 Jul 2020, Andrew Sy Kim wrote:
+> 
+> > When expire_nodest_conn=1 and a destination is deleted, IPVS does not
+> > expire the existing connections until the next matching incoming packet.
+> > If there are many connection entries from a single client to a single
+> > destination, many packets may get dropped before all the connections are
+> > expired (more likely with lots of UDP traffic). An optimization can be
+> > made where upon deletion of a destination, IPVS queues up delayed work
+> > to immediately expire any connections with a deleted destination. This
+> > ensures any reused source ports from a client (within the IPVS timeouts)
+> > are scheduled to new real servers instead of silently dropped.
+> > 
+> > Signed-off-by: Andrew Sy Kim <kim.andrewsy@gmail.com>
+> 
+> 	OK, patch content is same, subject has "ipvs:" prefix,
+> empty line after Signed-off-by is removed, so this patch can
+> be applied without any modifications.
+> 
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
 
-	May be we should use skb_queue_empty_lockless for 5.4+
-and skb_queue_empty() for backports to 4.14 and 4.19...
-
-> +					 kthread_should_stop());
->  
->  		/* do we have data now? */
-> -		while (!skb_queue_empty(&(tinfo->sock->sk->sk_receive_queue))) {
-> +		while (!skb_queue_empty(&sk->sk_receive_queue) ||
-> +		       !skb_queue_empty(&up->reader_queue)) {
-
-	Here too
-
->  			len = ip_vs_receive(tinfo->sock, tinfo->buf,
->  					ipvs->bcfg.sync_maxlen);
->  			if (len <= 0) {
-> -- 
-> 2.7.4
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Applied, thanks.
