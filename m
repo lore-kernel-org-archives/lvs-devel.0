@@ -1,44 +1,49 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH net-next] ipvs: queue delayed work to expire no
- destination connections if expire_nodest_conn=1
-Date: Wed, 15 Jul 2020 20:54:42 +0200
-Message-ID: <20200715185442.GA19665@salvia>
-References: <20200708161245.GB14873@salvia>
- <20200708161638.13584-1-kim.andrewsy@gmail.com>
- <alpine.LFD.2.23.451.2007082006311.3373@ja.home.ssi.bg>
+From: Jakub Kicinski <kuba@kernel.org>
+Subject: Re: [PATCH] ipvs:clean code for ip_vs_sync.c
+Date: Wed, 15 Jul 2020 15:03:36 -0700
+Message-ID: <20200715150336.711be40a@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+References: <1594815519-37044-1-git-send-email-zhouxudong8@huawei.com>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.23.451.2007082006311.3373@ja.home.ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1594850618;
+        bh=fXB7l0f6ZWFmzfoL9BzAn5mG2HBQawkBRn3CF/kBjYE=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=uJcPhYXeuRWwXwftXOPSc9GNSm7M35GZRjr5Gkz0iGPkHxJzLAzHXhf/HvzPiOakH
+         42cvxsahDTIUU78y/zjnhoczujYNt+ua7sxXLFAQNbegGy+KI3L98xB1n6QfIqkN4Z
+         0lb5D5ZxdW+N35l12UJl7pR/c9L49IB4Y0H0bJz0=
+In-Reply-To: <1594815519-37044-1-git-send-email-zhouxudong8@huawei.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Andrew Sy Kim <kim.andrewsy@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: zhouxudong199 <zhouxudong8@huawei.com>
+Cc: wensong@linux-vs.org, horms@verge.net.au, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, rose.chen@huawei.com
 
-On Wed, Jul 08, 2020 at 08:19:55PM +0300, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Wed, 8 Jul 2020, Andrew Sy Kim wrote:
-> 
-> > When expire_nodest_conn=1 and a destination is deleted, IPVS does not
-> > expire the existing connections until the next matching incoming packet.
-> > If there are many connection entries from a single client to a single
-> > destination, many packets may get dropped before all the connections are
-> > expired (more likely with lots of UDP traffic). An optimization can be
-> > made where upon deletion of a destination, IPVS queues up delayed work
-> > to immediately expire any connections with a deleted destination. This
-> > ensures any reused source ports from a client (within the IPVS timeouts)
-> > are scheduled to new real servers instead of silently dropped.
-> > 
-> > Signed-off-by: Andrew Sy Kim <kim.andrewsy@gmail.com>
-> 
-> 	OK, patch content is same, subject has "ipvs:" prefix,
-> empty line after Signed-off-by is removed, so this patch can
-> be applied without any modifications.
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+On Wed, 15 Jul 2020 12:18:39 +0000 zhouxudong199 wrote:
+> Signed-off-by:zhouxudong199 <zhouxudong8@huawei.com>
 
-Applied, thanks.
+Thank you for the patch.
+
+Please describe the changes you're making in the commit message, as far
+as I can tell you're adding missing spaces?
+
+Please read this: https://kernelnewbies.org/KernelJanitors
+and make sure to CC kernel-janitors@vger.kernel.org
+
+Please add a space after ipvs: in the subject and after Signed-off-by:
+
+If you repost please make sure to mark the patch as v2.
+
+> @@ -1232,7 +1232,7 @@ static void ip_vs_process_message(struct netns_ipvs *ipvs, __u8 *buffer,
+>  		msg_end = buffer + sizeof(struct ip_vs_sync_mesg);
+>  		nr_conns = m2->nr_conns;
+>  
+> -		for (i=0; i<nr_conns; i++) {
+> +		for (i=0; i < nr_conns; i++) {
+
+you should probably replace i=0 with i = 0.
+
+>  			union ip_vs_sync_conn *s;
+>  			unsigned int size;
+>  			int retc;
