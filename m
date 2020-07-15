@@ -1,7 +1,7 @@
 From: zhouxudong199 <zhouxudong8@huawei.com>
 Subject: [PATCH] ipvs:clean code for ip_vs_sync.c
-Date: Wed, 15 Jul 2020 12:13:46 +0000
-Message-ID: <1594815226-9768-1-git-send-email-zhouxudong8@huawei.com>
+Date: Wed, 15 Jul 2020 12:18:39 +0000
+Message-ID: <1594815519-37044-1-git-send-email-zhouxudong8@huawei.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Sender: lvs-devel-owner@vger.kernel.org
@@ -9,7 +9,7 @@ List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: wensong@linux-vs.org, horms@verge.net.au
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, zhouxudong8@huawei.com, rose.chen@huawei.com
 
 
 Signed-off-by:zhouxudong199 <zhouxudong8@huawei.com>
