@@ -1,87 +1,89 @@
-From: zhouxudong199 <zhouxudong8@huawei.com>
-Subject: [PATCH] ipvs:clean code for ip_vs_sync.c
-Date: Wed, 15 Jul 2020 12:18:39 +0000
-Message-ID: <1594815519-37044-1-git-send-email-zhouxudong8@huawei.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH] ipvs: fix the connection sync failed in some cases
+Date: Wed, 15 Jul 2020 20:35:42 +0300 (EEST)
+Message-ID: <alpine.LFD.2.23.451.2007152016420.6034@ja.home.ssi.bg>
+References: <1594796027-66136-1-git-send-email-geffrey.guo@huawei.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <1594796027-66136-1-git-send-email-geffrey.guo@huawei.com>
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: wensong@linux-vs.org, horms@verge.net.au
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, zhouxudong8@huawei.com, rose.chen@huawei.com
+To: guodeqing <geffrey.guo@huawei.com>
+Cc: wensong@linux-vs.org, horms@verge.net.au, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
 
-Signed-off-by:zhouxudong199 <zhouxudong8@huawei.com>
----
- net/netfilter/ipvs/ip_vs_sync.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+	Hello,
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 605e0f6..885bab4 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1077,10 +1077,10 @@ static inline int ip_vs_proc_sync_conn(struct netns_ipvs *ipvs, __u8 *p, __u8 *m
- 	struct ip_vs_protocol *pp;
- 	struct ip_vs_conn_param param;
- 	__u32 flags;
--	unsigned int af, state, pe_data_len=0, pe_name_len=0;
--	__u8 *pe_data=NULL, *pe_name=NULL;
--	__u32 opt_flags=0;
--	int retc=0;
-+	unsigned int af, state, pe_data_len = 0, pe_name_len = 0;
-+	__u8 *pe_data = NULL, *pe_name = NULL;
-+	__u32 opt_flags = 0;
-+	int retc = 0;
- 
- 	s = (union ip_vs_sync_conn *) p;
- 
-@@ -1089,7 +1089,7 @@ static inline int ip_vs_proc_sync_conn(struct netns_ipvs *ipvs, __u8 *p, __u8 *m
- 		af = AF_INET6;
- 		p += sizeof(struct ip_vs_sync_v6);
- #else
--		IP_VS_DBG(3,"BACKUP, IPv6 msg received, and IPVS is not compiled for IPv6\n");
-+		IP_VS_DBG(3, "BACKUP, IPv6 msg received, and IPVS is not compiled for IPv6\n");
- 		retc = 10;
- 		goto out;
- #endif
-@@ -1129,7 +1129,7 @@ static inline int ip_vs_proc_sync_conn(struct netns_ipvs *ipvs, __u8 *p, __u8 *m
- 			break;
- 
- 		case IPVS_OPT_PE_NAME:
--			if (ip_vs_proc_str(p, plen,&pe_name_len, &pe_name,
-+			if (ip_vs_proc_str(p, plen, &pe_name_len, &pe_name,
- 					   IP_VS_PENAME_MAXLEN, &opt_flags,
- 					   IPVS_OPT_F_PE_NAME))
- 				return -70;
-@@ -1155,7 +1155,7 @@ static inline int ip_vs_proc_sync_conn(struct netns_ipvs *ipvs, __u8 *p, __u8 *m
- 	if (!(flags & IP_VS_CONN_F_TEMPLATE)) {
- 		pp = ip_vs_proto_get(s->v4.protocol);
- 		if (!pp) {
--			IP_VS_DBG(3,"BACKUP, Unsupported protocol %u\n",
-+			IP_VS_DBG(3, "BACKUP, Unsupported protocol %u\n",
- 				s->v4.protocol);
- 			retc = 30;
- 			goto out;
-@@ -1232,7 +1232,7 @@ static void ip_vs_process_message(struct netns_ipvs *ipvs, __u8 *buffer,
- 		msg_end = buffer + sizeof(struct ip_vs_sync_mesg);
- 		nr_conns = m2->nr_conns;
- 
--		for (i=0; i<nr_conns; i++) {
-+		for (i=0; i < nr_conns; i++) {
- 			union ip_vs_sync_conn *s;
- 			unsigned int size;
- 			int retc;
-@@ -1444,7 +1444,7 @@ static int bind_mcastif_addr(struct socket *sock, struct net_device *dev)
- 	sin.sin_addr.s_addr  = addr;
- 	sin.sin_port         = 0;
- 
--	return sock->ops->bind(sock, (struct sockaddr*)&sin, sizeof(sin));
-+	return sock->ops->bind(sock, (struct sockaddr *)&sin, sizeof(sin));
- }
- 
- static void get_mcast_sockaddr(union ipvs_sockaddr *sa, int *salen,
--- 
-2.6.1.windows.1
+On Wed, 15 Jul 2020, guodeqing wrote:
 
+> The sync_thread_backup only checks sk_receive_queue is empty or not,
+> there is a situation which cannot sync the connection entries when
+> sk_receive_queue is empty and sk_rmem_alloc is larger than sk_rcvbuf,
+> the sync packets are dropped in __udp_enqueue_schedule_skb, this is
+> because the packets in reader_queue is not read, so the rmem is
+> not reclaimed.
 
+	Good catch. We missed this change in UDP...
+
+> Here I add the check of whether the reader_queue of the udp sock is
+> empty or not to solve this problem.
+> 
+> Fixes: 7c13f97ffde6 ("udp: do fwd memory scheduling on dequeue")
+
+	Why this commit and not 2276f58ac589 which adds
+reader_queue to udp_poll() ? May be both?
+
+> Reported-by: zhouxudong <zhouxudong8@huawei.com>
+> Signed-off-by: guodeqing <geffrey.guo@huawei.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_sync.c | 12 ++++++++----
+>  1 file changed, 8 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> index 605e0f6..abe8d63 100644
+> --- a/net/netfilter/ipvs/ip_vs_sync.c
+> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> @@ -1717,6 +1717,8 @@ static int sync_thread_backup(void *data)
+>  {
+>  	struct ip_vs_sync_thread_data *tinfo = data;
+>  	struct netns_ipvs *ipvs = tinfo->ipvs;
+> +	struct sock *sk = tinfo->sock->sk;
+> +	struct udp_sock *up = udp_sk(sk);
+>  	int len;
+>  
+>  	pr_info("sync thread started: state = BACKUP, mcast_ifn = %s, "
+> @@ -1724,12 +1726,14 @@ static int sync_thread_backup(void *data)
+>  		ipvs->bcfg.mcast_ifn, ipvs->bcfg.syncid, tinfo->id);
+>  
+>  	while (!kthread_should_stop()) {
+> -		wait_event_interruptible(*sk_sleep(tinfo->sock->sk),
+> -			 !skb_queue_empty(&tinfo->sock->sk->sk_receive_queue)
+> -			 || kthread_should_stop());
+> +		wait_event_interruptible(*sk_sleep(sk),
+> +					 !skb_queue_empty(&sk->sk_receive_queue) ||
+> +					 !skb_queue_empty(&up->reader_queue) ||
+
+	May be we should use skb_queue_empty_lockless for 5.4+
+and skb_queue_empty() for backports to 4.14 and 4.19...
+
+> +					 kthread_should_stop());
+>  
+>  		/* do we have data now? */
+> -		while (!skb_queue_empty(&(tinfo->sock->sk->sk_receive_queue))) {
+> +		while (!skb_queue_empty(&sk->sk_receive_queue) ||
+> +		       !skb_queue_empty(&up->reader_queue)) {
+
+	Here too
+
+>  			len = ip_vs_receive(tinfo->sock, tinfo->buf,
+>  					ipvs->bcfg.sync_maxlen);
+>  			if (len <= 0) {
+> -- 
+> 2.7.4
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
