@@ -1,65 +1,49 @@
-From: guodeqing <geffrey.guo@huawei.com>
-Subject: [PATCH,v2] ipvs: fix the connection sync failed in some cases
-Date: Thu, 16 Jul 2020 16:12:08 +0800
-Message-ID: <1594887128-7453-1-git-send-email-geffrey.guo@huawei.com>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: Re: =?utf-8?B?562U5aSN?= =?utf-8?Q?=3A?= [PATCH v2] ipvs: clean code
+ for ip_vs_sync.c
+Date: Thu, 16 Jul 2020 13:23:22 +0300
+Message-ID: <20200716102321.GC2549@kadam>
+References: <1594864671-31512-1-git-send-email-zhouxudong8@huawei.com>
+ <20200716024627.GC14742@blackclown>
+ <69D1AB391AAC5746B9ECCF192D064D641A7949E1@DGGEMI521-MBX.china.huawei.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2020-01-29;
+ bh=Xo6gJCrftzSjjyI8wHnqlZSNmzgC4r1alRAMNSQjrDA=;
+ b=ZKOivIHBcnsAGviho7pIIdGRqlzWRZSizzNgERRyF6ELgd5QOkQwOP0Cy7cFU3IR0HJg
+ +FY6jR0MrDasitRQ2b3Wjx4qff/XOOIFiStgx/fczQxo0SOa5uISsC7IK3PQvohQX/Iw
+ ixKEhZaZrGrAxekFb4ETHoqDkGCdPPMIv2o2n8MCCsFSJQG+SS2/MDyC52NM6kHkBvT/
+ HKPArNKm80PbbdNk4ssffv4xgxav1f9L+NFp+0ECyR0pn7M4+vnQYL/1bzA3TQyqM+sJ
+ 9oNUzLQxQcTs0Qz6VUGkwxPwRYauimONqapkZcf4OJUwLfgzi2YchdGzg+l6/6AvDKKP mg== 
+Content-Disposition: inline
+In-Reply-To: <69D1AB391AAC5746B9ECCF192D064D641A7949E1@DGGEMI521-MBX.china.huawei.com>
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: wensong@linux-vs.org
-Cc: horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, geffrey.guo@huawei.com
+To: "Zhouxudong (EulerOS)" <zhouxudong8@huawei.com>
+Cc: Suraj Upadhyay <usuraj35@gmail.com>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "horms@verge.net.au" <horms@verge.net.au>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>, "Chenxiang (EulerOS)" <rose.chen@huawei.com>, "Zhaowei (EulerOS)" <zhaowei23@huawei.com>
 
-The sync_thread_backup only checks sk_receive_queue is empty or not,
-there is a situation which cannot sync the connection entries when
-sk_receive_queue is empty and sk_rmem_alloc is larger than sk_rcvbuf,
-the sync packets are dropped in __udp_enqueue_schedule_skb, this is
-because the packets in reader_queue is not read, so the rmem is
-not reclaimed.
+It's probably better to start somewhere like drivers/staging for clean
+up work.  Networking people are pretty busy with their own things but
+staging is happy to take clean up patches.
 
-Here I add the check of whether the reader_queue of the udp sock is
-empty or not to solve this problem.
+You need to use a proper legal name (like you would for signing
+documents for your From and Signed-off-by.
 
-Fixes: 2276f58ac589 ("udp: use a separate rx queue for packet reception")
-Reported-by: zhouxudong <zhouxudong8@huawei.com>
-Signed-off-by: guodeqing <geffrey.guo@huawei.com>
----
- net/netfilter/ipvs/ip_vs_sync.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+> > @@ -1444,7 +1444,7 @@ static int bind_mcastif_addr(struct socket *sock, struct net_device *dev)
+> >  	sin.sin_addr.s_addr  = addr;
+> >  	sin.sin_port         = 0;
+> 
+> I think you missed this one.
+> should be
+> -        sin.sin_port         = 0;
+> +	 sin.sin_port = 0
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 605e0f6..2b8abbf 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -1717,6 +1717,8 @@ static int sync_thread_backup(void *data)
- {
- 	struct ip_vs_sync_thread_data *tinfo = data;
- 	struct netns_ipvs *ipvs = tinfo->ipvs;
-+	struct sock *sk = tinfo->sock->sk;
-+	struct udp_sock *up = udp_sk(sk);
- 	int len;
- 
- 	pr_info("sync thread started: state = BACKUP, mcast_ifn = %s, "
-@@ -1724,12 +1726,14 @@ static int sync_thread_backup(void *data)
- 		ipvs->bcfg.mcast_ifn, ipvs->bcfg.syncid, tinfo->id);
- 
- 	while (!kthread_should_stop()) {
--		wait_event_interruptible(*sk_sleep(tinfo->sock->sk),
--			 !skb_queue_empty(&tinfo->sock->sk->sk_receive_queue)
--			 || kthread_should_stop());
-+		wait_event_interruptible(*sk_sleep(sk),
-+					 !skb_queue_empty_lockless(&sk->sk_receive_queue) ||
-+					 !skb_queue_empty_lockless(&up->reader_queue) ||
-+					 kthread_should_stop());
- 
- 		/* do we have data now? */
--		while (!skb_queue_empty(&(tinfo->sock->sk->sk_receive_queue))) {
-+		while (!skb_queue_empty_lockless(&sk->sk_receive_queue) ||
-+		       !skb_queue_empty_lockless(&up->reader_queue)) {
- 			len = ip_vs_receive(tinfo->sock, tinfo->buf,
- 					ipvs->bcfg.sync_maxlen);
- 			if (len <= 0) {
--- 
-2.7.4
+That was done deliberately.  Just leave that one as-is, please.
+
+regards,
+dan carpenter
 
