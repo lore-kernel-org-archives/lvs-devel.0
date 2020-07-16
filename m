@@ -1,49 +1,49 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: Re: =?utf-8?B?562U5aSN?= =?utf-8?Q?=3A?= [PATCH v2] ipvs: clean code
- for ip_vs_sync.c
-Date: Thu, 16 Jul 2020 13:23:22 +0300
-Message-ID: <20200716102321.GC2549@kadam>
-References: <1594864671-31512-1-git-send-email-zhouxudong8@huawei.com>
- <20200716024627.GC14742@blackclown>
- <69D1AB391AAC5746B9ECCF192D064D641A7949E1@DGGEMI521-MBX.china.huawei.com>
+From: Andrew Sy Kim <kim.andrewsy@gmail.com>
+Subject: [PATCH net-next] ipvs: ensure RCU read unlock when connection flushing and ipvs is disabled
+Date: Thu, 16 Jul 2020 13:03:14 -0400
+Message-ID: <20200716170314.9617-1-kim.andrewsy@gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : references : mime-version : content-type :
- in-reply-to; s=corp-2020-01-29;
- bh=Xo6gJCrftzSjjyI8wHnqlZSNmzgC4r1alRAMNSQjrDA=;
- b=ZKOivIHBcnsAGviho7pIIdGRqlzWRZSizzNgERRyF6ELgd5QOkQwOP0Cy7cFU3IR0HJg
- +FY6jR0MrDasitRQ2b3Wjx4qff/XOOIFiStgx/fczQxo0SOa5uISsC7IK3PQvohQX/Iw
- ixKEhZaZrGrAxekFb4ETHoqDkGCdPPMIv2o2n8MCCsFSJQG+SS2/MDyC52NM6kHkBvT/
- HKPArNKm80PbbdNk4ssffv4xgxav1f9L+NFp+0ECyR0pn7M4+vnQYL/1bzA3TQyqM+sJ
- 9oNUzLQxQcTs0Qz6VUGkwxPwRYauimONqapkZcf4OJUwLfgzi2YchdGzg+l6/6AvDKKP mg== 
-Content-Disposition: inline
-In-Reply-To: <69D1AB391AAC5746B9ECCF192D064D641A7949E1@DGGEMI521-MBX.china.huawei.com>
-Sender: lvs-devel-owner@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=+cTYKrIZGIZVopU+BckUssD7pZ9lKGNH0yEl3jPyoXM=;
+        b=X0m5FsJRJcZvg+C03g6IVxn4mV5SvH+bqDqn8BmS1O44A3Q89s7vwJt6iXTn06Mk9f
+         BCCMsuyp/R1k8p+tCjgrloI0iJSwfXy+ButeOdWUsBSjjzIVlTpWydjbe+3/2JuObISJ
+         aLrKGp+aag4KtfUiHdpIb3DlMSxb8Ci/SSkNGURI+nBIfEo9rbVJdEubjYjU/HvDUycl
+         t2SNi6R4yPw66MxhjmgE0I7SE5PxteqDx0OkISzEI1BOZp/t+r0u+3ucy69Tz7EjN7dB
+         z3OLo1qxmT2+lBxVV627iEQnBmJgk4ovlaDHrRI2pktc5lDhGEOU0Gwn0s+u6JNN/90U
+         SiTA==
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: "Zhouxudong (EulerOS)" <zhouxudong8@huawei.com>
-Cc: Suraj Upadhyay <usuraj35@gmail.com>, "wensong@linux-vs.org" <wensong@linux-vs.org>, "horms@verge.net.au" <horms@verge.net.au>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>, "Chenxiang (EulerOS)" <rose.chen@huawei.com>, "Zhaowei (EulerOS)" <zhaowei23@huawei.com>
+To: 
+Cc: Julian Anastasov <ja@ssi.bg>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Andrew Sy Kim <kim.andrewsy@gmail.com>
 
-It's probably better to start somewhere like drivers/staging for clean
-up work.  Networking people are pretty busy with their own things but
-staging is happy to take clean up patches.
+When ipvs is disabled in ip_vs_expire_nodest_conn_flush,
+we should break instead of return so that rcu_read_unlock()
+is run.
 
-You need to use a proper legal name (like you would for signing
-documents for your From and Signed-off-by.
+Signed-off-by: Andrew Sy Kim <kim.andrewsy@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_conn.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> > @@ -1444,7 +1444,7 @@ static int bind_mcastif_addr(struct socket *sock, struct net_device *dev)
-> >  	sin.sin_addr.s_addr  = addr;
-> >  	sin.sin_port         = 0;
-> 
-> I think you missed this one.
-> should be
-> -        sin.sin_port         = 0;
-> +	 sin.sin_port = 0
-
-That was done deliberately.  Just leave that one as-is, please.
-
-regards,
-dan carpenter
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index a5e9b2d55e57..a90b8eac16ac 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1422,7 +1422,7 @@ void ip_vs_expire_nodest_conn_flush(struct netns_ipvs *ipvs)
+ 
+ 		/* netns clean up started, abort delayed work */
+ 		if (!ipvs->enable)
+-			return;
++			break;
+ 	}
+ 	rcu_read_unlock();
+ }
+-- 
+2.20.1
 
