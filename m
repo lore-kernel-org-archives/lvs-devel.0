@@ -1,47 +1,54 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: [PATCH net-next] ipvs: missing unlock in
- ip_vs_expire_nodest_conn_flush()
-Date: Fri, 17 Jul 2020 17:10:29 +0300
-Message-ID: <20200717141029.GA21445@mwanda>
+From: Randy Dunlap <rdunlap@infradead.org>
+Subject: Re: mmotm 2020-07-16-22-52 uploaded (net: IPVS)
+Date: Fri, 17 Jul 2020 08:30:04 -0700
+Message-ID: <88196a8a-2778-0324-8005-d63bfee86c4e@infradead.org>
+References: <20200717055300.ObseZH9Vs%akpm@linux-foundation.org>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : mime-version : content-type; s=corp-2020-01-29;
- bh=Mv5dydH0r53hroQIradq8z6oy8JvVlHpZdHz/hKyd3A=;
- b=0ie1bOU7QvEoU/mGpDVdqzu7MmqJbqPFBT215/ITEkS5khJWLwgZ6tOWk1Yh1u2pzP3p
- UflvG7CDFEfaC+Hmrn/xOoGYNwdqGskK5ZjZGAtatexaB18yM8u3HQPDSl9sm9EyDl5d
- hrUH837hBd6Wvq3GFmNnIyzaFs/Cvoz66CQe5velV1/zir6458ZfkjTGNQCRsSKGw4tX
- 737YqQns4WemWhXaRC0bhIsvmpEBt2aEq5O9NcZT+sCZBvNrtmX6hKvaxcpcpitBbmIv
- 5WuJCL5MsBL6mHkOZ/CPsNaAmORF5gOPBGiyUV00cFHf39h1mVQcqUVyuwcVyv8o8hgs uA== 
-Content-Disposition: inline
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=merlin.20170209; h=Content-Transfer-Encoding:Content-Type:
+        In-Reply-To:MIME-Version:Date:Message-ID:From:References:To:Subject:Sender:
+        Reply-To:Cc:Content-ID:Content-Description;
+        bh=u0q4qCWNv+qhE3ZrdRgzxfegk6XFeYyskQE8fOwRrRs=; b=SggPwLXPaF9DbxaOh0Zz/ED/P0
+        6gGiwOd2aUZmcH8TeJ6sct16sXyqz48zefFf2DfupKuLBLJojH900LWWGxhSxVAy2sARrGwWcy8wH
+        jDLrEdl0NXk2QgfW8TbtMaXRWrsYrwusbL1lGvgvaG0uMaYBAlRYr0VgwsFZoQpsQriF2SsFn5JtS
+        Qf6FjTErWY8Xx4qdJXtxVBYT6WYwWUVkymSpHpVEN0866rVKg/kuR+D1v/X/J/VAiV6sdAKkvaRN0
+        QPRYBbqsfp/7Ce1tybB0g4fTb5YX7hc4Tc9+Y0BSPB2k+DRRLzwDq2mk+ltrZ/j+2GOnZqW6Gsmi6
+        wNHWnKEg==;
+In-Reply-To: <20200717055300.ObseZH9Vs%akpm@linux-foundation.org>
+Content-Language: en-US
 Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Wensong Zhang <wensong@linux-vs.org>
-Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Jakub Kicinski <kuba@kernel.org>, Andrew Sy Kim <kim.andrewsy@gmail.com>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, kernel-janitors@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+To: Andrew Morton <akpm@linux-foundation.org>, broonie@kernel.org, linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, linux-mm@kvack.org, linux-next@vger.kernel.org, mhocko@suse.cz, mm-commits@vger.kernel.org, sfr@canb.auug.org.au, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
 
-We can't return without calling rcu_read_unlock().
+On 7/16/20 10:53 PM, Andrew Morton wrote:
+> The mm-of-the-moment snapshot 2020-07-16-22-52 has been uploaded to
+> 
+>    http://www.ozlabs.org/~akpm/mmotm/
+> 
+> mmotm-readme.txt says
+> 
+> README for mm-of-the-moment:
+> 
+> http://www.ozlabs.org/~akpm/mmotm/
+> 
+> This is a snapshot of my -mm patch queue.  Uploaded at random hopefully
+> more than once a week.
+> 
 
-Fixes: 04231e52d355 ("ipvs: queue delayed work to expire no destination connections if expire_nodest_conn=1")
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
----
- net/netfilter/ipvs/ip_vs_conn.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+(also in linux-next)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index a5e9b2d55e57..a90b8eac16ac 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1422,7 +1422,7 @@ void ip_vs_expire_nodest_conn_flush(struct netns_ipvs *ipvs)
- 
- 		/* netns clean up started, abort delayed work */
- 		if (!ipvs->enable)
--			return;
-+			break;
- 	}
- 	rcu_read_unlock();
- }
+Many of these errors:
+
+In file included from ../net/netfilter/ipvs/ip_vs_conn.c:37:0:
+../include/net/ip_vs.h: In function ‘ip_vs_enqueue_expire_nodest_conns’:
+../include/net/ip_vs.h:1536:61: error: parameter name omitted
+ static inline void ip_vs_enqueue_expire_nodest_conns(struct netns_ipvs) {}
+                                                             ^~~~~~~~~~
+
+
 -- 
-2.27.0
-
+~Randy
+Reported-by: Randy Dunlap <rdunlap@infradead.org>
