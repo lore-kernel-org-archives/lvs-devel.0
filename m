@@ -1,168 +1,133 @@
-From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-Subject: [PATCH 03/24] net: add a new sockptr_t type
-Date: Mon, 20 Jul 2020 14:47:16 +0200
-Message-ID: <20200720124737.118617-4-hch@lst.de>
-References: <20200720124737.118617-1-hch@lst.de>
+From: Christoph Hellwig <hch@lst.de>
+Subject: get rid of the address_space override in setsockopt
+Date: Mon, 20 Jul 2020 14:47:13 +0200
+Message-ID: <20200720124737.118617-1-hch@lst.de>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=v9KgsOSWea1bJKFDijg05Yu/Lxnc3rcc50PR6ELHK4E=; b=MadyBZx0Wf8x+2kw7O1nJxOIOd
-        FbU4MH1JyD5v78V7lQ/HRw45yXpPVs9JO/G+kH4DiN1QWFmw0WGQv/S2d22ogQPe/4gqcuswjDMxD
-        UA+RyowobKCKhwuLpSB8o4bKj8XVpqEmqj4r0KjhkUO/Xe3omvaNi1zO6Mu7Ul5xJ63b84wq7p4uE
-        igF3dMEhdDGLmF1UIoeXtgDt60qeorgzwuf6irI/HPydWG6GGi42y2nO3TPoyuU57ddcRPRbw8sYq
-        A124JUfae++O65R5yqh735FbvAIm2bAY6i4tx8g4ymy/GWe+BCXCPTa9ItoQv2rd6m2uecW1hKmJ+
-        VToa8WXQ==;
-In-Reply-To: <20200720124737.118617-1-hch-jcswGhMUV9g@public.gmane.org>
-Sender: linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+        Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
+        Content-Description:In-Reply-To:References;
+        bh=sKdt4hAbq/6qTa3tcNwXdqjggNwHsw7uOZ08Rf6czhk=; b=f5LLAO7/F+nm+9Gl7hfXp/Kox6
+        sXYuhXb2vkgDyYkwVEurXeRexxngk9Z2EHCb20Vm6cwQC0KkAdtVybwIWUYKPlRMRbsnYlZua+VzZ
+        Flsm7I6zi4O+te18djow1qkD4y6zW7eB+vdqOWXQqe40sAYXmcza0z+HCA79DX9OmZGLOhLwGhUFN
+        CkZ0dvcn3v1XJU220Xc46sbrIANYMzqY/4cDFUBrys3agNAh/rnUNwi19G0yCy4iST/MAWBuDJTgy
+        eAg7vhunPFR2F7DJnQOtye3bthglFnmml2ORTej2iPJzY9HBiUQo5UMJaII7PCL4D2XJQPwFgvOnM
+        oJ/gmolA==;
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Alexei Starovoitov <ast-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Daniel Borkmann <daniel-FeC+5ew28dpmcu3hnIyYJQ@public.gmane.org>, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
-Cc: linux-crypto-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bpf-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, coreteam-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-bluetooth-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bridge-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, linux-can-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, dccp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-decnet-user-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-wpan-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-s390-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, mptcp-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, lvs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, tipc-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
-Add a uptr_t type that can hold a pointer to either a user or kernel
-memory region, and simply helpers to copy to and from it.  For
-architectures like x86 that have non-overlapping user and kernel
-address space it just is a union and uses a TASK_SIZE check to
-select the proper copy routine.  For architectures with overlapping
-address spaces a flag to indicate the address space is used instead.
+Hi Dave,
 
-Signed-off-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
----
- include/linux/sockptr.h | 121 ++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 121 insertions(+)
- create mode 100644 include/linux/sockptr.h
+setsockopt is the last place in architecture-independ code that still
+uses set_fs to force the uaccess routines to operate on kernel pointers.
 
-diff --git a/include/linux/sockptr.h b/include/linux/sockptr.h
-new file mode 100644
-index 00000000000000..e41dfa52555dec
---- /dev/null
-+++ b/include/linux/sockptr.h
-@@ -0,0 +1,121 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+/*
-+ * Copyright (c) 2020 Christoph Hellwig.
-+ *
-+ * Support for "universal" pointers that can point to either kernel or userspace
-+ * memory.
-+ */
-+#ifndef _LINUX_SOCKPTR_H
-+#define _LINUX_SOCKPTR_H
-+
-+#include <linux/slab.h>
-+#include <linux/uaccess.h>
-+
-+#ifdef CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE
-+typedef union {
-+	void		*kernel;
-+	void __user	*user;
-+} sockptr_t;
-+
-+static inline bool sockptr_is_kernel(sockptr_t sockptr)
-+{
-+	return (unsigned long)sockptr.kernel >= TASK_SIZE;
-+}
-+
-+static inline sockptr_t KERNEL_SOCKPTR(void *p)
-+{
-+	return (sockptr_t) { .kernel = p };
-+}
-+#else /* CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE */
-+typedef struct {
-+	union {
-+		void		*kernel;
-+		void __user	*user;
-+	};
-+	bool		is_kernel : 1;
-+} sockptr_t;
-+
-+static inline bool sockptr_is_kernel(sockptr_t sockptr)
-+{
-+	return sockptr.is_kernel;
-+}
-+
-+static inline sockptr_t KERNEL_SOCKPTR(void *p)
-+{
-+	return (sockptr_t) { .kernel = p, .is_kernel = true };
-+}
-+#endif /* CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE */
-+
-+static inline sockptr_t USER_SOCKPTR(void __user *p)
-+{
-+	return (sockptr_t) { .user = p };
-+}
-+
-+static inline bool sockptr_is_null(sockptr_t sockptr)
-+{
-+	return !sockptr.user && !sockptr.kernel;
-+}
-+
-+static inline int copy_from_sockptr(void *dst, sockptr_t src, size_t size)
-+{
-+	if (!sockptr_is_kernel(src))
-+		return copy_from_user(dst, src.user, size);
-+	memcpy(dst, src.kernel, size);
-+	return 0;
-+}
-+
-+static inline int copy_to_sockptr(sockptr_t dst, const void *src, size_t size)
-+{
-+	if (!sockptr_is_kernel(dst))
-+		return copy_to_user(dst.user, src, size);
-+	memcpy(dst.kernel, src, size);
-+	return 0;
-+}
-+
-+static inline void *memdup_sockptr(sockptr_t src, size_t len)
-+{
-+	void *p = kmalloc_track_caller(len, GFP_USER | __GFP_NOWARN);
-+
-+	if (!p)
-+		return ERR_PTR(-ENOMEM);
-+	if (copy_from_sockptr(p, src, len)) {
-+		kfree(p);
-+		return ERR_PTR(-EFAULT);
-+	}
-+	return p;
-+}
-+
-+static inline void *memdup_sockptr_nul(sockptr_t src, size_t len)
-+{
-+	char *p = kmalloc_track_caller(len + 1, GFP_KERNEL);
-+
-+	if (!p)
-+		return ERR_PTR(-ENOMEM);
-+	if (copy_from_sockptr(p, src, len)) {
-+		kfree(p);
-+		return ERR_PTR(-EFAULT);
-+	}
-+	p[len] = '\0';
-+	return p;
-+}
-+
-+static inline void sockptr_advance(sockptr_t sockptr, size_t len)
-+{
-+	if (sockptr_is_kernel(sockptr))
-+		sockptr.kernel += len;
-+	else
-+		sockptr.user += len;
-+}
-+
-+static inline long strncpy_from_sockptr(char *dst, sockptr_t src, size_t count)
-+{
-+	if (sockptr_is_kernel(src)) {
-+		size_t len = min(strnlen(src.kernel, count - 1) + 1, count);
-+
-+		memcpy(dst, src.kernel, len);
-+		return len;
-+	}
-+	return strncpy_from_user(dst, src.user, count);
-+}
-+
-+#endif /* _LINUX_SOCKPTR_H */
--- 
-2.27.0
+This series adds a new sockptr_t type that can contained either a kernel
+or user pointer, and which has accessors that do the right thing, and
+then uses it for setsockopt, starting by refactoring some low-level
+helpers and moving them over to it before finally doing the main
+setsockopt method.
 
+Note that I could not get the eBPF selftests to work, so this has been
+tested with a testing patch that always copies the data first and passes
+a kernel pointer.  This is something that works for most common sockopts
+(and is something that the ePBF support relies on), but unfortunately
+in various corner cases we either don't use the passed in length, or in
+one case actually copy data back from setsockopt, so we unfortunately
+can't just always do the copy in the highlevel code, which would have
+been much nicer.
+
+
+Diffstt:
+ crypto/af_alg.c                           |    7 
+ drivers/crypto/chelsio/chtls/chtls_main.c |   18 -
+ drivers/isdn/mISDN/socket.c               |    4 
+ include/linux/bpfilter.h                  |    6 
+ include/linux/filter.h                    |    3 
+ include/linux/mroute.h                    |    5 
+ include/linux/mroute6.h                   |    8 
+ include/linux/net.h                       |    4 
+ include/linux/netfilter.h                 |    6 
+ include/linux/netfilter/x_tables.h        |    4 
+ include/linux/sockptr.h                   |  121 +++++++++++
+ include/net/inet_connection_sock.h        |    3 
+ include/net/ip.h                          |    7 
+ include/net/ipv6.h                        |    6 
+ include/net/sctp/structs.h                |    2 
+ include/net/sock.h                        |    7 
+ include/net/tcp.h                         |    6 
+ include/net/udp.h                         |    2 
+ include/net/xfrm.h                        |    8 
+ net/atm/common.c                          |    6 
+ net/atm/common.h                          |    2 
+ net/atm/pvc.c                             |    2 
+ net/atm/svc.c                             |    6 
+ net/ax25/af_ax25.c                        |    6 
+ net/bluetooth/hci_sock.c                  |    8 
+ net/bluetooth/l2cap_sock.c                |   22 +-
+ net/bluetooth/rfcomm/sock.c               |   12 -
+ net/bluetooth/sco.c                       |    6 
+ net/bpfilter/bpfilter_kern.c              |   11 -
+ net/bridge/netfilter/ebtables.c           |   46 +---
+ net/caif/caif_socket.c                    |    8 
+ net/can/j1939/socket.c                    |   12 -
+ net/can/raw.c                             |   16 -
+ net/core/filter.c                         |    6 
+ net/core/sock.c                           |   36 +--
+ net/dccp/dccp.h                           |    2 
+ net/dccp/proto.c                          |   20 -
+ net/decnet/af_decnet.c                    |   13 -
+ net/ieee802154/socket.c                   |    6 
+ net/ipv4/bpfilter/sockopt.c               |    8 
+ net/ipv4/ip_options.c                     |   43 +---
+ net/ipv4/ip_sockglue.c                    |   66 +++---
+ net/ipv4/ipmr.c                           |   14 -
+ net/ipv4/netfilter/arp_tables.c           |   33 +--
+ net/ipv4/netfilter/ip_tables.c            |   29 +-
+ net/ipv4/raw.c                            |    8 
+ net/ipv4/tcp.c                            |   30 +-
+ net/ipv4/tcp_ipv4.c                       |    4 
+ net/ipv4/udp.c                            |   11 -
+ net/ipv4/udp_impl.h                       |    4 
+ net/ipv6/ip6_flowlabel.c                  |  317 ++++++++++++++++--------------
+ net/ipv6/ip6mr.c                          |   17 -
+ net/ipv6/ipv6_sockglue.c                  |  203 +++++++++----------
+ net/ipv6/netfilter/ip6_tables.c           |   28 +-
+ net/ipv6/raw.c                            |   10 
+ net/ipv6/tcp_ipv6.c                       |    4 
+ net/ipv6/udp.c                            |    7 
+ net/ipv6/udp_impl.h                       |    4 
+ net/iucv/af_iucv.c                        |    4 
+ net/kcm/kcmsock.c                         |    6 
+ net/l2tp/l2tp_ppp.c                       |    4 
+ net/llc/af_llc.c                          |    4 
+ net/mptcp/protocol.c                      |   12 -
+ net/netfilter/ipvs/ip_vs_ctl.c            |    4 
+ net/netfilter/nf_sockopt.c                |    2 
+ net/netfilter/x_tables.c                  |   20 -
+ net/netlink/af_netlink.c                  |    4 
+ net/netrom/af_netrom.c                    |    4 
+ net/nfc/llcp_sock.c                       |    6 
+ net/packet/af_packet.c                    |   39 +--
+ net/phonet/pep.c                          |    4 
+ net/rds/af_rds.c                          |   30 +-
+ net/rds/rdma.c                            |   14 -
+ net/rds/rds.h                             |    6 
+ net/rose/af_rose.c                        |    4 
+ net/rxrpc/af_rxrpc.c                      |    8 
+ net/rxrpc/ar-internal.h                   |    4 
+ net/rxrpc/key.c                           |    9 
+ net/sctp/socket.c                         |    4 
+ net/smc/af_smc.c                          |    4 
+ net/socket.c                              |   20 -
+ net/tipc/socket.c                         |    8 
+ net/tls/tls_main.c                        |   17 -
+ net/vmw_vsock/af_vsock.c                  |    4 
+ net/x25/af_x25.c                          |    4 
+ net/xdp/xsk.c                             |    8 
+ net/xfrm/xfrm_state.c                     |    6 
+ 87 files changed, 855 insertions(+), 721 deletions(-)
