@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 10/24] netfilter: switch xt_copy_counters to sockptr_t
-Date: Mon, 20 Jul 2020 14:47:23 +0200
-Message-ID: <20200720124737.118617-11-hch@lst.de>
+Subject: [PATCH 08/24] net/xfrm: switch xfrm_user_policy to sockptr_t
+Date: Mon, 20 Jul 2020 14:47:21 +0200
+Message-ID: <20200720124737.118617-9-hch@lst.de>
 References: <20200720124737.118617-1-hch@lst.de>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -10,12 +10,12 @@ DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=BXIWlOxxLGAwEkybRtLTw7LIxC9f35ukkZ5P3mQ+S3I=; b=kknbEvF359Bd6tXs5m6v0Bn7Ko
-        vYBhFcZbo5m2EyzEZQSROToEVfvd7U8AhbFyTHl9tBHPHBpn+o06EGL26u8zK84fwOqTG2nwOTyuy
-        /ww4G31fRlSvc8af//hFPJZq9EbHojgpRpTqOszBhMu0hLLrSpMAT8x41hg8Ewk86gOq82WD5rvCA
-        gXK0QpfDMrdhD2r7iYAIAAkoDis+eFcYhp8PGOQVSN5RkG7Mk0F6HEa0t8a0MydisW7a9HUhiIFoo
-        Z7pExtU3rAtnoGUKv+TyOO/Cf/7kDtzI9zMIITcsA5ywQPTi+jPfu4KWisp4vKX5fqHM0Ji5cy75r
-        T85wpX2w==;
+        bh=VrJsDbKvFjfbSXAuB6qr8lwEWZVDG/rFKzbYqdXTQsw=; b=YLVw7zkAKjTv3IGYFSz+Y5hnjy
+        Mvg5nzJe+f6RLbr17FreulcNlPa/3tva7Hcq4TnkiegyTM7VB07RS3DW/f7M4kny34j81uZj0lqE9
+        1WZMmlhCDNNPD2CeOV0XtKV0xTg00HWidTw7ryT5sxt2ZTMTiflfU1O8hCH320Rv1IbXtilvlOqva
+        FND0AMDpxmiYWtSsupQow/oRZIWPBKol1iCO4x/tsZbmXGvRBcMWh+wnQBolSEWlrhOb9lSnLAAgU
+        T9tPf5mRSDzGq0T8A/H8wC3NGjD4LqqqNH9SAHJ6FNqb3Kv2r3OsODXHdi4ep6fnIUSDRPs2oMz4f
+        Gong/w1g==;
 In-Reply-To: <20200720124737.118617-1-hch@lst.de>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -28,194 +28,98 @@ pointer from bpf-cgroup.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/netfilter/x_tables.h |  4 ++--
- net/ipv4/netfilter/arp_tables.c    |  7 +++----
- net/ipv4/netfilter/ip_tables.c     |  7 +++----
- net/ipv6/netfilter/ip6_tables.c    |  6 +++---
- net/netfilter/x_tables.c           | 20 ++++++++++----------
- 5 files changed, 21 insertions(+), 23 deletions(-)
+ include/net/xfrm.h       | 8 +++++---
+ net/ipv4/ip_sockglue.c   | 3 ++-
+ net/ipv6/ipv6_sockglue.c | 3 ++-
+ net/xfrm/xfrm_state.c    | 6 +++---
+ 4 files changed, 12 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/netfilter/x_tables.h b/include/linux/netfilter/x_tables.h
-index b8b943ee7b8b66..5deb099d156dcb 100644
---- a/include/linux/netfilter/x_tables.h
-+++ b/include/linux/netfilter/x_tables.h
-@@ -301,8 +301,8 @@ int xt_target_to_user(const struct xt_entry_target *t,
- int xt_data_to_user(void __user *dst, const void *src,
- 		    int usersize, int size, int aligned_size);
+diff --git a/include/net/xfrm.h b/include/net/xfrm.h
+index f9e1fda82ddfc0..5e81868b574a73 100644
+--- a/include/net/xfrm.h
++++ b/include/net/xfrm.h
+@@ -15,6 +15,7 @@
+ #include <linux/audit.h>
+ #include <linux/slab.h>
+ #include <linux/refcount.h>
++#include <linux/sockptr.h>
  
--void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
--				 struct xt_counters_info *info);
-+void *xt_copy_counters(sockptr_t arg, unsigned int len,
-+		       struct xt_counters_info *info);
- struct xt_counters *xt_counters_alloc(unsigned int counters);
+ #include <net/sock.h>
+ #include <net/dst.h>
+@@ -1609,10 +1610,11 @@ int xfrm6_find_1stfragopt(struct xfrm_state *x, struct sk_buff *skb,
+ void xfrm6_local_rxpmtu(struct sk_buff *skb, u32 mtu);
+ int xfrm4_udp_encap_rcv(struct sock *sk, struct sk_buff *skb);
+ int xfrm6_udp_encap_rcv(struct sock *sk, struct sk_buff *skb);
+-int xfrm_user_policy(struct sock *sk, int optname,
+-		     u8 __user *optval, int optlen);
++int xfrm_user_policy(struct sock *sk, int optname, sockptr_t optval,
++		     int optlen);
+ #else
+-static inline int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen)
++static inline int xfrm_user_policy(struct sock *sk, int optname,
++				   sockptr_t optval, int optlen)
+ {
+  	return -ENOPROTOOPT;
+ }
+diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
+index a5ea02d7a183eb..da933f99b5d517 100644
+--- a/net/ipv4/ip_sockglue.c
++++ b/net/ipv4/ip_sockglue.c
+@@ -1322,7 +1322,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
+ 		err = -EPERM;
+ 		if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
+ 			break;
+-		err = xfrm_user_policy(sk, optname, optval, optlen);
++		err = xfrm_user_policy(sk, optname, USER_SOCKPTR(optval),
++				       optlen);
+ 		break;
  
- struct xt_table *xt_register_table(struct net *net,
-diff --git a/net/ipv4/netfilter/arp_tables.c b/net/ipv4/netfilter/arp_tables.c
-index 2c8a4dad39d748..6d24b686c7f00a 100644
---- a/net/ipv4/netfilter/arp_tables.c
-+++ b/net/ipv4/netfilter/arp_tables.c
-@@ -996,8 +996,7 @@ static int do_replace(struct net *net, const void __user *user,
- 	return ret;
+ 	case IP_TRANSPARENT:
+diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
+index add8f791229945..56a74707c61741 100644
+--- a/net/ipv6/ipv6_sockglue.c
++++ b/net/ipv6/ipv6_sockglue.c
+@@ -935,7 +935,8 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
+ 		retv = -EPERM;
+ 		if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+ 			break;
+-		retv = xfrm_user_policy(sk, optname, optval, optlen);
++		retv = xfrm_user_policy(sk, optname, USER_SOCKPTR(optval),
++					optlen);
+ 		break;
+ 
+ 	case IPV6_ADDR_PREFERENCES:
+diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
+index 8be2d926acc21d..69520ad3d83bfb 100644
+--- a/net/xfrm/xfrm_state.c
++++ b/net/xfrm/xfrm_state.c
+@@ -2264,7 +2264,7 @@ static bool km_is_alive(const struct km_event *c)
+ 	return is_alive;
  }
  
--static int do_add_counters(struct net *net, const void __user *user,
--			   unsigned int len)
-+static int do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
+-int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen)
++int xfrm_user_policy(struct sock *sk, int optname, sockptr_t optval, int optlen)
  {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1008,7 +1007,7 @@ static int do_add_counters(struct net *net, const void __user *user,
- 	struct arpt_entry *iter;
- 	unsigned int addend;
+ 	int err;
+ 	u8 *data;
+@@ -2274,7 +2274,7 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
+ 	if (in_compat_syscall())
+ 		return -EOPNOTSUPP;
  
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
+-	if (!optval && !optlen) {
++	if (sockptr_is_null(optval) && !optlen) {
+ 		xfrm_sk_policy_insert(sk, XFRM_POLICY_IN, NULL);
+ 		xfrm_sk_policy_insert(sk, XFRM_POLICY_OUT, NULL);
+ 		__sk_dst_reset(sk);
+@@ -2284,7 +2284,7 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
+ 	if (optlen <= 0 || optlen > PAGE_SIZE)
+ 		return -EMSGSIZE;
  
-@@ -1420,7 +1419,7 @@ static int do_arpt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned
- 		break;
+-	data = memdup_user(optval, optlen);
++	data = memdup_sockptr(optval, optlen);
+ 	if (IS_ERR(data))
+ 		return PTR_ERR(data);
  
- 	case ARPT_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/ipv4/netfilter/ip_tables.c b/net/ipv4/netfilter/ip_tables.c
-index 161901dd1cae7f..4697d09c98dc3e 100644
---- a/net/ipv4/netfilter/ip_tables.c
-+++ b/net/ipv4/netfilter/ip_tables.c
-@@ -1151,8 +1151,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
- }
- 
- static int
--do_add_counters(struct net *net, const void __user *user,
--		unsigned int len)
-+do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1163,7 +1162,7 @@ do_add_counters(struct net *net, const void __user *user,
- 	struct ipt_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 
-@@ -1629,7 +1628,7 @@ do_ipt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		break;
- 
- 	case IPT_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/ipv6/netfilter/ip6_tables.c b/net/ipv6/netfilter/ip6_tables.c
-index fd1f8f93123188..a787aba30e2db7 100644
---- a/net/ipv6/netfilter/ip6_tables.c
-+++ b/net/ipv6/netfilter/ip6_tables.c
-@@ -1168,7 +1168,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
- }
- 
- static int
--do_add_counters(struct net *net, const void __user *user, unsigned int len)
-+do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1179,7 +1179,7 @@ do_add_counters(struct net *net, const void __user *user, unsigned int len)
- 	struct ip6t_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 	t = xt_find_table_lock(net, AF_INET6, tmp.name);
-@@ -1637,7 +1637,7 @@ do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		break;
- 
- 	case IP6T_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/netfilter/x_tables.c b/net/netfilter/x_tables.c
-index 32bab45af7e415..b97eb4b538fd4e 100644
---- a/net/netfilter/x_tables.c
-+++ b/net/netfilter/x_tables.c
-@@ -1028,9 +1028,9 @@ int xt_check_target(struct xt_tgchk_param *par,
- EXPORT_SYMBOL_GPL(xt_check_target);
- 
- /**
-- * xt_copy_counters_from_user - copy counters and metadata from userspace
-+ * xt_copy_counters - copy counters and metadata from a sockptr_t
-  *
-- * @user: src pointer to userspace memory
-+ * @arg: src sockptr
-  * @len: alleged size of userspace memory
-  * @info: where to store the xt_counters_info metadata
-  *
-@@ -1047,8 +1047,8 @@ EXPORT_SYMBOL_GPL(xt_check_target);
-  * Return: returns pointer that caller has to test via IS_ERR().
-  * If IS_ERR is false, caller has to vfree the pointer.
-  */
--void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
--				 struct xt_counters_info *info)
-+void *xt_copy_counters(sockptr_t arg, unsigned int len,
-+		       struct xt_counters_info *info)
- {
- 	void *mem;
- 	u64 size;
-@@ -1062,12 +1062,12 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 			return ERR_PTR(-EINVAL);
- 
- 		len -= sizeof(compat_tmp);
--		if (copy_from_user(&compat_tmp, user, sizeof(compat_tmp)) != 0)
-+		if (copy_from_sockptr(&compat_tmp, arg, sizeof(compat_tmp)) != 0)
- 			return ERR_PTR(-EFAULT);
- 
- 		memcpy(info->name, compat_tmp.name, sizeof(info->name) - 1);
- 		info->num_counters = compat_tmp.num_counters;
--		user += sizeof(compat_tmp);
-+		sockptr_advance(arg, sizeof(compat_tmp));
- 	} else
- #endif
- 	{
-@@ -1075,10 +1075,10 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 			return ERR_PTR(-EINVAL);
- 
- 		len -= sizeof(*info);
--		if (copy_from_user(info, user, sizeof(*info)) != 0)
-+		if (copy_from_sockptr(info, arg, sizeof(*info)) != 0)
- 			return ERR_PTR(-EFAULT);
- 
--		user += sizeof(*info);
-+		sockptr_advance(arg, sizeof(*info));
- 	}
- 	info->name[sizeof(info->name) - 1] = '\0';
- 
-@@ -1092,13 +1092,13 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 	if (!mem)
- 		return ERR_PTR(-ENOMEM);
- 
--	if (copy_from_user(mem, user, len) == 0)
-+	if (copy_from_sockptr(mem, arg, len) == 0)
- 		return mem;
- 
- 	vfree(mem);
- 	return ERR_PTR(-EFAULT);
- }
--EXPORT_SYMBOL_GPL(xt_copy_counters_from_user);
-+EXPORT_SYMBOL_GPL(xt_copy_counters);
- 
- #ifdef CONFIG_COMPAT
- int xt_compat_target_offset(const struct xt_target *target)
 -- 
 2.27.0
 
