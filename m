@@ -1,125 +1,206 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 08/24] net/xfrm: switch xfrm_user_policy to sockptr_t
-Date: Mon, 20 Jul 2020 14:47:21 +0200
-Message-ID: <20200720124737.118617-9-hch@lst.de>
+From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Subject: [PATCH 07/24] net: switch sock_set_timeout to sockptr_t
+Date: Mon, 20 Jul 2020 14:47:20 +0200
+Message-ID: <20200720124737.118617-8-hch@lst.de>
 References: <20200720124737.118617-1-hch@lst.de>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=VrJsDbKvFjfbSXAuB6qr8lwEWZVDG/rFKzbYqdXTQsw=; b=YLVw7zkAKjTv3IGYFSz+Y5hnjy
-        Mvg5nzJe+f6RLbr17FreulcNlPa/3tva7Hcq4TnkiegyTM7VB07RS3DW/f7M4kny34j81uZj0lqE9
-        1WZMmlhCDNNPD2CeOV0XtKV0xTg00HWidTw7ryT5sxt2ZTMTiflfU1O8hCH320Rv1IbXtilvlOqva
-        FND0AMDpxmiYWtSsupQow/oRZIWPBKol1iCO4x/tsZbmXGvRBcMWh+wnQBolSEWlrhOb9lSnLAAgU
-        T9tPf5mRSDzGq0T8A/H8wC3NGjD4LqqqNH9SAHJ6FNqb3Kv2r3OsODXHdi4ep6fnIUSDRPs2oMz4f
-        Gong/w1g==;
-In-Reply-To: <20200720124737.118617-1-hch@lst.de>
-Sender: netdev-owner@vger.kernel.org
+        bh=hs9nFYNbsiTuomEFW34Dm2rpOGJinL2S6O7KpsAcjME=; b=BBUuvJzBpBC1aFyeauCvglQq8E
+        P5vbTaYJrzOfSVzV+SnJRcTwCUYxG4LLKMglWHnZPFl2XzAnXhasz+8O8V4/wM8oVj2zhW/9O1+qZ
+        hmf4RhbXBF5UaoXK2YWIDefTrbZTJ6fLFJ2SwmMOzYkT/XKWIiv80if02d+k3RWh3VYotpm3hna49
+        lefSoaeUyLwuYQGuHzhU9GiWeklaIMyjmuGpBKAdiFpdk7xOmG9puBEoym1BV0/rPgqn2GZLkJJVy
+        j1+mmHWSYRaL4KreN8pZa8tqW6AzjeLOsrQRC4/C8nBrCRn4k0JnDb6Cq/EnirnC6aihy0mJk0wBk
+        f6Osp7Og==;
+In-Reply-To: <20200720124737.118617-1-hch-jcswGhMUV9g@public.gmane.org>
+Sender: linux-bluetooth-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Alexei Starovoitov <ast-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Daniel Borkmann <daniel-FeC+5ew28dpmcu3hnIyYJQ@public.gmane.org>, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
+Cc: linux-crypto-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bpf-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, coreteam-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-bluetooth-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bridge-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, linux-can-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, dccp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-decnet-user-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-wpan-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-s390-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, mptcp-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, lvs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, tipc-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 
 Pass a sockptr_t to prepare for set_fs-less handling of the kernel
 pointer from bpf-cgroup.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 ---
- include/net/xfrm.h       | 8 +++++---
- net/ipv4/ip_sockglue.c   | 3 ++-
- net/ipv6/ipv6_sockglue.c | 3 ++-
- net/xfrm/xfrm_state.c    | 6 +++---
- 4 files changed, 12 insertions(+), 8 deletions(-)
+ include/net/sock.h   |  3 ++-
+ net/core/sock.c      | 26 ++++++++++++--------------
+ net/mptcp/protocol.c |  6 ++++--
+ net/socket.c         |  3 ++-
+ 4 files changed, 20 insertions(+), 18 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index f9e1fda82ddfc0..5e81868b574a73 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -15,6 +15,7 @@
- #include <linux/audit.h>
- #include <linux/slab.h>
- #include <linux/refcount.h>
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 62e18fc8ac9f96..bfb2fe2fc36876 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -59,6 +59,7 @@
+ #include <linux/filter.h>
+ #include <linux/rculist_nulls.h>
+ #include <linux/poll.h>
 +#include <linux/sockptr.h>
  
- #include <net/sock.h>
- #include <net/dst.h>
-@@ -1609,10 +1610,11 @@ int xfrm6_find_1stfragopt(struct xfrm_state *x, struct sk_buff *skb,
- void xfrm6_local_rxpmtu(struct sk_buff *skb, u32 mtu);
- int xfrm4_udp_encap_rcv(struct sock *sk, struct sk_buff *skb);
- int xfrm6_udp_encap_rcv(struct sock *sk, struct sk_buff *skb);
--int xfrm_user_policy(struct sock *sk, int optname,
--		     u8 __user *optval, int optlen);
-+int xfrm_user_policy(struct sock *sk, int optname, sockptr_t optval,
-+		     int optlen);
- #else
--static inline int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen)
-+static inline int xfrm_user_policy(struct sock *sk, int optname,
-+				   sockptr_t optval, int optlen)
+ #include <linux/atomic.h>
+ #include <linux/refcount.h>
+@@ -1669,7 +1670,7 @@ void sock_pfree(struct sk_buff *skb);
+ #endif
+ 
+ int sock_setsockopt(struct socket *sock, int level, int op,
+-		    char __user *optval, unsigned int optlen);
++		    sockptr_t optval, unsigned int optlen);
+ 
+ int sock_getsockopt(struct socket *sock, int level, int op,
+ 		    char __user *optval, int __user *optlen);
+diff --git a/net/core/sock.c b/net/core/sock.c
+index d45bb1c2c36abf..9cf8318bc51de4 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -825,7 +825,7 @@ EXPORT_SYMBOL(sock_set_rcvbuf);
+  */
+ 
+ int sock_setsockopt(struct socket *sock, int level, int optname,
+-		    char __user *optval, unsigned int optlen)
++		    sockptr_t optval, unsigned int optlen)
  {
-  	return -ENOPROTOOPT;
- }
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index a5ea02d7a183eb..da933f99b5d517 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -1322,7 +1322,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
- 		err = -EPERM;
- 		if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
+ 	struct sock_txtime sk_txtime;
+ 	struct sock *sk = sock->sk;
+@@ -839,12 +839,12 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 	 */
+ 
+ 	if (optname == SO_BINDTODEVICE)
+-		return sock_setbindtodevice(sk, USER_SOCKPTR(optval), optlen);
++		return sock_setbindtodevice(sk, optval, optlen);
+ 
+ 	if (optlen < sizeof(int))
+ 		return -EINVAL;
+ 
+-	if (get_user(val, (int __user *)optval))
++	if (copy_from_sockptr(&val, optval, sizeof(val)))
+ 		return -EFAULT;
+ 
+ 	valbool = val ? 1 : 0;
+@@ -957,7 +957,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 			ret = -EINVAL;	/* 1003.1g */
  			break;
--		err = xfrm_user_policy(sk, optname, optval, optlen);
-+		err = xfrm_user_policy(sk, optname, USER_SOCKPTR(optval),
-+				       optlen);
+ 		}
+-		if (copy_from_user(&ling, optval, sizeof(ling))) {
++		if (copy_from_sockptr(&ling, optval, sizeof(ling))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1051,21 +1051,20 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 
+ 	case SO_RCVTIMEO_OLD:
+ 	case SO_RCVTIMEO_NEW:
+-		ret = sock_set_timeout(&sk->sk_rcvtimeo, USER_SOCKPTR(optval),
++		ret = sock_set_timeout(&sk->sk_rcvtimeo, optval,
+ 				       optlen, optname == SO_RCVTIMEO_OLD);
  		break;
  
- 	case IP_TRANSPARENT:
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index add8f791229945..56a74707c61741 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -935,7 +935,8 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 		retv = -EPERM;
- 		if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
- 			break;
--		retv = xfrm_user_policy(sk, optname, optval, optlen);
-+		retv = xfrm_user_policy(sk, optname, USER_SOCKPTR(optval),
-+					optlen);
+ 	case SO_SNDTIMEO_OLD:
+ 	case SO_SNDTIMEO_NEW:
+-		ret = sock_set_timeout(&sk->sk_sndtimeo, USER_SOCKPTR(optval),
++		ret = sock_set_timeout(&sk->sk_sndtimeo, optval,
+ 				       optlen, optname == SO_SNDTIMEO_OLD);
  		break;
  
- 	case IPV6_ADDR_PREFERENCES:
-diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
-index 8be2d926acc21d..69520ad3d83bfb 100644
---- a/net/xfrm/xfrm_state.c
-+++ b/net/xfrm/xfrm_state.c
-@@ -2264,7 +2264,7 @@ static bool km_is_alive(const struct km_event *c)
- 	return is_alive;
+ 	case SO_ATTACH_FILTER: {
+ 		struct sock_fprog fprog;
+ 
+-		ret = copy_bpf_fprog_from_user(&fprog, USER_SOCKPTR(optval),
+-					       optlen);
++		ret = copy_bpf_fprog_from_user(&fprog, optval, optlen);
+ 		if (!ret)
+ 			ret = sk_attach_filter(&fprog, sk);
+ 		break;
+@@ -1076,7 +1075,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 			u32 ufd;
+ 
+ 			ret = -EFAULT;
+-			if (copy_from_user(&ufd, optval, sizeof(ufd)))
++			if (copy_from_sockptr(&ufd, optval, sizeof(ufd)))
+ 				break;
+ 
+ 			ret = sk_attach_bpf(ufd, sk);
+@@ -1086,8 +1085,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 	case SO_ATTACH_REUSEPORT_CBPF: {
+ 		struct sock_fprog fprog;
+ 
+-		ret = copy_bpf_fprog_from_user(&fprog, USER_SOCKPTR(optval),
+-					       optlen);
++		ret = copy_bpf_fprog_from_user(&fprog, optval, optlen);
+ 		if (!ret)
+ 			ret = sk_reuseport_attach_filter(&fprog, sk);
+ 		break;
+@@ -1098,7 +1096,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 			u32 ufd;
+ 
+ 			ret = -EFAULT;
+-			if (copy_from_user(&ufd, optval, sizeof(ufd)))
++			if (copy_from_sockptr(&ufd, optval, sizeof(ufd)))
+ 				break;
+ 
+ 			ret = sk_reuseport_attach_bpf(ufd, sk);
+@@ -1178,7 +1176,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 
+ 		if (sizeof(ulval) != sizeof(val) &&
+ 		    optlen >= sizeof(ulval) &&
+-		    get_user(ulval, (unsigned long __user *)optval)) {
++		    copy_from_sockptr(&ulval, optval, sizeof(ulval))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1221,7 +1219,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		if (optlen != sizeof(struct sock_txtime)) {
+ 			ret = -EINVAL;
+ 			break;
+-		} else if (copy_from_user(&sk_txtime, optval,
++		} else if (copy_from_sockptr(&sk_txtime, optval,
+ 			   sizeof(struct sock_txtime))) {
+ 			ret = -EFAULT;
+ 			break;
+diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
+index f0b0b503c2628d..27b6f250b87dfd 100644
+--- a/net/mptcp/protocol.c
++++ b/net/mptcp/protocol.c
+@@ -1643,7 +1643,8 @@ static int mptcp_setsockopt_sol_socket(struct mptcp_sock *msk, int optname,
+ 			return -EINVAL;
+ 		}
+ 
+-		ret = sock_setsockopt(ssock, SOL_SOCKET, optname, optval, optlen);
++		ret = sock_setsockopt(ssock, SOL_SOCKET, optname,
++				      USER_SOCKPTR(optval), optlen);
+ 		if (ret == 0) {
+ 			if (optname == SO_REUSEPORT)
+ 				sk->sk_reuseport = ssock->sk->sk_reuseport;
+@@ -1654,7 +1655,8 @@ static int mptcp_setsockopt_sol_socket(struct mptcp_sock *msk, int optname,
+ 		return ret;
+ 	}
+ 
+-	return sock_setsockopt(sk->sk_socket, SOL_SOCKET, optname, optval, optlen);
++	return sock_setsockopt(sk->sk_socket, SOL_SOCKET, optname,
++			       USER_SOCKPTR(optval), optlen);
  }
  
--int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen)
-+int xfrm_user_policy(struct sock *sk, int optname, sockptr_t optval, int optlen)
- {
- 	int err;
- 	u8 *data;
-@@ -2274,7 +2274,7 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
- 	if (in_compat_syscall())
- 		return -EOPNOTSUPP;
+ static int mptcp_setsockopt_v6(struct mptcp_sock *msk, int optname,
+diff --git a/net/socket.c b/net/socket.c
+index 93846568c2fb7a..c97f83d879ae75 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -2130,7 +2130,8 @@ int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
+ 	}
  
--	if (!optval && !optlen) {
-+	if (sockptr_is_null(optval) && !optlen) {
- 		xfrm_sk_policy_insert(sk, XFRM_POLICY_IN, NULL);
- 		xfrm_sk_policy_insert(sk, XFRM_POLICY_OUT, NULL);
- 		__sk_dst_reset(sk);
-@@ -2284,7 +2284,7 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
- 	if (optlen <= 0 || optlen > PAGE_SIZE)
- 		return -EMSGSIZE;
- 
--	data = memdup_user(optval, optlen);
-+	data = memdup_sockptr(optval, optlen);
- 	if (IS_ERR(data))
- 		return PTR_ERR(data);
- 
+ 	if (level == SOL_SOCKET && !sock_use_custom_sol_socket(sock))
+-		err = sock_setsockopt(sock, level, optname, optval, optlen);
++		err = sock_setsockopt(sock, level, optname,
++				      USER_SOCKPTR(optval), optlen);
+ 	else if (unlikely(!sock->ops->setsockopt))
+ 		err = -EOPNOTSUPP;
+ 	else
 -- 
 2.27.0
 
