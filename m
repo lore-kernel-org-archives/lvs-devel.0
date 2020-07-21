@@ -1,42 +1,55 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Subject: RE: get rid of the address_space override in setsockopt
-Date: Tue, 21 Jul 2020 10:26:58 +0000
-Message-ID: <ae6a743aaea3406596dbc89e332b6b3e@AcuMS.aculab.com>
-References: <20200720124737.118617-1-hch@lst.de>
+From: trix@redhat.com
+Subject: [PATCH] ipvs: add prameter name to ip_vs_enqueue_expire_nodest_conns
+Date: Tue, 21 Jul 2020 13:47:20 -0700
+Message-ID: <20200721204720.7818-1-trix@redhat.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-Return-path: <linux-hams-owner@vger.kernel.org>
-In-Reply-To: <20200720124737.118617-1-hch@lst.de>
-Content-Language: en-US
-Sender: linux-hams-owner@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1595364449;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=vJQdVCFU+bbg1bLHFMdzaVvzuHDTychMnPcWRjdwPXE=;
+        b=aGpT7+8865ZkJrF7639b2J6TB+bfAMJ55LoqJ6RUbGDorrqpXL4eRtkx7NTT7Cx8oASjb2
+        LYojKepss3wB9ZdoqgOQXAc2UtNzr/nNZXkgPVSTefMB1Us++y2Ew7NUXEBtay/ZJj9DG2
+        FrE7a587WsQ5CZc78K8aBOnVHr6bBtc=
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: 'Christoph Hellwig' <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: "linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "coreteam@netfilter.org" <coreteam@netfilter.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-hams@vger.kernel.org" <linux-hams@vger.kernel.org>, "linux-bluetooth@vger.kernel.org" <linux-bluetooth@vger.kernel.org>, "bridge@lists.linux-foundation.org" <bridge@lists.linux-foundation.org>, "linux-can@vger.kernel.org" <linux-can@vger.kernel.org>, "dccp@vger.kernel.org" <dccp@vger.kernel.org>, "linux-decnet-user@lists.sourceforge.net" <linux-decnet-user@lists.sourcefor>
+Content-Type: text/plain; charset="utf-8"
+To: wensong@linux-vs.org, horms@verge.net.au, ja@ssi.bg, davem@davemloft.net, kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org, kuba@kernel.org, pablo@netfilter.org, kim.andrewsy@gmail.com
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Tom Rix <trix@redhat.com>
 
-From: Christoph Hellwig
-> Sent: 20 July 2020 13:47
-> 
-> setsockopt is the last place in architecture-independ code that still
-> uses set_fs to force the uaccess routines to operate on kernel pointers.
-> 
-> This series adds a new sockptr_t type that can contained either a kernel
-> or user pointer, and which has accessors that do the right thing, and
-> then uses it for setsockopt, starting by refactoring some low-level
-> helpers and moving them over to it before finally doing the main
-> setsockopt method.
+From: Tom Rix <trix@redhat.com>
 
-Another 'gotcha' ...
+Compile error here
 
-On an least some architectures (possibly only m68k) IIRC all structures
-are actually passed by reference.
-(This used to be true for sparc - but it may have changed in the
-last 30 years.)
+In file included from net/netfilter/ipvs/ip_vs_conn.c:37:
+ip_vs.h: In function ‘ip_vs_enqueue_expire_nodest_conns’:
+ip_vs.h:1536:54: error: parameter name omitted
 
-	David
+So add parameter name
+
+Fixes: 04231e52d355 ("ipvs: queue delayed work to expire no destination connections if expire_nodest_conn=1")
+
+Signed-off-by: Tom Rix <trix@redhat.com>
+---
+ include/net/ip_vs.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 91a9e1d590a6..9a59a33787cb 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1533,7 +1533,7 @@ static inline void ip_vs_enqueue_expire_nodest_conns(struct netns_ipvs *ipvs)
  
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+ void ip_vs_expire_nodest_conn_flush(struct netns_ipvs *ipvs);
+ #else
+-static inline void ip_vs_enqueue_expire_nodest_conns(struct netns_ipvs) {}
++static inline void ip_vs_enqueue_expire_nodest_conns(struct netns_ipvs *ipvs) {}
+ #endif
+ 
+ #define IP_VS_DFWD_METHOD(dest) (atomic_read(&(dest)->conn_flags) & \
+-- 
+2.18.1
 
