@@ -1,29 +1,34 @@
 From: 'Christoph Hellwig' <hch@lst.de>
-Subject: Re: [PATCH 12/24] bpfilter: switch bpfilter_ip_set_sockopt to
- sockptr_t
-Date: Wed, 22 Jul 2020 10:01:42 +0200
-Message-ID: <20200722080142.GA26841@lst.de>
-References: <20200720124737.118617-1-hch@lst.de> <20200720124737.118617-13-hch@lst.de> <f9493b4c514441b4b51bc7e4e75e8c40@AcuMS.aculab.com> <20200722080023.GC26554@lst.de>
+Subject: Re: get rid of the address_space override in setsockopt
+Date: Wed, 22 Jul 2020 10:06:46 +0200
+Message-ID: <20200722080646.GA26864@lst.de>
+References: <20200720124737.118617-1-hch@lst.de> <60c52e31e9f240718fcda0dd5c2faeca@AcuMS.aculab.com>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-can-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20200722080023.GC26554@lst.de>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <60c52e31e9f240718fcda0dd5c2faeca@AcuMS.aculab.com>
+Sender: linux-can-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Laight <David.Laight@ACULAB.COM>
 Cc: 'Christoph Hellwig' <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>, "linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "coreteam@netfilter.org" <coreteam@netfilter.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-hams@vger.kernel.org" <linux-hams@vger.kernel.org>
 
-On Wed, Jul 22, 2020 at 10:00:23AM +0200, 'Christoph Hellwig' wrote:
-> On Tue, Jul 21, 2020 at 08:36:57AM +0000, David Laight wrote:
-> > From: Christoph Hellwig
-> > > Sent: 20 July 2020 13:47
-> > > 
-> > > This is mostly to prepare for cleaning up the callers, as bpfilter by
-> > > design can't handle kernel pointers.
-> >                       ^^^ user ??
+On Tue, Jul 21, 2020 at 09:38:23AM +0000, David Laight wrote:
+> From: Christoph Hellwig
+> > Sent: 20 July 2020 13:47
+> >
+> > setsockopt is the last place in architecture-independ code that still
+> > uses set_fs to force the uaccess routines to operate on kernel pointers.
+> > 
+> > This series adds a new sockptr_t type that can contained either a kernel
+> > or user pointer, and which has accessors that do the right thing, and
+> > then uses it for setsockopt, starting by refactoring some low-level
+> > helpers and moving them over to it before finally doing the main
+> > setsockopt method.
 > 
-> No, it can't handle user pointers. 
+> Are you planning to make the equivalent change to getsockopt()?
 
-Err, I mean it can only handle user pointers.
+No.  Only setsockopt can be fed kernel addresses from bpf-cgroup.
+There is no point in complicating the read side interface when it
+doesn't have that problem.
