@@ -1,46 +1,44 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: add missing struct name in ip_vs_enqueue_expire_nodest_conns
- when CONFIG_SYSCTL is disabled
-Date: Wed, 22 Jul 2020 09:03:01 +0300 (EEST)
-Message-ID: <alpine.LFD.2.23.451.2007220901320.2433@ja.home.ssi.bg>
-References: <20200717162450.1049-1-kim.andrewsy@gmail.com> <alpine.LFD.2.23.451.2007172032370.4536@ja.home.ssi.bg> <20200721232007.GA6367@salvia>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 03/24] net: add a new sockptr_t type
+Date: Wed, 22 Jul 2020 09:56:20 +0200
+Message-ID: <20200722075620.GA26554@lst.de>
+References: <20200720124737.118617-1-hch@lst.de> <20200720124737.118617-4-hch@lst.de> <20200720163748.GA1292162@gmail.com> <20200720174322.GA21785@lst.de> <20200720175543.GF1292162@gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20200721232007.GA6367@salvia>
-Sender: lvs-devel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20200720175543.GF1292162@gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Andrew Sy Kim <kim.andrewsy@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, Randy Dunlap <rdunlap@infradead.org>, netdev@vger.kernel.org
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, 
 
-
-	Hello,
-
-On Wed, 22 Jul 2020, Pablo Neira Ayuso wrote:
-
-> On Fri, Jul 17, 2020 at 08:36:36PM +0300, Julian Anastasov wrote:
-> > 
-> > On Fri, 17 Jul 2020, Andrew Sy Kim wrote:
-> > 
-> > > Adds missing "*ipvs" to ip_vs_enqueue_expire_nodest_conns when
-> > > CONFIG_SYSCTL is disabled
+On Mon, Jul 20, 2020 at 10:55:43AM -0700, Eric Biggers wrote:
+> On Mon, Jul 20, 2020 at 07:43:22PM +0200, Christoph Hellwig wrote:
+> > On Mon, Jul 20, 2020 at 09:37:48AM -0700, Eric Biggers wrote:
+> > > How does this not introduce a massive security hole when
+> > > CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE?
 > > > 
-> > > Signed-off-by: Andrew Sy Kim <kim.andrewsy@gmail.com>
+> > > AFAICS, userspace can pass in a pointer >= TASK_SIZE,
+> > > and this code makes it be treated as a kernel pointer.
 > > 
-> > Acked-by: Julian Anastasov <ja@ssi.bg>
+> > Yeah, we'll need to validate that before initializing the pointer.
 > > 
-> > 	Pablo, please apply this too.
+> > But thinking this a little further:  doesn't this mean any
+> > set_fs(KERNEL_DS) that has other user pointers than the one it is
+> > intended for has the same issue?  Pretty much all of these are gone
+> > in mainline now, but in older stable kernels there might be some
+> > interesting cases, especially in the compat ioctl handlers.
 > 
-> I have squashed this fix and "ipvs: ensure RCU read unlock when
-> connection flushing and ipvs is disabled" into the original patch:
+> Yes.  I thought that eliminating that class of bug is one of the main
+> motivations for your "remove set_fs" work.  See commit 128394eff343
+> ("sg_write()/bsg_write() is not fit to be called under KERNEL_DS") for a case
+> where this type of bug was fixed.
 > 
-> "ipvs: queue delayed work to expire no destination connections if
-> expire_nodest_conn=1"
+> Are you aware of any specific cases that weren't already fixed?  If there are
+> any, they need to be urgently fixed.
 
-	Very good, thanks!
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+current mainline has almost no set_fs left, and setsockopt seems
+pretty much safe.  But if we go back a long term stable release or two
+I bet I'd find one or two.
