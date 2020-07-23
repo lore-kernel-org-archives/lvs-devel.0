@@ -1,23 +1,23 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 17/26] net/ipv6: switch ip6_mroute_setsockopt to sockptr_t
-Date: Thu, 23 Jul 2020 08:08:59 +0200
-Message-ID: <20200723060908.50081-18-hch@lst.de>
+Subject: [PATCH 24/26] net/tcp: switch do_tcp_setsockopt to sockptr_t
+Date: Thu, 23 Jul 2020 08:09:06 +0200
+Message-ID: <20200723060908.50081-25-hch@lst.de>
 References: <20200723060908.50081-1-hch@lst.de>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=QrqaYh4fSMgupA4iEFhXoiD4XEjtKBO+4D3VptAqYus=; b=IgVGLyqCozX/nHw3MIQ3FpanQV
-        jLXIw5Td5nt6zIvvCqGUnFabfrveTd++UbO9scS2aRy/PoKQeztwbLyv6jvpJEEtyLYhY/m6rTBL6
-        xKVVcTbM5bzajlkFK+OMU/FCH/VUQb3QOSfT60/o0JP8TjPIteycrNbr+PR78U+fooJ7APKnL+yYS
-        LnZShKyk4tzuP+1iFVKpCOrQNDU1b9MW81GHnHJhLWwat6fM0aDFsEEbWZC8tBP1kpjEiRUmCTv9j
-        fB/bPDia78CQ2+QlSJR5h2YA0Ym1SepAIfAmUqUk8+ueyWBGAtskROW4abUO80BOV+yb8+9iuyose
-        7pSKeTKQ==;
+        bh=UdgYuJlmWZokLcAOPnfw8PlZRvn7vjQf/6iOObq/cjM=; b=aIaMhclEEnD1ULwrKvn78xfvE4
+        8LhP29U8BKD5dCx/PZ4xzwjJk056rLJlvUegZOy3Vu6Yef9on/jdjTYZDrYzfTZl8bVQbbTop0UWR
+        M8Yx1TSJ9NA/9mJk31ud6h2bSkcvPf+C2+x6wKPLcYNdkFZ6us0Lb3ds14cqloxiLsw3vi7XqwMx5
+        hpYczsqWiGeLGvsYypY38x3+nsPb17XruzF454E+faRyBokX2ig/VaOf+Jyic1oOFiasUFAxiY5zh
+        h3Y5fDzIOIWdfMwKL7ZrXjv5DnfDd7AZWh3ZQ4AiSNMLsHjYpJvbeUT3B/4GZ+BqlGh21EpzBzSK+
+        4fcp8kXw==;
 In-Reply-To: <20200723060908.50081-1-hch@lst.de>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
@@ -28,135 +28,131 @@ pointer from bpf-cgroup.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/mroute6.h  |  8 ++++----
- net/ipv6/ip6mr.c         | 17 +++++++++--------
- net/ipv6/ipv6_sockglue.c |  3 ++-
- 3 files changed, 15 insertions(+), 13 deletions(-)
+ net/ipv4/tcp.c | 34 ++++++++++++++++------------------
+ 1 file changed, 16 insertions(+), 18 deletions(-)
 
-diff --git a/include/linux/mroute6.h b/include/linux/mroute6.h
-index c4a45859f586d4..bc351a85ce9b9c 100644
---- a/include/linux/mroute6.h
-+++ b/include/linux/mroute6.h
-@@ -8,6 +8,7 @@
- #include <net/net_namespace.h>
- #include <uapi/linux/mroute6.h>
- #include <linux/mroute_base.h>
-+#include <linux/sockptr.h>
- #include <net/fib_rules.h>
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 49bf15c27deac7..71cbc61c335f71 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -2764,7 +2764,7 @@ static inline bool tcp_can_repair_sock(const struct sock *sk)
+ 		(sk->sk_state != TCP_LISTEN);
+ }
  
- #ifdef CONFIG_IPV6_MROUTE
-@@ -25,7 +26,7 @@ static inline int ip6_mroute_opt(int opt)
- struct sock;
+-static int tcp_repair_set_window(struct tcp_sock *tp, char __user *optbuf, int len)
++static int tcp_repair_set_window(struct tcp_sock *tp, sockptr_t optbuf, int len)
+ {
+ 	struct tcp_repair_window opt;
  
- #ifdef CONFIG_IPV6_MROUTE
--extern int ip6_mroute_setsockopt(struct sock *, int, char __user *, unsigned int);
-+extern int ip6_mroute_setsockopt(struct sock *, int, sockptr_t, unsigned int);
- extern int ip6_mroute_getsockopt(struct sock *, int, char __user *, int __user *);
- extern int ip6_mr_input(struct sk_buff *skb);
- extern int ip6mr_ioctl(struct sock *sk, int cmd, void __user *arg);
-@@ -33,9 +34,8 @@ extern int ip6mr_compat_ioctl(struct sock *sk, unsigned int cmd, void __user *ar
- extern int ip6_mr_init(void);
- extern void ip6_mr_cleanup(void);
- #else
--static inline
--int ip6_mroute_setsockopt(struct sock *sock,
--			  int optname, char __user *optval, unsigned int optlen)
-+static inline int ip6_mroute_setsockopt(struct sock *sock, int optname,
+@@ -2774,7 +2774,7 @@ static int tcp_repair_set_window(struct tcp_sock *tp, char __user *optbuf, int l
+ 	if (len != sizeof(opt))
+ 		return -EINVAL;
+ 
+-	if (copy_from_user(&opt, optbuf, sizeof(opt)))
++	if (copy_from_sockptr(&opt, optbuf, sizeof(opt)))
+ 		return -EFAULT;
+ 
+ 	if (opt.max_window < opt.snd_wnd)
+@@ -2796,17 +2796,17 @@ static int tcp_repair_set_window(struct tcp_sock *tp, char __user *optbuf, int l
+ 	return 0;
+ }
+ 
+-static int tcp_repair_options_est(struct sock *sk,
+-		struct tcp_repair_opt __user *optbuf, unsigned int len)
++static int tcp_repair_options_est(struct sock *sk, sockptr_t optbuf,
++		unsigned int len)
+ {
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 	struct tcp_repair_opt opt;
+ 
+ 	while (len >= sizeof(opt)) {
+-		if (copy_from_user(&opt, optbuf, sizeof(opt)))
++		if (copy_from_sockptr(&opt, optbuf, sizeof(opt)))
+ 			return -EFAULT;
+ 
+-		optbuf++;
++		sockptr_advance(optbuf, sizeof(opt));
+ 		len -= sizeof(opt);
+ 
+ 		switch (opt.opt_code) {
+@@ -3020,8 +3020,8 @@ EXPORT_SYMBOL(tcp_sock_set_keepcnt);
+ /*
+  *	Socket option code for TCP.
+  */
+-static int do_tcp_setsockopt(struct sock *sk, int level,
+-		int optname, char __user *optval, unsigned int optlen)
++static int do_tcp_setsockopt(struct sock *sk, int level, int optname,
 +		sockptr_t optval, unsigned int optlen)
  {
- 	return -ENOPROTOOPT;
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 	struct inet_connection_sock *icsk = inet_csk(sk);
+@@ -3037,7 +3037,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ 		if (optlen < 1)
+ 			return -EINVAL;
+ 
+-		val = strncpy_from_user(name, optval,
++		val = strncpy_from_sockptr(name, optval,
+ 					min_t(long, TCP_CA_NAME_MAX-1, optlen));
+ 		if (val < 0)
+ 			return -EFAULT;
+@@ -3056,7 +3056,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ 		if (optlen < 1)
+ 			return -EINVAL;
+ 
+-		val = strncpy_from_user(name, optval,
++		val = strncpy_from_sockptr(name, optval,
+ 					min_t(long, TCP_ULP_NAME_MAX - 1,
+ 					      optlen));
+ 		if (val < 0)
+@@ -3079,7 +3079,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ 		    optlen != TCP_FASTOPEN_KEY_BUF_LENGTH)
+ 			return -EINVAL;
+ 
+-		if (copy_from_user(key, optval, optlen))
++		if (copy_from_sockptr(key, optval, optlen))
+ 			return -EFAULT;
+ 
+ 		if (optlen == TCP_FASTOPEN_KEY_BUF_LENGTH)
+@@ -3095,7 +3095,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ 	if (optlen < sizeof(int))
+ 		return -EINVAL;
+ 
+-	if (get_user(val, (int __user *)optval))
++	if (copy_from_sockptr(&val, optval, sizeof(val)))
+ 		return -EFAULT;
+ 
+ 	lock_sock(sk);
+@@ -3174,9 +3174,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ 		if (!tp->repair)
+ 			err = -EINVAL;
+ 		else if (sk->sk_state == TCP_ESTABLISHED)
+-			err = tcp_repair_options_est(sk,
+-					(struct tcp_repair_opt __user *)optval,
+-					optlen);
++			err = tcp_repair_options_est(sk, optval, optlen);
+ 		else
+ 			err = -EPERM;
+ 		break;
+@@ -3249,8 +3247,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ #ifdef CONFIG_TCP_MD5SIG
+ 	case TCP_MD5SIG:
+ 	case TCP_MD5SIG_EXT:
+-		err = tp->af_specific->md5_parse(sk, optname,
+-						 USER_SOCKPTR(optval), optlen);
++		err = tp->af_specific->md5_parse(sk, optname, optval, optlen);
+ 		break;
+ #endif
+ 	case TCP_USER_TIMEOUT:
+@@ -3334,7 +3331,8 @@ int tcp_setsockopt(struct sock *sk, int level, int optname, char __user *optval,
+ 	if (level != SOL_TCP)
+ 		return icsk->icsk_af_ops->setsockopt(sk, level, optname,
+ 						     optval, optlen);
+-	return do_tcp_setsockopt(sk, level, optname, optval, optlen);
++	return do_tcp_setsockopt(sk, level, optname, USER_SOCKPTR(optval),
++				 optlen);
  }
-diff --git a/net/ipv6/ip6mr.c b/net/ipv6/ip6mr.c
-index 1f4d20e97c07f9..06b0d2c329b94b 100644
---- a/net/ipv6/ip6mr.c
-+++ b/net/ipv6/ip6mr.c
-@@ -1629,7 +1629,8 @@ EXPORT_SYMBOL(mroute6_is_socket);
-  *	MOSPF/PIM router set up we can clean this up.
-  */
+ EXPORT_SYMBOL(tcp_setsockopt);
  
--int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, unsigned int optlen)
-+int ip6_mroute_setsockopt(struct sock *sk, int optname, sockptr_t optval,
-+			  unsigned int optlen)
- {
- 	int ret, parent = 0;
- 	struct mif6ctl vif;
-@@ -1665,7 +1666,7 @@ int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, uns
- 	case MRT6_ADD_MIF:
- 		if (optlen < sizeof(vif))
- 			return -EINVAL;
--		if (copy_from_user(&vif, optval, sizeof(vif)))
-+		if (copy_from_sockptr(&vif, optval, sizeof(vif)))
- 			return -EFAULT;
- 		if (vif.mif6c_mifi >= MAXMIFS)
- 			return -ENFILE;
-@@ -1678,7 +1679,7 @@ int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, uns
- 	case MRT6_DEL_MIF:
- 		if (optlen < sizeof(mifi_t))
- 			return -EINVAL;
--		if (copy_from_user(&mifi, optval, sizeof(mifi_t)))
-+		if (copy_from_sockptr(&mifi, optval, sizeof(mifi_t)))
- 			return -EFAULT;
- 		rtnl_lock();
- 		ret = mif6_delete(mrt, mifi, 0, NULL);
-@@ -1697,7 +1698,7 @@ int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, uns
- 	case MRT6_DEL_MFC_PROXY:
- 		if (optlen < sizeof(mfc))
- 			return -EINVAL;
--		if (copy_from_user(&mfc, optval, sizeof(mfc)))
-+		if (copy_from_sockptr(&mfc, optval, sizeof(mfc)))
- 			return -EFAULT;
- 		if (parent == 0)
- 			parent = mfc.mf6cc_parent;
-@@ -1718,7 +1719,7 @@ int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, uns
- 
- 		if (optlen != sizeof(flags))
- 			return -EINVAL;
--		if (get_user(flags, (int __user *)optval))
-+		if (copy_from_sockptr(&flags, optval, sizeof(flags)))
- 			return -EFAULT;
- 		rtnl_lock();
- 		mroute_clean_tables(mrt, flags);
-@@ -1735,7 +1736,7 @@ int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, uns
- 
- 		if (optlen != sizeof(v))
- 			return -EINVAL;
--		if (get_user(v, (int __user *)optval))
-+		if (copy_from_sockptr(&v, optval, sizeof(v)))
- 			return -EFAULT;
- 		mrt->mroute_do_assert = v;
- 		return 0;
-@@ -1748,7 +1749,7 @@ int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, uns
- 
- 		if (optlen != sizeof(v))
- 			return -EINVAL;
--		if (get_user(v, (int __user *)optval))
-+		if (copy_from_sockptr(&v, optval, sizeof(v)))
- 			return -EFAULT;
- 		v = !!v;
- 		rtnl_lock();
-@@ -1769,7 +1770,7 @@ int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, uns
- 
- 		if (optlen != sizeof(u32))
- 			return -EINVAL;
--		if (get_user(v, (u32 __user *)optval))
-+		if (copy_from_sockptr(&v, optval, sizeof(v)))
- 			return -EFAULT;
- 		/* "pim6reg%u" should not exceed 16 bytes (IFNAMSIZ) */
- 		if (v != RT_TABLE_DEFAULT && v >= 100000000)
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index 85892b35cff7b3..119dfaf5f4bb26 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -337,7 +337,8 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 	valbool = (val != 0);
- 
- 	if (ip6_mroute_opt(optname))
--		return ip6_mroute_setsockopt(sk, optname, optval, optlen);
-+		return ip6_mroute_setsockopt(sk, optname, USER_SOCKPTR(optval),
-+					     optlen);
- 
- 	if (needs_rtnl)
- 		rtnl_lock();
 -- 
 2.27.0
 
