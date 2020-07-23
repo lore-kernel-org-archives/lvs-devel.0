@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 08/26] net: switch sock_set_timeout to sockptr_t
-Date: Thu, 23 Jul 2020 08:08:50 +0200
-Message-ID: <20200723060908.50081-9-hch@lst.de>
+Subject: [PATCH 07/26] net: switch sock_set_timeout to sockptr_t
+Date: Thu, 23 Jul 2020 08:08:49 +0200
+Message-ID: <20200723060908.50081-8-hch@lst.de>
 References: <20200723060908.50081-1-hch@lst.de>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -10,12 +10,12 @@ DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=ZbaJkXWVN54EM1K0IjLK/oyuu3Tpcri68ikiwEZNL0s=; b=ozcJ0wsQEslO4La3bQUX6OU+Cz
-        8pczSeXCR7dPiFmrdbV6hqz1jToFTwdsQVD00rmxyGfc1KCpBtBRkume8dkG57UOd0Ixrnbi9rEBa
-        VBF3IKgFtQl0BBXYBqvlSL++rXXwqPGmZe2ojYnDm02kKBmZBLkzf0PWpW2CCmB/iQfCPmRyINreB
-        MajlSt0APNmOlRTW9/uRkWP9HG2HOu2csT5ThOww4L4lQ/3nvVYHVv/hn1uW+NzIx/WFp9kbGf40V
-        DA3DSzN1ZjvDNPff8JGYhHf2LoiyAGpyjLft4I0kEjN5/fnjV0F5g1rFC+7bD/wj1S/l/zZEGuxSa
-        VQUYh0Qw==;
+        bh=xqGJvoPJ0+pH4qYG06e/7bN83cyQPL98EGqqjHTTiVQ=; b=tp0Qjqxv0RF9S9VMvHxOQakmQ+
+        NHHCC0pZ4D54ej/cePwKmpeQERvhgixf2rr+yFCMAku4YwZ7qHeZ23zUko4Runxz4X2FA51oNK9RB
+        G71rtpRMLN+TsNxoueQ+MRUu2h3xtmBHPMKP/izudC5N1oy/s4c0lP2BwaH2EI/Tr0TB9gDhdqJ6a
+        rycFr/S96lGHvxszuLGeDv20/dHJLbjMO/W0HRsKz2fbUItwUz/GhoTeBU/3lzVe84kUEMznjTO9R
+        ZoRl8WaL9OyZSPxjaiWAD5kw4pVGMaXBipOjPZoChto8wAEpQi6Fg9FEFIqXI5trxbLidsCIfPpe2
+        WB6TV97Q==;
 In-Reply-To: <20200723060908.50081-1-hch@lst.de>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
@@ -28,179 +28,66 @@ pointer from bpf-cgroup.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/sock.h   |  3 ++-
- net/core/sock.c      | 26 ++++++++++++--------------
- net/mptcp/protocol.c |  6 ++++--
- net/socket.c         |  3 ++-
- 4 files changed, 20 insertions(+), 18 deletions(-)
+ net/core/sock.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 62e18fc8ac9f96..bfb2fe2fc36876 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -59,6 +59,7 @@
- #include <linux/filter.h>
- #include <linux/rculist_nulls.h>
- #include <linux/poll.h>
-+#include <linux/sockptr.h>
- 
- #include <linux/atomic.h>
- #include <linux/refcount.h>
-@@ -1669,7 +1670,7 @@ void sock_pfree(struct sk_buff *skb);
- #endif
- 
- int sock_setsockopt(struct socket *sock, int level, int op,
--		    char __user *optval, unsigned int optlen);
-+		    sockptr_t optval, unsigned int optlen);
- 
- int sock_getsockopt(struct socket *sock, int level, int op,
- 		    char __user *optval, int __user *optlen);
 diff --git a/net/core/sock.c b/net/core/sock.c
-index 8b9eddaff868a5..1444d7d53ba2fd 100644
+index 5b55bc9397f282..8b9eddaff868a5 100644
 --- a/net/core/sock.c
 +++ b/net/core/sock.c
-@@ -826,7 +826,7 @@ EXPORT_SYMBOL(sock_set_rcvbuf);
-  */
+@@ -361,7 +361,8 @@ static int sock_get_timeout(long timeo, void *optval, bool old_timeval)
+ 	return sizeof(tv);
+ }
  
- int sock_setsockopt(struct socket *sock, int level, int optname,
--		    char __user *optval, unsigned int optlen)
-+		    sockptr_t optval, unsigned int optlen)
+-static int sock_set_timeout(long *timeo_p, char __user *optval, int optlen, bool old_timeval)
++static int sock_set_timeout(long *timeo_p, sockptr_t optval, int optlen,
++			    bool old_timeval)
  {
- 	struct sock_txtime sk_txtime;
- 	struct sock *sk = sock->sk;
-@@ -840,12 +840,12 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 	 */
+ 	struct __kernel_sock_timeval tv;
  
- 	if (optname == SO_BINDTODEVICE)
--		return sock_setbindtodevice(sk, USER_SOCKPTR(optval), optlen);
-+		return sock_setbindtodevice(sk, optval, optlen);
+@@ -371,7 +372,7 @@ static int sock_set_timeout(long *timeo_p, char __user *optval, int optlen, bool
+ 		if (optlen < sizeof(tv32))
+ 			return -EINVAL;
  
- 	if (optlen < sizeof(int))
- 		return -EINVAL;
+-		if (copy_from_user(&tv32, optval, sizeof(tv32)))
++		if (copy_from_sockptr(&tv32, optval, sizeof(tv32)))
+ 			return -EFAULT;
+ 		tv.tv_sec = tv32.tv_sec;
+ 		tv.tv_usec = tv32.tv_usec;
+@@ -380,14 +381,14 @@ static int sock_set_timeout(long *timeo_p, char __user *optval, int optlen, bool
  
--	if (get_user(val, (int __user *)optval))
-+	if (copy_from_sockptr(&val, optval, sizeof(val)))
- 		return -EFAULT;
- 
- 	valbool = val ? 1 : 0;
-@@ -958,7 +958,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 			ret = -EINVAL;	/* 1003.1g */
- 			break;
- 		}
--		if (copy_from_user(&ling, optval, sizeof(ling))) {
-+		if (copy_from_sockptr(&ling, optval, sizeof(ling))) {
- 			ret = -EFAULT;
- 			break;
- 		}
-@@ -1052,21 +1052,20 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		if (optlen < sizeof(old_tv))
+ 			return -EINVAL;
+-		if (copy_from_user(&old_tv, optval, sizeof(old_tv)))
++		if (copy_from_sockptr(&old_tv, optval, sizeof(old_tv)))
+ 			return -EFAULT;
+ 		tv.tv_sec = old_tv.tv_sec;
+ 		tv.tv_usec = old_tv.tv_usec;
+ 	} else {
+ 		if (optlen < sizeof(tv))
+ 			return -EINVAL;
+-		if (copy_from_user(&tv, optval, sizeof(tv)))
++		if (copy_from_sockptr(&tv, optval, sizeof(tv)))
+ 			return -EFAULT;
+ 	}
+ 	if (tv.tv_usec < 0 || tv.tv_usec >= USEC_PER_SEC)
+@@ -1051,12 +1052,14 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
  
  	case SO_RCVTIMEO_OLD:
  	case SO_RCVTIMEO_NEW:
--		ret = sock_set_timeout(&sk->sk_rcvtimeo, USER_SOCKPTR(optval),
-+		ret = sock_set_timeout(&sk->sk_rcvtimeo, optval,
- 				       optlen, optname == SO_RCVTIMEO_OLD);
+-		ret = sock_set_timeout(&sk->sk_rcvtimeo, optval, optlen, optname == SO_RCVTIMEO_OLD);
++		ret = sock_set_timeout(&sk->sk_rcvtimeo, USER_SOCKPTR(optval),
++				       optlen, optname == SO_RCVTIMEO_OLD);
  		break;
  
  	case SO_SNDTIMEO_OLD:
  	case SO_SNDTIMEO_NEW:
--		ret = sock_set_timeout(&sk->sk_sndtimeo, USER_SOCKPTR(optval),
-+		ret = sock_set_timeout(&sk->sk_sndtimeo, optval,
- 				       optlen, optname == SO_SNDTIMEO_OLD);
+-		ret = sock_set_timeout(&sk->sk_sndtimeo, optval, optlen, optname == SO_SNDTIMEO_OLD);
++		ret = sock_set_timeout(&sk->sk_sndtimeo, USER_SOCKPTR(optval),
++				       optlen, optname == SO_SNDTIMEO_OLD);
  		break;
  
  	case SO_ATTACH_FILTER: {
- 		struct sock_fprog fprog;
- 
--		ret = copy_bpf_fprog_from_user(&fprog, USER_SOCKPTR(optval),
--					       optlen);
-+		ret = copy_bpf_fprog_from_user(&fprog, optval, optlen);
- 		if (!ret)
- 			ret = sk_attach_filter(&fprog, sk);
- 		break;
-@@ -1077,7 +1076,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 			u32 ufd;
- 
- 			ret = -EFAULT;
--			if (copy_from_user(&ufd, optval, sizeof(ufd)))
-+			if (copy_from_sockptr(&ufd, optval, sizeof(ufd)))
- 				break;
- 
- 			ret = sk_attach_bpf(ufd, sk);
-@@ -1087,8 +1086,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 	case SO_ATTACH_REUSEPORT_CBPF: {
- 		struct sock_fprog fprog;
- 
--		ret = copy_bpf_fprog_from_user(&fprog, USER_SOCKPTR(optval),
--					       optlen);
-+		ret = copy_bpf_fprog_from_user(&fprog, optval, optlen);
- 		if (!ret)
- 			ret = sk_reuseport_attach_filter(&fprog, sk);
- 		break;
-@@ -1099,7 +1097,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 			u32 ufd;
- 
- 			ret = -EFAULT;
--			if (copy_from_user(&ufd, optval, sizeof(ufd)))
-+			if (copy_from_sockptr(&ufd, optval, sizeof(ufd)))
- 				break;
- 
- 			ret = sk_reuseport_attach_bpf(ufd, sk);
-@@ -1179,7 +1177,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 
- 		if (sizeof(ulval) != sizeof(val) &&
- 		    optlen >= sizeof(ulval) &&
--		    get_user(ulval, (unsigned long __user *)optval)) {
-+		    copy_from_sockptr(&ulval, optval, sizeof(ulval))) {
- 			ret = -EFAULT;
- 			break;
- 		}
-@@ -1222,7 +1220,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 		if (optlen != sizeof(struct sock_txtime)) {
- 			ret = -EINVAL;
- 			break;
--		} else if (copy_from_user(&sk_txtime, optval,
-+		} else if (copy_from_sockptr(&sk_txtime, optval,
- 			   sizeof(struct sock_txtime))) {
- 			ret = -EFAULT;
- 			break;
-diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
-index f0b0b503c2628d..27b6f250b87dfd 100644
---- a/net/mptcp/protocol.c
-+++ b/net/mptcp/protocol.c
-@@ -1643,7 +1643,8 @@ static int mptcp_setsockopt_sol_socket(struct mptcp_sock *msk, int optname,
- 			return -EINVAL;
- 		}
- 
--		ret = sock_setsockopt(ssock, SOL_SOCKET, optname, optval, optlen);
-+		ret = sock_setsockopt(ssock, SOL_SOCKET, optname,
-+				      USER_SOCKPTR(optval), optlen);
- 		if (ret == 0) {
- 			if (optname == SO_REUSEPORT)
- 				sk->sk_reuseport = ssock->sk->sk_reuseport;
-@@ -1654,7 +1655,8 @@ static int mptcp_setsockopt_sol_socket(struct mptcp_sock *msk, int optname,
- 		return ret;
- 	}
- 
--	return sock_setsockopt(sk->sk_socket, SOL_SOCKET, optname, optval, optlen);
-+	return sock_setsockopt(sk->sk_socket, SOL_SOCKET, optname,
-+			       USER_SOCKPTR(optval), optlen);
- }
- 
- static int mptcp_setsockopt_v6(struct mptcp_sock *msk, int optname,
-diff --git a/net/socket.c b/net/socket.c
-index 93846568c2fb7a..c97f83d879ae75 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -2130,7 +2130,8 @@ int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
- 	}
- 
- 	if (level == SOL_SOCKET && !sock_use_custom_sol_socket(sock))
--		err = sock_setsockopt(sock, level, optname, optval, optlen);
-+		err = sock_setsockopt(sock, level, optname,
-+				      USER_SOCKPTR(optval), optlen);
- 	else if (unlikely(!sock->ops->setsockopt))
- 		err = -EOPNOTSUPP;
- 	else
 -- 
 2.27.0
 
