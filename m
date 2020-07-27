@@ -1,33 +1,91 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: get rid of the address_space override in setsockopt v2
-Date: Sun, 26 Jul 2020 00:46:44 -0700 (PDT)
-Message-ID: <20200726.004644.71243023033363639.davem@davemloft.net>
+From: David Laight <David.Laight@ACULAB.COM>
+Subject: RE: get rid of the address_space override in setsockopt v2
+Date: Mon, 27 Jul 2020 09:51:45 +0000
+Message-ID: <8ae792c27f144d4bb5cbea0c1cce4eed@AcuMS.aculab.com>
 References: <20200723060908.50081-1-hch@lst.de>
-        <20200724.154342.1433271593505001306.davem@davemloft.net>
-        <20200726070311.GA16687@lst.de>
+ <20200724.154342.1433271593505001306.davem@davemloft.net>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <linux-crypto-owner@vger.kernel.org>
-In-Reply-To: <20200726070311.GA16687@lst.de>
-Sender: linux-crypto-owner@vger.kernel.org
+Content-Transfer-Encoding: 8BIT
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20200724.154342.1433271593505001306.davem@davemloft.net>
+Content-Language: en-US
+Sender: netdev-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: Text/Plain; charset="us-ascii"
-To: hch@lst.de
-Cc: kuba@kernel.org, ast@kernel.org, daniel@iogearbox.net, kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org, edumazet@google.com, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: 'David Miller' <davem@davemloft.net>, "hch@lst.de" <hch@lst.de>
+Cc: "kuba@kernel.org" <kuba@kernel.org>, "ast@kernel.org" <ast@kernel.org>, "daniel@iogearbox.net" <daniel@iogearbox.net>, "kuznet@ms2.inr.ac.ru" <kuznet@ms2.inr.ac.ru>, "yoshfuji@linux-ipv6.org" <yoshfuji@linux-ipv6.org>, "edumazet@google.com" <edumazet@google.com>, "linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "coreteam@netfilter.org" <coreteam@netfilter.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-hams@vger.kernel.org" <linux-hams@vger.kernel.org>, "linux-bluetooth@vger.kernel.org" <linux-bluetooth@vger.kern>
 
-From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 26 Jul 2020 09:03:11 +0200
-
-> On Fri, Jul 24, 2020 at 03:43:42PM -0700, David Miller wrote:
->> > Changes since v1:
->> >  - check that users don't pass in kernel addresses
->> >  - more bpfilter cleanups
->> >  - cosmetic mptcp tweak
->> 
->> Series applied to net-next, I'm build testing and will push this out when
->> that is done.
+From: David Miller
+> Sent: 24 July 2020 23:44
 > 
-> The buildbot found one warning with the isdn debug code after a few
-> days, here is what I think is the best fix:
+> From: Christoph Hellwig <hch@lst.de>
+> Date: Thu, 23 Jul 2020 08:08:42 +0200
+> 
+> > setsockopt is the last place in architecture-independ code that still
+> > uses set_fs to force the uaccess routines to operate on kernel pointers.
+> >
+> > This series adds a new sockptr_t type that can contained either a kernel
+> > or user pointer, and which has accessors that do the right thing, and
+> > then uses it for setsockopt, starting by refactoring some low-level
+> > helpers and moving them over to it before finally doing the main
+> > setsockopt method.
+> >
+> > Note that apparently the eBPF selftests do not even cover this path, so
+> > the series has been tested with a testing patch that always copies the
+> > data first and passes a kernel pointer.  This is something that works for
+> > most common sockopts (and is something that the ePBF support relies on),
+> > but unfortunately in various corner cases we either don't use the passed
+> > in length, or in one case actually copy data back from setsockopt, or in
+> > case of bpfilter straight out do not work with kernel pointers at all.
+> >
+> > Against net-next/master.
+> >
+> > Changes since v1:
+> >  - check that users don't pass in kernel addresses
+> >  - more bpfilter cleanups
+> >  - cosmetic mptcp tweak
+> 
+> Series applied to net-next, I'm build testing and will push this out when
+> that is done.
 
-I already fixed this in net-next.
+Hmmm... this code does:
+
+int __sys_setsockopt(int fd, int level, int optname, char __user *user_optval,
+		int optlen)
+{
+	sockptr_t optval;
+	char *kernel_optval = NULL;
+	int err, fput_needed;
+	struct socket *sock;
+
+	if (optlen < 0)
+		return -EINVAL;
+
+	err = init_user_sockptr(&optval, user_optval);
+	if (err)
+		return err;
+
+And the called code does:
+	if (copy_from_sockptr(&opt, optbuf, sizeof(opt)))
+		return -EFAULT;
+
+
+Which means that only the base of the user's buffer is checked
+for being in userspace.
+
+I'm sure there is code that processes options in chunks.
+This probably means it is possible to put a chunk boundary
+at the end of userspace and continue processing the very start
+of kernel memory.
+
+At best this faults on the kernel copy code and crashes the system.
+
+Maybe there wasn't any code that actually incremented the user address.
+But it is hardly robust.
+
+	David
+
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
+
