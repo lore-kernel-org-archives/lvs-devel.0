@@ -1,23 +1,20 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 19/26] net/ipv6: switch ipv6_flowlabel_opt to sockptr_t
-Date: Mon, 27 Jul 2020 18:15:55 +0200
-Message-ID: <20200727161555.GA7817@lst.de>
-References: <20200723060908.50081-1-hch@lst.de> <20200723060908.50081-20-hch@lst.de> <20200727121505.GA1804864@shredder> <20200727130029.GA26393@lst.de> <20200727133331.GA1851348@shredder>
+Subject: Re: [PATCH 12/26] netfilter: switch nf_setsockopt to sockptr_t
+Date: Mon, 27 Jul 2020 18:16:15 +0200
+Message-ID: <20200727161615.GB7817@lst.de>
+References: <20200723060908.50081-1-hch@lst.de> <20200723060908.50081-13-hch@lst.de> <20200727150310.GA1632472@zx2c4.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <linux-can-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20200727133331.GA1851348@shredder>
-Sender: netdev-owner@vger.kernel.org
+In-Reply-To: <20200727150310.GA1632472@zx2c4.com>
+Sender: linux-can-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ido Schimmel <idosch@idosch.org>
+To: "Jason A. Donenfeld" <Jason@zx2c4.com>
 Cc: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, 
 
-I have to admit I didn't spot the difference between the good and the
-bad output even after trying hard..
-
-But can you try the patch below?
+Can you try the patch below?
 
 ---
 From cce2d2e1b43ecee5f4af7cf116808b74b330080f Mon Sep 17 00:00:00 2001
