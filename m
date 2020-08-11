@@ -1,50 +1,41 @@
-From: Peilin Ye <yepeilin.cs@gmail.com>
-Subject: [Linux-kernel-mentees] [PATCH net] ipvs: Fix uninit-value in do_ip_vs_set_ctl()
-Date: Mon, 10 Aug 2020 18:07:03 -0400
-Message-ID: <20200810220703.796718-1-yepeilin.cs@gmail.com>
+From: Cong Wang <xiyou.wangcong@gmail.com>
+Subject: Re: [Linux-kernel-mentees] [PATCH net] ipvs: Fix uninit-value in do_ip_vs_set_ctl()
+Date: Mon, 10 Aug 2020 20:57:19 -0700
+Message-ID: <CAM_iQpWsQubVJ-AYaLHujHwz68+nsHBcbgbf8XPMEPD=Vu+zaA@mail.gmail.com>
+References: <20200810220703.796718-1-yepeilin.cs@gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=3ZbMbahrrNkhzXHol1Zr0zVJbIcJ6vrUXkY246I6Gww=;
-        b=elE8gXGFCgxGb+WPV22Nwena1f+CuNWdGDIMre+3IYPlJ/dgFxnsv/Nif8jf/9So9g
-         Jfq6u/NSq38DCrgFyDUCnVrtGGmwME440my9SPaB2eKBvqacSCkWOroSb302H/A+6/NC
-         aFFqf3hnQoBHQs4bfAIRRTwhGKzSgh+tqHkZiR1s4ZRMDUflziWLspPza1JmWtc5x5BH
-         hu4Tzumv1CTdCpFez/JNDr9TK5nh5chZTSr0bzMdsoAMlEO6Hm717BFu50YmP2Huc7uT
-         O71KhjXh8z3c2xG1Y5UMQPdQCh0Jh59+6yuOQHl1iV7kGHoV8J8a70s1YKxmLmGKTxYf
-         aS6A==
-Sender: lvs-devel-owner@vger.kernel.org
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=/Ej3O/P5forMr7lkh8Irj0X/aIJv290wNqPXSY+K8SQ=;
+        b=Dy6m6mzpsrA6AiUFbCE/bSjm0Ha27RRY29MhbJd/pIkrgoNaBTwHAWHseayvDnrnCA
+         HwxjeaxYINZHazGU3LyZTfhUmoxozHW8eUuuTVJ2bChVO3S4jc5gnpGqdixrngOjOvZb
+         pT0JrlO6rdHNLUXHOw+rGQRqzehZQ2t0HR9Ie3vLxrt+zMZ3FFs1DyT/jBuUMxkJfg6h
+         cMxGGUnbb16zLxzIVzIFBfrt08riVQ01vqyYYEiqsVUQRbTPP4a+aQTdOpE7Um4t77vW
+         SGhixNnowuHWYLNeYCXspG6tRjf8su5CFtSR4DePU5Ta+mGtOJLAs6rjesqLj0qHV7qj
+         PU3w==
+In-Reply-To: <20200810220703.796718-1-yepeilin.cs@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
-Cc: Peilin Ye <yepeilin.cs@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel-mentees@lists.linuxfoundation.org, syzkaller-bugs@googlegroups.com, linux-kernel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+To: Peilin Ye <yepeilin.cs@gmail.com>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Linux Kernel Network Developers <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org, NetFilter <netfilter-devel@vger.kernel.org>, coreteam@netfilter.org, linux-kernel-mentees@lists.linuxfoundation.org, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, LKML <linux-kernel@vger.kernel.org>
 
-do_ip_vs_set_ctl() is referencing uninitialized stack value when `len` is
-zero. Fix it.
+On Mon, Aug 10, 2020 at 3:10 PM Peilin Ye <yepeilin.cs@gmail.com> wrote:
+>
+> do_ip_vs_set_ctl() is referencing uninitialized stack value when `len` is
+> zero. Fix it.
 
-Reported-and-tested-by: syzbot+23b5f9e7caf61d9a3898@syzkaller.appspotmail.com
-Link: https://syzkaller.appspot.com/bug?id=46ebfb92a8a812621a001ef04d90dfa459520fe2
-Signed-off-by: Peilin Ye <yepeilin.cs@gmail.com>
----
- net/netfilter/ipvs/ip_vs_ctl.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Which exact 'cmd' is it here?
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 412656c34f20..c050b6a42786 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2418,7 +2418,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- {
- 	struct net *net = sock_net(sk);
- 	int ret;
--	unsigned char arg[MAX_SET_ARGLEN];
-+	unsigned char arg[MAX_SET_ARGLEN] = {};
- 	struct ip_vs_service_user *usvc_compat;
- 	struct ip_vs_service_user_kern usvc;
- 	struct ip_vs_service *svc;
--- 
-2.25.1
+I _guess_ it is one of those uninitialized in set_arglen[], which is 0.
+But if that is the case, should it be initialized to
+sizeof(struct ip_vs_service_user) instead because ip_vs_copy_usvc_compat()
+is called anyway. Or, maybe we should just ban len==0 case.
 
+In either case, it does not look like you fix it correctly.
+
+Thanks.
