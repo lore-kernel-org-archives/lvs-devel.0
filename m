@@ -1,17 +1,17 @@
 From: Yaroslav Bolyukin <iam@lach.pw>
-Subject: [PATCHv4 net-next] Remove ipvs v6 dependency on iptables
-Date: Sat, 29 Aug 2020 15:51:37 +0500
-Message-ID: <20200829105136.3533-1-iam@lach.pw>
+Subject: [PATCHv5 net-next] ipvs: remove dependency on ip6_tables
+Date: Sat, 29 Aug 2020 18:59:53 +0500
+Message-ID: <20200829135953.20228-1-iam@lach.pw>
 References: <alpine.LFD.2.23.451.2008291233110.3043@ja.home.ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 In-Reply-To: <alpine.LFD.2.23.451.2008291233110.3043@ja.home.ssi.bg>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: lvs-devel-owner@vger.kernel.org
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: ja@ssi.bg
-Cc: iam@lach.pw, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Jakub Kicinski <kuba@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Cc: iam@lach.pw, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Jakub Kicinski <kuba@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
 This dependency was added because ipv6_find_hdr was in iptables specific
 code but is no longer required
@@ -20,6 +20,8 @@ Fixes: f8f626754ebe ("ipv6: Move ipv6_find_hdr() out of Netfilter code.")
 Fixes: 63dca2c0b0e7 ("ipvs: Fix faulty IPv6 extension header handling in IPVS").
 Signed-off-by: Yaroslav Bolyukin <iam@lach.pw>
 ---
+ Missed canonical patch format section, subsystem is now spevified
+
  include/net/ip_vs.h        | 3 ---
  net/netfilter/ipvs/Kconfig | 1 -
  2 files changed, 4 deletions(-)
