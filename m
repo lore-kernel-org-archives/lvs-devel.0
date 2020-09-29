@@ -1,72 +1,46 @@
-From: yue longguang <yuelongguang@gmail.com>
-Subject: Re: [PATCH v5] ipvs: adjust the debug info in function set_tcp_state
-Date: Tue, 29 Sep 2020 10:15:49 +0800
-Message-ID: <CAPaK2r8DnR_dcZ8E9w0mvDbK2KiWCt+JswO=-tqvbWb2RibaYw@mail.gmail.com>
-References: <alpine.LFD.2.23.451.2009271625160.35554@ja.home.ssi.bg> <20200928024938.97121-1-bigclouds@163.com>
+From: "longguang.yue" <bigclouds@163.com>
+Subject: [PATCH] ipvs: Add traffic statistic up even it is VS/DR or VS/TUN mode
+Date: Tue, 29 Sep 2020 13:03:02 +0800
+Message-ID: <20200929050302.28105-1-bigclouds@163.com>
 Mime-Version: 1.0
-Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=DjSQ9+lJ+KOY1QhLkpVLHaBOWFdrcLty+nw0yJV/I8Q=;
-        b=DZhXDdSMQJIGkkVrGwyQS/lGggQc5c3pvIXYhO/IPdOhvQbCY+2marDi29JbT2EsKu
-         yFJZHGwHAVox4UH2X2grKfs/9aOk7V/MQYOMlAVwDCWEpTT8Qha5YjjpVgtFX53/PEGY
-         65Om4LcgoWwGsOtjri619XxiMgldZC+WAQbaE4XCJGF4B/aYF5sN/P8/WmgfSf/c7qpk
-         ERrZXQr2wol0jNmvtQHOYFSkFNz9E+4/LOeAlnNMiJegctoKTYOPSyrXui3T+YsoclU7
-         lt41N1uZG4PGWEuTqnJ+PVaEvxOLrfMMBQWL0FYkCsJ4ifddfSz3PTgiT0JA1uKXZ4To
-         Ab+g==
-In-Reply-To: <20200928024938.97121-1-bigclouds@163.com>
+Content-Transfer-Encoding: 8bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+        s=s110527; h=From:Subject:Date:Message-Id:MIME-Version; bh=6uKgF
+        uXFSap/EdUsAgj497IozAnPWYkZEiXqqo30dV4=; b=TDuUmUecsCWlsrrmVse8P
+        PNPgB0PgbMi63CXLyukIN/JcSXL02GseHhw0sIeKlqkeIX4yVgAd8jEl1cyXglHu
+        7IFpeIkM0iUMOUqoSg08Oq52phT47DWZ7avEKsqV/VMH0pCjt2MZFQ57u2bqvkT4
+        v2nGnMN7Sl8e1kHqAFs5KA=
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>, "longguang.yue" <bigclouds@163.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>
-Cc: Wensong Zhang <wensong@linux-vs.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>, open list <linux-kernel@vger.kernel.org>
+To: 
+Cc: yuelongguang@gmail.com, "longguang.yue" <bigclouds@163.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>, open list <linux-kernel@vger.kernel.org>
 
-I sincerely apologize for the trouble which takes up much of your
-time. If the last patch does not work , would you please fix it?
-thanks
+It's ipvs's duty to do traffic statistic if packets get hit,
+no matter what mode it is.
 
-On Mon, Sep 28, 2020 at 10:51 AM longguang.yue <bigclouds@163.com> wrote:
->
-> Outputting client,virtual,dst addresses info when tcp state changes,
-> which makes the connection debug more clear
->
-> Signed-off-by: longguang.yue <bigclouds@163.com>
-> ---
->  net/netfilter/ipvs/ip_vs_proto_tcp.c | 10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
->
-> diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-> index dc2e7da2742a..7da51390cea6 100644
-> --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
-> +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
-> @@ -539,8 +539,8 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
->         if (new_state != cp->state) {
->                 struct ip_vs_dest *dest = cp->dest;
->
-> -               IP_VS_DBG_BUF(8, "%s %s [%c%c%c%c] %s:%d->"
-> -                             "%s:%d state: %s->%s conn->refcnt:%d\n",
-> +               IP_VS_DBG_BUF(8, "%s %s [%c%c%c%c] c:%s:%d v:%s:%d "
-> +                             "d:%s:%d state: %s->%s conn->refcnt:%d\n",
->                               pd->pp->name,
->                               ((state_off == TCP_DIR_OUTPUT) ?
->                                "output " : "input "),
-> @@ -548,10 +548,12 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
->                               th->fin ? 'F' : '.',
->                               th->ack ? 'A' : '.',
->                               th->rst ? 'R' : '.',
-> -                             IP_VS_DBG_ADDR(cp->daf, &cp->daddr),
-> -                             ntohs(cp->dport),
->                               IP_VS_DBG_ADDR(cp->af, &cp->caddr),
->                               ntohs(cp->cport),
-> +                             IP_VS_DBG_ADDR(cp->af, &cp->vaddr),
-> +                             ntohs(cp->vport),
-> +                             IP_VS_DBG_ADDR(cp->daf, &cp->daddr),
-> +                             ntohs(cp->dport),
->                               tcp_state_name(cp->state),
->                               tcp_state_name(new_state),
->                               refcount_read(&cp->refcnt));
-> --
-> 2.20.1 (Apple Git-117)
->
+Signed-off-by: longguang.yue <bigclouds@163.com>
+---
+ net/netfilter/ipvs/ip_vs_core.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index e3668a6e54e4..ed523057f07f 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -1413,8 +1413,11 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
+ 			     ipvs, af, skb, &iph);
+ 
+ 	if (likely(cp)) {
+-		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
++		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ){
++			ip_vs_out_stats(cp, skb);
++			skb->ipvs_property = 1;
+ 			goto ignore_cp;
++		}
+ 		return handle_response(af, skb, pd, cp, &iph, hooknum);
+ 	}
+ 
+-- 
+2.20.1 (Apple Git-117)
+
