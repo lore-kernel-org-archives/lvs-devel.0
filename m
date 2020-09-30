@@ -1,83 +1,77 @@
-From: "longguang.yue" <bigclouds@163.com>
-Subject: [PATCH v3] ipvs: Add traffic statistic up even it is VS/DR or VS/TUN mode
-Date: Wed, 30 Sep 2020 09:26:10 +0800
-Message-ID: <20200930012611.54859-1-bigclouds@163.com>
-References: <20200929074110.33d7d740@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+From: yue longguang <yuelongguang@gmail.com>
+Subject: Re: [PATCH v5] ipvs: adjust the debug info in function set_tcp_state
+Date: Wed, 30 Sep 2020 10:27:55 +0800
+Message-ID: <CAPaK2r-jJf4z28S+h=pbaP4MN5QhG_HMDFA3RZbyhRQeALmhRQ@mail.gmail.com>
+References: <alpine.LFD.2.23.451.2009271625160.35554@ja.home.ssi.bg>
+ <20200928024938.97121-1-bigclouds@163.com> <CAPaK2r8DnR_dcZ8E9w0mvDbK2KiWCt+JswO=-tqvbWb2RibaYw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-        s=s110527; h=From:Subject:Date:Message-Id:MIME-Version; bh=uJR2+
-        kHD67D/W0UAJxory5DlslOyqbmHQlUC5LT3n4Q=; b=Xir3yfGciA25slWNSHSYt
-        tDFo8y4o0sSdYkCy+BDdrqjU2FHswbFc5b0znEplbLSnQy38SwJqH81hNisx8+HK
-        fVArAwqy3pBN9tJvtfKFGmSrbQt0nmWnUBWb0VWm1O2EKoWJB39ZdeLByfU8vULZ
-        Ls4OvJKaovT+UUsVRyhAgw=
-In-Reply-To: <20200929074110.33d7d740@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=sUfEpw7X1G1+6Fq/FvfW4rElhh8ieZOdIb5C6ZI1b70=;
+        b=OFyWx6O7rbcK+UhaL69VMj/ErjnRDsDx9W2RaKn6DO3pbuVuR+M2gPR1OsX9uv+mKt
+         SijSAEjT6S1jqUokRL60JNww+n3ELZ5PYfiRrrxVCuu5CgmI4/90l9T8+9IwHOlSz63q
+         QDSFbKs6NYhaTBrOzQKSlRCl1diRwtf8UTRRqzFQzH70bKT4Ldbmk8bID+TArz2cP3p3
+         f5voUI15l5VS7FgefRWfaNqQR88VEWOZrDtJPSEVhIjwfCu5ZpQZWPYH8cDMGlRSJ1+F
+         inawNCxiB2Sp33p3+5vGcJ+5WJw43xlurWxecUiwGMTE2h8ai+o8IciOxfUGqYmvd9re
+         oeTg==
+In-Reply-To: <CAPaK2r8DnR_dcZ8E9w0mvDbK2KiWCt+JswO=-tqvbWb2RibaYw@mail.gmail.com>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: 
-Cc: kuba@kernel.org, yuelongguang@gmail.com, "longguang.yue" <bigclouds@163.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>, open list <linux-kernel@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+To: Julian Anastasov <ja@ssi.bg>, "longguang.yue" <bigclouds@163.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>
+Cc: Wensong Zhang <wensong@linux-vs.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>
 
-It's ipvs's duty to do traffic statistic if packets get hit,
-no matter what mode it is.
+Julian, Pablo, Simon,  Hi,  ping
 
-Signed-off-by: longguang.yue <bigclouds@163.com>
----
- net/netfilter/ipvs/ip_vs_conn.c | 14 ++++++++++++--
- net/netfilter/ipvs/ip_vs_core.c |  5 ++++-
- 2 files changed, 16 insertions(+), 3 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index a90b8eac16ac..c4d164ce8ca7 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -401,6 +401,8 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
- struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
- {
- 	unsigned int hash;
-+	__be16 cport;
-+	const union nf_inet_addr *caddr;
- 	struct ip_vs_conn *cp, *ret=NULL;
- 
- 	/*
-@@ -411,10 +413,18 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
- 	rcu_read_lock();
- 
- 	hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
--		if (p->vport == cp->cport && p->cport == cp->dport &&
-+		cport = cp->dport;
-+		caddr = &cp->daddr;
-+
-+		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ) {
-+			cport = cp->vport;
-+			caddr = &cp->vaddr;
-+		}
-+
-+		if (p->vport == cp->cport && p->cport == cport &&
- 		    cp->af == p->af &&
- 		    ip_vs_addr_equal(p->af, p->vaddr, &cp->caddr) &&
--		    ip_vs_addr_equal(p->af, p->caddr, &cp->daddr) &&
-+		    ip_vs_addr_equal(p->af, p->caddr, caddr) &&
- 		    p->protocol == cp->protocol &&
- 		    cp->ipvs == p->ipvs) {
- 			if (!__ip_vs_conn_get(cp))
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index e3668a6e54e4..7ba88dab297a 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1413,8 +1413,11 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
- 			     ipvs, af, skb, &iph);
- 
- 	if (likely(cp)) {
--		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-+		if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ) {
-+			ip_vs_out_stats(cp, skb);
-+			skb->ipvs_property = 1;
- 			goto ignore_cp;
-+		}
- 		return handle_response(af, skb, pd, cp, &iph, hooknum);
- 	}
- 
--- 
-2.20.1 (Apple Git-117)
-
+On Tue, Sep 29, 2020 at 10:15 AM yue longguang <yuelongguang@gmail.com> wrote:
+>
+> I sincerely apologize for the trouble which takes up much of your
+> time. If the last patch does not work , would you please fix it?
+> thanks
+>
+> On Mon, Sep 28, 2020 at 10:51 AM longguang.yue <bigclouds@163.com> wrote:
+> >
+> > Outputting client,virtual,dst addresses info when tcp state changes,
+> > which makes the connection debug more clear
+> >
+> > Signed-off-by: longguang.yue <bigclouds@163.com>
+> > ---
+> >  net/netfilter/ipvs/ip_vs_proto_tcp.c | 10 ++++++----
+> >  1 file changed, 6 insertions(+), 4 deletions(-)
+> >
+> > diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> > index dc2e7da2742a..7da51390cea6 100644
+> > --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> > +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> > @@ -539,8 +539,8 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+> >         if (new_state != cp->state) {
+> >                 struct ip_vs_dest *dest = cp->dest;
+> >
+> > -               IP_VS_DBG_BUF(8, "%s %s [%c%c%c%c] %s:%d->"
+> > -                             "%s:%d state: %s->%s conn->refcnt:%d\n",
+> > +               IP_VS_DBG_BUF(8, "%s %s [%c%c%c%c] c:%s:%d v:%s:%d "
+> > +                             "d:%s:%d state: %s->%s conn->refcnt:%d\n",
+> >                               pd->pp->name,
+> >                               ((state_off == TCP_DIR_OUTPUT) ?
+> >                                "output " : "input "),
+> > @@ -548,10 +548,12 @@ set_tcp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+> >                               th->fin ? 'F' : '.',
+> >                               th->ack ? 'A' : '.',
+> >                               th->rst ? 'R' : '.',
+> > -                             IP_VS_DBG_ADDR(cp->daf, &cp->daddr),
+> > -                             ntohs(cp->dport),
+> >                               IP_VS_DBG_ADDR(cp->af, &cp->caddr),
+> >                               ntohs(cp->cport),
+> > +                             IP_VS_DBG_ADDR(cp->af, &cp->vaddr),
+> > +                             ntohs(cp->vport),
+> > +                             IP_VS_DBG_ADDR(cp->daf, &cp->daddr),
+> > +                             ntohs(cp->dport),
+> >                               tcp_state_name(cp->state),
+> >                               tcp_state_name(new_state),
+> >                               refcount_read(&cp->refcnt));
+> > --
+> > 2.20.1 (Apple Git-117)
+> >
