@@ -1,18 +1,18 @@
 From: "longguang.yue" <bigclouds@163.com>
-Subject: [PATCH v4] ipvs: Add traffic statistic up even it is VS/DR or VS/TUN mode
-Date: Sat,  3 Oct 2020 01:17:32 +0800
-Message-ID: <20201002171732.74552-1-bigclouds@163.com>
-References: <alpine.LFD.2.23.451.2009302019180.5709@ja.home.ssi.bg>
+Subject: [PATCH v5] ipvs: Add traffic statistic up even it is VS/DR or VS/TUN mode
+Date: Sun,  4 Oct 2020 12:13:00 +0800
+Message-ID: <20201004041300.75850-1-bigclouds@163.com>
+References: <alpine.LFD.2.23.451.2010022149210.4429@ja.home.ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-        s=s110527; h=From:Subject:Date:Message-Id:MIME-Version; bh=nd9oP
-        Av+PVdHTui16lO4giEVC1V0YqToMfMakyliwMQ=; b=ijqMYkJgCWfmFay1I1Kz1
-        HEXxHn8T8isObsQYDAMfmwm0Zgp1rTpoWpgR74Y7h2v2HJedbphh7Jt59DdmbBzQ
-        evXGg2oLdQlTbRSBjvpf2poaqh06xRH2lKjkn++g4y+fhlqIebDfsfcIW66dh47/
-        Y2lhaIY2tdMm4Kx2nc5yBI=
-In-Reply-To: <alpine.LFD.2.23.451.2009302019180.5709@ja.home.ssi.bg>
+        s=s110527; h=From:Subject:Date:Message-Id:MIME-Version; bh=VmmMX
+        eHtFIGK7cHAh4X/OThsnpBA/fqwv3CoTxrMc6c=; b=DF2GweqBR8twcO8sT6+Uk
+        ZcL7dbeQh+2Is9VdRi9XHm5KmXpeIHN2jxLeTfd6ZM2UfYenMrwbpo+TpyLi4gZK
+        9Sd6gCOcP7ytY0n+nve9s6f4Hn8eMjE7XJ/gm4nK+5lsqKlVYDvsN5axozTMPXFH
+        LnwZxY4Q5B81cP/MXsVrf8=
+In-Reply-To: <alpine.LFD.2.23.451.2010022149210.4429@ja.home.ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: 
@@ -21,16 +21,18 @@ Cc: ja@ssi.bg, kuba@kernel.org, wensong@linux-vs.org, horms@verge.net.au, pablo@
 It's ipvs's duty to do traffic statistic if packets get hit,
 no matter what mode it is.
 
+----------------------
 Changes in v1: support DR/TUN mode statistic
 Changes in v2: ip_vs_conn_out_get handles DR/TUN mode's conn
 Changes in v3: fix checkpatch
-Changes in v4: restructure and optimise this feature
+Changes in v4, v5: restructure and optimise this feature
+----------------------
 
 Signed-off-by: longguang.yue <bigclouds@163.com>
 ---
  net/netfilter/ipvs/ip_vs_conn.c | 18 +++++++++++++++---
- net/netfilter/ipvs/ip_vs_core.c | 24 +++++++++++++++++-------
- 2 files changed, 32 insertions(+), 10 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 17 ++++++-----------
+ 2 files changed, 21 insertions(+), 14 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
 index a90b8eac16ac..af08ca2d9174 100644
@@ -70,48 +72,55 @@ index a90b8eac16ac..af08ca2d9174 100644
  		    cp->ipvs == p->ipvs) {
  			if (!__ip_vs_conn_get(cp))
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index e3668a6e54e4..315289aecad7 100644
+index e3668a6e54e4..494ea1fcf4d8 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -911,6 +911,10 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 		ip_vs_update_conntrack(skb, cp, 0);
+@@ -875,7 +875,7 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ 	unsigned int verdict = NF_DROP;
  
- ignore_cp:
-+	ip_vs_out_stats(cp, skb);
-+	skb->ipvs_property = 1;
-+	if (!(cp->flags & IP_VS_CONN_F_NFCT))
-+		ip_vs_notrack(skb);
+ 	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
+-		goto ignore_cp;
++		goto after_nat;
+ 
+ 	/* Ensure the checksum is correct */
+ 	if (!skb_csum_unnecessary(skb) && ip_vs_checksum_complete(skb, ihl)) {
+@@ -900,7 +900,7 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ 
+ 	if (ip_vs_route_me_harder(cp->ipvs, af, skb, hooknum))
+ 		goto out;
+-
++after_nat:
+ 	/* do the statistics and put it back */
+ 	ip_vs_out_stats(cp, skb);
+ 
+@@ -909,8 +909,6 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+ 		ip_vs_notrack(skb);
+ 	else
+ 		ip_vs_update_conntrack(skb, cp, 0);
+-
+-ignore_cp:
  	verdict = NF_ACCEPT;
  
  out:
-@@ -1276,6 +1280,9 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+@@ -1276,6 +1274,9 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
  {
  	struct ip_vs_protocol *pp = pd->pp;
  
 +	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
-+		goto ignore_cp;
++		goto after_nat;
 +
  	IP_VS_DBG_PKT(11, af, pp, skb, iph->off, "Outgoing packet");
  
  	if (skb_ensure_writable(skb, iph->len))
-@@ -1328,6 +1335,16 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
- 	LeaveFunction(11);
- 	return NF_ACCEPT;
+@@ -1316,6 +1317,7 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
  
-+ignore_cp:
-+	ip_vs_out_stats(cp, skb);
-+	skb->ipvs_property = 1;
-+	if (!(cp->flags & IP_VS_CONN_F_NFCT))
-+		ip_vs_notrack(skb);
-+	__ip_vs_conn_put(cp);
-+
-+	LeaveFunction(11);
-+	return NF_ACCEPT;
-+
- drop:
- 	ip_vs_conn_put(cp);
- 	kfree_skb(skb);
-@@ -1413,8 +1430,6 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
+ 	IP_VS_DBG_PKT(10, af, pp, skb, iph->off, "After SNAT");
+ 
++after_nat:
+ 	ip_vs_out_stats(cp, skb);
+ 	ip_vs_set_state(cp, IP_VS_DIR_OUTPUT, skb, pd);
+ 	skb->ipvs_property = 1;
+@@ -1413,8 +1415,6 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
  			     ipvs, af, skb, &iph);
  
  	if (likely(cp)) {
@@ -120,7 +129,7 @@ index e3668a6e54e4..315289aecad7 100644
  		return handle_response(af, skb, pd, cp, &iph, hooknum);
  	}
  
-@@ -1475,14 +1490,9 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
+@@ -1475,14 +1475,9 @@ ip_vs_out(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, in
  		}
  	}
  
@@ -128,14 +137,3 @@ index e3668a6e54e4..315289aecad7 100644
  	IP_VS_DBG_PKT(12, af, pp, skb, iph.off,
  		      "ip_vs_out: packet continues traversal as normal");
  	return NF_ACCEPT;
--
--ignore_cp:
--	__ip_vs_conn_put(cp);
--	goto out;
- }
- 
- /*
--- 
-2.20.1 (Apple Git-117)
-
-
