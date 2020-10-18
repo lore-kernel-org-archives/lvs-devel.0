@@ -1,19 +1,19 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 5.9 092/111] ipvs: Fix uninit-value in do_ip_vs_set_ctl()
-Date: Sun, 18 Oct 2020 15:17:48 -0400
-Message-ID: <20201018191807.4052726-92-sashal@kernel.org>
-References: <20201018191807.4052726-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.8 086/101] ipvs: Fix uninit-value in do_ip_vs_set_ctl()
+Date: Sun, 18 Oct 2020 15:20:11 -0400
+Message-ID: <20201018192026.4053674-86-sashal@kernel.org>
+References: <20201018192026.4053674-1-sashal@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603048799;
-        bh=Xg1vAPI8/tmcy3Kj8xVGhsXN/pB9+I66vzxazf9RW8w=;
+        s=default; t=1603048930;
+        bh=erirBj+id5WbO7LuzZecGHTrXUTfVKhr636rTk4qpHo=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ImT08lswXcWUGEYJsqqS55sqphEoC0APTfdQzL01L/kqd/WrP2viaWawmtzFm55Q1
-         JmmoxUMDhEAGZQKdqvUpFHQ3it4zPxsa+xSRuFrvn34SR85iN6fMziz1hvhVgw1K2M
-         AcO4uMHGFlFJFWzl9cgBlpfX5us277KfG+py8o9A=
-In-Reply-To: <20201018191807.4052726-1-sashal@kernel.org>
+        b=ABEBVezeUkR+NrJCWoKrTMFlSlQbwCJ0c3zsBbplUp8tvlYDJVnTrqvm60r7MLh3C
+         Q9WvxKGROp7ZWSYHYCNYHcawd0PiyzCPRgb/V4r9VGBBNAmknUIFzyOUrzweu5yinr
+         DAVTTK27q6cLav4UbA1GWJVnzVcfddDNvTTi8svQ=
+In-Reply-To: <20201018192026.4053674-1-sashal@kernel.org>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
@@ -39,10 +39,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 678c5b14841c1..8dbfd84322a88 100644
+index 412656c34f205..beeafa42aad76 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2508,6 +2508,10 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, sockptr_t ptr, unsigned int len)
+@@ -2471,6 +2471,10 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
  		/* Set timeout values for (tcp tcpfin udp) */
  		ret = ip_vs_set_timeout(ipvs, (struct ip_vs_timeout_user *)arg);
  		goto out_unlock;
@@ -53,7 +53,7 @@ index 678c5b14841c1..8dbfd84322a88 100644
  	}
  
  	usvc_compat = (struct ip_vs_service_user *)arg;
-@@ -2584,9 +2588,6 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, sockptr_t ptr, unsigned int len)
+@@ -2547,9 +2551,6 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
  		break;
  	case IP_VS_SO_SET_DELDEST:
  		ret = ip_vs_del_dest(svc, &udest);
