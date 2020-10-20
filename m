@@ -1,68 +1,65 @@
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 50/56] ipvs: Fix uninit-value in do_ip_vs_set_ctl()
-Date: Sun, 18 Oct 2020 15:24:11 -0400
-Message-ID: <20201018192417.4055228-50-sashal@kernel.org>
-References: <20201018192417.4055228-1-sashal@kernel.org>
+From: Damien Claisse <d.claisse@criteo.com>
+Subject: Network namespace, ipvlan and IPVS source NAT
+Date: Tue, 20 Oct 2020 12:32:25 +0000
+Message-ID: <1A2C4E81-2244-4104-B543-08713F000C0C@criteo.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Return-path: <linux-kernel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603049119;
-        bh=JC0Y0QPLd4dv2Chd2uSnFM6k2pNn9+xYOM4MwLSX+Ps=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=I/UTwr1vfNZNZnCFBRSRBXlvnAUX8TmcEYTPukCr3taqO0HbZw3QiQvE9wMHzM8Hl
-         ZocWgSgRefUzp0BFBoK0erbD4GsDGbwPOa/v52ZcsgYczL4Oe+Lru0OfZO52ZlhyUK
-         hyB6RpHjkN7URlIecD5IjgQLA3cjRVoiw8C8IRtE=
-In-Reply-To: <20201018192417.4055228-1-sashal@kernel.org>
+Content-Transfer-Encoding: base64
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=criteo.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=0b6Mh5jgqNnS21JbcFYN7gEWIcJ3lK9jn9KWTl+iyto=;
+ b=DIAXLyGwLlCVePbpgdNlo8699w3AdVpAZKv48kZls0eD3P5XKuNDLnG4bVuEzHmmRU2oQ0vCWagJqSJURbtrXvKVYD4XJRtJG5YNhGdQU92Vhr0I0VkkV4Pz69sNwTKma61ZNSCnYVKykDfUf12Sq+eymkgYDUW1w8JZRu6phhk=
+Content-Language: fr-FR
+Content-ID: <CDC2C020F139F948A508E63A0DEB374F@eurprd04.prod.outlook.com>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Peilin Ye <yepeilin.cs@gmail.com>, syzbot+23b5f9e7caf61d9a3898@syzkaller.appspotmail.com, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+To: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
+Cc: "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, Julian Anastasov <ja@ssi.bg>, Mahesh Bandewar <maheshb@google.com>
 
-From: Peilin Ye <yepeilin.cs@gmail.com>
-
-[ Upstream commit c5a8a8498eed1c164afc94f50a939c1a10abf8ad ]
-
-do_ip_vs_set_ctl() is referencing uninitialized stack value when `len` is
-zero. Fix it.
-
-Reported-by: syzbot+23b5f9e7caf61d9a3898@syzkaller.appspotmail.com
-Link: https://syzkaller.appspot.com/bug?id=46ebfb92a8a812621a001ef04d90dfa459520fe2
-Suggested-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Peilin Ye <yepeilin.cs@gmail.com>
-Acked-by: Julian Anastasov <ja@ssi.bg>
-Reviewed-by: Simon Horman <horms@verge.net.au>
-Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- net/netfilter/ipvs/ip_vs_ctl.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index c339b5e386b78..3ad1de081e3c7 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2393,6 +2393,10 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		/* Set timeout values for (tcp tcpfin udp) */
- 		ret = ip_vs_set_timeout(ipvs, (struct ip_vs_timeout_user *)arg);
- 		goto out_unlock;
-+	} else if (!len) {
-+		/* No more commands with len == 0 below */
-+		ret = -EINVAL;
-+		goto out_unlock;
- 	}
- 
- 	usvc_compat = (struct ip_vs_service_user *)arg;
-@@ -2469,9 +2473,6 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		break;
- 	case IP_VS_SO_SET_DELDEST:
- 		ret = ip_vs_del_dest(svc, &udest);
--		break;
--	default:
--		ret = -EINVAL;
- 	}
- 
-   out_unlock:
--- 
-2.25.1
-
+SGksDQoNCkknbSB0cnlpbmcgdG8gdW5kZXJzdGFuZCBhIGxpbWl0YXRpb24gaW4gaXB2bGFuL25l
+dGZpbHRlciB0aGF0IHByZXZlbnRzIGRvaW5nIHJvdXRlZCBJUFZTIHdpdGggc291cmNlIE5BVCBp
+bnNpZGUgYSBuYW1lc3BhY2UuDQoNClNldHVwIGlzIHRoZSBmb2xsb3dpbmc6IHRoZXJlIGlzIGFu
+ICJsdnMiIG5hbWVzcGFjZSwgd2l0aCBhbiBpcHZsYW4gaW50ZXJmYWNlIChpbiBsMyBtb2RlKSBt
+b3ZlZCB0byB0aGlzIG5hbWVzcGFjZSwgbGlua2VkIHRvIHBoeXNpY2FsIGludGVyZmFjZS4gR29h
+bCBpcyB0byBpc29sYXRlIGxvYWQgYmFsYW5jZWQgdHJhZmZpYyBpbiBhIHNlcGFyYXRlIG5hbWVz
+cGFjZS4NClRoaXMgc2V0dXAgaXMgd29ya2luZyBmbGF3bGVzc2x5IHdpdGggbDMgcm91dGVkIElQ
+SVAgZW5jYXBzdWxhdGlvbiwgYnV0IEkgYWxzbyBoYXZlIGEgdXNlIGNhc2UgZm9yIGFwcGxpY2F0
+aW9ucyB0aGF0IGRvbid0IHN1cHBvcnQgZW5jYXBzdWxhdGlvbiwgaGVuY2UgdGhlIG5lZWQgdG8g
+ZG8gbDMgcm91dGVkIGxvYWQgYmFsYW5jaW5nIHdpdGggc291cmNlIE5BVC4NCklzc3VlIGlzIHRo
+YXQgaWYgSSBwdXQgaXB0YWJsZXMgTkFUIHJ1bGUgaW4gbmFtZXNwYWNlIHVzaW5nIGlwdnMgbW9k
+dWxlLCBub3RoaW5nIGhhcHBlbnMsIHBhY2tldCBpcyBmb3J3YXJkZWQgYnV0IHNvdXJjZSBJUCBp
+cyBub3QgdHJhbnNsYXRlZC4gSXQgc2VlbXMgbGlrZSBuZXRmaWx0ZXIgaXMgYmxpbmQgdG8gaXB2
+bGFuIGwzIHRyYWZmaWMuIEkgYWxzbyB0cmllZCB1c2luZyAibDNzIiBtb2RlIHRoYXQgc2hvdWxk
+IHRvIGdvIHRocm91Z2ggbmV0ZmlsdGVyLCBidXQgaW4gdGhhdCBjYXNlLCBwYWNrZXRzIGZvciB2
+aXJ0dWFsIElQcyBhcmUgcmVqZWN0ZWQgd2l0aCBhIFRDUCByZXNldC4gVmlydHVhbCBJUHMgaW4g
+bmFtZXNwYWNlIHNlZW0gbm90IHZpc2libGUgdG8gdGhpcyBtb2RlLg0KDQpJJ20gd29uZGVyaW5n
+IHdoYXQgd291bGQgYmUgdGhlIGJlc3Qgd2F5IHRvIG1ha2UgaXQgaGFwcGVuOg0KLSBwYXRjaCBp
+cHZsYW4gdG8gbG9va3VwIGZvciBWSVBzIGluIG5hbWVzcGFjZXMNCi0gcGF0Y2ggbmV0ZmlsdGVy
+IGlwdnMgTkFUIG1vZHVsZSB0byB0cmFuc2xhdGUgaW4gcm9vdCBuYW1lc3BhY2UNCi0gYW55IG90
+aGVyIGJldHRlciBpZGVhIGlzIHdlbGNvbWUNCg0KUGxlYXNlIGZpbmQgYmVsb3cgY29tbWFuZHMg
+dG8gcmVwcm9kdWNlIHRoZSBpc3N1ZS4gSW4gdGhpcyBleGFtcGxlIHBoeXNpY2FsIGxvYWQgYmFs
+YW5jZXIgaW50ZXJmYWNlIGlzIGVucDRzMCwgdmlydHVhbCBJUCBpcyAxOTIuMTY4LjQyLjEgKHRv
+IGJlIGV4cG9ydGVkIGJ5IGEgcm91dGluZyBwcm90b2NvbCwgb3Igcm91dGUgbWFudWFsbHkgYWRk
+ZWQgdG8gYSBjbGllbnQgaW4gc2FtZSBzdWJuZXQgYXMgbG9hZCBiYWxhbmNlciBmb3IgdGVzdGlu
+ZyksIGxvYWQgYmFsYW5jZXIgSVAgaXMgMTkyLjE2OC4xMC4xMCwgYW5kIHJlYWwgc2VydmVyIElQ
+IGlzIDE5Mi4xNjguMjAuMjANCg0KLSBJbiByb290IG5hbWVzcGFjZToNCmlwIG5ldG5zIGFkZCBs
+dnMNCmlwIGxpbmsgYWRkIGlwdmxhbjAgbGluayBlbnA0czAgdHlwZSBpcHZsYW4gbW9kZSBsM3MN
+CmlwIGxpbmsgc2V0IGlwdmxhbjAgdXANCmlwIGxpbmsgc2V0IGlwdmxhbjAgbmV0bnMgbHZzDQoN
+Ci0gSW4gbHZzIG5hbWVzcGFjZSAoaXAgbmV0bnMgZXhlYyBsdnMgYmFzaCk6DQppcCBhZGRyIGFk
+ZCAxOTIuMTY4LjQyLjEvMzIgZGV2IGlwdmxhbjANCmlwIHJvdXRlIGFkZCBkZWZhdWx0IHZpYSAx
+OTIuMTY4LjEwLjEwIGRldiBpcHZsYW4wIG9ubGluaw0KaXB2c2FkbSAtQSAtdCAxOTIuMTY4LjQy
+LjE6ODAgLXMgcnINCmlwdnNhZG0gLWEgLXQgMTkyLjE2OC40Mi4xOjgwIC1yIDE5Mi4xNjguMjAu
+MjA6ODAgLW0NCmlwdGFibGVzIC10IG5hdCAtQSBQT1NUUk9VVElORyAtbSBpcHZzIC0tdmFkZHIg
+MTkyLjE2OC40Mi4xLzI0IC0tdnBvcnQgODAgLWogU05BVCAtLXRvLXNvdXJjZSAxOTIuMTY4LjEw
+LjEwDQoNCldoYXQgSSdkIGV4cGVjdDogYSBwYWNrZXQgb3V0Z29pbmcgZnJvbSBlbnA0czAgd2l0
+aCBzb3VyY2UgSVAgMTkyLjE2OC4xMC4xMCBhbmQgZGVzdGluYXRpb24gSVAgMTkyLjE2OC4yMC4y
+MA0KV2hhdCBJIHNlZSBmcm9tIGEgdGVzdCBjbGllbnQ6DQotIGluIGwzIG1vZGU6IGEgcGFja2V0
+IG91dGdvaW5nIGZyb20gZW5wNHMwIHdpdGggc291cmNlIGNsaWVudCBJUCBhZGRyZXNzIGFuZCBk
+ZXN0aW5hdGlvbiAxOTIuMTY4LjIwLjIwIChoZW5jZSBtaXNzaW5nIHNvdXJjZSBOQVQpLiBJIGFs
+c28gZG9uJ3Qgc2VlIGFueSBjb25udHJhY2sgZXZlbnQgd2hlbiBkb2luZyBjb25udHJhY2sgLUUN
+Ci0gaW4gbDNzIG1vZGU6IGNvbm5lY3Rpb24gcmVzZXQgc2VudCB0byBjbGllbnQuIFdoaWxlIHJl
+YWRpbmcgbDNzIGltcGxlbWVudGF0aW9uLCBJIHdvbmRlciB3aGVyZSByb3V0ZSBsb29rdXAgaXMg
+ZG9uZSBpbiBpcHZsYW5fbDNfcmN2LCBpdCBzZWVtcyB0aGF0IG5hbWVzcGFjZXMnIHZpcnR1YWwg
+SVAgYWRkcmVzc2VzIGFyZSBub3QgdmlzaWJsZSBkdXJpbmcgdGhpcyBsb29rdXAsIGhlbmNlIHRo
+ZSBUQ1AgUlNULg0KDQpDaGVlcnMsDQotLSANCkRhbWllbiBDbGFpc3NlDQoNCg==
