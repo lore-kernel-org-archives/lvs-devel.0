@@ -1,65 +1,33 @@
-From: Damien Claisse <d.claisse@criteo.com>
-Subject: Network namespace, ipvlan and IPVS source NAT
-Date: Tue, 20 Oct 2020 12:32:25 +0000
-Message-ID: <1A2C4E81-2244-4104-B543-08713F000C0C@criteo.com>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH v5] ipvs: adjust the debug info in function set_tcp_state
+Date: Tue, 20 Oct 2020 17:22:46 +0200
+Message-ID: <20201020152246.GA19962@salvia>
+References: <alpine.LFD.2.23.451.2009271625160.35554@ja.home.ssi.bg>
+ <20200928024938.97121-1-bigclouds@163.com>
+ <alpine.LFD.2.23.451.2009300803110.6056@ja.home.ssi.bg>
 Mime-Version: 1.0
-Content-Transfer-Encoding: base64
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=criteo.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=0b6Mh5jgqNnS21JbcFYN7gEWIcJ3lK9jn9KWTl+iyto=;
- b=DIAXLyGwLlCVePbpgdNlo8699w3AdVpAZKv48kZls0eD3P5XKuNDLnG4bVuEzHmmRU2oQ0vCWagJqSJURbtrXvKVYD4XJRtJG5YNhGdQU92Vhr0I0VkkV4Pz69sNwTKma61ZNSCnYVKykDfUf12Sq+eymkgYDUW1w8JZRu6phhk=
-Content-Language: fr-FR
-Content-ID: <CDC2C020F139F948A508E63A0DEB374F@eurprd04.prod.outlook.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.23.451.2009300803110.6056@ja.home.ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>
-Cc: "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, Julian Anastasov <ja@ssi.bg>, Mahesh Bandewar <maheshb@google.com>
+Content-Transfer-Encoding: 7bit
+To: Julian Anastasov <ja@ssi.bg>
+Cc: "longguang.yue" <bigclouds@163.com>, yuelongguang@gmail.com, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>, open list <linux-kernel@vger.kernel.org>
 
-SGksDQoNCkknbSB0cnlpbmcgdG8gdW5kZXJzdGFuZCBhIGxpbWl0YXRpb24gaW4gaXB2bGFuL25l
-dGZpbHRlciB0aGF0IHByZXZlbnRzIGRvaW5nIHJvdXRlZCBJUFZTIHdpdGggc291cmNlIE5BVCBp
-bnNpZGUgYSBuYW1lc3BhY2UuDQoNClNldHVwIGlzIHRoZSBmb2xsb3dpbmc6IHRoZXJlIGlzIGFu
-ICJsdnMiIG5hbWVzcGFjZSwgd2l0aCBhbiBpcHZsYW4gaW50ZXJmYWNlIChpbiBsMyBtb2RlKSBt
-b3ZlZCB0byB0aGlzIG5hbWVzcGFjZSwgbGlua2VkIHRvIHBoeXNpY2FsIGludGVyZmFjZS4gR29h
-bCBpcyB0byBpc29sYXRlIGxvYWQgYmFsYW5jZWQgdHJhZmZpYyBpbiBhIHNlcGFyYXRlIG5hbWVz
-cGFjZS4NClRoaXMgc2V0dXAgaXMgd29ya2luZyBmbGF3bGVzc2x5IHdpdGggbDMgcm91dGVkIElQ
-SVAgZW5jYXBzdWxhdGlvbiwgYnV0IEkgYWxzbyBoYXZlIGEgdXNlIGNhc2UgZm9yIGFwcGxpY2F0
-aW9ucyB0aGF0IGRvbid0IHN1cHBvcnQgZW5jYXBzdWxhdGlvbiwgaGVuY2UgdGhlIG5lZWQgdG8g
-ZG8gbDMgcm91dGVkIGxvYWQgYmFsYW5jaW5nIHdpdGggc291cmNlIE5BVC4NCklzc3VlIGlzIHRo
-YXQgaWYgSSBwdXQgaXB0YWJsZXMgTkFUIHJ1bGUgaW4gbmFtZXNwYWNlIHVzaW5nIGlwdnMgbW9k
-dWxlLCBub3RoaW5nIGhhcHBlbnMsIHBhY2tldCBpcyBmb3J3YXJkZWQgYnV0IHNvdXJjZSBJUCBp
-cyBub3QgdHJhbnNsYXRlZC4gSXQgc2VlbXMgbGlrZSBuZXRmaWx0ZXIgaXMgYmxpbmQgdG8gaXB2
-bGFuIGwzIHRyYWZmaWMuIEkgYWxzbyB0cmllZCB1c2luZyAibDNzIiBtb2RlIHRoYXQgc2hvdWxk
-IHRvIGdvIHRocm91Z2ggbmV0ZmlsdGVyLCBidXQgaW4gdGhhdCBjYXNlLCBwYWNrZXRzIGZvciB2
-aXJ0dWFsIElQcyBhcmUgcmVqZWN0ZWQgd2l0aCBhIFRDUCByZXNldC4gVmlydHVhbCBJUHMgaW4g
-bmFtZXNwYWNlIHNlZW0gbm90IHZpc2libGUgdG8gdGhpcyBtb2RlLg0KDQpJJ20gd29uZGVyaW5n
-IHdoYXQgd291bGQgYmUgdGhlIGJlc3Qgd2F5IHRvIG1ha2UgaXQgaGFwcGVuOg0KLSBwYXRjaCBp
-cHZsYW4gdG8gbG9va3VwIGZvciBWSVBzIGluIG5hbWVzcGFjZXMNCi0gcGF0Y2ggbmV0ZmlsdGVy
-IGlwdnMgTkFUIG1vZHVsZSB0byB0cmFuc2xhdGUgaW4gcm9vdCBuYW1lc3BhY2UNCi0gYW55IG90
-aGVyIGJldHRlciBpZGVhIGlzIHdlbGNvbWUNCg0KUGxlYXNlIGZpbmQgYmVsb3cgY29tbWFuZHMg
-dG8gcmVwcm9kdWNlIHRoZSBpc3N1ZS4gSW4gdGhpcyBleGFtcGxlIHBoeXNpY2FsIGxvYWQgYmFs
-YW5jZXIgaW50ZXJmYWNlIGlzIGVucDRzMCwgdmlydHVhbCBJUCBpcyAxOTIuMTY4LjQyLjEgKHRv
-IGJlIGV4cG9ydGVkIGJ5IGEgcm91dGluZyBwcm90b2NvbCwgb3Igcm91dGUgbWFudWFsbHkgYWRk
-ZWQgdG8gYSBjbGllbnQgaW4gc2FtZSBzdWJuZXQgYXMgbG9hZCBiYWxhbmNlciBmb3IgdGVzdGlu
-ZyksIGxvYWQgYmFsYW5jZXIgSVAgaXMgMTkyLjE2OC4xMC4xMCwgYW5kIHJlYWwgc2VydmVyIElQ
-IGlzIDE5Mi4xNjguMjAuMjANCg0KLSBJbiByb290IG5hbWVzcGFjZToNCmlwIG5ldG5zIGFkZCBs
-dnMNCmlwIGxpbmsgYWRkIGlwdmxhbjAgbGluayBlbnA0czAgdHlwZSBpcHZsYW4gbW9kZSBsM3MN
-CmlwIGxpbmsgc2V0IGlwdmxhbjAgdXANCmlwIGxpbmsgc2V0IGlwdmxhbjAgbmV0bnMgbHZzDQoN
-Ci0gSW4gbHZzIG5hbWVzcGFjZSAoaXAgbmV0bnMgZXhlYyBsdnMgYmFzaCk6DQppcCBhZGRyIGFk
-ZCAxOTIuMTY4LjQyLjEvMzIgZGV2IGlwdmxhbjANCmlwIHJvdXRlIGFkZCBkZWZhdWx0IHZpYSAx
-OTIuMTY4LjEwLjEwIGRldiBpcHZsYW4wIG9ubGluaw0KaXB2c2FkbSAtQSAtdCAxOTIuMTY4LjQy
-LjE6ODAgLXMgcnINCmlwdnNhZG0gLWEgLXQgMTkyLjE2OC40Mi4xOjgwIC1yIDE5Mi4xNjguMjAu
-MjA6ODAgLW0NCmlwdGFibGVzIC10IG5hdCAtQSBQT1NUUk9VVElORyAtbSBpcHZzIC0tdmFkZHIg
-MTkyLjE2OC40Mi4xLzI0IC0tdnBvcnQgODAgLWogU05BVCAtLXRvLXNvdXJjZSAxOTIuMTY4LjEw
-LjEwDQoNCldoYXQgSSdkIGV4cGVjdDogYSBwYWNrZXQgb3V0Z29pbmcgZnJvbSBlbnA0czAgd2l0
-aCBzb3VyY2UgSVAgMTkyLjE2OC4xMC4xMCBhbmQgZGVzdGluYXRpb24gSVAgMTkyLjE2OC4yMC4y
-MA0KV2hhdCBJIHNlZSBmcm9tIGEgdGVzdCBjbGllbnQ6DQotIGluIGwzIG1vZGU6IGEgcGFja2V0
-IG91dGdvaW5nIGZyb20gZW5wNHMwIHdpdGggc291cmNlIGNsaWVudCBJUCBhZGRyZXNzIGFuZCBk
-ZXN0aW5hdGlvbiAxOTIuMTY4LjIwLjIwIChoZW5jZSBtaXNzaW5nIHNvdXJjZSBOQVQpLiBJIGFs
-c28gZG9uJ3Qgc2VlIGFueSBjb25udHJhY2sgZXZlbnQgd2hlbiBkb2luZyBjb25udHJhY2sgLUUN
-Ci0gaW4gbDNzIG1vZGU6IGNvbm5lY3Rpb24gcmVzZXQgc2VudCB0byBjbGllbnQuIFdoaWxlIHJl
-YWRpbmcgbDNzIGltcGxlbWVudGF0aW9uLCBJIHdvbmRlciB3aGVyZSByb3V0ZSBsb29rdXAgaXMg
-ZG9uZSBpbiBpcHZsYW5fbDNfcmN2LCBpdCBzZWVtcyB0aGF0IG5hbWVzcGFjZXMnIHZpcnR1YWwg
-SVAgYWRkcmVzc2VzIGFyZSBub3QgdmlzaWJsZSBkdXJpbmcgdGhpcyBsb29rdXAsIGhlbmNlIHRo
-ZSBUQ1AgUlNULg0KDQpDaGVlcnMsDQotLSANCkRhbWllbiBDbGFpc3NlDQoNCg==
+On Wed, Sep 30, 2020 at 08:08:02AM +0300, Julian Anastasov wrote:
+> 
+> 	Hello,
+> 
+> On Mon, 28 Sep 2020, longguang.yue wrote:
+> 
+> > Outputting client,virtual,dst addresses info when tcp state changes,
+> > which makes the connection debug more clear
+> > 
+> > Signed-off-by: longguang.yue <bigclouds@163.com>
+> 
+> 	OK, v5 can be used instead of fixing v4.
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
+
+Applied, thanks.
