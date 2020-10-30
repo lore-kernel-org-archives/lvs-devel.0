@@ -1,47 +1,208 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: a question about fullnat mode for ipvs
-Date: Mon, 26 Oct 2020 22:23:42 +0200 (EET)
-Message-ID: <615db10-72af-2a86-dde2-61af8e6bd80@ssi.bg>
-References: <20201005201347.13644-1-ja@ssi.bg> <20201012000223.GA14420@salvia> <1989ac03.3737.175445ba5f9.Coremail.bigclouds@163.com>
+From: Cezar Sa Espinola <cezarsa@gmail.com>
+Subject: [PATCH RFC] ipvs: add genetlink cmd to dump all services and destinations
+Date: Fri, 30 Oct 2020 17:27:27 -0300
+Message-ID: <20201030202727.1053534-1-cezarsa@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="-1463811672-345138178-1603743827=:4529"
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <1989ac03.3737.175445ba5f9.Coremail.bigclouds@163.com>
-List-ID: <lvs-devel.vger.kernel.org>
-To: "longguang.yue" <bigclouds@163.com>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yuelongguang@gmail.com
-
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
----1463811672-345138178-1603743827=:4529
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+Return-path: <linux-kernel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=PduwTWItCxNftAk0oyv+w/Vg2mUdPmGVkrLR8E6k2NQ=;
+        b=gdxjngGj6cuGY/zDICXmiBva4+A5f1PBieMyOIZNjEOVWK0reiF9nLnjgv2OaQb4w0
+         3ndH50g8TkwviAztCAhmBIpnKgksRwd/HfMAw8VdHAZ0qfXl6Mk8PYcMVa/hFtNcUJHH
+         ixQPtKW74LUy+YECvUoAhUTSJpBV05owibXWpCch56kBG8mwHysi7FuwpY9HqikOOxL6
+         d3KumNMkdTup4Btjj6XyPhZKVfIpyGUh3gYy+aL9PjlLuKfg+duj25dMGQnbqhJoMzov
+         JHc/H6TBhFmG2J8XFSB+hc5uZEuhV4ePH0t9uIBd8yEa6magfmCXuxDhw+PNnikXix49
+         xjGg==
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Cezar Sa Espinola <cezarsa@gmail.com>, Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>
 
+A common operation for userspace applications managing ipvs is to dump
+all services and all destinations and then sort out what needs to be
+done. Previously this could only be accomplished by issuing 1 netlink
+IPVS_CMD_GET_SERVICE dump command followed by N IPVS_CMD_GET_DEST dump
+commands. For a dynamic system with a very large number of services this
+could be cause a performance impact.
 
-	Hello,
+This patch introduces a new way of dumping all services and destinations
+with the new IPVS_CMD_GET_SERVICE_DEST command. A dump call for this
+command will send the services as IPVS_CMD_NEW_SERVICE messages
+imediatelly followed by its destinations as multiple IPVS_CMD_NEW_DEST
+messages. It's also possible to dump a single service and its
+destinations by sending a IPVS_CMD_ATTR_SERVICE argument to the dump
+command.
 
-On Tue, 20 Oct 2020, longguang.yue wrote:
+Signed-off-by: Cezar Sa Espinola <cezarsa@gmail.com>
+---
 
-> Hi,all:
->     fullnat mode refers to  incoming packet's src:port and dst:port pairs are both changed at the same
-> time, vice  versa for outgoing packets.
->     fullnat has existed for many years since 2009, why which is not in kernel.
+To ensure that this patch improves performance I decided to also patch
+ipvsadm in order to run some benchmarks comparing 'ipvsadm -Sn' with the
+unpatched version. The ipvsadm patch is available on github in [1] for
+now but I intend to submit it if this RFC goes forward.
 
-	Not sure. What I see now is that it adds some complexity
-to the code. Open questions are about integration with netfilter
-conntracks (when conntrack=1), in the sync protocol, etc.
+The benchmarks look nice and detailed results and some scripts to allow
+reproducing then are available in another github repository [2]. The
+summary of the benchmarks is:
 
->     introduction for fullnat    http://kb.linuxvirtualserver.org/wiki/IPVS_FULLNAT_and_SYNPROXY
-> 
-> could we port or re-implement it in upstream?
+svcs  | dsts | run time compared to unpatched
+----- | ---- | ------------------------------
+ 1000 |    4 | -60.63%
+ 2000 |    2 | -71.10%
+ 8000 |    2 | -52.83%
+16000 |    1 | -54.13%
+  100 |  100 |  -4.76%
 
-	May be I don't fully understand the goals but
-is it worth it?
+[1] - https://github.com/cezarsa/ipvsadm/compare/master...dump-svc-ds
+[2] - https://github.com/cezarsa/ipvsadm-validate#benchmark-results
 
-Regards
+ include/uapi/linux/ip_vs.h     |   2 +
+ net/netfilter/ipvs/ip_vs_ctl.c | 109 +++++++++++++++++++++++++++++++++
+ 2 files changed, 111 insertions(+)
 
---
-Julian Anastasov <ja@ssi.bg>
----1463811672-345138178-1603743827=:4529--
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index 4102ddcb4e14..353548cb7b81 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -331,6 +331,8 @@ enum {
+ 	IPVS_CMD_ZERO,			/* zero all counters and stats */
+ 	IPVS_CMD_FLUSH,			/* flush services and dests */
+ 
++	IPVS_CMD_GET_SERVICE_DEST,	/* get service and destination info */
++
+ 	__IPVS_CMD_MAX,
+ };
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index e279ded4e306..09a7dd823dc0 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -3396,6 +3396,109 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
+ 	return skb->len;
+ }
+ 
++struct dump_services_dests_ctx {
++	struct ip_vs_service	*last_svc;
++	int			idx_svc;
++	int			idx_dest;
++	int			start_svc;
++	int			start_dest;
++};
++
++static int ip_vs_genl_dump_service_destinations(struct sk_buff *skb,
++						struct netlink_callback *cb,
++						struct ip_vs_service *svc,
++						struct dump_services_dests_ctx *ctx)
++{
++	struct ip_vs_dest *dest;
++
++	if (++ctx->idx_svc < ctx->start_svc)
++		return 0;
++
++	if (ctx->idx_svc == ctx->start_svc && ctx->last_svc != svc)
++		return 0;
++
++	if (ctx->idx_svc > ctx->start_svc) {
++		if (ip_vs_genl_dump_service(skb, svc, cb) < 0) {
++			ctx->idx_svc--;
++			return -EMSGSIZE;
++		}
++		ctx->last_svc = svc;
++		ctx->start_dest = 0;
++	}
++
++	ctx->idx_dest = 0;
++	list_for_each_entry(dest, &svc->destinations, n_list) {
++		if (++ctx->idx_dest <= ctx->start_dest)
++			continue;
++		if (ip_vs_genl_dump_dest(skb, dest, cb) < 0) {
++			ctx->idx_dest--;
++			return -EMSGSIZE;
++		}
++	}
++
++	return 0;
++}
++
++static int ip_vs_genl_dump_services_destinations(struct sk_buff *skb,
++						 struct netlink_callback *cb)
++{
++	/* Besides usual index based counters, saving a pointer to the last
++	 * dumped service is useful to ensure we only dump destinations that
++	 * belong to it, even when services are removed while the dump is still
++	 * running causing indexes to shift.
++	 */
++	struct dump_services_dests_ctx ctx = {
++		.idx_svc = 0,
++		.idx_dest = 0,
++		.start_svc = cb->args[0],
++		.start_dest = cb->args[1],
++		.last_svc = (struct ip_vs_service *)(cb->args[2]),
++	};
++	struct net *net = sock_net(skb->sk);
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	struct ip_vs_service *svc = NULL;
++	struct nlattr *attrs[IPVS_CMD_ATTR_MAX + 1];
++	int i;
++
++	mutex_lock(&__ip_vs_mutex);
++
++	if (nlmsg_parse_deprecated(cb->nlh, GENL_HDRLEN, attrs, IPVS_CMD_ATTR_MAX,
++				   ip_vs_cmd_policy, cb->extack) == 0) {
++		svc = ip_vs_genl_find_service(ipvs, attrs[IPVS_CMD_ATTR_SERVICE]);
++
++		if (!IS_ERR_OR_NULL(svc)) {
++			ip_vs_genl_dump_service_destinations(skb, cb, svc, &ctx);
++			goto nla_put_failure;
++		}
++	}
++
++	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
++		hlist_for_each_entry(svc, &ip_vs_svc_table[i], s_list) {
++			if (svc->ipvs != ipvs)
++				continue;
++			if (ip_vs_genl_dump_service_destinations(skb, cb, svc, &ctx) < 0)
++				goto nla_put_failure;
++		}
++	}
++
++	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
++		hlist_for_each_entry(svc, &ip_vs_svc_fwm_table[i], s_list) {
++			if (svc->ipvs != ipvs)
++				continue;
++			if (ip_vs_genl_dump_service_destinations(skb, cb, svc, &ctx) < 0)
++				goto nla_put_failure;
++		}
++	}
++
++nla_put_failure:
++	mutex_unlock(&__ip_vs_mutex);
++	cb->args[0] = ctx.idx_svc;
++	cb->args[1] = ctx.idx_dest;
++	cb->args[2] = (long)ctx.last_svc;
++
++	return skb->len;
++}
++
+ static int ip_vs_genl_parse_dest(struct ip_vs_dest_user_kern *udest,
+ 				 struct nlattr *nla, bool full_entry)
+ {
+@@ -3991,6 +4094,12 @@ static const struct genl_small_ops ip_vs_genl_ops[] = {
+ 		.flags	= GENL_ADMIN_PERM,
+ 		.doit	= ip_vs_genl_set_cmd,
+ 	},
++	{
++		.cmd	= IPVS_CMD_GET_SERVICE_DEST,
++		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
++		.flags	= GENL_ADMIN_PERM,
++		.dumpit	= ip_vs_genl_dump_services_destinations,
++	},
+ };
+ 
+ static struct genl_family ip_vs_genl_family __ro_after_init = {
+-- 
+2.25.1
 
