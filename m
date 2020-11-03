@@ -1,107 +1,92 @@
-From: =?UTF-8?Q?Cezar_S=C3=A1_Espinola?= <cezarsa@gmail.com>
-Subject: Re: [PATCH RFC] ipvs: add genetlink cmd to dump all services and destinations
-Date: Tue, 3 Nov 2020 13:36:05 -0300
-Message-ID: <CA++F93jp=6mfVm9brGOMeBE0EKoJhg4EAuN04jeBnXKsC-rTag@mail.gmail.com>
-References: <20201030202727.1053534-1-cezarsa@gmail.com> <9140ef65-f76d-4bf1-b211-e88c101a5461@ssi.bg>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: Re: [PATCH RFC] ipvs: add genetlink cmd to dump all services and
+ destinations
+Date: Tue, 3 Nov 2020 21:18:57 +0200 (EET)
+Message-ID: <5b911129-e3de-f198-625a-8998cd6cdf0@ssi.bg>
+References: <20201030202727.1053534-1-cezarsa@gmail.com> <9140ef65-f76d-4bf1-b211-e88c101a5461@ssi.bg> <CA++F93jp=6mfVm9brGOMeBE0EKoJhg4EAuN04jeBnXKsC-rTag@mail.gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc:content-transfer-encoding;
-        bh=qOjuB9yQXP7C641wWPryW22kq2BalJ5tPu+GIQifkY4=;
-        b=hmqVKyWvHooVnj/4kZHvh/H6joHado2yvZt1Djo+bE5z44+ra3hDj5WQzOPf5NOnAJ
-         roMvmZojrXqwwoDXGBCvpz7eDXZ2NpukfXypP4LzjxMKVJi2QwTsZ9GQmL5szBHZCf3u
-         jmUkKOSPFRk07A+cj8gHnAjGP6PHN3rZUgS6dZngsqKKU6rn9iiw/9ccfRK2/dqjlK4r
-         DW3SU0yZcWy2p/JJVTVmARsZd1W/dj8ghYelMQ4NiqBz5LHQo4PchTajUI1GNoQD4O2f
-         HclFIz+iX/2LqJqe7iwv7i1krd/lEzCiFAnqGmV8qcO1LyJyE4DowT3mdyBSIN6iICO6
-         rUeA==
-In-Reply-To: <9140ef65-f76d-4bf1-b211-e88c101a5461@ssi.bg>
+Content-Type: multipart/mixed; boundary="-1463811672-1624316750-1604431142=:3799"
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <CA++F93jp=6mfVm9brGOMeBE0EKoJhg4EAuN04jeBnXKsC-rTag@mail.gmail.com>
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Julian Anastasov <ja@ssi.bg>
+To: =?UTF-8?Q?Cezar_S=C3=A1_Espinola?= <cezarsa@gmail.com>
 Cc: Wensong Zhang <wensong@linux-vs.org>, Simon Horman <horms@verge.net.au>, "open list:IPVS" <netdev@vger.kernel.org>, "open list:IPVS" <lvs-devel@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>, "open list:NETFILTER" <netfilter-devel@vger.kernel.org>, "open list:NETFILTER" <coreteam@netfilter.org>
 
-Hi,
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> > +     if (ctx->idx_svc =3D=3D ctx->start_svc && ctx->last_svc !=3D svc)
-> > +             return 0;
-> > +
-> > +     if (ctx->idx_svc > ctx->start_svc) {
-> > +             if (ip_vs_genl_dump_service(skb, svc, cb) < 0) {
-> > +                     ctx->idx_svc--;
-> > +                     return -EMSGSIZE;
-> > +             }
-> > +             ctx->last_svc =3D svc;
-> > +             ctx->start_dest =3D 0;
-> > +     }
-> > +
-> > +     ctx->idx_dest =3D 0;
-> > +     list_for_each_entry(dest, &svc->destinations, n_list) {
-> > +             if (++ctx->idx_dest <=3D ctx->start_dest)
-> > +                     continue;
-> > +             if (ip_vs_genl_dump_dest(skb, dest, cb) < 0) {
-> > +                     ctx->idx_dest--;
->
->         At this point idx_svc is incremented and we
-> stop at the middle of dest list, so we need ctx->idx_svc-- too.
->
->         And now what happens if all dests can not fit in a packet?
-> We should start next packet with the same svc? And then
-> user space should merge the dests when multiple packets
-> start with same service?
+---1463811672-1624316750-1604431142=:3799
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-My (maybe not so great) idea was to avoid repeating the svc on each
-packet. It's possible for a packet to start with a destination and
-user space must consider then as belonging to the last svc received on
-the previous packet. The comparison "ctx->last_svc !=3D svc" was
-intended to ensure that a packet only starts with destinations if the
-current service is the same as the svc we sent on the previous packet.
 
->
->         The main points are:
->
-> - the virtual services are in hash table, their order is
-> not important, user space can sort them
->
-> - order of dests in a service is important for the schedulers
->
-> - every packet should contain info for svc, so that we can
-> properly add dests to the right svc
+	Hello,
 
-Thanks, I will rework the patch with these points in mind. It does
-sound safer to ensure every packet starts with service information.
+On Tue, 3 Nov 2020, Cezar Sá Espinola wrote:
 
-> > +nla_put_failure:
-> > +     mutex_unlock(&__ip_vs_mutex);
-> > +     cb->args[0] =3D ctx.idx_svc;
-> > +     cb->args[1] =3D ctx.idx_dest;
-> > +     cb->args[2] =3D (long)ctx.last_svc;
->
->         last_svc is used out of __ip_vs_mutex region,
-> so it is not safe. We can get a reference count but this
-> is bad if user space blocks.
+> >         And now what happens if all dests can not fit in a packet?
+> > We should start next packet with the same svc? And then
+> > user space should merge the dests when multiple packets
+> > start with same service?
+> 
+> My (maybe not so great) idea was to avoid repeating the svc on each
+> packet. It's possible for a packet to start with a destination and
+> user space must consider then as belonging to the last svc received on
+> the previous packet. The comparison "ctx->last_svc != svc" was
+> intended to ensure that a packet only starts with destinations if the
+> current service is the same as the svc we sent on the previous packet.
 
-I thought it would be relatively safe to store a pointer to the last
-svc since I would only use it for pointer comparison and never
-dereferencing it. But in retrospect it does look unsafe and fragile
-and could probably lead to errors especially if services are modified
-during a dump causing the stored pointer to point to a different
-service.
+	You can also consider the idea of having 3 coordinates
+for start svc: idx_svc_tab (0 or 1), idx_svc_row (0..IP_VS_SVC_TAB_SIZE-1)
+and idx_svc for index in row's chain. On new packet this will
+indicate the htable and its row and we have to skip svcs in
+this row to find our starting svc. I think, this will still fit in
+the netlink_callback's args area. If not, we can always kmalloc
+our context in args[0]. In single table, this should speedup
+the start svc lookup 128 times in average (we have 256 rows).
+In setup with 1024 svcs (average 4 in each of the 256 rows)
+we should skip these 0..3 entries instead of 512 in average.
 
->         But even if we use just indexes it should be ok.
-> If multiple agents are used in parallel it is not our
-> problem. What can happen is that we can send duplicates
-> or to skip entries (both svcs and dests). It is impossible
-> to keep any kind of references to current entries or even
-> keys to lookup them if another agent can remove them.
+> >         last_svc is used out of __ip_vs_mutex region,
+> > so it is not safe. We can get a reference count but this
+> > is bad if user space blocks.
+> 
+> I thought it would be relatively safe to store a pointer to the last
+> svc since I would only use it for pointer comparison and never
+> dereferencing it. But in retrospect it does look unsafe and fragile
+> and could probably lead to errors especially if services are modified
+> during a dump causing the stored pointer to point to a different
+> service.
 
-Got it. I noticed this behavior while writing this patch and even
-created a few crude validation scripts running parallel agents and
-checking the diff in [1].
+	Yes, nobody is using such pointers. We should create
+packets that correctly identify svc for the dests. The drawback
+is that user space may need more work for merging. We can always
+create a sorted array of pointers to svcs, so that we can binary
+search with bsearch() the svc from every received packet. Then we
+will know if this is a new svc or an old one (with dests in
+multiple packets). Should we also check for dest duplicates in
+the svc? The question is how much safe we should play. In
+user space the max work we can do is to avoid duplicates
+and to put dests to their correct svc.
 
-[1] - https://github.com/cezarsa/ipvsadm-validate/blob/37ebd39785b1e835c6d4=
-b5c58aaca7be60d5e194/test.sh#L86-L87
+> >         But even if we use just indexes it should be ok.
+> > If multiple agents are used in parallel it is not our
+> > problem. What can happen is that we can send duplicates
+> > or to skip entries (both svcs and dests). It is impossible
+> > to keep any kind of references to current entries or even
+> > keys to lookup them if another agent can remove them.
+> 
+> Got it. I noticed this behavior while writing this patch and even
+> created a few crude validation scripts running parallel agents and
+> checking the diff in [1].
 
-Thanks a lot for the review,
+	Ok, make sure your tests cover cases with multiple
+dests, so that single service occupies multiple packets,
+I'm not sure if 100 dests fit in one packet or not.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+---1463811672-1624316750-1604431142=:3799--
+
