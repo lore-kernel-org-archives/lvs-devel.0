@@ -1,62 +1,136 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH net v3] ipvs: fix possible memory leak in
- ip_vs_control_net_init
-Date: Fri, 27 Nov 2020 12:09:41 +0100
-Message-ID: <20201127110941.GA11008@salvia>
-References: <20201124080749.69160-1-wanghai38@huawei.com>
- <3164a9e0-962a-c54-129e-9ad780c454c8@ssi.bg>
+From: "dust.li" <dust.li@linux.alibaba.com>
+Subject: Re: Long delay on estimation_timer causes packet latency
+Date: Thu, 3 Dec 2020 14:42:24 +0800
+Message-ID: <d89672f8-a028-8690-0e6a-517631134ef6@linux.alibaba.com>
+References: <D25792C1-1B89-45DE-9F10-EC350DC04ADC@gmail.com>
+ <alpine.LFD.2.21.2004171029240.3962@ja.home.ssi.bg>
+ <F48099A3-ECB3-46AF-8330-B829ED2ADA3F@gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <3164a9e0-962a-c54-129e-9ad780c454c8@ssi.bg>
+Content-Transfer-Encoding: 8bit
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <F48099A3-ECB3-46AF-8330-B829ED2ADA3F@gmail.com>
+Content-Language: en-US
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Wang Hai <wanghai38@huawei.com>, horms@verge.net.au, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, christian@brauner.io, hans.schillstrom@ericsson.com, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"; format="flowed"
+To: yunhong-cgl jiang <xintian1976@gmail.com>, Julian Anastasov <ja@ssi.bg>
+Cc: horms@verge.net.au, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Yunhong Jiang <yunhjiang@ebay.com>
 
-On Tue, Nov 24, 2020 at 08:09:19PM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Tue, 24 Nov 2020, Wang Hai wrote:
-> 
-> > kmemleak report a memory leak as follows:
-> > 
-> > BUG: memory leak
-> > unreferenced object 0xffff8880759ea000 (size 256):
-> > backtrace:
-> > [<00000000c0bf2deb>] kmem_cache_zalloc include/linux/slab.h:656 [inline]
-> > [<00000000c0bf2deb>] __proc_create+0x23d/0x7d0 fs/proc/generic.c:421
-> > [<000000009d718d02>] proc_create_reg+0x8e/0x140 fs/proc/generic.c:535
-> > [<0000000097bbfc4f>] proc_create_net_data+0x8c/0x1b0 fs/proc/proc_net.c:126
-> > [<00000000652480fc>] ip_vs_control_net_init+0x308/0x13a0 net/netfilter/ipvs/ip_vs_ctl.c:4169
-> > [<000000004c927ebe>] __ip_vs_init+0x211/0x400 net/netfilter/ipvs/ip_vs_core.c:2429
-> > [<00000000aa6b72d9>] ops_init+0xa8/0x3c0 net/core/net_namespace.c:151
-> > [<00000000153fd114>] setup_net+0x2de/0x7e0 net/core/net_namespace.c:341
-> > [<00000000be4e4f07>] copy_net_ns+0x27d/0x530 net/core/net_namespace.c:482
-> > [<00000000f1c23ec9>] create_new_namespaces+0x382/0xa30 kernel/nsproxy.c:110
-> > [<00000000098a5757>] copy_namespaces+0x2e6/0x3b0 kernel/nsproxy.c:179
-> > [<0000000026ce39e9>] copy_process+0x220a/0x5f00 kernel/fork.c:2072
-> > [<00000000b71f4efe>] _do_fork+0xc7/0xda0 kernel/fork.c:2428
-> > [<000000002974ee96>] __do_sys_clone3+0x18a/0x280 kernel/fork.c:2703
-> > [<0000000062ac0a4d>] do_syscall_64+0x33/0x40 arch/x86/entry/common.c:46
-> > [<0000000093f1ce2c>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> > 
-> > In the error path of ip_vs_control_net_init(), remove_proc_entry() needs
-> > to be called to remove the added proc entry, otherwise a memory leak
-> > will occur.
-> > 
-> > Also, add some '#ifdef CONFIG_PROC_FS' because proc_create_net* return NULL
-> > when PROC is not used.
-> > 
-> > Fixes: b17fc9963f83 ("IPVS: netns, ip_vs_stats and its procfs")
-> > Fixes: 61b1ab4583e2 ("IPVS: netns, add basic init per netns.")
-> > Reported-by: Hulk Robot <hulkci@huawei.com>
-> > Signed-off-by: Wang Hai <wanghai38@huawei.com>
-> 
-> 	Looks good to me, thanks!
-> 
-> Acked-by: Julian Anastasov <ja@ssi.bg>
+Hi Yunhong & Julian, any updates ?
 
-Applied, thanks.
+
+We've encountered the same problem. With lots of ipvs
+
+services plus many CPUs, it's easy to reproduce this issue.
+
+I have a simple script to reproduce:
+
+First add many ipvs services:
+
+for((i=0;i<50000;i++)); do
+         ipvsadm -A -t 10.10.10.10:$((2000+$i))
+done
+
+
+Then, check the latency of estimation_timer() using bpftrace:
+
+#!/usr/bin/bpftrace
+
+kprobe:estimation_timer {
+         @enter = nsecs;
+}
+
+kretprobe:estimation_timer {
+         $exit = nsecs;
+         printf("latency: %ld us\n", (nsecs - @enter)/1000);
+}
+
+I observed about 268ms delay on my 104 CPUs test server.
+
+Attaching 2 probes...
+latency: 268807 us
+latency: 268519 us
+latency: 269263 us
+
+
+And I tried moving estimation_timer() into a delayed
+
+workqueue, this do make things better. But since the
+
+estimation won't give up CPU, it can run for pretty
+
+long without scheduling on a server which don't have
+
+preempt enabled, so tasks on that CPU can't get executed
+
+during that period.
+
+
+Since the estimation repeated every 2s, we can't call
+
+cond_resched() to give up CPU in the middle of iterating the
+
+est_list, or the estimation will be quite inaccurate.
+
+Besides the est_list needs to be protected.
+
+
+I haven't found any ideal solution yet, currently, we just
+
+moved the estimation into kworker and add sysctl to allow
+
+us to disable the estimation, since we don't need the
+
+estimation anyway.
+
+
+Our patches is pretty simple now, if you think it's useful,
+
+I can paste them
+
+
+Do you guys have any suggestions or solutions ?
+
+
+Thanks a lot !
+
+Dust
+
+
+
+On 4/18/20 12:56 AM, yunhong-cgl jiang wrote:
+> Thanks for reply.
+>
+> Yes, our patch changes the est_list to a RCU list. Will do more testing and send out the patch.
+>
+> Thanks
+> —Yunhong
+>
+>
+>> On Apr 17, 2020, at 12:47 AM, Julian Anastasov <ja@ssi.bg> wrote:
+>>
+>>
+>> 	Hello,
+>>
+>> On Thu, 16 Apr 2020, yunhong-cgl jiang wrote:
+>>
+>>> Hi, Simon & Julian,
+>>> 	We noticed that on our kubernetes node utilizing IPVS, the estimation_timer() takes very long (>200sm as shown below). Such long delay on timer softirq causes long packet latency.
+>>>
+>>>           <idle>-0     [007] dNH. 25652945.670814: softirq_raise: vec=1 [action=TIMER]
+>>> .....
+>>>           <idle>-0     [007] .Ns. 25652945.992273: softirq_exit: vec=1 [action=TIMER]
+>>>
+>>> 	The long latency is caused by the big service number (>50k) and large CPU number (>80 CPUs),
+>>>
+>>> 	We tried to move the timer function into a kernel thread so that it will not block the system and seems solves our problem. Is this the right direction? If yes, we will do more testing and send out the RFC patch. If not, can you give us some suggestion?
+>> 	Using kernel thread is a good idea. For this to work, we can
+>> also remove the est_lock and to use RCU for est_list.
+>> The writers ip_vs_start_estimator() and ip_vs_stop_estimator() already
+>> run under common mutex __ip_vs_mutex, so they not need any
+>> synchronization. We need _bh lock usage in estimation_timer().
+>> Let me know if you need any help with the patch.
+>>
+>> Regards
+>>
+>> --
+>> Julian Anastasov <ja@ssi.bg>
