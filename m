@@ -1,82 +1,219 @@
-From: "dust.li" <dust.li@linux.alibaba.com>
-Subject: Re: Long delay on estimation_timer causes packet latency
-Date: Fri, 4 Dec 2020 21:59:02 +0800
-Message-ID: <20201204135902.GA14129@linux.alibaba.com>
-References: <D25792C1-1B89-45DE-9F10-EC350DC04ADC@gmail.com>
- <alpine.LFD.2.21.2004171029240.3962@ja.home.ssi.bg>
- <F48099A3-ECB3-46AF-8330-B829ED2ADA3F@gmail.com>
- <d89672f8-a028-8690-0e6a-517631134ef6@linux.alibaba.com>
- <2cf7e20-89c0-2a40-d27e-3d663e7080cb@ssi.bg>
- <81aff736-70f0-9e14-de24-ba943f244bd2@linux.alibaba.com>
- <47e05b8-a4fc-24a1-e796-2a44cf7bbd77@ssi.bg>
-Reply-To: dust.li@linux.alibaba.com
+From: dpayne <darby.payne@gmail.com>
+Subject: [PATCH] ipvs: add weighted random twos choice algorithm
+Date: Thu, 10 Dec 2020 08:05:06 -0800
+Message-ID: <20201210160506.4010615-1-darby.payne@gmail.com>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <47e05b8-a4fc-24a1-e796-2a44cf7bbd77@ssi.bg>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=uIlOhgg2+I1MetM1aGXMTnNlRLku7w1b5CCzv/1/Rs4=;
+        b=S2XfpFezu8DQVDoAYqaGA/b0ADJpxh1BVQyViqDSEVEEqbRVFZMeItk+iNjpJI3tsp
+         jXLUBW5umqwuYPiiLc02nZWgDBObf4Gfs6ECaVxvXSVgED42aAft0ziEV5O6aqWBz07w
+         Yc2ne6HzVMX39s2GFu4PJpQTN+zQryMKGbsvB9eBtCZ8fhM9hjJ2vWZ/F8KjL80nLpGB
+         MRF9vN8jdr7q9196mneiyXymb3ZL/R1Hf7cPu1W2R06L/EXCAlrr814c5UHkZik2GC6Z
+         IDgxd8X/+9lWONL1sc7ouHtZdbyP6wVLgjktAy5Fh7FinlXtDFCrW2fIZVakMuBiJVd1
+         6c2A==
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: yunhong-cgl jiang <xintian1976@gmail.com>, horms@verge.net.au, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, Yunhong Jiang <yunhjiang@ebay.com>
+To: wensong@linux-vs.org
+Cc: darby.payne@gmail.com, horms@verge.net.au, lvs-devel@vger.kernel.org
 
-On Fri, Dec 04, 2020 at 07:42:56AM +0200, Julian Anastasov wrote:
->
->	Hello,
->
->On Fri, 4 Dec 2020, dust.li wrote:
->
->> 
->> On 12/3/20 4:48 PM, Julian Anastasov wrote:
->> >
->> > - work will use spin_lock_bh(&s->lock) to protect the
->> > entries, we do not want delays between /proc readers and
->> > the work if using mutex. But _bh locks stop timers and
->> > networking for short time :( Not sure yet if just spin_lock
->> > is safe for both /proc and estimator's work.
->
->	Here stopping BH is may be not so fatal if some
->CPUs are used for networking and others for workqueues.
->
->> Thanks for sharing your thoughts !
->> 
->> 
->> I think it's a good idea to split the est_list into different
->> 
->> slots, I believe it will dramatically reduce the delay brought
->> 
->> by estimation.
->
->	268ms/64 => 4ms average. As the estimation with single
->work does not utilize many CPUs simultaneously, this can be a
->problem for 300000-400000 services but this looks crazy.
-Yes. Consider the largest server we use now, which has 256 HT
-servers with 4 NUMA nodes. Even that should not be a big problem.
+Adds the random twos choice load-balancing algorithm. The algorithm will
+pick two random servers based on weights. Then select the server with
+the least amount of connections normalized by weight. The algorithm
+avoids the "herd behavior" problem.
 
->
->> My only concern is the cost of the estimation when the number of
->> 
->> services is large. Splitting the est_list won't reduce the real
->> 
->> work to do.
->> 
->> In our case, each estimation cost at most 268ms/2000ms, which is
->> 
->> about 13% of one CPU hyper-thread, and this should be a common case
->> 
->> in a large K8S cluster with lots of services.
->> 
->> Since the estimation is not needed in our environment at all, it's
->> 
->> just a waste of CPU resource. Have you ever consider add a switch to
->> 
->> let the user turn the estimator off ?
->
->	No problem to add sysctl var for this, we usually add function
->to check which can be used in ip_vs_in_stats, ip_vs_out_stats,
->ip_vs_conn_stats. If switch can be changed at any time, what should
->we do? Add/Del est entries as normally but do not start the
->delayed work if flag disables stats. When flag is enabled counters
->will increase and we will start delayed work.
+Signed-off-by: dpayne <darby.payne@gmail.com>
+---
+ net/netfilter/ipvs/Kconfig      |  11 +++
+ net/netfilter/ipvs/Makefile     |   1 +
+ net/netfilter/ipvs/ip_vs_twos.c | 140 ++++++++++++++++++++++++++++++++
+ 3 files changed, 152 insertions(+)
+ create mode 100644 net/netfilter/ipvs/ip_vs_twos.c
 
-Yes, this would be perfect for me !
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index eb0e329f9b8d..e7c4e85d1725 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -271,6 +271,17 @@ config	IP_VS_NQ
+ 	  If you want to compile it in kernel, say Y. To compile it as a
+ 	  module, choose M here. If unsure, say N.
+ 
++config	IP_VS_TWOS
++	tristate "weighted random twos choice least-connection scheduling"
++	help
++	  The weighted random twos choice least-connection scheduling
++	  algorithm picks two random real servers directs network
++	  connections to the server with the least active connections
++	  normalized by the server weight.
++
++	  If you want to compile it in kernel, say Y. To compile it as a
++	  module, choose M here. If unsure, say N.
++
+ comment 'IPVS SH scheduler'
+ 
+ config IP_VS_SH_TAB_BITS
+diff --git a/net/netfilter/ipvs/Makefile b/net/netfilter/ipvs/Makefile
+index bfce2677fda2..bb5d8125c82a 100644
+--- a/net/netfilter/ipvs/Makefile
++++ b/net/netfilter/ipvs/Makefile
+@@ -36,6 +36,7 @@ obj-$(CONFIG_IP_VS_SH) += ip_vs_sh.o
+ obj-$(CONFIG_IP_VS_MH) += ip_vs_mh.o
+ obj-$(CONFIG_IP_VS_SED) += ip_vs_sed.o
+ obj-$(CONFIG_IP_VS_NQ) += ip_vs_nq.o
++obj-$(CONFIG_IP_VS_TWOS) += ip_vs_twos.o
+ 
+ # IPVS application helpers
+ obj-$(CONFIG_IP_VS_FTP) += ip_vs_ftp.o
+diff --git a/net/netfilter/ipvs/ip_vs_twos.c b/net/netfilter/ipvs/ip_vs_twos.c
+new file mode 100644
+index 000000000000..cbb05032bba7
+--- /dev/null
++++ b/net/netfilter/ipvs/ip_vs_twos.c
+@@ -0,0 +1,140 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * IPVS:        Power of Twos Choice Scheduling module
++ *
++ * Authors:     Darby Payne <darby.payne@applovin.com>
++ *
++ *              This program is free software; you can redistribute it and/or
++ *              modify it under the terms of the GNU General Public License
++ *              as published by the Free Software Foundation; either version
++ *              2 of the License, or (at your option) any later version.
++ *
++ */
++
++#define KMSG_COMPONENT "IPVS"
++#define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/random.h>
++
++#include <net/ip_vs.h>
++
++/*    Power of Twos Choice scheduling, algorithm originally described by
++ *    Michael Mitzenmacher
++ *
++ *    Randomly picks two destinations and picks the one with the least
++ *    amount of connections
++ *
++ *    The algorithm calculates a few variables
++ *    - total_weight = sum of all weights
++ *    - rweight1 = random number between [0,total_weight]
++ *    - rweight2 = random number between [0,total_weight]
++ *
++ *    For each destination
++ *      decrement rweight1 and rweight2 by the destination weight
++ *      pick choice1 when rweight1 is <= 0
++ *      pick choice2 when rweight2 is <= 0
++ *
++ *    Return choice2 if choice2 has less connections than choice 1 normalized
++ *    by weight
++ *
++ */
++static struct ip_vs_dest *ip_vs_twos_schedule(struct ip_vs_service *svc,
++					      const struct sk_buff *skb,
++					      struct ip_vs_iphdr *iph)
++{
++	struct ip_vs_dest *dest, *choice1 = NULL, *choice2 = NULL;
++	int rweight1, rweight2, weight1 = -1, weight2 = -1, overhead1,
++				overhead2, total_weight = 0, weight = 0;
++
++	IP_VS_DBG(6, "%s(): Scheduling...\n", __func__);
++
++	/* Generate a random weight between [0,sum of all weights)
++	 */
++	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
++		if (!(dest->flags & IP_VS_DEST_F_OVERLOAD)) {
++			weight = atomic_read(&dest->weight);
++			if (weight > 0) {
++				total_weight += weight;
++				choice1 = dest;
++			}
++		}
++	}
++
++	if (!choice1) {
++		ip_vs_scheduler_err(svc, "no destination available");
++		return NULL;
++	}
++
++	/* Add 1 to total_weight so that the random weights are inclusive
++	 * from 0 to total_weight
++	 */
++	total_weight += 1;
++	rweight1 = prandom_u32() % total_weight;
++	rweight2 = prandom_u32() % total_weight;
++
++	/* Find the first weighted dest
++	 */
++	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
++		if (!(dest->flags & IP_VS_DEST_F_OVERLOAD)) {
++			weight = atomic_read(&dest->weight);
++			if (weight > 0) {
++				rweight1 -= weight;
++				rweight2 -= weight;
++
++				if (rweight1 <= 0 && weight1 == -1) {
++					choice1 = dest;
++					weight1 = weight;
++					overhead1 =
++						ip_vs_dest_conn_overhead(dest);
++				}
++
++				if (rweight2 <= 0 && weight2 == -1) {
++					choice2 = dest;
++					weight2 = weight;
++					overhead2 =
++						ip_vs_dest_conn_overhead(dest);
++				}
++
++				if (weight1 != -1 && weight2 != -1)
++					goto nextstage;
++			}
++		}
++	}
++
++nextstage:
++	if (choice2 && (weight2 * overhead1) > (weight1 * overhead2))
++		choice1 = choice2;
++
++	IP_VS_DBG_BUF(6, "twos: server %s:%u conns %d refcnt %d weight %d\n",
++		      IP_VS_DBG_ADDR(choice1->af, &choice1->addr),
++		      ntohs(choice1->port), atomic_read(&choice1->activeconns),
++		      refcount_read(&choice1->refcnt),
++		      atomic_read(&choice1->weight));
++
++	return choice1;
++}
++
++static struct ip_vs_scheduler ip_vs_twos_scheduler = {
++	.name = "twos",
++	.refcnt = ATOMIC_INIT(0),
++	.module = THIS_MODULE,
++	.n_list = LIST_HEAD_INIT(ip_vs_twos_scheduler.n_list),
++	.schedule = ip_vs_twos_schedule,
++};
++
++static int __init ip_vs_twos_init(void)
++{
++	return register_ip_vs_scheduler(&ip_vs_twos_scheduler);
++}
++
++static void __exit ip_vs_twos_cleanup(void)
++{
++	unregister_ip_vs_scheduler(&ip_vs_twos_scheduler);
++	synchronize_rcu();
++}
++
++module_init(ip_vs_twos_init);
++module_exit(ip_vs_twos_cleanup);
++MODULE_LICENSE("GPL");
+-- 
+2.29.2
+
