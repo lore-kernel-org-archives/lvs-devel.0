@@ -1,21 +1,21 @@
 From: Leon Romanovsky <leon@kernel.org>
-Subject: [PATCH net 2/4] ipv6: move udp declarations to net/udp.h
-Date: Tue,  2 Feb 2021 15:55:42 +0200
-Message-ID: <20210202135544.3262383-3-leon@kernel.org>
+Subject: [PATCH net 4/4] netfilter: move handlers to net/ip_vs.h
+Date: Tue,  2 Feb 2021 15:55:44 +0200
+Message-ID: <20210202135544.3262383-5-leon@kernel.org>
 References: <20210202135544.3262383-1-leon@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1612274156;
-        bh=DR0Ao7cYzAFwiQZi+Sf24cz1CDI9PHhlVdfFgDadyMs=;
+        s=k20201202; t=1612274159;
+        bh=uqEQxgxP/Gh6jkafzcZMwsNruCxCCpY2QrRHAchjz/o=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=QlcB7nd4RJe57D3/ViU+Q+KQbLURKQKpBZsn7jgpVKIgMv2prrmmdqfKm2pEonFv3
-         PuXfa/TBYbqB1pVYfj1h+o17M1UxS2U8jvkMNdfYHrvNFYlY0JBrdXiIx5/++tq39I
-         Pk9rn1X0SfZUIrnYl/PArrVQR/6ITsoHxSK0z6EH+t4m5ceeSApG46QYfryT0rLPKo
-         08sR2h8/LWZacRA/KbS0Gnhojjy7ZpWCwgPov8xsmcUUbAGjnP0jPbIIOvHG+jxJsm
-         s02UNd9nSYDcD0nfv19UqvbDP2uGhU+cTZGyj0sMDtDkitroGXGQApYZ6mGeviUkKp
-         59IXCB/MIr3rg==
+        b=AJZKCAkxo4iNw6GvoaohZFZ6alAc19sFBqoWDRu0qkz7f0ZiSqji/3BwP2DQizckW
+         fRCRjI2NTiTh4HFtW09AF6rjvmTdGcbbCFqEdIZ0kAJYrmdiCtMrPEuD4IN5B0NoHN
+         WQ7J+ebZG6SJdlu1w8kHoaIB0H2kINRmq+k14SML6PRIIMoJCf/mwHEc8g6Sn6uuPB
+         9ztrCNZy9RseBE9g48WJ1yyI4PSypSHvbw6W7/XfdLfgT+1RiaEuTyEzr1DmCXFzvR
+         +67DFBd9dAd0Yd7JEfyZgxSstDlupg0aeJVm+Fad5uyt/lyxFU43SDI3UNHASfsRej
+         9xDdTDpTFlGOA==
 In-Reply-To: <20210202135544.3262383-1-leon@kernel.org>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -24,64 +24,64 @@ Cc: Leon Romanovsky <leonro@nvidia.com>, coreteam@netfilter.org, Eric Dumazet <e
 
 From: Leon Romanovsky <leonro@nvidia.com>
 
-Fix the following compilation warning:
+Fix the following compilation warnings:
+net/netfilter/ipvs/ip_vs_proto_tcp.c:147:1: warning: no previous prototype for 'tcp_snat_handler' [-Wmissing-prototypes]
+  147 | tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+      | ^~~~~~~~~~~~~~~~
+net/netfilter/ipvs/ip_vs_proto_udp.c:136:1: warning: no previous prototype for 'udp_snat_handler' [-Wmissing-prototypes]
+  136 | udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+      | ^~~~~~~~~~~~~~~~
 
-net/ipv6/udp.c:1031:30: warning: no previous prototype for 'udp_v6_early_demux' [-Wmissing-prototypes]
- 1031 | INDIRECT_CALLABLE_SCOPE void udp_v6_early_demux(struct sk_buff *skb)
-      |                              ^~~~~~~~~~~~~~~~~~
-net/ipv6/udp.c:1072:29: warning: no previous prototype for 'udpv6_rcv' [-Wmissing-prototypes]
- 1072 | INDIRECT_CALLABLE_SCOPE int udpv6_rcv(struct sk_buff *skb)
-      |                             ^~~~~~~~~
-
-Fixes: 97ff7ffb11fe ("net: use indirect calls helpers at early demux stage")
+Fixes: 6ecd754883da ("ipvs: use indirect call wrappers")
 Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
 ---
- include/net/udp.h    | 3 +++
- net/ipv6/ip6_input.c | 3 +--
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ include/net/ip_vs.h             | 11 +++++++++++
+ net/netfilter/ipvs/ip_vs_core.c | 12 ------------
+ 2 files changed, 11 insertions(+), 12 deletions(-)
 
-diff --git a/include/net/udp.h b/include/net/udp.h
-index 877832bed471..ff2de866bca4 100644
---- a/include/net/udp.h
-+++ b/include/net/udp.h
-@@ -173,6 +173,9 @@ INDIRECT_CALLABLE_DECLARE(int udp4_gro_complete(struct sk_buff *, int));
- INDIRECT_CALLABLE_DECLARE(struct sk_buff *udp6_gro_receive(struct list_head *,
- 							   struct sk_buff *));
- INDIRECT_CALLABLE_DECLARE(int udp6_gro_complete(struct sk_buff *, int));
-+INDIRECT_CALLABLE_DECLARE(void udp_v6_early_demux(struct sk_buff *));
-+INDIRECT_CALLABLE_DECLARE(int udpv6_rcv(struct sk_buff *));
-+
- struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
- 				struct udphdr *uh, struct sock *sk);
- int udp_gro_complete(struct sk_buff *skb, int nhoff, udp_lookup_t lookup);
-diff --git a/net/ipv6/ip6_input.c b/net/ipv6/ip6_input.c
-index e96304d8a4a7..e9d2a4a409aa 100644
---- a/net/ipv6/ip6_input.c
-+++ b/net/ipv6/ip6_input.c
-@@ -32,6 +32,7 @@
-
- #include <net/sock.h>
- #include <net/snmp.h>
-+#include <net/udp.h>
-
- #include <net/ipv6.h>
- #include <net/protocol.h>
-@@ -44,7 +45,6 @@
- #include <net/inet_ecn.h>
- #include <net/dst_metadata.h>
-
--INDIRECT_CALLABLE_DECLARE(void udp_v6_early_demux(struct sk_buff *));
- INDIRECT_CALLABLE_DECLARE(void tcp_v6_early_demux(struct sk_buff *));
- static void ip6_rcv_finish_core(struct net *net, struct sock *sk,
- 				struct sk_buff *skb)
-@@ -352,7 +352,6 @@ void ipv6_list_rcv(struct list_head *head, struct packet_type *pt,
- 		ip6_sublist_rcv(&sublist, curr_dev, curr_net);
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index d609e957a3ec..7cb5a1aace40 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1712,4 +1712,15 @@ ip_vs_dest_conn_overhead(struct ip_vs_dest *dest)
+ 		atomic_read(&dest->inactconns);
  }
 
--INDIRECT_CALLABLE_DECLARE(int udpv6_rcv(struct sk_buff *));
- INDIRECT_CALLABLE_DECLARE(int tcp_v6_rcv(struct sk_buff *));
++#ifdef CONFIG_IP_VS_PROTO_TCP
++INDIRECT_CALLABLE_DECLARE(int
++	tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
++			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
++#endif
++
++#ifdef CONFIG_IP_VS_PROTO_UDP
++INDIRECT_CALLABLE_DECLARE(int
++	udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
++			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
++#endif
+ #endif	/* _NET_IP_VS_H */
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index 54e086c65721..0c132ff9b446 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -68,18 +68,6 @@ EXPORT_SYMBOL(ip_vs_get_debug_level);
+ #endif
+ EXPORT_SYMBOL(ip_vs_new_conn_out);
 
- /*
+-#ifdef CONFIG_IP_VS_PROTO_TCP
+-INDIRECT_CALLABLE_DECLARE(int
+-	tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+-			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
+-#endif
+-
+-#ifdef CONFIG_IP_VS_PROTO_UDP
+-INDIRECT_CALLABLE_DECLARE(int
+-	udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+-			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
+-#endif
+-
+ #if defined(CONFIG_IP_VS_PROTO_TCP) && defined(CONFIG_IP_VS_PROTO_UDP)
+ #define SNAT_CALL(f, ...) \
+ 	INDIRECT_CALL_2(f, tcp_snat_handler, udp_snat_handler, __VA_ARGS__)
 --
 2.29.2
 
