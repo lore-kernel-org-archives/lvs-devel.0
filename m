@@ -1,21 +1,21 @@
 From: Leon Romanovsky <leon@kernel.org>
-Subject: [PATCH net 4/4] netfilter: move handlers to net/ip_vs.h
-Date: Tue,  2 Feb 2021 15:55:44 +0200
-Message-ID: <20210202135544.3262383-5-leon@kernel.org>
+Subject: [PATCH net 1/4] ipv6: silence compilation warning for non-IPV6 builds
+Date: Tue,  2 Feb 2021 15:55:41 +0200
+Message-ID: <20210202135544.3262383-2-leon@kernel.org>
 References: <20210202135544.3262383-1-leon@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1612274159;
-        bh=uqEQxgxP/Gh6jkafzcZMwsNruCxCCpY2QrRHAchjz/o=;
+        s=k20201202; t=1612274152;
+        bh=mfmlJHMI6yFr64wRzHKtS4W4P42yrVgDCbbvPMoKAGY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=AJZKCAkxo4iNw6GvoaohZFZ6alAc19sFBqoWDRu0qkz7f0ZiSqji/3BwP2DQizckW
-         fRCRjI2NTiTh4HFtW09AF6rjvmTdGcbbCFqEdIZ0kAJYrmdiCtMrPEuD4IN5B0NoHN
-         WQ7J+ebZG6SJdlu1w8kHoaIB0H2kINRmq+k14SML6PRIIMoJCf/mwHEc8g6Sn6uuPB
-         9ztrCNZy9RseBE9g48WJ1yyI4PSypSHvbw6W7/XfdLfgT+1RiaEuTyEzr1DmCXFzvR
-         +67DFBd9dAd0Yd7JEfyZgxSstDlupg0aeJVm+Fad5uyt/lyxFU43SDI3UNHASfsRej
-         9xDdTDpTFlGOA==
+        b=NoxQLkdyV4FP7VWWxxoG8/TpmyzxT3yA3k6n03uZ+AzksrQbhchiBrL0NhXvDFzxX
+         J/BnHcIiixqzcPJO7TacexxGvlXOdn00VtjHzki3C3raoE4xhGBL86KpbCu7aXaeJL
+         jLkaVvgKWAuW20Vwh2Y8OR8KgxpN+ytCs5eaCwF+RZfhB2RM4xQrDN8xIqJqE7Qv86
+         Ppmb4ReBz9zdnjA3O1akQqkydM7SMnhyBMuNCtugT7gbn3F5AwXY1Psr1Z8wEUesqe
+         0NEpzOHWKs0rCYV9WDdyX1pAdrMm41aVkB8RjJSHkiun5AMUjYscnP0VDpU9TIKQxw
+         KvUD2zgyqsnHQ==
 In-Reply-To: <20210202135544.3262383-1-leon@kernel.org>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -24,64 +24,46 @@ Cc: Leon Romanovsky <leonro@nvidia.com>, coreteam@netfilter.org, Eric Dumazet <e
 
 From: Leon Romanovsky <leonro@nvidia.com>
 
-Fix the following compilation warnings:
-net/netfilter/ipvs/ip_vs_proto_tcp.c:147:1: warning: no previous prototype for 'tcp_snat_handler' [-Wmissing-prototypes]
-  147 | tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
-      | ^~~~~~~~~~~~~~~~
-net/netfilter/ipvs/ip_vs_proto_udp.c:136:1: warning: no previous prototype for 'udp_snat_handler' [-Wmissing-prototypes]
-  136 | udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
-      | ^~~~~~~~~~~~~~~~
+The W=1 compilation of allmodconfig generates the following warning:
 
-Fixes: 6ecd754883da ("ipvs: use indirect call wrappers")
+net/ipv6/icmp.c:448:6: warning: no previous prototype for 'icmp6_send' [-Wmissing-prototypes]
+  448 | void icmp6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info,
+      |      ^~~~~~~~~~
+
+In such configuration, the icmp6_send() is not used outside of icmp.c, so close
+its EXPORT_SYMBOL and add "static" word to limit the scope.
+
+Fixes: cc7a21b6fbd9 ("ipv6: icmp6: avoid indirect call for icmpv6_send()")
 Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
 ---
- include/net/ip_vs.h             | 11 +++++++++++
- net/netfilter/ipvs/ip_vs_core.c | 12 ------------
- 2 files changed, 11 insertions(+), 12 deletions(-)
+ net/ipv6/icmp.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index d609e957a3ec..7cb5a1aace40 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1712,4 +1712,15 @@ ip_vs_dest_conn_overhead(struct ip_vs_dest *dest)
- 		atomic_read(&dest->inactconns);
+diff --git a/net/ipv6/icmp.c b/net/ipv6/icmp.c
+index f3d05866692e..5d4232b492dc 100644
+--- a/net/ipv6/icmp.c
++++ b/net/ipv6/icmp.c
+@@ -445,6 +445,9 @@ static int icmp6_iif(const struct sk_buff *skb)
+ /*
+  *	Send an ICMP message in response to a packet in error
+  */
++#if !IS_BUILTIN(CONFIG_IPV6)
++static
++#endif
+ void icmp6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info,
+ 		const struct in6_addr *force_saddr)
+ {
+@@ -634,7 +637,10 @@ void icmp6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info,
+ out_bh_enable:
+ 	local_bh_enable();
  }
-
-+#ifdef CONFIG_IP_VS_PROTO_TCP
-+INDIRECT_CALLABLE_DECLARE(int
-+	tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
-+#endif
 +
-+#ifdef CONFIG_IP_VS_PROTO_UDP
-+INDIRECT_CALLABLE_DECLARE(int
-+	udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
++#if IS_BUILTIN(CONFIG_IPV6)
+ EXPORT_SYMBOL(icmp6_send);
 +#endif
- #endif	/* _NET_IP_VS_H */
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 54e086c65721..0c132ff9b446 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -68,18 +68,6 @@ EXPORT_SYMBOL(ip_vs_get_debug_level);
- #endif
- EXPORT_SYMBOL(ip_vs_new_conn_out);
 
--#ifdef CONFIG_IP_VS_PROTO_TCP
--INDIRECT_CALLABLE_DECLARE(int
--	tcp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
--			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
--#endif
--
--#ifdef CONFIG_IP_VS_PROTO_UDP
--INDIRECT_CALLABLE_DECLARE(int
--	udp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
--			 struct ip_vs_conn *cp, struct ip_vs_iphdr *iph));
--#endif
--
- #if defined(CONFIG_IP_VS_PROTO_TCP) && defined(CONFIG_IP_VS_PROTO_UDP)
- #define SNAT_CALL(f, ...) \
- 	INDIRECT_CALL_2(f, tcp_snat_handler, udp_snat_handler, __VA_ARGS__)
+ /* Slightly more convenient version of icmp6_send.
+  */
 --
 2.29.2
 
