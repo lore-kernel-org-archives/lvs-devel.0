@@ -1,92 +1,49 @@
 From: Leon Romanovsky <leon@kernel.org>
-Subject: [PATCH net 3/4] net/core: move ipv6 gro function declarations to net/ipv6
-Date: Tue,  2 Feb 2021 15:55:43 +0200
-Message-ID: <20210202135544.3262383-4-leon@kernel.org>
-References: <20210202135544.3262383-1-leon@kernel.org>
+Subject: [PATCH net 0/4] Fix W=1 compilation warnings in net/* folder
+Date: Tue,  2 Feb 2021 15:55:40 +0200
+Message-ID: <20210202135544.3262383-1-leon@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1612274163;
-        bh=zu3Gt86SXPGyJWhY6nCI9luwiVCzfhk0z+r+Ls5Rfsc=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=eBcIfldF414TuIyses6UVoMzupyh9IaC8jGkXzEkvrIw6yjqvDx9iLphF60SKQIRm
-         lKKxzJkgwuvIPZGq5oNzAPHmF9r87EVhenxbMmUE5SnQMujkPrdL71l6KZDJ7/hFSg
-         SW8oDI8/Y4ck4lGfXsx6r2pEW9ZKdXmTLk8FdMIdj8mC4E17RunuRENEACZiDd5LXo
-         i2b6MqkLDeBUw3SmWi1lYiCHpJaUY4Df6c/uFYWfTRFhR6oE+MGoYR/+Jpqh7FO6IK
-         B1aVroWkbFqbzQi89Kf94TxN1Lq2CdgNFNOAF7IvipR5XlYH8iNvSoXTN2TKgR23m+
-         BcNc+r+KE5Z4w==
-In-Reply-To: <20210202135544.3262383-1-leon@kernel.org>
+        s=k20201202; t=1612274149;
+        bh=keCkanpK2quFyUoP2sx6/rYjvo75AHXrNu1jIcal3Nk=;
+        h=From:To:Cc:Subject:Date:From;
+        b=BkqNr1X+v2SqOy6cjJ9bc7qgUWfmFxrAWzOXsO57Ko5nkViZYaz9DRIVvzt/6rg+X
+         V1/IoxLg98kVAy38RnB5qDcYnkrQkzPYDJDvN/C+fwQPrff6CDBcqiKKe2KA4zgpls
+         cAwuFtQ4JzUQxaInNBSnz6xAL/vw6PYbT9rqpyuQ4+Dnk3du/F+8mBNzD7ajHeizaO
+         WcLY2pWHY5XUTkrCo9OTZGVufSybf6xW5PIW9l5DTzTuWu5yqRgU34A22XnbGx5nda
+         +53ZsdeGnrR18zrE08B6OjVLT+loJBOMo/Tft9e9vLYcgfkld/iOwyZn8b29r9Ec9F
+         pqgPtCPIQNVvw==
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 To: Jakub Kicinski <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: Leon Romanovsky <leonro@nvidia.com>, coreteam@netfilter.org, Eric Dumazet <edumazet@google.com>, Florian Westphal <fw@strlen.de>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Julian Anastasov <ja@ssi.bg>, linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, Matteo Croce <mcroce@redhat.com>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
 
 From: Leon Romanovsky <leonro@nvidia.com>
 
-Fir the following compilation warnings:
- 1031 | INDIRECT_CALLABLE_SCOPE void udp_v6_early_demux(struct sk_buff *skb)
+Hi,
 
-net/ipv6/ip6_offload.c:182:41: warning: no previous prototype for ‘ipv6_gro_receive’ [-Wmissing-prototypes]
-  182 | INDIRECT_CALLABLE_SCOPE struct sk_buff *ipv6_gro_receive(struct list_head *head,
-      |                                         ^~~~~~~~~~~~~~~~
-net/ipv6/ip6_offload.c:320:29: warning: no previous prototype for ‘ipv6_gro_complete’ [-Wmissing-prototypes]
-  320 | INDIRECT_CALLABLE_SCOPE int ipv6_gro_complete(struct sk_buff *skb, int nhoff)
-      |                             ^~~~~~~~~~~~~~~~~
-net/ipv6/ip6_offload.c:182:41: warning: no previous prototype for ‘ipv6_gro_receive’ [-Wmissing-prototypes]
-  182 | INDIRECT_CALLABLE_SCOPE struct sk_buff *ipv6_gro_receive(struct list_head *head,
-      |                                         ^~~~~~~~~~~~~~~~
-net/ipv6/ip6_offload.c:320:29: warning: no previous prototype for ‘ipv6_gro_complete’ [-Wmissing-prototypes]
-  320 | INDIRECT_CALLABLE_SCOPE int ipv6_gro_complete(struct sk_buff *skb, int nhoff)
+This short series fixes W=1 compilation warnings which I experienced
+when tried to compile net/* folder.
 
-Fixes: aaa5d90b395a ("net: use indirect call wrappers at GRO network layer")
-Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
----
- include/net/ipv6.h | 3 +++
- net/core/dev.c     | 4 +---
- 2 files changed, 4 insertions(+), 3 deletions(-)
+Thanks
 
-diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index bd1f396cc9c7..68676e6bd4b1 100644
---- a/include/net/ipv6.h
-+++ b/include/net/ipv6.h
-@@ -1265,4 +1265,7 @@ static inline void ip6_sock_set_recvpktinfo(struct sock *sk)
- 	release_sock(sk);
- }
+Leon Romanovsky (4):
+  ipv6: silence compilation warning for non-IPV6 builds
+  ipv6: move udp declarations to net/udp.h
+  net/core: move ipv6 gro function declarations to net/ipv6
+  netfilter: move handlers to net/ip_vs.h
 
-+INDIRECT_CALLABLE_DECLARE(struct sk_buff *ipv6_gro_receive(struct list_head *,
-+							   struct sk_buff *));
-+INDIRECT_CALLABLE_DECLARE(int ipv6_gro_complete(struct sk_buff *, int));
- #endif /* _NET_IPV6_H */
-diff --git a/net/core/dev.c b/net/core/dev.c
-index c360bb5367e2..9a3d8768524b 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -101,6 +101,7 @@
- #include <net/dsa.h>
- #include <net/dst.h>
- #include <net/dst_metadata.h>
-+#include <net/ipv6.h>
- #include <net/pkt_sched.h>
- #include <net/pkt_cls.h>
- #include <net/checksum.h>
-@@ -5743,7 +5744,6 @@ static void gro_normal_one(struct napi_struct *napi, struct sk_buff *skb)
- }
+ include/net/ip_vs.h             | 11 +++++++++++
+ include/net/ipv6.h              |  3 +++
+ include/net/udp.h               |  3 +++
+ net/core/dev.c                  |  4 +---
+ net/ipv6/icmp.c                 |  6 ++++++
+ net/ipv6/ip6_input.c            |  3 +--
+ net/netfilter/ipvs/ip_vs_core.c | 12 ------------
+ 7 files changed, 25 insertions(+), 17 deletions(-)
 
- INDIRECT_CALLABLE_DECLARE(int inet_gro_complete(struct sk_buff *, int));
--INDIRECT_CALLABLE_DECLARE(int ipv6_gro_complete(struct sk_buff *, int));
- static int napi_gro_complete(struct napi_struct *napi, struct sk_buff *skb)
- {
- 	struct packet_offload *ptype;
-@@ -5914,8 +5914,6 @@ static void gro_flush_oldest(struct napi_struct *napi, struct list_head *head)
-
- INDIRECT_CALLABLE_DECLARE(struct sk_buff *inet_gro_receive(struct list_head *,
- 							   struct sk_buff *));
--INDIRECT_CALLABLE_DECLARE(struct sk_buff *ipv6_gro_receive(struct list_head *,
--							   struct sk_buff *));
- static enum gro_result dev_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
- {
- 	u32 hash = skb_get_hash_raw(skb) & (GRO_HASH_BUCKETS - 1);
 --
 2.29.2
 
