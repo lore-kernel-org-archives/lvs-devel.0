@@ -1,54 +1,114 @@
 From: Leon Romanovsky <leon@kernel.org>
-Subject: [PATCH net-next v2 1/4] ipv6: silence compilation warning for non-IPV6 builds
-Date: Wed,  3 Feb 2021 15:51:09 +0200
-Message-ID: <20210203135112.4083711-2-leon@kernel.org>
+Subject: [PATCH net-next v2 3/4] net/core: move gro function declarations to separate header
+Date: Wed,  3 Feb 2021 15:51:11 +0200
+Message-ID: <20210203135112.4083711-4-leon@kernel.org>
 References: <20210203135112.4083711-1-leon@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1612360283;
-        bh=2wOV7+W6rAll0XgIt3CapU4I+kcslY5MEhMOUMT8zTg=;
+        s=k20201202; t=1612360293;
+        bh=97ineLGbwE5eLATsvelyKxWfNBel0Ygaolc5YZ+tYYM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=E4wjzRnDc10gXjh3m1oaDBmgJG/6uQh9Vt9iYEf61j+zKiSAYDTrzyHYEr5pu1sma
-         mtf1WEGwP4n0VtdlKu9uDiuJW9m8pmQp/aLaiWpu5qJlFFaJADz90F2Esn3sTIWAdS
-         1cz76MnILTNhQgmdahmXEiadI+qUib+FnjqZyiSGfk89RbJtQeesT4R1HqLZKDsqPF
-         5PWRURsQ71D/lyE9InIjS2/dPvRYzVC0wV7GmJzQu/ptwjdftPDjH4wSvgU9mNE/6e
-         CHsKmIyVAIyrSfiu3uKai88tGqxB86Qn9BljuPbGtvBdDyUQlM1Myw3cZ3iqrhIDO4
-         weCkk3rVYef1w==
+        b=V2lIRhP9DqAg8Pzw7L8vyceIOak60lShChASCoH7MQ+TgwSSqiwegVtbARQWS9syh
+         gZIqeuhJdUoK+i1zMlUvz2QPh3giWbUTz/8/5qMxiO5OrdMKndCzh90mGD0hooGLFm
+         yZTR5GB/SKSQf+k7cCNdLLrcT9uIsvBWiqCM110hYtCl4cMhPKbHzOKG7ejA+oJYoK
+         TcRQVAZJK4FYjeO5lx89U+Ec1qapC+FfDUlkfobN+lNgm5Ua57AgykftX9k4xdWSPu
+         i1VDlR2Ybl6kKlG8WQ1huE1ZLrmKhHHAFnpI26SSm+Cn8zSruXqHD1X89SfK9d0uqh
+         VzHeuj1ecxYOg==
 In-Reply-To: <20210203135112.4083711-1-leon@kernel.org>
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 To: Jakub Kicinski <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Eric Dumazet <edumazet@google.com>
 Cc: Leon Romanovsky <leonro@nvidia.com>, coreteam@netfilter.org, Florian Westphal <fw@strlen.de>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, Matteo Croce <mcroce@redhat.com>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
 
 From: Leon Romanovsky <leonro@nvidia.com>
 
-The W=1 compilation of allmodconfig generates the following warning:
+Fir the following compilation warnings:
+ 1031 | INDIRECT_CALLABLE_SCOPE void udp_v6_early_demux(struct sk_buff *skb)
 
-net/ipv6/icmp.c:448:6: warning: no previous prototype for 'icmp6_send' [-Wmissing-prototypes]
-  448 | void icmp6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info,
-      |      ^~~~~~~~~~
-
-Fix it by providing function declaration for builds with ipv6 as a module.
+net/ipv6/ip6_offload.c:182:41: warning: no previous prototype for ‘ipv6_gro_receive’ [-Wmissing-prototypes]
+  182 | INDIRECT_CALLABLE_SCOPE struct sk_buff *ipv6_gro_receive(struct list_head *head,
+      |                                         ^~~~~~~~~~~~~~~~
+net/ipv6/ip6_offload.c:320:29: warning: no previous prototype for ‘ipv6_gro_complete’ [-Wmissing-prototypes]
+  320 | INDIRECT_CALLABLE_SCOPE int ipv6_gro_complete(struct sk_buff *skb, int nhoff)
+      |                             ^~~~~~~~~~~~~~~~~
+net/ipv6/ip6_offload.c:182:41: warning: no previous prototype for ‘ipv6_gro_receive’ [-Wmissing-prototypes]
+  182 | INDIRECT_CALLABLE_SCOPE struct sk_buff *ipv6_gro_receive(struct list_head *head,
+      |                                         ^~~~~~~~~~~~~~~~
+net/ipv6/ip6_offload.c:320:29: warning: no previous prototype for ‘ipv6_gro_complete’ [-Wmissing-prototypes]
+  320 | INDIRECT_CALLABLE_SCOPE int ipv6_gro_complete(struct sk_buff *skb, int nhoff)
 
 Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
 ---
- include/linux/icmpv6.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/net/gro.h      | 12 ++++++++++++
+ net/core/dev.c         |  7 +------
+ net/ipv6/ip6_offload.c |  1 +
+ 3 files changed, 14 insertions(+), 6 deletions(-)
+ create mode 100644 include/net/gro.h
 
-diff --git a/include/linux/icmpv6.h b/include/linux/icmpv6.h
-index 1b3371ae8193..452d8978ffc7 100644
---- a/include/linux/icmpv6.h
-+++ b/include/linux/icmpv6.h
-@@ -16,9 +16,9 @@ static inline struct icmp6hdr *icmp6_hdr(const struct sk_buff *skb)
+diff --git a/include/net/gro.h b/include/net/gro.h
+new file mode 100644
+index 000000000000..8a6eb5303cc4
+--- /dev/null
++++ b/include/net/gro.h
+@@ -0,0 +1,12 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++
++#ifndef _NET_IPV6_GRO_H
++#define _NET_IPV6_GRO_H
++
++INDIRECT_CALLABLE_DECLARE(struct sk_buff *ipv6_gro_receive(struct list_head *,
++							   struct sk_buff *));
++INDIRECT_CALLABLE_DECLARE(int ipv6_gro_complete(struct sk_buff *, int));
++INDIRECT_CALLABLE_DECLARE(struct sk_buff *inet_gro_receive(struct list_head *,
++							   struct sk_buff *));
++INDIRECT_CALLABLE_DECLARE(int inet_gro_complete(struct sk_buff *, int));
++#endif /* _NET_IPV6_GRO_H */
+diff --git a/net/core/dev.c b/net/core/dev.c
+index c360bb5367e2..6521aada4259 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -101,6 +101,7 @@
+ #include <net/dsa.h>
+ #include <net/dst.h>
+ #include <net/dst_metadata.h>
++#include <net/gro.h>
+ #include <net/pkt_sched.h>
+ #include <net/pkt_cls.h>
+ #include <net/checksum.h>
+@@ -5742,8 +5743,6 @@ static void gro_normal_one(struct napi_struct *napi, struct sk_buff *skb)
+ 		gro_normal_list(napi);
+ }
 
- typedef void ip6_icmp_send_t(struct sk_buff *skb, u8 type, u8 code, __u32 info,
- 			     const struct in6_addr *force_saddr);
--#if IS_BUILTIN(CONFIG_IPV6)
- void icmp6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info,
- 		const struct in6_addr *force_saddr);
-+#if IS_BUILTIN(CONFIG_IPV6)
- static inline void icmpv6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info)
+-INDIRECT_CALLABLE_DECLARE(int inet_gro_complete(struct sk_buff *, int));
+-INDIRECT_CALLABLE_DECLARE(int ipv6_gro_complete(struct sk_buff *, int));
+ static int napi_gro_complete(struct napi_struct *napi, struct sk_buff *skb)
  {
- 	icmp6_send(skb, type, code, info, NULL);
+ 	struct packet_offload *ptype;
+@@ -5912,10 +5911,6 @@ static void gro_flush_oldest(struct napi_struct *napi, struct list_head *head)
+ 	napi_gro_complete(napi, oldest);
+ }
+
+-INDIRECT_CALLABLE_DECLARE(struct sk_buff *inet_gro_receive(struct list_head *,
+-							   struct sk_buff *));
+-INDIRECT_CALLABLE_DECLARE(struct sk_buff *ipv6_gro_receive(struct list_head *,
+-							   struct sk_buff *));
+ static enum gro_result dev_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
+ {
+ 	u32 hash = skb_get_hash_raw(skb) & (GRO_HASH_BUCKETS - 1);
+diff --git a/net/ipv6/ip6_offload.c b/net/ipv6/ip6_offload.c
+index a80f90bf3ae7..1b9827ff8ccf 100644
+--- a/net/ipv6/ip6_offload.c
++++ b/net/ipv6/ip6_offload.c
+@@ -15,6 +15,7 @@
+ #include <net/inet_common.h>
+ #include <net/tcp.h>
+ #include <net/udp.h>
++#include <net/gro.h>
+
+ #include "ip6_offload.h"
+
+--
+2.29.2
+
