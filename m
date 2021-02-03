@@ -1,101 +1,86 @@
 From: Leon Romanovsky <leon@kernel.org>
-Subject: [PATCH net-next v1 3/4] net/core: move gro function declarations to separate header
-Date: Wed,  3 Feb 2021 12:16:11 +0200
-Message-ID: <20210203101612.4004322-4-leon@kernel.org>
+Subject: [PATCH net-next v1 2/4] ipv6: move udp declarations to net/udp.h
+Date: Wed,  3 Feb 2021 12:16:10 +0200
+Message-ID: <20210203101612.4004322-3-leon@kernel.org>
 References: <20210203101612.4004322-1-leon@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1612347390;
-        bh=gbQKWpoigw5T4LA71N8+zEj+Pfe+Ze66zWTEQ1M1lwo=;
+        s=k20201202; t=1612347387;
+        bh=FQkt9aarahMgC6DuLc3kolHgyqYqseLmc7XedkDhE+A=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=c5v3d2Vz+8KCRIjP1Qg9DrkhtQftasu7wZ4T7ckQ1ktFvMrwGzz1vfWCjctoOgVdp
-         7r+UNKYrj7pazF4p7/Sn5tpJ6JlIPlLLVIUVLJ9shTixXA1HScsChjuaySqjn8D4w2
-         AhOQ8DADthjCsvOe/+w/rG2CFpdLjR+a6iTnTqjF8mXzf4pnDCU+VTdWAMORdtYdPH
-         /UVKuEQH0fNSlReAfSfeyeCc6fQteFE/r6jKsqFY83e9OmVTa92b8XYBS8juUapsAg
-         cdkAqfQdneqJKV7npH6hhdnrmK0KHPdu6k2cmTcba8LbQ97rbXfp5lKnK94WPc/oeI
-         260BXZ74tqEJg==
+        b=d6Sn4X7cewF/eS9NAtgAs7efPGsy7c2cbJZKzUmamVl7sgWqkNjfUwvX46E3Tssyw
+         IErEfGs6Gc+PZpYVENaIggWZHWoScqgnqh6dAO6Juz5c41WJha+C4P1MiStmpWelZt
+         ebKtmU/TLy+yEUxRHfIbx+QWjYhGQUDcEDMrBAv50zILe0MbSjqbReDa+fRNM0R+RU
+         vuIA/cQ6mV2OpUZY0eNNbPDaYHkRlISL5rBxokA4fo8NhOvRZx9EaDQACUW5ch6Bkb
+         FB61R4V9cNF71c6CgpvwluVad+K4GAJrk2Cp611opTwFl4+QVHx3Rdw/ZtyDr1oaaA
+         iJ3YyUlmsLJOg==
 In-Reply-To: <20210203101612.4004322-1-leon@kernel.org>
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 To: Jakub Kicinski <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Eric Dumazet <edumazet@google.com>
 Cc: Leon Romanovsky <leonro@nvidia.com>, coreteam@netfilter.org, Florian Westphal <fw@strlen.de>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org, Matteo Croce <mcroce@redhat.com>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
 
 From: Leon Romanovsky <leonro@nvidia.com>
 
-Fir the following compilation warnings:
- 1031 | INDIRECT_CALLABLE_SCOPE void udp_v6_early_demux(struct sk_buff *skb)
+Fix the following compilation warning:
 
-net/ipv6/ip6_offload.c:182:41: warning: no previous prototype for ‘ipv6_gro_receive’ [-Wmissing-prototypes]
-  182 | INDIRECT_CALLABLE_SCOPE struct sk_buff *ipv6_gro_receive(struct list_head *head,
-      |                                         ^~~~~~~~~~~~~~~~
-net/ipv6/ip6_offload.c:320:29: warning: no previous prototype for ‘ipv6_gro_complete’ [-Wmissing-prototypes]
-  320 | INDIRECT_CALLABLE_SCOPE int ipv6_gro_complete(struct sk_buff *skb, int nhoff)
-      |                             ^~~~~~~~~~~~~~~~~
-net/ipv6/ip6_offload.c:182:41: warning: no previous prototype for ‘ipv6_gro_receive’ [-Wmissing-prototypes]
-  182 | INDIRECT_CALLABLE_SCOPE struct sk_buff *ipv6_gro_receive(struct list_head *head,
-      |                                         ^~~~~~~~~~~~~~~~
-net/ipv6/ip6_offload.c:320:29: warning: no previous prototype for ‘ipv6_gro_complete’ [-Wmissing-prototypes]
-  320 | INDIRECT_CALLABLE_SCOPE int ipv6_gro_complete(struct sk_buff *skb, int nhoff)
+net/ipv6/udp.c:1031:30: warning: no previous prototype for 'udp_v6_early_demux' [-Wmissing-prototypes]
+ 1031 | INDIRECT_CALLABLE_SCOPE void udp_v6_early_demux(struct sk_buff *skb)
+      |                              ^~~~~~~~~~~~~~~~~~
+net/ipv6/udp.c:1072:29: warning: no previous prototype for 'udpv6_rcv' [-Wmissing-prototypes]
+ 1072 | INDIRECT_CALLABLE_SCOPE int udpv6_rcv(struct sk_buff *skb)
+      |                             ^~~~~~~~~
 
 Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
 ---
- include/net/gro.h | 12 ++++++++++++
- net/core/dev.c    |  7 +------
- 2 files changed, 13 insertions(+), 6 deletions(-)
- create mode 100644 include/net/gro.h
+ include/net/udp.h    | 3 +++
+ net/ipv6/ip6_input.c | 3 +--
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/gro.h b/include/net/gro.h
-new file mode 100644
-index 000000000000..8a6eb5303cc4
---- /dev/null
-+++ b/include/net/gro.h
-@@ -0,0 +1,12 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
+diff --git a/include/net/udp.h b/include/net/udp.h
+index 877832bed471..ff2de866bca4 100644
+--- a/include/net/udp.h
++++ b/include/net/udp.h
+@@ -173,6 +173,9 @@ INDIRECT_CALLABLE_DECLARE(int udp4_gro_complete(struct sk_buff *, int));
+ INDIRECT_CALLABLE_DECLARE(struct sk_buff *udp6_gro_receive(struct list_head *,
+ 							   struct sk_buff *));
+ INDIRECT_CALLABLE_DECLARE(int udp6_gro_complete(struct sk_buff *, int));
++INDIRECT_CALLABLE_DECLARE(void udp_v6_early_demux(struct sk_buff *));
++INDIRECT_CALLABLE_DECLARE(int udpv6_rcv(struct sk_buff *));
 +
-+#ifndef _NET_IPV6_GRO_H
-+#define _NET_IPV6_GRO_H
-+
-+INDIRECT_CALLABLE_DECLARE(struct sk_buff *ipv6_gro_receive(struct list_head *,
-+							   struct sk_buff *));
-+INDIRECT_CALLABLE_DECLARE(int ipv6_gro_complete(struct sk_buff *, int));
-+INDIRECT_CALLABLE_DECLARE(struct sk_buff *inet_gro_receive(struct list_head *,
-+							   struct sk_buff *));
-+INDIRECT_CALLABLE_DECLARE(int inet_gro_complete(struct sk_buff *, int));
-+#endif /* _NET_IPV6_GRO_H */
-diff --git a/net/core/dev.c b/net/core/dev.c
-index c360bb5367e2..6521aada4259 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -101,6 +101,7 @@
- #include <net/dsa.h>
- #include <net/dst.h>
+ struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
+ 				struct udphdr *uh, struct sock *sk);
+ int udp_gro_complete(struct sk_buff *skb, int nhoff, udp_lookup_t lookup);
+diff --git a/net/ipv6/ip6_input.c b/net/ipv6/ip6_input.c
+index e96304d8a4a7..e9d2a4a409aa 100644
+--- a/net/ipv6/ip6_input.c
++++ b/net/ipv6/ip6_input.c
+@@ -32,6 +32,7 @@
+
+ #include <net/sock.h>
+ #include <net/snmp.h>
++#include <net/udp.h>
+
+ #include <net/ipv6.h>
+ #include <net/protocol.h>
+@@ -44,7 +45,6 @@
+ #include <net/inet_ecn.h>
  #include <net/dst_metadata.h>
-+#include <net/gro.h>
- #include <net/pkt_sched.h>
- #include <net/pkt_cls.h>
- #include <net/checksum.h>
-@@ -5742,8 +5743,6 @@ static void gro_normal_one(struct napi_struct *napi, struct sk_buff *skb)
- 		gro_normal_list(napi);
+
+-INDIRECT_CALLABLE_DECLARE(void udp_v6_early_demux(struct sk_buff *));
+ INDIRECT_CALLABLE_DECLARE(void tcp_v6_early_demux(struct sk_buff *));
+ static void ip6_rcv_finish_core(struct net *net, struct sock *sk,
+ 				struct sk_buff *skb)
+@@ -352,7 +352,6 @@ void ipv6_list_rcv(struct list_head *head, struct packet_type *pt,
+ 		ip6_sublist_rcv(&sublist, curr_dev, curr_net);
  }
 
--INDIRECT_CALLABLE_DECLARE(int inet_gro_complete(struct sk_buff *, int));
--INDIRECT_CALLABLE_DECLARE(int ipv6_gro_complete(struct sk_buff *, int));
- static int napi_gro_complete(struct napi_struct *napi, struct sk_buff *skb)
- {
- 	struct packet_offload *ptype;
-@@ -5912,10 +5911,6 @@ static void gro_flush_oldest(struct napi_struct *napi, struct list_head *head)
- 	napi_gro_complete(napi, oldest);
- }
+-INDIRECT_CALLABLE_DECLARE(int udpv6_rcv(struct sk_buff *));
+ INDIRECT_CALLABLE_DECLARE(int tcp_v6_rcv(struct sk_buff *));
 
--INDIRECT_CALLABLE_DECLARE(struct sk_buff *inet_gro_receive(struct list_head *,
--							   struct sk_buff *));
--INDIRECT_CALLABLE_DECLARE(struct sk_buff *ipv6_gro_receive(struct list_head *,
--							   struct sk_buff *));
- static enum gro_result dev_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
- {
- 	u32 hash = skb_get_hash_raw(skb) & (GRO_HASH_BUCKETS - 1);
+ /*
 --
 2.29.2
 
