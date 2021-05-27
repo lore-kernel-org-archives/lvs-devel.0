@@ -1,18 +1,18 @@
-From: Simon Horman <horms@verge.net.au>
+From: Pablo Neira Ayuso <pablo@netfilter.org>
 Subject: Re: [PATCH net] ipvs: ignore IP_VS_SVC_F_HASHED flag when adding
  service
-Date: Tue, 25 May 2021 12:30:01 +0200
-Message-ID: <20210525103001.GA3365@vergenet.net>
+Date: Thu, 27 May 2021 13:07:35 +0200
+Message-ID: <20210527110735.GA6710@salvia>
 References: <20210524195457.125514-1-ja@ssi.bg>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <20210524195457.125514-1-ja@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, netfilter-devel@vger.kernel.org
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
 
 On Mon, May 24, 2021 at 10:54:57PM +0300, Julian Anastasov wrote:
 > syzbot reported memory leak [1] when adding service with
@@ -41,10 +41,5 @@ On Mon, May 24, 2021 at 10:54:57PM +0300, Julian Anastasov wrote:
 >     [<ffffffff836920f2>] __x64_sys_setsockopt+0x22/0x30 net/socket.c:2125
 >     [<ffffffff84350efa>] do_syscall_64+0x3a/0xb0 arch/x86/entry/common.c:47
 >     [<ffffffff84400068>] entry_SYSCALL_64_after_hwframe+0x44/0xae
-> 
-> Reported-and-tested-by: syzbot+e562383183e4b1766930@syzkaller.appspotmail.com
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
 
-Reviewed-by: Simon Horman <horms@verge.net.au>
-
+Applied, thanks.
