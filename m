@@ -1,58 +1,177 @@
-From: CorisBank International <corisbankintlbf@gmail.com>
-Subject: CORISBANK INTERNATIONAL OFFICIAL NOTIFICATION
-Date: Wed, 1 Sep 2021 11:11:48 -0700
-Message-ID: <CA+25hwz0afgYcU9E_j5xKhdmUoGDrSM_ueYzhLyn0TCOP=-Q0A__44033.8357164123$1630519930$gmane$org@mail.gmail.com>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH net-next v4] net: ipvs: add sysctl_run_estimation to
+ support disable estimation
+Date: Sat, 2 Oct 2021 10:59:29 +0200
+Message-ID: <20211002085929.GA27500@vergenet.net>
+References: <20210820053752.11508-1-dust.li@linux.alibaba.com>
+ <5f590b6-4668-19fe-b768-15125f48df1e@ssi.bg>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=2joGkq8i8C5vglZO1FYNTlWqLyr4vSiCXKQYXBVnv4Q=;
-        b=fC9hcX//9hp1uMHwhUu30uIOkmBqDnqktwjUtt0dMT1OrVEtLfzFOTJN/MOgBc4gbk
-         7M4CRGXeXNvt8B1I9FNxfm05PfQ9ISAYsjGdlo4e6qQhGnFRdgfelCYWKXkz9ry0doZA
-         YkddNcRHMattZSVKsc6cAG5COrJBUCJuVi+fHOjO0JRwsVOeT+/ugHzmD/YkEeLoE9I3
-         W04CWZ1Im+AXPNOr1rlXDUA3pNZZCwKT80LiFMDVPWWR526AkC2X2NoOsFo8kvIJv0je
-         4eNq3vLjj0qJpRaN5vfxZc3DRSFj9grX7L/mFyjCjPTB3WJZEyD78O9+KOQTrfnkR7NE
-         C6Vw==
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <5f590b6-4668-19fe-b768-15125f48df1e@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 
+To: Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Dust Li <dust.li@linux.alibaba.com>, Wensong Zhang <wensong@linux-vs.org>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>
 
-Att: Client
+On Sat, Aug 21, 2021 at 11:41:50AM +0300, Julian Anastasov wrote:
+> 
+> 	Hello,
+> 
+> On Fri, 20 Aug 2021, Dust Li wrote:
+> 
+> > estimation_timer will iterate the est_list to do estimation
+> > for each ipvs stats. When there are lots of services, the
+> > list can be very large.
+> > We found that estimation_timer() run for more then 200ms on a
+> > machine with 104 CPU and 50K services.
+> > 
+> > yunhong-cgl jiang report the same phenomenon before:
+> > https://www.spinics.net/lists/lvs-devel/msg05426.html
+> > 
+> > In some cases(for example a large K8S cluster with many ipvs services),
+> > ipvs estimation may not be needed. So adding a sysctl blob to allow
+> > users to disable this completely.
+> > 
+> > Default is: 1 (enable)
+> > 
+> > Cc: yunhong-cgl jiang <xintian1976@gmail.com>
+> > Signed-off-by: Dust Li <dust.li@linux.alibaba.com>
+> 
+> 	Looks good to me, thanks!
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
 
+Likwewise, thanks. And sorry for the delay.
 
-CORISBANK INTERNATIONAL URGENT NOTIFICATION
+Acked-by: Simon Horman <horms@verge.net.au>
 
-Notification / Notification/ Notification
+Pablo, could you consider picking this up?
 
-Note, We are writing to inform you officially that Finally the Central
-Bank Financial Authority have approved to transfer your $8.2Million
-which was signed by late Mrs Rose Banneth the COVID.19 victim to
-transfer to you, Late Mrs Rose Banneth the France Lady contacted us to
-transfer her fund in our bank to you for Orphanage work before she
-died by the COVID.19
-and as it is now, you will receive your fund through our corresponding
-bank in Dubai [Emirate Investment Bank ] for security reason. Please
-you should reconfirm your details to receive the $8.2Million.
-
-Name, Country, Address, occupations, Age, Telephone number, account
-Details so that we can immediately forward to the World Bank to
-transfer the fund.
-You are advised to comply on timely manner to permit this esteem bank
-transfer your fund as scheduled.
-
-We look forward to serving you better
-Your Financial Comfort Is A Priority
-Thank you for choosing Corisbank International.
-
-Sincerely,
-
-----
-
-Mr Diakarya Ouattara
-Managing Director
-Bank Coris
-Burkina Faso
-+226 556 163 37
-financial_bf_info@accountant.com
+> > ---
+> > v2: Use common sysctl facilities
+> > v3: Fix sysctl_run_estimation() redefine when CONFIG_SYSCTL not enabled
+> > v4: Some typo and minor fixes
+> > 
+> >  Documentation/networking/ipvs-sysctl.rst | 11 +++++++++++
+> >  include/net/ip_vs.h                      | 11 +++++++++++
+> >  net/netfilter/ipvs/ip_vs_ctl.c           |  8 ++++++++
+> >  net/netfilter/ipvs/ip_vs_est.c           |  5 +++++
+> >  4 files changed, 35 insertions(+)
+> > 
+> > diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
+> > index 2afccc63856e..95ef56d62077 100644
+> > --- a/Documentation/networking/ipvs-sysctl.rst
+> > +++ b/Documentation/networking/ipvs-sysctl.rst
+> > @@ -300,3 +300,14 @@ sync_version - INTEGER
+> >  
+> >  	Kernels with this sync_version entry are able to receive messages
+> >  	of both version 1 and version 2 of the synchronisation protocol.
+> > +
+> > +run_estimation - BOOLEAN
+> > +	0 - disabled
+> > +	not 0 - enabled (default)
+> > +
+> > +	If disabled, the estimation will be stop, and you can't see
+> > +	any update on speed estimation data.
+> > +
+> > +	You can always re-enable estimation by setting this value to 1.
+> > +	But be careful, the first estimation after re-enable is not
+> > +	accurate.
+> > diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> > index 7cb5a1aace40..ff1804a0c469 100644
+> > --- a/include/net/ip_vs.h
+> > +++ b/include/net/ip_vs.h
+> > @@ -931,6 +931,7 @@ struct netns_ipvs {
+> >  	int			sysctl_conn_reuse_mode;
+> >  	int			sysctl_schedule_icmp;
+> >  	int			sysctl_ignore_tunneled;
+> > +	int			sysctl_run_estimation;
+> >  
+> >  	/* ip_vs_lblc */
+> >  	int			sysctl_lblc_expiration;
+> > @@ -1071,6 +1072,11 @@ static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
+> >  	return ipvs->sysctl_cache_bypass;
+> >  }
+> >  
+> > +static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
+> > +{
+> > +	return ipvs->sysctl_run_estimation;
+> > +}
+> > +
+> >  #else
+> >  
+> >  static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+> > @@ -1163,6 +1169,11 @@ static inline int sysctl_cache_bypass(struct netns_ipvs *ipvs)
+> >  	return 0;
+> >  }
+> >  
+> > +static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
+> > +{
+> > +	return 1;
+> > +}
+> > +
+> >  #endif
+> >  
+> >  /* IPVS core functions
+> > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> > index c25097092a06..cbea5a68afb5 100644
+> > --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> > @@ -2017,6 +2017,12 @@ static struct ctl_table vs_vars[] = {
+> >  		.mode		= 0644,
+> >  		.proc_handler	= proc_dointvec,
+> >  	},
+> > +	{
+> > +		.procname	= "run_estimation",
+> > +		.maxlen		= sizeof(int),
+> > +		.mode		= 0644,
+> > +		.proc_handler	= proc_dointvec,
+> > +	},
+> >  #ifdef CONFIG_IP_VS_DEBUG
+> >  	{
+> >  		.procname	= "debug_level",
+> > @@ -4090,6 +4096,8 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+> >  	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
+> >  	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
+> >  	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
+> > +	ipvs->sysctl_run_estimation = 1;
+> > +	tbl[idx++].data = &ipvs->sysctl_run_estimation;
+> >  
+> >  	ipvs->sysctl_hdr = register_net_sysctl(net, "net/ipv4/vs", tbl);
+> >  	if (ipvs->sysctl_hdr == NULL) {
+> > diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+> > index 05b8112ffb37..9a1a7af6a186 100644
+> > --- a/net/netfilter/ipvs/ip_vs_est.c
+> > +++ b/net/netfilter/ipvs/ip_vs_est.c
+> > @@ -100,6 +100,9 @@ static void estimation_timer(struct timer_list *t)
+> >  	u64 rate;
+> >  	struct netns_ipvs *ipvs = from_timer(ipvs, t, est_timer);
+> >  
+> > +	if (!sysctl_run_estimation(ipvs))
+> > +		goto skip;
+> > +
+> >  	spin_lock(&ipvs->est_lock);
+> >  	list_for_each_entry(e, &ipvs->est_list, list) {
+> >  		s = container_of(e, struct ip_vs_stats, est);
+> > @@ -131,6 +134,8 @@ static void estimation_timer(struct timer_list *t)
+> >  		spin_unlock(&s->lock);
+> >  	}
+> >  	spin_unlock(&ipvs->est_lock);
+> > +
+> > +skip:
+> >  	mod_timer(&ipvs->est_timer, jiffies + 2*HZ);
+> >  }
+> >  
+> > -- 
+> > 2.19.1.3.ge56e4f7
+> > 
+> > 
+> > 
+> 
+> Regards
+> 
+> --
+> Julian Anastasov <ja@ssi.bg>
+> 
