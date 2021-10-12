@@ -1,120 +1,95 @@
 From: Florian Westphal <fw@strlen.de>
-Subject: [PATCH nf-next v2 3/4] netfilter: ipvs: remove unneeded input wrappers
-Date: Tue, 12 Oct 2021 19:29:58 +0200
-Message-ID: <20211012172959.745-4-fw@strlen.de>
+Subject: [PATCH nf-next v2 4/4] netfilter: ipvs: merge ipv4 + ipv6 icmp reply handlers
+Date: Tue, 12 Oct 2021 19:29:59 +0200
+Message-ID: <20211012172959.745-5-fw@strlen.de>
 References: <20211012172959.745-1-fw@strlen.de>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <20211012172959.745-1-fw@strlen.de>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: netfilter-devel@vger.kernel.org
 Cc: lvs-devel@vger.kernel.org, ja@ssi.bg, horms@verge.net.au, Florian Westphal <fw@strlen.de>
 
-After earlier patch ip_vs_hook_in can be used directly.
+Similar to earlier patches: allow ipv4 and ipv6 to use the
+same handler.  ipv4 and ipv6 specific actions can be done by
+checking state->pf.
+
+v2: split the pf == NFPROTO_IPV4 check (Julian Anastasov)
 
 Signed-off-by: Florian Westphal <fw@strlen.de>
 ---
- net/netfilter/ipvs/ip_vs_core.c | 57 +++------------------------------
- 1 file changed, 4 insertions(+), 53 deletions(-)
+ net/netfilter/ipvs/ip_vs_core.c | 37 +++++++++++++--------------------
+ 1 file changed, 14 insertions(+), 23 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 2db033455204..ad5f5e50547f 100644
+index ad5f5e50547f..e93c937a8bf0 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2093,55 +2093,6 @@ ip_vs_in_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state
- 	return ret;
- }
+@@ -2106,40 +2106,31 @@ static unsigned int
+ ip_vs_forward_icmp(void *priv, struct sk_buff *skb,
+ 		   const struct nf_hook_state *state)
+ {
+-	int r;
+ 	struct netns_ipvs *ipvs = net_ipvs(state->net);
+-
+-	if (ip_hdr(skb)->protocol != IPPROTO_ICMP)
+-		return NF_ACCEPT;
++	int r;
  
--/*
-- *	AF_INET handler in NF_INET_LOCAL_IN chain
-- *	Schedule and forward packets from remote clients
-- */
+ 	/* ipvs enabled in this netns ? */
+ 	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
+ 		return NF_ACCEPT;
+ 
+-	return ip_vs_in_icmp(ipvs, skb, &r, state->hook);
+-}
+-
++	if (state->pf == NFPROTO_IPV4) {
++		if (ip_hdr(skb)->protocol != IPPROTO_ICMP)
++			return NF_ACCEPT;
+ #ifdef CONFIG_IP_VS_IPV6
 -static unsigned int
--ip_vs_remote_request4(void *priv, struct sk_buff *skb,
+-ip_vs_forward_icmp_v6(void *priv, struct sk_buff *skb,
 -		      const struct nf_hook_state *state)
 -{
--	return ip_vs_in_hook(priv, skb, state);
+-	int r;
+-	struct netns_ipvs *ipvs = net_ipvs(state->net);
+-	struct ip_vs_iphdr iphdr;
++	} else {
++		struct ip_vs_iphdr iphdr;
+ 
+-	ip_vs_fill_iph_skb(AF_INET6, skb, false, &iphdr);
+-	if (iphdr.protocol != IPPROTO_ICMPV6)
+-		return NF_ACCEPT;
++		ip_vs_fill_iph_skb(AF_INET6, skb, false, &iphdr);
+ 
+-	/* ipvs enabled in this netns ? */
+-	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
+-		return NF_ACCEPT;
++		if (iphdr.protocol != IPPROTO_ICMPV6)
++			return NF_ACCEPT;
+ 
+-	return ip_vs_in_icmp_v6(ipvs, skb, &r, state->hook, &iphdr);
 -}
--
--/*
-- *	AF_INET handler in NF_INET_LOCAL_OUT chain
-- *	Schedule and forward packets from local clients
-- */
--static unsigned int
--ip_vs_local_request4(void *priv, struct sk_buff *skb,
--		     const struct nf_hook_state *state)
--{
--	return ip_vs_in_hook(priv, skb, state);
--}
--
--#ifdef CONFIG_IP_VS_IPV6
--
--/*
-- *	AF_INET6 handler in NF_INET_LOCAL_IN chain
-- *	Schedule and forward packets from remote clients
-- */
--static unsigned int
--ip_vs_remote_request6(void *priv, struct sk_buff *skb,
--		      const struct nf_hook_state *state)
--{
--	return ip_vs_in_hook(priv, skb, state);
--}
--
--/*
-- *	AF_INET6 handler in NF_INET_LOCAL_OUT chain
-- *	Schedule and forward packets from local clients
-- */
--static unsigned int
--ip_vs_local_request6(void *priv, struct sk_buff *skb,
--		     const struct nf_hook_state *state)
--{
--	return ip_vs_in_hook(priv, skb, state);
--}
--
--#endif
--
--
- /*
-  *	It is hooked at the NF_INET_FORWARD chain, in order to catch ICMP
-  *      related packets destined for 0.0.0.0/0.
-@@ -2202,7 +2153,7 @@ static const struct nf_hook_ops ip_vs_ops4[] = {
- 	 * or VS/NAT(change destination), so that filtering rules can be
- 	 * applied to IPVS. */
++		return ip_vs_in_icmp_v6(ipvs, skb, &r, state->hook, &iphdr);
+ #endif
++	}
+ 
++	return ip_vs_in_icmp(ipvs, skb, &r, state->hook);
++}
+ 
+ static const struct nf_hook_ops ip_vs_ops4[] = {
+ 	/* After packet filtering, change source only for VS/NAT */
+@@ -2224,7 +2215,7 @@ static const struct nf_hook_ops ip_vs_ops6[] = {
+ 	/* After packet filtering (but before ip_vs_out_icmp), catch icmp
+ 	 * destined for 0.0.0.0/0, which is for incoming IPVS connections */
  	{
--		.hook		= ip_vs_remote_request4,
-+		.hook		= ip_vs_in_hook,
- 		.pf		= NFPROTO_IPV4,
- 		.hooknum	= NF_INET_LOCAL_IN,
- 		.priority	= NF_IP_PRI_NAT_SRC - 1,
-@@ -2216,7 +2167,7 @@ static const struct nf_hook_ops ip_vs_ops4[] = {
- 	},
- 	/* After mangle, schedule and forward local requests */
- 	{
--		.hook		= ip_vs_local_request4,
-+		.hook		= ip_vs_in_hook,
- 		.pf		= NFPROTO_IPV4,
- 		.hooknum	= NF_INET_LOCAL_OUT,
- 		.priority	= NF_IP_PRI_NAT_DST + 2,
-@@ -2251,7 +2202,7 @@ static const struct nf_hook_ops ip_vs_ops6[] = {
- 	 * or VS/NAT(change destination), so that filtering rules can be
- 	 * applied to IPVS. */
- 	{
--		.hook		= ip_vs_remote_request6,
-+		.hook		= ip_vs_in_hook,
+-		.hook		= ip_vs_forward_icmp_v6,
++		.hook		= ip_vs_forward_icmp,
  		.pf		= NFPROTO_IPV6,
- 		.hooknum	= NF_INET_LOCAL_IN,
- 		.priority	= NF_IP6_PRI_NAT_SRC - 1,
-@@ -2265,7 +2216,7 @@ static const struct nf_hook_ops ip_vs_ops6[] = {
- 	},
- 	/* After mangle, schedule and forward local requests */
- 	{
--		.hook		= ip_vs_local_request6,
-+		.hook		= ip_vs_in_hook,
- 		.pf		= NFPROTO_IPV6,
- 		.hooknum	= NF_INET_LOCAL_OUT,
- 		.priority	= NF_IP6_PRI_NAT_DST + 2,
+ 		.hooknum	= NF_INET_FORWARD,
+ 		.priority	= 99,
 -- 
 2.32.0
 
