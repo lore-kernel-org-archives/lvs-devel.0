@@ -1,91 +1,34 @@
-From: Alexis Vachette <avachette@deezer.com>
-Subject: Re: netfilter: ipvs: using maglev scheduler algorithm
-Date: Fri, 22 Oct 2021 12:23:44 +0200
-Message-ID: <CAP962rS3rks8e4gMkC7fX_F8guCC7heizR_iR=MsFjBizt863g@mail.gmail.com>
-References: <CAP962rShHbVtXNONwRWda6xAZ_L8kVWTSNZc_bC=gCetUMpNHw@mail.gmail.com>
- <2bb21c12-d8fa-acf1-73f1-67a996e6b98@ssi.bg>
+From: Simon Horman <horms@verge.net.au>
+Subject: Re: [PATCH] ipvs: autoload ipvs on genl access
+Date: Fri, 22 Oct 2021 13:26:31 +0200
+Message-ID: <20211022112629.GA22404@vergenet.net>
+References: <20211021130255.4177-1-linux@weissschuh.net>
+ <c473dd-51ee-4358-4496-61c9c75f875@ssi.bg>
 Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=deezer.com; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc:content-transfer-encoding;
-        bh=MXGH3MZ+pzf1bW32CZ7M3ZvMV1qmAWAqVbL5mLNM/kA=;
-        b=Wq7vE7pFLz/iEgYymPg0cZUUaNZcPdVltBULD5fphkqFx7wT4ABVXf7wx2sX9bEnoO
-         JWkk3w8sqdlhck74YoU7Z3G7Z+M54Xgo12iIal3/h7KyF7W4p0s3tOAJYO/Zb8W9YJDy
-         PzzxLXYZJ1snjV7feg/EHQaejMeRF8SFb+34U=
-In-Reply-To: <2bb21c12-d8fa-acf1-73f1-67a996e6b98@ssi.bg>
+Content-Disposition: inline
+In-Reply-To: <c473dd-51ee-4358-4496-61c9c75f875@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="utf-8"
 To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org
+Cc: Thomas =?utf-8?Q?Wei=C3=9Fschuh?= <linux@weissschuh.net>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-Hi Julian,
+On Thu, Oct 21, 2021 at 09:24:34PM +0300, Julian Anastasov wrote:
+> 
+> 	Hello,
+> 
+> On Thu, 21 Oct 2021, Thomas Weißschuh wrote:
+> 
+> > The kernel provides the functionality to automatically load modules
+> > providing genl families. Use this to remove the need for users to
+> > manually load the module.
+> > 
+> > Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
+> 
+> 	Looks good to me for -next tree, thanks!
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
 
-Thank you for your help.
+Acked-by: Simon Horman <horms@verge.net.au>
 
-Indeed it's working as expected when this option is set.
-
-I will check on keepalived side if I can improve the option
-description on the manpage.
-
-Regards,
-Alexis Vachette.
-
-On Thu, 21 Oct 2021 at 20:47, Julian Anastasov <ja@ssi.bg> wrote:
->
->
->         Hello,
->
-> On Thu, 21 Oct 2021, Alexis Vachette wrote:
->
-> > Hello everyone,
-> >
-> > If this is not the correct list to address my issue feel free to tell m=
-e.
-> >
-> > We are heavily using Netfilter/IPVS with maglev scheduler algorithm
-> > and it's working great on most use case.
-> >
-> > The only case when we face issue is when inhibit_on_failure option is e=
-nabled.
-> >
-> > Here is our setup:
-> >
-> > - 2 LVS director in active/passive mode
-> > - 2 backend node
-> >
-> > Exposed service is SSH using port 2222.
-> >
-> > You can find below the LVS state when issue is occurring:
-> >
-> > root@dev-lvstest-01 ~ =E2=9D=B1 ipvsadm -L -n
-> > IP Virtual Server version 1.2.1 (size=3D1048576)
-> > Prot LocalAddress:Port Scheduler Flags
-> >   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-> > TCP  172.16.42.170:2222 mh (mh-port)
->
->         If inhibit_on_failure sets weight to 0 you may need
-> to add the mh-fallback scheduler flag to allow traffic to
-> use fallback server(s).
->
-> >   -> 172.16.42.168:2222            Route   100    0          0
-> >   -> 172.16.42.169:2222            Route   0      0          0
-> >
-> > Here is a working example output:
-> >
-> > root@dev-lvstest-01 ~ =E2=9D=B1 tail -f /var/log/kern.20211021 | grep "=
-172.16.42.170"
->
-> ...
->
-> > Oct 21 09:17:34 dev-lvstest-01 kernel: [   75.590633] IPVS: lookup
-> > service: fwm 0 TCP 172.16.42.170:2222 hit
-> > Oct 21 09:17:34 dev-lvstest-01 kernel: [   75.590637] IPVS: mh: TCP
-> > 172.16.42.170:2222 - no destination available
->
-> Regards
->
-> --
-> Julian Anastasov <ja@ssi.bg>
