@@ -1,103 +1,127 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: yangxingwu <xingwu.yang@gmail.com>
 Subject: Re: [PATCH] ipvs: Fix reuse connection if RS weight is 0
-Date: Mon, 25 Oct 2021 21:12:33 +0300 (EEST)
-Message-ID: <707b5fb3-6b61-c53-e983-bc1373aa2bf@ssi.bg>
-References: <20211025115910.2595-1-xingwu.yang@gmail.com>
+Date: Tue, 26 Oct 2021 10:54:40 +0800
+Message-ID: <CA+7U5JsSuwqP7eHj1tMHfsb+EemwrhZEJ2b944LFWTroxAnQRQ@mail.gmail.com>
+References: <20211025115910.2595-1-xingwu.yang@gmail.com> <707b5fb3-6b61-c53-e983-bc1373aa2bf@ssi.bg>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20211025115910.2595-1-xingwu.yang@gmail.com>
+Return-path: <linux-doc-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=tkzNHgBhfoN1mN/bXgW3MkB27AZfqmaYrRvjImCn3wA=;
+        b=fjCVH2KPY/mOAid4lHIsGk80qGZe30oFxUXZMY6H8BI1NPpfz1H7r97F4+u6+k31yg
+         XryUZ5iJTS0menFBaz8G/X0/x71oUEWhb2XKfy4L63t5PRcBboHIJSYDpcsU/calqj7w
+         /xamMaezkiK9JyR9DavPcNl1V/T6S0i3uPsr07Vc/6M1q04LocQutxVNe10VkkPJc0fU
+         +cLN6Y30I76ymGcpkbmxFXY+PlLj9sjm7aMHlmdQHDviQT+0dSomZY80Q+qXs4yq1rWN
+         wA2A2SqcD8V3Hwhdk++g7kX8XRcecg2LszFyi5wdkY7YecZYkA07iJ95uGxBh3t3RK8H
+         ul2w==
+In-Reply-To: <707b5fb3-6b61-c53-e983-bc1373aa2bf@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yangxingwu <xingwu.yang@gmail.com>
-Cc: Simon Horman <horms@verge.net.au>, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, "David S. Miller" <davem@davemloft.net>, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel <linux-kernel@vger.kernel.org>, linux-doc@vger.kernel.org, corbet@lwn.net
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, kadlec@netfilter.org, fw@strlen.de, "David S. Miller" <davem@davemloft.net>, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel <linux-kernel@vger.kernel.org>, linux-doc@vger.kernel.org, corbet@lwn.net
 
+thanks julian
 
-	Hello,
+What happens in this situation is that if we set the wait of the
+realserver to 0 and do NOT remove the weight zero realserver with
+sysctl settings (conn_reuse_mode == 0 && expire_nodest_conn == 1), and
+the client reuses its source ports, the kernel will constantly
+reuse connections and send the traffic to the weight 0 realserver.
 
-On Mon, 25 Oct 2021, yangxingwu wrote:
+you may check the details from
+https://github.com/kubernetes/kubernetes/issues/81775
 
-> Since commit dc7b3eb900aa ("ipvs: Fix reuse connection if real server is
-> dead"), new connections to dead servers are redistributed immediately to
-> new servers.
-> 
-> Then commit d752c3645717 ("ipvs: allow rescheduling of new connections when
-> port reuse is detected") disable expire_nodest_conn if conn_reuse_mode is
-> 0. And new connection may be distributed to a real server with weight 0.
-
-	Your change does not look correct to me. At the time
-expire_nodest_conn was created, it was not checked when
-weight is 0. At different places different terms are used
-but in short, we have two independent states for real server:
-
-- inhibited: weight=0 and no new connections should be served,
-	packets for existing connections can be routed to server
-	if it is still available and packets are not dropped
-	by expire_nodest_conn.
-	The new feature is that port reuse detection can
-	redirect the new TCP connection into a new IPVS conn and
-	to expire the existing cp/ct.
-
-- unavailable (!IP_VS_DEST_F_AVAILABLE): server is removed,
-	can be temporary, drop traffic for existing connections
-	but on expire_nodest_conn we can select different server
-
-	The new conn_reuse_mode flag allows port reuse to
-be detected. Only then expire_nodest_conn has the
-opportunity with commit dc7b3eb900aa to check weight=0
-and to consider the old traffic as finished. If a new
-server is selected, any retrans from previous connection
-would be considered as part from the new connection. It
-is a rapid way to switch server without checking with
-is_new_conn_expected() because we can not have many
-conns/conntracks to different servers.
-
-> Signed-off-by: yangxingwu <xingwu.yang@gmail.com>
-> ---
->  Documentation/networking/ipvs-sysctl.rst | 3 +--
->  net/netfilter/ipvs/ip_vs_core.c          | 5 +++--
->  2 files changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
-> index 2afccc63856e..1cfbf1add2fc 100644
-> --- a/Documentation/networking/ipvs-sysctl.rst
-> +++ b/Documentation/networking/ipvs-sysctl.rst
-> @@ -37,8 +37,7 @@ conn_reuse_mode - INTEGER
->  
->  	0: disable any special handling on port reuse. The new
->  	connection will be delivered to the same real server that was
-> -	servicing the previous connection. This will effectively
-> -	disable expire_nodest_conn.
-> +	servicing the previous connection.
->  
->  	bit 1: enable rescheduling of new connections when it is safe.
->  	That is, whenever expire_nodest_conn and for TCP sockets, when
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 128690c512df..9279aed69e23 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -2042,14 +2042,15 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
->  			     ipvs, af, skb, &iph);
->  
->  	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
-> -	if (conn_reuse_mode && !iph.fragoffs && is_new_conn(skb, &iph) && cp) {
-> +	if (!iph.fragoffs && is_new_conn(skb, &iph) && cp) {
->  		bool old_ct = false, resched = false;
->  
->  		if (unlikely(sysctl_expire_nodest_conn(ipvs)) && cp->dest &&
->  		    unlikely(!atomic_read(&cp->dest->weight))) {
->  			resched = true;
->  			old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
-> -		} else if (is_new_conn_expected(cp, conn_reuse_mode)) {
-> +		} else if (conn_reuse_mode &&
-> +			   is_new_conn_expected(cp, conn_reuse_mode)) {
->  			old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
->  			if (!atomic_read(&cp->n_control)) {
->  				resched = true;
-> -- 
-> 2.30.2
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+On Tue, Oct 26, 2021 at 2:12 AM Julian Anastasov <ja@ssi.bg> wrote:
+>
+>
+>         Hello,
+>
+> On Mon, 25 Oct 2021, yangxingwu wrote:
+>
+> > Since commit dc7b3eb900aa ("ipvs: Fix reuse connection if real server is
+> > dead"), new connections to dead servers are redistributed immediately to
+> > new servers.
+> >
+> > Then commit d752c3645717 ("ipvs: allow rescheduling of new connections when
+> > port reuse is detected") disable expire_nodest_conn if conn_reuse_mode is
+> > 0. And new connection may be distributed to a real server with weight 0.
+>
+>         Your change does not look correct to me. At the time
+> expire_nodest_conn was created, it was not checked when
+> weight is 0. At different places different terms are used
+> but in short, we have two independent states for real server:
+>
+> - inhibited: weight=0 and no new connections should be served,
+>         packets for existing connections can be routed to server
+>         if it is still available and packets are not dropped
+>         by expire_nodest_conn.
+>         The new feature is that port reuse detection can
+>         redirect the new TCP connection into a new IPVS conn and
+>         to expire the existing cp/ct.
+>
+> - unavailable (!IP_VS_DEST_F_AVAILABLE): server is removed,
+>         can be temporary, drop traffic for existing connections
+>         but on expire_nodest_conn we can select different server
+>
+>         The new conn_reuse_mode flag allows port reuse to
+> be detected. Only then expire_nodest_conn has the
+> opportunity with commit dc7b3eb900aa to check weight=0
+> and to consider the old traffic as finished. If a new
+> server is selected, any retrans from previous connection
+> would be considered as part from the new connection. It
+> is a rapid way to switch server without checking with
+> is_new_conn_expected() because we can not have many
+> conns/conntracks to different servers.
+>
+> > Signed-off-by: yangxingwu <xingwu.yang@gmail.com>
+> > ---
+> >  Documentation/networking/ipvs-sysctl.rst | 3 +--
+> >  net/netfilter/ipvs/ip_vs_core.c          | 5 +++--
+> >  2 files changed, 4 insertions(+), 4 deletions(-)
+> >
+> > diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
+> > index 2afccc63856e..1cfbf1add2fc 100644
+> > --- a/Documentation/networking/ipvs-sysctl.rst
+> > +++ b/Documentation/networking/ipvs-sysctl.rst
+> > @@ -37,8 +37,7 @@ conn_reuse_mode - INTEGER
+> >
+> >       0: disable any special handling on port reuse. The new
+> >       connection will be delivered to the same real server that was
+> > -     servicing the previous connection. This will effectively
+> > -     disable expire_nodest_conn.
+> > +     servicing the previous connection.
+> >
+> >       bit 1: enable rescheduling of new connections when it is safe.
+> >       That is, whenever expire_nodest_conn and for TCP sockets, when
+> > diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> > index 128690c512df..9279aed69e23 100644
+> > --- a/net/netfilter/ipvs/ip_vs_core.c
+> > +++ b/net/netfilter/ipvs/ip_vs_core.c
+> > @@ -2042,14 +2042,15 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
+> >                            ipvs, af, skb, &iph);
+> >
+> >       conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
+> > -     if (conn_reuse_mode && !iph.fragoffs && is_new_conn(skb, &iph) && cp) {
+> > +     if (!iph.fragoffs && is_new_conn(skb, &iph) && cp) {
+> >               bool old_ct = false, resched = false;
+> >
+> >               if (unlikely(sysctl_expire_nodest_conn(ipvs)) && cp->dest &&
+> >                   unlikely(!atomic_read(&cp->dest->weight))) {
+> >                       resched = true;
+> >                       old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
+> > -             } else if (is_new_conn_expected(cp, conn_reuse_mode)) {
+> > +             } else if (conn_reuse_mode &&
+> > +                        is_new_conn_expected(cp, conn_reuse_mode)) {
+> >                       old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
+> >                       if (!atomic_read(&cp->n_control)) {
+> >                               resched = true;
+> > --
+> > 2.30.2
+>
+> Regards
+>
+> --
+> Julian Anastasov <ja@ssi.bg>
