@@ -1,7 +1,7 @@
 From: yangxingwu <xingwu.yang@gmail.com>
-Subject: [PATCH net-next v3] ipvs: Fix reuse connection if RS weight is 0
-Date: Sat, 30 Oct 2021 14:31:48 +0800
-Message-ID: <20211030063148.9060-1-xingwu.yang@gmail.com>
+Subject: [PATCH nf-next v4] netfilter: ipvs: Fix reuse connection if RS weight is 0
+Date: Sat, 30 Oct 2021 14:40:49 +0800
+Message-ID: <20211030064049.9992-1-xingwu.yang@gmail.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
@@ -10,16 +10,16 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         h=from:to:cc:subject:date:message-id:mime-version
          :content-transfer-encoding;
         bh=UjE5rqV9YkEJ/jh/9FOC8oevBVSTtNSrYDvMxA/WymY=;
-        b=LXdRKewdQg7gz7uAcQ2+iJKzay4f9pxTf4NGHvep0QLBcTCcv/NSepkifTzXlGs1Pr
-         rsFfG6CVQTWjxOxhfYYyJ9jlHVlzeRfRzFG434YXDgZqFg16Xx+rnq/duL28dnKspzUz
-         q2BQrAjKWJh15p4mQ6P19shWHkmcjLIu3S6jfnO+TWDPTp0mosWooaMGZoRFIWqqW7EP
-         rwgUi+yq+iXCLD1HLugDZpd50KpM8jezCaXnFj5OoRm2On36yx9E4ewhIbcnO3YTyV8+
-         Lqx4Ke7OBtcV/EKPFzEgGY/WZyNIBUMCjn2ei1WhqnApNUDqUV2TQ9pcQtQRoUy2tMyn
-         y2pA==
+        b=pBVae0l1mAb7sndDjkicYEsznprOmQKXS6Hyvgd6iZ2yGyVr6tGS8rIl/og97/laJF
+         I95LHJeQR4UkLLOE6wiWX+FFRNzkS8SgDHfMXqaxAGyvnlSqDonSTf2w0rid0k2QZG13
+         Ngb6hrFjZqgavSqA5Y/dkSeWL9FazihRDne/PtADOeV6yoUdHn1NHBKrDjnnSaSsWoDD
+         wSLHG9DU9rmfWRyrPGUn8N3gFEGmUaTlpXWwyvYHSscvYYKNhMez5R72CK2rNZWusZ/7
+         nbfuOcmoR7jYCVJj8/egg7T5/HxV5kV173OLVaHQtWKW0crlNL/Q5VnK3AoAJnMpCmWe
+         eEaA==
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: horms@verge.net.au
-Cc: ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, corbet@lwn.net, xingwu.yang@gmail.com, legend050709@qq.com
+Cc: ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, corbet@lwn.net, yangxingwu <xingwu.yang@gmail.com>, Chuanqi Liu <legend050709@qq.com>
 
 We are changing expire_nodest_conn to work even for reused connections when
 conn_reuse_mode=0 but without affecting the controlled and persistent
