@@ -1,20 +1,23 @@
-From: Simon Horman <horms@verge.net.au>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH nf-next v6] netfilter: ipvs: Fix reuse connection if RS
  weight is 0
-Date: Thu, 4 Nov 2021 15:04:04 +0100
-Message-ID: <20211104140401.GA16560@vergenet.net>
+Date: Thu, 4 Nov 2021 18:47:54 +0200 (EET)
+Message-ID: <72d07ec2-ec1-9024-ca98-c923f5d8f74@ssi.bg>
 References: <20211104031029.157366-1-xingwu.yang@gmail.com>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
 In-Reply-To: <20211104031029.157366-1-xingwu.yang@gmail.com>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yangxingwu <xingwu.yang@gmail.com>, pablo@netfilter.org
-Cc: ja@ssi.bg, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, corbet@lwn.net, Chuanqi Liu <legend050709@qq.com>
+To: yangxingwu <xingwu.yang@gmail.com>
+Cc: Simon Horman <horms@verge.net.au>, pablo@netfilter.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel <linux-kernel@vger.kernel.org>, linux-doc@vger.kernel.org, Chuanqi Liu <legend050709@qq.com>
 
-On Thu, Nov 04, 2021 at 11:10:29AM +0800, yangxingwu wrote:
+
+	Hello,
+
+On Thu, 4 Nov 2021, yangxingwu wrote:
+
 > We are changing expire_nodest_conn to work even for reused connections when
 > conn_reuse_mode=0, just as what was done with commit dc7b3eb900aa ("ipvs:
 > Fix reuse connection if real server is dead").
@@ -27,11 +30,7 @@ On Thu, Nov 04, 2021 at 11:10:29AM +0800, yangxingwu wrote:
 > Signed-off-by: Chuanqi Liu <legend050709@qq.com>
 > Signed-off-by: yangxingwu <xingwu.yang@gmail.com>
 
-Acked-by: Simon Horman <horms@verge.net.au>
-
-(v5 was acked by Julian, probably that can be propagated here)
-
-Pablo, please consider this for nf-next at your convenience.
+Acked-by: Julian Anastasov <ja@ssi.bg>
 
 > ---
 >  Documentation/networking/ipvs-sysctl.rst | 3 +--
@@ -86,4 +85,9 @@ Pablo, please consider this for nf-next at your convenience.
 >  				resched = true;
 > -- 
 > 2.30.2
-> 
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+
