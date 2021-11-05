@@ -1,93 +1,40 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH nf-next v6] netfilter: ipvs: Fix reuse connection if RS
- weight is 0
-Date: Thu, 4 Nov 2021 18:47:54 +0200 (EET)
-Message-ID: <72d07ec2-ec1-9024-ca98-c923f5d8f74@ssi.bg>
-References: <20211104031029.157366-1-xingwu.yang@gmail.com>
-Mime-Version: 1.0
+From: GuoYong Zheng <zhenggy@chinatelecom.cn>
+Subject: [PATCH] ipvs: remove unused variable for ip_vs_new_dest
+Date: Fri,  5 Nov 2021 19:39:40 +0800
+Message-ID: <1636112380-11040-1-git-send-email-zhenggy@chinatelecom.cn>
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20211104031029.157366-1-xingwu.yang@gmail.com>
+Sender: zhenggy@chinatelecom.cn
 List-ID: <lvs-devel.vger.kernel.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yangxingwu <xingwu.yang@gmail.com>
-Cc: Simon Horman <horms@verge.net.au>, pablo@netfilter.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel <linux-kernel@vger.kernel.org>, linux-doc@vger.kernel.org, Chuanqi Liu <legend050709@qq.com>
+To: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Cc: horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, GuoYong Zheng <zhenggy@chinatelecom.cn>
 
+The dest variable is not used after ip_vs_new_dest anymore in
+ip_vs_add_dest, do not need pass it to ip_vs_new_dest, remove it.
 
-	Hello,
+Signed-off-by: GuoYong Zheng <zhenggy@chinatelecom.cn>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-On Thu, 4 Nov 2021, yangxingwu wrote:
-
-> We are changing expire_nodest_conn to work even for reused connections when
-> conn_reuse_mode=0, just as what was done with commit dc7b3eb900aa ("ipvs:
-> Fix reuse connection if real server is dead").
-> 
-> For controlled and persistent connections, the new connection will get the
-> needed real server depending on the rules in ip_vs_check_template().
-> 
-> Fixes: d752c3645717 ("ipvs: allow rescheduling of new connections when port reuse is detected")
-> Co-developed-by: Chuanqi Liu <legend050709@qq.com>
-> Signed-off-by: Chuanqi Liu <legend050709@qq.com>
-> Signed-off-by: yangxingwu <xingwu.yang@gmail.com>
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  Documentation/networking/ipvs-sysctl.rst | 3 +--
->  net/netfilter/ipvs/ip_vs_core.c          | 8 ++++----
->  2 files changed, 5 insertions(+), 6 deletions(-)
-> 
-> diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
-> index 2afccc63856e..1cfbf1add2fc 100644
-> --- a/Documentation/networking/ipvs-sysctl.rst
-> +++ b/Documentation/networking/ipvs-sysctl.rst
-> @@ -37,8 +37,7 @@ conn_reuse_mode - INTEGER
->  
->  	0: disable any special handling on port reuse. The new
->  	connection will be delivered to the same real server that was
-> -	servicing the previous connection. This will effectively
-> -	disable expire_nodest_conn.
-> +	servicing the previous connection.
->  
->  	bit 1: enable rescheduling of new connections when it is safe.
->  	That is, whenever expire_nodest_conn and for TCP sockets, when
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 128690c512df..393058a43aa7 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1964,7 +1964,6 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
->  	struct ip_vs_proto_data *pd;
->  	struct ip_vs_conn *cp;
->  	int ret, pkts;
-> -	int conn_reuse_mode;
->  	struct sock *sk;
->  
->  	/* Already marked as IPVS request or reply? */
-> @@ -2041,15 +2040,16 @@ ip_vs_in(struct netns_ipvs *ipvs, unsigned int hooknum, struct sk_buff *skb, int
->  	cp = INDIRECT_CALL_1(pp->conn_in_get, ip_vs_conn_in_get_proto,
->  			     ipvs, af, skb, &iph);
->  
-> -	conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
-> -	if (conn_reuse_mode && !iph.fragoffs && is_new_conn(skb, &iph) && cp) {
-> +	if (!iph.fragoffs && is_new_conn(skb, &iph) && cp) {
-> +		int conn_reuse_mode = sysctl_conn_reuse_mode(ipvs);
->  		bool old_ct = false, resched = false;
->  
->  		if (unlikely(sysctl_expire_nodest_conn(ipvs)) && cp->dest &&
->  		    unlikely(!atomic_read(&cp->dest->weight))) {
->  			resched = true;
->  			old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
-> -		} else if (is_new_conn_expected(cp, conn_reuse_mode)) {
-> +		} else if (conn_reuse_mode &&
-> +			   is_new_conn_expected(cp, conn_reuse_mode)) {
->  			old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
->  			if (!atomic_read(&cp->n_control)) {
->  				resched = true;
-> -- 
-> 2.30.2
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
-
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index e62b40b..494399d 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -959,8 +959,7 @@ static void ip_vs_trash_cleanup(struct netns_ipvs *ipvs)
+  *	Create a destination for the given service
+  */
+ static int
+-ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
+-	       struct ip_vs_dest **dest_p)
++ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ {
+ 	struct ip_vs_dest *dest;
+ 	unsigned int atype, i;
+@@ -1020,8 +1019,6 @@ static void ip_vs_trash_cleanup(struct netns_ipvs *ipvs)
+ 	spin_lock_init(&dest->stats.lock);
+ 	__ip_vs_update_dest(svc, dest, udest, 1);
+ 
+-	*dest_p = dest;
