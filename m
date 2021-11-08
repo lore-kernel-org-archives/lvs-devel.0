@@ -1,40 +1,38 @@
-From: GuoYong Zheng <zhenggy@chinatelecom.cn>
-Subject: [PATCH] ipvs: remove unused variable for ip_vs_new_dest
-Date: Fri,  5 Nov 2021 19:39:40 +0800
-Message-ID: <1636112380-11040-1-git-send-email-zhenggy@chinatelecom.cn>
-Return-path: <lvs-devel-owner@vger.kernel.org>
-Sender: zhenggy@chinatelecom.cn
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+Subject: Re: [PATCH nf-next v6] netfilter: ipvs: Fix reuse connection if RS
+ weight is 0
+Date: Mon, 8 Nov 2021 11:46:49 +0100
+Message-ID: <YYkAGcPu0yIQ6WnN@salvia>
+References: <20211104031029.157366-1-xingwu.yang@gmail.com>
+ <20211104140401.GA16560@vergenet.net>
+Mime-Version: 1.0
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20211104140401.GA16560@vergenet.net>
 List-ID: <lvs-devel.vger.kernel.org>
-MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Cc: horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, GuoYong Zheng <zhenggy@chinatelecom.cn>
+To: Simon Horman <horms@verge.net.au>
+Cc: yangxingwu <xingwu.yang@gmail.com>, ja@ssi.bg, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, corbet@lwn.net, Chuanqi Liu <legend050709@qq.com>
 
-The dest variable is not used after ip_vs_new_dest anymore in
-ip_vs_add_dest, do not need pass it to ip_vs_new_dest, remove it.
+On Thu, Nov 04, 2021 at 03:04:04PM +0100, Simon Horman wrote:
+> On Thu, Nov 04, 2021 at 11:10:29AM +0800, yangxingwu wrote:
+> > We are changing expire_nodest_conn to work even for reused connections when
+> > conn_reuse_mode=0, just as what was done with commit dc7b3eb900aa ("ipvs:
+> > Fix reuse connection if real server is dead").
+> > 
+> > For controlled and persistent connections, the new connection will get the
+> > needed real server depending on the rules in ip_vs_check_template().
+> > 
+> > Fixes: d752c3645717 ("ipvs: allow rescheduling of new connections when port reuse is detected")
+> > Co-developed-by: Chuanqi Liu <legend050709@qq.com>
+> > Signed-off-by: Chuanqi Liu <legend050709@qq.com>
+> > Signed-off-by: yangxingwu <xingwu.yang@gmail.com>
+> 
+> Acked-by: Simon Horman <horms@verge.net.au>
+> 
+> (v5 was acked by Julian, probably that can be propagated here)
+> 
+> Pablo, please consider this for nf-next at your convenience.
 
-Signed-off-by: GuoYong Zheng <zhenggy@chinatelecom.cn>
----
- net/netfilter/ipvs/ip_vs_ctl.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index e62b40b..494399d 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -959,8 +959,7 @@ static void ip_vs_trash_cleanup(struct netns_ipvs *ipvs)
-  *	Create a destination for the given service
-  */
- static int
--ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest,
--	       struct ip_vs_dest **dest_p)
-+ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- {
- 	struct ip_vs_dest *dest;
- 	unsigned int atype, i;
-@@ -1020,8 +1019,6 @@ static void ip_vs_trash_cleanup(struct netns_ipvs *ipvs)
- 	spin_lock_init(&dest->stats.lock);
- 	__ip_vs_update_dest(svc, dest, udest, 1);
- 
--	*dest_p = dest;
+Applied this fix to nf, thanks.
