@@ -1,13 +1,10 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: Inability to IPVS DR with nft dnat since 9971a514ed26
-Date: Fri, 3 Dec 2021 10:40:21 +0100
-Message-ID: <YanmBakAtiqyoR3b@salvia>
-References: <20190327062650.GA10700@hostway.ca>
- <20190327093027.gmflo27icuhr326p@breakpoint.cc>
- <20211203083452.GA13536@hostway.ca>
+Date: Fri, 3 Dec 2021 23:48:51 +0200 (EET)
+Message-ID: <ae4d64a5-8742-a392-4866-edce08e3bdd@ssi.bg>
+References: <20190327062650.GA10700@hostway.ca> <20190327093027.gmflo27icuhr326p@breakpoint.cc> <20211203083452.GA13536@hostway.ca>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <20211203083452.GA13536@hostway.ca>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -15,68 +12,11 @@ Content-Transfer-Encoding: 7bit
 To: Simon Kirby <sim@hostway.ca>
 Cc: Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
 
-Hi,
 
-On Fri, Dec 03, 2021 at 12:34:52AM -0800, Simon Kirby wrote:
-> On Wed, Mar 27, 2019 at 10:30:27AM +0100, Florian Westphal wrote:
-> 
-> > Simon Kirby <sim@hostway.ca> wrote:
-> > > We have been successfully using nft dnat and IPVS in DR mode on 4.9, 4.14
-> > > kernels, but since upgrading to 4.19, such rules now appear to miss the
-> > > IPVS input hook and instead appear to hit localhost (and "tcpdump -ni lo"
-> > > shows the packets) instead of being forwarded to a real server.
-> > > 
-> > > I bisected this to 9971a514ed2697e542f3984a6162eac54bb1da98 ("netfilter:
-> > > nf_nat: add nat type hooks to nat core").
-> > > 
-> > > It should be pretty easy to see this with a minimal setup:
-> > > 
-> > > /etc/nftables.conf:
-> > > 
-> > > table ip nat {
-> > >         chain prerouting {
-> > >                 type nat hook prerouting priority 0;
+	Hello,
 
-This priority number does not look correct, this should be -100 which
-is NF_IP_PRI_NAT_DST (in recent nftables versions you can use:
+On Fri, 3 Dec 2021, Simon Kirby wrote:
 
-        ... priority dstnat;
-
-> > > 		ip daddr $ext_ip dnat to $vip
-
-Why do you need DNAT in this case? In the IPVS DR mode virtual server
-and the load balancer already own the same IP address.
-
-> > > 	}
-> > > 	chain postrouting {
-> > > 		type nat hook postrouting priority 100;
-> > > 
-> > > 		# In theory this hook no longer needed since this commit,
-> > > 		# but we also need to do some unrelated snatting.
-> > > 	}
-
-Your configuration is also missing the input/output nat hooks, which
-also need to be registered manually. Otherwise, NAT and locally
-generated traffic might break.
-
-In the kernel 4.14 and below, all of the NAT hooks in nftables need to
-be manually registered in order for NAT to work.
-
-> > > }
-> > > 
-> > > /etc/sysctl.conf:
-> > > 	
-> > > net.ipv4.conf.all.accept_local = 1
-> > > net.ipv4.vs.conntrack = 1
-> > > 
-> > > IPVS DR setup:
-> > > 
-> > > ipvsadm -A -t $vip:80 -s wrr
-> > > ipvsadm -a -t $vip:80 -r $real_ip:80 -g -w 100
-> > 
-> > I have a hard time figuring out how to expand $ext_ip, $vip and $real_ip,
-> > and where to place those addresses on the nft machine.
-> 
 > I had some time to set up some test VMs for this, which I can post if
 > you'd like (several GB), or I can tarball up the configs.
 > 
@@ -91,14 +31,27 @@ be manually registered in order for NAT to work.
 > With perf probes, I found that the reason the outbound device is changing
 > is that there is an nft hook that ends up calling ip_route_me_harder().
 
-This is called from local_out path for NAT, is the $vip owned by your
-load balancer? Then the route lookup is correct since it points to the
-address that your load balancer owns.
+	Yes, this call is supposed to route locally generated
+packets after daddr is translated by Netfilter. But IPVS uses
+LOCAL_OUT hook to post packets to real servers. If you use
+DR method, daddr is not changed (remains VIP) but packet's route
+points to the real server (different from VIP). Any rerouting
+will assign wrong route.
+
+	Such code that compares tuple.dst.u3.ip with
+tuple.src.u3.ip (for !dir) in nf_nat_ipv4_local_fn() is present
+in old kernels. So, I'm not sure how you escaped it. The
+only possible way is if net.ipv4.vs.conntrack is 0 because
+in this case ip_vs_send_or_cont() calls ip_vs_notrack() to set 
+IP_CT_UNTRACKED and ct becomes NULL (untracked skb is skipped
+by NAT).
 
 > This function is not called prior to this change, but we can make it be
 > called even on 4.14 by hooking nat output (with no rules) or route output
 > with anything modifying, such as "mark set 1".
-> 
+
+	In this case it hits the mangle code (ipt_mangle_out).
+
 > We just didn't happen to hook this previously, so it worked for us, but
 > after this change, all hooks (including output) are always applied.
 > 
@@ -137,18 +90,43 @@ address that your load balancer owns.
 > 
 > On 4.14 without hooking nat output, the oif for nat postrouting remains
 > unchanged ("enp1s0").
-> 
+
+	Is net.ipv4.vs.conntrack set in 4.14 ?
+
 > If we avoid the nftables dnat rule and connect directly to the LVS VIP,
 > it still works on newer kernels, I suspect because nf_nat_ipv4_fn()
 > doesn't match. If we dnat directly to the DR VIP without LVS, it works
+
+	The problem is that the DNAT rule schedules translation
+which is detected by this check:
+
+	if (ct->tuplehash[dir].tuple.dst.u3.ip !=
+	    ct->tuplehash[!dir].tuple.src.u3.ip) {
+		err = ip_route_me_harder(state->net, state->sk, skb, RTN_UNSPEC);
+
+	But it happens if ct is not NULL (vs/conntrack=1).
+
 > because the dest is not loopback, as expected. It's the combination of
 > these two that used to work, but now doesn't.
-
-Is your load balancer owning the IP address that you use to dnat?
-
+> 
 > Our specific use case here is that we're doing the dnat from public to
 > rfc1918 space, and the rfc1918 LVS VIPs support some hairpinning cases.
 > 
 > Any ideas?
-> 
-> Simon-
+
+	As nf_nat_ipv4_local_fn is just for LOCAL_OUT, an additional
+skb->dev check can help to skip the code when packet comes from
+network (not from local stack):
+
+	if (ret != NF_ACCEPT || skb->dev)
+		return ret;
+
+	But I'm not sure if such hack breaks something.
+
+	Second option is to check if daddr/dport actually changed
+in our call to nf_nat_ipv4_fn() but it is more complex.
+It will catch that packet was already DNAT-ed in PRE_ROUTING,
+it was already routed locally and now it is passed on LOCAL_OUT
+by IPVS for second DNAT+rerouting which is not wanted by IPVS.
+
+Regards
