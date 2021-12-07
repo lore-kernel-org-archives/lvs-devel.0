@@ -1,132 +1,182 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: Inability to IPVS DR with nft dnat since 9971a514ed26
-Date: Fri, 3 Dec 2021 23:48:51 +0200 (EET)
-Message-ID: <ae4d64a5-8742-a392-4866-edce08e3bdd@ssi.bg>
-References: <20190327062650.GA10700@hostway.ca> <20190327093027.gmflo27icuhr326p@breakpoint.cc> <20211203083452.GA13536@hostway.ca>
+From: Jakub Kicinski <kuba@kernel.org>
+Subject: Re: [PATCH net-next] net: Enable some sysctls for the userns root
+ with privilege
+Date: Mon, 6 Dec 2021 16:45:20 -0800
+Message-ID: <20211206164520.51f8a2d8@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+References: <20211203032815.339186-1-xu.xin16@zte.com.cn>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20211203083452.GA13536@hostway.ca>
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1638837922;
+        bh=SCN5889vVh+mCc+CkiaepdBgwDK/1jikVPzpnl7uoXk=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=e3WCRzoyTZfv7k0J0Rx5q26w57k/JZZt4C8OR2q7/B22q25bq6p1lVhWzCdiwBoty
+         A287qgioJl30xM+B1SLQ/LeBKgVByIlU3YIIi8it12f6eYKYEKYXuxQfkrVUL1mI0E
+         MecnFGqFqngtDSVQ/M/IEgYyoulFu+5MHyh7h9aYdmTRrb3rhA6WllT0MIi35Gyz+S
+         KNWiMDd9QihVQeZzQjQkPn25QvYpeGOBg9LjtCaFcPCYYkU1t88LtaeXgRp6qxlilk
+         GPsVUN6e3hY/JpNbAaCFhESkd5U/oV06XozdBD9zz2JhSMeBFzlOhpavKYrUfD/pt1
+         bmDIlXRCbf1Uw==
+In-Reply-To: <20211203032815.339186-1-xu.xin16@zte.com.cn>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Simon Kirby <sim@hostway.ca>
-Cc: Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
+To: cgel.zte@gmail.com
+Cc: davem@davemloft.net, alex.aring@gmail.com, stefan@datenfreihafen.org, yoshfuji@linux-ipv6.org, dsahern@kernel.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, daniel@iogearbox.net, roopa@nvidia.com, yajun.deng@linux.dev, chinagar@codeaurora.org, xu.xin16@zte.com.cn, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, linux-wpan@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Eric Biederman <ebiederm@xmission.com>
 
-
-	Hello,
-
-On Fri, 3 Dec 2021, Simon Kirby wrote:
-
-> I had some time to set up some test VMs for this, which I can post if
-> you'd like (several GB), or I can tarball up the configs.
+On Fri,  3 Dec 2021 03:28:15 +0000 cgel.zte@gmail.com wrote:
+> From: xu xin <xu.xin16@zte.com.cn>
 > 
-> Our setup still doesn't work in 5.15, and we have some LVS servers held
-> up on 4.14 kernels that are the last working stable branch.
+> Enabled sysctls include the followings: 
+> 1. net/ipv4/neigh/<if>/* 
+> 2. net/ipv6/neigh/<if>/* 
+> 3. net/ieee802154/6lowpan/* 
+> 4. net/ipv6/route/* 
+> 5. net/ipv4/vs/* 
+> 6. net/unix/* 
+> 7. net/core/xfrm_*
 > 
-> LVS expects the VIPs to route to loopback in order to reach the ipvs
-> hook, and since 9971a514ed2697e542f3984a6162eac54bb1da98 ("netfilter:
-> nf_nat: add nat type hooks to nat core"), the nftrace output changes to
-> show that the ipvs_vs_dr_xmit packet is oif "lo" rather than "enp1s0".
+> In practical work, some userns with root privilege have needs to adjust
+> these sysctls in their own netns, but limited just because they are not
+> init user_ns, even if they are given root privilege by docker -privilege.
+
+You need to justify why removing these checks is safe. It sounds like
+you're only describing why having the permissions is problematic, which 
+is fair but not sufficient to just remove them.
+
+> Reported-by: xu xin <xu.xin16@zte.com.cn>
+> Tested-by: xu xin <xu.xin16@zte.com.cn>
+
+These tags are superfluous for the author of the patch.
+
+> Signed-off-by: xu xin <xu.xin16@zte.com.cn>
+> ---
+>  net/core/neighbour.c                | 4 ----
+>  net/ieee802154/6lowpan/reassembly.c | 4 ----
+>  net/ipv6/route.c                    | 4 ----
+>  net/netfilter/ipvs/ip_vs_ctl.c      | 4 ----
+>  net/netfilter/ipvs/ip_vs_lblc.c     | 4 ----
+>  net/netfilter/ipvs/ip_vs_lblcr.c    | 3 ---
+>  net/unix/sysctl_net_unix.c          | 4 ----
+>  net/xfrm/xfrm_sysctl.c              | 4 ----
+>  8 files changed, 31 deletions(-)
 > 
-> With perf probes, I found that the reason the outbound device is changing
-> is that there is an nft hook that ends up calling ip_route_me_harder().
+> diff --git a/net/core/neighbour.c b/net/core/neighbour.c
+> index 0cdd4d9ad942..44d90cc341ea 100644
+> --- a/net/core/neighbour.c
+> +++ b/net/core/neighbour.c
+> @@ -3771,10 +3771,6 @@ int neigh_sysctl_register(struct net_device *dev, struct neigh_parms *p,
+>  			neigh_proc_base_reachable_time;
+>  	}
+>  
+> -	/* Don't export sysctls to unprivileged users */
+> -	if (neigh_parms_net(p)->user_ns != &init_user_ns)
+> -		t->neigh_vars[0].procname = NULL;
+> -
+>  	switch (neigh_parms_family(p)) {
+>  	case AF_INET:
+>  	      p_name = "ipv4";
+> diff --git a/net/ieee802154/6lowpan/reassembly.c b/net/ieee802154/6lowpan/reassembly.c
+> index be6f06adefe0..89cbad6d8368 100644
+> --- a/net/ieee802154/6lowpan/reassembly.c
+> +++ b/net/ieee802154/6lowpan/reassembly.c
+> @@ -366,10 +366,6 @@ static int __net_init lowpan_frags_ns_sysctl_register(struct net *net)
+>  				GFP_KERNEL);
+>  		if (table == NULL)
+>  			goto err_alloc;
+> -
+> -		/* Don't export sysctls to unprivileged users */
+> -		if (net->user_ns != &init_user_ns)
+> -			table[0].procname = NULL;
+>  	}
+>  
+>  	table[0].data	= &ieee802154_lowpan->fqdir->high_thresh;
+> diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+> index f0d29fcb2094..6a0b15d6500e 100644
+> --- a/net/ipv6/route.c
+> +++ b/net/ipv6/route.c
+> @@ -6409,10 +6409,6 @@ struct ctl_table * __net_init ipv6_route_sysctl_init(struct net *net)
+>  		table[8].data = &net->ipv6.sysctl.ip6_rt_min_advmss;
+>  		table[9].data = &net->ipv6.sysctl.ip6_rt_gc_min_interval;
+>  		table[10].data = &net->ipv6.sysctl.skip_notify_on_dev_down;
+> -
+> -		/* Don't export sysctls to unprivileged users */
+> -		if (net->user_ns != &init_user_ns)
+> -			table[1].procname = NULL;
+>  	}
+>  
+>  	return table;
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index 7f645328b47f..a77c8abf2fc7 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> @@ -4040,10 +4040,6 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+>  		tbl = kmemdup(vs_vars, sizeof(vs_vars), GFP_KERNEL);
+>  		if (tbl == NULL)
+>  			return -ENOMEM;
+> -
+> -		/* Don't export sysctls to unprivileged users */
+> -		if (net->user_ns != &init_user_ns)
+> -			tbl[0].procname = NULL;
+>  	} else
+>  		tbl = vs_vars;
+>  	/* Initialize sysctl defaults */
+> diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+> index 7ac7473e3804..567ba33fa5b4 100644
+> --- a/net/netfilter/ipvs/ip_vs_lblc.c
+> +++ b/net/netfilter/ipvs/ip_vs_lblc.c
+> @@ -561,10 +561,6 @@ static int __net_init __ip_vs_lblc_init(struct net *net)
+>  		if (ipvs->lblc_ctl_table == NULL)
+>  			return -ENOMEM;
+>  
+> -		/* Don't export sysctls to unprivileged users */
+> -		if (net->user_ns != &init_user_ns)
+> -			ipvs->lblc_ctl_table[0].procname = NULL;
+> -
+>  	} else
+>  		ipvs->lblc_ctl_table = vs_vars_table;
+>  	ipvs->sysctl_lblc_expiration = DEFAULT_EXPIRATION;
+> diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+> index 77c323c36a88..a58440a7bf9e 100644
+> --- a/net/netfilter/ipvs/ip_vs_lblcr.c
+> +++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+> @@ -747,9 +747,6 @@ static int __net_init __ip_vs_lblcr_init(struct net *net)
+>  		if (ipvs->lblcr_ctl_table == NULL)
+>  			return -ENOMEM;
+>  
+> -		/* Don't export sysctls to unprivileged users */
+> -		if (net->user_ns != &init_user_ns)
+> -			ipvs->lblcr_ctl_table[0].procname = NULL;
+>  	} else
+>  		ipvs->lblcr_ctl_table = vs_vars_table;
+>  	ipvs->sysctl_lblcr_expiration = DEFAULT_EXPIRATION;
+> diff --git a/net/unix/sysctl_net_unix.c b/net/unix/sysctl_net_unix.c
+> index c09bea89151b..01d44e2598e2 100644
+> --- a/net/unix/sysctl_net_unix.c
+> +++ b/net/unix/sysctl_net_unix.c
+> @@ -30,10 +30,6 @@ int __net_init unix_sysctl_register(struct net *net)
+>  	if (table == NULL)
+>  		goto err_alloc;
+>  
+> -	/* Don't export sysctls to unprivileged users */
+> -	if (net->user_ns != &init_user_ns)
+> -		table[0].procname = NULL;
+> -
+>  	table[0].data = &net->unx.sysctl_max_dgram_qlen;
+>  	net->unx.ctl = register_net_sysctl(net, "net/unix", table);
+>  	if (net->unx.ctl == NULL)
+> diff --git a/net/xfrm/xfrm_sysctl.c b/net/xfrm/xfrm_sysctl.c
+> index 0c6c5ef65f9d..a9b7723eb88f 100644
+> --- a/net/xfrm/xfrm_sysctl.c
+> +++ b/net/xfrm/xfrm_sysctl.c
+> @@ -55,10 +55,6 @@ int __net_init xfrm_sysctl_init(struct net *net)
+>  	table[2].data = &net->xfrm.sysctl_larval_drop;
+>  	table[3].data = &net->xfrm.sysctl_acq_expires;
+>  
+> -	/* Don't export sysctls to unprivileged users */
+> -	if (net->user_ns != &init_user_ns)
+> -		table[0].procname = NULL;
+> -
+>  	net->xfrm.sysctl_hdr = register_net_sysctl(net, "net/core", table);
+>  	if (!net->xfrm.sysctl_hdr)
+>  		goto out_register;
 
-	Yes, this call is supposed to route locally generated
-packets after daddr is translated by Netfilter. But IPVS uses
-LOCAL_OUT hook to post packets to real servers. If you use
-DR method, daddr is not changed (remains VIP) but packet's route
-points to the real server (different from VIP). Any rerouting
-will assign wrong route.
-
-	Such code that compares tuple.dst.u3.ip with
-tuple.src.u3.ip (for !dir) in nf_nat_ipv4_local_fn() is present
-in old kernels. So, I'm not sure how you escaped it. The
-only possible way is if net.ipv4.vs.conntrack is 0 because
-in this case ip_vs_send_or_cont() calls ip_vs_notrack() to set 
-IP_CT_UNTRACKED and ct becomes NULL (untracked skb is skipped
-by NAT).
-
-> This function is not called prior to this change, but we can make it be
-> called even on 4.14 by hooking nat output (with no rules) or route output
-> with anything modifying, such as "mark set 1".
-
-	In this case it hits the mangle code (ipt_mangle_out).
-
-> We just didn't happen to hook this previously, so it worked for us, but
-> after this change, all hooks (including output) are always applied.
-> 
-> # perf probe -a 'ip_route_me_harder%return retval=$retval'
-> # perf record -g -e probe:ip_route_me_harder__return -aR sleep 4
-> (send a test connection)
-> # perf script
-> swapper     0 [000]  1654.547622: probe:ip_route_me_harder__return: (ffffffff819ac910 <- ffffffffa002b8f6) retval=0x0
->         ffffffff810564b0 kretprobe_trampoline+0x0 (vmlinux-4.14.252)
->         ffffffffa0084090 nft_nat_ipv4_local_fn+0x10 ([nft_chain_nat_ipv4])
->         ffffffff8193e793 nf_hook_slow+0x43 (vmlinux-4.14.252)
->         ffffffffa004af2b ip_vs_dr_xmit+0x18b ([ip_vs])
->         ffffffffa003fb2e ip_vs_in+0x58e ([ip_vs])
->         ffffffffa00400d1 ip_vs_local_request4+0x21 ([ip_vs])
->         ffffffffa00400e9 ip_vs_remote_request4+0x9 ([ip_vs])
->         ffffffff8193e793 nf_hook_slow+0x43 (vmlinux-4.14.252)
->         ffffffff8195c48b ip_local_deliver+0x7b (vmlinux-4.14.252)
->         ffffffff8195c0b8 ip_rcv_finish+0x1f8 (vmlinux-4.14.252)
->         ffffffff8195c7b7 ip_rcv+0x2e7 (vmlinux-4.14.252)
->         ffffffff818dc113 __netif_receive_skb_core+0x883 (vmlinux-4.14.252)
-> (pruned a bit)
-> 
-> On 5.15, the trace is similar, but nft_nat_ipv4_local_fn is gone
-> (nft_nat_do_chain is inlined).
-> 
-> nftrace output through "nft monitor trace" shows it changing the packet
-> dest between filter output and nat postrouting:
-> 
-> ...
-> trace id 32904fd3 ip filter output packet: oif "enp1s0" @ll,0,112 0x5254009039555254002ace280800 ip saddr 192.168.7.1 ip daddr 10.99.99.10 ip dscp 0x04 ip ecn not-ect ip ttl 63 ip id 5753 ip length 60 tcp sport 58620 tcp dport 80 tcp flags == syn tcp window 64240
-> trace id 32904fd3 ip filter output verdict continue
-> trace id 32904fd3 ip filter output policy accept
-> trace id 32904fd3 ip nat postrouting packet: iif "enp1s0" oif "lo" ether saddr 52:54:00:2a:ce:28 ether daddr 52:54:00:90:39:55 ip saddr 192.168.7.1 ip daddr 10.99.99.10 ip dscp 0x04 ip ecn not-ect ip ttl 63 ip id 5753 ip length 60 tcp sport 58620 tcp dport 80 tcp flags == syn tcp window 64240
-> trace id 32904fd3 ip nat postrouting verdict continue
-> trace id 32904fd3 ip nat postrouting policy accept
-> 
-> On 4.14 without hooking nat output, the oif for nat postrouting remains
-> unchanged ("enp1s0").
-
-	Is net.ipv4.vs.conntrack set in 4.14 ?
-
-> If we avoid the nftables dnat rule and connect directly to the LVS VIP,
-> it still works on newer kernels, I suspect because nf_nat_ipv4_fn()
-> doesn't match. If we dnat directly to the DR VIP without LVS, it works
-
-	The problem is that the DNAT rule schedules translation
-which is detected by this check:
-
-	if (ct->tuplehash[dir].tuple.dst.u3.ip !=
-	    ct->tuplehash[!dir].tuple.src.u3.ip) {
-		err = ip_route_me_harder(state->net, state->sk, skb, RTN_UNSPEC);
-
-	But it happens if ct is not NULL (vs/conntrack=1).
-
-> because the dest is not loopback, as expected. It's the combination of
-> these two that used to work, but now doesn't.
-> 
-> Our specific use case here is that we're doing the dnat from public to
-> rfc1918 space, and the rfc1918 LVS VIPs support some hairpinning cases.
-> 
-> Any ideas?
-
-	As nf_nat_ipv4_local_fn is just for LOCAL_OUT, an additional
-skb->dev check can help to skip the code when packet comes from
-network (not from local stack):
-
-	if (ret != NF_ACCEPT || skb->dev)
-		return ret;
-
-	But I'm not sure if such hack breaks something.
-
-	Second option is to check if daddr/dport actually changed
-in our call to nf_nat_ipv4_fn() but it is more complex.
-It will catch that packet was already DNAT-ed in PRE_ROUTING,
-it was already routed locally and now it is passed on LOCAL_OUT
-by IPVS for second DNAT+rerouting which is not wanted by IPVS.
-
-Regards
