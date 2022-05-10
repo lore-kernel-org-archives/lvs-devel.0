@@ -1,7 +1,7 @@
 From: Menglong Dong <menglong8.dong@gmail.com>
 Subject: Re: [PATCH net-next] net: ipvs: random start for RR scheduler
-Date: Tue, 10 May 2022 10:55:59 +0800
-Message-ID: <CADxym3YH_76+5g29QF4Xp4gXJz5bwdQXD_gXv3esAVTgNGkXyg@mail.gmail.com>
+Date: Tue, 10 May 2022 11:21:17 +0800
+Message-ID: <CADxym3bgR9xfHgoAwWeEQvLUnwrUxee3gK4SkRqcS+TmmfWUGw@mail.gmail.com>
 References: <20220509122213.19508-1-imagedong@tencent.com> <cb8eaad0-83c5-a150-d830-e078682ba18b@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
@@ -9,13 +9,13 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=jxQ4FfNifoAJnZ9RmrNs5f5NM/VT87rpdDF11Jk1btA=;
-        b=SIoRNBBruUGqvs1gFylAGuQkpK43TNtybVWSF7483tLUz8XioL7cLwS6mWSdNif4Zl
-         yejzbF09bGelUNpFCzxixRshQf/uzmkyxlfCZvjeLamGQmHU0Q3d+opBLK+gKS4xAs20
-         jsI15Y3sgjWwvSP33vRuKK2KVsruIu+TDuHtgalnAMsgUOr5YKLKzVxiu1Vua32lKgIC
-         FQxU8Tf4Hy5FpwlZTbLCtVShnNA/LDfBA950XwR3dXRo90sC28amqEoq/LFtm6KwAawz
-         o38cKjw0EEerDpWthWTlbTHEcXoUNrohxAzXn2Dr3+VCz6o//Po7D/c0ytcMWK8fN/6E
-         1JVA==
+        bh=W6hg8xZDlvVbV0yxBFJp6M3i2By/uzGhIKuyQsM88v4=;
+        b=P+wESGRbK7UrpgEo0WHOiYGsdzWzZ8+u3MZXUDBD4YdLv0BOKi/E+XbjkFcw6DoRaN
+         LenQnO42u8tz5dMfezSlUYh7mWdgCucKAr1fPOYcuPBvBQp4xQiCsNPZyCL+LxgPhrrf
+         veBicKCnUjsb4wSJjmvW+1gbMijZcgobY0wy5gqSBHsLiZJi6QFk1owyvBeCAcSL1S36
+         TVJ3B318oVs8ampqE+l+C6rWHg8nWxfmg8BhUGb6gqo2W498Bo+vfxGsE9pOMhyvAc8X
+         MwQJyuatuyH/Pe7rZDYhDlFYKFbSvx3LU4SUdCXn4Q7gK0ZFCplpHbfthTj3SECxSJFR
+         snqg==
 In-Reply-To: <cb8eaad0-83c5-a150-d830-e078682ba18b@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
@@ -54,13 +54,17 @@ On Tue, May 10, 2022 at 2:17 AM Julian Anastasov <ja@ssi.bg> wrote:
 > will get real server #3, right ? Also, are the clients local
 > to the director?
 >
+
+Sorry to have missed your message here. Yeah, this is what I mean.
+And in my case, the directors are local the to client, and each client
+only have 2 connections. If the 3th connection happens, it will get #3
+real server. And all directors connected to #1 and #2 real servers,
+resulting in overload.
+
 > > Fix this by randomize the start of dest service to RR scheduler when
 >
 >         ..."randomizing the starting destination when"
 >
-
-Nice description :/
-
 > > IP_VS_SVC_F_SCHED_RR_RANDOM is set.
 > >
 > > Signed-off-by: Menglong Dong <imagedong@tencent.com>
@@ -111,9 +115,6 @@ Nice description :/
 >
 >         start = prandom_u32_max(min(svc->num_dests, 128U));
 >
-
-Yeah, prandom_u32_max is a good choice, I'll use it instead.
-
 >         or just use
 >
 >         start = prandom_u32_max(svc->num_dests);
@@ -128,15 +129,41 @@ Yeah, prandom_u32_max is a good choice, I'll use it instead.
 > we are called for every added dest. Better to jump 0..127 steps
 > ahead, to avoid delay with long lists?
 >
-
-I'm a little afraid that the 'steps' may make the starting dest not
-absolutely random, in terms of probability. For example, we have
-256 services, and will the services in the middle have more chances
-to be chosen as the start? It's just a feeling, I'm not good at
-Probability :/
-
-The delay that ip_vs_wrr_gcd_weight() caused is much more than
-this case, so maybe the delay here can be ignored?
-
-Thanks!
-Menglong Dong
+> > +     while (start--)
+> > +             cur = cur->next;
+> > +     svc->sched_data = cur;
+> > +     spin_unlock_bh(&svc->sched_lock);
+> > +}
+> >
+> >  static int ip_vs_rr_init_svc(struct ip_vs_service *svc)
+> >  {
+> >       svc->sched_data = &svc->destinations;
+> > +     ip_vs_rr_random_start(svc);
+> >       return 0;
+> >  }
+> >
+> > +static int ip_vs_rr_add_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest)
+> > +{
+> > +     ip_vs_rr_random_start(svc);
+> > +     return 0;
+> > +}
+> >
+> >  static int ip_vs_rr_del_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest)
+> >  {
+> > @@ -104,7 +127,7 @@ static struct ip_vs_scheduler ip_vs_rr_scheduler = {
+> >       .module =               THIS_MODULE,
+> >       .n_list =               LIST_HEAD_INIT(ip_vs_rr_scheduler.n_list),
+> >       .init_service =         ip_vs_rr_init_svc,
+> > -     .add_dest =             NULL,
+> > +     .add_dest =             ip_vs_rr_add_dest,
+> >       .del_dest =             ip_vs_rr_del_dest,
+> >       .schedule =             ip_vs_rr_schedule,
+> >  };
+> > --
+> > 2.36.0
+>
+> Regards
+>
+> --
+> Julian Anastasov <ja@ssi.bg>
+>
