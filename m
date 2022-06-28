@@ -1,120 +1,52 @@
 From: Kees Cook <keescook@chromium.org>
-Subject: Re: [PATCH][next] treewide: uapi: Replace zero-length
- arrays with flexible-array members
-Date: Tue, 28 Jun 2022 10:54:58 -0700
-Message-ID: <202206281009.4332AA33@keescook>
+Subject: Re: [PATCH][next] treewide: uapi: Replace zero-length arrays with
+ flexible-array members
+Date: Tue, 28 Jun 2022 11:05:53 -0700
+Message-ID: <202206281104.7CC3935@keescook>
 References: <20220627180432.GA136081@embeddedor>
- <6bc1e94c-ce1d-a074-7d0c-8dbe6ce22637@iogearbox.net>
- <20220628004052.GM23621@ziepe.ca>
+ <CAMuHMdU27TG_rpd=WTRPRcY22A4j4aN-6d_8OmK2aNpX06G3ig@mail.gmail.com>
 Mime-Version: 1.0
-Return-path: <intel-gfx-bounces@lists.freedesktop.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=chromium.org; s=google;
- h=date:from:to:cc:subject:message-id:references:mime-version
- :content-disposition:in-reply-to;
- bh=Ifakbg1KSXljeCc2KlqlOz+XfzIBohlTVCEx+b5hm2Y=;
- b=Lpc3rw2lUDFTgNuiFkNi7vJ3FOoQQ8sPNV+A/xT7kPgFFi5TelrrdXlIUbrL4j9GT+
- 3+ei8DuymmFwmq4TMtVSFXVwj/BEoFuIu2AqPN9i6R5zOS+ndUs4OIvpg1Fj2tZP3rAs
- mZTqNdFC15vlNUFmjWu7inrraPu1BA3Mkzqts=
+Content-Transfer-Encoding: 8bit
+Return-path: <bpf-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=chromium.org; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:content-transfer-encoding:in-reply-to;
+        bh=pTcGgtfSu6n7KkCWKQ4ciWe5XeKK5S4riO8KfNVW7Ig=;
+        b=F/CZTCTDOlhkWqZ+vOzW0DaoZ/EZ1dOhoCSSJ2RrwBNwuY7CCyvEtaLLk8DO+FYVI8
+         oY1bh2Rw2NH/e7uwuajkABgxQQynq/vb9wDrQT1ziurYSmeBDoqa9s9XGmGLyXXXVu1m
+         Ptj/OKkdrLcBprdD9gQ9RffSNU26yKh9HCJiI=
 Content-Disposition: inline
-In-Reply-To: <20220628004052.GM23621@ziepe.ca>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/intel-gfx>,
- <mailto:intel-gfx-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/intel-gfx>
-List-Post: <mailto:intel-gfx@lists.freedesktop.org>
-List-Help: <mailto:intel-gfx-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/intel-gfx>,
- <mailto:intel-gfx-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: intel-gfx-bounces@lists.freedesktop.org
-Sender: "Intel-gfx" <intel-gfx-bounces@lists.freedesktop.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Jason Gunthorpe <jgg@ziepe.ca>
-Cc: nvdimm@lists.linux.dev, alsa-devel@alsa-project.org, kvm@vger.kernel.org, dri-devel@lists.freedesktop.org, "Gustavo A. R. Silva" <gustavoars@kernel.org>, dm-devel@redhat.com, target-devel@vger.kernel.org, linux-mtd@lists.infradead.org, linux-hardening@vger.kernel.org, linux1394-devel@lists.sourceforge.net, linux-stm32@st-md-mailman.stormreply.com, linux-s390@vger.kernel.org, Daniel Borkmann <daniel@iogearbox.net>, linux-rdma@vger.kernel.org, x86@kernel.org, kasan-dev@googlegroups.com, lvs-devel@vger.kernel.org, coreteam@netfilter.org, v9fs-developer@lists.sourceforge.net, linux-mips@vger.kernel.org, intel-gfx@lists.freedesktop.org, linux-can@vger.kernel.org, linux-raid@vger.kernel.org, linux-m68k@lists.linux-m68k.org, virtualization@lists.linux-foundation.org, io-uring@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-scsi@vger.kernel.org, netdev@vger.kernel.o
+In-Reply-To: <CAMuHMdU27TG_rpd=WTRPRcY22A4j4aN-6d_8OmK2aNpX06G3ig@mail.gmail.com>
+List-ID: <lvs-devel.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+To: Geert Uytterhoeven <geert@linux-m68k.org>
+Cc: "Gustavo A. R. Silva" <gustavoars@kernel.org>, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, the arch/x86 maintainers <x86@kernel.org>, dm-devel@redhat.com, linux-m68k <linux-m68k@lists.linux-m68k.org>, "open list:BROADCOM NVRAM DRIVER" <linux-mips@vger.kernel.org>, linux-s390 <linux-s390@vger.kernel.org>, KVM list <kvm@vger.kernel.org>, Intel Graphics Development <intel-gfx@lists.freedesktop.org>, DRI Development <dri-devel@lists.freedesktop.org>, netdev <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, linux-btrfs <linux-btrfs@vger.kernel.org>, linux-can@vger.kernel.org, Linux FS Devel <linux-fsdevel@vger.kernel.org>, linux1394-devel@lists.sourceforge.net, io-uring@vger.kernel.org, lvs-devel@vger.kernel.org, MTD Maling List <linux-mtd@lists.infradea>
 
-On Mon, Jun 27, 2022 at 09:40:52PM -0300, Jason Gunthorpe wrote:
-> On Mon, Jun 27, 2022 at 08:27:37PM +0200, Daniel Borkmann wrote:
-> > [...]
-> > Fyi, this breaks BPF CI:
-> > 
-> > https://github.com/kernel-patches/bpf/runs/7078719372?check_suite_focus=true
-> > 
-> >   [...]
-> >   progs/map_ptr_kern.c:314:26: error: field 'trie_key' with variable sized type 'struct bpf_lpm_trie_key' not at the end of a struct or class is a GNU extension [-Werror,-Wgnu-variable-sized-type-not-at-end]
-> >           struct bpf_lpm_trie_key trie_key;
-> >                                   ^
-
-The issue here seems to be a collision between "unknown array size"
-and known sizes:
-
-struct bpf_lpm_trie_key {
-        __u32   prefixlen;      /* up to 32 for AF_INET, 128 for AF_INET6 */
-        __u8    data[0];        /* Arbitrary size */
-};
-
-struct lpm_key {
-	struct bpf_lpm_trie_key trie_key;
-	__u32 data;
-};
-
-This is treating trie_key as a header, which it's not: it's a complete
-structure. :)
-
-Perhaps:
-
-struct lpm_key {
-        __u32 prefixlen;
-        __u32 data;
-};
-
-I don't see anything else trying to include bpf_lpm_trie_key.
-
+On Tue, Jun 28, 2022 at 09:27:21AM +0200, Geert Uytterhoeven wrote:
+> Hi Gustavo,
 > 
-> This will break the rdma-core userspace as well, with a similar
-> error:
+> Thanks for your patch!
 > 
-> /usr/bin/clang-13 -DVERBS_DEBUG -Dibverbs_EXPORTS -Iinclude -I/usr/include/libnl3 -I/usr/include/drm -g -O2 -fdebug-prefix-map=/__w/1/s=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -Wmissing-prototypes -Wmissing-declarations -Wwrite-strings -Wformat=2 -Wcast-function-type -Wformat-nonliteral -Wdate-time -Wnested-externs -Wshadow -Wstrict-prototypes -Wold-style-definition -Werror -Wredundant-decls -g -fPIC   -std=gnu11 -MD -MT libibverbs/CMakeFiles/ibverbs.dir/cmd_flow.c.o -MF libibverbs/CMakeFiles/ibverbs.dir/cmd_flow.c.o.d -o libibverbs/CMakeFiles/ibverbs.dir/cmd_flow.c.o   -c ../libibverbs/cmd_flow.c
-> In file included from ../libibverbs/cmd_flow.c:33:
-> In file included from include/infiniband/cmd_write.h:36:
-> In file included from include/infiniband/cmd_ioctl.h:41:
-> In file included from include/infiniband/verbs.h:48:
-> In file included from include/infiniband/verbs_api.h:66:
-> In file included from include/infiniband/ib_user_ioctl_verbs.h:38:
-> include/rdma/ib_user_verbs.h:436:34: error: field 'base' with variable sized type 'struct ib_uverbs_create_cq_resp' not at the end of a struct or class is a GNU extension [-Werror,-Wgnu-variable-sized-type-not-at-end]
->         struct ib_uverbs_create_cq_resp base;
->                                         ^
-> include/rdma/ib_user_verbs.h:644:34: error: field 'base' with variable sized type 'struct ib_uverbs_create_qp_resp' not at the end of a struct or class is a GNU extension [-Werror,-Wgnu-variable-sized-type-not-at-end]
->         struct ib_uverbs_create_qp_resp base;
+> On Mon, Jun 27, 2022 at 8:04 PM Gustavo A. R. Silva
+> <gustavoars@kernel.org> wrote:
+> > There is a regular need in the kernel to provide a way to declare
+> > having a dynamically sized set of trailing elements in a structure.
+> > Kernel code should always use “flexible array members”[1] for these
+> > cases. The older style of one-element or zero-length arrays should
+> > no longer be used[2].
+> 
+> These rules apply to the kernel, but uapi is not considered part of the
+> kernel, so different rules apply.  Uapi header files should work with
+> whatever compiler that can be used for compiling userspace.
 
-This looks very similar, a struct of unknown size is being treated as a
-header struct:
+Right, userspace isn't bound by these rules, but the kernel ends up
+consuming these structures, so we need to fix them. The [0] -> []
+changes (when they are not erroneously being used within other
+structures) is valid for all compilers. Flexible arrays are C99; it's
+been 23 years. :)
 
-struct ib_uverbs_create_cq_resp {
-        __u32 cq_handle;
-        __u32 cqe;
-        __aligned_u64 driver_data[0];
-};
-
-struct ib_uverbs_ex_create_cq_resp {
-        struct ib_uverbs_create_cq_resp base;
-        __u32 comp_mask;
-        __u32 response_length;
-};
-
-And it only gets used here:
-
-                DECLARE_UVERBS_WRITE(IB_USER_VERBS_CMD_CREATE_CQ,
-                                     ib_uverbs_create_cq,
-                                     UAPI_DEF_WRITE_UDATA_IO(
-                                             struct ib_uverbs_create_cq,
-                                             struct ib_uverbs_create_cq_resp),
-                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                                     UAPI_DEF_METHOD_NEEDS_FN(create_cq)),
-
-which must also be assuming it's a header. So probably better to just
-drop the driver_data field? I don't see anything using it (that I can
-find) besides as a sanity-check that the field exists and is at the end
-of the struct.
+But, yes, where we DO break stuff we need to workaround it, etc.
 
 -- 
 Kees Cook
