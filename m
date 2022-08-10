@@ -1,21 +1,39 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH] netfilter: ipvs: Use the bitmap API to allocate bitmaps
-Date: Thu, 21 Jul 2022 00:58:02 +0200
-Message-ID: <YtiIekld0M+bDXQa@salvia>
-References: <420d8b70560e8711726ff639f0a55364e212ff26.1656962678.git.christophe.jaillet@wanadoo.fr>
+From: Turritopsis Dohrnii Teo En Ming <tdtemccna@gmail.com>
+Subject: How many physical machines do I need for running the Linux Virtual Server?
+Date: Wed, 10 Aug 2022 17:43:09 +0800
+Message-ID: <CACsrZYY6aWpVOdZ5SOhDPdU+_=P0LX4=q4xCht+E-+PHRwEhGw@mail.gmail.com>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <420d8b70560e8711726ff639f0a55364e212ff26.1656962678.git.christophe.jaillet@wanadoo.fr>
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=cc:to:subject:message-id:date:from:mime-version:from:to:cc;
+        bh=5bgCV3nNdsfNKccV4X6WE16NKKZvjGLnx1EdI1tbuwI=;
+        b=M5iMsb5iqnO0LPxF8PVvyxpNZVUfICza8LFsx48SNQQn+OdsuUMLD6/4SQyQnxixDg
+         EJH5VTcE87nMOOFRufNkl/vLx6GnQNyR/vi5YI0rVlONIMlFJMhRtq/BgwoiO3ts6/Sh
+         Fp2+QHAEQKJL+wjOAiVc7osnbf7eHzyuZNioK3uFWleRJN7aJZCIHgs8zp/8g6lwbLK7
+         CxKz7D3KvQA+UK5NUlMDmHCr2BQBw53DByDfeLe6fR/pFevEgqF66q7lecdBvMZ2KKQG
+         rEWiURcqFFUHLyLuX2YGEiLRRQToEViXtQimNfzFdgcWNx12DGgumeJIqr5mN6mhgVHn
+         aq4w==
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
-Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+To: lvs-devel@vger.kernel.org
+Cc: ceo@teo-en-ming-corp.com
 
-On Mon, Jul 04, 2022 at 09:24:46PM +0200, Christophe JAILLET wrote:
-> Use bitmap_zalloc()/bitmap_free() instead of hand-writing them.
-> 
-> It is less verbose and it improves the semantic.
+Subject: How many physical machines do I need for running the Linux
+Virtual Server?
 
-Applied to nf-next, thanks
+Good day from Singapore,
+
+How many physical machines do I need for running the Linux Virtual Server?
+
+Thank you.
+
+Regards,
+
+Mr. Turritopsis Dohrnii Teo En Ming
+Targeted Individual in Singapore
+10 Aug 2022 Wed
+Blogs:
+https://tdtemcerts.blogspot.com
+https://tdtemcerts.wordpress.com
