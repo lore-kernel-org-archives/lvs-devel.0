@@ -1,139 +1,83 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] net:ipvs: add rcu read lock in some parts
-Date: Fri, 12 Aug 2022 15:17:04 +0300 (EEST)
-Message-ID: <a9f9ec97-61bb-b246-728-8d6677b863e9@ssi.bg>
-References: <20220812093412.808351-1-sunsuwan3@huawei.com>
+Subject: Re: [RFC PATCH nf-next] netfilter: ipvs: Divide estimators into
+ groups
+Date: Sat, 13 Aug 2022 15:11:48 +0300 (EEST)
+Message-ID: <f1657ace-59fb-7265-faf8-8a1a26aaf560@ssi.bg>
+References: <20220812103459.GA7521@incl>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20220812093412.808351-1-sunsuwan3@huawei.com>
+In-Reply-To: <20220812103459.GA7521@incl>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: sunsuwan <sunsuwan3@huawei.com>
-Cc: Simon Horman <horms@verge.net.au>, pablo@netfilter.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, chenzhen126@huawei.com, yanan@huawei.com, liaichun@huawei.com, caowangbao@huawei.com
+To: Jiri Wiesner <jwiesner@suse.de>
+Cc: netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org
 
 
 	Hello,
 
-On Fri, 12 Aug 2022, sunsuwan wrote:
+On Fri, 12 Aug 2022, Jiri Wiesner wrote:
 
-> We founf a possible UAF if rmmod pe_sid or schedule,
-> when packages in hook and get pe or sched.
+> The calculation of rate estimates for IPVS services and destinations will
+> cause an increase in scheduling latency to hundreds of milliseconds when
+> the number of estimators reaches tens of thousands or more. This issue has
+> been reported upstream [1]. Design changes to the algorithm to compute the
+> estimates were proposed in the same email thread.
 > 
-> Signed-off-by: sunsuwan <sunsuwan3@huawei.com>
-> Signed-off-by: chenzhen <chenzhen126@huawei.com>
-> ---
->  net/netfilter/ipvs/ip_vs_core.c | 6 ++++++
->  net/netfilter/ipvs/ip_vs_ctl.c  | 3 +++
->  net/netfilter/ipvs/ip_vs_dh.c   | 2 ++
->  3 files changed, 11 insertions(+)
+> By implementing some of the proposed design changes, this patch seeks to
+> address the latency issue by dividing the estimators into groups for which
+> estimates are calculated in a 2-second interval (same as before). Each of
+> the groups is processed once in each 2-second interval. Instead of
+> allocating an array of lists, groups are identified by their group_id,
+> which has the advantage that estimators can stay in the same list to which
+> they have been added by ip_vs_start_estimator(). The implementation of
+> estimator grouping is able to scale up with an increasing number of
+> estimators as well as scale down when estimators are being removed.
+> The changes to group size can be monitored with dynamic debugging:
+> echo 'file net/netfilter/ipvs/ip_vs_est.c +pfl' >> /sys/kernel/debug/dynamic_debug/control
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 51ad557a525b..d289f184d5c1 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -235,7 +235,9 @@ ip_vs_conn_fill_param_persist(const struct ip_vs_service *svc,
->  {
->  	ip_vs_conn_fill_param(svc->ipvs, svc->af, protocol, caddr, cport, vaddr,
->  			      vport, p);
-> +	rcu_read_lock();
->  	p->pe = rcu_dereference(svc->pe);
-> +	rcu_read_unlock();
+> Rebalacing of estimator groups is implemented and can be triggered only
+> after all the calculations for a 2-second interval have finished. After a
+> limit is exceeded, adding or removing estimators will triger rebalacing,
+> which will cause estimates to be inaccurate in the next 2-second interval.
+> For example, removing estimators that results in the removal of an entire
+> group will shorten the time interval used for computing rates, which will
+> lead to the rates being underestimated in the next 2-second interval.
+> 
+> Testing was carried out on a 2-socket machine with Intel Xeon Gold 6326
+> CPUs (64 logical CPUs). Tests with up to 600,000 estimators were
+> successfully completed. The expectation is that, given the current default
+> limits, the implementation can handle 150,000 estimators on most machines
+> in use today. In a test with 100,000 estimators, the default group size of
+> 1024 estimators resulted in the processing time for one group to be circa
+> 2.3 milliseconds and a timer period of 5 jiffies. Despite estimators being
+> added or removed throughout most of the test, the overhead of
+> ip_vs_estimator_rebalance() was less than 10% of the overhead of
+>  estimation_timer():
+>      7.66%        124093  swapper          [kernel.kallsyms]         [k] intel_idle
+>      2.86%         14296  ipvsadm          [kernel.kallsyms]         [k] native_queued_spin_lock_slowpath
+>      2.64%         16827  ipvsadm          [kernel.kallsyms]         [k] ip_vs_genl_parse_service
+>      2.15%         18457  ipvsadm          libc-2.31.so              [.] _dl_addr
+>      2.08%          4562  ipvsadm          [kernel.kallsyms]         [k] ip_vs_genl_dump_services
+>      2.06%         18326  ipvsadm          ld-2.31.so                [.] do_lookup_x
+>      1.78%         17251  swapper          [kernel.kallsyms]         [k] estimation_timer
+> ...
+>      0.14%           855  swapper          [kernel.kallsyms]         [k] ip_vs_estimator_rebalance
+> 
+> The intention is to develop this RFC patch into a short series addressing
+> the design changes proposed in [1]. Also, after moving the rate estimation
+> out of softirq context, the whole estimator list could be processed
+> concurrently - more than one work item would be used.
+> 
+> [1] https://lore.kernel.org/netdev/D25792C1-1B89-45DE-9F10-EC350DC04ADC@gmail.com
+> 
+> Signed-off-by: Jiri Wiesner <jwiesner@suse.de>
 
-	Hm, in theory, here we are under rcu_read_lock, see
-nf_hook() in include/linux/netfilter.h. IPVS processes packets
-by using netfilter hooks. So, IPVS scheduling is under this lock
-too and ip_vs_conn_fill_param_persist() is part of the scheduling
-call flow.
-
->  	if (p->pe && p->pe->fill_param)
->  		return p->pe->fill_param(p, skb);
->  
-> @@ -346,7 +348,9 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
->  		 * template is not available.
->  		 * return *ignored=0 i.e. ICMP and NF_DROP
->  		 */
-> +		rcu_read_lock();
->  		sched = rcu_dereference(svc->scheduler);
-> +		rcu_read_unlock();
-
-	Scheduling from hook...
-
->  		if (sched) {
->  			/* read svc->sched_data after svc->scheduler */
->  			smp_rmb();
-> @@ -521,7 +525,9 @@ ip_vs_schedule(struct ip_vs_service *svc, struct sk_buff *skb,
->  		return NULL;
->  	}
->  
-> +	rcu_read_lock();
->  	sched = rcu_dereference(svc->scheduler);
-> +	rcu_read_unlock();
-
-	Scheduling from hook...
-
->  	if (sched) {
->  		/* read svc->sched_data after svc->scheduler */
->  		smp_rmb();
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index efab2b06d373..91e568028001 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -580,6 +580,7 @@ bool ip_vs_has_real_service(struct netns_ipvs *ipvs, int af, __u16 protocol,
->  	/* Check for "full" addressed entries */
->  	hash = ip_vs_rs_hashkey(af, daddr, dport);
->  
-> +	rcu_read_lock();
-
-	ip_vs_has_real_service() is called by ip_vs_out_hook()
-
->  	hlist_for_each_entry_rcu(dest, &ipvs->rs_table[hash], d_list) {
->  		if (dest->port == dport &&
->  		    dest->af == af &&
-> @@ -587,9 +588,11 @@ bool ip_vs_has_real_service(struct netns_ipvs *ipvs, int af, __u16 protocol,
->  		    (dest->protocol == protocol || dest->vfwmark) &&
->  		    IP_VS_DFWD_METHOD(dest) == IP_VS_CONN_F_MASQ) {
->  			/* HIT */
-> +			rcu_read_unlock();
->  			return true;
->  		}
->  	}
-> +	rcu_read_unlock();
->  
->  	return false;
->  }
-> diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
-> index 5e6ec32aff2b..3e4b9607172b 100644
-> --- a/net/netfilter/ipvs/ip_vs_dh.c
-> +++ b/net/netfilter/ipvs/ip_vs_dh.c
-> @@ -219,7 +219,9 @@ ip_vs_dh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
->  	IP_VS_DBG(6, "%s(): Scheduling...\n", __func__);
->  
->  	s = (struct ip_vs_dh_state *) svc->sched_data;
-> +	rcu_read_lock();
->  	dest = ip_vs_dh_get(svc->af, s, &iph->daddr);
-> +	rcu_read_unlock();
-
-	Scheduling from hook...
-
->  	if (!dest
->  	    || !(dest->flags & IP_VS_DEST_F_AVAILABLE)
->  	    || atomic_read(&dest->weight) <= 0
-> -- 
-> 2.30.0
-
-	So, all above places are already under rcu_read_lock.
-
-	If you see some real problem, we should track it somehow.
-As for the PEs, they are protected as follows:
-
-- svc holds 1 pe_sip module refcnt (svc->pe), from ip_vs_pe_getbyname()
-
-- every conn can get 1 pe_sip module refcnt (cp->pe): ip_vs_pe_get()
-
-- when last conn releases pe_sip with ip_vs_pe_put() there
-can be flying packets, so we have synchronize_rcu() in
-ip_vs_sip_cleanup()
+	Other developers tried solutions with workqueues
+but so far we don't see any results. Give me some days, may be
+I can come up with solution that uses kthread(s) to allow later
+nice/cpumask cfg tuning and to avoid overload of the system
+workqueues.
 
 Regards
 
