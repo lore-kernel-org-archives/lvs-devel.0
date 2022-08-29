@@ -1,136 +1,60 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: [RFC PATCH 4/4] ipvs: run_estimation should control the kthread tasks
-Date: Sat, 27 Aug 2022 20:41:54 +0300
-Message-ID: <20220827174154.220651-5-ja@ssi.bg>
-References: <20220827174154.220651-1-ja@ssi.bg>
+From: patchwork-bot+netdevbpf@kernel.org
+Subject: Re: [PATCH net-next] genetlink: start to validate reserved header
+ bytes
+Date: Mon, 29 Aug 2022 12:10:17 +0000
+Message-ID: <166177501728.22813.10790787483082655487.git-patchwork-notify@kernel.org>
+References: <20220825001830.1911524-1-kuba@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20220827174154.220651-1-ja@ssi.bg>
-List-ID: <lvs-devel.vger.kernel.org>
+Return-path: <wireguard-bounces@lists.zx2c4.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+ s=k20201202; t=1661775017;
+ bh=fK7S2U9FH3Mh1H4KPhuYrCAu21172KjX+5QYn8bZxhw=;
+ h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+ b=TBIvehqlXAnaUEIBMGrGtucuAxZHCjYUbH9gZTzp39B5ATUAioe8WO3EhAjb3uXxe
+ dMkxYY6hb+WC6eHZyS/cPa8r2CKTI01EB9MGyg1IsF1/oZT7KJghqNmyKNC9XH8ves
+ Cj3pIf4EmX/G+vS/jKdpHZhOleUGsARHnbS9xEcHQZhYvclYHJsMAatPyh4hKIzTRv
+ ajwmDjfIKqrpsF4i7DFIPFPAdyZsb0nMzw3IdNk/hNCLbimS7UVtlTLrinQs2UaKDw
+ YTwmujROS5OWbAtqbFtveKef90uGKF6IuQSib+pIDDHdy0cvO/DcGODQekO/LzgUrc
+ qkbrfSs4DNb4A==
+In-Reply-To: <20220825001830.1911524-1-kuba@kernel.org>
+List-Id: <lvs-devel.vger.kernel.org>
+List-Unsubscribe: <https://lists.zx2c4.com/mailman/options/wireguard>,
+ <mailto:wireguard-request@lists.zx2c4.com?subject=unsubscribe>
+List-Archive: <http://lists.zx2c4.com/pipermail/wireguard/>
+List-Post: <mailto:wireguard@lists.zx2c4.com>
+List-Help: <mailto:wireguard-request@lists.zx2c4.com?subject=help>
+List-Subscribe: <https://lists.zx2c4.com/mailman/listinfo/wireguard>,
+ <mailto:wireguard-request@lists.zx2c4.com?subject=subscribe>
+Errors-To: wireguard-bounces@lists.zx2c4.com
+Sender: "WireGuard" <wireguard-bounces@lists.zx2c4.com>
 Content-Type: text/plain; charset="us-ascii"
-To: Jiri Wiesner <jwiesner@suse.de>
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, yunhjiang@ebay.com, dust.li@linux.alibaba.com, tangyang@zhihu.com
+To: Jakub Kicinski <kuba@kernel.org>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, edumazet@google.com, pabeni@redhat.com, jiri@resnulli.us, johannes@sipsolutions.net, linux-block@vger.kernel.org, osmocom-net-gprs@lists.osmocom.org, linux-wpan@vger.kernel.org, wireguard@lists.zx2c4.com, linux-wireless@vger.kernel.org, linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, linux-pm@vger.kernel.org, virtualization@lists.linux-foundation.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-security-module@vger.kernel.org, dev@openvswitch.org, linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net
 
-Change the run_estimation flag to start/stop the kthread tasks.
+Hello:
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- Documentation/networking/ipvs-sysctl.rst |  4 ++--
- include/net/ip_vs.h                      |  6 +++--
- net/netfilter/ipvs/ip_vs_ctl.c           | 29 +++++++++++++++++++++++-
- net/netfilter/ipvs/ip_vs_est.c           |  4 +---
- 4 files changed, 35 insertions(+), 8 deletions(-)
+This patch was applied to netdev/net-next.git (master)
+by David S. Miller <davem@davemloft.net>:
 
-diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
-index 90c7c325421a..eb33355aa625 100644
---- a/Documentation/networking/ipvs-sysctl.rst
-+++ b/Documentation/networking/ipvs-sysctl.rst
-@@ -324,8 +324,8 @@ run_estimation - BOOLEAN
- 	0 - disabled
- 	not 0 - enabled (default)
- 
--	If disabled, the estimation will be stop, and you can't see
--	any update on speed estimation data.
-+	If disabled, the estimation will be suspended and kthread tasks
-+	stopped.
- 
- 	You can always re-enable estimation by setting this value to 1.
- 	But be careful, the first estimation after re-enable is not
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 7027eca6dab8..428b885c2063 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1598,8 +1598,10 @@ static inline void ip_vs_est_wait_resched(struct netns_ipvs *ipvs,
- static inline void ip_vs_est_stopped_recalc(struct netns_ipvs *ipvs)
- {
- #ifdef CONFIG_SYSCTL
--	ipvs->est_stopped = ipvs->est_cpulist_valid &&
--			    cpumask_empty(sysctl_est_cpulist(ipvs));
-+	/* Stop tasks while cpulist is empty or if disabled with flag */
-+	ipvs->est_stopped = !sysctl_run_estimation(ipvs) ||
-+			    (ipvs->est_cpulist_valid &&
-+			     cpumask_empty(sysctl_est_cpulist(ipvs)));
- #endif
- }
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 6279517104c6..8d03eddfb19f 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2020,6 +2020,32 @@ static int ipvs_proc_est_nice(struct ctl_table *table, int write,
- 	return ret;
- }
- 
-+static int ipvs_proc_run_estimation(struct ctl_table *table, int write,
-+				    void *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	struct netns_ipvs *ipvs = table->extra2;
-+	int *valp = table->data;
-+	int val = *valp;
-+	int ret;
-+
-+	struct ctl_table tmp_table = {
-+		.data = &val,
-+		.maxlen = sizeof(int),
-+		.mode = table->mode,
-+	};
-+
-+	ret = proc_dointvec(&tmp_table, write, buffer, lenp, ppos);
-+	if (write && ret >= 0) {
-+		mutex_lock(&ipvs->est_mutex);
-+		if (*valp != val) {
-+			*valp = val;
-+			ip_vs_est_reload_start(ipvs, true);
-+		}
-+		mutex_unlock(&ipvs->est_mutex);
-+	}
-+	return ret;
-+}
-+
- /*
-  *	IPVS sysctl table (under the /proc/sys/net/ipv4/vs/)
-  *	Do not change order or insert new entries without
-@@ -2194,7 +2220,7 @@ static struct ctl_table vs_vars[] = {
- 		.procname	= "run_estimation",
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
-+		.proc_handler	= ipvs_proc_run_estimation,
- 	},
- 	{
- 		.procname	= "est_cpulist",
-@@ -4282,6 +4308,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
- 	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
- 	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
- 	ipvs->sysctl_run_estimation = 1;
-+	tbl[idx].extra2 = ipvs;
- 	tbl[idx++].data = &ipvs->sysctl_run_estimation;
- 
- 	ipvs->est_cpulist_valid = 0;
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index 0bbc6158339e..0e52e64efac8 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -146,7 +146,6 @@ static void ip_vs_estimation_chain(struct ip_vs_est_kt_data *kd, int row)
- static int ip_vs_estimation_kthread(void *data)
- {
- 	struct ip_vs_est_kt_data *kd = data;
--	struct netns_ipvs *ipvs = kd->ipvs;
- 	int row = kd->est_row;
- 	unsigned long now;
- 	long gap;
-@@ -171,8 +170,7 @@ static int ip_vs_estimation_kthread(void *data)
- 				kd->est_timer = now;
- 		}
- 
--		if (sysctl_run_estimation(ipvs) &&
--		    !hlist_empty(&kd->chains[row]))
-+		if (!hlist_empty(&kd->chains[row]))
- 			ip_vs_estimation_chain(kd, row);
- 
- 		row++;
+On Wed, 24 Aug 2022 17:18:30 -0700 you wrote:
+> We had historically not checked that genlmsghdr.reserved
+> is 0 on input which prevents us from using those precious
+> bytes in the future.
+> 
+> One use case would be to extend the cmd field, which is
+> currently just 8 bits wide and 256 is not a lot of commands
+> for some core families.
+> 
+> [...]
+
+Here is the summary with links:
+  - [net-next] genetlink: start to validate reserved header bytes
+    https://git.kernel.org/netdev/net-next/c/9c5d03d36251
+
+You are awesome, thank you!
 -- 
-2.37.2
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
 
 
