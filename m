@@ -1,80 +1,42 @@
 From: Jiri Wiesner <jwiesner@suse.de>
-Subject: Re: [RFC PATCH 3/4] ipvs: add est_cpulist and est_nice sysctl vars
-Date: Mon, 5 Sep 2022 16:53:33 +0200
-Message-ID: <20220905145333.GE18621@incl>
+Subject: Re: [RFC PATCH 4/4] ipvs: run_estimation should control the kthread
+ tasks
+Date: Mon, 5 Sep 2022 16:57:54 +0200
+Message-ID: <20220905145754.GF18621@incl>
 References: <20220827174154.220651-1-ja@ssi.bg>
- <20220827174154.220651-4-ja@ssi.bg>
+ <20220827174154.220651-5-ja@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1662389614; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1662389875; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=x1UnObJe2ULj6sSrzT5ZONR8Ni84LlugN35MPTGcstU=;
-        b=ne73cDajtuXv9Vf3EmqzsfeOm8M2fI+rAdG5nfr/9svgKZe2u2IKMVE8oJ2anU7VgdlnQE
-        RLF5ukJFLSW3VNOGbcfIXs356MmuE9EWtfbfVoIVKFTAivfcq43cfzUWLSZl+NaERAahGt
-        Hnr0I7dJEssF0kU8KCMhgtoDqvamIns=
+        bh=AiSbwvV48dhV9xNM3d1vGzTwYVvEfvPNfSqKQjZUUG0=;
+        b=uPFkOv5iKepev4YfNyZjQYOkGj5tl89fSc5A/OYDP5Vzv5PxizmkcmJmNQZ1gp7Mo+C8FL
+        JoA4gJlvi/TI0Yqc/cEr13LkniownEdg9h2FsvYMzdIvCOOmfl9aVMsLwkmVJiadIXiI4L
+        qn9lM3ukXBd3p6B/QuN46zWzW+p/Ubo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1662389614;
+        s=susede2_ed25519; t=1662389875;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=x1UnObJe2ULj6sSrzT5ZONR8Ni84LlugN35MPTGcstU=;
-        b=4OJKTalJCvP+muxjrPN3oROq3uYUseMV36gFMPYqY/SqdYUEoDCBVtk6RrWu/pSDAOIZeb
-        aClzdHHkr+NXY2Bw==
+        bh=AiSbwvV48dhV9xNM3d1vGzTwYVvEfvPNfSqKQjZUUG0=;
+        b=0tglCboWkIErGdmmjzyNvf0bVSnBXvC2Etah/D9E2jCYOjD05JJc2J4ug2cHd3eW9sCRX7
+        V3X6TzMpVkT5fDBg==
 Content-Disposition: inline
-In-Reply-To: <20220827174154.220651-4-ja@ssi.bg>
+In-Reply-To: <20220827174154.220651-5-ja@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julian Anastasov <ja@ssi.bg>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, yunhjiang@ebay.com, dust.li@linux.alibaba.com, tangyang@zhihu.com
 
-On Sat, Aug 27, 2022 at 08:41:53PM +0300, Julian Anastasov wrote:
-> Allow the kthreads for stats to be configured for
-> specific cpulist (isolation) and niceness (scheduling
-> priority).
+On Sat, Aug 27, 2022 at 08:41:54PM +0300, Julian Anastasov wrote:
+> Change the run_estimation flag to start/stop the kthread tasks.
 > 
 > Signed-off-by: Julian Anastasov <ja@ssi.bg>
 
-I think moving the estimation kthreads to idle CPU core will become necessary for people who want their estimates to be as accurate as possible. Otherwise, scheduling latencies on busy systems may make the estimates inaccurate by delaying the kthreads after they have been woken up.
-
 Reviewed-by: Jiri Wiesner <jwiesner@suse.de>
-
-> diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
-> index 387fda80f05f..90c7c325421a 100644
-> --- a/Documentation/networking/ipvs-sysctl.rst
-> +++ b/Documentation/networking/ipvs-sysctl.rst
-> @@ -129,6 +129,26 @@ drop_packet - INTEGER
->  	threshold. When the mode 3 is set, the always mode drop rate
->  	is controlled by the /proc/sys/net/ipv4/vs/am_droprate.
->  
-> +est_cpulist - CPULIST
-> +	Allowed	CPUs for estimation kthreads
-> +
-> +	Syntax: standard cpulist format
-> +	empty list - stop kthread tasks and estimation
-> +	default - the system's housekeeping CPUs for kthreads
-> +
-> +	Example:
-> +	"all": all possible CPUs
-> +	"0-N": all possible CPUs, N denotes last CPU number
-> +	"0,1-N:1/2": first and all CPUs with odd number
-> +	"": empty list
-> +
-> +est_nice - INTEGER
-> +	default 0
-> +	Valid range: -20 (more favorable) - 19 (less favorable)
-
-How about using dots instead of a hyphen in the range? I guess it will be easier to read.
-
-> +
-> +	Niceness value to use for the estimation kthreads (scheduling
-> +	priority)
-> +
->  expire_nodest_conn - BOOLEAN
->  	- 0 - disabled (default)
->  	- not 0 - enabled
 
 -- 
 Jiri Wiesner
