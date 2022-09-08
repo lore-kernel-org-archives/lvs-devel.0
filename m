@@ -1,62 +1,101 @@
-From: Jiri Wiesner <jwiesner@suse.de>
-Subject: Re: [RFC PATCH 0/4] Use kthreads for stats
-Date: Thu, 8 Sep 2022 20:32:34 +0200
-Message-ID: <20220908183234.GI18621@incl>
-References: <20220827174154.220651-1-ja@ssi.bg>
- <20220905082642.GB18621@incl>
- <4e16b591-dd0-86e1-afcf-5759362908b@ssi.bg>
- <20220908153521.GG18621@incl>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [RFC PATCHv2 0/4] ipvs: Use kthreads for stats
+Date: Fri,  9 Sep 2022 01:21:05 +0300
+Message-ID: <20220908222109.147452-1-ja@ssi.bg>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1662661954; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=VhVkHTNnDQYtQ3LHoYDD+5gX21eI/lJMeBrBHVuEkOM=;
-        b=WhaLj4OnZMDyVEqW9si1I+p3gGh1o6CSFvOZMP9RCJLK9s4HgNotSftkCHivZ6Cf2b6nh2
-        FcNUC/4Sr7weO+P2FE5oHEt+0GDjHrUZgxTBLe5RigGWfkoBtENXnCSLdht/ajKjKvi/J2
-        g8Pw6nO7D5pCXX6xgKcDqy0jTwsgUfU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1662661954;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=VhVkHTNnDQYtQ3LHoYDD+5gX21eI/lJMeBrBHVuEkOM=;
-        b=koxxmLTeckiolJS4azL7Hwf97rUNW3ODtw7fJUOEn13Be1y2pRK57EyXi7xCCNyiwAxyrr
-        Y7lS4mIUhC4VQSBA==
-Content-Disposition: inline
-In-Reply-To: <20220908153521.GG18621@incl>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
+To: Jiri Wiesner <jwiesner@suse.de>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
-On Thu, Sep 08, 2022 at 05:35:21PM +0200, Jiri Wiesner wrote:
-> There is an alternative design where you could increase kd->est_max_count for all kthreads once all of the available kthreads have kd->est_max_count estimators. Nevertheless, there would also have to be a limit to the value of kd->est_max_count. Imagine the estimation during a single tick would take so long that the gap variable in ip_vs_estimation_kthread() would become negative. You would need to have circa 250,000 estimators per kthread. Since you are already measuring the timeout you need for schedule_timeout() in ip_vs_estimation_kthread(), it should be possible to set the kd->est_max_count limit based on the maximum processing time per chain. It could be half a IPVS_EST_TICK, for example.
-> 
-> But it seems to me that the alternative design - increasing kd->est_max_count - should have some support in what is used in production. Are there servers with more than 983,040 estimators (which would be IPVS_EST_MAX_COUNT * 30 kthreads) or even one third of that?
+	Hello,
 
-I did some profiling (but could have just looked at top, actually) of a kthread with IPVS_EST_MAX_COUNT estimators for 100 seconds:
-# Samples: 4K of event 'bus-cycles'
-# Event count (approx.): 125024900
-# Overhead        Period  Command          Shared Object      Symbol
-# ........  ............  ...............  .................  .........................................
-#
-    76.44%      95570475  ipvs-e:0:0       [kernel.kallsyms]  [k] ip_vs_estimation_kthread
-     8.75%      10935925  ipvs-e:0:0       [kernel.kallsyms]  [k] _find_next_bit
-     3.18%       3978975  swapper          [kernel.kallsyms]  [k] intel_idle
-     1.00%       1251250  ipvs-e:0:0       [kernel.kallsyms]  [k] _raw_spin_lock_bh
-     0.36%        450450  swapper          [kernel.kallsyms]  [k] _raw_spin_lock
-     0.36%        450450  swapper          [kernel.kallsyms]  [k] update_rq_clock
+	This patchset implements stats estimation in
+kthread context. Simple tests do not show any problem.
 
-The bus-cycles event on this particular machine makes 25,000,000 events per second. Based on the period in the profile, the CPU utilization for various functions is:
-ip_vs_estimation_kthread: 95570475/100/25000000*100 = 3.82%
-_find_next_bit: 10935925/100/25000000*100 = 0.44%
-_raw_spin_lock_bh: 1251250/100/25000000*100 = 0.05%
+	As it is late here, I'm sending v2 for
+review. It is interesting to know what value for
+IPVS_EST_TICK_CHAINS to use, it is used for the
+IPVS_EST_MAX_COUNT calculation. We should determine
+it from tests once the loops are in final form.
+Now the limit increased a little bit to 38400.
+Tomorrow I'll check again the patches for possible
+problems.
 
-The kthread could definitely utilize the CPU more, which is an argument for increasing kd->est_max_count.
+	Overview of the basic concepts. More in the
+commit messages...
+
+RCU Locking:
+
+- As stats are now RCU-locked, tot_stats, svc and dest which
+hold estimator structures are now always freed from RCU
+callback. This ensures RCU grace period after the
+ip_vs_stop_estimator() call.
+
+Kthread data:
+
+- every kthread works over its own data structure and all
+such structures are attached to array
+
+- even while there can be a kthread structure, its task
+may not be running, eg. before first service is added or
+while the sysctl var is set to an empty cpulist or
+when run_estimation is 0.
+
+- a task and its structure may be released if all
+estimators are unlinked from its chains, leaving the
+slot in the array empty
+
+- every kthread data structure allows limited number
+of estimators
+
+- to add new estimators we use the last added kthread
+context (est_add_ktid). The new estimators are linked to
+the chains just before the estimated one, based on add_row.
+This ensures their estimation will start after 2 seconds.
+If estimators are added in bursts, common case if all
+services and dests are initially configured, we may
+spread the estimators to more chains. This will reduce
+the chain imbalance.
+
+Not done yet:
+* limit for kthreads (sysctl var)
+
+Changes in v2:
+Patch 2:
+* kd->mutex is gone, cond_resched rate determined by
+  IPVS_EST_CHAIN_DEPTH
+* IPVS_EST_MAX_COUNT is a hard limit now
+* kthread data is now 1-50 allocated tick structures,
+  each containing heads for limited chains. Bitmaps
+  should allow faster access. We avoid large
+  allocations for structs.
+* as the td->present bitmap is shared, use atomic bitops
+* ip_vs_start_estimator now returns error code
+* _bh locking removed from stats->lock
+* bump arg is gone from ip_vs_est_reload_start
+* prepare for upcoming changes that remove _irq
+  from u64_stats_fetch_begin_irq/u64_stats_fetch_retry_irq
+* est_add_ktid is now always valid
+Patch 3:
+* use .. in est_nice docs
+
+Julian Anastasov (4):
+  ipvs: add rcu protection to stats
+  ipvs: use kthreads for stats estimation
+  ipvs: add est_cpulist and est_nice sysctl vars
+  ipvs: run_estimation should control the kthread tasks
+
+ Documentation/networking/ipvs-sysctl.rst |  24 +-
+ include/net/ip_vs.h                      | 122 +++++-
+ net/netfilter/ipvs/ip_vs_core.c          |  10 +-
+ net/netfilter/ipvs/ip_vs_ctl.c           | 367 +++++++++++++++---
+ net/netfilter/ipvs/ip_vs_est.c           | 450 +++++++++++++++++++----
+ 5 files changed, 843 insertions(+), 130 deletions(-)
 
 -- 
-Jiri Wiesner
-SUSE Labs
+2.37.3
+
+
