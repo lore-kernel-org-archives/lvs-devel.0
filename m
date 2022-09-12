@@ -1,113 +1,114 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [RFC PATCHv2 0/4] ipvs: Use kthreads for stats
-Date: Sat, 10 Sep 2022 01:23:19 +0300 (EEST)
-Message-ID: <9b936c4a-cbd1-bb4f-8657-55bd9855f7ef@ssi.bg>
-References: <20220908222109.147452-1-ja@ssi.bg> <20220909194956.GJ18621@incl>
+Subject: [RFC PATCHv3 0/5] ipvs: Use kthreads for stats
+Date: Mon, 12 Sep 2022 13:18:33 +0300
+Message-ID: <20220912101838.12522-1-ja@ssi.bg>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20220909194956.GJ18621@incl>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: Jiri Wiesner <jwiesner@suse.de>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
-
 	Hello,
 
-On Fri, 9 Sep 2022, Jiri Wiesner wrote:
+	Posting v3 (not final yet). New patch 5 just
+for debugging, do not apply if not needed.
 
-> On Fri, Sep 09, 2022 at 01:21:05AM +0300, Julian Anastasov wrote:
-> > It is interesting to know what value for
-> > IPVS_EST_TICK_CHAINS to use, it is used for the
-> > IPVS_EST_MAX_COUNT calculation. We should determine
-> > it from tests once the loops are in final form.
-> > Now the limit increased a little bit to 38400.
-> > Tomorrow I'll check again the patches for possible
-> > problems.
-> 
-> I couldn't wait so I have run tests on various machines and used the sched_switch tracepoint to measure the time needed to process one chain. The table contains a median time for processing one chain, the maximum time measured, the median divided by the number of CPUs and the time needed to process one chain if there were 1024 CPUs of that type in a machine:
-> > NR         CPU                       Time(ms)  Max(ms)  Time/CPU(ms)  1024 CPUs(ms)
-> > 48 Intel Xeon CPU E5-2670 v3, 2 nodes   1.220    1.343         0.025     26.027
-> > 64 Intel Xeon Gold 6326, 2 nodes        0.920    1.494         0.014     14.720
-> > 192 Intel Xeon Gold 6330H, 4 nodes      3.957    4.153         0.021     21.104
-> > 256 AMD EPYC 7713, 2 NUMA nodes         3.927    5.464         0.015     15.708
-> >  80 ARM Neoverse-N1, 1 NUMA node        1.833    2.502         0.023     23.462
-> > 128 ARM Kunpeng 920, 4 NUMA nodes       3.822    4.635         0.030     30.576
-> I have to admit I was hoping the current IPVS_EST_CHAIN_DEPTH would work on machines with more than 1024 CPUs. If the max time values are used the time needed to process one chain on a 1024 CPU machine gets even closer to 40 ms, which it must not reach lest the estimates become inaccurate. I also have profiling data so I intend to look at the disassembly of ip_vs_estimation_kthread() to see which instructions take the most time. I will take a look at the v2 of the code on Monday.
+	This patchset implements stats estimation in
+kthread context. Simple tests do not show any problem.
 
-	v2 uses find_next_bit in for_each_set_bit which has
-cost. But we should not be surprised, if 268ms are for 50000
-estimators on 104 CPUs (I guess this is also the number of
-possible CPUs we actually use), one estimator reads from
-104 CPUs for 5.36 microsecs, we can conclude for 1024 CPUs
-the following:
+	Overview of the basic concepts. More in the
+commit messages...
 
-Num Est		104 CPU		1024 CPU
-========================================
-1		5.36us		53us
-4		21us		211us
-16		86us		845us
+RCU Locking:
 
-	The v2 algorithm allows IPVS_EST_CHAIN_DEPTH to
-be changed to var which we can determine based on the CPU
-count, more CPUs will need more threads and we have CPUs
-for them:
+- As stats are now RCU-locked, tot_stats, svc and dest which
+hold estimator structures are now always freed from RCU
+callback. This ensures RCU grace period after the
+ip_vs_stop_estimator() call.
 
-kd->chain_depth = max(1800 / num_possible_cpus(), 2);
+Kthread data:
 
-Goals:
-- chain time: sub-100 usec cond_resched rate
-- tick time: 10% of max 40ms
+- every kthread works over its own data structure and all
+such structures are attached to array
 
-CPUs	Depth	est_max_count	Chain Time	Tick Time
-=========================================================
-4	450	1080000		93us		4453us
-16	112	268800		92us		4433us
-104	17	40800		91us		4374us
-1024	2	4800		106us		5066us
-4096	2	4800		422us		20265us
+- even while there can be a kthread structure, its task
+may not be running, eg. before first service is added or
+while the sysctl var is set to an empty cpulist or
+when run_estimation is 0.
 
-Summary:
+- a task and its structure may be released if all
+estimators are unlinked from its chains, leaving the
+slot in the array empty
 
-- For 4096 CPUs we can start 208 kthreads for 1000000 ests,
-crazy :)
+- every kthread data structure allows limited number
+of estimators
 
-- 4096 CPUs need to be fast to go below these 20ms or we
-should use chain with 1 estimator for 2048+ CPUs
+- to add new estimators we use the last added kthread
+context (est_add_ktid). The new estimators are linked to
+the chains just before the estimated one, based on add_row.
+This ensures their estimation will start after 2 seconds.
+If estimators are added in bursts, common case if all
+services and dests are initially configured, we may
+spread the estimators to more chains. This will reduce
+the chain imbalance.
 
-	If we track somehow when a stats is updated,
-may be we can skip estimators that are idle for
-some time, this can save CPU cycles for estimating
-unused dests.
+Not done yet:
+* start kthread to calculate chain_max_len and
+IPVS_EST_TICK_CHAINS suitable for 100us cond_resched
+rate and 10% of 40ms. Current value of IPVS_EST_TICK_CHAINS=48
+determines tick time of 4.8ms (i.e. in units of 100us)
+which is 12% of max tick time of 40ms. The question is
+how valid will be such test. For example, we can add
+all ests in temp list until the calculation is done and
+then to requeue all estimators into the chains.
 
-	Also, I'm investigating the idea to use
-task_rlimit(current, RLIMIT_NPROC) as kthread limit when
-first service is added and to save it into
-ipvs->est_max_threads.
+Changes in v3:
+* calculate chain_max_len (was IPVS_EST_CHAIN_DEPTH) but
+  it needs further tuning based on real estimation test
+* est_max_threads set from rlimit(RLIMIT_NPROC). I don't
+  see analog to get_ucounts_value() to get the max value.
+* the atomic bitop for td->present is not needed,
+  remove it
+* start filling based on est_row after 2 ticks are
+  fully allocated. As 2/50 is 4% this can be increased
+  more.
 
-	Another idea is ip_vs_estimation_kthread not to
-change add_row but ip_vs_start_estimator to consider instead
-est_row for the same purpose but only when kd->est_count
-becomes large, say 2 * IPVS_EST_TICK_CHAINS * kd->chain_depth.
-The idea is to fill 2 ticks completely when small number
-of estimators are added and to prefer est_row when
-we exceed this threshold and prefer to spread the
-estimators to more ticks by honouring the 2-second
-initial timer.
+Changes in v2:
+Patch 2:
+* kd->mutex is gone, cond_resched rate determined by
+  IPVS_EST_CHAIN_DEPTH
+* IPVS_EST_MAX_COUNT is a hard limit now
+* kthread data is now 1-50 allocated tick structures,
+  each containing heads for limited chains. Bitmaps
+  should allow faster access. We avoid large
+  allocations for structs.
+* as the td->present bitmap is shared, use atomic bitops
+* ip_vs_start_estimator now returns error code
+* _bh locking removed from stats->lock
+* bump arg is gone from ip_vs_est_reload_start
+* prepare for upcoming changes that remove _irq
+  from u64_stats_fetch_begin_irq/u64_stats_fetch_retry_irq
+* est_add_ktid is now always valid
+Patch 3:
+* use .. in est_nice docs
 
-	For example:
+Julian Anastasov (5):
+  ipvs: add rcu protection to stats
+  ipvs: use kthreads for stats estimation
+  ipvs: add est_cpulist and est_nice sysctl vars
+  ipvs: run_estimation should control the kthread tasks
+  ipvs: debug the tick time
 
-	if (kd->est_count >= 2 * IPVS_EST_TICK_CHAINS *
-	    kd->chain_depth)
-		crow = READ_ONCE(kd->est_row);
-	else
-		crow = READ_ONCE(kd->add_row);
-	crow--;
-	...
+ Documentation/networking/ipvs-sysctl.rst |  24 +-
+ include/net/ip_vs.h                      | 125 +++++-
+ net/netfilter/ipvs/ip_vs_core.c          |  10 +-
+ net/netfilter/ipvs/ip_vs_ctl.c           | 367 ++++++++++++++---
+ net/netfilter/ipvs/ip_vs_est.c           | 487 +++++++++++++++++++----
+ 5 files changed, 883 insertions(+), 130 deletions(-)
 
-Regards
+-- 
+2.37.3
 
---
-Julian Anastasov <ja@ssi.bg>
 
