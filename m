@@ -1,113 +1,134 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [RFC PATCHv3 0/5] ipvs: Use kthreads for stats
-Date: Mon, 12 Sep 2022 13:18:33 +0300
-Message-ID: <20220912101838.12522-1-ja@ssi.bg>
+Subject: [RFC PATCHv3 4/5] ipvs: run_estimation should control the kthread tasks
+Date: Mon, 12 Sep 2022 13:18:37 +0300
+Message-ID: <20220912101838.12522-5-ja@ssi.bg>
+References: <20220912101838.12522-1-ja@ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20220912101838.12522-1-ja@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Jiri Wiesner <jwiesner@suse.de>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
-	Hello,
+Change the run_estimation flag to start/stop the kthread tasks.
 
-	Posting v3 (not final yet). New patch 5 just
-for debugging, do not apply if not needed.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ Documentation/networking/ipvs-sysctl.rst |  4 ++--
+ include/net/ip_vs.h                      |  6 +++--
+ net/netfilter/ipvs/ip_vs_ctl.c           | 29 +++++++++++++++++++++++-
+ net/netfilter/ipvs/ip_vs_est.c           |  3 +--
+ 4 files changed, 35 insertions(+), 7 deletions(-)
 
-	This patchset implements stats estimation in
-kthread context. Simple tests do not show any problem.
-
-	Overview of the basic concepts. More in the
-commit messages...
-
-RCU Locking:
-
-- As stats are now RCU-locked, tot_stats, svc and dest which
-hold estimator structures are now always freed from RCU
-callback. This ensures RCU grace period after the
-ip_vs_stop_estimator() call.
-
-Kthread data:
-
-- every kthread works over its own data structure and all
-such structures are attached to array
-
-- even while there can be a kthread structure, its task
-may not be running, eg. before first service is added or
-while the sysctl var is set to an empty cpulist or
-when run_estimation is 0.
-
-- a task and its structure may be released if all
-estimators are unlinked from its chains, leaving the
-slot in the array empty
-
-- every kthread data structure allows limited number
-of estimators
-
-- to add new estimators we use the last added kthread
-context (est_add_ktid). The new estimators are linked to
-the chains just before the estimated one, based on add_row.
-This ensures their estimation will start after 2 seconds.
-If estimators are added in bursts, common case if all
-services and dests are initially configured, we may
-spread the estimators to more chains. This will reduce
-the chain imbalance.
-
-Not done yet:
-* start kthread to calculate chain_max_len and
-IPVS_EST_TICK_CHAINS suitable for 100us cond_resched
-rate and 10% of 40ms. Current value of IPVS_EST_TICK_CHAINS=48
-determines tick time of 4.8ms (i.e. in units of 100us)
-which is 12% of max tick time of 40ms. The question is
-how valid will be such test. For example, we can add
-all ests in temp list until the calculation is done and
-then to requeue all estimators into the chains.
-
-Changes in v3:
-* calculate chain_max_len (was IPVS_EST_CHAIN_DEPTH) but
-  it needs further tuning based on real estimation test
-* est_max_threads set from rlimit(RLIMIT_NPROC). I don't
-  see analog to get_ucounts_value() to get the max value.
-* the atomic bitop for td->present is not needed,
-  remove it
-* start filling based on est_row after 2 ticks are
-  fully allocated. As 2/50 is 4% this can be increased
-  more.
-
-Changes in v2:
-Patch 2:
-* kd->mutex is gone, cond_resched rate determined by
-  IPVS_EST_CHAIN_DEPTH
-* IPVS_EST_MAX_COUNT is a hard limit now
-* kthread data is now 1-50 allocated tick structures,
-  each containing heads for limited chains. Bitmaps
-  should allow faster access. We avoid large
-  allocations for structs.
-* as the td->present bitmap is shared, use atomic bitops
-* ip_vs_start_estimator now returns error code
-* _bh locking removed from stats->lock
-* bump arg is gone from ip_vs_est_reload_start
-* prepare for upcoming changes that remove _irq
-  from u64_stats_fetch_begin_irq/u64_stats_fetch_retry_irq
-* est_add_ktid is now always valid
-Patch 3:
-* use .. in est_nice docs
-
-Julian Anastasov (5):
-  ipvs: add rcu protection to stats
-  ipvs: use kthreads for stats estimation
-  ipvs: add est_cpulist and est_nice sysctl vars
-  ipvs: run_estimation should control the kthread tasks
-  ipvs: debug the tick time
-
- Documentation/networking/ipvs-sysctl.rst |  24 +-
- include/net/ip_vs.h                      | 125 +++++-
- net/netfilter/ipvs/ip_vs_core.c          |  10 +-
- net/netfilter/ipvs/ip_vs_ctl.c           | 367 ++++++++++++++---
- net/netfilter/ipvs/ip_vs_est.c           | 487 +++++++++++++++++++----
- 5 files changed, 883 insertions(+), 130 deletions(-)
-
+diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
+index 1b778705d706..3fb5fa142eef 100644
+--- a/Documentation/networking/ipvs-sysctl.rst
++++ b/Documentation/networking/ipvs-sysctl.rst
+@@ -324,8 +324,8 @@ run_estimation - BOOLEAN
+ 	0 - disabled
+ 	not 0 - enabled (default)
+ 
+-	If disabled, the estimation will be stop, and you can't see
+-	any update on speed estimation data.
++	If disabled, the estimation will be suspended and kthread tasks
++	stopped.
+ 
+ 	You can always re-enable estimation by setting this value to 1.
+ 	But be careful, the first estimation after re-enable is not
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index c4385b2daa4d..16314f7d845a 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1577,8 +1577,10 @@ void ip_vs_est_kthread_stop(struct ip_vs_est_kt_data *kd);
+ static inline void ip_vs_est_stopped_recalc(struct netns_ipvs *ipvs)
+ {
+ #ifdef CONFIG_SYSCTL
+-	ipvs->est_stopped = ipvs->est_cpulist_valid &&
+-			    cpumask_empty(sysctl_est_cpulist(ipvs));
++	/* Stop tasks while cpulist is empty or if disabled with flag */
++	ipvs->est_stopped = !sysctl_run_estimation(ipvs) ||
++			    (ipvs->est_cpulist_valid &&
++			     cpumask_empty(sysctl_est_cpulist(ipvs)));
+ #endif
+ }
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 5c3bd701cb19..ea4df891145f 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2036,6 +2036,32 @@ static int ipvs_proc_est_nice(struct ctl_table *table, int write,
+ 	return ret;
+ }
+ 
++static int ipvs_proc_run_estimation(struct ctl_table *table, int write,
++				    void *buffer, size_t *lenp, loff_t *ppos)
++{
++	struct netns_ipvs *ipvs = table->extra2;
++	int *valp = table->data;
++	int val = *valp;
++	int ret;
++
++	struct ctl_table tmp_table = {
++		.data = &val,
++		.maxlen = sizeof(int),
++		.mode = table->mode,
++	};
++
++	ret = proc_dointvec(&tmp_table, write, buffer, lenp, ppos);
++	if (write && ret >= 0) {
++		mutex_lock(&ipvs->est_mutex);
++		if (*valp != val) {
++			*valp = val;
++			ip_vs_est_reload_start(ipvs);
++		}
++		mutex_unlock(&ipvs->est_mutex);
++	}
++	return ret;
++}
++
+ /*
+  *	IPVS sysctl table (under the /proc/sys/net/ipv4/vs/)
+  *	Do not change order or insert new entries without
+@@ -2210,7 +2236,7 @@ static struct ctl_table vs_vars[] = {
+ 		.procname	= "run_estimation",
+ 		.maxlen		= sizeof(int),
+ 		.mode		= 0644,
+-		.proc_handler	= proc_dointvec,
++		.proc_handler	= ipvs_proc_run_estimation,
+ 	},
+ 	{
+ 		.procname	= "est_cpulist",
+@@ -4302,6 +4328,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
+ 	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
+ 	ipvs->sysctl_run_estimation = 1;
++	tbl[idx].extra2 = ipvs;
+ 	tbl[idx++].data = &ipvs->sysctl_run_estimation;
+ 
+ 	ipvs->est_cpulist_valid = 0;
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 628f8569e224..5f5ee29fdcb5 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -163,7 +163,6 @@ static void ip_vs_tick_estimation(struct ip_vs_est_kt_data *kd, int row)
+ static int ip_vs_estimation_kthread(void *data)
+ {
+ 	struct ip_vs_est_kt_data *kd = data;
+-	struct netns_ipvs *ipvs = kd->ipvs;
+ 	int row = kd->est_row;
+ 	unsigned long now;
+ 	long gap;
+@@ -188,7 +187,7 @@ static int ip_vs_estimation_kthread(void *data)
+ 				kd->est_timer = now;
+ 		}
+ 
+-		if (sysctl_run_estimation(ipvs) && kd->tick_len[row])
++		if (kd->tick_len[row])
+ 			ip_vs_tick_estimation(kd, row);
+ 
+ 		row++;
 -- 
 2.37.3
 
