@@ -1,46 +1,128 @@
-From: Kees Cook <keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org>
-Subject: Re: [PATCH v1 0/5] treewide cleanup of random integer
-	usage
-Date: Wed, 5 Oct 2022 22:40:36 -0700
-Message-ID: <202210052240.23F1699@keescook>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v1 3/5] treewide: use get_random_u32() when
+ possible
+Date: Thu, 6 Oct 2022 10:43:31 +0200
+Message-ID: <20221006084331.4bdktc2zlvbaszym@quack3>
 References: <20221005214844.2699-1-Jason@zx2c4.com>
- <202210052148.B11CBC60@keescook>
+ <20221005214844.2699-4-Jason@zx2c4.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Return-path: <ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp1.osuosl.org ED8D183342
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp1.osuosl.org 062F88249E
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp3.osuosl.org CFD8C60FF8
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp3.osuosl.org 75A4760D89
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=chromium.org; s=google;
- h=in-reply-to:content-disposition:mime-version:references:message-id
- :subject:cc:to:from:date:from:to:cc:subject:date;
- bh=7rD76ImKhWSr9uLkAh+d+zcZYfUm0ip9Vo7hna38oSs=;
- b=HIlnByPTia/JV2Hio0Z3vTGHRO3pP+g3PDOdFVRfXo+4JMSWemnyOHulYs1b2f7JO3
- 4B68mkEwVVg8IQ3IkOWlhCZu1DHmNpOVf5BI7g3+ztCRosIDaXqnmyXn8NbvhlX0kAlJ
- 1+EIMZBflEmYzO5Z7VvIiaOCr5rSQzs8/emFI=
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ d=sourceforge.net; s=x; h=In-Reply-To:Content-Type:MIME-Version:References:
+ Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:Content-Transfer-Encoding:
+ Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
+ Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
+ List-Subscribe:List-Post:List-Owner:List-Archive;
+ bh=T7S6oIxhAYkW+alnUKWtP6uIux66B8EsW4GqVBZ8bto=; b=EKXHnVqoSpVBCg8JcBPdAWX5w8
+ 0XrpBPo8rnGgiQaYqOHPZWTQBlRaNPW7kiPc/lp+T5IV1f8On2yw/95gHSnYxFMZTowUXvmEIY6Kg
+ GPuBx0wquB3B/89TpFnm9SMiuKoiEj7TzZ+zccvIPFsJq8E9CVWMc/6b/grcKObjvqNE=;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=sf.net; s=x
+ ;
+ h=In-Reply-To:Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To
+ :From:Date:Sender:Reply-To:Content-Transfer-Encoding:Content-ID:
+ Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+ :Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
+ List-Post:List-Owner:List-Archive;
+ bh=T7S6oIxhAYkW+alnUKWtP6uIux66B8EsW4GqVBZ8bto=; b=NxD79yjkx0BIG33ngvBGG8Lj38
+ KBX1l/KfQseT0lXHboQWy/GqzvlzZJOP6+vEz6vh6N0kQ/krfl453zBM/hAP+OknNQOMTXpNLM82U
+ E8draC38Nsf8bKMqmqsvu83u+vivH5+1DVKGG05axv4zS1FRbvjFVpJKX42/lML2vH/o=;
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+ t=1665045812; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+ mime-version:mime-version:content-type:content-type:
+ in-reply-to:in-reply-to:references:references;
+ bh=T7S6oIxhAYkW+alnUKWtP6uIux66B8EsW4GqVBZ8bto=;
+ b=C+mCUjvr8q1OQndsJbfZXZJ3gLAGbiYxpXR3vx++9btLnUp9kZq0CQX7tRJDJnNrgG7sg5
+ VElWf3eFRacsDUxORP+nZNrrB49Kgh2Bx5MZY0rmM5+1STk9bN9MDPldTLpppqJY9Iu6qN
+ Bmlx+AbYfSwFuf+/9j41GSaP+BDPvUk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+ s=susede2_ed25519; t=1665045812;
+ h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+ mime-version:mime-version:content-type:content-type:
+ in-reply-to:in-reply-to:references:references;
+ bh=T7S6oIxhAYkW+alnUKWtP6uIux66B8EsW4GqVBZ8bto=;
+ b=MznRw6bCrjyprmYZ/SVmvDwryyMeZenJtnn+Y1RkYEyFbKl4QJ6J7BM2yyxsWNj6DwaBEV
+ ub8/BpYJGHJ7woDg==
 Content-Disposition: inline
-In-Reply-To: <202210052148.B11CBC60@keescook>
+In-Reply-To: <20221005214844.2699-4-Jason@zx2c4.com>
 List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <https://mail.openvswitch.org/mailman/options/ovs-dev>,
- <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://mail.openvswitch.org/pipermail/ovs-dev/>
-List-Post: <mailto:ovs-dev-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-List-Help: <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=help>
-List-Subscribe: <https://mail.openvswitch.org/mailman/listinfo/ovs-dev>,
- <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=subscribe>
-Errors-To: ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org
-Sender: "dev" <ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-To: "Jason A. Donenfeld" <Jason-OnJsPKxuuEcAvxtiuMwx3w@public.gmane.org>
-Cc: Andrew Lunn <andrew-g2DYL2Zd6BY@public.gmane.org>, "Darrick J . Wong" <djwong-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Ulf Hansson <ulf.hansson-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>, dri-devel-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org, Andrii Nakryiko <andrii-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Hans Verkuil <hverkuil-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, "Md . Haris Iqbal" <haris.iqbal-vEVw2sk9H7kAvxtiuMwx3w@public.gmane.org>, Miquel Raynal <miquel.raynal-LDxbnhwyfcJBDgjK7y7TUQ@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, Andy Gospodarek <andy-QlMahl40kYEqcZcGjlUOXw@public.gmane.org>, Sergey Matyukevich <geomatsi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Rohit Maheshwari <rohitm-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, Michael Ellerman <mpe-Gsx/Oe8HsFggBc27wqDAHg@public.gmane.org>, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christophe Leroy <christophe.leroy-2tlSp11Fh4xulxpn9UvDqw@public.gmane.org>, Jozsef Kadlecsik <kadlec-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org>, Nilesh Javali <njavali-eYqpPyKDWXRBDgjK7y7TUQ@public.gmane.org>, Jean-Paul Roubelat <jpr-3OwtVqItl4LYtjvyW6yDsg@public.gmane.org>, Dick Kennedy <dick.kennedy-dY08KVG/lbpWk0Htik3J/w@public.gmane.org>, Jay Vosburgh <j.vosburgh-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Potnuri Bharat Teja <bharat-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, Vinay Kumar Yadav <vinay.yadav-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, linux-nfs@vg
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>, 
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>, 
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+To: "Jason A. Donenfeld" <Jason@zx2c4.com>
+Cc: Andrew Lunn <andrew@lunn.ch>, "Darrick J . Wong" <djwong@kernel.org>, Ulf Hansson <ulf.hansson@linaro.org>, dri-devel@lists.freedesktop.org, Andrii Nakryiko <andrii@kernel.org>, Hans Verkuil <hverkuil@xs4all.nl>, linux-sctp@vger.kernel.org, "Md . Haris Iqbal" <haris.iqbal@ionos.com>, Miquel Raynal <miquel.raynal@bootlin.com>, Christoph Hellwig <hch@lst.de>, Andy Gospodarek <andy@greyhouse.net>, Sergey Matyukevich <geomatsi@gmail.com>, Rohit Maheshwari <rohitm@chelsio.com>, Michael Ellerman <mpe@ellerman.id.au>, ceph-devel@vger.kernel.org, Christophe Leroy <christophe.leroy@csgroup.eu>, Jozsef Kadlecsik <kadlec@netfilter.org>, Nilesh Javali <njavali@marvell.com>, Jean-Paul Roubelat <jpr@f6fbb.org>, Dick Kennedy <dick.kennedy@broadcom.com>, Jay Vosburgh <j.vosburgh@gmail.com>, Potnuri Bharat Teja <bharat@chelsio.com>, Vinay Kumar Yadav <vinay.yadav@chelsio.com>, linux-nfs@vg
 
-On Wed, Oct 05, 2022 at 09:55:43PM -0700, Kees Cook wrote:
-> If any of the subsystems ask you to break this up (I hope not), I've got
-> this[1], which does a reasonable job of splitting a commit up into
-> separate commits for each matching subsystem.
+On Wed 05-10-22 23:48:42, Jason A. Donenfeld wrote:
+> The prandom_u32() function has been a deprecated inline wrapper around
+> get_random_u32() for several releases now, and compiles down to the
+> exact same code. Replace the deprecated wrapper with a direct call to
+> the real function.
+> 
+> Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
 
-[1] https://github.com/kees/kernel-tools/blob/trunk/split-on-maintainer
+...
 
+> diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
+> index 998dd2ac8008..e439a872c398 100644
+> --- a/fs/ext2/ialloc.c
+> +++ b/fs/ext2/ialloc.c
+> @@ -277,7 +277,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent)
+>  		int best_ndir = inodes_per_group;
+>  		int best_group = -1;
+>  
+> -		group = prandom_u32();
+> +		group = get_random_u32();
+>  		parent_group = (unsigned)group % ngroups;
+>  		for (i = 0; i < ngroups; i++) {
+>  			group = (parent_group + i) % ngroups;
+
+The code here is effectively doing the
+
+	parent_group = prandom_u32_max(ngroups);
+
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index f73e5eb43eae..954ec9736a8d 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -465,7 +465,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+>  			ext4fs_dirhash(parent, qstr->name, qstr->len, &hinfo);
+>  			grp = hinfo.hash;
+>  		} else
+> -			grp = prandom_u32();
+> +			grp = get_random_u32();
+
+Similarly here we can use prandom_u32_max(ngroups) like:
+
+		if (qstr) {
+			...
+			parent_group = hinfo.hash % ngroups;
+		} else
+			parent_group = prandom_u32_max(ngroups);
+
+> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+> index 9af68a7ecdcf..588cb09c5291 100644
+> --- a/fs/ext4/mmp.c
+> +++ b/fs/ext4/mmp.c
+> @@ -265,7 +265,7 @@ static unsigned int mmp_new_seq(void)
+>  	u32 new_seq;
+>  
+>  	do {
+> -		new_seq = prandom_u32();
+> +		new_seq = get_random_u32();
+>  	} while (new_seq > EXT4_MMP_SEQ_MAX);
+
+OK, here we again effectively implement prandom_u32_max(EXT4_MMP_SEQ_MAX + 1).
+Just presumably we didn't want to use modulo here because EXT4_MMP_SEQ_MAX
+is rather big and so the resulting 'new_seq' would be seriously
+non-uniform.
+
+								Honza
 -- 
-Kees Cook
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
