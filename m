@@ -1,31 +1,30 @@
 From: "Jason A. Donenfeld via dev" <ovs-dev-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-Subject: Re: [PATCH v1 1/5] treewide: use prandom_u32_max() when
-	possible
-Date: Thu, 6 Oct 2022 06:45:25 -0600
-Message-ID: <Yz7N5WsqmKiUl+6b@zx2c4.com>
+Subject: Re: [PATCH v1 0/5] treewide cleanup of random integer
+	usage
+Date: Thu, 6 Oct 2022 06:53:14 -0600
+Message-ID: <Yz7PusEN5TG1PvJZ@zx2c4.com>
 References: <20221005214844.2699-1-Jason@zx2c4.com>
- <20221005214844.2699-2-Jason@zx2c4.com>
- <202210052035.A1020E3@keescook>
+ <202210052148.B11CBC60@keescook>
 Reply-To: "Jason A. Donenfeld" <Jason-OnJsPKxuuEcAvxtiuMwx3w@public.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Return-path: <ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp3.osuosl.org 27FA761050
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp3.osuosl.org 94566605A9
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 16E8440C4C
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org BF84640223
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org B8AED40C80
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org CBC0040223
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org 1686F41936
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org AD9594192D
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=zx2c4.com; s=20210105; 
- t=1665060337;
+ t=1665060806;
  h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
  to:to:cc:cc:mime-version:mime-version:content-type:content-type:
  in-reply-to:in-reply-to:references:references;
- bh=8dWFI8h4OMBAtrqSOGO78rNNmSB/3Qreg0w0Og/94qc=;
- b=gqKJ5uKA335nUt4dHqz8iF9PLBDcDgx3n0YhiOxMrlk3oPDvs/7yiBJIDKV/E4nv62pdqe
- sPWU3H5aG76qM2evnoA3/Ys8c2HrO6GXFQDfmwl/KqnyJgMuSbwIQZf5GAnNUvK/lVQDpw
- cqr/cVirflho361qsz5SQunwSlNAMYo=
+ bh=+Hkd+03ZPFCZHL4SytFYjQxSlVLh/tCnsKNFxa5wK+g=;
+ b=JFNs4Hazt/h3DVxpbrAbzMPE9whooDcKk8uIX5aTYNyaQ0ww6ONDZEpvj0pBCk5Bkl2DLt
+ ktmEJcNw1Kn2Ot/YdbAehCwxq7qPZvj6WGsUyAnJyfFHg6BU5H6pbom+jt+FBFixHsfFyw
+ FXN6BTv1V4qGzBVuWo2f1r2ZOkBYL5M=
 Content-Disposition: inline
-In-Reply-To: <202210052035.A1020E3@keescook>
+In-Reply-To: <202210052148.B11CBC60@keescook>
 List-Id: <lvs-devel.vger.kernel.org>
 List-Unsubscribe: <https://mail.openvswitch.org/mailman/options/ovs-dev>,
  <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=unsubscribe>
@@ -39,41 +38,36 @@ Sender: "dev" <ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
 To: Kees Cook <keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org>
 Cc: Andrew Lunn <andrew-g2DYL2Zd6BY@public.gmane.org>, "Darrick J . Wong" <djwong-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Ulf Hansson <ulf.hansson-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>, dri-devel-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org, Andrii Nakryiko <andrii-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Hans Verkuil <hverkuil-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, "Md . Haris Iqbal" <haris.iqbal-vEVw2sk9H7kAvxtiuMwx3w@public.gmane.org>, Miquel Raynal <miquel.raynal-LDxbnhwyfcJBDgjK7y7TUQ@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, Andy Gospodarek <andy-QlMahl40kYEqcZcGjlUOXw@public.gmane.org>, Sergey Matyukevich <geomatsi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Rohit Maheshwari <rohitm-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, Michael Ellerman <mpe-Gsx/Oe8HsFggBc27wqDAHg@public.gmane.org>, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christophe Leroy <christophe.leroy-2tlSp11Fh4xulxpn9UvDqw@public.gmane.org>, Jozsef Kadlecsik <kadlec-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org>, Nilesh Javali <njavali-eYqpPyKDWXRBDgjK7y7TUQ@public.gmane.org>, Jean-Paul Roubelat <jpr-3OwtVqItl4LYtjvyW6yDsg@public.gmane.org>, Dick Kennedy <dick.kennedy-dY08KVG/lbpWk0Htik3J/w@public.gmane.org>, Jay Vosburgh <j.vosburgh-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Potnuri Bharat Teja <bharat-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, Vinay Kumar Yadav <vinay.yadav-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, linux-nfs@vg
 
-Hi Kees,
+On Wed, Oct 05, 2022 at 09:55:43PM -0700, Kees Cook wrote:
+> It'd be nice to capture some (all?) of the above somewhere. Perhaps just
+> a massive comment in the header?
 
-On Wed, Oct 05, 2022 at 09:16:50PM -0700, Kees Cook wrote:
-> On Wed, Oct 05, 2022 at 11:48:40PM +0200, Jason A. Donenfeld wrote:
-> > Rather than incurring a division or requesting too many random bytes for
-> > the given range, use the prandom_u32_max() function, which only takes
-> > the minimum required bytes from the RNG and avoids divisions.
+I'll include (something like) this in some "how to use" documentation
+I'm working on separately.
+
+> > I've CC'd get_maintainers.pl, which is a pretty big list. Probably some
+> > portion of those are going to bounce, too, and everytime you reply to
+> > this thread, you'll have to deal with a bunch of bounces coming
+> > immediately after. And a recipient list this big will probably dock my
+> > email domain's spam reputation, at least temporarily. Sigh. I think
+> > that's just how it goes with treewide cleanups though. Again, let me
+> > know if I'm doing it wrong.
 > 
-> Yes please!
-> 
-> Since this is a treewide patch, it's helpful for (me at least) doing
-> reviews to detail the mechanism of the transformation.
+> I usually stick to just mailing lists and subsystem maintainers.
 
-This is hand done. There were also various wrong seds done. And then I'd
-edit the .diff manually, and then reapply it, as an iterative process.
-No internet on the airplane, and oddly no spatch already on my laptop (I
-think I had some Gentoo ocaml issues at some point and removed it?).
+Lord have mercy I really wish I had done that. I supremely butchered the
+sending of this, and then tried to save it by resubmitting directly to
+vger with the same message ID but truncated CC, which mostly worked, but
+the whole thing is a mess. I'll trim this to subsystem maintainers and
+resubmit a v2 right away, rather than having people wade through the
+mess.
 
-> e.g. I imagine this could be done with something like Coccinelle and
+To any one who's reading this: no more replies to v1! It clogs the
+tubes.
 
-Feel free to check the work here by using Coccinelle if you're into
-that.
+> If any of the subsystems ask you to break this up (I hope not), I've got
 
-> >  static inline int ubi_dbg_is_bitflip(const struct ubi_device *ubi)
-> >  {
-> >  	if (ubi->dbg.emulate_bitflips)
-> > -		return !(prandom_u32() % 200);
-> > +		return !(prandom_u32_max(200));
-> >  	return 0;
-> >  }
-> >  
-> 
-> Because some looks automated (why the parens?)
-
-I saw this before going out and thought I'd fixed it but I guess I sent
-the wrong one.
+Oh god I surely hope not. Sounds like a massive waste of time and
+paperwork.
 
 Jason
