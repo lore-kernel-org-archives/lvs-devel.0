@@ -1,73 +1,60 @@
-From: "Jason A. Donenfeld via dev" <ovs-dev-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-Subject: Re: [PATCH v1 0/5] treewide cleanup of random integer
-	usage
-Date: Thu, 6 Oct 2022 06:53:14 -0600
-Message-ID: <Yz7PusEN5TG1PvJZ@zx2c4.com>
+From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Subject: Re: [f2fs-dev] [PATCH v1 3/5] treewide: use get_random_u32() when
+ possible
+Date: Thu, 6 Oct 2022 16:01:11 +0300
+Message-ID: <Yz7Rl7BXamKQhRzH@smile.fi.intel.com>
 References: <20221005214844.2699-1-Jason@zx2c4.com>
- <202210052148.B11CBC60@keescook>
-Reply-To: "Jason A. Donenfeld" <Jason-OnJsPKxuuEcAvxtiuMwx3w@public.gmane.org>
+ <20221005214844.2699-4-Jason@zx2c4.com>
+ <20221006084331.4bdktc2zlvbaszym@quack3>
+ <Yz7LCyIAHC6l5mG9@zx2c4.com>
 Mime-Version: 1.0
+Return-path: <linux-crypto-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1665061302; x=1696597302;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=Ru6CnBvVhIEhYJCAeuuxpRt9HHeJLOxAuoa9BjBuh8k=;
+  b=AGWKWrAmNTte351h2k1feYl2fEi8rMwITVCJk7pNUXa1Ng0fQ3b2azOq
+   uKuvJLxK0mA9Tqu3UQrxcvZhNBZH7+ufyXr/eCl51aK2E+6alzDUNMpev
+   Nal/AmQePVXxf51aw66W9WRCAYm+XU/TtJLHLlzK0fLBMpvOkNSKnYU6a
+   G0RPB2YNDasi333P00LsC+HLiCjUDiLmBkQrJ9Dt5KAHtZ7QeMOcScwI0
+   yVVxu3xrA0z8zp+mB6pCuwFd+t1IPnDGoJrgOtk/mfFAE1KbrDX96OsuA
+   Q6dzk7SPLhjyK1/yFBt+FIYuNforlaW4X0SnFFSBR/uzfXEGd3cKuEo3f
+   g==;
+Content-Disposition: inline
+In-Reply-To: <Yz7LCyIAHC6l5mG9@zx2c4.com>
+List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Return-path: <ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org B8AED40C80
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org CBC0040223
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org 1686F41936
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org AD9594192D
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=zx2c4.com; s=20210105; 
- t=1665060806;
- h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
- to:to:cc:cc:mime-version:mime-version:content-type:content-type:
- in-reply-to:in-reply-to:references:references;
- bh=+Hkd+03ZPFCZHL4SytFYjQxSlVLh/tCnsKNFxa5wK+g=;
- b=JFNs4Hazt/h3DVxpbrAbzMPE9whooDcKk8uIX5aTYNyaQ0ww6ONDZEpvj0pBCk5Bkl2DLt
- ktmEJcNw1Kn2Ot/YdbAehCwxq7qPZvj6WGsUyAnJyfFHg6BU5H6pbom+jt+FBFixHsfFyw
- FXN6BTv1V4qGzBVuWo2f1r2ZOkBYL5M=
-Content-Disposition: inline
-In-Reply-To: <202210052148.B11CBC60@keescook>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <https://mail.openvswitch.org/mailman/options/ovs-dev>,
- <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://mail.openvswitch.org/pipermail/ovs-dev/>
-List-Post: <mailto:ovs-dev-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-List-Help: <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=help>
-List-Subscribe: <https://mail.openvswitch.org/mailman/listinfo/ovs-dev>,
- <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=subscribe>
-Errors-To: ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org
-Sender: "dev" <ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-To: Kees Cook <keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org>
-Cc: Andrew Lunn <andrew-g2DYL2Zd6BY@public.gmane.org>, "Darrick J . Wong" <djwong-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Ulf Hansson <ulf.hansson-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>, dri-devel-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org, Andrii Nakryiko <andrii-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Hans Verkuil <hverkuil-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, "Md . Haris Iqbal" <haris.iqbal-vEVw2sk9H7kAvxtiuMwx3w@public.gmane.org>, Miquel Raynal <miquel.raynal-LDxbnhwyfcJBDgjK7y7TUQ@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, Andy Gospodarek <andy-QlMahl40kYEqcZcGjlUOXw@public.gmane.org>, Sergey Matyukevich <geomatsi-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Rohit Maheshwari <rohitm-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, Michael Ellerman <mpe-Gsx/Oe8HsFggBc27wqDAHg@public.gmane.org>, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christophe Leroy <christophe.leroy-2tlSp11Fh4xulxpn9UvDqw@public.gmane.org>, Jozsef Kadlecsik <kadlec-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org>, Nilesh Javali <njavali-eYqpPyKDWXRBDgjK7y7TUQ@public.gmane.org>, Jean-Paul Roubelat <jpr-3OwtVqItl4LYtjvyW6yDsg@public.gmane.org>, Dick Kennedy <dick.kennedy-dY08KVG/lbpWk0Htik3J/w@public.gmane.org>, Jay Vosburgh <j.vosburgh-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Potnuri Bharat Teja <bharat-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, Vinay Kumar Yadav <vinay.yadav-ut6Up61K2wZBDgjK7y7TUQ@public.gmane.org>, linux-nfs@vg
+To: "Jason A. Donenfeld" <Jason@zx2c4.com>
+Cc: Jan Kara <jack@suse.cz>, Andrew Lunn <andrew@lunn.ch>, "Darrick J . Wong" <djwong@kernel.org>, Ulf Hansson <ulf.hansson@linaro.org>, dri-devel@lists.freedesktop.org, Andrii Nakryiko <andrii@kernel.org>, Hans Verkuil <hverkuil@xs4all.nl>, linux-sctp@vger.kernel.org, "Md . Haris Iqbal" <haris.iqbal@ionos.com>, Miquel Raynal <miquel.raynal@bootlin.com>, Christoph Hellwig <hch@lst.de>, Andy Gospodarek <andy@greyhouse.net>, Sergey Matyukevich <geomatsi@gmail.com>, Rohit Maheshwari <rohitm@chelsio.com>, Michael Ellerman <mpe@ellerman.id.au>, ceph-devel@vger.kernel.org, Christophe Leroy <christophe.leroy@csgroup.eu>, Jozsef Kadlecsik <kadlec@netfilter.org>, Nilesh Javali <njavali@marvell.com>, Jean-Paul Roubelat <jpr@f6fbb.org>, Dick Kennedy <dick.k>
 
-On Wed, Oct 05, 2022 at 09:55:43PM -0700, Kees Cook wrote:
-> It'd be nice to capture some (all?) of the above somewhere. Perhaps just
-> a massive comment in the header?
+On Thu, Oct 06, 2022 at 06:33:15AM -0600, Jason A. Donenfeld wrote:
+> On Thu, Oct 06, 2022 at 10:43:31AM +0200, Jan Kara wrote:
 
-I'll include (something like) this in some "how to use" documentation
-I'm working on separately.
+...
 
-> > I've CC'd get_maintainers.pl, which is a pretty big list. Probably some
-> > portion of those are going to bounce, too, and everytime you reply to
-> > this thread, you'll have to deal with a bunch of bounces coming
-> > immediately after. And a recipient list this big will probably dock my
-> > email domain's spam reputation, at least temporarily. Sigh. I think
-> > that's just how it goes with treewide cleanups though. Again, let me
-> > know if I'm doing it wrong.
+> > The code here is effectively doing the
+> > 
+> > 	parent_group = prandom_u32_max(ngroups);
+> > 
+> > Similarly here we can use prandom_u32_max(ngroups) like:
+> > 
+> > 		if (qstr) {
+> > 			...
+> > 			parent_group = hinfo.hash % ngroups;
+> > 		} else
+> > 			parent_group = prandom_u32_max(ngroups);
 > 
-> I usually stick to just mailing lists and subsystem maintainers.
+> Nice catch. I'll move these to patch #1.
 
-Lord have mercy I really wish I had done that. I supremely butchered the
-sending of this, and then tried to save it by resubmitting directly to
-vger with the same message ID but truncated CC, which mostly worked, but
-the whole thing is a mess. I'll trim this to subsystem maintainers and
-resubmit a v2 right away, rather than having people wade through the
-mess.
+I believe coccinelle is able to handle this kind of code as well, so Kees'
+proposal to use it seems more plausible since it's less error prone and more
+flexible / powerful.
 
-To any one who's reading this: no more replies to v1! It clogs the
-tubes.
+-- 
+With Best Regards,
+Andy Shevchenko
 
-> If any of the subsystems ask you to break this up (I hope not), I've got
 
-Oh god I surely hope not. Sounds like a massive waste of time and
-paperwork.
-
-Jason
