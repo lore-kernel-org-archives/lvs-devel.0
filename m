@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [RFC PATCHv5 2/6] ipvs: use common functions for stats allocation
-Date: Sun,  9 Oct 2022 18:37:06 +0300
-Message-ID: <20221009153710.125919-3-ja@ssi.bg>
+Subject: [RFC PATCHv5 4/6] ipvs: add est_cpulist and est_nice sysctl vars
+Date: Sun,  9 Oct 2022 18:37:08 +0300
+Message-ID: <20221009153710.125919-5-ja@ssi.bg>
 References: <20221009153710.125919-1-ja@ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -12,222 +12,390 @@ Content-Type: text/plain; charset="us-ascii"
 To: Jiri Wiesner <jwiesner@suse.de>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
-Move alloc_percpu/free_percpu logic in new functions
+Allow the kthreads for stats to be configured for
+specific cpulist (isolation) and niceness (scheduling
+priority).
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/ip_vs.h            |  5 ++
- net/netfilter/ipvs/ip_vs_ctl.c | 96 +++++++++++++++++++---------------
- 2 files changed, 60 insertions(+), 41 deletions(-)
+ Documentation/networking/ipvs-sysctl.rst |  20 ++++
+ include/net/ip_vs.h                      |  55 +++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c           | 143 ++++++++++++++++++++++-
+ net/netfilter/ipvs/ip_vs_est.c           |  11 +-
+ 4 files changed, 226 insertions(+), 3 deletions(-)
 
+diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
+index 387fda80f05f..1b778705d706 100644
+--- a/Documentation/networking/ipvs-sysctl.rst
++++ b/Documentation/networking/ipvs-sysctl.rst
+@@ -129,6 +129,26 @@ drop_packet - INTEGER
+ 	threshold. When the mode 3 is set, the always mode drop rate
+ 	is controlled by the /proc/sys/net/ipv4/vs/am_droprate.
+ 
++est_cpulist - CPULIST
++	Allowed	CPUs for estimation kthreads
++
++	Syntax: standard cpulist format
++	empty list - stop kthread tasks and estimation
++	default - the system's housekeeping CPUs for kthreads
++
++	Example:
++	"all": all possible CPUs
++	"0-N": all possible CPUs, N denotes last CPU number
++	"0,1-N:1/2": first and all CPUs with odd number
++	"": empty list
++
++est_nice - INTEGER
++	default 0
++	Valid range: -20 (more favorable) .. 19 (less favorable)
++
++	Niceness value to use for the estimation kthreads (scheduling
++	priority)
++
+ expire_nodest_conn - BOOLEAN
+ 	- 0 - disabled (default)
+ 	- not 0 - enabled
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index bd8ae137e43b..e5582c01a4a3 100644
+index f18bc398472b..9da45664dba8 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -410,6 +410,11 @@ struct ip_vs_stats_rcu {
- 	struct rcu_head		rcu_head;
+@@ -29,6 +29,7 @@
+ #include <net/netfilter/nf_conntrack.h>
+ #endif
+ #include <net/net_namespace.h>		/* Netw namespace */
++#include <linux/sched/isolation.h>
+ 
+ #define IP_VS_HDR_INVERSE	1
+ #define IP_VS_HDR_ICMP		2
+@@ -365,6 +366,9 @@ struct ip_vs_cpu_stats {
+ 	struct u64_stats_sync   syncp;
  };
  
-+int ip_vs_stats_init_alloc(struct ip_vs_stats *s);
-+struct ip_vs_stats *ip_vs_stats_alloc(void);
-+void ip_vs_stats_release(struct ip_vs_stats *stats);
-+void ip_vs_stats_free(struct ip_vs_stats *stats);
++/* Default nice for estimator kthreads */
++#define IPVS_EST_NICE		0
 +
- struct dst_entry;
- struct iphdr;
- struct ip_vs_conn;
+ /* IPVS statistics objects */
+ struct ip_vs_estimator {
+ 	struct hlist_node	list;
+@@ -995,6 +999,12 @@ struct netns_ipvs {
+ 	int			sysctl_schedule_icmp;
+ 	int			sysctl_ignore_tunneled;
+ 	int			sysctl_run_estimation;
++#ifdef CONFIG_SYSCTL
++	cpumask_var_t		sysctl_est_cpulist;	/* kthread cpumask */
++	int			est_cpulist_valid;	/* cpulist set */
++	int			sysctl_est_nice;	/* kthread nice */
++	int			est_stopped;		/* stop tasks */
++#endif
+ 
+ 	/* ip_vs_lblc */
+ 	int			sysctl_lblc_expiration;
+@@ -1148,6 +1158,19 @@ static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_run_estimation;
+ }
+ 
++static inline const struct cpumask *sysctl_est_cpulist(struct netns_ipvs *ipvs)
++{
++	if (ipvs->est_cpulist_valid)
++		return ipvs->sysctl_est_cpulist;
++	else
++		return housekeeping_cpumask(HK_TYPE_KTHREAD);
++}
++
++static inline int sysctl_est_nice(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_est_nice;
++}
++
+ #else
+ 
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -1245,6 +1268,16 @@ static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
+ 	return 1;
+ }
+ 
++static inline const struct cpumask *sysctl_est_cpulist(struct netns_ipvs *ipvs)
++{
++	return housekeeping_cpumask(HK_TYPE_KTHREAD);
++}
++
++static inline int sysctl_est_nice(struct netns_ipvs *ipvs)
++{
++	return IPVS_EST_NICE;
++}
++
+ #endif
+ 
+ /* IPVS core functions
+@@ -1555,6 +1588,28 @@ int ip_vs_est_kthread_start(struct netns_ipvs *ipvs,
+ 			    struct ip_vs_est_kt_data *kd);
+ void ip_vs_est_kthread_stop(struct ip_vs_est_kt_data *kd);
+ 
++static inline void ip_vs_est_stopped_recalc(struct netns_ipvs *ipvs)
++{
++#ifdef CONFIG_SYSCTL
++	ipvs->est_stopped = ipvs->est_cpulist_valid &&
++			    cpumask_empty(sysctl_est_cpulist(ipvs));
++#endif
++}
++
++static inline bool ip_vs_est_stopped(struct netns_ipvs *ipvs)
++{
++#ifdef CONFIG_SYSCTL
++	return ipvs->est_stopped;
++#else
++	return false;
++#endif
++}
++
++static inline int ip_vs_est_max_threads(struct netns_ipvs *ipvs)
++{
++	return max(1U, 4 * cpumask_weight(sysctl_est_cpulist(ipvs)));
++}
++
+ /* Various IPVS packet transmitters (from ip_vs_xmit.c) */
+ int ip_vs_null_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		    struct ip_vs_protocol *pp, struct ip_vs_iphdr *iph);
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 44c79fd1779c..28264911064a 100644
+index f30f2488de5d..56edd94d0877 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -471,7 +471,7 @@ __ip_vs_bind_svc(struct ip_vs_dest *dest, struct ip_vs_service *svc)
- 
- static void ip_vs_service_free(struct ip_vs_service *svc)
- {
--	free_percpu(svc->stats.cpustats);
-+	ip_vs_stats_release(&svc->stats);
- 	kfree(svc);
+@@ -263,7 +263,7 @@ static void est_reload_work_handler(struct work_struct *work)
+ 		/* New config ? Stop kthread tasks */
+ 		if (genid != genid_done)
+ 			ip_vs_est_kthread_stop(kd);
+-		if (!kd->task) {
++		if (!kd->task && !ip_vs_est_stopped(ipvs)) {
+ 			/* Do not start kthreads above 0 in calc phase */
+ 			if ((!id || !ipvs->est_calc_phase) &&
+ 			    ip_vs_est_kthread_start(ipvs, kd) < 0)
+@@ -1940,6 +1940,122 @@ proc_do_sync_ports(struct ctl_table *table, int write,
+ 	return rc;
  }
  
-@@ -782,7 +782,7 @@ static void ip_vs_dest_rcu_free(struct rcu_head *head)
- 	struct ip_vs_dest *dest;
- 
- 	dest = container_of(head, struct ip_vs_dest, rcu_head);
--	free_percpu(dest->stats.cpustats);
-+	ip_vs_stats_release(&dest->stats);
- 	ip_vs_dest_put_and_free(dest);
- }
- 
-@@ -822,7 +822,7 @@ static void ip_vs_stats_rcu_free(struct rcu_head *head)
- 						  struct ip_vs_stats_rcu,
- 						  rcu_head);
- 
--	free_percpu(rs->s.cpustats);
-+	ip_vs_stats_release(&rs->s);
- 	kfree(rs);
- }
- 
-@@ -879,6 +879,47 @@ ip_vs_zero_stats(struct ip_vs_stats *stats)
- 	spin_unlock_bh(&stats->lock);
- }
- 
-+/* Allocate fields after kzalloc */
-+int ip_vs_stats_init_alloc(struct ip_vs_stats *s)
++static int ipvs_proc_est_cpumask_set(struct ctl_table *table, void *buffer)
 +{
-+	int i;
++	struct netns_ipvs *ipvs = table->extra2;
++	cpumask_var_t *valp = table->data;
++	cpumask_var_t newmask;
++	int ret;
 +
-+	spin_lock_init(&s->lock);
-+	s->cpustats = alloc_percpu(struct ip_vs_cpu_stats);
-+	if (!s->cpustats)
++	if (!zalloc_cpumask_var(&newmask, GFP_KERNEL))
 +		return -ENOMEM;
 +
-+	for_each_possible_cpu(i) {
-+		struct ip_vs_cpu_stats *cs = per_cpu_ptr(s->cpustats, i);
++	ret = cpulist_parse(buffer, newmask);
++	if (ret)
++		goto out;
 +
-+		u64_stats_init(&cs->syncp);
++	mutex_lock(&ipvs->est_mutex);
++
++	if (!ipvs->est_cpulist_valid) {
++		if (!zalloc_cpumask_var(valp, GFP_KERNEL)) {
++			ret = -ENOMEM;
++			goto unlock;
++		}
++		ipvs->est_cpulist_valid = 1;
 +	}
-+	return 0;
++	cpumask_and(newmask, newmask, &current->cpus_mask);
++	cpumask_copy(*valp, newmask);
++	/* est_max_threads may depend on cpulist size */
++	ipvs->est_max_threads = ip_vs_est_max_threads(ipvs);
++	ipvs->est_calc_phase = 1;
++	ip_vs_est_reload_start(ipvs);
++
++unlock:
++	mutex_unlock(&ipvs->est_mutex);
++
++out:
++	free_cpumask_var(newmask);
++	return ret;
 +}
 +
-+struct ip_vs_stats *ip_vs_stats_alloc(void)
++static int ipvs_proc_est_cpumask_get(struct ctl_table *table, void *buffer,
++				     size_t size)
 +{
-+	struct ip_vs_stats *s = kzalloc(sizeof(*s), GFP_KERNEL);
++	struct netns_ipvs *ipvs = table->extra2;
++	cpumask_var_t *valp = table->data;
++	struct cpumask *mask;
++	int ret;
 +
-+	if (s && ip_vs_stats_init_alloc(s) >= 0)
-+		return s;
-+	kfree(s);
-+	return NULL;
++	mutex_lock(&ipvs->est_mutex);
++
++	if (ipvs->est_cpulist_valid)
++		mask = *valp;
++	else
++		mask = (struct cpumask *)housekeeping_cpumask(HK_TYPE_KTHREAD);
++	ret = scnprintf(buffer, size, "%*pbl\n", cpumask_pr_args(mask));
++
++	mutex_unlock(&ipvs->est_mutex);
++
++	return ret;
 +}
 +
-+void ip_vs_stats_release(struct ip_vs_stats *stats)
++static int ipvs_proc_est_cpulist(struct ctl_table *table, int write,
++				 void *buffer, size_t *lenp, loff_t *ppos)
 +{
-+	free_percpu(stats->cpustats);
-+}
++	int ret;
 +
-+void ip_vs_stats_free(struct ip_vs_stats *stats)
-+{
-+	if (stats) {
-+		ip_vs_stats_release(stats);
-+		kfree(stats);
++	/* Ignore both read and write(append) if *ppos not 0 */
++	if (*ppos || !*lenp) {
++		*lenp = 0;
++		return 0;
 +	}
++	if (write) {
++		/* proc_sys_call_handler() appends terminator */
++		ret = ipvs_proc_est_cpumask_set(table, buffer);
++		if (ret >= 0)
++			*ppos += *lenp;
++	} else {
++		/* proc_sys_call_handler() allocates 1 byte for terminator */
++		ret = ipvs_proc_est_cpumask_get(table, buffer, *lenp + 1);
++		if (ret >= 0) {
++			*lenp = ret;
++			*ppos += *lenp;
++			ret = 0;
++		}
++	}
++	return ret;
++}
++
++static int ipvs_proc_est_nice(struct ctl_table *table, int write,
++			      void *buffer, size_t *lenp, loff_t *ppos)
++{
++	struct netns_ipvs *ipvs = table->extra2;
++	int *valp = table->data;
++	int val = *valp;
++	int ret;
++
++	struct ctl_table tmp_table = {
++		.data = &val,
++		.maxlen = sizeof(int),
++		.mode = table->mode,
++	};
++
++	ret = proc_dointvec(&tmp_table, write, buffer, lenp, ppos);
++	if (write && ret >= 0) {
++		if (val < MIN_NICE || val > MAX_NICE) {
++			ret = -EINVAL;
++		} else {
++			mutex_lock(&ipvs->est_mutex);
++			if (*valp != val) {
++				*valp = val;
++				ip_vs_est_reload_start(ipvs);
++			}
++			mutex_unlock(&ipvs->est_mutex);
++		}
++	}
++	return ret;
 +}
 +
  /*
-  *	Update a destination in the given service
-  */
-@@ -978,14 +1019,13 @@ static int
- ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- {
- 	struct ip_vs_dest *dest;
--	unsigned int atype, i;
-+	unsigned int atype;
-+	int ret;
+  *	IPVS sysctl table (under the /proc/sys/net/ipv4/vs/)
+  *	Do not change order or insert new entries without
+@@ -2116,6 +2232,18 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "est_cpulist",
++		.maxlen		= NR_CPUS,	/* unused */
++		.mode		= 0644,
++		.proc_handler	= ipvs_proc_est_cpulist,
++	},
++	{
++		.procname	= "est_nice",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= ipvs_proc_est_nice,
++	},
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	{
+ 		.procname	= "debug_level",
+@@ -4133,6 +4261,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
+ 	INIT_DELAYED_WORK(&ipvs->expire_nodest_conn_work,
+ 			  expire_nodest_conn_handler);
++	ipvs->est_stopped = 0;
  
- 	EnterFunction(2);
+ 	if (!net_eq(net, &init_net)) {
+ 		tbl = kmemdup(vs_vars, sizeof(vs_vars), GFP_KERNEL);
+@@ -4194,6 +4323,15 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
+ 	ipvs->sysctl_run_estimation = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_run_estimation;
++
++	ipvs->est_cpulist_valid = 0;
++	tbl[idx].extra2 = ipvs;
++	tbl[idx++].data = &ipvs->sysctl_est_cpulist;
++
++	ipvs->sysctl_est_nice = IPVS_EST_NICE;
++	tbl[idx].extra2 = ipvs;
++	tbl[idx++].data = &ipvs->sysctl_est_nice;
++
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	/* Global sysctls must be ro in non-init netns */
+ 	if (!net_eq(net, &init_net))
+@@ -4233,6 +4371,9 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
+ 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
+ 	ip_vs_stop_estimator(ipvs, &ipvs->tot_stats->s);
  
- #ifdef CONFIG_IP_VS_IPV6
- 	if (udest->af == AF_INET6) {
--		int ret;
--
- 		atype = ipv6_addr_type(&udest->addr.in6);
- 		if ((!(atype & IPV6_ADDR_UNICAST) ||
- 			atype & IPV6_ADDR_LINKLOCAL) &&
-@@ -1007,16 +1047,10 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 	if (dest == NULL)
- 		return -ENOMEM;
- 
--	dest->stats.cpustats = alloc_percpu(struct ip_vs_cpu_stats);
--	if (!dest->stats.cpustats)
-+	ret = ip_vs_stats_init_alloc(&dest->stats);
-+	if (ret < 0)
- 		goto err_alloc;
- 
--	for_each_possible_cpu(i) {
--		struct ip_vs_cpu_stats *ip_vs_dest_stats;
--		ip_vs_dest_stats = per_cpu_ptr(dest->stats.cpustats, i);
--		u64_stats_init(&ip_vs_dest_stats->syncp);
--	}
--
- 	dest->af = udest->af;
- 	dest->protocol = svc->protocol;
- 	dest->vaddr = svc->addr;
-@@ -1032,7 +1066,6 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 
- 	INIT_HLIST_NODE(&dest->d_list);
- 	spin_lock_init(&dest->dst_lock);
--	spin_lock_init(&dest->stats.lock);
- 	__ip_vs_update_dest(svc, dest, udest, 1);
- 
- 	LeaveFunction(2);
-@@ -1040,7 +1073,7 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
- 
- err_alloc:
- 	kfree(dest);
--	return -ENOMEM;
-+	return ret;
++	if (ipvs->est_cpulist_valid)
++		free_cpumask_var(ipvs->sysctl_est_cpulist);
++
+ 	if (!net_eq(net, &init_net))
+ 		kfree(ipvs->sysctl_tbl);
  }
- 
- 
-@@ -1299,7 +1332,7 @@ static int
- ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 		  struct ip_vs_service **svc_p)
- {
--	int ret = 0, i;
-+	int ret = 0;
- 	struct ip_vs_scheduler *sched = NULL;
- 	struct ip_vs_pe *pe = NULL;
- 	struct ip_vs_service *svc = NULL;
-@@ -1359,18 +1392,9 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 		ret = -ENOMEM;
- 		goto out_err;
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 99a85ee9cd1e..d4d860f19cb8 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -57,6 +57,9 @@
+   - kthread contexts are created and attached to array
+   - the kthread tasks are started when first service is added, before that
+     the total stats are not estimated
++  - when configuration (cpulist/nice) is changed, the tasks are restarted
++    by work (est_reload_work)
++  - kthread tasks are stopped while the cpulist is empty
+   - the kthread context holds lists with estimators (chains) which are
+     processed every 2 seconds
+   - as estimators can be added dynamically and in bursts, we try to spread
+@@ -229,6 +232,7 @@ void ip_vs_est_reload_start(struct netns_ipvs *ipvs)
+ 	/* Ignore reloads before first service is added */
+ 	if (!ipvs->enable)
+ 		return;
++	ip_vs_est_stopped_recalc(ipvs);
+ 	/* Bump the kthread configuration genid */
+ 	atomic_inc(&ipvs->est_genid);
+ 	queue_delayed_work(system_long_wq, &ipvs->est_reload_work, 0);
+@@ -259,6 +263,9 @@ int ip_vs_est_kthread_start(struct netns_ipvs *ipvs,
+ 		goto out;
  	}
--	svc->stats.cpustats = alloc_percpu(struct ip_vs_cpu_stats);
--	if (!svc->stats.cpustats) {
--		ret = -ENOMEM;
-+	ret = ip_vs_stats_init_alloc(&svc->stats);
-+	if (ret < 0)
- 		goto out_err;
--	}
--
--	for_each_possible_cpu(i) {
--		struct ip_vs_cpu_stats *ip_vs_stats;
--		ip_vs_stats = per_cpu_ptr(svc->stats.cpustats, i);
--		u64_stats_init(&ip_vs_stats->syncp);
--	}
--
  
- 	/* I'm the first user of the service */
- 	atomic_set(&svc->refcnt, 0);
-@@ -1387,7 +1411,6 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
++	set_user_nice(kd->task, sysctl_est_nice(ipvs));
++	set_cpus_allowed_ptr(kd->task, sysctl_est_cpulist(ipvs));
++
+ 	pr_info("starting estimator thread %d...\n", kd->id);
+ 	wake_up_process(kd->task);
  
- 	INIT_LIST_HEAD(&svc->destinations);
- 	spin_lock_init(&svc->sched_lock);
--	spin_lock_init(&svc->stats.lock);
+@@ -334,7 +341,7 @@ static int ip_vs_est_add_kthread(struct netns_ipvs *ipvs)
+ 	}
  
- 	/* Bind the scheduler */
- 	if (sched) {
-@@ -4165,7 +4188,7 @@ static struct notifier_block ip_vs_dst_notifier = {
+ 	/* Start kthread tasks only when services are present */
+-	if (ipvs->enable) {
++	if (ipvs->enable && !ip_vs_est_stopped(ipvs)) {
+ 		ret = ip_vs_est_kthread_start(ipvs, kd);
+ 		if (ret < 0)
+ 			goto out;
+@@ -466,7 +473,7 @@ int ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
+ 	int ret;
  
- int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
- {
--	int i, idx;
-+	int idx;
+ 	if (!ipvs->est_max_threads && ipvs->enable)
+-		ipvs->est_max_threads = 4 * num_possible_cpus();
++		ipvs->est_max_threads = ip_vs_est_max_threads(ipvs);
  
- 	/* Initialize rs_table */
- 	for (idx = 0; idx < IP_VS_RTAB_SIZE; idx++)
-@@ -4182,18 +4205,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
- 	ipvs->tot_stats = kzalloc(sizeof(*ipvs->tot_stats), GFP_KERNEL);
- 	if (!ipvs->tot_stats)
- 		return -ENOMEM;
--	ipvs->tot_stats->s.cpustats = alloc_percpu(struct ip_vs_cpu_stats);
--	if (!ipvs->tot_stats->s.cpustats)
-+	if (ip_vs_stats_init_alloc(&ipvs->tot_stats->s) < 0)
- 		goto err_tot_stats;
+ 	est->ktid = -1;
  
--	for_each_possible_cpu(i) {
--		struct ip_vs_cpu_stats *ipvs_tot_stats;
--		ipvs_tot_stats = per_cpu_ptr(ipvs->tot_stats->s.cpustats, i);
--		u64_stats_init(&ipvs_tot_stats->syncp);
--	}
--
--	spin_lock_init(&ipvs->tot_stats->s.lock);
+-- 
+2.37.3
+
+
