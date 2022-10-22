@@ -1,131 +1,127 @@
-From: Julian Anastasov <ja@ssi.bg>
+From: Jiri Wiesner <jwiesner@suse.de>
 Subject: Re: [RFC PATCHv5 3/6] ipvs: use kthreads for stats estimation
-Date: Sun, 16 Oct 2022 15:21:10 +0300 (EEST)
-Message-ID: <64d2975-357d-75f7-1d34-c43a1b3fc72a@ssi.bg>
-References: <20221009153710.125919-1-ja@ssi.bg> <20221009153710.125919-4-ja@ssi.bg> <20221015092158.GA3484@incl>
+Date: Sat, 22 Oct 2022 20:15:13 +0200
+Message-ID: <20221022181513.GB3484@incl>
+References: <20221009153710.125919-1-ja@ssi.bg>
+ <20221009153710.125919-4-ja@ssi.bg>
+ <20221015092158.GA3484@incl>
+ <64d2975-357d-75f7-1d34-c43a1b3fc72a@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20221015092158.GA3484@incl>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1666462513; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=jVWqfLVTEoBq3VxFB3Hd8UD51ZbT35LU17AsvIb91Vg=;
+        b=U/S5gMJirev41Ivyp++UiULtB/vCJfugHGLXDocZecnd3sNe6k+qEUIm3Ef2iLqllbBDWH
+        mfFyP7QReiJoTFOdgt7D8IO8dSoGEB3xnv/62hN2UgII4w6EbAvHwTHJuDdXh5Dromsxwa
+        3qGHiJRVZJoWjlOd13c68uCGKO8dxlg=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1666462513;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=jVWqfLVTEoBq3VxFB3Hd8UD51ZbT35LU17AsvIb91Vg=;
+        b=Iy9yW0KWOIjHneF25Rn2Qn56mcaGilldPOpMjhYaNUjwOfgPRUd/VlwmGT05B3jB5+qEvC
+        z0unxxImY67n4kDQ==
+Content-Disposition: inline
+In-Reply-To: <64d2975-357d-75f7-1d34-c43a1b3fc72a@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jiri Wiesner <jwiesner@suse.de>
+To: Julian Anastasov <ja@ssi.bg>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
-
-	Hello,
-
-On Sat, 15 Oct 2022, Jiri Wiesner wrote:
-
-> On Sun, Oct 09, 2022 at 06:37:07PM +0300, Julian Anastasov wrote:
-> > +/* Calculate limits for all kthreads */
-> > +static int ip_vs_est_calc_limits(struct netns_ipvs *ipvs, int *chain_max)
-> > +{
-> > +	struct ip_vs_est_kt_data *kd;
-> > +	struct ip_vs_stats *s;
-> > +	struct hlist_head chain;
-> > +	int cache_factor = 4;
-> > +	int i, loops, ntest;
-> > +	s32 min_est = 0;
-> > +	ktime_t t1, t2;
-> > +	s64 diff, val;
-> > +	int max = 8;
-> > +	int ret = 1;
-> > +
-> > +	INIT_HLIST_HEAD(&chain);
-> > +	mutex_lock(&__ip_vs_mutex);
-> > +	kd = ipvs->est_kt_arr[0];
-> > +	mutex_unlock(&__ip_vs_mutex);
-> > +	s = kd ? kd->calc_stats : NULL;
-> > +	if (!s)
-> > +		goto out;
-> > +	hlist_add_head(&s->est.list, &chain);
-> > +
-> > +	loops = 1;
-> > +	/* Get best result from many tests */
-> > +	for (ntest = 0; ntest < 3; ntest++) {
-> > +		local_bh_disable();
-> > +		rcu_read_lock();
-> > +
-> > +		/* Put stats in cache */
-> > +		ip_vs_chain_estimation(&chain);
-> > +
-> > +		t1 = ktime_get();
-> > +		for (i = loops * cache_factor; i > 0; i--)
-> > +			ip_vs_chain_estimation(&chain);
-> > +		t2 = ktime_get();
+On Sun, Oct 16, 2022 at 03:21:10PM +0300, Julian Anastasov wrote:
+> > I have tested this. There is one problem: When the calc phase is carried out for the first time after booting the kernel the diff is several times higher than what is should be - it was 7325 ns on my testing machine. The wrong chain_max value causes 15 kthreads to be created when 500,000 estimators have been added, which is not abysmal (It's better to underestimate chain_max than to overestimate it) but not optimal either. When the ip_vs module is unloaded and then a new service is added again the diff has the expected value. The commands:
 > 
-> I have tested this. There is one problem: When the calc phase is carried out for the first time after booting the kernel the diff is several times higher than what is should be - it was 7325 ns on my testing machine. The wrong chain_max value causes 15 kthreads to be created when 500,000 estimators have been added, which is not abysmal (It's better to underestimate chain_max than to overestimate it) but not optimal either. When the ip_vs module is unloaded and then a new service is added again the diff has the expected value. The commands:
+> 	Yes, our goal allows underestimation of the tick time,
+> 2-3 times is expected and not a big deal.
 
-	Yes, our goal allows underestimation of the tick time,
-2-3 times is expected and not a big deal.
+I agree that even if the max chain length was underestimated in many cases it can be expected that there will be occasions on which the max chain length would be just right. If parameters of the algorithm were changed to make the underestimates less severe there would be occasions when the max chain length would be overestimated, leading to high CPU utilization, which is undesirable.
 
-> > # ipvsadm -A -t 10.10.10.1:2000
-> > # ipvsadm -D -t 10.10.10.1:2000; modprobe -r ip_vs_wlc ip_vs
-> > # ipvsadm -A -t 10.10.10.1:2000
-> The kernel log:
-> > [  200.020287] IPVS: ipvs loaded.
-> > [  200.036128] IPVS: starting estimator thread 0...
-> > [  200.042213] IPVS: calc: chain_max=12, single est=7319ns, diff=7325, loops=1, ntest=3
-> > [  200.051714] IPVS: dequeue: 49ns
-> > [  200.056024] IPVS: using max 576 ests per chain, 28800 per kthread
-> > [  201.983034] IPVS: tick time: 6057ns for 64 CPUs, 2 ests, 1 chains, chain_max=576
+> 	It is not a problem to add some wait_event_idle_timeout
+> calls to sleep before/between tests if the system is so busy
+> on boot that it can even disturb our tests with disabled BHs.
 
-	It is not a problem to add some wait_event_idle_timeout
-calls to sleep before/between tests if the system is so busy
-on boot that it can even disturb our tests with disabled BHs.
-May be there are many IRQs that interrupt us. We have 2 seconds
-for the first tests, so we can add some gaps. If you want to
-test it you can add some schedule_timeout(HZ/10) between the
-3 tests (total 300ms delay of the real estimation).
+That is definitely not the case. When I get the underestimated max chain length:
+> [  130.699910][ T2564] IPVS: Registered protocols (TCP, UDP, SCTP, AH, ESP)
+> [  130.707580][ T2564] IPVS: Connection hash table configured (size=4096, memory=32Kbytes)
+> [  130.716633][ T2564] IPVS: ipvs loaded.
+> [  130.723423][ T2570] IPVS: [wlc] scheduler registered.
+> [  130.731071][  T477] IPVS: starting estimator thread 0...
+> [  130.737169][ T2571] IPVS: calc: chain_max=12, single est=7379ns, diff=7379, loops=1, ntest=3
+> [  130.746673][ T2571] IPVS: dequeue: 81ns
+> [  130.750988][ T2571] IPVS: using max 576 ests per chain, 28800 per kthread
+> [  132.678012][ T2571] IPVS: tick time: 5930ns for 64 CPUs, 2 ests, 1 chains, chain_max=576
+the system is idle, not running any workload and the booting sequence has finished.
 
-	Another option is to implement some clever way to dynamically
-adjust chain_max in the background depending on the load.
-But it is difficult to react on all changes in the system
-because while tests run in privileged mode with BHs disabled,
-this is not true later. If real estimation deviates from
-the determined chain_max more than 4 times (average for some period)
-we can trigger some relinking with the goal to increase/decrease
-the kthreads. kt 0 can do such measurements.
+This is the scheduler trace for the calculation the underestimated max chain length above:
+>  kworker/37:1-mm   477 [037]   130.737046:       sched:sched_waking: comm=ipvs-e:0:0 pid=2571 prio=120 target_cpu=062
+>          swapper     0 [062]   130.737132:       sched:sched_switch: prev_comm=swapper/62 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=2571 next_prio=120
+ip_vs_est_calc_limits() ran here.
+>       ipvs-e:0:0  2571 [062]   130.746658: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=2571 runtime=9537544 [ns] vruntime=579529909 [ns]
+>       ipvs-e:0:0  2571 [062]   130.750979:       sched:sched_waking: comm=in:imklog pid=2248 prio=120 target_cpu=011
+>       ipvs-e:0:0  2571 [062]   130.750981:       sched:sched_waking: comm=systemd-journal pid=1160 prio=120 target_cpu=017
+>       ipvs-e:0:0  2571 [062]   130.750982: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=2571 runtime=4324225 [ns] vruntime=583854134 [ns]
+>       ipvs-e:0:0  2571 [062]   130.758608:       sched:sched_waking: comm=in:imklog pid=2248 prio=120 target_cpu=011
+>       ipvs-e:0:0  2571 [062]   130.758609:       sched:sched_waking: comm=systemd-journal pid=1160 prio=120 target_cpu=017
+>       ipvs-e:0:0  2571 [062]   130.758609: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=2571 runtime=7627794 [ns] vruntime=591481928 [ns]
+>       ipvs-e:0:0  2571 [062]   130.758617: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=2571 runtime=7480 [ns] vruntime=591489408 [ns]
+>       ipvs-e:0:0  2571 [062]   130.758619:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=2571 prev_prio=120 prev_state=I ==> next_comm=swapper/62 next_pid=0 next_prio=120
+At this point, ipvs-e:0:0 blocked after finishing the first iteration of the loop in ip_vs_estimation_kthread(). Since ipvs-e:0:0 had been woken up until this point, all the trace entries from CPU 62 are listed above.
+>          swapper     0 [062]   130.797980:       sched:sched_waking: comm=ipvs-e:0:0 pid=2571 prio=120 target_cpu=062
+>          swapper     0 [062]   130.797992:       sched:sched_switch: prev_comm=swapper/62 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=2571 next_prio=120
+>       ipvs-e:0:0  2571 [062]   130.797995: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=2571 runtime=6252 [ns] vruntime=591495660 [ns]
+>       ipvs-e:0:0  2571 [062]   130.797996:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=2571 prev_prio=120 prev_state=I ==> next_comm=swapper/62 next_pid=0 next_prio=120
+>          swapper     0 [062]   130.837981:       sched:sched_waking: comm=ipvs-e:0:0 pid=2571 prio=120 target_cpu=062
+>          swapper     0 [062]   130.837996:       sched:sched_switch: prev_comm=swapper/62 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=2571 next_prio=120
+>       ipvs-e:0:0  2571 [062]   130.837998: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=2571 runtime=6362 [ns] vruntime=591502022 [ns]
+>       ipvs-e:0:0  2571 [062]   130.838000:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=2571 prev_prio=120 prev_state=I ==> next_comm=swapper/62 next_pid=0 next_prio=120
 
-> > [  237.555043] IPVS: stop unused estimator thread 0...
-> > [  237.599116] IPVS: ipvs unloaded.
-> > [  268.533028] IPVS: ipvs loaded.
-> > [  268.548401] IPVS: starting estimator thread 0...
-> > [  268.554472] IPVS: calc: chain_max=33, single est=2834ns, diff=2834, loops=1, ntest=3
-> > [  268.563972] IPVS: dequeue: 68ns
-> > [  268.568292] IPVS: using max 1584 ests per chain, 79200 per kthread
-> > [  270.495032] IPVS: tick time: 5761ns for 64 CPUs, 2 ests, 1 chains, chain_max=1584
-> > [  307.847045] IPVS: stop unused estimator thread 0...
-> > [  307.891101] IPVS: ipvs unloaded.
-> Loading the module and adding a service a third time gives a diff that is close enough to the expected value:
-> > [  312.807107] IPVS: ipvs loaded.
-> > [  312.823972] IPVS: starting estimator thread 0...
-> > [  312.829967] IPVS: calc: chain_max=38, single est=2444ns, diff=2477, loops=1, ntest=3
-> > [  312.839470] IPVS: dequeue: 66ns
-> > [  312.843800] IPVS: using max 1824 ests per chain, 91200 per kthread
-> > [  314.771028] IPVS: tick time: 5703ns for 64 CPUs, 2 ests, 1 chains, chain_max=1824
-> Here is a distribution of the time needed to process one estimator - the average value is around 2900 ns (on my testing machine):
-> > dmesg | awk '/tick time:/ {d = $(NF - 8); sub("ns", "", d); d /= $(NF - 4); d = int(d / 100) * 100; hist[d]++} END {PROCINFO["sorted_in"] = "@ind_num_asc"; for (d in hist) printf "%5d %5d\n", d, hist[d]}'
-> >  2500     2
-> >  2700     1
-> >  2800   243
-> >  2900   427
-> >  3000    20
-> >  3100     1
-> >  3500     1
-> >  3600     1
-> >  3700     1
-> >  4900     1
-> I am not sure why the first 3 tests give such a high diff value but the diff value is much closer to the read average time after the module is loaded a second time.
-> 
-> I ran more tests. All I did was increase ntests to 3000. The diff had a much more realistic value even when the calc phase was carried out for the first time:
+> May be there are many IRQs that interrupt us.
 
-	Yes, more tests should give more accurate results
-for the current load. But load can change.
+I've tried that it made no difference.
 
-Regards
+> We have 2 seconds
+> for the first tests, so we can add some gaps. If you want to
+> test it you can add some schedule_timeout(HZ/10) between the
+> 3 tests (total 300ms delay of the real estimation).
 
---
-Julian Anastasov <ja@ssi.bg>
+schedule_timeout(HZ/10) does not make the thread sleep - the function returns 25, which is the value of the timeout passed to it. msleep(100) works, though:
+>  kworker/0:0-eve     7 [000]    70.223673:       sched:sched_waking: comm=ipvs-e:0:0 pid=8927 prio=120 target_cpu=051
+>          swapper     0 [051]    70.223770:       sched:sched_switch: prev_comm=swapper/51 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=8927 next_prio=120
+>       ipvs-e:0:0  8927 [051]    70.223786: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=26009 [ns] vruntime=2654620258 [ns]
+>       ipvs-e:0:0  8927 [051]    70.223787:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=8927 prev_prio=120 prev_state=D ==> next_comm=swapper/51 next_pid=0 next_prio=120
+>          swapper     0 [051]    70.331221:       sched:sched_waking: comm=ipvs-e:0:0 pid=8927 prio=120 target_cpu=051
+>          swapper     0 [051]    70.331234:       sched:sched_switch: prev_comm=swapper/51 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=8927 next_prio=120
+>       ipvs-e:0:0  8927 [051]    70.331241: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=11064 [ns] vruntime=2654631322 [ns]
+>       ipvs-e:0:0  8927 [051]    70.331242:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=8927 prev_prio=120 prev_state=D ==> next_comm=swapper/51 next_pid=0 next_prio=120
+>          swapper     0 [051]    70.439220:       sched:sched_waking: comm=ipvs-e:0:0 pid=8927 prio=120 target_cpu=051
+>          swapper     0 [051]    70.439235:       sched:sched_switch: prev_comm=swapper/51 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=8927 next_prio=120
+>       ipvs-e:0:0  8927 [051]    70.439242: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=10324 [ns] vruntime=2654641646 [ns]
+>       ipvs-e:0:0  8927 [051]    70.439243:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=8927 prev_prio=120 prev_state=D ==> next_comm=swapper/51 next_pid=0 next_prio=120
+>          swapper     0 [051]    70.547220:       sched:sched_waking: comm=ipvs-e:0:0 pid=8927 prio=120 target_cpu=051
+>          swapper     0 [051]    70.547235:       sched:sched_switch: prev_comm=swapper/51 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=8927 next_prio=120
+>       ipvs-e:0:0  8927 [051]    70.556717: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=9486028 [ns] vruntime=2664127674 [ns]
+>       ipvs-e:0:0  8927 [051]    70.561134:       sched:sched_waking: comm=in:imklog pid=2210 prio=120 target_cpu=039
+>       ipvs-e:0:0  8927 [051]    70.561136:       sched:sched_waking: comm=systemd-journal pid=1161 prio=120 target_cpu=001
+>       ipvs-e:0:0  8927 [051]    70.561138: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=4421889 [ns] vruntime=2668549563 [ns]
+>       ipvs-e:0:0  8927 [051]    70.568867:       sched:sched_waking: comm=in:imklog pid=2210 prio=120 target_cpu=039
+>       ipvs-e:0:0  8927 [051]    70.568868:       sched:sched_waking: comm=systemd-journal pid=1161 prio=120 target_cpu=001
+>       ipvs-e:0:0  8927 [051]    70.568870: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=7731843 [ns] vruntime=2676281406 [ns]
+>       ipvs-e:0:0  8927 [051]    70.568878: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=8169 [ns] vruntime=2676289575 [ns]
+>       ipvs-e:0:0  8927 [051]    70.568880:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=8927 prev_prio=120 prev_state=I ==> next_comm=swapper/51 next_pid=0 next_prio=120
+>          swapper     0 [051]    70.611220:       sched:sched_waking: comm=ipvs-e:0:0 pid=8927 prio=120 target_cpu=051
+>          swapper     0 [051]    70.611239:       sched:sched_switch: prev_comm=swapper/51 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=8927 next_prio=120
+>       ipvs-e:0:0  8927 [051]    70.611243: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=10196 [ns] vruntime=2676299771 [ns]
+>       ipvs-e:0:0  8927 [051]    70.611245:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=8927 prev_prio=120 prev_state=I ==> next_comm=swapper/51 next_pid=0 next_prio=120
+>          swapper     0 [051]    70.651220:       sched:sched_waking: comm=ipvs-e:0:0 pid=8927 prio=120 target_cpu=051
+>          swapper     0 [051]    70.651239:       sched:sched_switch: prev_comm=swapper/51 prev_pid=0 prev_prio=120 prev_state=R ==> next_comm=ipvs-e:0:0 next_pid=8927 next_prio=120
+>       ipvs-e:0:0  8927 [051]    70.651243: sched:sched_stat_runtime: comm=ipvs-e:0:0 pid=8927 runtime=10985 [ns] vruntime=2676310756 [ns]
+>       ipvs-e:0:0  8927 [051]    70.651245:       sched:sched_switch: prev_comm=ipvs-e:0:0 prev_pid=8927 prev_prio=120 prev_state=I ==> next_comm=swapper/51 next_pid=0 next_prio=120
+After adding msleep(), I have rebooted 3 times and added a service. The max chain length was always at the optimal value - around 35. I think more tests on other architecture would be needed. I can test on ARM next week.
 
+-- 
+Jiri Wiesner
+SUSE Labs
