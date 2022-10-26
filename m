@@ -1,47 +1,41 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: use explicitly signed chars
-Date: Wed, 26 Oct 2022 18:01:09 +0300 (EEST)
-Message-ID: <bb93406f-6935-deee-22e4-c4b4be55bc60@ssi.bg>
-References: <20221026123216.1575440-1-Jason@zx2c4.com> <4cc36ff5-46fd-c2b3-3292-d6369337fec1@ssi.bg> <Y1lEebYfRwrtliDL@zx2c4.com>
+Subject: Re: [RFC PATCHv5 3/6] ipvs: use kthreads for stats estimation
+Date: Wed, 26 Oct 2022 18:29:39 +0300 (EEST)
+Message-ID: <bc1d5e15-9c1f-4f4a-152f-2e49e472963@ssi.bg>
+References: <20221009153710.125919-1-ja@ssi.bg> <20221009153710.125919-4-ja@ssi.bg> <20221015092158.GA3484@incl> <64d2975-357d-75f7-1d34-c43a1b3fc72a@ssi.bg> <20221022181513.GB3484@incl> <b279182b-58ee-1c76-e194-31539d95982@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <Y1lEebYfRwrtliDL@zx2c4.com>
+In-Reply-To: <b279182b-58ee-1c76-e194-31539d95982@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "Jason A. Donenfeld" <Jason@zx2c4.com>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>, stable@vger.kernel.org
+To: Jiri Wiesner <jwiesner@suse.de>
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
 
 	Hello,
 
-On Wed, 26 Oct 2022, Jason A. Donenfeld wrote:
+On Mon, 24 Oct 2022, Julian Anastasov wrote:
 
-> On Wed, Oct 26, 2022 at 05:20:03PM +0300, Julian Anastasov wrote:
-> > 
-> > 	Hello,
-> > 
-> > On Wed, 26 Oct 2022, Jason A. Donenfeld wrote:
-> > 
-> > > The `char` type with no explicit sign is sometimes signed and sometimes
-> > > unsigned. This code will break on platforms such as arm, where char is
-> > > unsigned. So mark it here as explicitly signed, so that the
-> > > todrop_counter decrement and subsequent comparison is correct.
-> > > 
-> > > Cc: Pablo Neira Ayuso <pablo@netfilter.org>
-> > > Cc: Julian Anastasov <ja@ssi.bg>
-> > > Cc: Simon Horman <horms@verge.net.au>
-> > > Cc: stable@vger.kernel.org
-> > > Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
-> > 
-> > 	Looks good to me for -next, thanks!
-> 
-> This is actually net.git material, not net-next.git material,
-> considering it fixes a bug on arm and many other archs, and is marked
-> with a stable@ tag.
+> 	While finishing this posting, I'm investigating
+> the idea to use structures without chains (no relinking),
+> without chain_len, tick_len, etc. But let me first see
+> if such idea can work...
 
-	OK. As algorithm is not SMP safe, the problem is
-not just for the first 256 packets on these platforms.
+	Hm, I tried some ideas but result is not good at all.
+chain_max looks like a good implicit way to apply cond_resched
+rate and to return to some safe position on return. Other methods
+with arrays will (1) allocate more memory or (2) slowdown searching
+for free slot while adding or (3) slowdown while walking during
+estimation. Now we benefit from long chains (33/38 as in your
+setup) to (1) use less memory to store ests in chains and (2) to
+reduce the cost from for_each_set_bit() operation.
+
+	So, for now I don't have any better idea to change
+the data structures.
+
+	After your feedback I can prepare next version by adding
+wait_event_idle_timeout() calls as pause between tests.
 
 Regards
 
