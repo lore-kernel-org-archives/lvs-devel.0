@@ -1,105 +1,133 @@
-From: Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>
-Subject: Re: [RFC][PATCH v2 19/31] timers: net: Use del_timer_shutdown()
- before freeing timer
-Date: Thu, 27 Oct 2022 18:35:11 -0400
-Message-ID: <20221027183511.66b058c4@gandalf.local.home>
-References: <20221027150525.753064657@goodmis.org>
-        <20221027150928.780676863@goodmis.org>
-        <20221027155513.60b211e2@gandalf.local.home>
-        <CAHk-=wjAjW2P5To82+CAM0Rx8RexQBHPTVZBWBPHyEPGm37oFA@mail.gmail.com>
-        <20221027163453.383bbf8e@gandalf.local.home>
-        <CAHk-=whoS+krLU7JNe=hMp2VOcwdcCdTXhdV8qqKoViwzzJWfA@mail.gmail.com>
-        <20221027170720.31497319@gandalf.local.home>
+From: Guenter Roeck <linux@roeck-us.net>
+Subject: Re: [RFC][PATCH v2 19/31] timers: net: Use
+ del_timer_shutdown() before freeing timer
+Date: Thu, 27 Oct 2022 16:13:55 -0700
+Message-ID: <20221027231355.GA279418@roeck-us.net>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <linux-usb-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20221027170720.31497319-f9ZlEuEWxVcJvu8Pb33WZ0EMvNT87kid@public.gmane.org>
-List-ID: <lvs-devel.vger.kernel.org>
+Return-path: <bridge-bounces@lists.linux-foundation.org>
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp3.osuosl.org 47AB7607AA
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp3.osuosl.org 8F75260773
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 49EF7402DC
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 479C4400D0
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmail.com; s=20210112;
+ h=content-disposition:mime-version:message-id:subject:cc:to:from:date
+ :sender:from:to:cc:subject:date:message-id:reply-to;
+ bh=P41rwxhUMczs6ljwzqKYGCdlQ+dI/irnsNJUBE737lw=;
+ b=nUs4BQ4QHj5upmui25ZlamsxDTY94q2eK6CXv3krB1huVK8iXo01EW8k7VAhNVROHi
+ PjYBf8CwASEYPGf6SwTYwp/ZxxL+hu+oIEzBD66Gszc4ROJ0le1pA55DFqSM51JsTFZU
+ gU5Wpx+bws1qVVFzHCN4FW/OY3wOMqGAS29n07JnNPwk7gWEJ4JAX/hseDkT64kYN3wQ
+ XrXoWl/xM7zG/HuTEiKdr1MfmR0ifM6cjZrdxqnY+bg/ra9Xu38mR+BX7nY3UrahaCWD
+ AC2+gJVoU576iIFXXsgNFhmCCUiwKUFb0hh6k9uqPefGAva3wPgPVGU4KfkgNYVbwaAx
+ djyQ==
+Content-Disposition: inline
+List-Id: <lvs-devel.vger.kernel.org>
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/bridge>, 
+ <mailto:bridge-request@lists.linux-foundation.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/bridge/>
+List-Post: <mailto:bridge@lists.linux-foundation.org>
+List-Help: <mailto:bridge-request@lists.linux-foundation.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/bridge>,
+ <mailto:bridge-request@lists.linux-foundation.org?subject=subscribe>
+Errors-To: bridge-bounces@lists.linux-foundation.org
+Sender: "Bridge" <bridge-bounces@lists.linux-foundation.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Thomas Gleixner <tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org>, Stephen Boyd <sboyd-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Guenter Roeck <linux-0h96xk9xTtrk1uMJSBkQmQ@public.gmane.org>, Jesse Brandeburg <jesse.brandeburg-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Tony Nguyen <anthony.l.nguyen-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Paolo Abeni <pabeni-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Mirko Lindner <mlindner-eYqpPyKDWXRBDgjK7y7TUQ@public.gmane.org>, Stephen Hemminger <stephen-OTpzqLSitTUnbdJkjeBofR2eb7JE58TQ@public.gmane.org>, Martin KaFai Lau <martin.lau-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Alexei Starovoitov <ast-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Kuniyuki Iwashima <kuniyu-vV1OtcyAfmbQT0dZR+AlfA@public.gmane.org>, Pavel Begunkov <asml.silence-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Menglong Dong <imagedong-1Nz4purKYjRBDgjK7y7TUQ@public.gmane.org>, linux-usb-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bridge-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, netfilter-de
+Content-Transfer-Encoding: 7bit
+To: Steven Rostedt <rostedt@goodmis.org>
+Cc: Alexei Starovoitov <ast@kernel.org>, Eric Dumazet <edumazet@google.com>, Tony Nguyen <anthony.l.nguyen@intel.com>, linux-afs@lists.infradead.org, Menglong Dong <imagedong@tencent.com>, bridge@lists.linux-foundation.org, Jesse Brandeburg <jesse.brandeburg@intel.com>, lvs-devel@vger.kernel.org, coreteam@netfilter.org, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Martin KaFai Lau <martin.lau@kernel.org>, Kuniyuki Iwashima <kuniyu@amazon.com>, Thomas Gleixner <tglx@linutronix.de>, Mirko Lindner <mlindner@marvell.com>, linux-nfs@vger.kernel.org, tipc-discussion@lists.sourceforge.net, Stephen Boyd <sboyd@kernel.org>, linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, netfilter-devel@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>, Pavel Begunkov <asml.silence@gm>
 
-On Thu, 27 Oct 2022 17:07:20 -0400
-Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org> wrote:
-
-> Well, I think this current use case will break if we prevent the timer from
-> being rearmed or run again if it's not found. But as you said, the
-> networking folks need to confirm or deny it.
+On Thu, Oct 27, 2022 at 05:07:55PM -0400, Steven Rostedt wrote:
+> On Thu, 27 Oct 2022 16:34:53 -0400
+> Steven Rostedt <rostedt@goodmis.org> wrote:
 > 
-> The fact that it does the sock_put() when it removes the timer makes me
-> think that it can be called again, and we shouldn't prevent that from
-> happening.
+> > What about del_timer_try_shutdown(), that if it removes the timer, it sets
+> > the function to NULL (making it equivalent to a successful shutdown),
+> > otherwise it does nothing. Allowing the the timer to be rearmed.
+> > 
+> > I think this would work in this case.
 > 
-> The debug code will let us know too, as it only "frees" it for freeing if
-> it deactivated the timer and shut it down.
+> Guenter,
+> 
+> Can you apply this patch on top of the series, and see if it makes the
+> warning go away?
 
-I think we have our answer from Guenter's report:
+Applied, and started testing.
 
+Please let me know if I am missing some other patch(es) to apply.
 
-Linux version 6.1.0-rc2-00138-gced58c742836 (groeck@jupiter) (aarch64-linux-gcc (GCC) 11.3.0, GNU ld (GNU Binutils) 2.39) #1 SMP PREEMPT Thu Oct 27 14:53:17 PDT 2022
-[   17.258727] ------------[ cut here ]------------
-[   17.259079] ODEBUG: free active (active state 0) object type: timer_list hint: tcp_write_timer+0x0/0x190
-[   17.259723] WARNING: CPU: 0 PID: 309 at lib/debugobjects.c:502 debug_print_object+0xb8/0x100
-[   17.259951] Modules linked in:
-[   17.260249] CPU: 0 PID: 309 Comm: telnet Tainted: G                 N 6.1.0-rc2-00138-gced58c742836 #1
-[   17.260518] Hardware name: linux,dummy-virt (DT)
-[   17.260779] pstate: 60000005 (nZCv daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
-[   17.260967] pc : debug_print_object+0xb8/0x100
-[   17.261096] lr : debug_print_object+0xb8/0x100
-[   17.261223] sp : ffff8000086539e0
-[   17.261324] x29: ffff8000086539e0 x28: 0000000000000004 x27: ffff0d2ac2168000
-[   17.261574] x26: 0000000000000000 x25: ffffa241e2b9de18 x24: ffffa241e4f8fcd8
-[   17.261772] x23: ffffa241e336b370 x22: ffffa241e2b9de18 x21: ffff0d2ac20c5710
-[   17.261967] x20: ffffa241e4ea2568 x19: ffffa241e3ea3c00 x18: 00000000ffffffff
-[   17.262161] x17: 6c6973742068696e x16: 3a2074696d65725f x15: 6563742074797065
-[   17.262375] x14: 65203029206f626a x13: ffffa241e3ec7640 x12: 0000000000000d50
-[   17.262591] x11: 0000000000000470 x10: ffffa241e3f1f640 x9 : ffffa241e3ec7640
-[   17.262821] x8 : 00000000ffffefff x7 : ffffa241e3f1f640 x6 : 0000000000000000
-[   17.263028] x5 : ffff0d2adfebba68 x4 : 0000000000000000 x3 : 0000000000000027
-[   17.263235] x2 : 0000000000000000 x1 : 0000000000000000 x0 : ffff0d2ac658b340
-[   17.263528] Call trace:
-[   17.263646]  debug_print_object+0xb8/0x100
-[   17.263795]  __debug_check_no_obj_freed+0x1d0/0x25c
-[   17.263927]  debug_check_no_obj_freed+0x20/0x90
-[   17.264051]  slab_free_freelist_hook.constprop.0+0xac/0x1b0
-[   17.264197]  kmem_cache_free+0x1ac/0x500
-[   17.264311]  __sk_destruct+0x140/0x2a0
-[   17.264425]  sk_destruct+0x54/0x64
-[   17.264531]  __sk_free+0x74/0x120
-[   17.264636]  sk_free+0x64/0x8c
-[   17.264736]  tcp_close+0x94/0xc0
-[   17.264840]  inet_release+0x50/0xb0
-[   17.264949]  __sock_release+0x44/0xbc
-[   17.265061]  sock_close+0x18/0x30
-[   17.265166]  __fput+0x84/0x270
-[   17.265266]  ____fput+0x10/0x20
-[   17.265366]  task_work_run+0x88/0xf0
-[   17.265491]  do_exit+0x334/0xafc
-[   17.265596]  do_group_exit+0x34/0x90
-[   17.265705]  __arm64_sys_exit_group+0x18/0x20
-[   17.265826]  invoke_syscall+0x48/0x114
-[   17.265941]  el0_svc_common.constprop.0+0x60/0x11c
-[   17.266070]  do_el0_svc+0x30/0xd0
-[   17.266175]  el0_svc+0x48/0xc0
-[   17.266276]  el0t_64_sync_handler+0xbc/0x13c
-[   17.266396]  el0t_64_sync+0x18c/0x190
-[   17.266565] irq event stamp: 5192
-[   17.266676] hardirqs last  enabled at (5191): [<ffffa241e1926a18>] __up_console_sem+0x78/0x84
-[   17.266903] hardirqs last disabled at (5192): [<ffffa241e2b4d504>] el1_dbg+0x24/0x90
-[   17.267093] softirqs last  enabled at (5170): [<ffffa241e181050c>] __do_softirq+0x46c/0x5d8
-[   17.267305] softirqs last disabled at (5163): [<ffffa241e1816750>] ____do_softirq+0x10/0x20
-[   17.267506] ---[ end trace 0000000000000000 ]---
-[   17.275715] ------------[ cut here ]------------
+Thanks,
+Guenter
 
-I'll go modify that code to make it shutdown even if it returns zero.
-
-I thinks this means we'll need to change the name to:
-
- del_timer_shutdown()
- del_timer_shutdown_sync()
-
-But I want to confirm this first.
-
--- Steve
-
-
+> 
+> diff --git a/include/linux/timer.h b/include/linux/timer.h
+> index d4d90149d015..e3c5f4bdd526 100644
+> --- a/include/linux/timer.h
+> +++ b/include/linux/timer.h
+> @@ -184,12 +184,23 @@ static inline int timer_pending(const struct timer_list * timer)
+>  	return !hlist_unhashed_lockless(&timer->entry);
+>  }
+>  
+> +extern int __del_timer(struct timer_list * timer, bool free);
+> +
+>  extern void add_timer_on(struct timer_list *timer, int cpu);
+> -extern int del_timer(struct timer_list * timer);
+>  extern int mod_timer(struct timer_list *timer, unsigned long expires);
+>  extern int mod_timer_pending(struct timer_list *timer, unsigned long expires);
+>  extern int timer_reduce(struct timer_list *timer, unsigned long expires);
+>  
+> +static inline int del_timer_try_shutdown(struct timer_list *timer)
+> +{
+> +	return __del_timer(timer, true);
+> +}
+> +
+> +static inline int del_timer(struct timer_list *timer)
+> +{
+> +	return __del_timer(timer, false);
+> +}
+> +
+>  /*
+>   * The jiffies value which is added to now, when there is no timer
+>   * in the timer wheel:
+> diff --git a/kernel/time/timer.c b/kernel/time/timer.c
+> index 7305c65ad0eb..073031cb3bb9 100644
+> --- a/kernel/time/timer.c
+> +++ b/kernel/time/timer.c
+> @@ -1255,7 +1255,7 @@ EXPORT_SYMBOL_GPL(add_timer_on);
+>   * (ie. del_timer() of an inactive timer returns 0, del_timer() of an
+>   * active timer returns 1.)
+>   */
+> -int del_timer(struct timer_list *timer)
+> +int __del_timer(struct timer_list *timer, bool free)
+>  {
+>  	struct timer_base *base;
+>  	unsigned long flags;
+> @@ -1266,12 +1266,16 @@ int del_timer(struct timer_list *timer)
+>  	if (timer_pending(timer)) {
+>  		base = lock_timer_base(timer, &flags);
+>  		ret = detach_if_pending(timer, base, true);
+> +		if (free && ret) {
+> +			timer->function = NULL;
+> +			debug_timer_deactivate(timer);
+> +		}
+>  		raw_spin_unlock_irqrestore(&base->lock, flags);
+>  	}
+>  
+>  	return ret;
+>  }
+> -EXPORT_SYMBOL(del_timer);
+> +EXPORT_SYMBOL(__del_timer);
+>  
+>  static int __try_to_del_timer_sync(struct timer_list *timer, bool free)
+>  {
+> diff --git a/net/core/sock.c b/net/core/sock.c
+> index 10cc84379d75..23a97442a0a6 100644
+> --- a/net/core/sock.c
+> +++ b/net/core/sock.c
+> @@ -3345,7 +3345,7 @@ EXPORT_SYMBOL(sk_reset_timer);
+>  
+>  void sk_stop_timer(struct sock *sk, struct timer_list* timer)
+>  {
+> -	if (del_timer(timer))
+> +	if (del_timer_try_shutdown(timer))
+>  		__sock_put(sk);
+>  }
+>  EXPORT_SYMBOL(sk_stop_timer);
