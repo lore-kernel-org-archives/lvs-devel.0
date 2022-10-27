@@ -1,127 +1,59 @@
-From: Steven Rostedt <rostedt@goodmis.org>
+From: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
 Subject: Re: [RFC][PATCH v2 19/31] timers: net: Use del_timer_shutdown()
  before freeing timer
-Date: Thu, 27 Oct 2022 15:55:13 -0400
-Message-ID: <20221027155513.60b211e2@gandalf.local.home>
-References: <20221027150525.753064657@goodmis.org>
-        <20221027150928.780676863@goodmis.org>
+Date: Thu, 27 Oct 2022 13:15:23 -0700
+Message-ID: <CAHk-=wjAjW2P5To82+CAM0Rx8RexQBHPTVZBWBPHyEPGm37oFA@mail.gmail.com>
+References: <20221027150525.753064657@goodmis.org> <20221027150928.780676863@goodmis.org>
+ <20221027155513.60b211e2@gandalf.local.home>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20221027150928.780676863@goodmis.org>
+Return-path: <linux-usb-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=PkxtUHaGFDycP6D2luIHLSXJkXOzlvpiMUNbGq0VIDw=;
+        b=AiYRsbNPUrZt3HPq+xtJfDrvafoV3sgbBvDsYvDt8alNybjtz3OkR1xymRkE3QILqj
+         mmJ4n9e+K/PVts3cQ2eJ5htk2mJ+mPxzhWMdsaeW6GINZP2CIccvVT49FekPjg7PRFXI
+         92WGHwoPAVqBkaMzcdjnmCw5MEE1uFvTm34eA=
+In-Reply-To: <20221027155513.60b211e2-f9ZlEuEWxVcJvu8Pb33WZ0EMvNT87kid@public.gmane.org>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: linux-kernel@vger.kernel.org
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, Thomas Gleixner <tglx@linutronix.de>, Stephen Boyd <sboyd@kernel.org>, Guenter Roeck <linux@roeck-us.net>, Jesse Brandeburg <jesse.brandeburg@intel.com>, Tony Nguyen <anthony.l.nguyen@intel.com>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Mirko Lindner <mlindner@marvell.com>, Stephen Hemminger <stephen@networkplumber.org>, Martin KaFai Lau <martin.lau@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Kuniyuki Iwashima <kuniyu@amazon.com>, Pavel Begunkov <asml.silence@gmail.com>, Menglong Dong <imagedong@tencent.com>, linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org, bridge@lists.linux-fo
+Content-Transfer-Encoding: 7bit
+To: Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Thomas Gleixner <tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org>, Stephen Boyd <sboyd-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Guenter Roeck <linux-0h96xk9xTtrk1uMJSBkQmQ@public.gmane.org>, Jesse Brandeburg <jesse.brandeburg-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Tony Nguyen <anthony.l.nguyen-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Paolo Abeni <pabeni-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Mirko Lindner <mlindner-eYqpPyKDWXRBDgjK7y7TUQ@public.gmane.org>, Stephen Hemminger <stephen-OTpzqLSitTUnbdJkjeBofR2eb7JE58TQ@public.gmane.org>, Martin KaFai Lau <martin.lau-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Alexei Starovoitov <ast-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Kuniyuki Iwashima <kuniyu-vV1OtcyAfmbQT0dZR+AlfA@public.gmane.org>, Pavel Begunkov <asml.silence-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Menglong Dong <imagedong-1Nz4purKYjRBDgjK7y7TUQ@public.gmane.org>, linux-usb-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bridge-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, netfilter-de
 
-On Thu, 27 Oct 2022 12:38:16 -0700
-Guenter Roeck <linux@roeck-us.net> wrote:
+On Thu, Oct 27, 2022 at 12:55 PM Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org> wrote:
+>
+> I think we need to update this code to squeeze in a del_timer_shutdown() to
+> make sure that the timers are never restarted.
 
-> On 10/27/22 12:27, Steven Rostedt wrote:
-> > On Thu, 27 Oct 2022 15:20:58 -0400
-> > Steven Rostedt <rostedt@goodmis.org> wrote:
-> >   
-> >>> (many more of those)
-> >>> ...
-> >>> [   16.329989]  timer_fixup_free+0x40/0x54  
-> >>
-> >> Ah, I see the issue here. Looks like the timer_fixup_free() is calling
-> >> itself and crashing.
-> >>
-> >> Let me take a look into that. I didn't touch the fixup code, and there
-> >> could be an assumption there that it's behaving with the old approach.  
-> > 
-> > Can you add this and see if it makes this issue go away?
-> >   
-> 
-> Yes, that fixes the crash. However, it still reports
-> 
-> [   12.235054] ------------[ cut here ]------------
-> [   12.235240] ODEBUG: free active (active state 0) object type: timer_list hint: tcp_write_timer+0x0/0x190
-> [   12.237331] WARNING: CPU: 0 PID: 310 at lib/debugobjects.c:502 debug_print_object+0xb8/0x100
-> ...
-> [   12.255251] Call trace:
-> [   12.255305]  debug_print_object+0xb8/0x100
-> [   12.255385]  __debug_check_no_obj_freed+0x1d0/0x25c
-> [   12.255474]  debug_check_no_obj_freed+0x20/0x90
-> [   12.255555]  slab_free_freelist_hook.constprop.0+0xac/0x1b0
-> [   12.255650]  kmem_cache_free+0x1ac/0x500
-> [   12.255728]  __sk_destruct+0x140/0x2a0
-> [   12.255805]  sk_destruct+0x54/0x64
-> [   12.255877]  __sk_free+0x74/0x120
-> [   12.255944]  sk_free+0x64/0x8c
-> [   12.256009]  tcp_close+0x94/0xc0
-> [   12.256076]  inet_release+0x50/0xb0
-> [   12.256145]  __sock_release+0x44/0xbc
-> [   12.256219]  sock_close+0x18/0x30
-> [   12.256292]  __fput+0x84/0x270
-> [   12.256361]  ____fput+0x10/0x20
-> [   12.256426]  task_work_run+0x88/0xf0
-> [   12.256499]  do_exit+0x334/0xafc
-> [   12.256566]  do_group_exit+0x34/0x90
-> [   12.256634]  __arm64_sys_exit_group+0x18/0x20
-> [   12.256713]  invoke_syscall+0x48/0x114
-> [   12.256789]  el0_svc_common.constprop.0+0x60/0x11c
-> [   12.256874]  do_el0_svc+0x30/0xd0
-> [   12.256943]  el0_svc+0x48/0xc0
-> [   12.257008]  el0t_64_sync_handler+0xbc/0x13c
-> [   12.257086]  el0t_64_sync+0x18c/0x190
-> 
-> Is that a real problem or a false positive ? I didn't see that
-> without your patch series (which of course might be the whole point
-> of the series).
-> 
+So the reason the networking code does this is that it can't just do
+the old 'sync()' thing, the timers are deleted in contexts where that
+isn't valid.
 
-I think this is indeed an issue, and I'm replying to the net patch as it
-has the necessary folks Cc'd.
+Which is also afaik why the networking code does that whole "timer
+implies a refcount to the socket" and then does the
 
-The ipv4 tcp code has:
+    if (del_timer(timer))
+           sock_put()
 
-void tcp_init_xmit_timers(struct sock *sk)
-{
-	inet_csk_init_xmit_timers(sk, &tcp_write_timer, &tcp_delack_timer,
-				  &tcp_keepalive_timer);
+thing (ie if the del_timer failed - possibly because it was already
+running - you leave the refcount alone).
 
-And from the above back trace:
+So the networking code cannot do the del_timer_shutdown() for the same
+reason it cannot do the del_timer_sync(): it can't afford to wait for
+the timer to stop running.
 
-tcp_close() where I'm assuming that tcp_disconnect() or tcp_done() was
-called that both calls:
+I suspect it needs something like a new "del_timer_shutdown_async()"
+that isn't synchronous, but does that
 
-  tcp_clear_xmit_timers(sk);
+ - acts as del_timer in that it doesn't wait, and returns a success if
+it could just remove the pending case
 
-That calls:
+ - does that "mark timer for shutdown" in that success case
 
-	inet_csk_clear_xmit_timers(sk);
+or something similar.
 
-That has:
+But the networking people will know better.
 
-void inet_csk_clear_xmit_timers(struct sock *sk)
-{
-	struct inet_connection_sock *icsk = inet_csk(sk);
-
-	icsk->icsk_pending = icsk->icsk_ack.pending = 0;
-
-	sk_stop_timer(sk, &icsk->icsk_retransmit_timer);
-	sk_stop_timer(sk, &icsk->icsk_delack_timer);
-	sk_stop_timer(sk, &sk->sk_timer);
-}
-
-Where:
-
-void sk_stop_timer(struct sock *sk, struct timer_list* timer)
-{
-	if (del_timer(timer))
-		__sock_put(sk);
-}
-
-
-Hence, this is a case where we have timers that have been disabled with
-only del_timer() before the timers are freed.
-
-I think we need to update this code to squeeze in a del_timer_shutdown() to
-make sure that the timers are never restarted.
-
-There is a sk_stop_timer_sync() that I changed to use del_timer_shutdown()
-but that's only used in one file: net/mptcp/pm_netlink.c
-
--- Steve
+               Linus
