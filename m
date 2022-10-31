@@ -1,7 +1,7 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [RFC PATCHv6 6/7] ipvs: run_estimation should control the kthread tasks
-Date: Mon, 31 Oct 2022 16:56:46 +0200
-Message-ID: <20221031145647.156930-7-ja@ssi.bg>
+Subject: [RFC PATCHv6 7/7] ipvs: debug the tick time
+Date: Mon, 31 Oct 2022 16:56:47 +0200
+Message-ID: <20221031145647.156930-8-ja@ssi.bg>
 References: <20221031145647.156930-1-ja@ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -12,115 +12,94 @@ Content-Type: text/plain; charset="us-ascii"
 To: Jiri Wiesner <jwiesner@suse.de>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
-Change the run_estimation flag to start/stop the kthread tasks.
+Just for testing print the tick time every minute
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- Documentation/networking/ipvs-sysctl.rst |  4 ++--
- include/net/ip_vs.h                      |  6 +++--
- net/netfilter/ipvs/ip_vs_ctl.c           | 29 +++++++++++++++++++++++-
- net/netfilter/ipvs/ip_vs_est.c           |  2 +-
- 4 files changed, 35 insertions(+), 6 deletions(-)
+ net/netfilter/ipvs/ip_vs_est.c | 28 ++++++++++++++++++++++++++--
+ 1 file changed, 26 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
-index 1b778705d706..3fb5fa142eef 100644
---- a/Documentation/networking/ipvs-sysctl.rst
-+++ b/Documentation/networking/ipvs-sysctl.rst
-@@ -324,8 +324,8 @@ run_estimation - BOOLEAN
- 	0 - disabled
- 	not 0 - enabled (default)
- 
--	If disabled, the estimation will be stop, and you can't see
--	any update on speed estimation data.
-+	If disabled, the estimation will be suspended and kthread tasks
-+	stopped.
- 
- 	You can always re-enable estimation by setting this value to 1.
- 	But be careful, the first estimation after re-enable is not
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 0a745b626cc8..1afb7ec8d537 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1591,8 +1591,10 @@ void ip_vs_est_kthread_stop(struct ip_vs_est_kt_data *kd);
- static inline void ip_vs_est_stopped_recalc(struct netns_ipvs *ipvs)
- {
- #ifdef CONFIG_SYSCTL
--	ipvs->est_stopped = ipvs->est_cpulist_valid &&
--			    cpumask_empty(sysctl_est_cpulist(ipvs));
-+	/* Stop tasks while cpulist is empty or if disabled with flag */
-+	ipvs->est_stopped = !sysctl_run_estimation(ipvs) ||
-+			    (ipvs->est_cpulist_valid &&
-+			     cpumask_empty(sysctl_est_cpulist(ipvs)));
- #endif
- }
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 38df3ee655ed..c9f598505642 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2056,6 +2056,32 @@ static int ipvs_proc_est_nice(struct ctl_table *table, int write,
- 	return ret;
- }
- 
-+static int ipvs_proc_run_estimation(struct ctl_table *table, int write,
-+				    void *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	struct netns_ipvs *ipvs = table->extra2;
-+	int *valp = table->data;
-+	int val = *valp;
-+	int ret;
-+
-+	struct ctl_table tmp_table = {
-+		.data = &val,
-+		.maxlen = sizeof(int),
-+		.mode = table->mode,
-+	};
-+
-+	ret = proc_dointvec(&tmp_table, write, buffer, lenp, ppos);
-+	if (write && ret >= 0) {
-+		mutex_lock(&ipvs->est_mutex);
-+		if (*valp != val) {
-+			*valp = val;
-+			ip_vs_est_reload_start(ipvs);
-+		}
-+		mutex_unlock(&ipvs->est_mutex);
-+	}
-+	return ret;
-+}
-+
- /*
-  *	IPVS sysctl table (under the /proc/sys/net/ipv4/vs/)
-  *	Do not change order or insert new entries without
-@@ -2230,7 +2256,7 @@ static struct ctl_table vs_vars[] = {
- 		.procname	= "run_estimation",
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
-+		.proc_handler	= ipvs_proc_run_estimation,
- 	},
- 	{
- 		.procname	= "est_cpulist",
-@@ -4323,6 +4349,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
- 	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
- 	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
- 	ipvs->sysctl_run_estimation = 1;
-+	tbl[idx].extra2 = ipvs;
- 	tbl[idx++].data = &ipvs->sysctl_run_estimation;
- 
- 	ipvs->est_cpulist_valid = 0;
 diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index 91eb0f1f8a00..526100976d59 100644
+index 526100976d59..4489a3dbad1e 100644
 --- a/net/netfilter/ipvs/ip_vs_est.c
 +++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -212,7 +212,7 @@ static int ip_vs_estimation_kthread(void *data)
- 				kd->est_timer = now;
- 		}
+@@ -147,7 +147,14 @@ static void ip_vs_tick_estimation(struct ip_vs_est_kt_data *kd, int row)
+ {
+ 	struct ip_vs_est_tick_data *td;
+ 	int cid;
+-
++	u64 ns = 0;
++	static int used_row = -1;
++	static int pass;
++
++	if (used_row < 0)
++		used_row = row;
++	if (row == used_row && !kd->id && !(pass & 31))
++		ns = ktime_get_ns();
+ 	rcu_read_lock();
+ 	td = rcu_dereference(kd->ticks[row]);
+ 	if (!td)
+@@ -164,6 +171,16 @@ static void ip_vs_tick_estimation(struct ip_vs_est_kt_data *kd, int row)
  
--		if (sysctl_run_estimation(ipvs) && kd->tick_len[row])
-+		if (kd->tick_len[row])
- 			ip_vs_tick_estimation(kd, row);
+ out:
+ 	rcu_read_unlock();
++	if (row == used_row && !kd->id && !(pass++ & 31)) {
++		static int ncpu;
++
++		ns = ktime_get_ns() - ns;
++		if (!ncpu)
++			ncpu = num_possible_cpus();
++		pr_info("tick time: %lluns for %d CPUs, %d ests, %d chains, chain_max=%d\n",
++			(unsigned long long)ns, ncpu, kd->tick_len[row],
++			IPVS_EST_TICK_CHAINS, kd->chain_max);
++	}
+ }
  
- 		row++;
+ static int ip_vs_estimation_kthread(void *data)
+@@ -637,7 +654,7 @@ static int ip_vs_est_calc_limits(struct netns_ipvs *ipvs, int *chain_max)
+ 	int i, loops, ntest;
+ 	s32 min_est = 0;
+ 	ktime_t t1, t2;
+-	s64 diff, val;
++	s64 diff = 0, val;
+ 	int max = 8;
+ 	int ret = 1;
+ 
+@@ -702,6 +719,8 @@ static int ip_vs_est_calc_limits(struct netns_ipvs *ipvs, int *chain_max)
+ 	}
+ 
+ out:
++	pr_info("calc: chain_max=%d, single est=%dns, diff=%d, loops=%d, ntest=%d\n",
++		max, min_est, (int)diff, loops, ntest);
+ 	if (s)
+ 		hlist_del_init(&s->est.list);
+ 	*chain_max = max;
+@@ -737,6 +756,7 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
+ 	int id, row, cid, delay;
+ 	bool last, last_td;
+ 	int chain_max;
++	u64 ns = 0;
+ 	int step;
+ 
+ 	if (!ip_vs_est_calc_limits(ipvs, &chain_max))
+@@ -770,6 +790,8 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
+ 	 */
+ 	delay = IPVS_EST_NTICKS;
+ 
++	ns = ktime_get_ns();
++
+ next_delay:
+ 	delay--;
+ 	if (delay < 0)
+@@ -856,6 +878,8 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
+ 	goto walk_chain;
+ 
+ end_dequeue:
++	ns = ktime_get_ns() - ns;
++	pr_info("dequeue: %lluns\n", (unsigned long long)ns);
+ 	/* All estimators removed while calculating ? */
+ 	if (!ipvs->est_kt_count)
+ 		goto unlock;
 -- 
 2.38.1
 
