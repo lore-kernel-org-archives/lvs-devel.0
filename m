@@ -1,210 +1,400 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [RFC PATCHv6 0/7] ipvs: Use kthreads for stats
-Date: Mon, 31 Oct 2022 16:56:40 +0200
-Message-ID: <20221031145647.156930-1-ja@ssi.bg>
+Subject: [RFC PATCHv6 5/7] ipvs: add est_cpulist and est_nice sysctl vars
+Date: Mon, 31 Oct 2022 16:56:45 +0200
+Message-ID: <20221031145647.156930-6-ja@ssi.bg>
+References: <20221031145647.156930-1-ja@ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20221031145647.156930-1-ja@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Jiri Wiesner <jwiesner@suse.de>
 Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
-	Hello,
+Allow the kthreads for stats to be configured for
+specific cpulist (isolation) and niceness (scheduling
+priority).
 
-	Posting v6 (release candidate 1). New patch
-inserted at 3th position. Patch 7 just for debugging,
-do not apply if not needed. 
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ Documentation/networking/ipvs-sysctl.rst |  20 ++++
+ include/net/ip_vs.h                      |  55 +++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c           | 143 ++++++++++++++++++++++-
+ net/netfilter/ipvs/ip_vs_est.c           |  11 +-
+ 4 files changed, 226 insertions(+), 3 deletions(-)
 
-	This patchset implements stats estimation in
-kthread context. Simple tests do not show any problem.
-
-	Overview of the basic concepts. More in the
-commit messages...
-
-RCU Locking:
-
-- As stats are now RCU-locked, tot_stats, svc and dest which
-hold estimator structures are now always freed from RCU
-callback. This ensures RCU grace period after the
-ip_vs_stop_estimator() call.
-
-Kthread data:
-
-- every kthread works over its own data structure and all
-such structures are attached to array. For now we limit
-kthreads depending on the number of CPUs.
-
-- even while there can be a kthread structure, its task
-may not be running, eg. before first service is added or
-while the sysctl var is set to an empty cpulist or
-when run_estimation is 0.
-
-- the allocated kthread context may grow from 1 to 50
-allocated structures for ticks which saves memory for
-setups with small number of estimators
-
-- a task and its structure may be released if all
-estimators are unlinked from its chains, leaving the
-slot in the array empty
-
-- every kthread data structure allows limited number
-of estimators. Kthread 0 is also used to initially
-calculate the number of estimators to allow in every
-chain considering a sub-100 microsecond cond_resched
-rate. This number can be from 1 to hundreds.
-
-- kthread 0 has an additional job of optimizing the
-adding of estimators: they are first added in
-temp list (est_temp_list) and later kthread 0
-distributes them to other kthreads. The optimization
-is based on the fact that newly added estimator
-should be estimated after 2 seconds, so we have the
-time to offload the adding to chain from controlling
-process to kthread 0.
-
-- to add new estimators we use the last added kthread
-context (est_add_ktid). The new estimators are linked to
-the chains just before the estimated one, based on add_row.
-This ensures their estimation will start after 2 seconds.
-If estimators are added in bursts, common case if all
-services and dests are initially configured, we may
-spread the estimators to more chains. This will reduce
-the chain imbalance.
-
-	There are things that I don't like but for now
-I don't have a better idea for them:
-
-- calculation of chain_max can go wrong, depending
-on the current load, CPU speed, memory speeds, running in
-VM, whether tested estimators are in CPU cache, even if
-we are doing it in SCHED_FIFO mode or with BH disabled.
-I expect such noise to be insignificant but who knows.
-
-- ip_vs_stop_estimator is not a simple unlinking of
-list node, we spend cycles to account for the removed
-estimator
-
-- the relinking does not preserve the delay for all
-estimators. To solve it, we would need to pre-allocate
-kthread data for all threads and then to enqueue stats in
-parallel.
-
-- __ip_vs_mutex is global mutex for all netns. But it
-protects hash tables that are still global ones.
-
-
-Changes in v6:
-Patch 4 (was 3 in v5):
-* while ests are in est_temp_list use est->ktrow as delay (offset
-  from est_row) to apply on enqueue, initially or later when estimators
-  are relinked. By this way we try to preserve the current timer delay
-  on relinking. If there is no space in the desired time slot, the
-  initial delay can be reduced, while on relinking the delay can be
-  increased. Still, this is far from perfect and the relinking
-  continues to apply wrong delay for some of the ests while its goal
-  is still to fill kthreads data one by one.
-* ip_vs_est_calc_limits() now relinks the entries trying to preserve
-  the delay, ests with lowest delay will get higher chance to
-  preserve it
-* add_row is now not updated (it is wrong on relinking) but will continue
-  to be used as starting position for the bit searching, so logic is
-  preserved
-* while relinking try to keep tot_stats in kt0, we do not want to keep
-  some kthread 1..N just for it
-* ip_vs_est_calc_limits() now performs 12 tests but sleeps for 20ms
-  on every 4 tests to make sure CPU speed is increased
-Patch 3:
-* new patch that converts per-cpu counters to u64_stats_t
-
-Changes in v5:
-Patch 4 (was 3 in v4):
-* use ip_vs_est_max_threads() helper
-Patch 3 (was 2 in v4):
-* kthread 0 now disables BH instead of using SCHED_FIFO mode,
-  this should work because now we perform less number of repeated
-  test over pre-allocated kd->calc_stats structure. Use
-  cache_factor = 4 to approximate the time non-cached (due to large
-  number) per-cpu stats are estimated compared to the cached data
-  we estimate in calc phase. This needs to be tested with
-  different number of CPUs and NUMA nodes.
-* limit max threads using the formula 4 * Number of CPUs, not on rlimit
-* remove _len suffix from vars like chain_max_len, tick_max_len,
-  est_chain_max_len
-Patch 2:
-* new patch that adds functions for stats allocations
-
-Changes in v4:
-Patch 2:
-* kthread 0 can start with calculation phase in SCHED_FIFO mode
-  to determine chain_max_len suitable for 100us cond_resched
-  rate and 12% of 40ms CPU usage in a tick. Current value of
-  IPVS_EST_TICK_CHAINS=48 determines tick time of 4.8ms (i.e.
-  in units of 100us) which is 12% of max tick time of 40ms.
-  The question is how reliable will be such calculation test.
-* est_calc_phase indicates a mode where we dequeue estimators
-  from kthreads, apply new chain_max_len and enqueue again
-  all estimators to kthreads, done by kthread 0
-* est->ktid now can be -1 to indicate est is in est_temp_list
-  ready to be distributed to kthread by kt 0, done in
-  ip_vs_est_drain_temp_list(). kthread 0 data is now released
-  only after the data for others kthreads
-* ip_vs_start_estimator was not setting ret = 0
-* READ_ONCE not needed for volatile jiffies
-Patch 3:
-* restrict cpulist based on the cpus_allowed of
-  process that assigns cpulist, not on cpu_possible_mask
-* change of cpulist will trigger calc phase
-Patch 5:
-* print message every minute, not 2 seconds
-
-Changes in v3:
-Patch 2:
-* calculate chain_max_len (was IPVS_EST_CHAIN_DEPTH) but
-  it needs further tuning based on real estimation test
-* est_max_threads set from rlimit(RLIMIT_NPROC). I don't
-  see analog to get_ucounts_value() to get the max value.
-* the atomic bitop for td->present is not needed,
-  remove it
-* start filling based on est_row after 2 ticks are
-  fully allocated. As 2/50 is 4% this can be increased
-  more.
-
-Changes in v2:
-Patch 2:
-* kd->mutex is gone, cond_resched rate determined by
-  IPVS_EST_CHAIN_DEPTH
-* IPVS_EST_MAX_COUNT is a hard limit now
-* kthread data is now 1-50 allocated tick structures,
-  each containing heads for limited chains. Bitmaps
-  should allow faster access. We avoid large
-  allocations for structs.
-* as the td->present bitmap is shared, use atomic bitops
-* ip_vs_start_estimator now returns error code
-* _bh locking removed from stats->lock
-* bump arg is gone from ip_vs_est_reload_start
-* prepare for upcoming changes that remove _irq
-  from u64_stats_fetch_begin_irq/u64_stats_fetch_retry_irq
-* est_add_ktid is now always valid
-Patch 3:
-* use .. in est_nice docs
-
-Julian Anastasov (7):
-  ipvs: add rcu protection to stats
-  ipvs: use common functions for stats allocation
-  ipvs: use u64_stats_t for the per-cpu counters
-  ipvs: use kthreads for stats estimation
-  ipvs: add est_cpulist and est_nice sysctl vars
-  ipvs: run_estimation should control the kthread tasks
-  ipvs: debug the tick time
-
- Documentation/networking/ipvs-sysctl.rst |  24 +-
- include/net/ip_vs.h                      | 154 +++-
- net/netfilter/ipvs/ip_vs_core.c          |  40 +-
- net/netfilter/ipvs/ip_vs_ctl.c           | 448 ++++++++---
- net/netfilter/ipvs/ip_vs_est.c           | 902 +++++++++++++++++++++--
- 5 files changed, 1383 insertions(+), 185 deletions(-)
-
+diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
+index 387fda80f05f..1b778705d706 100644
+--- a/Documentation/networking/ipvs-sysctl.rst
++++ b/Documentation/networking/ipvs-sysctl.rst
+@@ -129,6 +129,26 @@ drop_packet - INTEGER
+ 	threshold. When the mode 3 is set, the always mode drop rate
+ 	is controlled by the /proc/sys/net/ipv4/vs/am_droprate.
+ 
++est_cpulist - CPULIST
++	Allowed	CPUs for estimation kthreads
++
++	Syntax: standard cpulist format
++	empty list - stop kthread tasks and estimation
++	default - the system's housekeeping CPUs for kthreads
++
++	Example:
++	"all": all possible CPUs
++	"0-N": all possible CPUs, N denotes last CPU number
++	"0,1-N:1/2": first and all CPUs with odd number
++	"": empty list
++
++est_nice - INTEGER
++	default 0
++	Valid range: -20 (more favorable) .. 19 (less favorable)
++
++	Niceness value to use for the estimation kthreads (scheduling
++	priority)
++
+ expire_nodest_conn - BOOLEAN
+ 	- 0 - disabled (default)
+ 	- not 0 - enabled
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 9c02840bc7c9..0a745b626cc8 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -29,6 +29,7 @@
+ #include <net/netfilter/nf_conntrack.h>
+ #endif
+ #include <net/net_namespace.h>		/* Netw namespace */
++#include <linux/sched/isolation.h>
+ 
+ #define IP_VS_HDR_INVERSE	1
+ #define IP_VS_HDR_ICMP		2
+@@ -365,6 +366,9 @@ struct ip_vs_cpu_stats {
+ 	struct u64_stats_sync   syncp;
+ };
+ 
++/* Default nice for estimator kthreads */
++#define IPVS_EST_NICE		0
++
+ /* IPVS statistics objects */
+ struct ip_vs_estimator {
+ 	struct hlist_node	list;
+@@ -995,6 +999,12 @@ struct netns_ipvs {
+ 	int			sysctl_schedule_icmp;
+ 	int			sysctl_ignore_tunneled;
+ 	int			sysctl_run_estimation;
++#ifdef CONFIG_SYSCTL
++	cpumask_var_t		sysctl_est_cpulist;	/* kthread cpumask */
++	int			est_cpulist_valid;	/* cpulist set */
++	int			sysctl_est_nice;	/* kthread nice */
++	int			est_stopped;		/* stop tasks */
++#endif
+ 
+ 	/* ip_vs_lblc */
+ 	int			sysctl_lblc_expiration;
+@@ -1148,6 +1158,19 @@ static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_run_estimation;
+ }
+ 
++static inline const struct cpumask *sysctl_est_cpulist(struct netns_ipvs *ipvs)
++{
++	if (ipvs->est_cpulist_valid)
++		return ipvs->sysctl_est_cpulist;
++	else
++		return housekeeping_cpumask(HK_TYPE_KTHREAD);
++}
++
++static inline int sysctl_est_nice(struct netns_ipvs *ipvs)
++{
++	return ipvs->sysctl_est_nice;
++}
++
+ #else
+ 
+ static inline int sysctl_sync_threshold(struct netns_ipvs *ipvs)
+@@ -1245,6 +1268,16 @@ static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
+ 	return 1;
+ }
+ 
++static inline const struct cpumask *sysctl_est_cpulist(struct netns_ipvs *ipvs)
++{
++	return housekeeping_cpumask(HK_TYPE_KTHREAD);
++}
++
++static inline int sysctl_est_nice(struct netns_ipvs *ipvs)
++{
++	return IPVS_EST_NICE;
++}
++
+ #endif
+ 
+ /* IPVS core functions
+@@ -1555,6 +1588,28 @@ int ip_vs_est_kthread_start(struct netns_ipvs *ipvs,
+ 			    struct ip_vs_est_kt_data *kd);
+ void ip_vs_est_kthread_stop(struct ip_vs_est_kt_data *kd);
+ 
++static inline void ip_vs_est_stopped_recalc(struct netns_ipvs *ipvs)
++{
++#ifdef CONFIG_SYSCTL
++	ipvs->est_stopped = ipvs->est_cpulist_valid &&
++			    cpumask_empty(sysctl_est_cpulist(ipvs));
++#endif
++}
++
++static inline bool ip_vs_est_stopped(struct netns_ipvs *ipvs)
++{
++#ifdef CONFIG_SYSCTL
++	return ipvs->est_stopped;
++#else
++	return false;
++#endif
++}
++
++static inline int ip_vs_est_max_threads(struct netns_ipvs *ipvs)
++{
++	return max(1U, 4 * cpumask_weight(sysctl_est_cpulist(ipvs)));
++}
++
+ /* Various IPVS packet transmitters (from ip_vs_xmit.c) */
+ int ip_vs_null_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		    struct ip_vs_protocol *pp, struct ip_vs_iphdr *iph);
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index c41a5392edc9..38df3ee655ed 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -263,7 +263,7 @@ static void est_reload_work_handler(struct work_struct *work)
+ 		/* New config ? Stop kthread tasks */
+ 		if (genid != genid_done)
+ 			ip_vs_est_kthread_stop(kd);
+-		if (!kd->task) {
++		if (!kd->task && !ip_vs_est_stopped(ipvs)) {
+ 			/* Do not start kthreads above 0 in calc phase */
+ 			if ((!id || !ipvs->est_calc_phase) &&
+ 			    ip_vs_est_kthread_start(ipvs, kd) < 0)
+@@ -1940,6 +1940,122 @@ proc_do_sync_ports(struct ctl_table *table, int write,
+ 	return rc;
+ }
+ 
++static int ipvs_proc_est_cpumask_set(struct ctl_table *table, void *buffer)
++{
++	struct netns_ipvs *ipvs = table->extra2;
++	cpumask_var_t *valp = table->data;
++	cpumask_var_t newmask;
++	int ret;
++
++	if (!zalloc_cpumask_var(&newmask, GFP_KERNEL))
++		return -ENOMEM;
++
++	ret = cpulist_parse(buffer, newmask);
++	if (ret)
++		goto out;
++
++	mutex_lock(&ipvs->est_mutex);
++
++	if (!ipvs->est_cpulist_valid) {
++		if (!zalloc_cpumask_var(valp, GFP_KERNEL)) {
++			ret = -ENOMEM;
++			goto unlock;
++		}
++		ipvs->est_cpulist_valid = 1;
++	}
++	cpumask_and(newmask, newmask, &current->cpus_mask);
++	cpumask_copy(*valp, newmask);
++	/* est_max_threads may depend on cpulist size */
++	ipvs->est_max_threads = ip_vs_est_max_threads(ipvs);
++	ipvs->est_calc_phase = 1;
++	ip_vs_est_reload_start(ipvs);
++
++unlock:
++	mutex_unlock(&ipvs->est_mutex);
++
++out:
++	free_cpumask_var(newmask);
++	return ret;
++}
++
++static int ipvs_proc_est_cpumask_get(struct ctl_table *table, void *buffer,
++				     size_t size)
++{
++	struct netns_ipvs *ipvs = table->extra2;
++	cpumask_var_t *valp = table->data;
++	struct cpumask *mask;
++	int ret;
++
++	mutex_lock(&ipvs->est_mutex);
++
++	if (ipvs->est_cpulist_valid)
++		mask = *valp;
++	else
++		mask = (struct cpumask *)housekeeping_cpumask(HK_TYPE_KTHREAD);
++	ret = scnprintf(buffer, size, "%*pbl\n", cpumask_pr_args(mask));
++
++	mutex_unlock(&ipvs->est_mutex);
++
++	return ret;
++}
++
++static int ipvs_proc_est_cpulist(struct ctl_table *table, int write,
++				 void *buffer, size_t *lenp, loff_t *ppos)
++{
++	int ret;
++
++	/* Ignore both read and write(append) if *ppos not 0 */
++	if (*ppos || !*lenp) {
++		*lenp = 0;
++		return 0;
++	}
++	if (write) {
++		/* proc_sys_call_handler() appends terminator */
++		ret = ipvs_proc_est_cpumask_set(table, buffer);
++		if (ret >= 0)
++			*ppos += *lenp;
++	} else {
++		/* proc_sys_call_handler() allocates 1 byte for terminator */
++		ret = ipvs_proc_est_cpumask_get(table, buffer, *lenp + 1);
++		if (ret >= 0) {
++			*lenp = ret;
++			*ppos += *lenp;
++			ret = 0;
++		}
++	}
++	return ret;
++}
++
++static int ipvs_proc_est_nice(struct ctl_table *table, int write,
++			      void *buffer, size_t *lenp, loff_t *ppos)
++{
++	struct netns_ipvs *ipvs = table->extra2;
++	int *valp = table->data;
++	int val = *valp;
++	int ret;
++
++	struct ctl_table tmp_table = {
++		.data = &val,
++		.maxlen = sizeof(int),
++		.mode = table->mode,
++	};
++
++	ret = proc_dointvec(&tmp_table, write, buffer, lenp, ppos);
++	if (write && ret >= 0) {
++		if (val < MIN_NICE || val > MAX_NICE) {
++			ret = -EINVAL;
++		} else {
++			mutex_lock(&ipvs->est_mutex);
++			if (*valp != val) {
++				*valp = val;
++				ip_vs_est_reload_start(ipvs);
++			}
++			mutex_unlock(&ipvs->est_mutex);
++		}
++	}
++	return ret;
++}
++
+ /*
+  *	IPVS sysctl table (under the /proc/sys/net/ipv4/vs/)
+  *	Do not change order or insert new entries without
+@@ -2116,6 +2232,18 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "est_cpulist",
++		.maxlen		= NR_CPUS,	/* unused */
++		.mode		= 0644,
++		.proc_handler	= ipvs_proc_est_cpulist,
++	},
++	{
++		.procname	= "est_nice",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= ipvs_proc_est_nice,
++	},
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	{
+ 		.procname	= "debug_level",
+@@ -4134,6 +4262,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	INIT_DELAYED_WORK(&ipvs->defense_work, defense_work_handler);
+ 	INIT_DELAYED_WORK(&ipvs->expire_nodest_conn_work,
+ 			  expire_nodest_conn_handler);
++	ipvs->est_stopped = 0;
+ 
+ 	if (!net_eq(net, &init_net)) {
+ 		tbl = kmemdup(vs_vars, sizeof(vs_vars), GFP_KERNEL);
+@@ -4195,6 +4324,15 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
+ 	ipvs->sysctl_run_estimation = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_run_estimation;
++
++	ipvs->est_cpulist_valid = 0;
++	tbl[idx].extra2 = ipvs;
++	tbl[idx++].data = &ipvs->sysctl_est_cpulist;
++
++	ipvs->sysctl_est_nice = IPVS_EST_NICE;
++	tbl[idx].extra2 = ipvs;
++	tbl[idx++].data = &ipvs->sysctl_est_nice;
++
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	/* Global sysctls must be ro in non-init netns */
+ 	if (!net_eq(net, &init_net))
+@@ -4234,6 +4372,9 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
+ 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
+ 	ip_vs_stop_estimator(ipvs, &ipvs->tot_stats->s);
+ 
++	if (ipvs->est_cpulist_valid)
++		free_cpumask_var(ipvs->sysctl_est_cpulist);
++
+ 	if (!net_eq(net, &init_net))
+ 		kfree(ipvs->sysctl_tbl);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index c134f9466dc6..91eb0f1f8a00 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -57,6 +57,9 @@
+   - kthread contexts are created and attached to array
+   - the kthread tasks are started when first service is added, before that
+     the total stats are not estimated
++  - when configuration (cpulist/nice) is changed, the tasks are restarted
++    by work (est_reload_work)
++  - kthread tasks are stopped while the cpulist is empty
+   - the kthread context holds lists with estimators (chains) which are
+     processed every 2 seconds
+   - as estimators can be added dynamically and in bursts, we try to spread
+@@ -229,6 +232,7 @@ void ip_vs_est_reload_start(struct netns_ipvs *ipvs)
+ 	/* Ignore reloads before first service is added */
+ 	if (!ipvs->enable)
+ 		return;
++	ip_vs_est_stopped_recalc(ipvs);
+ 	/* Bump the kthread configuration genid */
+ 	atomic_inc(&ipvs->est_genid);
+ 	queue_delayed_work(system_long_wq, &ipvs->est_reload_work, 0);
+@@ -259,6 +263,9 @@ int ip_vs_est_kthread_start(struct netns_ipvs *ipvs,
+ 		goto out;
+ 	}
+ 
++	set_user_nice(kd->task, sysctl_est_nice(ipvs));
++	set_cpus_allowed_ptr(kd->task, sysctl_est_cpulist(ipvs));
++
+ 	pr_info("starting estimator thread %d...\n", kd->id);
+ 	wake_up_process(kd->task);
+ 
+@@ -334,7 +341,7 @@ static int ip_vs_est_add_kthread(struct netns_ipvs *ipvs)
+ 	}
+ 
+ 	/* Start kthread tasks only when services are present */
+-	if (ipvs->enable) {
++	if (ipvs->enable && !ip_vs_est_stopped(ipvs)) {
+ 		ret = ip_vs_est_kthread_start(ipvs, kd);
+ 		if (ret < 0)
+ 			goto out;
+@@ -475,7 +482,7 @@ int ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
+ 	int ret;
+ 
+ 	if (!ipvs->est_max_threads && ipvs->enable)
+-		ipvs->est_max_threads = 4 * num_possible_cpus();
++		ipvs->est_max_threads = ip_vs_est_max_threads(ipvs);
+ 
+ 	est->ktid = -1;
+ 	est->ktrow = IPVS_EST_NTICKS - 1;	/* Initial delay */
 -- 
 2.38.1
 
