@@ -1,92 +1,191 @@
-From: Zhengchao Shao <shaozhengchao@huawei.com>
-Subject: [PATCH net,v2 1/2] ipvs: fix WARNING in __ip_vs_cleanup_batch()
-Date: Mon, 31 Oct 2022 20:07:04 +0800
-Message-ID: <20221031120705.230059-2-shaozhengchao@huawei.com>
-References: <20221031120705.230059-1-shaozhengchao@huawei.com>
+From: Julian Anastasov <ja@ssi.bg>
+Subject: [RFC PATCHv6 3/7] ipvs: use u64_stats_t for the per-cpu counters
+Date: Mon, 31 Oct 2022 16:56:43 +0200
+Message-ID: <20221031145647.156930-4-ja@ssi.bg>
+References: <20221031145647.156930-1-ja@ssi.bg>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <20221031120705.230059-1-shaozhengchao@huawei.com>
+Content-Transfer-Encoding: 8bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+In-Reply-To: <20221031145647.156930-1-ja@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, horms@verge.net.au, ja@ssi.bg, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, davem@davemloft.net, edumazet@google.com, kuba@kernel.org, pabeni@redhat.com
-Cc: hans.schillstrom@ericsson.com, ebiederm@xmission.com, weiyongjun1@huawei.com, yuehaibing@huawei.com, shaozhengchao@huawei.com
+To: Jiri Wiesner <jwiesner@suse.de>
+Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org, yunhong-cgl jiang <xintian1976@gmail.com>, dust.li@linux.alibaba.com
 
-During the initialization of ip_vs_conn_net_init(), if file ip_vs_conn
-or ip_vs_conn_sync fails to be created, the initialization is successful
-by default. Therefore, the ip_vs_conn or ip_vs_conn_sync file doesn't
-be found during the remove.
+Use the provided u64_stats_t type to avoid
+load/store tearing.
 
-The following is the stack information:
-name 'ip_vs_conn_sync'
-WARNING: CPU: 3 PID: 9 at fs/proc/generic.c:712
-remove_proc_entry+0x389/0x460
-Modules linked in:
-Workqueue: netns cleanup_net
-RIP: 0010:remove_proc_entry+0x389/0x460
-Call Trace:
-<TASK>
-__ip_vs_cleanup_batch+0x7d/0x120
-ops_exit_list+0x125/0x170
-cleanup_net+0x4ea/0xb00
-process_one_work+0x9bf/0x1710
-worker_thread+0x665/0x1080
-kthread+0x2e4/0x3a0
-ret_from_fork+0x1f/0x30
-</TASK>
-
-Fixes: 61b1ab4583e2 ("IPVS: netns, add basic init per netns.")
-Signed-off-by: Zhengchao Shao <shaozhengchao@huawei.com>
+Fixes: 316580b69d0a ("u64_stats: provide u64_stats_t type")
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_conn.c | 26 +++++++++++++++++++++-----
- 1 file changed, 21 insertions(+), 5 deletions(-)
+ include/net/ip_vs.h             | 10 +++++-----
+ net/netfilter/ipvs/ip_vs_core.c | 30 +++++++++++++++---------------
+ net/netfilter/ipvs/ip_vs_ctl.c  | 10 +++++-----
+ net/netfilter/ipvs/ip_vs_est.c  | 20 ++++++++++----------
+ 4 files changed, 35 insertions(+), 35 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 8c04bb57dd6f..fa548c9e6aae 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1447,20 +1447,36 @@ int __net_init ip_vs_conn_net_init(struct netns_ipvs *ipvs)
- {
- 	atomic_set(&ipvs->conn_count, 0);
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index e5582c01a4a3..a4d44138c2a8 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -351,11 +351,11 @@ struct ip_vs_seq {
  
--	proc_create_net("ip_vs_conn", 0, ipvs->net->proc_net,
--			&ip_vs_conn_seq_ops, sizeof(struct ip_vs_iter_state));
--	proc_create_net("ip_vs_conn_sync", 0, ipvs->net->proc_net,
--			&ip_vs_conn_sync_seq_ops,
--			sizeof(struct ip_vs_iter_state));
-+#ifdef CONFIG_PROC_FS
-+	if (!proc_create_net("ip_vs_conn", 0, ipvs->net->proc_net,
-+			     &ip_vs_conn_seq_ops,
-+			     sizeof(struct ip_vs_iter_state)))
-+		goto err_conn;
-+
-+	if (!proc_create_net("ip_vs_conn_sync", 0, ipvs->net->proc_net,
-+			     &ip_vs_conn_sync_seq_ops,
-+			     sizeof(struct ip_vs_iter_state)))
-+		goto err_conn_sync;
-+#endif
-+
- 	return 0;
-+
-+#ifdef CONFIG_PROC_FS
-+err_conn_sync:
-+	remove_proc_entry("ip_vs_conn", ipvs->net->proc_net);
-+err_conn:
-+	return -ENOMEM;
-+#endif
- }
+ /* counters per cpu */
+ struct ip_vs_counters {
+-	__u64		conns;		/* connections scheduled */
+-	__u64		inpkts;		/* incoming packets */
+-	__u64		outpkts;	/* outgoing packets */
+-	__u64		inbytes;	/* incoming bytes */
+-	__u64		outbytes;	/* outgoing bytes */
++	u64_stats_t	conns;		/* connections scheduled */
++	u64_stats_t	inpkts;		/* incoming packets */
++	u64_stats_t	outpkts;	/* outgoing packets */
++	u64_stats_t	inbytes;	/* incoming bytes */
++	u64_stats_t	outbytes;	/* outgoing bytes */
+ };
+ /* Stats per cpu */
+ struct ip_vs_cpu_stats {
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index fcdaef1fcccf..2fcc26507d69 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -132,21 +132,21 @@ ip_vs_in_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
  
- void __net_exit ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs)
- {
- 	/* flush all the connection entries first */
- 	ip_vs_conn_flush(ipvs);
-+#ifdef CONFIG_PROC_FS
- 	remove_proc_entry("ip_vs_conn", ipvs->net->proc_net);
- 	remove_proc_entry("ip_vs_conn_sync", ipvs->net->proc_net);
-+#endif
- }
+ 		s = this_cpu_ptr(dest->stats.cpustats);
+ 		u64_stats_update_begin(&s->syncp);
+-		s->cnt.inpkts++;
+-		s->cnt.inbytes += skb->len;
++		u64_stats_inc(&s->cnt.inpkts);
++		u64_stats_add(&s->cnt.inbytes, skb->len);
+ 		u64_stats_update_end(&s->syncp);
  
- int __init ip_vs_conn_init(void)
+ 		svc = rcu_dereference(dest->svc);
+ 		s = this_cpu_ptr(svc->stats.cpustats);
+ 		u64_stats_update_begin(&s->syncp);
+-		s->cnt.inpkts++;
+-		s->cnt.inbytes += skb->len;
++		u64_stats_inc(&s->cnt.inpkts);
++		u64_stats_add(&s->cnt.inbytes, skb->len);
+ 		u64_stats_update_end(&s->syncp);
+ 
+ 		s = this_cpu_ptr(ipvs->tot_stats->s.cpustats);
+ 		u64_stats_update_begin(&s->syncp);
+-		s->cnt.inpkts++;
+-		s->cnt.inbytes += skb->len;
++		u64_stats_inc(&s->cnt.inpkts);
++		u64_stats_add(&s->cnt.inbytes, skb->len);
+ 		u64_stats_update_end(&s->syncp);
+ 
+ 		local_bh_enable();
+@@ -168,21 +168,21 @@ ip_vs_out_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
+ 
+ 		s = this_cpu_ptr(dest->stats.cpustats);
+ 		u64_stats_update_begin(&s->syncp);
+-		s->cnt.outpkts++;
+-		s->cnt.outbytes += skb->len;
++		u64_stats_inc(&s->cnt.outpkts);
++		u64_stats_add(&s->cnt.outbytes, skb->len);
+ 		u64_stats_update_end(&s->syncp);
+ 
+ 		svc = rcu_dereference(dest->svc);
+ 		s = this_cpu_ptr(svc->stats.cpustats);
+ 		u64_stats_update_begin(&s->syncp);
+-		s->cnt.outpkts++;
+-		s->cnt.outbytes += skb->len;
++		u64_stats_inc(&s->cnt.outpkts);
++		u64_stats_add(&s->cnt.outbytes, skb->len);
+ 		u64_stats_update_end(&s->syncp);
+ 
+ 		s = this_cpu_ptr(ipvs->tot_stats->s.cpustats);
+ 		u64_stats_update_begin(&s->syncp);
+-		s->cnt.outpkts++;
+-		s->cnt.outbytes += skb->len;
++		u64_stats_inc(&s->cnt.outpkts);
++		u64_stats_add(&s->cnt.outbytes, skb->len);
+ 		u64_stats_update_end(&s->syncp);
+ 
+ 		local_bh_enable();
+@@ -200,17 +200,17 @@ ip_vs_conn_stats(struct ip_vs_conn *cp, struct ip_vs_service *svc)
+ 
+ 	s = this_cpu_ptr(cp->dest->stats.cpustats);
+ 	u64_stats_update_begin(&s->syncp);
+-	s->cnt.conns++;
++	u64_stats_inc(&s->cnt.conns);
+ 	u64_stats_update_end(&s->syncp);
+ 
+ 	s = this_cpu_ptr(svc->stats.cpustats);
+ 	u64_stats_update_begin(&s->syncp);
+-	s->cnt.conns++;
++	u64_stats_inc(&s->cnt.conns);
+ 	u64_stats_update_end(&s->syncp);
+ 
+ 	s = this_cpu_ptr(ipvs->tot_stats->s.cpustats);
+ 	u64_stats_update_begin(&s->syncp);
+-	s->cnt.conns++;
++	u64_stats_inc(&s->cnt.conns);
+ 	u64_stats_update_end(&s->syncp);
+ 
+ 	local_bh_enable();
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index ec6db864ac36..5f9cc2e7ba71 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2335,11 +2335,11 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
+ 
+ 		do {
+ 			start = u64_stats_fetch_begin(&u->syncp);
+-			conns = u->cnt.conns;
+-			inpkts = u->cnt.inpkts;
+-			outpkts = u->cnt.outpkts;
+-			inbytes = u->cnt.inbytes;
+-			outbytes = u->cnt.outbytes;
++			conns = u64_stats_read(&u->cnt.conns);
++			inpkts = u64_stats_read(&u->cnt.inpkts);
++			outpkts = u64_stats_read(&u->cnt.outpkts);
++			inbytes = u64_stats_read(&u->cnt.inbytes);
++			outbytes = u64_stats_read(&u->cnt.outbytes);
+ 		} while (u64_stats_fetch_retry(&u->syncp, start));
+ 
+ 		seq_printf(seq, "%3X %8LX %8LX %8LX %16LX %16LX\n",
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 9a1a7af6a186..f53150d82a92 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -67,11 +67,11 @@ static void ip_vs_read_cpu_stats(struct ip_vs_kstats *sum,
+ 		if (add) {
+ 			do {
+ 				start = u64_stats_fetch_begin(&s->syncp);
+-				conns = s->cnt.conns;
+-				inpkts = s->cnt.inpkts;
+-				outpkts = s->cnt.outpkts;
+-				inbytes = s->cnt.inbytes;
+-				outbytes = s->cnt.outbytes;
++				conns = u64_stats_read(&s->cnt.conns);
++				inpkts = u64_stats_read(&s->cnt.inpkts);
++				outpkts = u64_stats_read(&s->cnt.outpkts);
++				inbytes = u64_stats_read(&s->cnt.inbytes);
++				outbytes = u64_stats_read(&s->cnt.outbytes);
+ 			} while (u64_stats_fetch_retry(&s->syncp, start));
+ 			sum->conns += conns;
+ 			sum->inpkts += inpkts;
+@@ -82,11 +82,11 @@ static void ip_vs_read_cpu_stats(struct ip_vs_kstats *sum,
+ 			add = true;
+ 			do {
+ 				start = u64_stats_fetch_begin(&s->syncp);
+-				sum->conns = s->cnt.conns;
+-				sum->inpkts = s->cnt.inpkts;
+-				sum->outpkts = s->cnt.outpkts;
+-				sum->inbytes = s->cnt.inbytes;
+-				sum->outbytes = s->cnt.outbytes;
++				sum->conns = u64_stats_read(&s->cnt.conns);
++				sum->inpkts = u64_stats_read(&s->cnt.inpkts);
++				sum->outpkts = u64_stats_read(&s->cnt.outpkts);
++				sum->inbytes = u64_stats_read(&s->cnt.inbytes);
++				sum->outbytes = u64_stats_read(&s->cnt.outbytes);
+ 			} while (u64_stats_fetch_retry(&s->syncp, start));
+ 		}
+ 	}
 -- 
-2.17.1
+2.38.1
+
 
