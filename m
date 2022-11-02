@@ -1,47 +1,42 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH net,v2 0/2] fix WARNING when removing file in ipvs
-Date: Mon, 31 Oct 2022 17:05:02 +0200 (EET)
-Message-ID: <9dfd739c-f7b-e758-9b46-f79ba9cec82@ssi.bg>
-References: <20221031120705.230059-1-shaozhengchao@huawei.com>
+From: "Jason A. Donenfeld" <Jason@zx2c4.com>
+Subject: Re: [PATCH] ipvs: use explicitly signed chars
+Date: Wed, 2 Nov 2022 03:44:38 +0100
+Message-ID: <CAHmME9phbAJEbogBVZqmmb+44_V--rG_L5hAZCWeJVJy6-W7ag@mail.gmail.com>
+References: <20221026123216.1575440-1-Jason@zx2c4.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <20221031120705.230059-1-shaozhengchao@huawei.com>
+Return-path: <netdev-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=zx2c4.com; s=20210105;
+        t=1667357091;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=UBDll3aYfc54ok2vGI+aLXjCxJBzqPNfmky2K1csXd8=;
+        b=QABkUn6/Oy6XT6TEVj0zIC+t0OIaIi74m1DlLjhBC2UUC0vf6H2NixR2DkmiZJFVpxxB0L
+        it7OVWJtXOS5RpjPqRhvapbKSIjYp27zXwKIO9++vCWDVWdw+cB63qydiMMkhDgmRIbXhp
+        Cd+/vmigoMADd0ec/gewUBqXPVU+gc4=
+In-Reply-To: <20221026123216.1575440-1-Jason@zx2c4.com>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Zhengchao Shao <shaozhengchao@huawei.com>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Simon Horman <horms@verge.net.au>, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, weiyongjun1@huawei.com, yuehaibing@huawei.com
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, stable@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
 
+Hi Pablo,
 
-	Hello,
+On Wed, Oct 26, 2022 at 2:34 PM Jason A. Donenfeld <Jason@zx2c4.com> wrote:
+>
+> The `char` type with no explicit sign is sometimes signed and sometimes
+> unsigned. This code will break on platforms such as arm, where char is
+> unsigned. So mark it here as explicitly signed, so that the
+> todrop_counter decrement and subsequent comparison is correct.
+>
+> Cc: Pablo Neira Ayuso <pablo@netfilter.org>
+> Cc: Julian Anastasov <ja@ssi.bg>
+> Cc: Simon Horman <horms@verge.net.au>
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
 
-On Mon, 31 Oct 2022, Zhengchao Shao wrote:
+Wondering if you planned on taking this into nf.git for 6.1?
 
-> When using strace for fault injection, some warnings are trigged when
-> files are removed. This is because the file fails to be created during
-> the initialization, but the initialization continues normally. Therefore,
-> a WARNING is reported when the file is removed during the exit.
-> 
-> ---
-> v2: add macro isolation
-> ---
-> Zhengchao Shao (2):
->   ipvs: fix WARNING in __ip_vs_cleanup_batch()
->   ipvs: fix WARNING in ip_vs_app_net_cleanup()
-
-	Both patches in v2 look good to me, thanks!
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
->  net/netfilter/ipvs/ip_vs_app.c  | 10 ++++++++--
->  net/netfilter/ipvs/ip_vs_conn.c | 26 +++++++++++++++++++++-----
->  2 files changed, 29 insertions(+), 7 deletions(-)
-> 
-> -- 
-> 2.17.1
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
-
+Thanks,
+Jason
