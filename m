@@ -1,44 +1,35 @@
 From: Pablo Neira Ayuso <pablo@netfilter.org>
-Subject: Re: [PATCH net-next] ipvs: fix type warning in do_div() on 32 bit
-Date: Tue, 13 Dec 2022 12:09:28 +0100
-Message-ID: <Y5hdaLpctttoNTLx@salvia>
-References: <20221213032037.844517-1-kuba@kernel.org>
+Subject: Re: [PATCH v2] ipvs: add a 'default' case in do_ip_vs_set_ctl()
+Date: Tue, 13 Dec 2022 12:28:24 +0100
+Message-ID: <Y5hh2NPmmkmD4VTt@salvia>
+References: <272315c8-5e3b-e8ca-3c7f-68eccd0f2430@nfschina.com>
+ <20221212074351.26440-1-liqiong@nfschina.com>
+ <c3ca27a-f923-6eb6-bbe4-5e99b65c5940@ssi.bg>
 Mime-Version: 1.0
 Return-path: <lvs-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20221213032037.844517-1-kuba@kernel.org>
+In-Reply-To: <c3ca27a-f923-6eb6-bbe4-5e99b65c5940@ssi.bg>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, edumazet@google.com, pabeni@redhat.com, horms@verge.net.au, ja@ssi.bg, kadlec@netfilter.org, fw@strlen.de, jwiesner@suse.de, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Li Qiong <liqiong@nfschina.com>, Simon Horman <horms@verge.net.au>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, kernel-janitors@vger.kernel.org, coreteam@netfilter.org, Yu Zhe <yuzhe@nfschina.com>
 
-Hi Jakub,
-
-On Mon, Dec 12, 2022 at 07:20:37PM -0800, Jakub Kicinski wrote:
-> 32 bit platforms without 64bit div generate the following warning:
+On Mon, Dec 12, 2022 at 04:20:41PM +0200, Julian Anastasov wrote:
 > 
-> net/netfilter/ipvs/ip_vs_est.c: In function 'ip_vs_est_calc_limits':
-> include/asm-generic/div64.h:222:35: warning: comparison of distinct pointer types lacks a cast
->   222 |         (void)(((typeof((n)) *)0) == ((uint64_t *)0));  \
->       |                                   ^~
-> net/netfilter/ipvs/ip_vs_est.c:694:17: note: in expansion of macro 'do_div'
->   694 |                 do_div(val, loops);
->       |                 ^~~~~~
-> include/asm-generic/div64.h:222:35: warning: comparison of distinct pointer types lacks a cast
->   222 |         (void)(((typeof((n)) *)0) == ((uint64_t *)0));  \
->       |                                   ^~
-> net/netfilter/ipvs/ip_vs_est.c:700:33: note: in expansion of macro 'do_div'
->   700 |                                 do_div(val, min_est);
->       |                                 ^~~~~~
+> 	Hello,
 > 
-> first argument of do_div() should be unsigned. We can't just cast
-> as do_div() updates it as well, so we need an lval.
-> Make val unsigned in the first place, all paths check that the value
-> they assign to this variables are non-negative already.
+> On Mon, 12 Dec 2022, Li Qiong wrote:
+> 
+> > It is better to return the default switch case with
+> > '-EINVAL', in case new commands are added. otherwise,
+> > return a uninitialized value of ret.
+> > 
+> > Signed-off-by: Li Qiong <liqiong@nfschina.com>
+> > Reviewed-by: Simon Horman <horms@verge.net.au>
+> 
+> 	Change looks correct to me for -next, thanks!
+> 
+> Acked-by: Julian Anastasov <ja@ssi.bg>
 
-Your patch is very similar to what Julian posted:
-
-https://patchwork.ozlabs.org/project/netfilter-devel/patch/20221212195845.101844-1-ja@ssi.bg/
-
-Thanks.
+Applied, thanks.
