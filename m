@@ -1,217 +1,68 @@
-From: kernel test robot <lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: [linux-next:master] BUILD REGRESSION
- 39ab32797f072eaf86b1faa7384ac73450684110
-Date: Wed, 14 Dec 2022 02:28:39 +0800
-Message-ID: <6398c457.hhPKRJ7/7EGjTQb/%lkp@intel.com>
+From: Arnd Bergmann <arnd@kernel.org>
+Subject: [PATCH] ipvs: use div_s64 for signed division
+Date: Thu, 15 Dec 2022 18:03:15 +0100
+Message-ID: <20221215170324.2579685-1-arnd@kernel.org>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <amd-gfx-bounces-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
- d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
- t=1670956162; x=1702492162;
- h=date:from:to:cc:subject:message-id:mime-version:
- content-transfer-encoding;
- bh=4QPyqb1pvMS81Vaf94Si1tAEYfCAa6LBQX4nMxoXvDU=;
- b=fblDVHrs8d00dwnWC+708+IXf39IazFulRiiVNwey2IwwrsgIa/QHU51
- 1C0C94AYulw+pincAzC1q0ohP01rg01+i3mylADC9Arotc+dokkEHh0jR
- 1VhvGZVS1iNJjzo86cQEl7wa0+yJdAGCJ5i5DGT7qcO09F60sywPJQLfi
- 4fbhrxxM4KtXby6QYVI5dL4Q8Mzqli8ZQ/cErDfSfgaXmC3GT4cJf26sp
- ugfpj2FKL0RDm7P7T4hrthsWGczgKXiJXhw5n1cA5KXrIT+HgxLc4dyC1
- XjvCw01blt9DtvApZOmY9psuDyf86kkIvsl55wzqLsL+fYpnW6Q/mDt8X w==;
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/amd-gfx>,
- <mailto:amd-gfx-request-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/amd-gfx>
-List-Post: <mailto:amd-gfx-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org>
-List-Help: <mailto:amd-gfx-request-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/amd-gfx>,
- <mailto:amd-gfx-request-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org?subject=subscribe>
-Errors-To: amd-gfx-bounces-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org
-Sender: "amd-gfx" <amd-gfx-bounces-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org>
+Content-Transfer-Encoding: 8bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1671123811;
+        bh=u0KSgYTkV2U77f0/Zntx9WBbO1DjEIog/utLYU5Ak/4=;
+        h=From:To:Cc:Subject:Date:From;
+        b=uPCpdBejXEKb1/niS//KWNiuPjmrUe1FJe5QumUGvx4HgWxbjb7Zsn6cxqre9O5BD
+         6QqoBj/k4yW83WGU7u6CZ5BxEq0VXuoyIWs/8+IMwGL5KVl+XMf8eMOnHfm5SiUz+j
+         84XwJuSlhvWlk48/K+mPBp9onxWU7Wc2IZOZ5iuRjpW3m8RZgcb1/N3y0P+9Z8por8
+         htWMh4HOZKV9fKrnOGuPJ2jsWvOuZNnnYngISc0ia1gb6RMgR0OeFqyh5MZ2nM8t98
+         CTh+f1yJN20qOIsUdbOMb5HpWhpquzbbYvbE3tlJ8jBSgu0wpoGvGqhttGSlv7g+vU
+         66ovFs7tXj6xg==
+List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ntfs3-cunTk1MwBs/YUNznpcFYbw@public.gmane.org, linux-iio-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, amd-gfx-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org, lvs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux Memory Management List <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>, linux-arm-msm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-omap-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linuxppc-dev-uLR06cmDAlY/bJ5BZ2RsiQ@public.gmane.org
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>
+Cc: Arnd Bergmann <arnd@arndb.de>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Jiri Wiesner <jwiesner@suse.de>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git master
-branch HEAD: 39ab32797f072eaf86b1faa7384ac73450684110  Add linux-next specific files for 20221213
+From: Arnd Bergmann <arnd@arndb.de>
 
-Error/Warning reports:
+do_div() is only well-behaved for positive numbers, and now warns
+when the first argument is a an s64:
 
-https://lore.kernel.org/oe-kbuild-all/202211142244.sGkXbWO2-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202211150003.LkfYS4HE-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202211242120.MzZVGULn-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202211282102.QUr7HHrW-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202211301634.cejLlTJP-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202212020520.0OkMIno3-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202212040713.rVney9e8-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202212051759.cEv6fyHy-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202212111423.XqZdM0Kt-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202212132047.wvOyEPMA-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-https://lore.kernel.org/oe-kbuild-all/202212132110.CvE3HjB8-lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
+net/netfilter/ipvs/ip_vs_est.c: In function 'ip_vs_est_calc_limits':
+include/asm-generic/div64.h:222:35: error: comparison of distinct pointer types lacks a cast [-Werror]
+  222 |         (void)(((typeof((n)) *)0) == ((uint64_t *)0));  \
+      |                                   ^~
+net/netfilter/ipvs/ip_vs_est.c:694:17: note: in expansion of macro 'do_div'
+  694 |                 do_div(val, loops);
 
-Error/Warning: (recently discovered and may have been fixed)
+Convert to using the more appropriate div_s64(), which also
+simplifies the code a bit.
 
-Documentation/networking/devlink/etas_es58x.rst: WARNING: document isn't included in any toctree
-arch/powerpc/kernel/kvm_emul.o: warning: objtool: kvm_template_end(): can't find starting instruction
-arch/powerpc/kernel/optprobes_head.o: warning: objtool: optprobe_template_end(): can't find starting instruction
-drivers/gpu/drm/amd/amdgpu/../display/dc/irq/dcn201/irq_service_dcn201.c:139:43: warning: unused variable 'dmub_outbox_irq_info_funcs' [-Wunused-const-variable]
-drivers/gpu/drm/amd/amdgpu/../display/dc/irq/dcn201/irq_service_dcn201.c:40:20: warning: no previous prototype for 'to_dal_irq_source_dcn201' [-Wmissing-prototypes]
-drivers/gpu/drm/amd/amdgpu/../display/dc/irq/dcn201/irq_service_dcn201.c:40:20: warning: no previous prototype for function 'to_dal_irq_source_dcn201' [-Wmissing-prototypes]
-drivers/regulator/tps65219-regulator.c:310:32: warning: parameter 'dev' set but not used [-Wunused-but-set-parameter]
-drivers/regulator/tps65219-regulator.c:310:60: warning: parameter 'dev' set but not used [-Wunused-but-set-parameter]
-drivers/regulator/tps65219-regulator.c:370:26: sparse:    int
-drivers/regulator/tps65219-regulator.c:370:26: sparse:    struct regulator_dev *[assigned] rdev
-drivers/regulator/tps65219-regulator.c:370:26: warning: ordered comparison of pointer with integer zero [-Wextra]
-include/linux/compiler_types.h:357:45: error: call to '__compiletime_assert_270' declared with attribute error: BUILD_BUG_ON failed: sizeof(priv_tbl->probs) % 16
-net/netfilter/ipvs/ip_vs_est.c:688:17: sparse:    signed long long *
-net/netfilter/ipvs/ip_vs_est.c:688:17: sparse:    unsigned long long [usertype] *
+Fixes: 705dd3444081 ("ipvs: use kthreads for stats estimation")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ net/netfilter/ipvs/ip_vs_est.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-Unverified Error/Warning (likely false positive, please contact us if interested):
-
-drivers/i2c/busses/i2c-qcom-geni.c:1028:28: sparse: sparse: symbol 'i2c_master_hub' was not declared. Should it be static?
-drivers/iio/adc/twl6030-gpadc.c:955:16-23: duplicated argument to & or |
-drivers/iio/light/tsl2563.c:768:8-33: WARNING: Threaded IRQ with no primary handler requested without IRQF_ONESHOT (unless it is nested IRQ)
-fs/xfs/xfs_iomap.c:86:29: sparse: sparse: symbol 'xfs_iomap_page_ops' was not declared. Should it be static?
-
-Error/Warning ids grouped by kconfigs:
-
-gcc_recent_errors
-|-- alpha-allyesconfig
-|   |-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- arc-allyesconfig
-|   |-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- arm-allyesconfig
-|   |-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- arm-randconfig-s032-20221213
-|   `-- include-linux-compiler_types.h:error:call-to-__compiletime_assert_NNN-declared-with-attribute-error:BUILD_BUG_ON-failed:sizeof(priv_tbl-probs)
-|-- arm64-allyesconfig
-|   |-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- i386-allyesconfig
-|   |-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- i386-randconfig-s002
-|   `-- fs-xfs-xfs_iomap.c:sparse:sparse:symbol-xfs_iomap_page_ops-was-not-declared.-Should-it-be-static
-|-- ia64-buildonly-randconfig-r001-20221213
-|   `-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|-- ia64-randconfig-c034-20221213
-|   `-- drivers-iio-light-tsl2563.c:WARNING:Threaded-IRQ-with-no-primary-handler-requested-without-IRQF_ONESHOT-(unless-it-is-nested-IRQ)
-|-- ia64-randconfig-s043-20221213
-|   |-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|   `-- fs-xfs-xfs_iomap.c:sparse:sparse:symbol-xfs_iomap_page_ops-was-not-declared.-Should-it-be-static
-|-- loongarch-buildonly-randconfig-r005-20221213
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- m68k-allmodconfig
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- m68k-allyesconfig
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- m68k-randconfig-r004-20221213
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- microblaze-randconfig-c043-20221213
-|   `-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|-- microblaze-randconfig-s052-20221213
-|   `-- fs-xfs-xfs_iomap.c:sparse:sparse:symbol-xfs_iomap_page_ops-was-not-declared.-Should-it-be-static
-|-- mips-allyesconfig
-|   |-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-to_dal_irq_source_dcn201
-|   |-- drivers-regulator-tps65219-regulator.c:warning:ordered-comparison-of-pointer-with-integer-zero
-clang_recent_errors
-|-- arm64-randconfig-r023-20221213
-|   |-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:no-previous-prototype-for-function-to_dal_irq_source_dcn201
-|   `-- drivers-gpu-drm-amd-amdgpu-..-display-dc-irq-dcn201-irq_service_dcn201.c:warning:unused-variable-dmub_outbox_irq_info_funcs
-|-- hexagon-randconfig-r002-20221213
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-|-- i386-allmodconfig
-|   `-- drivers-regulator-tps65219-regulator.c:warning:parameter-dev-set-but-not-used
-`-- powerpc-randconfig-r026-20221213
-    |-- arch-powerpc-kernel-kvm_emul.o:warning:objtool:kvm_template_end():can-t-find-starting-instruction
-    |-- arch-powerpc-kernel-optprobes_head.o:warning:objtool:optprobe_template_end():can-t-find-starting-instruction
-    `-- arch-powerpc-kernel-prom_init.o:warning:objtool:prom_init:unannotated-intra-function-call
-
-elapsed time: 738m
-
-configs tested: 64
-configs skipped: 7
-
-gcc tested configs:
-um                             i386_defconfig
-um                           x86_64_defconfig
-powerpc                           allnoconfig
-x86_64                            allnoconfig
-x86_64                              defconfig
-x86_64                           allyesconfig
-m68k                          sun3x_defconfig
-sh                             espt_defconfig
-x86_64                               rhel-8.3
-x86_64                           rhel-8.3-bpf
-m68k                       m5275evb_defconfig
-x86_64                           rhel-8.3-syz
-arc                  randconfig-r043-20221213
-x86_64                         rhel-8.3-kunit
-x86_64                           rhel-8.3-kvm
-arm                  randconfig-r046-20221213
-powerpc                     rainier_defconfig
-i386                          randconfig-c001
-i386                          randconfig-a001
-i386                          randconfig-a003
-i386                          randconfig-a014
-arm                          iop32x_defconfig
-i386                          randconfig-a012
-i386                          randconfig-a016
-powerpc                        cell_defconfig
-i386                          randconfig-a005
-sh                               j2_defconfig
-sh                          sdk7780_defconfig
-sh                      rts7751r2d1_defconfig
-sh                           se7712_defconfig
-mips                         bigsur_defconfig
-sh                               allmodconfig
-mips                             allyesconfig
-i386                                defconfig
-powerpc                          allmodconfig
-x86_64                          rhel-8.3-rust
-x86_64                          rhel-8.3-func
-x86_64                    rhel-8.3-kselftests
-arm                                 defconfig
-m68k                             allyesconfig
-m68k                             allmodconfig
-i386                             allyesconfig
-arc                              allyesconfig
-alpha                            allyesconfig
-arm64                            allyesconfig
-arm                              allyesconfig
-
-clang tested configs:
-arm                       mainstone_defconfig
-mips                           ip28_defconfig
-hexagon              randconfig-r041-20221213
-riscv                randconfig-r042-20221213
-powerpc                     kilauea_defconfig
-arm                   milbeaut_m10v_defconfig
-hexagon              randconfig-r045-20221213
-s390                 randconfig-r044-20221213
-powerpc                     mpc512x_defconfig
-i386                          randconfig-a013
-i386                          randconfig-a002
-i386                          randconfig-a004
-mips                     cu1830-neo_defconfig
-i386                          randconfig-a015
-i386                          randconfig-a011
-powerpc                     tqm8560_defconfig
-i386                          randconfig-a006
-arm                       netwinder_defconfig
-
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index ce2a1549b304..dbc32f8cf1f9 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -691,15 +691,13 @@ static int ip_vs_est_calc_limits(struct netns_ipvs *ipvs, int *chain_max)
+ 		}
+ 		if (diff >= NSEC_PER_SEC)
+ 			continue;
+-		val = diff;
+-		do_div(val, loops);
++		val = div_s64(diff, loops);
+ 		if (!min_est || val < min_est) {
+ 			min_est = val;
+ 			/* goal: 95usec per chain */
+ 			val = 95 * NSEC_PER_USEC;
+ 			if (val >= min_est) {
+-				do_div(val, min_est);
+-				max = (int)val;
++				max = div_s64(val, min_est);
+ 			} else {
+ 				max = 1;
+ 			}
 -- 
-0-DAY CI Kernel Test Service
-https://01.org/lkp
+2.35.1
+
