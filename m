@@ -1,27 +1,27 @@
 From: Horatiu Vultur <horatiu.vultur@microchip.com>
-Subject: Re: [PATCH nf-next v2 2/4] ipvs: Consistently use array_size() in
- ip_vs_conn_init()
-Date: Tue, 11 Apr 2023 13:34:50 +0200
-Message-ID: <20230411113450.ky4jp6jsptvlzrtx@soft-dev3-1>
+Subject: Re: [PATCH nf-next v2 1/4] ipvs: Update width of source for
+ ip_vs_sync_conn_options
+Date: Tue, 11 Apr 2023 13:39:24 +0200
+Message-ID: <20230411113924.6vhibpekifbyjksg@soft-dev3-1>
 References: <20230409-ipvs-cleanup-v2-0-204cd17da708@kernel.org>
- <20230409-ipvs-cleanup-v2-2-204cd17da708@kernel.org>
+ <20230409-ipvs-cleanup-v2-1-204cd17da708@kernel.org>
 Mime-Version: 1.0
 Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=microchip.com; i=@microchip.com; q=dns/txt; s=mchp;
-  t=1681212901; x=1712748901;
+  t=1681213168; x=1712749168;
   h=date:from:to:cc:subject:message-id:references:
    mime-version:in-reply-to;
-  bh=rCpRx8zrwmywWfUW2YxiAvJ2J1O/eklkQmlDcOmjNXM=;
-  b=fhAKYZ41cHJHfbwdsQOuVm7zIQzmM1Y7NfILam97srLnMnG72a/IPMyU
-   MUOpFIDgdIKKA8C5LdKLc5Ioz366hcEP0y4fCWCEnEd19VKwVPUQf3dtq
-   1Gs933GhUxvw0vargbJM0E8xIeReVkfw3XkqxW/XcSVNBa2F9e7l28xUf
-   GlZxFmxv+JRIe4jKjtMkA9jGPAnZ2dFnxvFDb9H0xfbEWMSXFfHsmgEv/
-   UtKsHU/VGNa8BGi7UCVfTzbYWuLT04FtyBfAACya6KPbcwOfABlqSuJhN
-   PDRTI78UeJKJIpwDGfGIIEGz/qGu4OLEZ0pZKFK+06yAEP5iZHZ9ysP8q
-   w==;
+  bh=r0qqKJ4nkKA5foVlIR6UdPxdVJCmJH48u1jn3damEbI=;
+  b=uZYuTWCIEWnEC0sOGBQ8RZ+N0eFdgVENhtdxUWxpsmPWXmahzx0MAJWL
+   qLXyQTGU0+mvw42N8MzE9/W1Z2qgcAxriiyXGeyoSicDLoTBszKgKHjw/
+   JVo6R1ZuHSxVxENp599IhuLKmOTEK7E4slh0JSpA/pZWWcoKG2l7FkMOe
+   Qa+gemf4x/f9eZPGk8nYlrymSKFM6ILHKMgdE8p+ozAf71n7QLn9/Dgws
+   1Wz8oX9UfLj9XMcyyjRfanPo7m8UAUbQ1c/FStW5jOpUX8WLBPgpybjx8
+   BN5myXbvd5OTfmyDHh8jvfuQjwjKcjYr8OzTy0OYzZJLlGpvuzlvJA5UI
+   A==;
 Content-Disposition: inline
-In-Reply-To: <20230409-ipvs-cleanup-v2-2-204cd17da708@kernel.org>
+In-Reply-To: <20230409-ipvs-cleanup-v2-1-204cd17da708@kernel.org>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -30,13 +30,43 @@ Cc: Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozse
 
 The 04/11/2023 09:10, Simon Horman wrote:
 > 
-> Consistently use array_size() to calculate the size of ip_vs_conn_tab
-> in bytes.
+> In ip_vs_sync_conn_v0() copy is made to struct ip_vs_sync_conn_options.
+> That structure looks like this:
 > 
-> Flagged by Coccinelle:
->  WARNING: array_size is already used (line 1498) to compute the same size
+> struct ip_vs_sync_conn_options {
+>         struct ip_vs_seq        in_seq;
+>         struct ip_vs_seq        out_seq;
+> };
 > 
-> No functional change intended.
+> The source of the copy is the in_seq field of struct ip_vs_conn.  Whose
+> type is struct ip_vs_seq. Thus we can see that the source - is not as
+> wide as the amount of data copied, which is the width of struct
+> ip_vs_sync_conn_option.
+> 
+> The copy is safe because the next field in is another struct ip_vs_seq.
+> Make use of struct_group() to annotate this.
+> 
+> Flagged by gcc-13 as:
+> 
+>  In file included from ./include/linux/string.h:254,
+>                   from ./include/linux/bitmap.h:11,
+>                   from ./include/linux/cpumask.h:12,
+>                   from ./arch/x86/include/asm/paravirt.h:17,
+>                   from ./arch/x86/include/asm/cpuid.h:62,
+>                   from ./arch/x86/include/asm/processor.h:19,
+>                   from ./arch/x86/include/asm/timex.h:5,
+>                   from ./include/linux/timex.h:67,
+>                   from ./include/linux/time32.h:13,
+>                   from ./include/linux/time.h:60,
+>                   from ./include/linux/stat.h:19,
+>                   from ./include/linux/module.h:13,
+>                   from net/netfilter/ipvs/ip_vs_sync.c:38:
+>  In function 'fortify_memcpy_chk',
+>      inlined from 'ip_vs_sync_conn_v0' at net/netfilter/ipvs/ip_vs_sync.c:606:3:
+>  ./include/linux/fortify-string.h:529:25: error: call to '__read_overflow2_field' declared with attribute warning: detected read beyond size of field (2nd parameter); maybe use struct_group()? [-Werror=attribute-warning]
+>    529 |                         __read_overflow2_field(q_size_field, size);
+>        |
+> 
 > Compile tested only.
 
 Reviewed-by: Horatiu Vultur <horatiu.vultur@microchip.com>
@@ -45,48 +75,42 @@ Reviewed-by: Horatiu Vultur <horatiu.vultur@microchip.com>
 > Signed-off-by: Simon Horman <horms@kernel.org>
 > ---
 > v2
-> * Retain division by 1024, which was lost in v1
+> * Correct spelling of 'conn' in subject
 > ---
->  net/netfilter/ipvs/ip_vs_conn.c | 12 ++++++------
->  1 file changed, 6 insertions(+), 6 deletions(-)
+>  include/net/ip_vs.h             | 6 ++++--
+>  net/netfilter/ipvs/ip_vs_sync.c | 2 +-
+>  2 files changed, 5 insertions(+), 3 deletions(-)
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index 13534e02346c..84d273a84dc8 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -1481,6 +1481,7 @@ void __net_exit ip_vs_conn_net_cleanup(struct netns_ipvs *ipvs)
-> 
->  int __init ip_vs_conn_init(void)
->  {
-> +       size_t tab_array_size;
->         int idx;
-> 
->         /* Compute size and mask */
-> @@ -1494,8 +1495,9 @@ int __init ip_vs_conn_init(void)
->         /*
->          * Allocate the connection hash table and initialize its list heads
+> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> index 6d71a5ff52df..e20f1f92066d 100644
+> --- a/include/net/ip_vs.h
+> +++ b/include/net/ip_vs.h
+> @@ -630,8 +630,10 @@ struct ip_vs_conn {
 >          */
-> -       ip_vs_conn_tab = vmalloc(array_size(ip_vs_conn_tab_size,
-> -                                           sizeof(*ip_vs_conn_tab)));
-> +       tab_array_size = array_size(ip_vs_conn_tab_size,
-> +                                   sizeof(*ip_vs_conn_tab));
-> +       ip_vs_conn_tab = vmalloc(tab_array_size);
->         if (!ip_vs_conn_tab)
->                 return -ENOMEM;
+>         struct ip_vs_app        *app;           /* bound ip_vs_app object */
+>         void                    *app_data;      /* Application private data */
+> -       struct ip_vs_seq        in_seq;         /* incoming seq. struct */
+> -       struct ip_vs_seq        out_seq;        /* outgoing seq. struct */
+> +       struct_group(sync_conn_opt,
+> +               struct ip_vs_seq  in_seq;       /* incoming seq. struct */
+> +               struct ip_vs_seq  out_seq;      /* outgoing seq. struct */
+> +       );
 > 
-> @@ -1508,10 +1510,8 @@ int __init ip_vs_conn_init(void)
->                 return -ENOMEM;
+>         const struct ip_vs_pe   *pe;
+>         char                    *pe_data;
+> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> index 4963fec815da..d4fe7bb4f853 100644
+> --- a/net/netfilter/ipvs/ip_vs_sync.c
+> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> @@ -603,7 +603,7 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
+>         if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
+>                 struct ip_vs_sync_conn_options *opt =
+>                         (struct ip_vs_sync_conn_options *)&s[1];
+> -               memcpy(opt, &cp->in_seq, sizeof(*opt));
+> +               memcpy(opt, &cp->sync_conn_opt, sizeof(*opt));
 >         }
 > 
-> -       pr_info("Connection hash table configured "
-> -               "(size=%d, memory=%ldKbytes)\n",
-> -               ip_vs_conn_tab_size,
-> -               (long)(ip_vs_conn_tab_size*sizeof(*ip_vs_conn_tab))/1024);
-> +       pr_info("Connection hash table configured (size=%d, memory=%zdKbytes)\n",
-> +               ip_vs_conn_tab_size / 1024, tab_array_size);
->         IP_VS_DBG(0, "Each connection entry needs %zd bytes at least\n",
->                   sizeof(struct ip_vs_conn));
-> 
+>         m->nr_conns++;
 > 
 > --
 > 2.30.2
