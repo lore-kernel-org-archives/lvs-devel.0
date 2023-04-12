@@ -1,120 +1,102 @@
-From: Horatiu Vultur <horatiu.vultur@microchip.com>
-Subject: Re: [PATCH nf-next v2 1/4] ipvs: Update width of source for
- ip_vs_sync_conn_options
-Date: Tue, 11 Apr 2023 13:39:24 +0200
-Message-ID: <20230411113924.6vhibpekifbyjksg@soft-dev3-1>
-References: <20230409-ipvs-cleanup-v2-0-204cd17da708@kernel.org>
- <20230409-ipvs-cleanup-v2-1-204cd17da708@kernel.org>
+From: Abhijeet Rastogi via B4 Relay 
+        <devnull+abhijeet.1989.gmail.com@kernel.org>
+Subject: [PATCH] ipvs: change ip_vs_conn_tab_bits range to [8,31]
+Date: Wed, 12 Apr 2023 13:49:08 -0700
+Message-ID: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
+Reply-To: <abhijeet.1989@gmail.com>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=microchip.com; i=@microchip.com; q=dns/txt; s=mchp;
-  t=1681213168; x=1712749168;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=r0qqKJ4nkKA5foVlIR6UdPxdVJCmJH48u1jn3damEbI=;
-  b=uZYuTWCIEWnEC0sOGBQ8RZ+N0eFdgVENhtdxUWxpsmPWXmahzx0MAJWL
-   qLXyQTGU0+mvw42N8MzE9/W1Z2qgcAxriiyXGeyoSicDLoTBszKgKHjw/
-   JVo6R1ZuHSxVxENp599IhuLKmOTEK7E4slh0JSpA/pZWWcoKG2l7FkMOe
-   Qa+gemf4x/f9eZPGk8nYlrymSKFM6ILHKMgdE8p+ozAf71n7QLn9/Dgws
-   1Wz8oX9UfLj9XMcyyjRfanPo7m8UAUbQ1c/FStW5jOpUX8WLBPgpybjx8
-   BN5myXbvd5OTfmyDHh8jvfuQjwjKcjYr8OzTy0OYzZJLlGpvuzlvJA5UI
-   A==;
-Content-Disposition: inline
-In-Reply-To: <20230409-ipvs-cleanup-v2-1-204cd17da708@kernel.org>
+Content-Transfer-Encoding: 7bit
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1681332552;
+        bh=N6CxG92Ed4Yn5LSSbnRciB027afcs82cjOQu+THWcO0=;
+        h=From:Date:Subject:To:Cc:Reply-To:From;
+        b=UF5C/YyP9SfpWtDmeWKN+982ajzjj6BoiCHMDIS0cSGCSgo/a56pKaRsfYDIfhhw6
+         Yw3Mnhgqz36vi98izKUlyqQCBc4qL92l7qlowAQdig4hk/oWaHJeZP88Ir+hPQRsTg
+         f52ijdMe+DrRO51YXq75Ukj07uE92UYBefjbEwOREVEzljhcSJSXqvoS8CdLDTZRnZ
+         1gZktu2W99imJqt56DTncCPLs3Wx81qwzIHuySKKQGoHxjmmbsa6Mz3x/ErLnpybl4
+         V8NJJW/ByX4xrXa4YUEu5I8XtppiOyhqjYEK4Yp5LIfLYg7/vMu+6W3NyP+Bo78N0e
+         C0PJh5/yR8q3A==
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1681332551; l=2681;
+ i=abhijeet.1989@gmail.com; s=20230412; h=from:subject:message-id;
+ bh=diB2UNBoozij8cEFsyQbJS4LF1vmwJ3a6Chw+mzNh7I=;
+ b=P+q2BDiUkpHSIUlanv0uhX+uIFT2uT4OzEwmTdXXla/nmmIrpI/IXDTzgS0FBPJ5E2k2s7yp6
+ BTzbnfMaj1vAOe9Em5PMNAMEQLfL4s9XOHYeLIGoyhXO/lySLPcoEuQ
+X-Developer-Key: i=abhijeet.1989@gmail.com; a=ed25519;
+ pk=VinODWUuJys1VAWZP2Uv9slcHekoZvxAp4RY1p5+OfU=
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Simon Horman <horms@kernel.org>
-Cc: Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, Abhijeet Rastogi <abhijeet.1989@gmail.com>
 
-The 04/11/2023 09:10, Simon Horman wrote:
-> 
-> In ip_vs_sync_conn_v0() copy is made to struct ip_vs_sync_conn_options.
-> That structure looks like this:
-> 
-> struct ip_vs_sync_conn_options {
->         struct ip_vs_seq        in_seq;
->         struct ip_vs_seq        out_seq;
-> };
-> 
-> The source of the copy is the in_seq field of struct ip_vs_conn.  Whose
-> type is struct ip_vs_seq. Thus we can see that the source - is not as
-> wide as the amount of data copied, which is the width of struct
-> ip_vs_sync_conn_option.
-> 
-> The copy is safe because the next field in is another struct ip_vs_seq.
-> Make use of struct_group() to annotate this.
-> 
-> Flagged by gcc-13 as:
-> 
->  In file included from ./include/linux/string.h:254,
->                   from ./include/linux/bitmap.h:11,
->                   from ./include/linux/cpumask.h:12,
->                   from ./arch/x86/include/asm/paravirt.h:17,
->                   from ./arch/x86/include/asm/cpuid.h:62,
->                   from ./arch/x86/include/asm/processor.h:19,
->                   from ./arch/x86/include/asm/timex.h:5,
->                   from ./include/linux/timex.h:67,
->                   from ./include/linux/time32.h:13,
->                   from ./include/linux/time.h:60,
->                   from ./include/linux/stat.h:19,
->                   from ./include/linux/module.h:13,
->                   from net/netfilter/ipvs/ip_vs_sync.c:38:
->  In function 'fortify_memcpy_chk',
->      inlined from 'ip_vs_sync_conn_v0' at net/netfilter/ipvs/ip_vs_sync.c:606:3:
->  ./include/linux/fortify-string.h:529:25: error: call to '__read_overflow2_field' declared with attribute warning: detected read beyond size of field (2nd parameter); maybe use struct_group()? [-Werror=attribute-warning]
->    529 |                         __read_overflow2_field(q_size_field, size);
->        |
-> 
-> Compile tested only.
+From: Abhijeet Rastogi <abhijeet.1989@gmail.com>
 
-Reviewed-by: Horatiu Vultur <horatiu.vultur@microchip.com>
+Current range [8, 20] is set purely due to historical reasons
+because at the time, ~1M (2^20) was considered sufficient.
 
-> 
-> Signed-off-by: Simon Horman <horms@kernel.org>
-> ---
-> v2
-> * Correct spelling of 'conn' in subject
-> ---
->  include/net/ip_vs.h             | 6 ++++--
->  net/netfilter/ipvs/ip_vs_sync.c | 2 +-
->  2 files changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-> index 6d71a5ff52df..e20f1f92066d 100644
-> --- a/include/net/ip_vs.h
-> +++ b/include/net/ip_vs.h
-> @@ -630,8 +630,10 @@ struct ip_vs_conn {
->          */
->         struct ip_vs_app        *app;           /* bound ip_vs_app object */
->         void                    *app_data;      /* Application private data */
-> -       struct ip_vs_seq        in_seq;         /* incoming seq. struct */
-> -       struct ip_vs_seq        out_seq;        /* outgoing seq. struct */
-> +       struct_group(sync_conn_opt,
-> +               struct ip_vs_seq  in_seq;       /* incoming seq. struct */
-> +               struct ip_vs_seq  out_seq;      /* outgoing seq. struct */
-> +       );
-> 
->         const struct ip_vs_pe   *pe;
->         char                    *pe_data;
-> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-> index 4963fec815da..d4fe7bb4f853 100644
-> --- a/net/netfilter/ipvs/ip_vs_sync.c
-> +++ b/net/netfilter/ipvs/ip_vs_sync.c
-> @@ -603,7 +603,7 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
->         if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
->                 struct ip_vs_sync_conn_options *opt =
->                         (struct ip_vs_sync_conn_options *)&s[1];
-> -               memcpy(opt, &cp->in_seq, sizeof(*opt));
-> +               memcpy(opt, &cp->sync_conn_opt, sizeof(*opt));
->         }
-> 
->         m->nr_conns++;
-> 
-> --
-> 2.30.2
-> 
+Previous change regarding this limit is here.
 
+Link: https://lore.kernel.org/all/86eabeb9dd62aebf1e2533926fdd13fed48bab1f.1631289960.git.aclaudi@redhat.com/T/#u
+
+Signed-off-by: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+---
+The conversation for this started at: 
+
+https://www.spinics.net/lists/netfilter/msg60995.html
+
+The upper limit for algo is any bit size less than 32, so this
+change will allow us to set bit size > 20. Today, it is common to have
+RAM available to handle greater than 2^20 connections per-host.
+
+Distros like RHEL already have higher limits set.
+---
+ net/netfilter/ipvs/Kconfig      | 4 ++--
+ net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index 271da8447b29..3e3371f8c0f9 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -44,7 +44,7 @@ config	IP_VS_DEBUG
+ 
+ config	IP_VS_TAB_BITS
+ 	int "IPVS connection table size (the Nth power of 2)"
+-	range 8 20
++	range 8 31
+ 	default 12
+ 	help
+ 	  The IPVS connection hash table uses the chaining scheme to handle
+@@ -54,7 +54,7 @@ config	IP_VS_TAB_BITS
+ 
+ 	  Note the table size must be power of 2. The table size will be the
+ 	  value of 2 to the your input number power. The number to choose is
+-	  from 8 to 20, the default number is 12, which means the table size
++	  from 8 to 31, the default number is 12, which means the table size
+ 	  is 4096. Don't input the number too small, otherwise you will lose
+ 	  performance on it. You can adapt the table size yourself, according
+ 	  to your virtual server application. It is good to set the table size
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 13534e02346c..bc0fe1a698d4 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1484,8 +1484,8 @@ int __init ip_vs_conn_init(void)
+ 	int idx;
+ 
+ 	/* Compute size and mask */
+-	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 20) {
+-		pr_info("conn_tab_bits not in [8, 20]. Using default value\n");
++	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 31) {
++		pr_info("conn_tab_bits not in [8, 31]. Using default value\n");
+ 		ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
+ 	}
+ 	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
+
+---
+base-commit: 09a9639e56c01c7a00d6c0ca63f4c7c41abe075d
+change-id: 20230412-increase_ipvs_conn_tab_bits-4322c90da216
+
+Best regards,
 -- 
-/Horatiu
+Abhijeet Rastogi <abhijeet.1989@gmail.com>
+
