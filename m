@@ -1,102 +1,70 @@
-From: Abhijeet Rastogi via B4 Relay 
-        <devnull+abhijeet.1989.gmail.com@kernel.org>
-Subject: [PATCH] ipvs: change ip_vs_conn_tab_bits range to [8,31]
-Date: Wed, 12 Apr 2023 13:49:08 -0700
-Message-ID: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
-Reply-To: <abhijeet.1989@gmail.com>
+From: Simon Horman <horms@kernel.org>
+Subject: Re: [PATCH] ipvs: change ip_vs_conn_tab_bits range to [8,31]
+Date: Thu, 13 Apr 2023 10:09:56 +0200
+Message-ID: <ZDe41Nc8BjkXVcrf@kernel.org>
+References: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1681332552;
-        bh=N6CxG92Ed4Yn5LSSbnRciB027afcs82cjOQu+THWcO0=;
-        h=From:Date:Subject:To:Cc:Reply-To:From;
-        b=UF5C/YyP9SfpWtDmeWKN+982ajzjj6BoiCHMDIS0cSGCSgo/a56pKaRsfYDIfhhw6
-         Yw3Mnhgqz36vi98izKUlyqQCBc4qL92l7qlowAQdig4hk/oWaHJeZP88Ir+hPQRsTg
-         f52ijdMe+DrRO51YXq75Ukj07uE92UYBefjbEwOREVEzljhcSJSXqvoS8CdLDTZRnZ
-         1gZktu2W99imJqt56DTncCPLs3Wx81qwzIHuySKKQGoHxjmmbsa6Mz3x/ErLnpybl4
-         V8NJJW/ByX4xrXa4YUEu5I8XtppiOyhqjYEK4Yp5LIfLYg7/vMu+6W3NyP+Bo78N0e
-         C0PJh5/yR8q3A==
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1681332551; l=2681;
- i=abhijeet.1989@gmail.com; s=20230412; h=from:subject:message-id;
- bh=diB2UNBoozij8cEFsyQbJS4LF1vmwJ3a6Chw+mzNh7I=;
- b=P+q2BDiUkpHSIUlanv0uhX+uIFT2uT4OzEwmTdXXla/nmmIrpI/IXDTzgS0FBPJ5E2k2s7yp6
- BTzbnfMaj1vAOe9Em5PMNAMEQLfL4s9XOHYeLIGoyhXO/lySLPcoEuQ
-X-Developer-Key: i=abhijeet.1989@gmail.com; a=ed25519;
- pk=VinODWUuJys1VAWZP2Uv9slcHekoZvxAp4RY1p5+OfU=
+        s=k20201202; t=1681373403;
+        bh=lMClDkMrgqgkJYaMUUXc7/mL4pKlD3f/q5HMOfhzsoY=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=NrVGILoJGNuSkcJ8ebmZ3OaXsNtuRgD3ADdYmEXq1EBGMsJ8MgbgrrQT+xre30wWb
+         sLxhmaVhLtSwCK34+4lPwOqkS+Q24SHaab5F75XpgDWl+B59vSlwa10JebA+mY3Znm
+         61p+mQ0wc9P+xmyBuJKVqPbWOJxxRNHL2mJ3avIG5TQApSy7ldImysGlgb7BJNgApn
+         Czikowyvobhpnxr0ep/w8fyH8Mvyg7d6uN51pTRchBawYK/slaTNkAzgYC62bS8vX2
+         aG4s6z1K+YkNrZdtVay8HqRzIps2JMGrYCzeTxICQp5KdczeOAWt2r7TdKAFN84DsC
+         KoxLFMjhj9M2w==
+Content-Disposition: inline
+In-Reply-To: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org, Abhijeet Rastogi <abhijeet.1989@gmail.com>
+Content-Transfer-Encoding: 7bit
+To: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-From: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+On Wed, Apr 12, 2023 at 01:49:08PM -0700, Abhijeet Rastogi via B4 Relay wrote:
+> From: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+> 
+> Current range [8, 20] is set purely due to historical reasons
+> because at the time, ~1M (2^20) was considered sufficient.
+> 
+> Previous change regarding this limit is here.
+> 
+> Link: https://lore.kernel.org/all/86eabeb9dd62aebf1e2533926fdd13fed48bab1f.1631289960.git.aclaudi@redhat.com/T/#u
+> 
+> Signed-off-by: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+> ---
 
-Current range [8, 20] is set purely due to historical reasons
-because at the time, ~1M (2^20) was considered sufficient.
+Hi Abhijeet,
 
-Previous change regarding this limit is here.
+> The conversation for this started at: 
+> 
+> https://www.spinics.net/lists/netfilter/msg60995.html
 
-Link: https://lore.kernel.org/all/86eabeb9dd62aebf1e2533926fdd13fed48bab1f.1631289960.git.aclaudi@redhat.com/T/#u
+  'The 20 bit (1m entries) ceiling exists since the original merge of ipvs
+   in 2003, so likely this was just considered "big enough" back then.'
 
-Signed-off-by: Abhijeet Rastogi <abhijeet.1989@gmail.com>
----
-The conversation for this started at: 
+Yes, that matches my recollection.
 
-https://www.spinics.net/lists/netfilter/msg60995.html
+There were probably also concerns about the viability of making
+larger allocations at the time on the kinds of systems where
+IPVS would be deployed.
 
-The upper limit for algo is any bit size less than 32, so this
-change will allow us to set bit size > 20. Today, it is common to have
-RAM available to handle greater than 2^20 connections per-host.
+On the allocation theme, I do note that 2^31 does lead to a substantial
+vmalloc allocation regardless of actual usage. Probably it would be best
+to move IPVS to use rhashtable(). But that is obviously a much more
+invasive change.
 
-Distros like RHEL already have higher limits set.
----
- net/netfilter/ipvs/Kconfig      | 4 ++--
- net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+In any case, I think this patch is an improvement on the current situation.
 
-diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-index 271da8447b29..3e3371f8c0f9 100644
---- a/net/netfilter/ipvs/Kconfig
-+++ b/net/netfilter/ipvs/Kconfig
-@@ -44,7 +44,7 @@ config	IP_VS_DEBUG
- 
- config	IP_VS_TAB_BITS
- 	int "IPVS connection table size (the Nth power of 2)"
--	range 8 20
-+	range 8 31
- 	default 12
- 	help
- 	  The IPVS connection hash table uses the chaining scheme to handle
-@@ -54,7 +54,7 @@ config	IP_VS_TAB_BITS
- 
- 	  Note the table size must be power of 2. The table size will be the
- 	  value of 2 to the your input number power. The number to choose is
--	  from 8 to 20, the default number is 12, which means the table size
-+	  from 8 to 31, the default number is 12, which means the table size
- 	  is 4096. Don't input the number too small, otherwise you will lose
- 	  performance on it. You can adapt the table size yourself, according
- 	  to your virtual server application. It is good to set the table size
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 13534e02346c..bc0fe1a698d4 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1484,8 +1484,8 @@ int __init ip_vs_conn_init(void)
- 	int idx;
- 
- 	/* Compute size and mask */
--	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 20) {
--		pr_info("conn_tab_bits not in [8, 20]. Using default value\n");
-+	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 31) {
-+		pr_info("conn_tab_bits not in [8, 31]. Using default value\n");
- 		ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
- 	}
- 	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
+Acked-by: Simon Horman <horms@kernel.org>
 
----
-base-commit: 09a9639e56c01c7a00d6c0ca63f4c7c41abe075d
-change-id: 20230412-increase_ipvs_conn_tab_bits-4322c90da216
+> 
+> The upper limit for algo is any bit size less than 32, so this
+> change will allow us to set bit size > 20. Today, it is common to have
+> RAM available to handle greater than 2^20 connections per-host.
+> 
+> Distros like RHEL already have higher limits set.
 
-Best regards,
--- 
-Abhijeet Rastogi <abhijeet.1989@gmail.com>
-
+...
