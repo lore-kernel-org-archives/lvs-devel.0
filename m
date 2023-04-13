@@ -1,26 +1,25 @@
-From: Simon Horman <horms@kernel.org>
+From: Andrea Claudi <aclaudi@redhat.com>
 Subject: Re: [PATCH] ipvs: change ip_vs_conn_tab_bits range to [8,31]
-Date: Thu, 13 Apr 2023 10:09:56 +0200
-Message-ID: <ZDe41Nc8BjkXVcrf@kernel.org>
+Date: Thu, 13 Apr 2023 12:35:43 +0200
+Message-ID: <ZDfa/wuJTp8vk+wI@renaissance-vector>
 References: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
 Mime-Version: 1.0
-Return-path: <netdev-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1681373403;
-        bh=lMClDkMrgqgkJYaMUUXc7/mL4pKlD3f/q5HMOfhzsoY=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=NrVGILoJGNuSkcJ8ebmZ3OaXsNtuRgD3ADdYmEXq1EBGMsJ8MgbgrrQT+xre30wWb
-         sLxhmaVhLtSwCK34+4lPwOqkS+Q24SHaab5F75XpgDWl+B59vSlwa10JebA+mY3Znm
-         61p+mQ0wc9P+xmyBuJKVqPbWOJxxRNHL2mJ3avIG5TQApSy7ldImysGlgb7BJNgApn
-         Czikowyvobhpnxr0ep/w8fyH8Mvyg7d6uN51pTRchBawYK/slaTNkAzgYC62bS8vX2
-         aG4s6z1K+YkNrZdtVay8HqRzIps2JMGrYCzeTxICQp5KdczeOAWt2r7TdKAFN84DsC
-         KoxLFMjhj9M2w==
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1681382151;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=itT3WRdataR3mc3HSH4d4WnSN/G47tLHOz7nmNIZqZs=;
+        b=Ka14W+C7mXhQBpZ4hCWx2JwS5mrKYtzniN3UryqRg/NzO/7mrkhuw61RnClyJov4cVaqdX
+        XMdLrFogGUeXyM5ry35mzkYvoHbqG45aNN2JG0CLo7H/AExzO8s0TAI0E7NoJiT+pzNOpS
+        pP3NM7O0iEM0AbPyvdoo3cLH3SYGjmk=
 Content-Disposition: inline
 In-Reply-To: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+To: abhijeet.1989@gmail.com
 Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
 On Wed, Apr 12, 2023 at 01:49:08PM -0700, Abhijeet Rastogi via B4 Relay wrote:
@@ -35,31 +34,9 @@ On Wed, Apr 12, 2023 at 01:49:08PM -0700, Abhijeet Rastogi via B4 Relay wrote:
 > 
 > Signed-off-by: Abhijeet Rastogi <abhijeet.1989@gmail.com>
 > ---
-
-Hi Abhijeet,
-
 > The conversation for this started at: 
 > 
 > https://www.spinics.net/lists/netfilter/msg60995.html
-
-  'The 20 bit (1m entries) ceiling exists since the original merge of ipvs
-   in 2003, so likely this was just considered "big enough" back then.'
-
-Yes, that matches my recollection.
-
-There were probably also concerns about the viability of making
-larger allocations at the time on the kinds of systems where
-IPVS would be deployed.
-
-On the allocation theme, I do note that 2^31 does lead to a substantial
-vmalloc allocation regardless of actual usage. Probably it would be best
-to move IPVS to use rhashtable(). But that is obviously a much more
-invasive change.
-
-In any case, I think this patch is an improvement on the current situation.
-
-Acked-by: Simon Horman <horms@kernel.org>
-
 > 
 > The upper limit for algo is any bit size less than 32, so this
 > change will allow us to set bit size > 20. Today, it is common to have
@@ -67,4 +44,63 @@ Acked-by: Simon Horman <horms@kernel.org>
 > 
 > Distros like RHEL already have higher limits set.
 
-...
+Hi Abhijeet,
+for the record, RHEL ships with CONFIG_IP_VS_TAB_BITS set to 12 as
+default.
+
+> ---
+>  net/netfilter/ipvs/Kconfig      | 4 ++--
+>  net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
+>  2 files changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+> index 271da8447b29..3e3371f8c0f9 100644
+> --- a/net/netfilter/ipvs/Kconfig
+> +++ b/net/netfilter/ipvs/Kconfig
+> @@ -44,7 +44,7 @@ config	IP_VS_DEBUG
+>  
+>  config	IP_VS_TAB_BITS
+>  	int "IPVS connection table size (the Nth power of 2)"
+> -	range 8 20
+> +	range 8 31
+>  	default 12
+>  	help
+>  	  The IPVS connection hash table uses the chaining scheme to handle
+> @@ -54,7 +54,7 @@ config	IP_VS_TAB_BITS
+>  
+>  	  Note the table size must be power of 2. The table size will be the
+>  	  value of 2 to the your input number power. The number to choose is
+> -	  from 8 to 20, the default number is 12, which means the table size
+> +	  from 8 to 31, the default number is 12, which means the table size
+>  	  is 4096. Don't input the number too small, otherwise you will lose
+>  	  performance on it. You can adapt the table size yourself, according
+>  	  to your virtual server application. It is good to set the table size
+> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+> index 13534e02346c..bc0fe1a698d4 100644
+> --- a/net/netfilter/ipvs/ip_vs_conn.c
+> +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> @@ -1484,8 +1484,8 @@ int __init ip_vs_conn_init(void)
+>  	int idx;
+>  
+>  	/* Compute size and mask */
+> -	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 20) {
+> -		pr_info("conn_tab_bits not in [8, 20]. Using default value\n");
+> +	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 31) {
+> +		pr_info("conn_tab_bits not in [8, 31]. Using default value\n");
+>  		ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
+>  	}
+>  	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
+> 
+> ---
+> base-commit: 09a9639e56c01c7a00d6c0ca63f4c7c41abe075d
+> change-id: 20230412-increase_ipvs_conn_tab_bits-4322c90da216
+> 
+> Best regards,
+> -- 
+> Abhijeet Rastogi <abhijeet.1989@gmail.com>
+>
+
+Looks good to me.
+
+Reviewed-by: Andrea Claudi <aclaudi@redhat.com>
+
