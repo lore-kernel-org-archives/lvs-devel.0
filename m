@@ -1,28 +1,22 @@
-From: Andrea Claudi <aclaudi@redhat.com>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH] ipvs: change ip_vs_conn_tab_bits range to [8,31]
-Date: Thu, 13 Apr 2023 12:35:43 +0200
-Message-ID: <ZDfa/wuJTp8vk+wI@renaissance-vector>
+Date: Thu, 13 Apr 2023 14:49:12 +0300 (EEST)
+Message-ID: <d2519ce3-e49b-a544-b79d-42905f4a2a9a@ssi.bg>
 References: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
 Mime-Version: 1.0
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1681382151;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=itT3WRdataR3mc3HSH4d4WnSN/G47tLHOz7nmNIZqZs=;
-        b=Ka14W+C7mXhQBpZ4hCWx2JwS5mrKYtzniN3UryqRg/NzO/7mrkhuw61RnClyJov4cVaqdX
-        XMdLrFogGUeXyM5ry35mzkYvoHbqG45aNN2JG0CLo7H/AExzO8s0TAI0E7NoJiT+pzNOpS
-        pP3NM7O0iEM0AbPyvdoo3cLH3SYGjmk=
-Content-Disposition: inline
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: abhijeet.1989@gmail.com
-Cc: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+Cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
 
-On Wed, Apr 12, 2023 at 01:49:08PM -0700, Abhijeet Rastogi via B4 Relay wrote:
+
+	Hello,
+
+On Wed, 12 Apr 2023, Abhijeet Rastogi via B4 Relay wrote:
+
 > From: Abhijeet Rastogi <abhijeet.1989@gmail.com>
 > 
 > Current range [8, 20] is set purely due to historical reasons
@@ -41,13 +35,15 @@ On Wed, Apr 12, 2023 at 01:49:08PM -0700, Abhijeet Rastogi via B4 Relay wrote:
 > The upper limit for algo is any bit size less than 32, so this
 > change will allow us to set bit size > 20. Today, it is common to have
 > RAM available to handle greater than 2^20 connections per-host.
-> 
+
+	This is not a limit of number of connections. I prefer
+not to allow value above 24 without adding checks for the
+available memory, this more concern for 32-bit. Blindly
+allocating 2^20 (1048576 pointers which is 8MB) should not
+cause OOM but selecting large value and then using this
+kernel on boxes with less memory is dangerous.
+
 > Distros like RHEL already have higher limits set.
-
-Hi Abhijeet,
-for the record, RHEL ships with CONFIG_IP_VS_TAB_BITS set to 12 as
-default.
-
 > ---
 >  net/netfilter/ipvs/Kconfig      | 4 ++--
 >  net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
@@ -98,9 +94,9 @@ default.
 > Best regards,
 > -- 
 > Abhijeet Rastogi <abhijeet.1989@gmail.com>
->
 
-Looks good to me.
+Regards
 
-Reviewed-by: Andrea Claudi <aclaudi@redhat.com>
+--
+Julian Anastasov <ja@ssi.bg>
 
