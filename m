@@ -1,154 +1,69 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: [PATCH] ipvs: change ip_vs_conn_tab_bits range to [8,31]
-Date: Fri, 14 Apr 2023 16:59:42 +0300 (EEST)
-Message-ID: <2bc64d6d-6aa7-1477-0cd-8a41e68fcc5@ssi.bg>
-References: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com> <d2519ce3-e49b-a544-b79d-42905f4a2a9a@ssi.bg> <CACXxYfxLU0jWmq0W7YxX=44XFCGvgMX2HwTFUUHCUMjO28g5BA@mail.gmail.com>
+From: Simon Horman <horms@kernel.org>
+Subject: [PATCH nf-next v3 0/4] ipvs: Cleanups for v6.4
+Date: Mon, 17 Apr 2023 17:10:44 +0200
+Message-ID: <20230409-ipvs-cleanup-v3-0-5149ea34b0b9@kernel.org>
 Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-In-Reply-To: <CACXxYfxLU0jWmq0W7YxX=44XFCGvgMX2HwTFUUHCUMjO28g5BA@mail.gmail.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1681744279;
+        bh=P/QoeHAKZ55pby10GX/9bO6MW7hatN7F+qitfvgXnRE=;
+        h=From:Subject:Date:To:Cc:From;
+        b=FJPp7X4zdL6Va3+6pJ4YZPL7NSqwB631FyG24irKLeOIieUVWibRtdAGxhf4A+pF0
+         IRTNFSXMp0qeEroftwH601Z7yOYJoqIutvYYZNi+Ou1wEEC+pQwC9jBGDj6r3meO1x
+         JfqudXjZtQ5DKLmTnu6reDsGf2w3H1YpRniLFV6b+GE3kJzoNos1qbABVISUFYskNy
+         XZTuysiPKUV5GfBC0Z448JmJe5xswnctbPLFenRMxJeGTgqvq74uO2gWEo+JHEOIA8
+         ulq9i1clgvzfl+FEUfEPxP5AlO4F8Wo3NHWimpP+hBz30YZHz2LeBK4wf1d+But4UA
+         gLhQzFWnHFUSA==
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Abhijeet Rastogi <abhijeet.1989@gmail.com>
-Cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-kernel@vger.kernel.org
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, lvs-devel@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, Horatiu Vultur <horatiu.vultur@microchip.com>
 
+Hi Julian,
 
-	Hello,
+this series aims to clean up IPVS in several ways without
+implementing any functional changes, aside from removing
+some debugging output.
 
-On Thu, 13 Apr 2023, Abhijeet Rastogi wrote:
+Patch 1/4: Update width of source for ip_vs_sync_conn_options
+           The operation is safe, use an annotation to describe it properly.
 
-> Hi Simon, Andrea and Julian,
-> 
-> I really appreciate you taking the time to respond to my patch. Some follow up
-> questions that I'll appreciate a response for.
-> 
-> @Simon Horman
-> >In any case, I think this patch is an improvement on the current situation.
-> 
-> +1 to this. I wanted to add that, we're not changing the defaults
-> here, the default still stays at 2^12. If a kernel user changes the
-> default, they probably already know what the limitations are, so I
-> personally don't think it is a big concern.
-> 
-> @Andrea Claudi
-> >for the record, RHEL ships with CONFIG_IP_VS_TAB_BITS set to 12 as
-> default.
-> 
-> Sorry, I should have been clearer. RHEL ships with the same default,
-> yes, but it doesn't have the range check, at least, on the version I'm
-> using right now (3.10.0-1160.62.1.el7.x86_64).
-> 
-> On this version, I'm able to load with bit size 30, 31 gives me error
-> regarding allocating memory (64GB host) and anything beyond 31 is
-> mysteriously switched to a lower number. The following dmesg on my
-> host confirms that the bitsize 30 worked, which is not possible
-> without a patch on the current kernel version.
-> 
-> "[Fri Apr 14 01:14:51 2023] IPVS: Connection hash table configured (size=1073741
-> 824, memory=16777216Kbytes)"
-> 
-> @Julian Anastasov,
-> >This is not a limit of number of connections. I prefer
-> not to allow value above 24 without adding checks for the
-> available memory,
-> 
-> Interesting that you brought up that number 24, that is exactly what
-> we use in production today. One IPVS node is able to handle spikes of
-> 10M active connections without issues. This patch idea originated as
-> my company is migrating from the ancient RHEL version to a somewhat
-> newer CentOS (5.* kernel) and noticed that we were unable to load the
-> ip_vs kernel module with anything greater than 20 bits. Another
-> motivation for kernel upgrade is utilizing maglev to reduce table size
-> but that's out of context in this discussion.
-> 
-> My request is, can we increase the range from 20 to something larger?
-> If 31 seems a bit excessive, maybe, we can settle for something like
-> [8,30] or even lower. With conn_tab_bits=30, it allocates 16GB at
-> initialization time, it is not entirely absurd by today's standards.
-> 
-> I can revise my patch to a lower range as you guys see fit.
+Patch 2/4: Consistently use array_size() in ip_vs_conn_init()
+           It seems better to use helpers consistently.
 
-	Some 32-bit platforms have a 120MB limit for
-vmalloc. 24-bit table on 32-bit box will allocate 64MB.
+Patch 3/4: Remove {Enter,Leave}Function
+           These seem to be well past their use-by date.
 
-	One way to solve the problem is to use in Kconfig:
+Patch 4/4: Correct spelling in comments
+	   I can't spell. But codespell helps me these days.
 
-range 8 20 if !64BIT
-range 8 27 if 64BIT
+All changes: compile tested only!
 
-	Why 30 and above do not work? Because we store the
-size, mask in 'int' which is 32 bits. But also some places do not
-allow allocations above INT_MAX, for example, kvmalloc_node().
-So, even 28 may not work for 8-byte array items on 64-bit.
+---
+Changes in v3:
+- Patch 2/4: Correct division by 1024.
+             It was applied to the wrong variable in v2.
+- Add Horatiu's Reviewed-by tag.
 
-	It would be good to check if the provided
-value does not exceed some real limits. Here is an example
-that assumes IPVS will allocate up to 1/8 of the memory,
-8 conns average in a hash row. Such checks should not
-exceed the small vmalloc area for 32-bit boxes and also
-kvmalloc allows vmalloc with huge pages. This idea is
-entirely untested/compiled. These checks apply some
-sane thresholds. If you need something above, you are
-probably allocating more than needed.
+Changes in v2:
+- Patch 1/4: Correct spelling of 'conn' in subject.
+- Patch 2/4: Restore division by 1024. It was lost on v1.
 
-/* This will match the Kconfig range: */
-int min = 8;
-#if __BITS_PER_LONG > 32
-int max = 27;
-#else
-int max = 20;
-#endif
+---
+Simon Horman (4):
+      ipvs: Update width of source for ip_vs_sync_conn_options
+      ipvs: Consistently use array_size() in ip_vs_conn_init()
+      ipvs: Remove {Enter,Leave}Function
+      ipvs: Correct spelling in comments
 
-	We can safely use 27 in Kconfig even for 32-bit
-due to the below checks, they will clamp it to lower value.
+ include/net/ip_vs.h             | 32 +++++----------------
+ net/netfilter/ipvs/ip_vs_conn.c | 12 ++++----
+ net/netfilter/ipvs/ip_vs_core.c |  8 ------
+ net/netfilter/ipvs/ip_vs_ctl.c  | 26 +----------------
+ net/netfilter/ipvs/ip_vs_sync.c |  7 +----
+ net/netfilter/ipvs/ip_vs_xmit.c | 62 ++++++-----------------------------------
+ 6 files changed, 23 insertions(+), 124 deletions(-)
 
-	/* Order of the available memory */
-	int max_avail = order_base_2(totalram_pages()) + PAGE_SHIFT;
-
-	We can remove this 'if' check:
-	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 20) {
-		pr_info("conn_tab_bits not in [8, 20]. Using default value\n");
-		ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
-	}
-
-	max_avail -= 3;				/* ~8 in hash row */
-	max_avail -= 3;				/* IPVS up to 1/8 of mem */
-	/* The hash table links allocated memory for IPVS conns */
-	max_avail -= order_base_2(sizeof(struct ip_vs_conn));
-	/* Range should not exceed the available memory */
-	max = clamp(max, min, max_avail);
-	/* Clamp configured value silently */
-	ip_vs_conn_tab_bits = clamp_val(ip_vs_conn_tab_bits, min, max);
-	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
-	ip_vs_conn_tab_mask = ip_vs_conn_tab_size - 1;
-
-	/* Switch to kvmalloc */
-	ip_vs_conn_tab = kvmalloc_array(ip_vs_conn_tab_size,
-					sizeof(*ip_vs_conn_tab), GFP_KERNEL);
-
-	and use everywhere kvfree(ip_vs_conn_tab);
-
-	For 64GB box the calcs should be:
-
-max_avail = 36 - 3 - 3 - 9 => ip_vs_conn_tab_bits = 21
-Allocated hash table: (2^21)*8=16MB
-Allocated for IPVS conns (8 cols per row): (2^21)*8*(400..512)=6..8GB
-which is ~1/8 of 64GB. All memory will be allocated with
-~64 conns per row. May be the above calcs can be changed
-to ~4 cols and 1/2 mem to use 128MB (24 bits instead of 21)
-for our example: 36 - 2 - 1 - 9 => 24.
-
-	Possible problems if using large table that is
-not loaded with enough conns:
-
-- walking the table will cost more cycles, for example,
-ip_vs_random_dropentry() wants to walk part of the table
-every second. Even normal netns cleanup has to walk it.
-
-- cat /proc/net/ip_vs_conn will be slower
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+base-commit: 99676a5766412f3936c55b9d18565d248e5463ee
 
