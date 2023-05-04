@@ -1,28 +1,28 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 6.1 39/49] ipvs: Update width of source for ip_vs_sync_conn_options
-Date: Thu,  4 May 2023 15:46:16 -0400
-Message-ID: <20230504194626.3807438-39-sashal@kernel.org>
-References: <20230504194626.3807438-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.10 22/24] ipvs: Update width of source for ip_vs_sync_conn_options
+Date: Thu,  4 May 2023 15:49:35 -0400
+Message-ID: <20230504194937.3808414-22-sashal@kernel.org>
+References: <20230504194937.3808414-1-sashal@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netdev+bounces-408-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
+Return-path: <netdev+bounces-434-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1683229686;
-	bh=eDAFbRTWheX6wqUdnZQ2u5zCbnmhV7R6tselF0fsGAs=;
+	s=k20201202; t=1683229836;
+	bh=DyWMNvOJp0id+Tv6ElaHdFkRkTOFDlqeM3fbyRlkDRg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=pQizVjYK7nQs6PCpc9dJGslXSbOIdcxVyLDdGdm00v4ivenmc6hMtjCpVW47IhUF2
-	 mAteA8zr2Jn7JzEkOAiyfprzSuyZ1Vs9jw7ugEF4hd3T3aCIrhhZ+RQ0JW7iiIR42C
-	 r4kAl83ytQPClM6xd1hYvYyqyReC2jfJ6DMxKvpFZMtm712bkJ//OVyj4UuKW6jXEO
-	 lgl7XQJqdeCPVhOFNkZ5xi13HeSQxpeqTkkO7q166oITfTBnTdwB8p5SHLckbeE4iy
-	 /iXZ6p0y+dKj0K6YNrFLLhIIOT4MFGC/r/YFQN+F6Uz7rr86PWbeWx/kB+j0u3UdHd
-	 CYw2AUAE9SQ5g==
-In-Reply-To: <20230504194626.3807438-1-sashal@kernel.org>
+	b=QWX/jr0ZF7pt53oFNX9b3X39GZvUAmc1ATTyGp1HocZQ0St0oL2oGLH47QcP9PP+e
+	 0MMVGsEvv3fle5F8Wm0Yl9RyKBc3foid8PPEVTIrhTuBRTf62rg0TZiydCVkN0T9Na
+	 lOVaAN56FGhSLvLkUlPpPZRFvjL9DWNUZrAJl6q23llr/Lbe35Mx3AHbMVU5Iaahxm
+	 Ax/c0FDPDcCBkJcf6lkPqFZ7gUH1WNuRymB+CYrRChLLSS4kJIbHcif2NU+DvmjwXf
+	 +EoU8k8N0eKykJzWHRyO68Eys7xRfc2iMmf+1iTv7jw3SBCkr/bqVFRUpTysJAvi6r
+	 faQnzUG5rKhQw==
+In-Reply-To: <20230504194937.3808414-1-sashal@kernel.org>
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:netdev+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:netdev+unsubscribe@vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Simon Horman <horms@kernel.org>, Horatiu Vultur <horatiu.vultur@microchip.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Sasha Levin <sashal@kernel.org>, horms@verge.net.au, ja@ssi.bg, davem@davemloft.net, dsahern@kernel.org, edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, kadlec@netfilter.org, fw@strlen.de, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Cc: Simon Horman <horms@kernel.org>, Horatiu Vultur <horatiu.vultur@microchip.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Sasha Levin <sashal@kernel.org>, davem@davemloft.net, dsahern@kernel.org, horms@verge.net.au, ja@ssi.bg, edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, kadlec@netfilter.org, fw@strlen.de, netdev@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
 
 From: Simon Horman <horms@kernel.org>
 
@@ -77,7 +77,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  2 files changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 1fca6a88114ad..abc46f05762e6 100644
+index d609e957a3ec0..c02c3bb0fe091 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
 @@ -549,8 +549,10 @@ struct ip_vs_conn {
@@ -94,7 +94,7 @@ index 1fca6a88114ad..abc46f05762e6 100644
  	const struct ip_vs_pe	*pe;
  	char			*pe_data;
 diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 4963fec815da3..d4fe7bb4f853a 100644
+index daab857c52a80..fc8db03d3efca 100644
 --- a/net/netfilter/ipvs/ip_vs_sync.c
 +++ b/net/netfilter/ipvs/ip_vs_sync.c
 @@ -603,7 +603,7 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
