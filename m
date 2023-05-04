@@ -1,22 +1,22 @@
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 6.3 49/59] ipvs: Update width of source for ip_vs_sync_conn_options
-Date: Thu,  4 May 2023 15:41:32 -0400
-Message-ID: <20230504194142.3805425-49-sashal@kernel.org>
-References: <20230504194142.3805425-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 6.2 43/53] ipvs: Update width of source for ip_vs_sync_conn_options
+Date: Thu,  4 May 2023 15:44:03 -0400
+Message-ID: <20230504194413.3806354-43-sashal@kernel.org>
+References: <20230504194413.3806354-1-sashal@kernel.org>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683229436;
-        bh=zNeqN+hMy+J1p0zzphizoeIvRmJhxaCtWdQH88DtmSg=;
+        s=k20201202; t=1683229569;
+        bh=xrwjYdqolJOIzicyLA3w4BsXeJdbSfFobbOMVk4DBnY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=vMggAvrjQTPRmFii9JKf7Gs+ufFhOGDzw2zAZ1LzlKz5dytncF+JdruyHlYFtjntp
-         CvHy1sI20ldA9oFr1yE1O6Eav1Dl8ZcTpDF4nodhftRu1Mo/u7kdMyFDgNhBRJh0cS
-         5yGj1ZbuOSatuurCX/vDQTly2Rf6+4fk/5ty04KH3JyelGdM+qu4+KwrFa57SvC99q
-         7mEMdDPi+3/npN/FNbgk7FliQpWyrers44gK4UJ+pBQzoicRjXfE+NQi3HRsO9R6DG
-         Wxb1Fp0d7NVuKqgXHLWRzS5PVPIatbb3kn96jOmEsWWh48RXxaXamHiGdsEDrZRDl1
-         /F6bqz1iAihkA==
-In-Reply-To: <20230504194142.3805425-1-sashal@kernel.org>
+        b=pqQXbcL5/gc/1lcNtyBCQUnizJAuO61to2kq6fx+RJVJykd+gTqyyGoqWLtXNsYKD
+         2y18zBgfloJ9Qc9rrfRaEOt7yI4349PMbK+a08CQ9nqsQ97MJ6ToGryNyrKp8wyMt6
+         MdFg1l7tsnEIvcibPQ0ykNaeftjOHuwmsb4ZXImChhMxocTyoVVW/Exxk58/4A6O3z
+         tiJPrcijm0UZsENbnpAg5PjiLS66D38vlsI+7W6D0g2O+d75q+EK92lQQI+z6dMyV7
+         VZlhr7Si5hHe00wRJe+SXeOFBm07TmGZdR8w773RfND5aXw2iKSQWmDM9Eozl7T6Rv
+         niI/Jz6L/qbMw==
+In-Reply-To: <20230504194413.3806354-1-sashal@kernel.org>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
@@ -75,10 +75,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  2 files changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 6d71a5ff52dfd..e20f1f92066d1 100644
+index c6c61100d2445..b0111e50277ef 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -630,8 +630,10 @@ struct ip_vs_conn {
+@@ -629,8 +629,10 @@ struct ip_vs_conn {
  	 */
  	struct ip_vs_app        *app;           /* bound ip_vs_app object */
  	void                    *app_data;      /* Application private data */
