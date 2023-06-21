@@ -1,234 +1,161 @@
-From: Joel Granados <j.granados@samsung.com>
-Subject: Re: [PATCH 09/11] sysctl: Remove the end
- element in sysctl table arrays
-Date: Wed, 21 Jun 2023 15:43:48 +0200
-Message-ID: <20230621134348.rcdzl7fi7yq2uj6h@localhost>
-References: <20230621091000.424843-1-j.granados@samsung.com>
- <CGME20230621094824eucas1p2b6adfbd3f15ff3665674917f419b25d3@eucas1p2.samsung.com>
- <20230621094817.433842-1-j.granados@samsung.com> <87o7l92hg8.fsf@intel.com>
- <20230621130614.s36w4u7dzmb5d5p3@localhost> <878rcd2by5.fsf@intel.com>
+From: Sven Bartscher <sven.bartscher@weltraumschlangen.de>
+Subject: vs conntrack changes TCP ports mid-stream
+Date: Wed, 21 Jun 2023 18:46:43 +0200
+Message-ID: <d3c93e6a-f8a0-5c72-d044-dcec7d8d235c@weltraumschlangen.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1903914140375033651=="
-Return-path: <openipmi-developer-bounces@lists.sourceforge.net>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- d=sourceforge.net; s=x; h=References:In-Reply-To:Content-Type:MIME-Version:
- Message-ID:Subject:CC:To:From:Date:Sender:Reply-To:Content-Transfer-Encoding:
- Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
- Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
- List-Subscribe:List-Post:List-Owner:List-Archive;
- bh=SetH/myydi6dk+ldkx72EVQztsegim0VSf5FSMMJW28=; b=WblWLZiNAWpKf9FPCqwi5bMnBT
- /o68FUkhHUXrZDblDzHQswOXGhn9IQY2sYgUO1m3FDLFn5mhv8YusBhSVprXaCVE7buDIm7AU0j3x
- 8VJEI1TAHaVhIgc+Xpq8BHP1g2J9Bpnlby1OF/G4YELH68VLLl/QLDO9C6sPyOKI5Q2w=;
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=sf.net; s=x
- ;
- h=References:In-Reply-To:Content-Type:MIME-Version:Message-ID:Subject:CC:To
- :From:Date:Sender:Reply-To:Content-Transfer-Encoding:Content-ID:
- Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
- :Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
- List-Post:List-Owner:List-Archive;
- bh=SetH/myydi6dk+ldkx72EVQztsegim0VSf5FSMMJW28=; b=haswjyJTMFtVPMTGayxuNW+x0O
- xDTi6ukfWWXJUPY5AFb2kuiGpf3hOrYTDNmUZyoWKdP1xaSTx2Yun96kMnsy/GwxQseezV4B4sfWS
- VVKiYjjIb5k5BNGGhKA3EUC6YlapuQG4rfj4EUrqXCZ9oy1ImOpHMIBa1wKC94mYvUts=;
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.w1.samsung.com
- 20230621134353euoutp02d57583f1260e1c228507969bf2dd64df~qsHaHGgl22310523105euoutp02y
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
- s=mail20170921; t=1687355033;
- bh=SetH/myydi6dk+ldkx72EVQztsegim0VSf5FSMMJW28=;
- h=Date:From:To:CC:Subject:In-Reply-To:References:From;
- b=PTZBv1Kz5BEVObNa7leJ/yxGfQakTivesF5jb6tBj4a7mw0z2DwCV8KG/lz6Htp2A
- zjthU/P8T1sIWZ42nVHC5ArvGqiQK48scKj0Re/P/DwFQFC0M/FPQnfLTFYC/Ucswv
- L2oK3I/5AOGeZQ+wBCu+TIiCshDxA9TJNwfHFkfQ=
-In-Reply-To: <878rcd2by5.fsf@intel.com>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/openipmi-developer>, 
- <mailto:openipmi-developer-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=openipmi-developer>
-List-Post: <mailto:openipmi-developer@lists.sourceforge.net>
-List-Help: <mailto:openipmi-developer-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/openipmi-developer>, 
- <mailto:openipmi-developer-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: openipmi-developer-bounces@lists.sourceforge.net
-To: Jani Nikula <jani.nikula@linux.intel.com>
-Cc: Juri Lelli <juri.lelli@redhat.com>, Miaohe Lin <linmiaohe@huawei.com>, "Rafael J. Wysocki" <rafael@kernel.org>, Catalin Marinas <catalin.marinas@arm.com>, dri-devel@lists.freedesktop.org, Ben Segall <bsegall@google.com>, linux-sctp@vger.kernel.org, ocfs2-devel@oss.oracle.com, Miquel Raynal <miquel.raynal@bootlin.com>, Alexander Gordeev <agordeev@linux.ibm.com>, "K. Y. Srinivasan" <kys@microsoft.com>, Stefan Schmidt <stefan@datenfreihafen.org>, Wei Liu <wei.liu@kernel.org>, Vincent Guittot <vincent.guittot@linaro.org>, Michael Ellerman <mpe@ellerman.id.au>, bridge@lists.linux-foundation.org, James Morris <jmorris@namei.org>, Christophe Leroy <christophe.leroy@csgroup.eu>, Jozsef Kadlecsik <kadlec@netfilter.org>, Eric Biggers <ebiggers@kernel.org>, linux-cachefs@redhat.com, Mel Gorman <mgorman@suse.de>, "Darrick J.
- Wong" <djwong@kernel.org>, Waiman Long <longman@redhat.co>
+Content-Type: multipart/mixed; boundary="------------IWmv06F5K0ydfM57bOh0gNny"
+Return-path: <lvs-devel-owner@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=weltraumschlangen.de;
+        s=default; t=1687366004;
+        bh=ypFq3Hy5Ug69KxlMuuzLAFHAdswop+HTm85KyFlpf0U=;
+        h=Date:To:Cc:From:Subject:From;
+        b=NFimPLeH4y0xL1umbSsYN0zrbNPYEu4Y4qUuHZHKEEGp0WDH52fzPvT/75PvIfSBZ
+         NJJ7UN9lNZ81KB98yXEq0siRDr8by96KdOofIHpXoSpZ8Y1nM1bvAuKjyWjchR0HTT
+         zDxdoWmYK3SOjYFdTXkQVmCkH1oRyv0topU3vpg/H76/PK8pyCnrakLPfpPKnKfDMD
+         ZkbyNFA/pglADtYaAiFjsCoWQlVWmUTGLStpNvnti8q12+rGRhPDG+Ud/QX5G0oZui
+         1xl7aWrNHKUiC+i3J1/Rd8q7hoLeCfSHqv/GNMMNQP3Fi+yI4172U4QplFFx2src2U
+         Jtn3X/NMLbmkg==
+Content-Language: en-US
+List-ID: <lvs-devel.vger.kernel.org>
+To: lvs-devel@vger.kernel.org
+Cc: netfilter-devel@vger.kernel.org
 
---===============1903914140375033651==
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="nwcq3i6cyedok5cv"
-Content-Disposition: inline
-
---nwcq3i6cyedok5cv
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-On Wed, Jun 21, 2023 at 04:15:46PM +0300, Jani Nikula wrote:
-> On Wed, 21 Jun 2023, Joel Granados <j.granados@samsung.com> wrote:
-> > On Wed, Jun 21, 2023 at 02:16:55PM +0300, Jani Nikula wrote:
-> >> On Wed, 21 Jun 2023, Joel Granados <j.granados@samsung.com> wrote:
-> >> > Remove the empty end element from all the arrays that are passed to =
-the
-> >> > register sysctl calls. In some files this means reducing the explicit
-> >> > array size by one. Also make sure that we are using the size in
-> >> > ctl_table_header instead of evaluating the .procname element.
-> >>=20
-> >> Where's the harm in removing the end elements driver by driver? This is
-> >> an unwieldy patch to handle.
-> >
-> > I totally agree. Its a big one!!! but I'm concerned of breaking bisecti=
-bility:
-> > * I could for example separate all the removes into separate commits and
-> >   then have a final commit that removes the check for the empty element.
-> >   But this will leave the tree in a state where the for loop will have
-> >   undefined behavior when it looks for the empty end element. It might
-> >   or might not work (probably not :) until the final commit where I fix
-> >   that.
-> >
-> > * I could also change the logic that looks for the final element,
-> >   commit that first and then remove the empty element one commit per
-> >   driver after that. But then for all the arrays that still have an
-> >   empty element, there would again be undefined behavior as it would
-> >   think that the last element is valid (when it is really the sentinel).
-> >
-> > Any ideas on how to get around these?
->=20
-> First add size to the register calls, and allow the last one to be
-> sentinel but do not require the sentinel.
->=20
-> Start removing sentinels, adjusting the size passed in.
-This is a great idea! and I think I don't even have to adjust the size
-because if I change the logic to stop on the sentinel or the size; so when
-the sentinel is there, it will stop before the size. And when the
-sentinel is not there, it will stop on the correct size.
-
-There might be issues with indirection calls. And there might also be
-lots of places where I need to adjust a for loop (as dan has pointed
-out) but its worth a try for V2.
-
-Best
->=20
-> Once enough sentinels have been removed, add warning if the final entry
-> is a sentinel.
->=20
-> Never really remove the check? (But surely you can rework the logic to
-> not count the number of elements up front, only while iterating.)
->=20
->=20
-> BR,
-> Jani.
->=20
-> >>=20
-> >> > diff --git a/drivers/gpu/drm/i915/i915_perf.c b/drivers/gpu/drm/i915=
-/i915_perf.c
-> >> > index f43950219ffc..e4d7372afb10 100644
-> >> > --- a/drivers/gpu/drm/i915/i915_perf.c
-> >> > +++ b/drivers/gpu/drm/i915/i915_perf.c
-> >> > @@ -4884,24 +4884,23 @@ int i915_perf_remove_config_ioctl(struct drm=
-_device *dev, void *data,
-> >> > =20
-> >> >  static struct ctl_table oa_table[] =3D {
-> >> >  	{
-> >> > -	 .procname =3D "perf_stream_paranoid",
-> >> > -	 .data =3D &i915_perf_stream_paranoid,
-> >> > -	 .maxlen =3D sizeof(i915_perf_stream_paranoid),
-> >> > -	 .mode =3D 0644,
-> >> > -	 .proc_handler =3D proc_dointvec_minmax,
-> >> > -	 .extra1 =3D SYSCTL_ZERO,
-> >> > -	 .extra2 =3D SYSCTL_ONE,
-> >> > -	 },
-> >> > +		.procname =3D "perf_stream_paranoid",
-> >> > +		.data =3D &i915_perf_stream_paranoid,
-> >> > +		.maxlen =3D sizeof(i915_perf_stream_paranoid),
-> >> > +		.mode =3D 0644,
-> >> > +		.proc_handler =3D proc_dointvec_minmax,
-> >> > +		.extra1 =3D SYSCTL_ZERO,
-> >> > +		.extra2 =3D SYSCTL_ONE,
-> >> > +	},
-> >> >  	{
-> >> > -	 .procname =3D "oa_max_sample_rate",
-> >> > -	 .data =3D &i915_oa_max_sample_rate,
-> >> > -	 .maxlen =3D sizeof(i915_oa_max_sample_rate),
-> >> > -	 .mode =3D 0644,
-> >> > -	 .proc_handler =3D proc_dointvec_minmax,
-> >> > -	 .extra1 =3D SYSCTL_ZERO,
-> >> > -	 .extra2 =3D &oa_sample_rate_hard_limit,
-> >> > -	 },
-> >> > -	{}
-> >> > +		.procname =3D "oa_max_sample_rate",
-> >> > +		.data =3D &i915_oa_max_sample_rate,
-> >> > +		.maxlen =3D sizeof(i915_oa_max_sample_rate),
-> >> > +		.mode =3D 0644,
-> >> > +		.proc_handler =3D proc_dointvec_minmax,
-> >> > +		.extra1 =3D SYSCTL_ZERO,
-> >> > +		.extra2 =3D &oa_sample_rate_hard_limit,
-> >> > +	}
-> >> >  };
-> >>=20
-> >> The existing indentation is off, but fixing it doesn't really belong in
-> >> this patch.
-> >
-> > Agreed. But I actually was trying to fix something that checkpatch
-> > flagged. I'll change these back (which will cause this patch to be
-> > flagged).
-> >
-> > An alternative solution would be to fix the indentation as part of the
-> > preparation patches. Tell me what you think.
-> >
-> > Thx
-> >
-> >>=20
-> >> BR,
-> >> Jani.
-> >>=20
-> >>=20
-> >> --=20
-> >> Jani Nikula, Intel Open Source Graphics Center
->=20
-> --=20
-> Jani Nikula, Intel Open Source Graphics Center
-
---=20
-
-Joel Granados
-
---nwcq3i6cyedok5cv
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQGzBAABCgAdFiEErkcJVyXmMSXOyyeQupfNUreWQU8FAmSS/pIACgkQupfNUreW
-QU8FZgv+NJjIGObr29DU3w9gC84AcnW6dJTp9wHS00NxSXpo+c714JQ2xV0z8i/m
-wZbyBR21D/CkjJCTL0pwjCh1xi+PdMHmpB9mDlQSxEg6i+fJXBb7GvWvkOfNagP8
-Z2t/NzP/RPP+/BjBP3QOGNyQWgZ4Jl6lMvzlt0aJlHMx7/QD7PRgnNN3KYiFzB+I
-FTf5QLbTT85TSPPoGBQCzF6Ych5vKNmIzRZxD2o1zPJFftGIcYOfYOC7vX/1tuOa
-1l2+maHSi22uTAHFL3XKvcQBxuLeBCoAIgYOGeO0B+wApLgDVUdHb3PPMw74sOuD
-RtgKG6gEgO937g+zKo5xP6M5iLH8xYavJRYPNGH5FBfL7DDROXI6t9tjBpvpUbPS
-VQDducT3r8p7hbIhb+3MnRgJri1yF7SjRZF6iewJ9G3Rd7o8PlcLC3aTZLvilO9j
-4YYKID1bOqsI9tcLY5oeM6HROqdmLhzFQQlzZCCz4Y/1XVO7ZKpJHP97wqBETkbq
-DRVhBHDj
-=lxdq
------END PGP SIGNATURE-----
-
---nwcq3i6cyedok5cv--
-
-
---===============1903914140375033651==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+This is a multi-part message in MIME format.
+--------------IWmv06F5K0ydfM57bOh0gNny
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
+I'm forwarding the report from 
+https://bugzilla.netfilter.org/show_bug.cgi?id=1669 here, since it was 
+pointed out there, that this list would be more appropriate.
 
---===============1903914140375033651==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+When using an ipvs service in combination with SNAT and a NOTRACK rule, 
+specific circumstances can lead to TCP ports of packets being changed 
+mid-stream, which results in successful connections that no data can be 
+effectively sent over.
 
-_______________________________________________
-Openipmi-developer mailing list
-Openipmi-developer@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/openipmi-developer
+Consider the following example:
 
---===============1903914140375033651==--
+```
+root@router:~# sysctl net.ipv4.vs.conntrack
+net.ipv4.vs.conntrack = 1
 
+root@router:~# iptables -t raw -L -n -v
+Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)
+  pkts bytes target     prot opt in     out     source 
+destination
+    24  1296 CT         tcp  --  enp1s0 *       0.0.0.0/0 
+10.0.0.1             tcp dpt:1234 NOTRACK
+
+root@router:~# iptables -t nat -L -n -v
+Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
+  pkts bytes target     prot opt in     out     source 
+destination
+
+Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)
+  pkts bytes target     prot opt in     out     source 
+destination
+
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+  pkts bytes target     prot opt in     out     source 
+destination
+
+Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes)
+  pkts bytes target     prot opt in     out     source 
+destination
+     4   240 SNAT       all  --  *      *       10.0.0.0/24 
+10.0.1.0/24          to:10.0.1.1
+
+Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
+  pkts bytes target     prot opt in     out     source 
+destination
+
+root@router:~# ipvsadm -L -n
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  10.0.0.1:1234 rr
+   -> 10.0.1.2:1234                Masq    1      0          0
+   -> 10.0.1.3:1234                Masq    1      0          0
+```
+
+The reals servers are running
+
+```
+socat TCP4-LISTEN:1234,fork 'EXEC:sh -c 
+echo${IFS}hello;read${IFS}r${IFS}L;sleep${IFS}1'
+```
+
+We dump the network traffic between the router and client on the ipvs 
+router as follows:
+
+```
+root@router:~# tcpdump -pXXni enp1s0 icmp or tcp -w 
+/tmp/ipvs_port_reuse.pcap
+tcpdump: listening on enp1s0, link-type EN10MB (Ethernet), capture size 
+262144 bytes
+^C16 packets captured
+16 packets received by filter
+0 packets dropped by kernel
+```
+
+While the capture is running, we run the following commands on a client 
+to trigger the buggy behavior:
+
+```
+root@debian:~# netcat -p 4321 -v 10.0.01 1234
+Connection to 10.0.01 1234 port [tcp/*] succeeded!
+hello
+^C
+root@debian:~# sleep 60
+root@debian:~# netcat -p 4321 -v 10.0.01 1234
+Connection to 10.0.01 1234 port [tcp/*] succeeded!
+^C
+root@debian:~#
+```
+
+We can see that on the first connection attempt we successfully receive 
+a reply with payload from the server and then terminate the connection 
+with Ctrl+C. Then we wait 60 seconds, which is necessary for the 
+previous connection to move out of the TIME_WAIT state. Afterwards we 
+open another connection, reusing the same src port as on the first 
+connection and don't receive a reply from the server. The captured 
+traffic shows, that after the three-way handshake for the second TCP 
+connection, packets from the router to the clients use another server 
+port than the one used for the initiation of the connection.
+
+Regards
+Sven
+--------------IWmv06F5K0ydfM57bOh0gNny
+Content-Type: application/vnd.tcpdump.pcap; name="ipvs_port_reuse.pcap"
+Content-Disposition: attachment; filename="ipvs_port_reuse.pcap"
+Content-Transfer-Encoding: base64
+
+1MOyoQIABAAAAAAAAAAAAAAABAABAAAA+X6LZFtrAwBKAAAASgAAAFJUABIc31JUANtMVQgA
+RQAAPN6+QABABkf7CgAAAgoAAAEQ4QTSmm3wXAAAAACgAvrwFDEAAAIEBbQEAggKZuTRoAAA
+AAABAwMH+X6LZHhuAwBKAAAASgAAAFJUANtMVVJUABIc3wgARQAAPAAAQAA/Bie6CgAAAQoA
+AAIE0hDheYXcmZpt8F2gEv6IFDEAAAIEBbQEAggKjNQbZGbk0aABAwMH+X6LZJpwAwBCAAAA
+QgAAAFJUABIc31JUANtMVQgARQAANN6/QABABkgCCgAAAgoAAAEQ4QTSmm3wXXmF3JqAEAH2
+FCkAAAEBCApm5NGhjNQbZPl+i2QBegMASAAAAEgAAABSVADbTFVSVAASHN8IAEUAADrmU0AA
+PwZBaAoAAAEKAAACBNIQ4XmF3JqabfBdgBgB/hQvAAABAQgKjNQbZmbk0aFoZWxsbwr5fotk
+9noDAEIAAABCAAAAUlQAEhzfUlQA20xVCABFAAA03sBAAEAGSAEKAAACCgAAARDhBNKabfBd
+eYXcoIAQAfYUKQAAAQEICmbk0aSM1Btm+n6LZP1zAQBCAAAAQgAAAFJUABIc31JUANtMVQgA
+RQAANN7BQABABkgACgAAAgoAAAEQ4QTSmm3wXXmF3KCAEQH2FCkAAAEBCApm5NTEjNQbZvp+
+i2TIeQEAQgAAAEIAAABSVADbTFVSVAASHN8IAEUAADTmVEAAPwZBbQoAAAEKAAACBNIQ4XmF
+3KCabfBegBAB/hQpAAABAQgKjNQeiWbk1MT6fotkGogJAEIAAABCAAAAUlQA20xVUlQAEhzf
+CABFAAA05lVAAD8GQWwKAAABCgAAAgTSEOF5hdygmm3wXoARAf4UKQAAAQEICozUIG9m5NTE
++n6LZHuMCQBCAAAAQgAAAFJUABIc31JUANtMVQgARQAANAAAQABABibCCgAAAgoAAAEQ4QTS
+mm3wXnmF3KGAEAH2f0cAAAEBCApm5NaujNQgbzp/i2SUOgsASgAAAEoAAABSVAASHN9SVADb
+TFUIAEUAADxSJ0AAQAbUkgoAAAIKAAABEOEE0tdxJqsAAAAAoAL68BQxAAACBAW0BAIICmbl
+vdcAAAAAAQMDBzp/i2QOPQsASgAAAEoAAABSVADbTFVSVAASHN8IAEUAADwAAEAAPwYnugoA
+AAEKAAACBNIQ4av73WPXcSasoBL+iBQxAAACBAW0BAIICpb0jT1m5b3XAQMDBzp/i2TPPgsA
+QgAAAEIAAABSVAASHN9SVADbTFUIAEUAADRSKEAAQAbUmQoAAAIKAAABEOEE0tdxJqyr+91k
+gBAB9hQpAAABAQgKZuW92Zb0jT06f4tkS0cLAEgAAABIAAAAUlQA20xVUlQAEhzfCABFAAA6
+WflAAD8GzcIKAAABCgAAAm+DEOGr+91k13EmrIAYAf4ULwAAAQEICpb0jT9m5b3ZaGVsbG8K
+On+LZAhJCwA2AAAANgAAAFJUABIc31JUANtMVQgARQAAKAAAQABABibOCgAAAgoAAAEQ4W+D
+13EmrAAAAABQBAAAHVwAADx/i2RO8QwAQgAAAEIAAABSVAASHN9SVADbTFUIAEUAADRSKUAA
+QAbUmAoAAAIKAAABEOEE0tdxJqyr+91kgBEB9hQpAAABAQgKZuXFdZb0jT08f4tksvMMADYA
+AAA2AAAAUlQA20xVUlQAEhzfCABFAAAoAABAAD8GJ84KAAABCgAAAgTSEOGr+91kAAAAAFAE
+AAD8ygAA
+
+--------------IWmv06F5K0ydfM57bOh0gNny--
