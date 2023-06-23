@@ -1,134 +1,228 @@
-From: Julian Anastasov <ja@ssi.bg>
-Subject: Re: vs conntrack changes TCP ports mid-stream
-Date: Wed, 21 Jun 2023 21:26:19 +0300 (EEST)
-Message-ID: <649aa643-18ca-b758-203e-e674c215799d@ssi.bg>
-References: <d3c93e6a-f8a0-5c72-d044-dcec7d8d235c@weltraumschlangen.de>
+From: Joel Granados <j.granados@samsung.com>
+Subject: Re: [PATCH 06/11] sysctl: Add size to register_net_sysctl function
+Date: Fri, 23 Jun 2023 16:21:26 +0200
+Message-ID: <20230623142126.rgdabyokvuwshhmj@localhost>
+References: <20230621091000.424843-1-j.granados@samsung.com>
+        <CGME20230621091022eucas1p1c097da50842b23e902e1a674e117e1aa@eucas1p1.samsung.com>
+        <20230621091000.424843-7-j.granados@samsung.com>
+        <dab06c20-f8b0-4e34-b885-f3537e442d54@kadam.mountain>
+        <5aba7eee-7a6e-4f3b-9921-e4220d479346@kadam.mountain>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <d3c93e6a-f8a0-5c72-d044-dcec7d8d235c@weltraumschlangen.de>
+Content-Type: multipart/signed; micalg="pgp-sha512";
+        protocol="application/pgp-signature"; boundary="swgbxx6ykpv57frf"
+Return-path: <linux-hams-owner@vger.kernel.org>
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.w1.samsung.com 20230623142135euoutp02ae6a33511d52b0b0b504882654455cb1~rT65bzABM1867918679euoutp02f
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+        s=mail20170921; t=1687530095;
+        bh=EgzcpvZ110/Utd/BaTe+KyRVTbIhIRUuMj7pUOodDxE=;
+        h=Date:From:To:CC:Subject:In-Reply-To:References:From;
+        b=ETe9c3rm/p2XZgv3Ceh0yrmfAmcg2qlIz1sjDvOaYg8GlmoJPOMkGEfoeYhJjRehJ
+         HdcZbFb+T34Edu1rZVZ90DO5tLfjKLCB3+iwOBoLqpKKRFK1x9egjtJPLLeDDVrt4J
+         e0E+5F5x1q8IymLwOMsyBu8kCfmKCdwYu+Uu3BDc=
+Content-Disposition: inline
+In-Reply-To: <5aba7eee-7a6e-4f3b-9921-e4220d479346@kadam.mountain>
 List-ID: <lvs-devel.vger.kernel.org>
+To: Dan Carpenter <dan.carpenter@linaro.org>
+Cc: mcgrof@kernel.org, linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-hams@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, bridge@lists.linux-foundation.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+
+--swgbxx6ykpv57frf
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Sven Bartscher <sven.bartscher@weltraumschlangen.de>
-Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
+Just answering to dan and the lists to avoid noise
 
-	Hello,
+On Wed, Jun 21, 2023 at 01:23:52PM +0300, Dan Carpenter wrote:
+> On Wed, Jun 21, 2023 at 12:47:30PM +0300, Dan Carpenter wrote:
+> > The patchset doesn't include the actual interesting changes, just a
+> > bunch of mechanical prep work.
+> >=20
+> > On Wed, Jun 21, 2023 at 11:09:55AM +0200, Joel Granados wrote:
+> > > diff --git a/net/ieee802154/6lowpan/reassembly.c b/net/ieee802154/6lo=
+wpan/reassembly.c
+> > > index a91283d1e5bf..7b717434368c 100644
+> > > --- a/net/ieee802154/6lowpan/reassembly.c
+> > > +++ b/net/ieee802154/6lowpan/reassembly.c
+> > > @@ -379,7 +379,8 @@ static int __net_init lowpan_frags_ns_sysctl_regi=
+ster(struct net *net)
+> > >  	table[1].extra2	=3D &ieee802154_lowpan->fqdir->high_thresh;
+> > >  	table[2].data	=3D &ieee802154_lowpan->fqdir->timeout;
+> > > =20
+> > > -	hdr =3D register_net_sysctl(net, "net/ieee802154/6lowpan", table);
+> > > +	hdr =3D register_net_sysctl(net, "net/ieee802154/6lowpan", table,
+> > > +				  ARRAY_SIZE(lowpan_frags_ns_ctl_table));
+> >=20
+> > For example, in lowpan_frags_ns_sysctl_register() the sentinel is
+> > sometimes element zero if the user doesn't have enough permissions.  I
+> > would want to ensure that was handled correctly, but that's going to be
+> > done later in a completely different patchset.  I'm definitely not going
+> > to remember to check.
+>=20
+> On reflecting the patch is obviously wrong.  It should be pass zero as
+> table_size in that case.  See diff at the end.
+>=20
+> There is a similar bug in neigh_sysctl_register() where we use memset to
+> zero out the whole table.  And another in __ip_vs_lblc_init().  I used
+> the smatch cross function database
+> 	`smdb.py where ctl_table procname | grep '(null)' | grep min-max`
+> to make a list of functions which set procname to zero.
+>=20
+> Probably we should add a WARN_ON() if procname is zero in the new code
+> which doesn't use sentinels.
+>=20
+> regards,
+> dan carpenter
+>=20
+> drivers/char/random.c          | proc_do_uuid                   | (struct=
+ ctl_table)->procname | 0
+> fs/proc/proc_sysctl.c          | new_dir                        | (struct=
+ ctl_table)->procname | 48,3906148897379000352
+> fs/proc/proc_sysctl.c          | new_links                      | (struct=
+ ctl_table)->procname | 4096-ptr_max
+> arch/arm64/kernel/fpsimd.c     | vec_proc_do_default_vl         | (struct=
+ ctl_table)->procname | 0
+> arch/arm64/kernel/armv8_deprecated.c | register_insn_emulation        | (=
+struct ctl_table)->procname | 0-u64max
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_null_tbl_data |=
+ (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_table_maxlen_un=
+set | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_table_len_is_ze=
+ro | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_table_read_but_=
+position_set | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_dointvec_read_happy_single_p=
+ositive | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_dointvec_read_happy_single_n=
+egative | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_dointvec_write_happy_single_=
+positive | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_dointvec_write_happy_single_=
+negative | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_write_single_le=
+ss_int_min | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_write_single_gr=
+eater_int_max | (struct ctl_table)->procname | 7612622206476333056
+> net/netfilter/nf_log.c         | netfilter_log_sysctl_init      | (struct=
+ ctl_table)->procname | 0-u64max
+^^^ : These are all false positives as non-sentinel procname gets
+set to a string on the register sysctl path.
 
-On Wed, 21 Jun 2023, Sven Bartscher wrote:
+> kernel/sysctl.c                | proc_do_static_key             | (struct=
+ ctl_table)->procname | 0
+> kernel/kexec_core.c            | kexec_limit_handler            | (struct=
+ ctl_table)->procname | 0
+> kernel/bpf/syscall.c           | bpf_stats_handler              | (struct=
+ ctl_table)->procname | 0
+> net/core/sysctl_net_core.c     | rps_sock_flow_sysctl           | (struct=
+ ctl_table)->procname | 0
+> net/core/sysctl_net_core.c     | set_default_qdisc              | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_hmac_alg          | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_rto_min           | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_rto_max           | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_auth              | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_udp_port          | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_probe_interval    | (struct=
+ ctl_table)->procname | 0
+> net/ipv6/addrconf.c            | addrconf_sysctl_addr_gen_mode  | (struct=
+ ctl_table)->procname | 0
+> net/phonet/sysctl.c            | proc_local_port_range          | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | proc_do_defense_mode           | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | proc_do_sync_threshold         | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | proc_do_sync_ports             | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | ipvs_proc_est_nice             | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | ipvs_proc_run_estimation       | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | ipv4_local_port_range          | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | ipv4_privileged_ports          | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | ipv4_ping_group_range          | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_congestion_control    | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_available_congestion_control | =
+(struct ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_allowed_congestion_control | (struc=
+t ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_fastopen_key          | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_available_ulp         | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_ehash_entries         | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_udp_hash_entries          | (struct=
+ ctl_table)->procname | 0
+^^^ : procname gets set to NULL but is not used to register. just as a
+temp ctl_table. Can be ignored.
 
-> I'm forwarding the report from
-> https://bugzilla.netfilter.org/show_bug.cgi?id=1669 here, since it was pointed
-> out there, that this list would be more appropriate.
-> 
-> When using an ipvs service in combination with SNAT and a NOTRACK rule,
-> specific circumstances can lead to TCP ports of packets being changed
-> mid-stream, which results in successful connections that no data can be
-> effectively sent over.
-> 
-> Consider the following example:
-> 
-> ```
-> root@router:~# sysctl net.ipv4.vs.conntrack
-> net.ipv4.vs.conntrack = 1
-> 
-> root@router:~# iptables -t raw -L -n -v
-> Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)
->  pkts bytes target     prot opt in     out     source destination
->    24  1296 CT         tcp  --  enp1s0 *       0.0.0.0/0 10.0.0.1
-> tcp dpt:1234 NOTRACK
-> 
-> root@router:~# iptables -t nat -L -n -v
-> Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
->  pkts bytes target     prot opt in     out     source destination
-> 
-> Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)
->  pkts bytes target     prot opt in     out     source destination
-> 
-> Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
->  pkts bytes target     prot opt in     out     source destination
-> 
-> Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes)
->  pkts bytes target     prot opt in     out     source destination
->     4   240 SNAT       all  --  *      *       10.0.0.0/24 10.0.1.0/24
-> to:10.0.1.1
-> 
-> Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
->  pkts bytes target     prot opt in     out     source destination
-> 
-> root@router:~# ipvsadm -L -n
-> IP Virtual Server version 1.2.1 (size=4096)
-> Prot LocalAddress:Port Scheduler Flags
->   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-> TCP  10.0.0.1:1234 rr
->   -> 10.0.1.2:1234                Masq    1      0          0
->   -> 10.0.1.3:1234                Masq    1      0          0
-> ```
-> 
-> The reals servers are running
-> 
-> ```
-> socat TCP4-LISTEN:1234,fork 'EXEC:sh -c
-> echo${IFS}hello;read${IFS}r${IFS}L;sleep${IFS}1'
-> ```
-> 
-> We dump the network traffic between the router and client on the ipvs router
-> as follows:
-> 
-> ```
-> root@router:~# tcpdump -pXXni enp1s0 icmp or tcp -w /tmp/ipvs_port_reuse.pcap
-> tcpdump: listening on enp1s0, link-type EN10MB (Ethernet), capture size 262144
-> bytes
-> ^C16 packets captured
-> 16 packets received by filter
-> 0 packets dropped by kernel
-> ```
-> 
-> While the capture is running, we run the following commands on a client to
-> trigger the buggy behavior:
-> 
-> ```
-> root@debian:~# netcat -p 4321 -v 10.0.01 1234
-> Connection to 10.0.01 1234 port [tcp/*] succeeded!
-> hello
-> ^C
-> root@debian:~# sleep 60
-> root@debian:~# netcat -p 4321 -v 10.0.01 1234
-> Connection to 10.0.01 1234 port [tcp/*] succeeded!
-> ^C
-> root@debian:~#
-> ```
-> 
-> We can see that on the first connection attempt we successfully receive a
-> reply with payload from the server and then terminate the connection with
-> Ctrl+C. Then we wait 60 seconds, which is necessary for the previous
-> connection to move out of the TIME_WAIT state. Afterwards we open another
-> connection, reusing the same src port as on the first connection and don't
-> receive a reply from the server. The captured traffic shows, that after the
-> three-way handshake for the second TCP connection, packets from the router to
-> the clients use another server port than the one used for the initiation of
-> the connection.
+> net/core/neighbour.c           | neigh_sysctl_register          | (struct=
+ ctl_table)->procname | 0
+^^^ : This is one is tricky. I had handled the case where the sentinel
+is cleared by setting procname to NULL.
 
-	May be it is due to the bad combination of NOTRACK and SNAT.
-You hide only the one direction from Netfilter and Netfilter creates
-conntracks only for traffic from real servers, it considers the
-traffic from client as unreplied "reply" direction. Due to clash, 
-netfilter probably selects different ports and creates multiple conntracks?
-I'm not sure about this, it will need more digging to explain while
-such port change happens in the middle of connection.
+> net/netfilter/ipvs/ip_vs_lblc.c | __ip_vs_lblc_init              | (struc=
+t ctl_table)->procname | 0-u64max
+> net/netfilter/ipvs/ip_vs_lblcr.c | __ip_vs_lblcr_init             | (stru=
+ct ctl_table)->procname | 0-u64max
+^^^ : These two where caught by your check. THX!!!!!!
 
-	Also, if IPVS and Netfilter have different view for the 
-direction, ip_vs_conn_drop_conntrack() will fail to drop the conntrack
-if IPVS has shorter state timeouts.
+> net/netfilter/ipvs/ip_vs_ctl.c | ip_vs_control_net_init_sysctl  | (struct=
+ ctl_table)->procname | 0-u64max
+^^^ : This one is another one that was caught.
+For this file I noticed that we setup the entire ctl_table for both privile=
+ged
+and unprivileged users. It seems that we could just skip all the setup
+needed for the unprivileged user. Please tell me and I can maybe come
+with a patch for that.
 
-	I guess, you can not remove conntrack=1 because you need SNAT.
-I don't see any other option, you have to remove the NOTRACK rule.
-You try to avoid conntracks with it but they are needed for your SNAT 
-rule and they are created anyways for the packets from real servers.
-NOTRACK for both directions can help only when you don't use SNAT.
+> net/ipv6/route.c               | ipv6_route_sysctl_init         | (struct=
+ ctl_table)->procname | 0-u64max
+> net/ieee802154/6lowpan/reassembly.c | lowpan_frags_ns_sysctl_register | (=
+struct ctl_table)->procname | 0-u64max
+> net/xfrm/xfrm_sysctl.c         | xfrm_sysctl_init               | (struct=
+ ctl_table)->procname | 0-u64max
+> net/ipv4/route.c               | sysctl_route_net_init          | (struct=
+ ctl_table)->procname | 0-u64max
+^^^ : caught by your check!
 
-Regards
+In total you caught 8 valid errors.
 
---
-Julian Anastasov <ja@ssi.bg>
+Thx again.
 
+Best
+
+--=20
+
+Joel Granados
+
+--swgbxx6ykpv57frf
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAABCgAdFiEErkcJVyXmMSXOyyeQupfNUreWQU8FAmSVqmMACgkQupfNUreW
+QU9g2wv/TmhtYGAUfhchEJ5DYrqk7RdbDAd+0qI8p6L0euVZ8FFDfVZODTOUVA9/
+mvmcT0HvLEy23U3mrCbC2e49Yn7EiKs87UMXHsQRXMwMSfRN8+i5Mnaz7Fd1AZmh
+e1EuAk+Y0K2AW8KaO/Av4yVqWc289VgEyPJABABeEh44pitZ9THyHjuuR8+/4yKN
+NvPpl5x3pbrQ1OMGD9yUiDtJZ1rYZ0Qpus7pXZcbFMOoZa1VNRzhorx1PuqlN5fA
+eusGeiqE32G6z4B1bEOMzJ0Vw4a5fyzOToVPCACfak78WfrnF4LNeClh02gEZVJh
+3Vc0OVySb4DD3v51KWvUFowmbL1OB7pnsIk147h9PqwRpmlCWGmx44QUejXBAkF/
+O6wMW1SxWEGFVCFc2OX/cTf2JLLEdqACpDw7vzi8OUMZ4TSv4MMXpmEztGByCjZy
+6e8Bh3SNVZVC7lUkxZFp1oWl2J2dfXh/J0LwJMz2m0Ev1sEFAgKVosISHUzq3+Aw
+YPXJThO2
+=HDho
+-----END PGP SIGNATURE-----
+
+--swgbxx6ykpv57frf--
