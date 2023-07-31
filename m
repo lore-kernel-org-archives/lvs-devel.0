@@ -1,24 +1,21 @@
 From: Joel Granados <joel.granados@gmail.com>
-Subject: [PATCH v2 01/14] sysctl: Prefer ctl_table_header in proc_sysctl
-Date: Mon, 31 Jul 2023 09:17:15 +0200
-Message-ID: <20230731071728.3493794-2-j.granados@samsung.com>
-References: <20230731071728.3493794-1-j.granados@samsung.com>
+Subject: [PATCH v2 00/14] sysctl: Add a size argument to register functions in sysctl
+Date: Mon, 31 Jul 2023 09:17:14 +0200
+Message-ID: <20230731071728.3493794-1-j.granados@samsung.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netdev+bounces-22698-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
+Return-path: <netdev+bounces-22699-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1690787851; x=1691392651;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=9/+5UTOZSoINBQX5Idlq9s7Q/YjlqMmFruSJ92+I5og=;
-        b=aa90vhrzpcWfje6OipbZcbSYmqsQOrKCRcOH+mXZEBSAe4e9SYO9KbJpgMCHttr/yA
-         zdFVQR1LOnV+D7hAiD+KrUS2ISlvjUkq+b7yUFbiR01dxQnjTtlB3gUvsDsEdzqxQBra
-         VtmXCBuFRC2NHa/MDl3j3RRH7oueh+fFARArWcE6cGtzhOQHhoEyDoaWBNB9BNxyNorT
-         Vsk7HiljVefekG81Lh7gDtS9SFSWp6bx3r/GStCaxRX7m39RSXK/U9SkwJ+la8Y3+Sa+
-         bicaAOoBwyN9hsG7EPZFDiSfvHQfnOEmdljFsJjOX5Tmk2pevqcpTLWxI8xhB+d6ZiQD
-         aq0g==
-In-Reply-To: <20230731071728.3493794-1-j.granados@samsung.com>
+        d=gmail.com; s=20221208; t=1690787850; x=1691392650;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=7wceAR80ht6V8UDrNIuYtWCCNzgC5666xu1w58CAmzE=;
+        b=KsdMyLQDqJxdf7UrLyN+lgd8CyVBkzcc+3WL6Hpc6GL56/FLvLpAs3fDCKrllFB75w
+         I4xgpt3dPofWII8KOjE/gW2MpcXOpd17aPJhlBDpFxJRzFbr1vKzw7PW1AvkSsLnyUVu
+         CvdoacfbhJhD9wfsK8o8tM/Q79GXdixX3jA6DueTdYN1GEY2PWBVKEqfB1k6l8+wS4Dx
+         8S2pkXOAqhx+oaKekXDNCYYEasskPpy/q4BffiqS7SVBSYjKiMqQkTqs3u4SuPOG8kxz
+         eMAX8xJfS9me1lyz0rBWtYaolq3o98cMupXpy6BbcB3kSwOdAPGLnTOihehT1zbZeveh
+         0vQg==
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:netdev+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:netdev+unsubscribe@vger.kernel.org>
@@ -26,139 +23,278 @@ Content-Type: text/plain; charset="us-ascii"
 To: mcgrof@kernel.org
 Cc: Catalin Marinas <catalin.marinas@arm.com>, Iurii Zaikin <yzaikin@google.com>, Jozsef Kadlecsik <kadlec@netfilter.org>, Sven Schnelle <svens@linux.ibm.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Steffen Klassert <steffen.klassert@secunet.com>, Kees Cook <keescook@chromium.org>, "D. Wythe" <alibuda@linux.alibaba.com>, mptcp@lists.linux.dev, Jakub Kicinski <kuba@kernel.org>, Vasily Gorbik <gor@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, coreteam@netfilter.org, Jan Karcher <jaka@linux.ibm.com>, Alexander Aring <alex.aring@gmail.com>, Will Deacon <will@kernel.org>, Stefan Schmidt <stefan@datenfreihafen.org>, Matthieu Baerts <matthieu.baerts@tessares.net>, bridge@lists.linux-foundation.org, linux-arm-kernel@lists.infradead.org, Joerg Reuter <jreuter@yaina.de>, Julian Anastasov <ja@ssi.bg>, David Ahern <dsahern@kernel.org>, netfilter-devel@vger.ker
 
-This is a preparation commit that replaces ctl_table with
-ctl_table_header as the pointer that is passed around in proc_sysctl.c.
-This will become necessary in subsequent commits when the size of the
-ctl_table array can no longer be calculated by searching for an empty
-sentinel (last empty ctl_table element) but will be carried along inside
-the ctl_table_header struct.
+Why?
+This is a preparation patch set that will make it easier for us to apply
+subsequent patches that will remove the sentinel element (last empty element)
+in the ctl_table arrays.
 
-Signed-off-by: Joel Granados <j.granados@samsung.com>
----
- fs/proc/proc_sysctl.c | 36 ++++++++++++++++++------------------
- 1 file changed, 18 insertions(+), 18 deletions(-)
+In itself, it does not remove any sentinels but it is needed to bring all the
+advantages of the removal to fruition which is to help reduce the overall build
+time size of the kernel and run time memory bloat by about ~64 bytes per
+sentinel. Without this patch set we would have to put everything into one big
+commit making the review process that much longer and harder for everyone.
 
+Since it is so related to the removal of the sentinel element, its worth while
+to give a bit of context on this:
+* Good summary from Luis about why we want to remove the sentinels.
+  https://lore.kernel.org/all/ZMFizKFkVxUFtSqa@bombadil.infradead.org/
+* This is a patch set that replaces register_sysctl_table with register_sysctl
+  https://lore.kernel.org/all/20230302204612.782387-1-mcgrof@kernel.org/
+* Patch set to deprecate register_sysctl_paths()
+  https://lore.kernel.org/all/20230302202826.776286-1-mcgrof@kernel.org/
+* Here there is an explicit expectation for the removal of the sentinel element.
+  https://lore.kernel.org/all/20230321130908.6972-1-frank.li@vivo.com
+* The "ARRAY_SIZE" approach was mentioned (proposed?) in this thread
+  https://lore.kernel.org/all/20220220060626.15885-1-tangmeng@uniontech.com
+
+What?
+These commits set things up so we can start removing the sentinel elements.
+They modify sysctl and net_sysctl internals so that registering a ctl_table
+that contains a sentinel gives the same result as passing a table_size
+calculated from the ctl_table array without a sentinel. We accomplish this by
+introducing a table_size argument in the same place where procname is checked
+for NULL. The idea is for it to keep stopping when it hits ->procname == NULL,
+while the sentinel is still present. And when the sentinel is removed, it will
+stop on the table_size (thx to jani.nikula@linux.intel.com for the discussion
+that led to this). This allows us to remove sentinels from one (or several)
+files at a time.
+
+These commits are part of a bigger set containing the removal of ctl_table sentinel
+(https://github.com/Joelgranados/linux/tree/tag/sysctl_remove_empty_elem_V2).
+The idea is to make the review process easier by chunking the 65+ commits into
+manageable pieces.
+
+My idea is to send out one chunk at a time so it can be reviewed separately
+from the others without the noise from parallel related sets. After this first
+chunk will come 6 that remove the sentinel element from "arch/*, drivers/*,
+fs/*, kernel/*, net/* and miscellaneous. And then a final one that removes the
+->procname == NULL check. You can see all commits here
+(https://github.com/Joelgranados/linux/tree/tag/sysctl_remove_empty_elem_V2).
+
+Commits in this chunk:
+* Preparation commits:
+    start : sysctl: Prefer ctl_table_header in proc_sysct
+    end   : sysctl: Add size argument to init_header
+  These are preparation commits that make sure that we have the
+  ctl_table_header where we need the array size.
+
+* Add size to __register_sysctl_table, __register_sysctl_init and register_sysctl
+    start : sysctl: Add a size arg to __register_sysctl_table
+    end   : sysctl: Add size arg to __register_sysctl_init
+  Here we replace the existing register functions with macros that add the
+  ARRAY_SIZE automatically. Unfortunately these macros cannot be used for the
+  register calls that pass a pointer; in this situation we add register
+  functions with an table_size argument (thx to greg@kroah.com for bringing
+  this to my attention)
+
+* Add size to register_net_sysctl
+    start : sysctl: Add size to register_net_sysctl function
+    end   : sysctl: SIZE_MAX->ARRAY_SIZE in register_net_sysctl
+  register_net_sysctl is an indirection function to the sysctl registrations
+  and needed a several commits to add table_size to all its callers. We
+  temporarily use SIZE_MAX to avoid compiler warnings while we change to
+  register_net_sysctl to register_net_sysctl_sz; we remove it with the
+  penultimate patch of this set. Finally, we make sure to adjust the calculated
+  size every time there is a check for unprivileged users.
+
+* Add size as additional stopping criteria
+    commit : sysctl: Use ctl_table_size as stopping criteria for list macro
+  We add table_size check in the main macro within proc_sysctl.c. This commit
+  allows the removal of the sentinel element by chunks.
+
+Testing:
+* Ran sysctl selftests (./tools/testing/selftests/sysctl/sysctl.sh)
+* Successfully ran this through 0-day
+
+Size saving estimates:
+A consequence of eventually removing all the sentinels (64 bytes per sentinel)
+is the bytes we save. These are *not* numbers that we will get after this patch
+set; these are the numbers that we will get after removing all the sentinels. I
+included them here because they are relevant and to get an idea of just how
+much memory we are talking about.
+  * bloat-o-meter:
+    The "yesall" configuration results save 9158 bytes (you can see the output here
+    https://lore.kernel.org/all/20230621091000.424843-1-j.granados@samsung.com/.
+    The "tiny" configuration + CONFIG_SYSCTL save 1215 bytes (you can see the
+    output here [2])
+  * memory usage:
+    As we no longer need the sentinel element within proc_sysctl.c, we save some
+    bytes in main memory as well. In my testing kernel I measured a difference of
+    6720 bytes. I include the way to measure this in [1]
+
+Comments/feedback greatly appreciated
+
+V2:
+* Dropped moving mpls_table up the af_mpls.c file. We don't need it any longer
+  as it is not really used before its current location.
+* Added/Clarified the why in several commit messages that were missing it.
+* Clarified the why in the cover letter to be "to make it easier to apply
+  subsequent patches that will remove the sentinels"
+* Added documentation for table_size
+* Added suggested by tags (Greg and Jani) to relevant commits
+
+Best
+Joel
+
+[1]
+To measure the in memory savings apply this patch on top of
+https://github.com/Joelgranados/linux/tree/tag/sysctl_remove_empty_elem_V1
+"
 diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
-index 5ea42653126e..94d71446da39 100644
+index 5f413bfd6271..9aa8374c0ef1 100644
 --- a/fs/proc/proc_sysctl.c
 +++ b/fs/proc/proc_sysctl.c
-@@ -1125,11 +1125,11 @@ static int sysctl_check_table_array(const char *path, struct ctl_table *table)
- 	return err;
+@@ -975,6 +975,7 @@ static struct ctl_dir *new_dir(struct ctl_table_set *set,
+        table[0].procname = new_name;
+        table[0].mode = S_IFDIR|S_IRUGO|S_IXUGO;
+        init_header(&new->header, set->dir.header.root, set, node, table, 1);
++       printk("%ld sysctl saved mem kzalloc \n", sizeof(struct ctl_table));
+
+        return new;
  }
- 
--static int sysctl_check_table(const char *path, struct ctl_table *table)
-+static int sysctl_check_table(const char *path, struct ctl_table_header *header)
- {
- 	struct ctl_table *entry;
- 	int err = 0;
--	list_for_each_table_entry(entry, table) {
-+	list_for_each_table_entry(entry, header->ctl_table) {
- 		if ((entry->proc_handler == proc_dostring) ||
- 		    (entry->proc_handler == proc_dobool) ||
- 		    (entry->proc_handler == proc_dointvec) ||
-@@ -1159,8 +1159,7 @@ static int sysctl_check_table(const char *path, struct ctl_table *table)
- 	return err;
+@@ -1202,6 +1203,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table_
+                    head->ctl_table_size);
+        links->nreg = head->ctl_table_size;
+
++       printk("%ld sysctl saved mem kzalloc \n", sizeof(struct ctl_table));
+        return links;
  }
- 
--static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table *table,
--	struct ctl_table_root *link_root)
-+static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table_header *head)
- {
- 	struct ctl_table *link_table, *entry, *link;
- 	struct ctl_table_header *links;
-@@ -1170,7 +1169,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table
- 
- 	name_bytes = 0;
- 	nr_entries = 0;
--	list_for_each_table_entry(entry, table) {
-+	list_for_each_table_entry(entry, head->ctl_table) {
- 		nr_entries++;
- 		name_bytes += strlen(entry->procname) + 1;
- 	}
-@@ -1189,12 +1188,12 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table
- 	link_name = (char *)&link_table[nr_entries + 1];
- 	link = link_table;
- 
--	list_for_each_table_entry(entry, table) {
-+	list_for_each_table_entry(entry, head->ctl_table) {
- 		int len = strlen(entry->procname) + 1;
- 		memcpy(link_name, entry->procname, len);
- 		link->procname = link_name;
- 		link->mode = S_IFLNK|S_IRWXUGO;
--		link->data = link_root;
-+		link->data = head->root;
- 		link_name += len;
- 		link++;
- 	}
-@@ -1205,15 +1204,16 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table
- }
- 
- static bool get_links(struct ctl_dir *dir,
--	struct ctl_table *table, struct ctl_table_root *link_root)
-+		      struct ctl_table_header *header,
-+		      struct ctl_table_root *link_root)
- {
--	struct ctl_table_header *head;
-+	struct ctl_table_header *tmp_head;
- 	struct ctl_table *entry, *link;
- 
- 	/* Are there links available for every entry in table? */
--	list_for_each_table_entry(entry, table) {
-+	list_for_each_table_entry(entry, header->ctl_table) {
- 		const char *procname = entry->procname;
--		link = find_entry(&head, dir, procname, strlen(procname));
-+		link = find_entry(&tmp_head, dir, procname, strlen(procname));
- 		if (!link)
- 			return false;
- 		if (S_ISDIR(link->mode) && S_ISDIR(entry->mode))
-@@ -1224,10 +1224,10 @@ static bool get_links(struct ctl_dir *dir,
- 	}
- 
- 	/* The checks passed.  Increase the registration count on the links */
--	list_for_each_table_entry(entry, table) {
-+	list_for_each_table_entry(entry, header->ctl_table) {
- 		const char *procname = entry->procname;
--		link = find_entry(&head, dir, procname, strlen(procname));
--		head->nreg++;
-+		link = find_entry(&tmp_head, dir, procname, strlen(procname));
-+		tmp_head->nreg++;
- 	}
- 	return true;
- }
-@@ -1246,13 +1246,13 @@ static int insert_links(struct ctl_table_header *head)
- 	if (IS_ERR(core_parent))
- 		return 0;
- 
--	if (get_links(core_parent, head->ctl_table, head->root))
-+	if (get_links(core_parent, head, head->root))
- 		return 0;
- 
- 	core_parent->header.nreg++;
- 	spin_unlock(&sysctl_lock);
- 
--	links = new_links(core_parent, head->ctl_table, head->root);
-+	links = new_links(core_parent, head);
- 
- 	spin_lock(&sysctl_lock);
- 	err = -ENOMEM;
-@@ -1260,7 +1260,7 @@ static int insert_links(struct ctl_table_header *head)
- 		goto out;
- 
- 	err = 0;
--	if (get_links(core_parent, head->ctl_table, head->root)) {
-+	if (get_links(core_parent, head, head->root)) {
- 		kfree(links);
- 		goto out;
- 	}
-@@ -1371,7 +1371,7 @@ struct ctl_table_header *__register_sysctl_table(
- 
- 	node = (struct ctl_node *)(header + 1);
- 	init_header(header, root, set, node, table);
--	if (sysctl_check_table(path, table))
-+	if (sysctl_check_table(path, header))
- 		goto fail;
- 
- 	spin_lock(&sysctl_lock);
+
+"
+and then run the following bash script in the kernel:
+
+accum=0
+for n in $(dmesg | grep kzalloc | awk '{print $3}') ; do
+    echo $n
+    accum=$(calc "$accum + $n")
+done
+echo $accum
+
+[2]
+bloat-o-meter with "tiny" config:
+add/remove: 0/2 grow/shrink: 33/24 up/down: 470/-1685 (-1215)
+Function                                     old     new   delta
+insert_header                                831     966    +135
+__register_sysctl_table                      971    1092    +121
+get_links                                    177     226     +49
+put_links                                    167     186     +19
+erase_header                                  55      66     +11
+sysctl_init_bases                             59      69     +10
+setup_sysctl_set                              65      73      +8
+utsname_sysctl_init                           26      31      +5
+sld_mitigate_sysctl_init                      33      38      +5
+setup_userns_sysctls                         158     163      +5
+sched_rt_sysctl_init                          33      38      +5
+sched_fair_sysctl_init                        33      38      +5
+sched_dl_sysctl_init                          33      38      +5
+random_sysctls_init                           33      38      +5
+page_writeback_init                          122     127      +5
+oom_init                                      73      78      +5
+kernel_panic_sysctls_init                     33      38      +5
+kernel_exit_sysctls_init                      33      38      +5
+init_umh_sysctls                              33      38      +5
+init_signal_sysctls                           33      38      +5
+init_pipe_fs                                  94      99      +5
+init_fs_sysctls                               33      38      +5
+init_fs_stat_sysctls                          33      38      +5
+init_fs_namespace_sysctls                     33      38      +5
+init_fs_namei_sysctls                         33      38      +5
+init_fs_inode_sysctls                         33      38      +5
+init_fs_exec_sysctls                          33      38      +5
+init_fs_dcache_sysctls                        33      38      +5
+register_sysctl                               22      25      +3
+__register_sysctl_init                         9      12      +3
+user_namespace_sysctl_init                   149     151      +2
+sched_core_sysctl_init                        38      40      +2
+register_sysctl_mount_point                   13      15      +2
+vm_table                                    1344    1280     -64
+vm_page_writeback_sysctls                    512     448     -64
+vm_oom_kill_table                            256     192     -64
+uts_kern_table                               448     384     -64
+usermodehelper_table                         192     128     -64
+user_table                                   576     512     -64
+sld_sysctls                                  128      64     -64
+signal_debug_table                           128      64     -64
+sched_rt_sysctls                             256     192     -64
+sched_fair_sysctls                           128      64     -64
+sched_dl_sysctls                             192     128     -64
+sched_core_sysctls                            64       -     -64
+root_table                                   128      64     -64
+random_table                                 448     384     -64
+namei_sysctls                                320     256     -64
+kern_table                                  1792    1728     -64
+kern_panic_table                             128      64     -64
+kern_exit_table                              128      64     -64
+inodes_sysctls                               192     128     -64
+fs_stat_sysctls                              256     192     -64
+fs_shared_sysctls                            192     128     -64
+fs_pipe_sysctls                              256     192     -64
+fs_namespace_sysctls                         128      64     -64
+fs_exec_sysctls                              128      64     -64
+fs_dcache_sysctls                            128      64     -64
+init_header                                   85       -     -85
+Total: Before=1877669, After=1876454, chg -0.06%
+
+base:  fdf0eaf11452
+
+Joel Granados (14):
+  sysctl: Prefer ctl_table_header in proc_sysctl
+  sysctl: Use ctl_table_header in list_for_each_table_entry
+  sysctl: Add ctl_table_size to ctl_table_header
+  sysctl: Add size argument to init_header
+  sysctl: Add a size arg to __register_sysctl_table
+  sysctl: Add size to register_sysctl
+  sysctl: Add size arg to __register_sysctl_init
+  sysctl: Add size to register_net_sysctl function
+  ax.25: Update to register_net_sysctl_sz
+  netfilter: Update to register_net_sysctl_sz
+  networking: Update to register_net_sysctl_sz
+  vrf: Update to register_net_sysctl_sz
+  sysctl: SIZE_MAX->ARRAY_SIZE in register_net_sysctl
+  sysctl: Use ctl_table_size as stopping criteria for list macro
+
+ arch/arm64/kernel/armv8_deprecated.c    |  2 +-
+ arch/s390/appldata/appldata_base.c      |  2 +-
+ drivers/net/vrf.c                       |  3 +-
+ fs/proc/proc_sysctl.c                   | 90 +++++++++++++------------
+ include/linux/sysctl.h                  | 31 +++++++--
+ include/net/ipv6.h                      |  2 +
+ include/net/net_namespace.h             | 10 +--
+ ipc/ipc_sysctl.c                        |  4 +-
+ ipc/mq_sysctl.c                         |  4 +-
+ kernel/ucount.c                         |  5 +-
+ net/ax25/sysctl_net_ax25.c              |  3 +-
+ net/bridge/br_netfilter_hooks.c         |  3 +-
+ net/core/neighbour.c                    |  8 ++-
+ net/core/sysctl_net_core.c              |  3 +-
+ net/ieee802154/6lowpan/reassembly.c     |  8 ++-
+ net/ipv4/devinet.c                      |  3 +-
+ net/ipv4/ip_fragment.c                  |  3 +-
+ net/ipv4/route.c                        |  8 ++-
+ net/ipv4/sysctl_net_ipv4.c              |  3 +-
+ net/ipv4/xfrm4_policy.c                 |  3 +-
+ net/ipv6/addrconf.c                     |  3 +-
+ net/ipv6/icmp.c                         |  5 ++
+ net/ipv6/netfilter/nf_conntrack_reasm.c |  3 +-
+ net/ipv6/reassembly.c                   |  3 +-
+ net/ipv6/route.c                        | 13 ++--
+ net/ipv6/sysctl_net_ipv6.c              | 16 +++--
+ net/ipv6/xfrm6_policy.c                 |  3 +-
+ net/mpls/af_mpls.c                      |  6 +-
+ net/mptcp/ctrl.c                        |  3 +-
+ net/netfilter/ipvs/ip_vs_ctl.c          |  8 ++-
+ net/netfilter/ipvs/ip_vs_lblc.c         | 10 ++-
+ net/netfilter/ipvs/ip_vs_lblcr.c        | 10 ++-
+ net/netfilter/nf_conntrack_standalone.c |  4 +-
+ net/netfilter/nf_log.c                  |  7 +-
+ net/rds/tcp.c                           |  3 +-
+ net/sctp/sysctl.c                       |  4 +-
+ net/smc/smc_sysctl.c                    |  3 +-
+ net/sysctl_net.c                        | 26 ++++---
+ net/unix/sysctl_net_unix.c              |  3 +-
+ net/xfrm/xfrm_sysctl.c                  |  8 ++-
+ 40 files changed, 222 insertions(+), 117 deletions(-)
+
 -- 
 2.30.2
 
