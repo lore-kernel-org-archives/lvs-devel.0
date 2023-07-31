@@ -1,68 +1,92 @@
-From: Joel Granados <joel.granados@gmail.com>
-Subject: [PATCH v2 14/14] sysctl: Use ctl_table_size as stopping criteria for list macro
-Date: Mon, 31 Jul 2023 09:17:28 +0200
-Message-ID: <20230731071728.3493794-15-j.granados@samsung.com>
+From: Simon Horman <horms-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Subject: Re: [PATCH v2 03/14] sysctl: Add ctl_table_size to ctl_table_header
+Date: Mon, 31 Jul 2023 20:30:21 +0200
+Message-ID: <ZMf9vZpGE98oM9W2@kernel.org>
 References: <20230731071728.3493794-1-j.granados@samsung.com>
+ <20230731071728.3493794-4-j.granados@samsung.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Return-path: <linux-hams-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1690787878; x=1691392678;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=q2sRNbI2azaNM3epQYqeDbNNvVsnx+uOoBBxcjhRKfE=;
-        b=FX60aiiY2KctEUh+j9yuK0cGnmKW2WpFZ3k1hVMZjIYTseBraxngepIWNvfcXGsPq1
-         7xSVdY+8zc9yIZ57nKdT+hlUE0Ql178jQsRiH723XYn4HhHTr/pv49QmaTcNQ2XsUNAi
-         PWzt+UqFr/sg0NpYqkGyiJNK7oFd9qBYvtgDfg+keM7SyoPlJi+mcwnnV0qqy8UUXXH+
-         yEQM7BNRR98OhKiErQTxzAomz+aqzdV0nWU9PRrMuhWCCwSQ75cIObdPL85tLs8lZ4Tp
-         84iwFiXBPFqH6x90lqRFXFaxycKbeNqBugndgd7V/GFzGnSbrjoxW1nQKlMiaVkRQI3W
-         1DjQ==
-In-Reply-To: <20230731071728.3493794-1-j.granados@samsung.com>
+Return-path: <linux-rdma-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1690828234;
+        bh=azdNP8cF85m7UDvgXMTAEEGyM/wWyMIGFgmuwIc8ul0=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=O1VpJucJ8qJ4G6AE1OKV3xdN/xK/FDklzv/nwqYZajcZtRy+LSUQU50X+sHs9AxvB
+         xsU2buC2SUK4CZR3jjYJZtrydR9Bbqd9WCPwdG5zMYEjJLfGD0nXQIDtdar/ei7qKh
+         Q4AFqyXfVyBH57dywLI4uw0Frcitouu9e42wpiwCGypovk04FOzCfl60zxzFG2eyak
+         ANZHJkor5YlN+5saTB/xwrXYhgw16Q93h89m9IIkWKyhNAHwsbqX1ZrfONEa6iuY6k
+         btG9dsvLFpB0/w7f/xaTE6xEYGtgYWH7rF7vGs2JSC6YVtwrN6iixwxcTNdpmmdRV2
+         wiQHQ/+OXxCxw==
+Content-Disposition: inline
+In-Reply-To: <20230731071728.3493794-4-j.granados-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: mcgrof@kernel.org
-Cc: Catalin Marinas <catalin.marinas@arm.com>, Iurii Zaikin <yzaikin@google.com>, Jozsef Kadlecsik <kadlec@netfilter.org>, Sven Schnelle <svens@linux.ibm.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Steffen Klassert <steffen.klassert@secunet.com>, Kees Cook <keescook@chromium.org>, "D. Wythe" <alibuda@linux.alibaba.com>, mptcp@lists.linux.dev, Jakub Kicinski <kuba@kernel.org>, Vasily Gorbik <gor@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, coreteam@netfilter.org, Jan Karcher <jaka@linux.ibm.com>, Alexander Aring <alex.aring@gmail.com>, Will Deacon <will@kernel.org>, Stefan Schmidt <stefan@datenfreihafen.org>, Matthieu Baerts <matthieu.baerts@tessares.net>, bridge@lists.linux-foundation.org, linux-arm-kernel@lists.infradead.org
+Content-Transfer-Encoding: 7bit
+To: Joel Granados <joel.granados-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Cc: mcgrof-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, Catalin Marinas <catalin.marinas-5wv7dgnIgG8@public.gmane.org>, Iurii Zaikin <yzaikin-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Jozsef Kadlecsik <kadlec-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org>, Sven Schnelle <svens-tEXmvtCZX7AybS5Ee8rs3A@public.gmane.org>, Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Steffen Klassert <steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org>, Kees Cook <keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org>, "D. Wythe" <alibuda-KPsoFbNs7GizrGE5bRqYAgC/G2K4zDHf@public.gmane.org>, mptcp-cunTk1MwBs/YUNznpcFYbw@public.gmane.org, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Vasily Gorbik <gor-tEXmvtCZX7AybS5Ee8rs3A@public.gmane.org>, Paolo Abeni <pabeni-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, coreteam-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, Jan Karcher <jaka-tEXmvtCZX7AybS5Ee8rs3A@public.gmane.org>, Alexander Aring <alex.aring-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Will Deacon <will-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Stefan Schmidt <stefan-OrPQZGeq07wqhVmZOOOmNx2eb7JE58TQ@public.gmane.org>, Matthieu Baerts <matthieu.baerts-g9H5/arvmg7k1uMJSBkQmQ@public.gmane.org>, bridge-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, linux-arm-kernel-IAPFreCvJWNGWvitb5QawA@public.gmane.org
 
-This is a preparation commit to make it easy to remove the sentinel
-elements (empty end markers) from the ctl_table arrays. It both allows
-the systematic removal of the sentinels and adds the ctl_table_size
-variable to the stopping criteria of the list_for_each_table_entry macro
-that traverses all ctl_table arrays. Once all the sentinels are removed
-by subsequent commits, ctl_table_size will become the only stopping
-criteria in the macro. We don't actually remove any elements in this
-commit, but it sets things up to for the removal process to take place.
+On Mon, Jul 31, 2023 at 09:17:17AM +0200, Joel Granados wrote:
+> The new ctl_table_size element will hold the size of the ctl_table
+> arrays contained in the ctl_table_header. This value should eventually
+> be passed by the callers to the sysctl register infrastructure. And
+> while this commit introduces the variable, it does not set nor use it
+> because that requires case by case considerations for each caller.
+> 
+> It provides two important things: (1) A place to put the
+> result of the ctl_table array calculation when it gets introduced for
+> each caller. And (2) the size that will be used as the additional
+> stopping criteria in the list_for_each_table_entry macro (to be added
+> when all the callers are migrated)
+> 
+> Signed-off-by: Joel Granados <j.granados-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+> ---
+>  include/linux/sysctl.h | 14 ++++++++++++--
+>  1 file changed, 12 insertions(+), 2 deletions(-)
+> 
+> diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
+> index 59d451f455bf..33252ad58ebe 100644
+> --- a/include/linux/sysctl.h
+> +++ b/include/linux/sysctl.h
+> @@ -159,12 +159,22 @@ struct ctl_node {
+>  	struct ctl_table_header *header;
+>  };
+>  
+> -/* struct ctl_table_header is used to maintain dynamic lists of
+> -   struct ctl_table trees. */
+> +/**
+> + * struct ctl_table_header - maintains dynamic lists of struct ctl_table trees
+> + * @ctl_table: pointer to the first element in ctl_table array
+> + * @ctl_table_size: number of elements pointed by @ctl_table
+> + * @used: The entry will never be touched when equal to 0.
+> + * @count: Upped every time something is added to @inodes and downed every time
+> + *         something is removed from inodes
+> + * @nreg: When nreg drops to 0 the ctl_table_header will be unregistered.
+> + * @rcu: Delays the freeing of the inode. Introduced with "unfuck proc_sysctl ->d_compare()"
+> + *
+> + */
 
-By adding header->ctl_table_size as an additional stopping criteria for
-the list_for_each_table_entry macro, it will execute until it finds an
-"empty" ->procname or until the size runs out. Therefore if a ctl_table
-array with a sentinel is passed its size will be too big (by one
-element) but it will stop on the sentinel. On the other hand, if the
-ctl_table array without a sentinel is passed its size will be just write
-and there will be no need for a sentinel.
+Hi Joel,
 
-Signed-off-by: Joel Granados <j.granados@samsung.com>
-Suggested-by: Jani Nikula <jani.nikula@linux.intel.com>
----
- fs/proc/proc_sysctl.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Please consider also adding kernel doc entries for the other fields of
+struct ctl_table_header. According to ./scripts/kernel-doc -none
+they are:
 
-diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
-index 817bc51c58d8..504e847c2a3a 100644
---- a/fs/proc/proc_sysctl.c
-+++ b/fs/proc/proc_sysctl.c
-@@ -19,8 +19,9 @@
- #include <linux/kmemleak.h>
- #include "internal.h"
- 
--#define list_for_each_table_entry(entry, header) \
--	for ((entry) = (header->ctl_table); (entry)->procname; (entry)++)
-+#define list_for_each_table_entry(entry, header)	\
-+	entry = header->ctl_table;			\
-+	for (size_t i = 0 ; i < header->ctl_table_size && entry->procname; ++i, entry++)
- 
- static const struct dentry_operations proc_sys_dentry_operations;
- static const struct file_operations proc_sys_file_operations;
--- 
-2.30.2
+  unregistering
+  ctl_table_arg
+  root
+  set
+  parent
+  node
+  inodes
 
+
+>  struct ctl_table_header {
+>  	union {
+>  		struct {
+>  			struct ctl_table *ctl_table;
+> +			int ctl_table_size;
+>  			int used;
+>  			int count;
+>  			int nreg;
+> -- 
+> 2.30.2
+> 
