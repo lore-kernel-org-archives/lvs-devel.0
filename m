@@ -1,23 +1,23 @@
 From: Joel Granados <joel.granados@gmail.com>
-Subject: [PATCH v2 03/14] sysctl: Add ctl_table_size to ctl_table_header
-Date: Mon, 31 Jul 2023 09:17:17 +0200
-Message-ID: <20230731071728.3493794-4-j.granados@samsung.com>
+Subject: [PATCH v2 02/14] sysctl: Use ctl_table_header in list_for_each_table_entry
+Date: Mon, 31 Jul 2023 09:17:16 +0200
+Message-ID: <20230731071728.3493794-3-j.granados@samsung.com>
 References: <20230731071728.3493794-1-j.granados@samsung.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netdev+bounces-22700-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
+Return-path: <netdev+bounces-22701-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1690787855; x=1691392655;
+        d=gmail.com; s=20221208; t=1690787854; x=1691392654;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=akvTsUNH5BR7B9r/hWx35oPtJ0e++GeR0ZkfT+4F3fU=;
-        b=ZKQeQX5TR6QzJyvC+jY3QinjsFbGR63r2icZC6hzaVo+s0UZo1N65kjwkZmKHZrkKE
-         sSYOktpPLbGgM7aqBZ0b1rqN2BxrDUJEH2hSAwmCepD/Rnl20eMrMex+h6LkhwAlRRxP
-         4VAezr+wMiqBBh/ks6rfYJ6F6OceClwfqnKIoljP8I2C/BrMALnLZe0aI9bB7s+wQLhQ
-         ENxpNvWIYFyncIGwwtoPq84D6YspqNt05jaf84ECX5PKzi8xKkI+be3IbzdkaH1oKEeO
-         oldlnFQnhBVNJ8w02YtPED3gSrPaCnL/RBpOScGa/8v4QhijcBrs6CpRh28yzNB0FWOB
-         JOeg==
+        bh=rF1J0XzJl2jEuCsHx7nkNs1OdRX43SORnh/9oIIv32k=;
+        b=oqsIryt2GxpgDCAITNIaXCxHDdR3cVtpe2f7ZX5yNWH+iIKTDyP9HWjuJrFs2+sMti
+         nz/dszslpzNl5CmOVyIxo9flstqLOG9Lkm0NZCdBEnmTU+I1vw89cMQ0SF9WwdKUoM4I
+         XcWmm1bGPvIhG5CX3epdf8PQz1b9WroQTsn7rnMMDg3nS9g5zr+JNBzD7ERJU2+AinRX
+         MHXofl3ANcJEAvB+CVk869XpKrsp2b0FvWFR9bdzEstXBE+7GTB2bqaK0C1x6sILTPh1
+         c3jM3t7rPPIdEypAnu4qsrcw5JUJFj3cl1pq/Q4VBS9yMtigqyYg0I4nF13M1FXKdD6i
+         UhMg==
 In-Reply-To: <20230731071728.3493794-1-j.granados@samsung.com>
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:netdev+subscribe@vger.kernel.org>
@@ -26,52 +26,130 @@ Content-Type: text/plain; charset="us-ascii"
 To: mcgrof@kernel.org
 Cc: Catalin Marinas <catalin.marinas@arm.com>, Iurii Zaikin <yzaikin@google.com>, Jozsef Kadlecsik <kadlec@netfilter.org>, Sven Schnelle <svens@linux.ibm.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Steffen Klassert <steffen.klassert@secunet.com>, Kees Cook <keescook@chromium.org>, "D. Wythe" <alibuda@linux.alibaba.com>, mptcp@lists.linux.dev, Jakub Kicinski <kuba@kernel.org>, Vasily Gorbik <gor@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, coreteam@netfilter.org, Jan Karcher <jaka@linux.ibm.com>, Alexander Aring <alex.aring@gmail.com>, Will Deacon <will@kernel.org>, Stefan Schmidt <stefan@datenfreihafen.org>, Matthieu Baerts <matthieu.baerts@tessares.net>, bridge@lists.linux-foundation.org, linux-arm-kernel@lists.infradead.org, Joerg Reuter <jreuter@yaina.de>, Julian Anastasov <ja@ssi.bg>, David Ahern <dsahern@kernel.org>, netfilter-devel@vger.ker
 
-The new ctl_table_size element will hold the size of the ctl_table
-arrays contained in the ctl_table_header. This value should eventually
-be passed by the callers to the sysctl register infrastructure. And
-while this commit introduces the variable, it does not set nor use it
-because that requires case by case considerations for each caller.
-
-It provides two important things: (1) A place to put the
-result of the ctl_table array calculation when it gets introduced for
-each caller. And (2) the size that will be used as the additional
-stopping criteria in the list_for_each_table_entry macro (to be added
-when all the callers are migrated)
+We replace the ctl_table with the ctl_table_header pointer in
+list_for_each_table_entry which is the macro responsible for traversing
+the ctl_table arrays. This is a preparation commit that will make it
+easier to add the ctl_table array size (that will be added to
+ctl_table_header in subsequent commits) to the already existing loop
+logic based on empty ctl_table elements (so called sentinels).
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- include/linux/sysctl.h | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+ fs/proc/proc_sysctl.c | 26 ++++++++++++++------------
+ 1 file changed, 14 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
-index 59d451f455bf..33252ad58ebe 100644
---- a/include/linux/sysctl.h
-+++ b/include/linux/sysctl.h
-@@ -159,12 +159,22 @@ struct ctl_node {
- 	struct ctl_table_header *header;
- };
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index 94d71446da39..884460b0385b 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -19,8 +19,8 @@
+ #include <linux/kmemleak.h>
+ #include "internal.h"
  
--/* struct ctl_table_header is used to maintain dynamic lists of
--   struct ctl_table trees. */
-+/**
-+ * struct ctl_table_header - maintains dynamic lists of struct ctl_table trees
-+ * @ctl_table: pointer to the first element in ctl_table array
-+ * @ctl_table_size: number of elements pointed by @ctl_table
-+ * @used: The entry will never be touched when equal to 0.
-+ * @count: Upped every time something is added to @inodes and downed every time
-+ *         something is removed from inodes
-+ * @nreg: When nreg drops to 0 the ctl_table_header will be unregistered.
-+ * @rcu: Delays the freeing of the inode. Introduced with "unfuck proc_sysctl ->d_compare()"
-+ *
-+ */
- struct ctl_table_header {
- 	union {
- 		struct {
- 			struct ctl_table *ctl_table;
-+			int ctl_table_size;
- 			int used;
- 			int count;
- 			int nreg;
+-#define list_for_each_table_entry(entry, table) \
+-	for ((entry) = (table); (entry)->procname; (entry)++)
++#define list_for_each_table_entry(entry, header) \
++	for ((entry) = (header->ctl_table); (entry)->procname; (entry)++)
+ 
+ static const struct dentry_operations proc_sys_dentry_operations;
+ static const struct file_operations proc_sys_file_operations;
+@@ -204,7 +204,7 @@ static void init_header(struct ctl_table_header *head,
+ 	if (node) {
+ 		struct ctl_table *entry;
+ 
+-		list_for_each_table_entry(entry, table) {
++		list_for_each_table_entry(entry, head) {
+ 			node->header = head;
+ 			node++;
+ 		}
+@@ -215,7 +215,7 @@ static void erase_header(struct ctl_table_header *head)
+ {
+ 	struct ctl_table *entry;
+ 
+-	list_for_each_table_entry(entry, head->ctl_table)
++	list_for_each_table_entry(entry, head)
+ 		erase_entry(head, entry);
+ }
+ 
+@@ -242,7 +242,7 @@ static int insert_header(struct ctl_dir *dir, struct ctl_table_header *header)
+ 	err = insert_links(header);
+ 	if (err)
+ 		goto fail_links;
+-	list_for_each_table_entry(entry, header->ctl_table) {
++	list_for_each_table_entry(entry, header) {
+ 		err = insert_entry(header, entry);
+ 		if (err)
+ 			goto fail;
+@@ -1129,7 +1129,7 @@ static int sysctl_check_table(const char *path, struct ctl_table_header *header)
+ {
+ 	struct ctl_table *entry;
+ 	int err = 0;
+-	list_for_each_table_entry(entry, header->ctl_table) {
++	list_for_each_table_entry(entry, header) {
+ 		if ((entry->proc_handler == proc_dostring) ||
+ 		    (entry->proc_handler == proc_dobool) ||
+ 		    (entry->proc_handler == proc_dointvec) ||
+@@ -1169,7 +1169,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table_
+ 
+ 	name_bytes = 0;
+ 	nr_entries = 0;
+-	list_for_each_table_entry(entry, head->ctl_table) {
++	list_for_each_table_entry(entry, head) {
+ 		nr_entries++;
+ 		name_bytes += strlen(entry->procname) + 1;
+ 	}
+@@ -1188,7 +1188,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table_
+ 	link_name = (char *)&link_table[nr_entries + 1];
+ 	link = link_table;
+ 
+-	list_for_each_table_entry(entry, head->ctl_table) {
++	list_for_each_table_entry(entry, head) {
+ 		int len = strlen(entry->procname) + 1;
+ 		memcpy(link_name, entry->procname, len);
+ 		link->procname = link_name;
+@@ -1211,7 +1211,7 @@ static bool get_links(struct ctl_dir *dir,
+ 	struct ctl_table *entry, *link;
+ 
+ 	/* Are there links available for every entry in table? */
+-	list_for_each_table_entry(entry, header->ctl_table) {
++	list_for_each_table_entry(entry, header) {
+ 		const char *procname = entry->procname;
+ 		link = find_entry(&tmp_head, dir, procname, strlen(procname));
+ 		if (!link)
+@@ -1224,7 +1224,7 @@ static bool get_links(struct ctl_dir *dir,
+ 	}
+ 
+ 	/* The checks passed.  Increase the registration count on the links */
+-	list_for_each_table_entry(entry, header->ctl_table) {
++	list_for_each_table_entry(entry, header) {
+ 		const char *procname = entry->procname;
+ 		link = find_entry(&tmp_head, dir, procname, strlen(procname));
+ 		tmp_head->nreg++;
+@@ -1356,12 +1356,14 @@ struct ctl_table_header *__register_sysctl_table(
+ {
+ 	struct ctl_table_root *root = set->dir.header.root;
+ 	struct ctl_table_header *header;
++	struct ctl_table_header h_tmp;
+ 	struct ctl_dir *dir;
+ 	struct ctl_table *entry;
+ 	struct ctl_node *node;
+ 	int nr_entries = 0;
+ 
+-	list_for_each_table_entry(entry, table)
++	h_tmp.ctl_table = table;
++	list_for_each_table_entry(entry, (&h_tmp))
+ 		nr_entries++;
+ 
+ 	header = kzalloc(sizeof(struct ctl_table_header) +
+@@ -1471,7 +1473,7 @@ static void put_links(struct ctl_table_header *header)
+ 	if (IS_ERR(core_parent))
+ 		return;
+ 
+-	list_for_each_table_entry(entry, header->ctl_table) {
++	list_for_each_table_entry(entry, header) {
+ 		struct ctl_table_header *link_head;
+ 		struct ctl_table *link;
+ 		const char *name = entry->procname;
 -- 
 2.30.2
 
