@@ -1,63 +1,39 @@
 From: Luis Chamberlain <mcgrof@kernel.org>
-Subject: Re: [PATCH v2 00/14] sysctl: Add a size argument to
- register functions in sysctl
-Date: Mon, 7 Aug 2023 14:44:11 -0700
-Message-ID: <ZNFlqwwvE6w6HyHl@bombadil.infradead.org>
+Subject: Re: [PATCH v2 00/14] sysctl: Add a size argument to register
+ functions in sysctl
+Date: Mon, 7 Aug 2023 16:43:42 -0700
+Message-ID: <ZNGBrkP7J2g/BAWV@bombadil.infradead.org>
 References: <20230731071728.3493794-1-j.granados@samsung.com>
  <ZMgpck0rjqHR74sl@bombadil.infradead.org>
+ <ZNFlqwwvE6w6HyHl@bombadil.infradead.org>
+ <CANnsUMG3WO_19GpnsNaXPqu6eEnpBvYUpkrf1QbHwsc9wEoCZQ@mail.gmail.com>
 Mime-Version: 1.0
-Return-path: <bridge-bounces@lists.linux-foundation.org>
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org 5B347408F7
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org DCAB1408F5
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 6123C4048E
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 9D73040150
+Return-path: <lvs-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- d=infradead.org; s=bombadil.20210309; h=Sender:In-Reply-To:Content-Type:
- MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
- Content-Transfer-Encoding:Content-ID:Content-Description;
- bh=g+VsSpIIvTZp+OYSzc71ePgWKvh9dbj0dOgrtfhVY08=; b=nv3YiaN+c2/xvyBTT2Scu3RVHn
- Tj4b/HyzInNj8yGoInNGOYxe01yyjWs033Jma+vixDeIw5QdEW3/KFTOOcij/qjKWMuu5yJugNPak
- 5bGUWL8QxbO2hds1oMmC1dHP1V6cQK2D4CaALau+vpGeX5XE9OvQJDFIO1Yi21zaO8HE2+pk34l2n
- BVyUdtZzZvxBzsi1joxY+1qA9ciAyv62012YcPxmBErjy0ZIa5JCIYEpqbx+tuJU0O0v/7lnUWQPd
- Rgxo3BYCj2n7RrlkjDHbuZtr8gKU8wmwOtvkewC4c71qhu+pMW57ycko0SZ5Zi0jULdqh4x1zPD/o
- G0OdFzXQ==;
+        d=infradead.org; s=bombadil.20210309; h=Sender:In-Reply-To:Content-Type:
+        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=R7l6QScXv7U38OrlWS7Mcrb8Q93Tbo+TJ0PZi9bIVzI=; b=lvQhpYkugp8p+MnqK1ZwyEPyPV
+        qQ13g/zVYcvPRrYd2noywzgnhct1y5FSUHLn9ld+CBTnhLURNvgr/bgoc4bC5EjlpBpGWWJSfX6T/
+        Qmk68ZOOTeEEYcestzUADl5Dpi2gJuWSQGiqWBWdo7zHkuT9gtEQcp0EWL0J2TwWVfknB/pb1efBJ
+        /qWuJAAvELKv3Gu45SonJbWc0VbDj+8+j0QZPdUmEmVKMoxo/rXWuGEKo/o2tIRBYi/rELO7VQcCa
+        I8mjAfAkS2C8C5SdfIKOYZeY5S9V20FFyb9rMjgiCJ7HvitG7HyaaV+Ort6BR6cHisL1dXBl+Z9Mq
+        S3J7uphA==;
 Content-Disposition: inline
-In-Reply-To: <ZMgpck0rjqHR74sl@bombadil.infradead.org>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/bridge>, 
- <mailto:bridge-request@lists.linux-foundation.org?subject=unsubscribe>
-List-Archive: <http://lists.linuxfoundation.org/pipermail/bridge/>
-List-Post: <mailto:bridge@lists.linux-foundation.org>
-List-Help: <mailto:bridge-request@lists.linux-foundation.org?subject=help>
-List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/bridge>,
- <mailto:bridge-request@lists.linux-foundation.org?subject=subscribe>
-Errors-To: bridge-bounces@lists.linux-foundation.org
-Sender: "Bridge" <bridge-bounces@lists.linux-foundation.org>
+In-Reply-To: <CANnsUMG3WO_19GpnsNaXPqu6eEnpBvYUpkrf1QbHwsc9wEoCZQ@mail.gmail.com>
+Sender: Luis Chamberlain <mcgrof@infradead.org>
+List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Joel Granados <joel.granados@gmail.com>
-Cc: Joel Granados <j.granados@samsung.com>, Wen Gu <guwen@linux.alibaba.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Catalin Marinas <catalin.marinas@arm.com>, Nikolay Aleksandrov <razor@blackwall.org>, Alexander Aring <alex.aring@gmail.com>, linux-sctp@vger.kernel.org, Miquel Raynal <miquel.raynal@bootlin.com>, Jan Karcher <jaka@linux.ibm.com>, Mat Martineau <martineau@kernel.org>, Will Deacon <will@kernel.org>, Alexander Gordeev <agordeev@linux.ibm.com>, Stefan Schmidt <stefan@datenfreihafen.org>, Steffen Klassert <steffen.klassert@secunet.com>, linux-s390@vger.kernel.org, rds-devel@oss.oracle.com, Xin Long <lucien.xin@gmail.com>, Herbert Xu <herbert@gondor.apana.org.au>, linux-rdma@vger.kernel.org, Tony Lu <tonylu@linux.alibaba.com>, bridge@lists.linux-foundation.org, willy@infradead.org, Jozsef Kadlecsik <kadlec@net>
+To: Chris Maness <christopher.maness@gmail.com>
+Cc: Alexander Aring <alex.aring@gmail.com>, Alexander Gordeev <agordeev@linux.ibm.com>, Catalin Marinas <catalin.marinas@arm.com>, Christian Borntraeger <borntraeger@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, David Ahern <dsahern@kernel.org>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Florian Westphal <fw@strlen.de>, Heiko Carstens <hca@linux.ibm.com>, Herbert Xu <herbert@gondor.apana.org.au>, Iurii Zaikin <yzaikin@google.com>, Jakub Kicinski <kuba@kernel.org>, Jan Karcher <jaka@linux.ibm.com>, Joel Granados <joel.granados@gmail.com>, Joel Granados <j.granados@samsung.com>, Joerg Reuter <jreuter@yaina.de>, Jozsef Kadlecsik <kadlec@netfilter.org>, Julian Anastasov <ja@ssi.bg>, Karsten Graul <k>
 
-On Mon, Jul 31, 2023 at 02:36:50PM -0700, Luis Chamberlain wrote:
-> > Joel Granados (14):
-> >   sysctl: Prefer ctl_table_header in proc_sysctl
-> >   sysctl: Use ctl_table_header in list_for_each_table_entry
-> >   sysctl: Add ctl_table_size to ctl_table_header
-> >   sysctl: Add size argument to init_header
-> >   sysctl: Add a size arg to __register_sysctl_table
-> >   sysctl: Add size to register_sysctl
-> >   sysctl: Add size arg to __register_sysctl_init
-> 
-> This is looking great thanks, I've taken the first 7 patches above
-> to sysctl-next to get more exposure / testing and since we're already
-> on rc4.
+On Mon, Aug 07, 2023 at 04:00:49PM -0700, Chris Maness wrote:
+> When are these likely to hit the mainline release code?
 
-Ok I havent't heard much more feedback from networking folks, and
-since this is mostly sysctl love I've taken in the rest of these
-patches. Thanks to Jani Nikula for the reviews and to Greg KH for
-the suggestion on simplifying things.
-
-Let's see what busts in linux-next, and if anything does I can reset
-my tree back to only the first 7 patches.
+linux-next tomorrow. The first 7 patches are scheduled for mainline
+as they were merged + tested without any hiccups. These last few patches
+I'll wait and see. If nothing blows up on linux-next perhaps I'll
+include them to Linux for mainline during the next merge window.
 
   Luis
