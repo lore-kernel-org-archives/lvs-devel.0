@@ -1,61 +1,61 @@
-From: Luis Chamberlain <mcgrof@kernel.org>
-Subject: Re: [PATCH v2 00/14] sysctl: Add a size argument to
- register functions in sysctl
-Date: Mon, 7 Aug 2023 19:34:05 -0700
-Message-ID: <ZNGpnSCkVYAnfSfa@bombadil.infradead.org>
+From: Chris Maness <christopher.maness@gmail.com>
+Subject: Re: [PATCH v2 00/14] sysctl: Add a size argument to register
+ functions in sysctl
+Date: Mon, 7 Aug 2023 19:50:44 -0700
+Message-ID: <CANnsUMGRBnatKB4-3eYjb5aG7YnXDiZG6cjuwSgtjvVF6ErJNg@mail.gmail.com>
 References: <20230731071728.3493794-1-j.granados@samsung.com>
- <ZMgpck0rjqHR74sl@bombadil.infradead.org>
- <ZNFlqwwvE6w6HyHl@bombadil.infradead.org>
- <20230807190914.4ff3eb36@kernel.org>
+ <ZMgpck0rjqHR74sl@bombadil.infradead.org> <ZNFlqwwvE6w6HyHl@bombadil.infradead.org>
+ <CANnsUMG3WO_19GpnsNaXPqu6eEnpBvYUpkrf1QbHwsc9wEoCZQ@mail.gmail.com> <ZNGBrkP7J2g/BAWV@bombadil.infradead.org>
 Mime-Version: 1.0
-Return-path: <bridge-bounces@lists.linux-foundation.org>
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 1E41340543
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org E322240447
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 618F240447
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org A4C0F40350
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- d=infradead.org; s=bombadil.20210309; h=Sender:In-Reply-To:Content-Type:
- MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
- Content-Transfer-Encoding:Content-ID:Content-Description;
- bh=2sy570se2d1y/tNUc5KxUhtFZdHaIMpjXMloRWfAQC8=; b=LFTrjMpESf0K2WDYsgcYshMVZb
- XVav8xxO1YOSh/f7kB16OzY0uBkVxWCZvBuYbhPMnpSryFVcJMA4U85MD7ki5SJW+wKWHz7l/i5Ud
- asF14iLCZhDvbu3bBlUZpGHDWWZShHGraWmRr0zUN9avXuF4GiC3kbqxQlKmcOfQpYDAw17HvvUYa
- g7VEp36XJrjJHaC6TZnT+EHhXr0jTCtQtZf/X0ow7oIwBOlWCyLO9p3mX//iCo46M6JmQGR0Xskpr
- kQ5/2g384H8/rcW5PZkcI/7KwR40BJHcWTCqG1O79Ofbz7S65Cn4CzgMg7znP4sOgksRuXlcNy/uI
- O/5mNnZA==;
-Content-Disposition: inline
-In-Reply-To: <20230807190914.4ff3eb36@kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Return-path: <netdev+bounces-25245-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1691463055; x=1692067855;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=To5RXdgTZuuS1AHvSrlZPoAVtMBfYbQuZKe1V5PCHGU=;
+        b=hk+jDZrl3g+o4sMGmZCabtN/5AnLtuwYSMj/gPgSP5jEYRltMDEp8gR1KR3PAoQdbl
+         1mPD04e7QwuBYp8dQtUhan7IrsHCz9nRfLpKT2kV9/mlU+mh7iLzNzoUSrFPVWwipOD6
+         q1TBPuDV4nRSRSBp4V/lOBEhKgMReru3RolSHSEN0f12SXGiqxPgWA4lemQjUrXgfP0b
+         9eSMaS0Lrlh3Hp5R6eNkjFGOMxplIuqi6pgCBrEZ/rsfKVThX0JpHq6AykEIQJrm9ZkH
+         +wvjvoi0OZeiAqnoiw+ZytKa3+4s6OOqLNTXelwoIk85Wm8mUEBMLgOG45iVyn8pij86
+         aDKg==
 List-Id: <lvs-devel.vger.kernel.org>
-List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/bridge>, 
- <mailto:bridge-request@lists.linux-foundation.org?subject=unsubscribe>
-List-Archive: <http://lists.linuxfoundation.org/pipermail/bridge/>
-List-Post: <mailto:bridge@lists.linux-foundation.org>
-List-Help: <mailto:bridge-request@lists.linux-foundation.org?subject=help>
-List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/bridge>,
- <mailto:bridge-request@lists.linux-foundation.org?subject=subscribe>
-Errors-To: bridge-bounces@lists.linux-foundation.org
-Sender: "Bridge" <bridge-bounces@lists.linux-foundation.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: Joel Granados <j.granados@samsung.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Catalin Marinas <catalin.marinas@arm.com>, Nikolay Aleksandrov <razor@blackwall.org>, Alexander Aring <alex.aring@gmail.com>, linux-sctp@vger.kernel.org, Miquel Raynal <miquel.raynal@bootlin.com>, Jan Karcher <jaka@linux.ibm.com>, Mat Martineau <martineau@kernel.org>, Will Deacon <will@kernel.org>, Alexander Gordeev <agordeev@linux.ibm.com>, Stefan Schmidt <stefan@datenfreihafen.org>, Steffen Klassert <steffen.klassert@secunet.com>, linux-s390@vger.kernel.org, rds-devel@oss.oracle.com, Xin Long <lucien.xin@gmail.com>, Herbert Xu <herbert@gondor.apana.org.au>, linux-rdma@vger.kernel.org, Tony Lu <tonylu@linux.alibaba.com>, bridge@lists.linux-foundation.org, willy@infradead.org, Jozsef Kadlecsik <kadlec@netfilter.org>, lvs-devel@vger.kerne
+List-Subscribe: <mailto:netdev+subscribe@vger.kernel.org>
+List-Unsubscribe: <mailto:netdev+unsubscribe@vger.kernel.org>
+In-Reply-To: <ZNGBrkP7J2g/BAWV@bombadil.infradead.org>
+Content-Type: text/plain; charset="windows-1252"
+To: Luis Chamberlain <mcgrof@kernel.org>
+Cc: Alexander Aring <alex.aring@gmail.com>, Alexander Gordeev <agordeev@linux.ibm.com>, Catalin Marinas <catalin.marinas@arm.com>, Christian Borntraeger <borntraeger@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, David Ahern <dsahern@kernel.org>, "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Florian Westphal <fw@strlen.de>, Heiko Carstens <hca@linux.ibm.com>, Herbert Xu <herbert@gondor.apana.org.au>, Iurii Zaikin <yzaikin@google.com>, Jakub Kicinski <kuba@kernel.org>, Jan Karcher <jaka@linux.ibm.com>, Joel Granados <joel.granados@gmail.com>, Joel Granados <j.granados@samsung.com>, Joerg Reuter <jreuter@yaina.de>, Jozsef Kadlecsik <kadlec@netfilter.org>, Julian Anastasov <ja@ssi.bg>, Karsten Graul <kgraul@linux.ibm.com>, Kees Cook <keescook@chromium.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Mat Martineau <martine>
 
-On Mon, Aug 07, 2023 at 07:09:14PM -0700, Jakub Kicinski wrote:
-> On Mon, 7 Aug 2023 14:44:11 -0700 Luis Chamberlain wrote:
-> > > This is looking great thanks, I've taken the first 7 patches above
-> > > to sysctl-next to get more exposure / testing and since we're already
-> > > on rc4.  
-> > 
-> > Ok I havent't heard much more feedback from networking folks
-> 
-> What did you expect to hear from us?
+I tried running the current mainline kernel (current Arch Linux) with
+simple single MUX socket (ax0) using LinFBB.  I was a happy camper as
+it seemed to work fine at first, then the system just slowed to a
+crawl.  I am wondering if any of these patches are addressing this
+behavior.  No kernel panic like before, but not what I was hoping for.
+I have also tried sixpack, and that explodes instantly the last time I
+have checked.   That goes all the way back to the v4 kernels.  v2 is
+fine there.
 
-Just a sanity review would be nice.
+73 de Chris KQ6UP
 
-> My only comment is to merge the internal prep changes in and then send
-> us the networking changes in the next release cycle.
+On Mon, Aug 7, 2023 at 4:43=E2=80=AFPM Luis Chamberlain <mcgrof@kernel.org>=
+ wrote:
+>
+> On Mon, Aug 07, 2023 at 04:00:49PM -0700, Chris Maness wrote:
+> > When are these likely to hit the mainline release code?
+>
+> linux-next tomorrow. The first 7 patches are scheduled for mainline
+> as they were merged + tested without any hiccups. These last few patches
+> I'll wait and see. If nothing blows up on linux-next perhaps I'll
+> include them to Linux for mainline during the next merge window.
+>
+>   Luis
 
-OK we can do that, I can soak them on linux-next from now so to be sure
-it gets wider testing. But review on those parts would be nice.
 
-  Luis
+
+--=20
+Thanks,
+Chris Maness
+
