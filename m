@@ -1,27 +1,28 @@
 From: Joel Granados <joel.granados@gmail.com>
-Subject: [PATCH v3 09/14] ax.25: Update to register_net_sysctl_sz
-Date: Wed,  9 Aug 2023 12:50:01 +0200
-Message-ID: <20230809105006.1198165-10-j.granados@samsung.com>
+Subject: [PATCH v3 13/14] sysctl: SIZE_MAX->ARRAY_SIZE in
+	register_net_sysctl
+Date: Wed,  9 Aug 2023 12:50:05 +0200
+Message-ID: <20230809105006.1198165-14-j.granados@samsung.com>
 References: <20230809105006.1198165-1-j.granados@samsung.com>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Return-path: <bridge-bounces@lists.linux-foundation.org>
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org 962E54176E
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org 403A941880
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org C2E784187E
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org A4A2541887
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 1D2794059C
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp2.osuosl.org 20A9D414E0
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org E79AF418A7
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp4.osuosl.org 0E63541893
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=gmail.com; s=20221208; t=1691578227; x=1692183027;
+ d=gmail.com; s=20221208; t=1691578235; x=1692183035;
  h=content-transfer-encoding:mime-version:references:in-reply-to
  :message-id:date:subject:cc:to:from:from:to:cc:subject:date
  :message-id:reply-to;
- bh=FA2Np0axnCcM7zYYQ9J3PNsrfsw3IGeC9vgEKu3nCGU=;
- b=rEyYCnfsy3v2ug/uuoFLOJFvx97QjFH3Ja4HZMdP4ywagN1Opk8E+zw15eNChpRGwe
- NQPtx3FXl6/MJAxf65uU0/tZ91owLPW0nUcSngIU7L7MJI5+ofN10W6SiJdOJzKrwCrk
- dn7hPAPLn54iejr9Gj6f9FzWJEM8tLVE/rLuH7GPZukjcTv6ydi6aVxcw4vbbc60hWhD
- XTwHq2EX8pi1TNUg77QYUmZ1R7SP1UzNhZk2I2tB+gFKeBvKXjkWHmIc2ShCnYm9kZYv
- vxhwgV34w5SpV2tB4e6z8ifiW7cxLXpVQhl7MDJ7US8VK0w5BAzOH4LOZmkDHGVXubwR
- QqJQ==
+ bh=5noSV5uL5R3dSrbr/R0oWH8ijMnn3jtlsPFspVagWKY=;
+ b=TX8khL8g58MfSkvF/7dqspBoYmTEND8gsbbGwKCpvoBlJdYirB/frY3cUw6GS6+SHA
+ DfP23JLSKjLvVDd6Y6bO3Tb3CU7DtRCNxdcPfv0/dLLVbTNS8nywKaCrcpghL3jSw/4i
+ snyo098b2K+hvjhRkYb8awdmCwqLfG3x+L62mAtDznqfAw1ZGBiX+40XWVPAtoPCbf+g
+ 5Uxrm9xdM62+Q4csDS5gX23DV8HPo+vs/icc4hZk57D3nosZ46zn9sbBNsd/FcUukcm+
+ j/MC/x/Wu8KlPCoks4UJfVZKxmwvH2daD4+6FjrR9xdEHKFru3ta1n2dBRsqqaqJ8IwC
+ 5Z0A==
 In-Reply-To: <20230809105006.1198165-1-j.granados@samsung.com>
 List-Id: <lvs-devel.vger.kernel.org>
 List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/bridge>, 
@@ -37,34 +38,40 @@ Content-Type: text/plain; charset="us-ascii"
 To: mcgrof@kernel.org
 Cc: Joel Granados <j.granados@samsung.com>, Alexander Aring <alex.aring@gmail.com>, Catalin Marinas <catalin.marinas@arm.com>, Nikolay Aleksandrov <razor@blackwall.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, Miquel Raynal <miquel.raynal@bootlin.com>, Alexander Gordeev <agordeev@linux.ibm.com>, Mat Martineau <martineau@kernel.org>, Will Deacon <will@kernel.org>, Jan Karcher <jaka@linux.ibm.com>, Stefan Schmidt <stefan@datenfreihafen.org>, Steffen Klassert <steffen.klassert@secunet.com>, linux-s390@vger.kernel.org, rds-devel@oss.oracle.com, Xin Long <lucien.xin@gmail.com>, Herbert Xu <herbert@gondor.apana.org.au>, linux-rdma@vger.kernel.org, Tony Lu <tonylu@linux.alibaba.com>, bridge@lists.linux-foundation.org, willy@infradead.org, Jozsef Kadlecsik <kadlec@netfilter.org>, lvs-devel@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, core
 
-Move from register_net_sysctl to register_net_sysctl_sz and pass the
-ARRAY_SIZE of the ctl_table array that was used to create the table
-variable. We need to move to the new function in preparation for when we
-change SIZE_MAX to ARRAY_SIZE() in the register_net_sysctl macro.
-Failing to do so would erroneously allow ARRAY_SIZE() to be called on a
-pointer. We hold off the SIZE_MAX to ARRAY_SIZE change until we have
-migrated all the relevant net sysctl registering functions to
-register_net_sysctl_sz in subsequent commits.
+Replace SIZE_MAX with ARRAY_SIZE in the register_net_sysctl macro. Now
+that all the callers to register_net_sysctl are actual arrays, we can
+call ARRAY_SIZE() without any compilation warnings. By calculating the
+actual array size, this commit is making sure that register_net_sysctl
+and all its callers forward the table_size into sysctl backend for when
+the sentinel elements in the ctl_table arrays (last empty markers) are
+removed. Without it the removal would fail lacking a stopping criteria
+for traversing the ctl_table arrays.
+
+Stopping condition continues to be based on both table size and the
+procname null test. This is needed in order to allow for the systematic
+removal al the sentinel element in subsequent commits: Before removing
+sentinel the stopping criteria will be the last null element. When the
+sentinel is removed then the (correct) size will take over.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
+Suggested-by: Jani Nikula <jani.nikula@linux.intel.com>
 ---
- net/ax25/sysctl_net_ax25.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ include/net/net_namespace.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/ax25/sysctl_net_ax25.c b/net/ax25/sysctl_net_ax25.c
-index 2154d004d3dc..db66e11e7fe8 100644
---- a/net/ax25/sysctl_net_ax25.c
-+++ b/net/ax25/sysctl_net_ax25.c
-@@ -159,7 +159,8 @@ int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
- 		table[k].data = &ax25_dev->values[k];
+diff --git a/include/net/net_namespace.h b/include/net/net_namespace.h
+index e4e5fe75a281..75dba309e043 100644
+--- a/include/net/net_namespace.h
++++ b/include/net/net_namespace.h
+@@ -470,7 +470,7 @@ void unregister_pernet_device(struct pernet_operations *);
+ struct ctl_table;
  
- 	snprintf(path, sizeof(path), "net/ax25/%s", ax25_dev->dev->name);
--	ax25_dev->sysheader = register_net_sysctl(&init_net, path, table);
-+	ax25_dev->sysheader = register_net_sysctl_sz(&init_net, path, table,
-+						     ARRAY_SIZE(ax25_param_table));
- 	if (!ax25_dev->sysheader) {
- 		kfree(table);
- 		return -ENOMEM;
+ #define register_net_sysctl(net, path, table)	\
+-	register_net_sysctl_sz(net, path, table, SIZE_MAX)
++	register_net_sysctl_sz(net, path, table, ARRAY_SIZE(table))
+ #ifdef CONFIG_SYSCTL
+ int net_sysctl_init(void);
+ struct ctl_table_header *register_net_sysctl_sz(struct net *net, const char *path,
 -- 
 2.30.2
 
