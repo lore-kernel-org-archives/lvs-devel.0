@@ -1,29 +1,28 @@
-From: Kuniyuki Iwashima <kuniyu@amazon.com>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: Race over table->data in proc_do_sync_threshold()
-Date: Wed, 9 Aug 2023 19:27:34 -0700
-Message-ID: <20230810022734.47246-1-kuniyu@amazon.com>
+Date: Thu, 10 Aug 2023 09:20:28 +0300 (EEST)
+Message-ID: <b4854287-cb97-27fb-053f-e52179c05e97@ssi.bg>
 References: <B6988E90-0A1E-4B85-BF26-2DAF6D482433@gmail.com>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1691634489; x=1723170489;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=bzEek1zgt1wND7V2uHTMP/IFQxtrm8y1bob9SqKo9zI=;
-  b=KaHzKPDBA3kBwQqdbVZf12BH8MpzsD74JdEC7brZTSu//iFSrFFgQBW8
-   RNc6YMSpIUYhOtId+9vp3Q/UaKaSZll2tuoFBOnsr9r2pLwZ+gO4K8jIp
-   PC93U3GbFLJkkhKSeFIZ5w/WKKJZ0ODjYLNs3VBMDskeSGAM/uFm5nTSc
-   Y=;
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
+        t=1691648437; bh=bYsAcXe+msxmctZkaQSDLKwGaykqzb1Fk6NOmEwpcAM=;
+        h=Date:From:To:cc:Subject:In-Reply-To:References;
+        b=cY8M+DWNgIfcrPfCAot1zf5bu/6LmAGxy9zkrhyKtb5IWnwWIHvK9+0bOQfRb3Hy2
+         lJ1KzoLnWuf9Vvv6l2+dHrfJr6AO8Id42qh9BrXfs9hN7zukpuq/MkvlRew1+j7SX4
+         6MkKOn2FKyRQEmD+XX24qPx9ZpslKX+0ixcjvENU=
 In-Reply-To: <B6988E90-0A1E-4B85-BF26-2DAF6D482433@gmail.com>
 List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
-To: sishuai.system@gmail.com
-Cc: horms@verge.net.au, ja@ssi.bg, lvs-devel@vger.kernel.org, netdev@vger.kernel.org, kuniyu@amazon.com
+Content-Transfer-Encoding: 7bit
+To: Sishuai Gong <sishuai.system@gmail.com>
+Cc: horms@verge.net.au, Linux Kernel Network Developers <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org
 
-From: Sishuai Gong <sishuai.system@gmail.com>
-Date: Wed, 9 Aug 2023 20:30:37 -0400
+
+	Hello,
+
+On Wed, 9 Aug 2023, Sishuai Gong wrote:
+
 > Hi,
 > 
 > We observed races over (struct ctl_table *) table->data when two threads
@@ -34,4 +33,17 @@ Date: Wed, 9 Aug 2023 20:30:37 -0400
 > 
 > This race probably would mess up table->data. Is it better to add a lock?
 
-Yes, we should acquire mutex/seqlock etc.
+	We can put mutex_lock(&ipvs->sync_mutex) before the first
+memcpy and to use two WRITE_ONCE instead of the second memcpy. But
+this requires extra2 = ipvs in ip_vs_control_net_init_sysctl():
+
+	tbl[idx].data = &ipvs->sysctl_sync_threshold;
++	tbl[idx].extra2 = ipvs;
+
+	Will you provide patch?
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+
