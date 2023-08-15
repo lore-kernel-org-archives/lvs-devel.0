@@ -1,183 +1,213 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH RFC net-next 11/14] ipvs: no_cport and dropentry counters can be per-net
-Date: Tue, 15 Aug 2023 20:30:28 +0300
-Message-ID: <20230815173031.168344-12-ja@ssi.bg>
+Subject: [PATCH RFC net-next 13/14] ipvs: add ip_vs_status info
+Date: Tue, 15 Aug 2023 20:30:30 +0300
+Message-ID: <20230815173031.168344-14-ja@ssi.bg>
 References: <20230815173031.168344-1-ja@ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
+Return-path: <netdev+bounces-27868-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
-        t=1692151028; bh=Ew7hm85tKXib8qHRJUoYIIAFkQSDxR+OwF18o24BLsk=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=taqsfAUTPGqE6mw+7ps/XiA6JSlNF+EoHdWdAP0KgJ8rBWnYqSM2EWsFw1NRfk9hm
-         sh3IZe1HNhBQA2aZOxe+LBPNa/4sbpvUNRpLasNRF72fmuu1OSP4fIrZnKyURfFLQ8
-         W1rRm+OFeSSarjVmTFRamGfuT6HD7gbYNxv8GKcY=
+	t=1692151028; bh=pK1P7x01A48ZlwM1FSadC7e6+gxKK8w7zEAoSAA/BfQ=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=hV5lz2bkOTp2l1Op7GCT25WW6LX/WInycMkrRJAwJvvsIWff3Xx5MCo/noGP/6ys/
+	 zrTvBdX7tvsOYFOFVd+XDo68tY1JUgkmSGHviLD2ySTMzXL6ti04nyvaMgX5uyfe7h
+	 nDF/YkcftVQE2+s8Pq6MNzXMuWuAHgsOJScn0HNw=
 In-Reply-To: <20230815173031.168344-1-ja@ssi.bg>
-List-ID: <lvs-devel.vger.kernel.org>
+List-Id: <lvs-devel.vger.kernel.org>
+List-Subscribe: <mailto:netdev+subscribe@vger.kernel.org>
+List-Unsubscribe: <mailto:netdev+unsubscribe@vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, "Paul E . McKenney" <paulmck@kernel.org>, rcu@vger.kernel.org, Dust Li <dust.li@linux.alibaba.com>, Jiejian Wu <jiejian@linux.alibaba.com>, Jiri Wiesner <jwiesner@suse.de>
 
-With using per-net conn_tab these counters do not need to be
-global anymore.
+Add /proc/net/ip_vs_status to show current state of IPVS.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/ip_vs.h             |  2 ++
- net/netfilter/ipvs/ip_vs_conn.c | 59 +++++++++++++++++++--------------
- 2 files changed, 37 insertions(+), 24 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 147 +++++++++++++++++++++++++++++++++
+ 1 file changed, 147 insertions(+)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index f5605c289bba..ed74e4e36f21 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1158,6 +1158,7 @@ struct netns_ipvs {
- #endif
- 	/* ip_vs_conn */
- 	atomic_t		conn_count;      /* connection counter */
-+	atomic_t		no_cport_conns[IP_VS_AF_MAX];
- 	struct delayed_work	conn_resize_work;/* resize conn_tab */
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 43057b81c924..5b2a5e3bf309 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2910,6 +2910,146 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
  
- 	/* ip_vs_ctl */
-@@ -1188,6 +1189,7 @@ struct netns_ipvs {
- 	int			drop_counter;
- 	int			old_secure_tcp;
- 	atomic_t		dropentry;
-+	s8			dropentry_counters[8];
- 	/* locks in ctl.c */
- 	spinlock_t		dropentry_lock;  /* drop entry handling */
- 	spinlock_t		droppacket_lock; /* drop packet handling */
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index f9111bfefd81..80858d9c69ac 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -53,9 +53,6 @@ int ip_vs_conn_tab_size __read_mostly;
- /*  SLAB cache for IPVS connections */
- static struct kmem_cache *ip_vs_conn_cachep __read_mostly;
- 
--/*  counter for no client port connections */
--static atomic_t ip_vs_conn_no_cport_cnt = ATOMIC_INIT(0);
--
- /* We need an addrstrlen that works with or without v6 */
- #ifdef CONFIG_IP_VS_IPV6
- #define IP_VS_ADDRSTRLEN INET6_ADDRSTRLEN
-@@ -318,10 +315,16 @@ struct ip_vs_conn *ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
- 	struct ip_vs_conn *cp;
- 
- 	cp = __ip_vs_conn_in_get(p);
--	if (!cp && atomic_read(&ip_vs_conn_no_cport_cnt)) {
--		struct ip_vs_conn_param cport_zero_p = *p;
--		cport_zero_p.cport = 0;
--		cp = __ip_vs_conn_in_get(&cport_zero_p);
-+	if (!cp) {
-+		struct netns_ipvs *ipvs = p->ipvs;
-+		int af_id = ip_vs_af_index(p->af);
-+
-+		if (atomic_read(&ipvs->no_cport_conns[af_id])) {
-+			struct ip_vs_conn_param cport_zero_p = *p;
-+
-+			cport_zero_p.cport = 0;
-+			cp = __ip_vs_conn_in_get(&cport_zero_p);
-+		}
- 	}
- 
- 	IP_VS_DBG_BUF(9, "lookup/in %s %s:%d->%s:%d %s\n",
-@@ -534,6 +537,7 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
- {
- 	struct hlist_bl_head *head, *head2, *head_new;
- 	struct netns_ipvs *ipvs = cp->ipvs;
-+	int af_id = ip_vs_af_index(cp->af);
- 	u32 hash_r = 0, hash_key_r = 0;
- 	struct ip_vs_rht *t, *tp, *t2;
- 	u32 hash_key, hash_key_new;
-@@ -612,7 +616,7 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
- 			hlist_bl_del_rcu(&cp->c_list);
- 			hlist_bl_add_head_rcu(&cp->c_list, head_new);
- 		}
--		atomic_dec(&ip_vs_conn_no_cport_cnt);
-+		atomic_dec(&ipvs->no_cport_conns[af_id]);
- 		cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
- 		cp->cport = cport;
- 	}
-@@ -1177,8 +1181,11 @@ static void ip_vs_conn_expire(struct timer_list *t)
- 		if (unlikely(cp->app != NULL))
- 			ip_vs_unbind_app(cp);
- 		ip_vs_unbind_dest(cp);
--		if (cp->flags & IP_VS_CONN_F_NO_CPORT)
--			atomic_dec(&ip_vs_conn_no_cport_cnt);
-+		if (unlikely(cp->flags & IP_VS_CONN_F_NO_CPORT)) {
-+			int af_id = ip_vs_af_index(cp->af);
-+
-+			atomic_dec(&ipvs->no_cport_conns[af_id]);
-+		}
- 		if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
- 			ip_vs_conn_rcu_free(&cp->rcu_head);
- 		else
-@@ -1285,8 +1292,11 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
- 	cp->out_seq.delta = 0;
- 
- 	atomic_inc(&ipvs->conn_count);
--	if (flags & IP_VS_CONN_F_NO_CPORT)
--		atomic_inc(&ip_vs_conn_no_cport_cnt);
-+	if (unlikely(flags & IP_VS_CONN_F_NO_CPORT)) {
-+		int af_id = ip_vs_af_index(cp->af);
-+
-+		atomic_inc(&ipvs->no_cport_conns[af_id]);
-+	}
- 
- 	/* Bind the connection with a destination server */
- 	cp->dest = NULL;
-@@ -1571,12 +1581,7 @@ static const struct seq_operations ip_vs_conn_sync_seq_ops = {
-  */
- static inline int todrop_entry(struct ip_vs_conn *cp)
- {
--	/*
--	 * The drop rate array needs tuning for real environments.
--	 * Called from timer bh only => no locking
--	 */
--	static const signed char todrop_rate[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
--	static signed char todrop_counter[9] = {0};
-+	struct netns_ipvs *ipvs = cp->ipvs;
- 	int i;
- 
- 	/* if the conn entry hasn't lasted for 60 seconds, don't drop it.
-@@ -1585,15 +1590,17 @@ static inline int todrop_entry(struct ip_vs_conn *cp)
- 	if (time_before(cp->timeout + jiffies, cp->timer.expires + 60*HZ))
- 		return 0;
- 
--	/* Don't drop the entry if its number of incoming packets is not
--	   located in [0, 8] */
-+	/* Drop only conns with number of incoming packets in [1..8] range */
- 	i = atomic_read(&cp->in_pkts);
--	if (i > 8 || i < 0) return 0;
-+	if (i > 8 || i < 1)
-+		return 0;
- 
--	if (!todrop_rate[i]) return 0;
--	if (--todrop_counter[i] > 0) return 0;
-+	i--;
-+	if (--ipvs->dropentry_counters[i] > 0)
-+		return 0;
- 
--	todrop_counter[i] = todrop_rate[i];
-+	/* Prefer to drop conns with less number of incoming packets */
-+	ipvs->dropentry_counters[i] = i + 1;
- 	return 1;
+ 	return 0;
  }
- 
-@@ -1811,7 +1818,11 @@ void ip_vs_expire_nodest_conn_flush(struct netns_ipvs *ipvs)
-  */
- int __net_init ip_vs_conn_net_init(struct netns_ipvs *ipvs)
- {
-+	int idx;
 +
- 	atomic_set(&ipvs->conn_count, 0);
-+	for (idx = 0; idx < IP_VS_AF_MAX; idx++)
-+		atomic_set(&ipvs->no_cport_conns[idx], 0);
- 	INIT_DELAYED_WORK(&ipvs->conn_resize_work, conn_resize_work_handler);
- 	RCU_INIT_POINTER(ipvs->conn_tab, NULL);
- 	atomic_set(&ipvs->conn_tab_changes, 0);
++static int ip_vs_status_show(struct seq_file *seq, void *v)
++{
++	struct net *net = seq_file_single_net(seq);
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	unsigned int resched_score = 0;
++	struct ip_vs_conn_hnode *hn;
++	struct hlist_bl_head *head;
++	struct ip_vs_service *svc;
++	struct ip_vs_rht *t, *pt;
++	struct hlist_bl_node *e;
++	int old_gen, new_gen;
++	u32 counts[8];
++	u32 bucket;
++	int count;
++	u32 sum1;
++	u32 sum;
++	int i;
++
++	old_gen = atomic_read(&ipvs->conn_tab_changes);
++
++	rcu_read_lock();
++
++	t = rcu_dereference(ipvs->conn_tab);
++
++	seq_printf(seq, "Conns:\t%d\n", atomic_read(&ipvs->conn_count));
++	seq_printf(seq, "Conn buckets:\t%d (%d bits, lfactor %d)\n",
++		   t ? t->size : 0, t ? t->bits : 0, t ? t->lfactor : 0);
++
++	if (!atomic_read(&ipvs->conn_count))
++		goto after_conns;
++	old_gen = atomic_read(&ipvs->conn_tab_changes);
++
++repeat_conn:
++	smp_rmb(); /* ipvs->conn_tab and conn_tab_changes */
++	memset(counts, 0, sizeof(counts));
++	ip_vs_rht_for_each_table_rcu(ipvs->conn_tab, t, pt) {
++		for (bucket = 0; bucket < t->size; bucket++) {
++			DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
++
++			count = 0;
++			resched_score++;
++			ip_vs_rht_walk_bucket_rcu(t, bucket, head) {
++				count = 0;
++				hlist_bl_for_each_entry_rcu(hn, e, head, node)
++					count++;
++			}
++			resched_score += count;
++			if (resched_score >= 100) {
++				resched_score = 0;
++				cond_resched_rcu();
++				new_gen = atomic_read(&ipvs->conn_tab_changes);
++				/* New table installed ? */
++				if (old_gen != new_gen) {
++					old_gen = new_gen;
++					goto repeat_conn;
++				}
++			}
++			counts[min(count, (int)ARRAY_SIZE(counts) - 1)]++;
++		}
++	}
++	for (sum = 0, i = 0; i < ARRAY_SIZE(counts); i++)
++		sum += counts[i];
++	sum1 = sum - counts[0];
++	seq_printf(seq, "Conn buckets empty:\t%u (%lu%%)\n",
++		   counts[0], (unsigned long)counts[0] * 100 / max(sum, 1U));
++	for (i = 1; i < ARRAY_SIZE(counts); i++) {
++		if (!counts[i])
++			continue;
++		seq_printf(seq, "Conn buckets len-%d:\t%u (%lu%%)\n",
++			   i, counts[i],
++			   (unsigned long)counts[i] * 100 / max(sum1, 1U));
++	}
++
++after_conns:
++	t = rcu_dereference(ipvs->svc_table);
++
++	count = ip_vs_get_num_services(ipvs);
++	seq_printf(seq, "Services:\t%d\n", count);
++	seq_printf(seq, "Service buckets:\t%d (%d bits, lfactor %d)\n",
++		   t ? t->size : 0, t ? t->bits : 0, t ? t->lfactor : 0);
++
++	if (!count)
++		goto after_svc;
++	old_gen = atomic_read(&ipvs->svc_table_changes);
++
++repeat_svc:
++	smp_rmb(); /* ipvs->svc_table and svc_table_changes */
++	memset(counts, 0, sizeof(counts));
++	ip_vs_rht_for_each_table_rcu(ipvs->svc_table, t, pt) {
++		for (bucket = 0; bucket < t->size; bucket++) {
++			DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
++
++			count = 0;
++			resched_score++;
++			ip_vs_rht_walk_bucket_rcu(t, bucket, head) {
++				count = 0;
++				hlist_bl_for_each_entry_rcu(svc, e, head,
++							    s_list)
++					count++;
++			}
++			resched_score += count;
++			if (resched_score >= 100) {
++				resched_score = 0;
++				cond_resched_rcu();
++				new_gen = atomic_read(&ipvs->svc_table_changes);
++				/* New table installed ? */
++				if (old_gen != new_gen) {
++					old_gen = new_gen;
++					goto repeat_svc;
++				}
++			}
++			counts[min(count, (int)ARRAY_SIZE(counts) - 1)]++;
++		}
++	}
++	for (sum = 0, i = 0; i < ARRAY_SIZE(counts); i++)
++		sum += counts[i];
++	sum1 = sum - counts[0];
++	seq_printf(seq, "Service buckets empty:\t%u (%lu%%)\n",
++		   counts[0], (unsigned long)counts[0] * 100 / max(sum, 1U));
++	for (i = 1; i < ARRAY_SIZE(counts); i++) {
++		if (!counts[i])
++			continue;
++		seq_printf(seq, "Service buckets len-%d:\t%u (%lu%%)\n",
++			   i, counts[i],
++			   (unsigned long)counts[i] * 100 / max(sum1, 1U));
++	}
++
++after_svc:
++	seq_printf(seq, "Stats thread slots:\t%d (max %lu)\n",
++		   ipvs->est_kt_count, ipvs->est_max_threads);
++	seq_printf(seq, "Stats chain max len:\t%d\n", ipvs->est_chain_max);
++	seq_printf(seq, "Stats thread ests:\t%d\n",
++		   ipvs->est_chain_max * IPVS_EST_CHAIN_FACTOR *
++		   IPVS_EST_NTICKS);
++
++	rcu_read_unlock();
++	return 0;
++}
++
+ #endif
+ 
+ /*
+@@ -4819,6 +4959,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
+ 				    ipvs->net->proc_net,
+ 				    ip_vs_stats_percpu_show, NULL))
+ 		goto err_percpu;
++	if (!proc_create_net_single("ip_vs_status", 0, ipvs->net->proc_net,
++				    ip_vs_status_show, NULL))
++		goto err_status;
+ #endif
+ 
+ 	ret = ip_vs_control_net_init_sysctl(ipvs);
+@@ -4829,6 +4972,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
+ 
+ err:
+ #ifdef CONFIG_PROC_FS
++	remove_proc_entry("ip_vs_status", ipvs->net->proc_net);
++
++err_status:
+ 	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
+ 
+ err_percpu:
+@@ -4854,6 +5000,7 @@ void __net_exit ip_vs_control_net_cleanup(struct netns_ipvs *ipvs)
+ 	ip_vs_control_net_cleanup_sysctl(ipvs);
+ 	cancel_delayed_work_sync(&ipvs->est_reload_work);
+ #ifdef CONFIG_PROC_FS
++	remove_proc_entry("ip_vs_status", ipvs->net->proc_net);
+ 	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
+ 	remove_proc_entry("ip_vs_stats", ipvs->net->proc_net);
+ 	remove_proc_entry("ip_vs", ipvs->net->proc_net);
 -- 
 2.41.0
+
 
 
