@@ -1,35 +1,29 @@
-From: Simon Horman <horms@kernel.org>
+From: Julian Anastasov <ja@ssi.bg>
 Subject: Re: [PATCH] ipvs: fix racy memcpy in proc_do_sync_threshold
-Date: Sat, 12 Aug 2023 15:10:46 +0200
-Message-ID: <ZNeE1nYMgWAZqRfc@vergenet.net>
+Date: Tue, 15 Aug 2023 05:53:43 +0300 (EEST)
+Message-ID: <359e4898-01fe-775f-d6a5-753caa585642@ssi.bg>
 References: <B556FD7B-3190-4C8F-BA83-FC5C147FEAE1@gmail.com>
 Mime-Version: 1.0
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1691845850;
-        bh=PTDMYrMnnvEC3+6KgZIJedMq4d0m0EkMnMs4B0NEo/8=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=lkan7IkCezGBzBZdH+bNQraGsS/Vq27RKUllz0Ms58XnOsbSODxEGxmwwZkDHIjmG
-         Y/GMdlW6xS/+IN1aPCcjRXKnAYZI+31YfkLJTuDU6NvXReqtBcsO+USHEbe0zr35rx
-         6G9tqb17jkhNQDfEYnW8K57GbX2R6+y7qrS8xnxC1doM9BE0RJm//nrz6UB2WSf1Ib
-         GisCbgbVV//awI8/nWE0dtYs7n6ytZBfD6A2vetNMygE9GQBA6I9bT3wYDmcmyWfjP
-         1vqfSAIM2bqyp2eSTWw8sfTIrJ5HbTV9FO63IJb+qL4oLwhE6Y0FI4ZbGG39KWQZXW
-         SKtQ54VZbhT0Q==
-Content-Disposition: inline
+Return-path: <netdev+bounces-27553-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
+	t=1692068026; bh=W+Z0WTspsdbpobGPJx4v2/IEO37df2Pimxz6FZTRsNE=;
+	h=Date:From:To:cc:Subject:In-Reply-To:References;
+	b=TxeJO+ezb/1Wg1XWK+Ukj/7m27bcaURRNEeMnmJPVOkj2TNxLakBZs35qdLh0Yq0o
+	 KkCIiZa2vVNK47+s7XUCZCUbfgJ7hXKgufxg0HhnJyM+MspOxpt6k/AwfLPNb26xo4
+	 /SFxFbRVCj4TYu8jmeL6Aa2iJgeDnFhnGNlJnzPQ=
 In-Reply-To: <B556FD7B-3190-4C8F-BA83-FC5C147FEAE1@gmail.com>
-List-ID: <lvs-devel.vger.kernel.org>
+List-Id: <lvs-devel.vger.kernel.org>
+List-Subscribe: <mailto:netdev+subscribe@vger.kernel.org>
+List-Unsubscribe: <mailto:netdev+unsubscribe@vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Sishuai Gong <sishuai.system@gmail.com>
-Cc: ja@ssi.bg, Linux Kernel Network Developers <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, Jozsef Kadlecsik <kadlec@netfilter.org>, netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Cc: Simon Horman <horms@verge.net.au>, Linux Kernel Network Developers <netdev@vger.kernel.org>, lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>, netfilter-devel@vger.kernel.org
 
-On Thu, Aug 10, 2023 at 03:12:42PM -0400, Sishuai Gong wrote:
 
-+ Pablo Neira Ayuso <pablo@netfilter.org>
-  Florian Westphal <fw@strlen.de>
-  Jozsef Kadlecsik <kadlec@netfilter.org>
-  netfilter-devel@vger.kernel.org
-  coreteam@netfilter.org
+	Hello,
+
+On Thu, 10 Aug 2023, Sishuai Gong wrote:
 
 > When two threads run proc_do_sync_threshold() in parallel,
 > data races could happen between the two memcpy():
@@ -45,13 +39,9 @@ On Thu, Aug 10, 2023 at 03:12:42PM -0400, Sishuai Gong wrote:
 > 
 > Signed-off-by: Sishuai Gong <sishuai.system@gmail.com>
 
-Probably this is a fix for nf and should have:
+	Looks good to me for net/nf, thanks!
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-
-In any case, this change looks good to me.
-
-Acked-by: Simon Horman <horms@kernel.org>
+Acked-by: Julian Anastasov <ja@ssi.bg>
 
 > ---
 >  net/netfilter/ipvs/ip_vs_ctl.c | 4 ++++
@@ -95,4 +85,5 @@ Acked-by: Simon Horman <horms@kernel.org>
 >  	tbl[idx++].data = &ipvs->sysctl_sync_refresh_period;
 > -- 
 > 2.39.2 (Apple Git-143)
-> 
+
+Regards
