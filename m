@@ -1,213 +1,459 @@
 From: Julian Anastasov <ja@ssi.bg>
-Subject: [PATCH RFC net-next 13/14] ipvs: add ip_vs_status info
-Date: Tue, 15 Aug 2023 20:30:30 +0300
-Message-ID: <20230815173031.168344-14-ja@ssi.bg>
+Subject: [PATCH RFC net-next 07/14] ipvs: add resizable hash tables
+Date: Tue, 15 Aug 2023 20:30:24 +0300
+Message-ID: <20230815173031.168344-8-ja@ssi.bg>
 References: <20230815173031.168344-1-ja@ssi.bg>
 Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <netdev+bounces-27868-gl-netdev-2=m.gmane-mx.org@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
-	t=1692151028; bh=pK1P7x01A48ZlwM1FSadC7e6+gxKK8w7zEAoSAA/BfQ=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=hV5lz2bkOTp2l1Op7GCT25WW6LX/WInycMkrRJAwJvvsIWff3Xx5MCo/noGP/6ys/
-	 zrTvBdX7tvsOYFOFVd+XDo68tY1JUgkmSGHviLD2ySTMzXL6ti04nyvaMgX5uyfe7h
-	 nDF/YkcftVQE2+s8Pq6MNzXMuWuAHgsOJScn0HNw=
+        t=1692151029; bh=EMe/3JWp+HTtpJa5s/HrGkgfX65E6KXvKk9hsuzb+CY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=KunXh65LF0JSKGSpBIeAp/h1JwU23Ehi7+n5LU4AuFzrx1FMtbSznLFaRZQUfUcdO
+         PeFfNlSoo7fYsD1GEdshQ29fEyy8ImTxwM3/OAXHrTB+CUnGtoOXpxrmF8qRaZKfch
+         9BWpFQIjYEMaZWU0E1IFvxK3lrxgXW2DDcTQ9XbE=
 In-Reply-To: <20230815173031.168344-1-ja@ssi.bg>
-List-Id: <lvs-devel.vger.kernel.org>
-List-Subscribe: <mailto:netdev+subscribe@vger.kernel.org>
-List-Unsubscribe: <mailto:netdev+unsubscribe@vger.kernel.org>
+List-ID: <lvs-devel.vger.kernel.org>
 Content-Type: text/plain; charset="us-ascii"
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, netdev@vger.kernel.org, "Paul E . McKenney" <paulmck@kernel.org>, rcu@vger.kernel.org, Dust Li <dust.li@linux.alibaba.com>, Jiejian Wu <jiejian@linux.alibaba.com>, Jiri Wiesner <jwiesner@suse.de>
 
-Add /proc/net/ip_vs_status to show current state of IPVS.
+Add infrastructure for resizable hash tables based on hlist_bl
+which we will use in followup patches.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 147 +++++++++++++++++++++++++++++++++
- 1 file changed, 147 insertions(+)
+ include/net/ip_vs.h             | 197 ++++++++++++++++++++++++++++++++
+ net/netfilter/ipvs/ip_vs_conn.c |   5 -
+ net/netfilter/ipvs/ip_vs_core.c | 169 +++++++++++++++++++++++++++
+ 3 files changed, 366 insertions(+), 5 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 43057b81c924..5b2a5e3bf309 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2910,6 +2910,146 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 6b9b32257e10..51adba5f1bb9 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -11,6 +11,7 @@
+ #include <asm/types.h>                  /* for __uXX types */
  
- 	return 0;
- }
+ #include <linux/list.h>                 /* for struct list_head */
++#include <linux/rculist_bl.h>           /* for struct hlist_bl_head */
+ #include <linux/spinlock.h>             /* for struct rwlock_t */
+ #include <linux/atomic.h>               /* for struct atomic_t */
+ #include <linux/refcount.h>             /* for struct refcount_t */
+@@ -30,6 +31,7 @@
+ #endif
+ #include <net/net_namespace.h>		/* Netw namespace */
+ #include <linux/sched/isolation.h>
++#include <linux/siphash.h>
+ 
+ #define IP_VS_HDR_INVERSE	1
+ #define IP_VS_HDR_ICMP		2
+@@ -271,6 +273,10 @@ static inline const char *ip_vs_dbg_addr(int af, char *buf, size_t buf_len,
+ 			pr_err(msg, ##__VA_ARGS__);			\
+ 	} while (0)
+ 
++struct ip_vs_aligned_lock {
++	spinlock_t	l;	/* Protect buckets */
++} ____cacheline_aligned_in_smp;
 +
-+static int ip_vs_status_show(struct seq_file *seq, void *v)
+ /* For arrays per family */
+ enum {
+ 	IP_VS_AF_INET,
+@@ -484,6 +490,197 @@ struct ip_vs_est_kt_data {
+ 	int			est_row;	/* estimated row */
+ };
+ 
++/* IPVS resizable hash tables */
++struct ip_vs_rht {
++	struct hlist_bl_head		*buckets;
++	struct ip_vs_rht __rcu		*new_tbl; /* New/Same table	*/
++	seqcount_t			*seqc;	/* Protects moves	*/
++	struct ip_vs_aligned_lock	*lock;	/* Protect seqc		*/
++	int				mask;	/* Buckets mask		*/
++	int				size;	/* Buckets		*/
++	int				seqc_mask; /* seqc mask		*/
++	int				lock_mask; /* lock mask		*/
++	u32				table_id;
++	int				u_thresh; /* upper threshold	*/
++	int				l_thresh; /* lower threshold	*/
++	int				lfactor;  /* Load Factor (shift)*/
++	int				bits;	/* size = 1 << bits	*/
++	siphash_key_t			hash_key;
++	struct rcu_head			rcu_head;
++};
++
++/**
++ * ip_vs_rht_for_each_table() - Walk the hash tables
++ * @table:	struct ip_vs_rht __rcu *table
++ * @t:		current table, used as cursor, struct ip_vs_rht *var
++ * @p:		previous table, temp struct ip_vs_rht *var
++ *
++ * Walk tables assuming others can not change the installed tables
++ */
++#define ip_vs_rht_for_each_table(table, t, p)				\
++	for (p = NULL, t = rcu_dereference_protected(table, 1);		\
++	     t != p;							\
++	     p = t, t = rcu_dereference_protected(t->new_tbl, 1))
++
++/**
++ * ip_vs_rht_for_each_table_rcu() - Walk the hash tables under RCU reader lock
++ * @table:	struct ip_vs_rht __rcu *table
++ * @t:		current table, used as cursor, struct ip_vs_rht *var
++ * @p:		previous table, temp struct ip_vs_rht *var
++ *
++ * We usually search in one table and also in second table on resizing
++ */
++#define ip_vs_rht_for_each_table_rcu(table, t, p)			\
++	for (p = NULL, t = rcu_dereference(table);			\
++	     t != p;							\
++	     p = t, t = rcu_dereference(t->new_tbl))
++
++/**
++ * ip_vs_rht_for_each_bucket() - Walk all table buckets
++ * @t:		current table, used as cursor, struct ip_vs_rht *var
++ * @bucket:	bucket index, used as cursor, u32 var
++ * @head:	bucket address, used as cursor, struct hlist_bl_head *var
++ */
++#define ip_vs_rht_for_each_bucket(t, bucket, head)			\
++	for (bucket = 0, head = (t)->buckets;				\
++	     bucket < t->size; bucket++, head++)
++
++/**
++ * ip_vs_rht_for_bucket_retry() - Retry bucket if entries are moved
++ * @t:		current table, used as cursor, struct ip_vs_rht *var
++ * @bucket:	index of current bucket or hash key
++ * @sc:		temp seqcount_t *var
++ * @retry:	temp int var
++ */
++#define ip_vs_rht_for_bucket_retry(t, bucket, sc, seq, retry)		\
++	for (retry = 1, sc = &(t)->seqc[(bucket) & (t)->seqc_mask];	\
++	     retry && ({ seq = read_seqcount_begin(sc); 1; });		\
++	     retry = read_seqcount_retry(sc, seq))
++
++/**
++ * DECLARE_IP_VS_RHT_WALK_BUCKETS_RCU() - Declare variables
++ *
++ * Variables for ip_vs_rht_walk_buckets_rcu
++ */
++#define DECLARE_IP_VS_RHT_WALK_BUCKETS_RCU()				\
++	struct ip_vs_rht *_t, *_p;					\
++	unsigned int _seq;						\
++	seqcount_t *_sc;						\
++	u32 _bucket;							\
++	int _retry
++/**
++ * ip_vs_rht_walk_buckets_rcu() - Walk all buckets under RCU read lock
++ * @table:	struct ip_vs_rht __rcu *table
++ * @head:	bucket address, used as cursor, struct hlist_bl_head *var
++ *
++ * Can be used while others add/delete/move entries
++ * Not suitable if duplicates are not desired
++ * Possible cases for reader that uses cond_resched_rcu() in the loop:
++ * - new table can not be installed, no need to repeat
++ * - new table can be installed => check and repeat if new table is
++ * installed, needed for !PREEMPT_RCU
++ */
++#define ip_vs_rht_walk_buckets_rcu(table, head)				\
++	ip_vs_rht_for_each_table_rcu(table, _t, _p)			\
++		ip_vs_rht_for_each_bucket(_t, _bucket, head)		\
++			ip_vs_rht_for_bucket_retry(_t, _bucket, _sc,	\
++						   _seq, _retry)
++
++/**
++ * DECLARE_IP_VS_RHT_WALK_BUCKET_RCU() - Declare variables
++ *
++ * Variables for ip_vs_rht_walk_bucket_rcu
++ */
++#define DECLARE_IP_VS_RHT_WALK_BUCKET_RCU()				\
++	unsigned int _seq;						\
++	seqcount_t *_sc;						\
++	int _retry
++/**
++ * ip_vs_rht_walk_bucket_rcu() - Walk bucket under RCU read lock
++ * @t:		current table, struct ip_vs_rht *var
++ * @bucket:	index of current bucket or hash key
++ * @head:	bucket address, used as cursor, struct hlist_bl_head *var
++ *
++ * Can be used while others add/delete/move entries
++ * Not suitable if duplicates are not desired
++ * Possible cases for reader that uses cond_resched_rcu() in the loop:
++ * - new table can not be installed, no need to repeat
++ * - new table can be installed => check and repeat if new table is
++ * installed, needed for !PREEMPT_RCU
++ */
++#define ip_vs_rht_walk_bucket_rcu(t, bucket, head)			\
++	if (({ head = (t)->buckets + ((bucket) & (t)->mask); 0; }))	\
++		{}							\
++	else								\
++		ip_vs_rht_for_bucket_retry(t, (bucket), _sc, _seq, _retry)
++
++/**
++ * DECLARE_IP_VS_RHT_WALK_BUCKETS_SAFE_RCU() - Declare variables
++ *
++ * Variables for ip_vs_rht_walk_buckets_safe_rcu
++ */
++#define DECLARE_IP_VS_RHT_WALK_BUCKETS_SAFE_RCU()			\
++	struct ip_vs_rht *_t, *_p;					\
++	u32 _bucket
++/**
++ * ip_vs_rht_walk_buckets_safe_rcu() - Walk all buckets under RCU read lock
++ * @table:	struct ip_vs_rht __rcu *table
++ * @head:	bucket address, used as cursor, struct hlist_bl_head *var
++ *
++ * Can be used while others add/delete entries but moving is disabled
++ * Using cond_resched_rcu() should be safe if tables do not change
++ */
++#define ip_vs_rht_walk_buckets_safe_rcu(table, head)			\
++	ip_vs_rht_for_each_table_rcu(table, _t, _p)			\
++		ip_vs_rht_for_each_bucket(_t, _bucket, head)
++
++/**
++ * DECLARE_IP_VS_RHT_WALK_BUCKETS() - Declare variables
++ *
++ * Variables for ip_vs_rht_walk_buckets
++ */
++#define DECLARE_IP_VS_RHT_WALK_BUCKETS()				\
++	struct ip_vs_rht *_t, *_p;					\
++	u32 _bucket
++
++/**
++ * ip_vs_rht_walk_buckets() - Walk all buckets
++ * @table:	struct ip_vs_rht __rcu *table
++ * @head:	bucket address, used as cursor, struct hlist_bl_head *var
++ *
++ * Use if others can not add/delete/move entries
++ */
++#define ip_vs_rht_walk_buckets(table, head)				\
++	ip_vs_rht_for_each_table(table, _t, _p)				\
++		ip_vs_rht_for_each_bucket(_t, _bucket, head)
++
++/* Entries can be in one of two tables, so we flip bit when new table is
++ * created and store it as highest bit in hash keys
++ */
++#define IP_VS_RHT_TABLE_ID_MASK	BIT(31)
++
++/* Check if hash key is from this table */
++static inline bool ip_vs_rht_same_table(struct ip_vs_rht *t, u32 hash_key)
 +{
-+	struct net *net = seq_file_single_net(seq);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	unsigned int resched_score = 0;
-+	struct ip_vs_conn_hnode *hn;
-+	struct hlist_bl_head *head;
-+	struct ip_vs_service *svc;
-+	struct ip_vs_rht *t, *pt;
-+	struct hlist_bl_node *e;
-+	int old_gen, new_gen;
-+	u32 counts[8];
-+	u32 bucket;
-+	int count;
-+	u32 sum1;
-+	u32 sum;
-+	int i;
-+
-+	old_gen = atomic_read(&ipvs->conn_tab_changes);
-+
-+	rcu_read_lock();
-+
-+	t = rcu_dereference(ipvs->conn_tab);
-+
-+	seq_printf(seq, "Conns:\t%d\n", atomic_read(&ipvs->conn_count));
-+	seq_printf(seq, "Conn buckets:\t%d (%d bits, lfactor %d)\n",
-+		   t ? t->size : 0, t ? t->bits : 0, t ? t->lfactor : 0);
-+
-+	if (!atomic_read(&ipvs->conn_count))
-+		goto after_conns;
-+	old_gen = atomic_read(&ipvs->conn_tab_changes);
-+
-+repeat_conn:
-+	smp_rmb(); /* ipvs->conn_tab and conn_tab_changes */
-+	memset(counts, 0, sizeof(counts));
-+	ip_vs_rht_for_each_table_rcu(ipvs->conn_tab, t, pt) {
-+		for (bucket = 0; bucket < t->size; bucket++) {
-+			DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
-+
-+			count = 0;
-+			resched_score++;
-+			ip_vs_rht_walk_bucket_rcu(t, bucket, head) {
-+				count = 0;
-+				hlist_bl_for_each_entry_rcu(hn, e, head, node)
-+					count++;
-+			}
-+			resched_score += count;
-+			if (resched_score >= 100) {
-+				resched_score = 0;
-+				cond_resched_rcu();
-+				new_gen = atomic_read(&ipvs->conn_tab_changes);
-+				/* New table installed ? */
-+				if (old_gen != new_gen) {
-+					old_gen = new_gen;
-+					goto repeat_conn;
-+				}
-+			}
-+			counts[min(count, (int)ARRAY_SIZE(counts) - 1)]++;
-+		}
-+	}
-+	for (sum = 0, i = 0; i < ARRAY_SIZE(counts); i++)
-+		sum += counts[i];
-+	sum1 = sum - counts[0];
-+	seq_printf(seq, "Conn buckets empty:\t%u (%lu%%)\n",
-+		   counts[0], (unsigned long)counts[0] * 100 / max(sum, 1U));
-+	for (i = 1; i < ARRAY_SIZE(counts); i++) {
-+		if (!counts[i])
-+			continue;
-+		seq_printf(seq, "Conn buckets len-%d:\t%u (%lu%%)\n",
-+			   i, counts[i],
-+			   (unsigned long)counts[i] * 100 / max(sum1, 1U));
-+	}
-+
-+after_conns:
-+	t = rcu_dereference(ipvs->svc_table);
-+
-+	count = ip_vs_get_num_services(ipvs);
-+	seq_printf(seq, "Services:\t%d\n", count);
-+	seq_printf(seq, "Service buckets:\t%d (%d bits, lfactor %d)\n",
-+		   t ? t->size : 0, t ? t->bits : 0, t ? t->lfactor : 0);
-+
-+	if (!count)
-+		goto after_svc;
-+	old_gen = atomic_read(&ipvs->svc_table_changes);
-+
-+repeat_svc:
-+	smp_rmb(); /* ipvs->svc_table and svc_table_changes */
-+	memset(counts, 0, sizeof(counts));
-+	ip_vs_rht_for_each_table_rcu(ipvs->svc_table, t, pt) {
-+		for (bucket = 0; bucket < t->size; bucket++) {
-+			DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
-+
-+			count = 0;
-+			resched_score++;
-+			ip_vs_rht_walk_bucket_rcu(t, bucket, head) {
-+				count = 0;
-+				hlist_bl_for_each_entry_rcu(svc, e, head,
-+							    s_list)
-+					count++;
-+			}
-+			resched_score += count;
-+			if (resched_score >= 100) {
-+				resched_score = 0;
-+				cond_resched_rcu();
-+				new_gen = atomic_read(&ipvs->svc_table_changes);
-+				/* New table installed ? */
-+				if (old_gen != new_gen) {
-+					old_gen = new_gen;
-+					goto repeat_svc;
-+				}
-+			}
-+			counts[min(count, (int)ARRAY_SIZE(counts) - 1)]++;
-+		}
-+	}
-+	for (sum = 0, i = 0; i < ARRAY_SIZE(counts); i++)
-+		sum += counts[i];
-+	sum1 = sum - counts[0];
-+	seq_printf(seq, "Service buckets empty:\t%u (%lu%%)\n",
-+		   counts[0], (unsigned long)counts[0] * 100 / max(sum, 1U));
-+	for (i = 1; i < ARRAY_SIZE(counts); i++) {
-+		if (!counts[i])
-+			continue;
-+		seq_printf(seq, "Service buckets len-%d:\t%u (%lu%%)\n",
-+			   i, counts[i],
-+			   (unsigned long)counts[i] * 100 / max(sum1, 1U));
-+	}
-+
-+after_svc:
-+	seq_printf(seq, "Stats thread slots:\t%d (max %lu)\n",
-+		   ipvs->est_kt_count, ipvs->est_max_threads);
-+	seq_printf(seq, "Stats chain max len:\t%d\n", ipvs->est_chain_max);
-+	seq_printf(seq, "Stats thread ests:\t%d\n",
-+		   ipvs->est_chain_max * IPVS_EST_CHAIN_FACTOR *
-+		   IPVS_EST_NTICKS);
-+
-+	rcu_read_unlock();
-+	return 0;
++	return !((t->table_id ^ hash_key) & IP_VS_RHT_TABLE_ID_MASK);
 +}
 +
- #endif
- 
- /*
-@@ -4819,6 +4959,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
- 				    ipvs->net->proc_net,
- 				    ip_vs_stats_percpu_show, NULL))
- 		goto err_percpu;
-+	if (!proc_create_net_single("ip_vs_status", 0, ipvs->net->proc_net,
-+				    ip_vs_status_show, NULL))
-+		goto err_status;
- #endif
- 
- 	ret = ip_vs_control_net_init_sysctl(ipvs);
-@@ -4829,6 +4972,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
- 
- err:
- #ifdef CONFIG_PROC_FS
-+	remove_proc_entry("ip_vs_status", ipvs->net->proc_net);
++/* Build per-table hash key from hash value */
++static inline u32 ip_vs_rht_build_hash_key(struct ip_vs_rht *t, u32 hash)
++{
++	return t->table_id | (hash & ~IP_VS_RHT_TABLE_ID_MASK);
++}
 +
-+err_status:
- 	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
++void ip_vs_rht_free(struct ip_vs_rht *t);
++void ip_vs_rht_rcu_free(struct rcu_head *head);
++struct ip_vs_rht *ip_vs_rht_alloc(int buckets, int scounts, int locks);
++int ip_vs_rht_desired_size(struct netns_ipvs *ipvs, struct ip_vs_rht *t, int n,
++			   int lfactor, int min_bits, int max_bits);
++void ip_vs_rht_set_thresholds(struct ip_vs_rht *t, int size, int lfactor,
++			      int min_bits, int max_bits);
++u32 ip_vs_rht_hash_linfo(struct ip_vs_rht *t, int af,
++			 const union nf_inet_addr *addr, u32 v1, u32 v2);
++
+ struct dst_entry;
+ struct iphdr;
+ struct ip_vs_conn;
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 9065da3cdd12..be3f21519cca 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -79,11 +79,6 @@ static unsigned int ip_vs_conn_rnd __read_mostly;
+ #define IP_VS_ADDRSTRLEN (8+1)
+ #endif
  
- err_percpu:
-@@ -4854,6 +5000,7 @@ void __net_exit ip_vs_control_net_cleanup(struct netns_ipvs *ipvs)
- 	ip_vs_control_net_cleanup_sysctl(ipvs);
- 	cancel_delayed_work_sync(&ipvs->est_reload_work);
- #ifdef CONFIG_PROC_FS
-+	remove_proc_entry("ip_vs_status", ipvs->net->proc_net);
- 	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
- 	remove_proc_entry("ip_vs_stats", ipvs->net->proc_net);
- 	remove_proc_entry("ip_vs", ipvs->net->proc_net);
+-struct ip_vs_aligned_lock
+-{
+-	spinlock_t	l;
+-} __attribute__((__aligned__(SMP_CACHE_BYTES)));
+-
+ /* lock array for conn table */
+ static struct ip_vs_aligned_lock
+ __ip_vs_conntbl_lock_array[CT_LOCKARRAY_SIZE] __cacheline_aligned;
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index b56bef234ed4..5956e1d0685e 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -118,6 +118,175 @@ void ip_vs_init_hash_table(struct list_head *table, int rows)
+ 		INIT_LIST_HEAD(&table[rows]);
+ }
+ 
++/* IPVS Resizable Hash Tables:
++ * - list_bl buckets with bit lock
++ *
++ * Goals:
++ * - RCU lookup for entry can run in parallel with add/del/move operations
++ * - resizing can trigger on load change or depending on key refresh period
++ * - add/del/move operations should be allowed for any context
++ *
++ * Resizing:
++ * - new table is attached to the current table and all entries are moved
++ * with new hash key. Finally, the new table is installed as current one and
++ * the old table is released after RCU grace period.
++ * - RCU read-side critical sections will walk two tables while resizing is
++ * in progress
++ * - new entries are added to the new table
++ * - entries will be deleted from the old or from the new table, the table_id
++ * can be saved into entry as part of the hash key to know where the entry is
++ * hashed
++ * - move operations may delay readers or to cause retry for the modified
++ * bucket. As result, searched entry will be found but walkers that operate
++ * on multiple entries may see same entry twice if bucket walking is retried.
++ * - for fast path the number of entries (load) can be compared to u_thresh
++ * and l_thresh to decide when to trigger table growing/shrinking. They
++ * are calculated based on load factor (shift count), positive value allows
++ * load to be below 100% to reduce collisions by maintaining larger table
++ * while negative value tolerates collisions by using smaller table and load
++ * above 100%.
++ *
++ * Locking:
++ * - lock: protect seqc if other context except resizer can move entries
++ * - seqc: seqcount_t, delay/retry readers while entries are moved to
++ * new table on resizing
++ * - bit lock: serialize bucket modifications
++ * - writers may use other locking mechanisms to serialize operations for
++ * resizing, moving and installing new tables
++ */
++
++void ip_vs_rht_free(struct ip_vs_rht *t)
++{
++	kvfree(t->buckets);
++	kvfree(t->seqc);
++	kvfree(t->lock);
++	kfree(t);
++}
++
++void ip_vs_rht_rcu_free(struct rcu_head *head)
++{
++	struct ip_vs_rht *t;
++
++	t = container_of(head, struct ip_vs_rht, rcu_head);
++	ip_vs_rht_free(t);
++}
++
++struct ip_vs_rht *ip_vs_rht_alloc(int buckets, int scounts, int locks)
++{
++	struct ip_vs_rht *t = kzalloc(sizeof(*t), GFP_KERNEL);
++	int i;
++
++	if (!t)
++		return NULL;
++	if (scounts) {
++		int ml = roundup_pow_of_two(nr_cpu_ids);
++
++		scounts = min(scounts, buckets);
++		scounts = min(scounts, ml);
++		t->seqc = kvmalloc_array(scounts, sizeof(*t->seqc), GFP_KERNEL);
++		if (!t->seqc)
++			goto err;
++		for (i = 0; i < scounts; i++)
++			seqcount_init(&t->seqc[i]);
++
++		if (locks) {
++			locks = min(locks, scounts);
++			t->lock = kvmalloc_array(locks, sizeof(*t->lock),
++						 GFP_KERNEL);
++			if (!t->lock)
++				goto err;
++			for (i = 0; i < locks; i++)
++				spin_lock_init(&t->lock[i].l);
++		}
++	}
++
++	t->buckets = kvmalloc_array(buckets, sizeof(*t->buckets), GFP_KERNEL);
++	if (!t->buckets)
++		goto err;
++	for (i = 0; i < buckets; i++)
++		INIT_HLIST_BL_HEAD(&t->buckets[i]);
++	t->mask = buckets - 1;
++	t->size = buckets;
++	t->seqc_mask = scounts - 1;
++	t->lock_mask = locks - 1;
++	t->u_thresh = buckets;
++	t->l_thresh = buckets >> 4;
++	t->bits = order_base_2(buckets);
++	/* new_tbl points to self if no new table is filled */
++	RCU_INIT_POINTER(t->new_tbl, t);
++	get_random_bytes(&t->hash_key, sizeof(t->hash_key));
++	return t;
++
++err:
++	ip_vs_rht_free(t);
++	return NULL;
++}
++
++/* Get the desired table size for n entries based on current table size
++ * lfactor: negative (u_thresh=size << -lfactor), else u_thresh=size >> lfactor
++ */
++int ip_vs_rht_desired_size(struct netns_ipvs *ipvs, struct ip_vs_rht *t, int n,
++			   int lfactor, int min_bits, int max_bits)
++{
++	if (!t)
++		return 1 << min_bits;
++	n = roundup_pow_of_two(n);
++	if (lfactor >= 0) {
++		int factor = min(lfactor, max_bits);
++
++		n = min(n, 1 << (max_bits - factor));
++		n <<= factor;
++	} else {
++		n = min(n >> -lfactor, 1 << max_bits);
++	}
++	if (lfactor != t->lfactor)
++		return clamp(n, 1 << min_bits, 1 << max_bits);
++	if (n > t->size)
++		return n;
++	if (n > t->size >> 4)
++		return t->size;
++	/* Shrink but keep it n * 2 to prevent frequent resizing */
++	return clamp(n << 1, 1 << min_bits, 1 << max_bits);
++}
++
++/* Set thresholds based on table size and load factor
++ * u_thresh/l_thresh can be used to check if load triggers a table grow/shrink
++ */
++void ip_vs_rht_set_thresholds(struct ip_vs_rht *t, int size, int lfactor,
++			      int min_bits, int max_bits)
++{
++	if (size >= 1 << max_bits)
++		t->u_thresh = INT_MAX;	/* stop growing */
++	else if (lfactor >= 0)
++		t->u_thresh = size >> min(lfactor, max_bits);
++	else
++		t->u_thresh = min(size, 1 << (30 + lfactor)) << -lfactor;
++
++	/* l_thresh: shrink when load is 16 times lower, can be 0 */
++	if (size >= 1 << max_bits)
++		t->l_thresh = (1 << max_bits) >> 4;
++	else if (size > 1 << min_bits)
++		t->l_thresh = t->u_thresh >> 4;
++	else
++		t->l_thresh = 0;	/* stop shrinking */
++}
++
++/* Return hash value for local info (fast, insecure) */
++u32 ip_vs_rht_hash_linfo(struct ip_vs_rht *t, int af,
++			 const union nf_inet_addr *addr, u32 v1, u32 v2)
++{
++	u32 v3;
++
++#ifdef CONFIG_IP_VS_IPV6
++	if (af == AF_INET6)
++		v3 = ipv6_addr_hash(&addr->in6);
++	else
++#endif
++		v3 = addr->all[0];
++
++	return jhash_3words(v1, v2, v3, (u32)t->hash_key.key[0]);
++}
++
+ static inline void
+ ip_vs_in_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
+ {
 -- 
 2.41.0
-
 
 
