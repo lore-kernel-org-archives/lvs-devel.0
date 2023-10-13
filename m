@@ -1,58 +1,72 @@
-From: patchwork-bot+netdevbpf@kernel.org
-Subject: Re: [PATCH net v6 0/3] Insulate Kernel Space From SOCK_ADDR Hooks
-Date: Sun, 01 Oct 2023 18:40:25 +0000
-Message-ID: <169618562530.20334.3438760815048190740.git-patchwork-notify@kernel.org>
-References: <20230926200505.2804266-1-jrife@google.com>
-Mime-Version: 1.0
+Return-Path: <lvs-devel-owner@vger.kernel.org>
+X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
+	aws-us-west-2-korg-lkml-1.web.codeaurora.org
+Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A0A1CDB47E
+	for <lvs-devel@archiver.kernel.org>; Fri, 13 Oct 2023 20:01:47 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S231707AbjJMUBq (ORCPT <rfc822;lvs-devel@archiver.kernel.org>);
+        Fri, 13 Oct 2023 16:01:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33410 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231596AbjJMUBp (ORCPT
+        <rfc822;lvs-devel@vger.kernel.org>); Fri, 13 Oct 2023 16:01:45 -0400
+Received: from orbyte.nwl.cc (orbyte.nwl.cc [IPv6:2001:41d0:e:133a::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 90349B7
+        for <lvs-devel@vger.kernel.org>; Fri, 13 Oct 2023 13:01:43 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=nwl.cc;
+        s=mail2022; h=Content-Transfer-Encoding:MIME-Version:Message-ID:Date:Subject:
+        Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:Content-Description:
+        Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:
+        In-Reply-To:References:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
+        List-Post:List-Owner:List-Archive;
+        bh=zXDLb76PDXqdMqLINzEX5dpLOSN1jrNYpcwengtND44=; b=Lim5HBk9ifa5hqUhPGis1KCvHs
+        s/Zaz0xDPdBuswPJf5SUKLqKndPLUuNI4RI2dg+9e45UuTUvVpwSVQFakZ5gWMtMYsK4UchMRPurH
+        tFHmMs24TBgsXsxRQn210I9I21Qta1E0AviXR8g37s54jBatD7m1rbc64rGPfcrYVauA5FtmWEXD4
+        31IAGeAnPDNWMZrg9PQSI26hj/e7gmaTmxoXAEWX8/NP+tsR7gIz1wWoqJDSwSYcjowogEYStpAAk
+        CLrAV6aevm5F42DIQH8hOEueHYqesEynIx1Gbj/erruEjnqz4Akn+m1T/ozEy9t77Lj0cmH7mn7JY
+        AzJVo36w==;
+Received: from localhost ([::1] helo=xic)
+        by orbyte.nwl.cc with esmtp (Exim 4.94.2)
+        (envelope-from <phil@nwl.cc>)
+        id 1qrOLs-00044A-92; Fri, 13 Oct 2023 22:01:40 +0200
+From:   Phil Sutter <phil@nwl.cc>
+To:     Simon Horman <horms@verge.net.au>
+Cc:     Julian Anastasov <ja@ssi.bg>, lvs-devel@vger.kernel.org
+Subject: [PATCH] selftests: netfilter: Avoid hanging ipvs.sh
+Date:   Fri, 13 Oct 2023 22:01:36 +0200
+Message-ID: <20231013200136.6548-1-phil@nwl.cc>
+X-Mailer: git-send-email 2.41.0
+MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Return-path: <lvs-devel-owner@vger.kernel.org>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1696185625;
-        bh=vHpYQw4Xo9ncTL+cTD5bhjtdjFWeRqIriCu/Ce16oc4=;
-        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-        b=BEstLtKJIXt0IJ4gCEvv4DRQRrPAiKpdLtX0LWl0eWl3Nty1flLkeAMAk6VoQ3hFH
-         zfw2pT3j66ZWc4mAFtr0hI1r+/FdoaNS5LzyTt6pfQTwiVmIB3ytjv0Jx8v8IPwEBb
-         Lswz85b/WEMSd+P5Aqfm8HJK4pxY7Vc3lDKxHO2ou4ct8H8qk6GPllQmsiRm14NXTE
-         PExldMIYnTMvAOv5UWs9RqqO5bctrk+swoNCnH8Je1QlBthCz46pHYh+NRrdY+sVYa
-         8FInmRSG0tvh+6NaOnjbWMJZ8lSCfrKmpZj7YuRXGfRFBRx+qMZRFTMMqhW2JbMr+k
-         JgyencAyzITyw==
-In-Reply-To: <20230926200505.2804266-1-jrife@google.com>
+Precedence: bulk
 List-ID: <lvs-devel.vger.kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-To: Jordan Rife <jrife@google.com>
-Cc: davem@davemloft.net, edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, willemdebruijn.kernel@gmail.com, netdev@vger.kernel.org, dborkman@kernel.org, horms@verge.net.au, pablo@netfilter.org, kadlec@netfilter.org, fw@strlen.de, santosh.shilimkar@oracle.com, ast@kernel.org, rdna@fb.com, linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com, coreteam@netfilter.org, netfilter-devel@vger.kernel.org, ja@ssi.bg, lvs-devel@vger.kernel.org, kafai@fb.com, daniel@iogearbox.net, daan.j.demeyer@gmail.com
+X-Mailing-List: lvs-devel@vger.kernel.org
 
-Hello:
+If the client can't reach the server, the latter remains listening
+forever. Kill it after 3s of waiting.
 
-This series was applied to netdev/net.git (main)
-by David S. Miller <davem@davemloft.net>:
+Fixes: 867d2190799ab ("selftests: netfilter: add ipvs test script")
+Signed-off-by: Phil Sutter <phil@nwl.cc>
+---
+ tools/testing/selftests/netfilter/ipvs.sh | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-On Tue, 26 Sep 2023 15:05:02 -0500 you wrote:
-> ==OVERVIEW==
-> 
-> The sock_sendmsg(), kernel_connect(), and kernel_bind() functions
-> provide kernel space equivalents to the sendmsg(), connect(), and bind()
-> system calls.
-> 
-> When used in conjunction with BPF SOCK_ADDR hooks that rewrite the send,
-> connect, or bind address, callers may observe that the address passed to
-> the call is modified. This is a problem not just in theory, but in
-> practice, with uninsulated calls to kernel_connect() causing issues with
-> broken NFS and CIFS mounts.
-> 
-> [...]
-
-Here is the summary with links:
-  - [net,v6,1/3] net: replace calls to sock->ops->connect() with kernel_connect()
-    https://git.kernel.org/netdev/net/c/26297b4ce1ce
-  - [net,v6,2/3] net: prevent rewrite of msg_name and msg_namelen in sock_sendmsg()
-    (no matching commit)
-  - [net,v6,3/3] net: prevent address rewrite in kernel_bind()
-    https://git.kernel.org/netdev/net/c/c889a99a21bf
-
-You are awesome, thank you!
+diff --git a/tools/testing/selftests/netfilter/ipvs.sh b/tools/testing/selftests/netfilter/ipvs.sh
+index c3b8f90c497e0..bc5bda5c13000 100755
+--- a/tools/testing/selftests/netfilter/ipvs.sh
++++ b/tools/testing/selftests/netfilter/ipvs.sh
+@@ -124,6 +124,10 @@ client_connect() {
+ }
+ 
+ verify_data() {
++	waitpid -t 3 "${server_pid}"
++	if [ $? -eq 3 ]; then
++		kill "${server_pid}"
++	fi
+ 	wait "${server_pid}"
+ 	cmp "$infile" "$outfile" 2>/dev/null
+ }
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
+2.41.0
 
