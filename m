@@ -1,361 +1,94 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IEUGmk8v"
-Received: from mail-ed1-x536.google.com (mail-ed1-x536.google.com [IPv6:2a00:1450:4864:20::536])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E075B1AE;
-	Thu, 23 Nov 2023 03:13:02 -0800 (PST)
-Received: by mail-ed1-x536.google.com with SMTP id 4fb4d7f45d1cf-548f853fc9eso1038744a12.1;
-        Thu, 23 Nov 2023 03:13:02 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1700737981; x=1701342781; darn=vger.kernel.org;
-        h=message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=2ETRJxI0jYA8eO15FtbRSONvqohxyMW+Q9fmUG4iFDY=;
-        b=IEUGmk8vbD/lXdKN7pZDE9//YQNbs5F2SBAt9gb60LD6kAQ6YUwklv9ClN1r8N/Vsl
-         qgsEFTPFvtWLWdkt9++MY6dNJczuQwpQKgO+VFNx8t4oMSLz4sL88FlsmERHG4Q2qRWT
-         zCLPJ/m2DIpzNdV5PJx9G1MyxAHxNhGJ7fA9YVsGbfrqKZih06UB0C58+Q7rlczhDP1p
-         w9eTzMIyi4zSEFGMU87O83mCCFpg4Kh+rvFOKUtoz/l94RjjiMwdmxjeSiXRLMUHMZnT
-         iTw3LsSTgb1JgvAPZIEDL7EzHJbwN57+5QEtNlBbIlRS5uZRlRzgZPIb8oiI5tb/3DaA
-         9esQ==
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="OW6fy6XU"
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D527D10F
+	for <lvs-devel@vger.kernel.org>; Mon, 27 Nov 2023 02:25:37 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1701080737;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZA1nFhs0OclwFV+JNDde8LIxfs9r7hNs3Xy7sP4jpzY=;
+	b=OW6fy6XU5XZmWBACSaGO8coFRLpuIElkHHcAJYDgFyu9e9hONfuO3B3ephh7efOTeTMWEW
+	tCNq8Q7VxBlRyBf4UcQiOOlckZN1B1opTn57AppR7DNThO4wKjwd41GLixMCRWhcJsW7+w
+	sbtmdVFGIRszkEijhONQ9u2Ikh5uW4Y=
+Received: from mail-ej1-f69.google.com (mail-ej1-f69.google.com
+ [209.85.218.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-642-WUj0CVcqMH6NhbkDkdeKiA-1; Mon, 27 Nov 2023 05:25:33 -0500
+X-MC-Unique: WUj0CVcqMH6NhbkDkdeKiA-1
+Received: by mail-ej1-f69.google.com with SMTP id a640c23a62f3a-a043b44aec3so83297166b.0
+        for <lvs-devel@vger.kernel.org>; Mon, 27 Nov 2023 02:25:33 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1700737981; x=1701342781;
-        h=message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=2ETRJxI0jYA8eO15FtbRSONvqohxyMW+Q9fmUG4iFDY=;
-        b=HhYiNfghHpCMeroE6ONkWthZak/BdoQyI9+sJBjbboxd/h5eDfUsaZa/jhhb2qR4pB
-         Qe3ElKC581IDa4EMKJ54SwHsrqGzm4yJ9KvCg9sBfJk4bu4dwfM8eyVZleOfIk2RQEtu
-         RnL5qgLc5+XoSzWSDSaKks+KJi/fuXR10SLuLroZIYz/mFge6l6gT66cEakAIS9+h/ik
-         mhzMksUeB9t1RB/Ri91Ma6olY4hsShsphTxfqopV34XHyvgq8BDYNUs9u0gLsmQIGb6m
-         8DfRSY3kCKpfOhxM+pqZuvYSAEzi/JweM/PQP43fkRo+0TOGsPRO0aRylgzcGjO/0xqK
-         3/ag==
-X-Gm-Message-State: AOJu0Yw/c4iXDk6IlEdBLiotLKBOCpUjIkMMZMh2mkAwZBEf53DUnbPO
-	qVKy2h68m0KABla/tkvDnNU=
-X-Google-Smtp-Source: AGHT+IGDcx2v11UllY0MPwVs59OUelQ1fQzHkONutC5jBwKmQP7TQh2iBL8GZFvs8pVUkQNqXV7mWg==
-X-Received: by 2002:a17:906:340e:b0:9e5:fdd7:f521 with SMTP id c14-20020a170906340e00b009e5fdd7f521mr3755277ejb.41.1700737981121;
-        Thu, 23 Nov 2023 03:13:01 -0800 (PST)
-Received: from felia.fritz.box ([2a02:810d:7e40:14b0:d183:a5d9:39a9:cd13])
-        by smtp.gmail.com with ESMTPSA id kz15-20020a17090777cf00b009fd50aa6984sm646420ejc.83.2023.11.23.03.12.59
+        d=1e100.net; s=20230601; t=1701080732; x=1701685532;
+        h=mime-version:user-agent:content-transfer-encoding:references
+         :in-reply-to:date:cc:to:from:subject:message-id:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=ZA1nFhs0OclwFV+JNDde8LIxfs9r7hNs3Xy7sP4jpzY=;
+        b=GFXrBXJRiPZxwfV4GnUGyQVVSeETKN4N7USRrg9YbinSKN3S+9LCQc2140sW5ie4zy
+         jVvlJLjXdJowkl1mkpUl3DOVIoOFcg6rBD0/QV25gfcGnDKwAOEgvBGX/oaybSTfgmFk
+         hcM8gKoNeBNbrsXHVPV/oCaMXC5bBF/6wIHZw678yBnDRfakrScTkqSY7K+6Daxu9i0g
+         Al4zNhmmVZKLAV7ZtZsHbktStJhPaDr+XO5A9baeJY7VucSj2/UY4C0oXuiSPP5jfQOL
+         8eaEtqdjYr+G4uihQlGHA6MS8aEgSTlx9XGI9yMWbsf/zzuGkLEl7CDGChqT3cgnxsgs
+         NIwg==
+X-Gm-Message-State: AOJu0Yyow5G+gn0v2BKFI6HTy/veDeHDtxIjt4YFF/tpvXs8nw+MrOIy
+	J87yTRiIMHI8HTzW1tuQzO11ZrmsSwrPgTUNhbl3zbAahUzAPeN4hl7hKe0v65iCRdgAe7jeDD9
+	P1tDCo2y7Xf1soFsjtUId
+X-Received: by 2002:a17:906:5a8f:b0:a00:1acf:6fd2 with SMTP id l15-20020a1709065a8f00b00a001acf6fd2mr6782650ejq.6.1701080732573;
+        Mon, 27 Nov 2023 02:25:32 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IGeKcndtCLYR26j5o6+zmpQ6DyJAi6+l0R/Qa4rCze0PYyzY5W87VbdL2kbGHS3jOSujk9NTQ==
+X-Received: by 2002:a17:906:5a8f:b0:a00:1acf:6fd2 with SMTP id l15-20020a1709065a8f00b00a001acf6fd2mr6782643ejq.6.1701080732204;
+        Mon, 27 Nov 2023 02:25:32 -0800 (PST)
+Received: from gerbillo.redhat.com (host-87-11-7-253.retail.telecomitalia.it. [87.11.7.253])
+        by smtp.gmail.com with ESMTPSA id m12-20020a1709062acc00b009c3828fec06sm5430486eje.81.2023.11.27.02.25.30
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 23 Nov 2023 03:13:00 -0800 (PST)
-From: Lukas Bulwahn <lukas.bulwahn@gmail.com>
-To: "David S . Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@verge.net.au>,
-	Julian Anastasov <ja@ssi.bg>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Jozsef Kadlecsik <kadlec@netfilter.org>,
-	Florian Westphal <fw@strlen.de>,
-	netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org
-Cc: kernel-janitors@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Lukas Bulwahn <lukas.bulwahn@gmail.com>
-Subject: [PATCH] net: make config lines follow common pattern
-Date: Thu, 23 Nov 2023 12:12:56 +0100
-Message-Id: <20231123111256.10757-1-lukas.bulwahn@gmail.com>
-X-Mailer: git-send-email 2.17.1
+        Mon, 27 Nov 2023 02:25:31 -0800 (PST)
+Message-ID: <f5a633a8fb4fa0d4375d90e7c3797b016f494711.camel@redhat.com>
+Subject: Re: [PATCH] net: make config lines follow common pattern
+From: Paolo Abeni <pabeni@redhat.com>
+To: Lukas Bulwahn <lukas.bulwahn@gmail.com>, "David S . Miller"
+ <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Jakub Kicinski
+ <kuba@kernel.org>, Simon Horman <horms@verge.net.au>, Julian Anastasov
+ <ja@ssi.bg>,  Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik
+ <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, 
+ netdev@vger.kernel.org, lvs-devel@vger.kernel.org, 
+ netfilter-devel@vger.kernel.org, coreteam@netfilter.org
+Cc: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Mon, 27 Nov 2023 11:25:30 +0100
+In-Reply-To: <20231123111256.10757-1-lukas.bulwahn@gmail.com>
+References: <20231123111256.10757-1-lukas.bulwahn@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.46.4 (3.46.4-1.fc37) 
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
 
-The Kconfig parser is quite relaxed when parsing config definition lines.
-However, there are just a few config definition lines that do not follow
-the common regular expression 'config [0-9A-Z]', i.e., there are only a few
-cases where config is not followed by exactly one whitespace.
+On Thu, 2023-11-23 at 12:12 +0100, Lukas Bulwahn wrote:
+> The Kconfig parser is quite relaxed when parsing config definition lines.
+> However, there are just a few config definition lines that do not follow
+> the common regular expression 'config [0-9A-Z]', i.e., there are only a f=
+ew
+> cases where config is not followed by exactly one whitespace.
+>=20
+> To simplify life for kernel developers that use basic regular expressions
+> to find and extract kernel configs, make all config lines follow this
+> common pattern.
+>=20
+> No functional change, just helpful stylistic clean-up.
+>=20
+> Signed-off-by: Lukas Bulwahn <lukas.bulwahn@gmail.com>
 
-To simplify life for kernel developers that use basic regular expressions
-to find and extract kernel configs, make all config lines follow this
-common pattern.
+IMHO this is a bit too much noise for a small gain: simple REs can
+match all the existing patterns with 100% accuracy.
 
-No functional change, just helpful stylistic clean-up.
+I think this should be dropped.
 
-Signed-off-by: Lukas Bulwahn <lukas.bulwahn@gmail.com>
----
- drivers/net/ethernet/cavium/Kconfig |  4 +--
- net/caif/Kconfig                    |  2 +-
- net/netfilter/ipvs/Kconfig          | 54 ++++++++++++++---------------
- net/unix/Kconfig                    |  2 +-
- 4 files changed, 31 insertions(+), 31 deletions(-)
+Cheers,
 
-diff --git a/drivers/net/ethernet/cavium/Kconfig b/drivers/net/ethernet/cavium/Kconfig
-index ca742cc146d7..fe4203b1bc5f 100644
---- a/drivers/net/ethernet/cavium/Kconfig
-+++ b/drivers/net/ethernet/cavium/Kconfig
-@@ -32,7 +32,7 @@ config THUNDER_NIC_VF
- 	help
- 	  This driver supports Thunder's NIC virtual function
- 
--config	THUNDER_NIC_BGX
-+config THUNDER_NIC_BGX
- 	tristate "Thunder MAC interface driver (BGX)"
- 	depends on 64BIT && PCI
- 	select PHYLIB
-@@ -42,7 +42,7 @@ config	THUNDER_NIC_BGX
- 	  This driver supports programming and controlling of MAC
- 	  interface from NIC physical function driver.
- 
--config	THUNDER_NIC_RGX
-+config THUNDER_NIC_RGX
- 	tristate "Thunder MAC interface driver (RGX)"
- 	depends on 64BIT && PCI
- 	select PHYLIB
-diff --git a/net/caif/Kconfig b/net/caif/Kconfig
-index 87205251cc25..1eb271125eb0 100644
---- a/net/caif/Kconfig
-+++ b/net/caif/Kconfig
-@@ -22,7 +22,7 @@ menuconfig CAIF
- 	See Documentation/networking/caif for a further explanation on how to
- 	use and configure CAIF.
- 
--config  CAIF_DEBUG
-+config CAIF_DEBUG
- 	bool "Enable Debug"
- 	depends on CAIF
- 	default n
-diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-index 2a3017b9c001..db6df2ca129d 100644
---- a/net/netfilter/ipvs/Kconfig
-+++ b/net/netfilter/ipvs/Kconfig
-@@ -26,7 +26,7 @@ menuconfig IP_VS
- 
- if IP_VS
- 
--config	IP_VS_IPV6
-+config IP_VS_IPV6
- 	bool "IPv6 support for IPVS"
- 	depends on IPV6 = y || IP_VS = IPV6
- 	select NF_DEFRAG_IPV6
-@@ -35,14 +35,14 @@ config	IP_VS_IPV6
- 
- 	  Say Y if unsure.
- 
--config	IP_VS_DEBUG
-+config IP_VS_DEBUG
- 	bool "IP virtual server debugging"
- 	help
- 	  Say Y here if you want to get additional messages useful in
- 	  debugging the IP virtual server code. You can change the debug
- 	  level in /proc/sys/net/ipv4/vs/debug_level
- 
--config	IP_VS_TAB_BITS
-+config IP_VS_TAB_BITS
- 	int "IPVS connection table size (the Nth power of 2)"
- 	range 8 20 if !64BIT
- 	range 8 27 if 64BIT
-@@ -76,34 +76,34 @@ config	IP_VS_TAB_BITS
- 
- comment "IPVS transport protocol load balancing support"
- 
--config	IP_VS_PROTO_TCP
-+config IP_VS_PROTO_TCP
- 	bool "TCP load balancing support"
- 	help
- 	  This option enables support for load balancing TCP transport
- 	  protocol. Say Y if unsure.
- 
--config	IP_VS_PROTO_UDP
-+config IP_VS_PROTO_UDP
- 	bool "UDP load balancing support"
- 	help
- 	  This option enables support for load balancing UDP transport
- 	  protocol. Say Y if unsure.
- 
--config	IP_VS_PROTO_AH_ESP
-+config IP_VS_PROTO_AH_ESP
- 	def_bool IP_VS_PROTO_ESP || IP_VS_PROTO_AH
- 
--config	IP_VS_PROTO_ESP
-+config IP_VS_PROTO_ESP
- 	bool "ESP load balancing support"
- 	help
- 	  This option enables support for load balancing ESP (Encapsulation
- 	  Security Payload) transport protocol. Say Y if unsure.
- 
--config	IP_VS_PROTO_AH
-+config IP_VS_PROTO_AH
- 	bool "AH load balancing support"
- 	help
- 	  This option enables support for load balancing AH (Authentication
- 	  Header) transport protocol. Say Y if unsure.
- 
--config  IP_VS_PROTO_SCTP
-+config IP_VS_PROTO_SCTP
- 	bool "SCTP load balancing support"
- 	select LIBCRC32C
- 	help
-@@ -112,7 +112,7 @@ config  IP_VS_PROTO_SCTP
- 
- comment "IPVS scheduler"
- 
--config	IP_VS_RR
-+config IP_VS_RR
- 	tristate "round-robin scheduling"
- 	help
- 	  The robin-robin scheduling algorithm simply directs network
-@@ -121,7 +121,7 @@ config	IP_VS_RR
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
-  
--config	IP_VS_WRR
-+config IP_VS_WRR
- 	tristate "weighted round-robin scheduling"
- 	help
- 	  The weighted robin-robin scheduling algorithm directs network
-@@ -134,7 +134,7 @@ config	IP_VS_WRR
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_LC
-+config IP_VS_LC
- 	tristate "least-connection scheduling"
- 	help
- 	  The least-connection scheduling algorithm directs network
-@@ -144,7 +144,7 @@ config	IP_VS_LC
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_WLC
-+config IP_VS_WLC
- 	tristate "weighted least-connection scheduling"
- 	help
- 	  The weighted least-connection scheduling algorithm directs network
-@@ -154,8 +154,8 @@ config	IP_VS_WLC
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config  IP_VS_FO
--		tristate "weighted failover scheduling"
-+config IP_VS_FO
-+	tristate "weighted failover scheduling"
- 	help
- 	  The weighted failover scheduling algorithm directs network
- 	  connections to the server with the highest weight that is
-@@ -164,7 +164,7 @@ config  IP_VS_FO
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config  IP_VS_OVF
-+config IP_VS_OVF
- 	tristate "weighted overflow scheduling"
- 	help
- 	  The weighted overflow scheduling algorithm directs network
-@@ -175,7 +175,7 @@ config  IP_VS_OVF
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_LBLC
-+config IP_VS_LBLC
- 	tristate "locality-based least-connection scheduling"
- 	help
- 	  The locality-based least-connection scheduling algorithm is for
-@@ -189,7 +189,7 @@ config	IP_VS_LBLC
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config  IP_VS_LBLCR
-+config IP_VS_LBLCR
- 	tristate "locality-based least-connection with replication scheduling"
- 	help
- 	  The locality-based least-connection with replication scheduling
-@@ -207,7 +207,7 @@ config  IP_VS_LBLCR
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_DH
-+config IP_VS_DH
- 	tristate "destination hashing scheduling"
- 	help
- 	  The destination hashing scheduling algorithm assigns network
-@@ -217,7 +217,7 @@ config	IP_VS_DH
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_SH
-+config IP_VS_SH
- 	tristate "source hashing scheduling"
- 	help
- 	  The source hashing scheduling algorithm assigns network
-@@ -227,7 +227,7 @@ config	IP_VS_SH
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_MH
-+config IP_VS_MH
- 	tristate "maglev hashing scheduling"
- 	help
- 	  The maglev consistent hashing scheduling algorithm provides the
-@@ -246,7 +246,7 @@ config	IP_VS_MH
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_SED
-+config IP_VS_SED
- 	tristate "shortest expected delay scheduling"
- 	help
- 	  The shortest expected delay scheduling algorithm assigns network
-@@ -259,7 +259,7 @@ config	IP_VS_SED
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_NQ
-+config IP_VS_NQ
- 	tristate "never queue scheduling"
- 	help
- 	  The never queue scheduling algorithm adopts a two-speed model.
-@@ -272,7 +272,7 @@ config	IP_VS_NQ
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_TWOS
-+config IP_VS_TWOS
- 	tristate "weighted random twos choice least-connection scheduling"
- 	help
- 	  The weighted random twos choice least-connection scheduling
-@@ -318,7 +318,7 @@ config IP_VS_MH_TAB_INDEX
- 
- comment 'IPVS application helper'
- 
--config	IP_VS_FTP
-+config IP_VS_FTP
- 	tristate "FTP protocol helper"
- 	depends on IP_VS_PROTO_TCP && NF_CONNTRACK && NF_NAT && \
- 		NF_CONNTRACK_FTP
-@@ -334,7 +334,7 @@ config	IP_VS_FTP
- 	  If you want to compile it in kernel, say Y. To compile it as a
- 	  module, choose M here. If unsure, say N.
- 
--config	IP_VS_NFCT
-+config IP_VS_NFCT
- 	bool "Netfilter connection tracking"
- 	depends on NF_CONNTRACK
- 	help
-@@ -342,7 +342,7 @@ config	IP_VS_NFCT
- 	  connection state to be exported to the Netfilter framework
- 	  for filtering purposes.
- 
--config	IP_VS_PE_SIP
-+config IP_VS_PE_SIP
- 	tristate "SIP persistence engine"
- 	depends on IP_VS_PROTO_UDP
- 	depends on NF_CONNTRACK_SIP
-diff --git a/net/unix/Kconfig b/net/unix/Kconfig
-index 28b232f281ab..5f2502977042 100644
---- a/net/unix/Kconfig
-+++ b/net/unix/Kconfig
-@@ -21,7 +21,7 @@ config UNIX_SCM
- 	depends on UNIX
- 	default y
- 
--config	AF_UNIX_OOB
-+config AF_UNIX_OOB
- 	bool
- 	depends on UNIX
- 	default y
--- 
-2.17.1
+Paolo
 
