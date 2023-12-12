@@ -1,38 +1,38 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="Q0f1qWr/"
+	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="GYIf+WbN"
 Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18526DB
-	for <lvs-devel@vger.kernel.org>; Tue, 12 Dec 2023 08:30:27 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3E636101
+	for <lvs-devel@vger.kernel.org>; Tue, 12 Dec 2023 08:30:31 -0800 (PST)
 Received: from mg.bb.i.ssi.bg (localhost [127.0.0.1])
-	by mg.bb.i.ssi.bg (Proxmox) with ESMTP id AE3F81E098;
-	Tue, 12 Dec 2023 18:30:25 +0200 (EET)
+	by mg.bb.i.ssi.bg (Proxmox) with ESMTP id AD4251E1E8;
+	Tue, 12 Dec 2023 18:30:29 +0200 (EET)
 Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
-	by mg.bb.i.ssi.bg (Proxmox) with ESMTPS id 9093E1DE51;
-	Tue, 12 Dec 2023 18:30:25 +0200 (EET)
+	by mg.bb.i.ssi.bg (Proxmox) with ESMTPS id 950861E1E3;
+	Tue, 12 Dec 2023 18:30:29 +0200 (EET)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by ink.ssi.bg (Postfix) with ESMTPSA id 64D1A3C07D2;
+	by ink.ssi.bg (Postfix) with ESMTPSA id 82DE83C07D3;
 	Tue, 12 Dec 2023 18:30:12 +0200 (EET)
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
-	t=1702398612; bh=KjEIq9gif1Gkj7PVtooN+W8tx5iL2XwqlO2KORUTVSc=;
+	t=1702398612; bh=dgzP0Aka2MFEYSY/vQr/tclATQ85/eEXckkKio8S4kU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Q0f1qWr/yZOzsKNvVBUFRAcwO5fSmkKR5GGUWaN5rdJU+req0xVzYJD4gfP2pKMvz
-	 FO5j6EgeKDaWO0Qhbp1878x1Wg08h/+h//MmWihzBHk7cv4ZPnD3z9p+lGFY1AG11f
-	 hEive0ZMKcYlr3j131i/YF3bkKODgZwrlCmmer5U=
+	b=GYIf+WbNseULfrViQxXCP59wdqp/2rAYXKfDX7zCRNsqOyEzfyTvEGcwI6rlvoIto
+	 pnLCyzGPZ1JewQ+wt1pjrS5WXHdO+IHBDDQXsGUG5SWLMxPEuBGh25kSXXJ/Wz0txQ
+	 e9j6m1TGQa+73jNHHs3PiFTWwHz06KTbrezQCfGg=
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 3BCGQUHb094066;
-	Tue, 12 Dec 2023 18:26:30 +0200
+	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 3BCGQWJI094103;
+	Tue, 12 Dec 2023 18:26:32 +0200
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.17.1/8.17.1/Submit) id 3BCGQU83094065;
-	Tue, 12 Dec 2023 18:26:30 +0200
+	by ja.home.ssi.bg (8.17.1/8.17.1/Submit) id 3BCGQWfF094102;
+	Tue, 12 Dec 2023 18:26:32 +0200
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
         netdev@vger.kernel.org, Dust Li <dust.li@linux.alibaba.com>,
         Jiejian Wu <jiejian@linux.alibaba.com>,
         Jiri Wiesner <jwiesner@suse.de>
-Subject: [PATCHv2 RFC net-next 05/14] ipvs: do not keep dest_dst after dest is removed
-Date: Tue, 12 Dec 2023 18:24:35 +0200
-Message-ID: <20231212162444.93801-6-ja@ssi.bg>
+Subject: [PATCHv2 RFC net-next 13/14] ipvs: add ip_vs_status info
+Date: Tue, 12 Dec 2023 18:24:43 +0200
+Message-ID: <20231212162444.93801-14-ja@ssi.bg>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20231212162444.93801-1-ja@ssi.bg>
 References: <20231212162444.93801-1-ja@ssi.bg>
@@ -44,165 +44,190 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Before now dest->dest_dst is not released when server is moved into
-dest_trash list after removal. As result, we can keep dst/dev
-references for long time without actively using them.
-
-It is better to avoid walking the dest_trash list when
-ip_vs_dst_event() receives dev events. So, make sure we do not
-hold dev references in dest_trash list. As packets can be flying
-while server is being removed, check the IP_VS_DEST_F_AVAILABLE
-flag in slow path to ensure we do not save new dev references to
-removed servers.
+Add /proc/net/ip_vs_status to show current state of IPVS.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c  | 20 +++++++----------
- net/netfilter/ipvs/ip_vs_xmit.c | 39 ++++++++++++++++++++++++---------
- 2 files changed, 37 insertions(+), 22 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 145 +++++++++++++++++++++++++++++++++
+ 1 file changed, 145 insertions(+)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index e325e5f9d37b..7a8c7ac94194 100644
+index 2cc51e1c6328..802447106959 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -810,7 +810,6 @@ static void ip_vs_dest_free(struct ip_vs_dest *dest)
- {
- 	struct ip_vs_service *svc = rcu_dereference_protected(dest->svc, 1);
+@@ -2913,6 +2913,144 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
  
--	__ip_vs_dst_cache_reset(dest);
- 	__ip_vs_svc_put(svc);
- 	call_rcu(&dest->rcu_head, ip_vs_dest_rcu_free);
+ 	return 0;
  }
-@@ -1013,10 +1012,6 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 
- 	dest->af = udest->af;
- 
--	spin_lock_bh(&dest->dst_lock);
--	__ip_vs_dst_cache_reset(dest);
--	spin_unlock_bh(&dest->dst_lock);
--
- 	if (add) {
- 		list_add_rcu(&dest->n_list, &svc->destinations);
- 		svc->num_dests++;
-@@ -1024,6 +1019,10 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 		if (sched && sched->add_dest)
- 			sched->add_dest(svc, dest);
- 	} else {
-+		spin_lock_bh(&dest->dst_lock);
-+		__ip_vs_dst_cache_reset(dest);
-+		spin_unlock_bh(&dest->dst_lock);
 +
- 		sched = rcu_dereference_protected(svc->scheduler, 1);
- 		if (sched && sched->upd_dest)
- 			sched->upd_dest(svc, dest);
-@@ -1258,6 +1257,10 @@ static void __ip_vs_unlink_dest(struct ip_vs_service *svc,
- {
- 	dest->flags &= ~IP_VS_DEST_F_AVAILABLE;
- 
-+	spin_lock_bh(&dest->dst_lock);
-+	__ip_vs_dst_cache_reset(dest);
-+	spin_unlock_bh(&dest->dst_lock);
++static int ip_vs_status_show(struct seq_file *seq, void *v)
++{
++	struct net *net = seq_file_single_net(seq);
++	struct netns_ipvs *ipvs = net_ipvs(net);
++	unsigned int resched_score = 0;
++	struct ip_vs_conn_hnode *hn;
++	struct hlist_bl_head *head;
++	struct ip_vs_service *svc;
++	struct ip_vs_rht *t, *pt;
++	struct hlist_bl_node *e;
++	int old_gen, new_gen;
++	u32 counts[8];
++	u32 bucket;
++	int count;
++	u32 sum1;
++	u32 sum;
++	int i;
 +
- 	/*
- 	 *  Remove it from the d-linked destination list.
- 	 */
-@@ -1747,13 +1750,6 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
- 	}
- 	rcu_read_unlock();
++	rcu_read_lock();
++
++	t = rcu_dereference(ipvs->conn_tab);
++
++	seq_printf(seq, "Conns:\t%d\n", atomic_read(&ipvs->conn_count));
++	seq_printf(seq, "Conn buckets:\t%d (%d bits, lfactor %d)\n",
++		   t ? t->size : 0, t ? t->bits : 0, t ? t->lfactor : 0);
++
++	if (!atomic_read(&ipvs->conn_count))
++		goto after_conns;
++	old_gen = atomic_read(&ipvs->conn_tab_changes);
++
++repeat_conn:
++	smp_rmb(); /* ipvs->conn_tab and conn_tab_changes */
++	memset(counts, 0, sizeof(counts));
++	ip_vs_rht_for_each_table_rcu(ipvs->conn_tab, t, pt) {
++		for (bucket = 0; bucket < t->size; bucket++) {
++			DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
++
++			count = 0;
++			resched_score++;
++			ip_vs_rht_walk_bucket_rcu(t, bucket, head) {
++				count = 0;
++				hlist_bl_for_each_entry_rcu(hn, e, head, node)
++					count++;
++			}
++			resched_score += count;
++			if (resched_score >= 100) {
++				resched_score = 0;
++				cond_resched_rcu();
++				new_gen = atomic_read(&ipvs->conn_tab_changes);
++				/* New table installed ? */
++				if (old_gen != new_gen) {
++					old_gen = new_gen;
++					goto repeat_conn;
++				}
++			}
++			counts[min(count, (int)ARRAY_SIZE(counts) - 1)]++;
++		}
++	}
++	for (sum = 0, i = 0; i < ARRAY_SIZE(counts); i++)
++		sum += counts[i];
++	sum1 = sum - counts[0];
++	seq_printf(seq, "Conn buckets empty:\t%u (%lu%%)\n",
++		   counts[0], (unsigned long)counts[0] * 100 / max(sum, 1U));
++	for (i = 1; i < ARRAY_SIZE(counts); i++) {
++		if (!counts[i])
++			continue;
++		seq_printf(seq, "Conn buckets len-%d:\t%u (%lu%%)\n",
++			   i, counts[i],
++			   (unsigned long)counts[i] * 100 / max(sum1, 1U));
++	}
++
++after_conns:
++	t = rcu_dereference(ipvs->svc_table);
++
++	count = ip_vs_get_num_services(ipvs);
++	seq_printf(seq, "Services:\t%d\n", count);
++	seq_printf(seq, "Service buckets:\t%d (%d bits, lfactor %d)\n",
++		   t ? t->size : 0, t ? t->bits : 0, t ? t->lfactor : 0);
++
++	if (!count)
++		goto after_svc;
++	old_gen = atomic_read(&ipvs->svc_table_changes);
++
++repeat_svc:
++	smp_rmb(); /* ipvs->svc_table and svc_table_changes */
++	memset(counts, 0, sizeof(counts));
++	ip_vs_rht_for_each_table_rcu(ipvs->svc_table, t, pt) {
++		for (bucket = 0; bucket < t->size; bucket++) {
++			DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
++
++			count = 0;
++			resched_score++;
++			ip_vs_rht_walk_bucket_rcu(t, bucket, head) {
++				count = 0;
++				hlist_bl_for_each_entry_rcu(svc, e, head,
++							    s_list)
++					count++;
++			}
++			resched_score += count;
++			if (resched_score >= 100) {
++				resched_score = 0;
++				cond_resched_rcu();
++				new_gen = atomic_read(&ipvs->svc_table_changes);
++				/* New table installed ? */
++				if (old_gen != new_gen) {
++					old_gen = new_gen;
++					goto repeat_svc;
++				}
++			}
++			counts[min(count, (int)ARRAY_SIZE(counts) - 1)]++;
++		}
++	}
++	for (sum = 0, i = 0; i < ARRAY_SIZE(counts); i++)
++		sum += counts[i];
++	sum1 = sum - counts[0];
++	seq_printf(seq, "Service buckets empty:\t%u (%lu%%)\n",
++		   counts[0], (unsigned long)counts[0] * 100 / max(sum, 1U));
++	for (i = 1; i < ARRAY_SIZE(counts); i++) {
++		if (!counts[i])
++			continue;
++		seq_printf(seq, "Service buckets len-%d:\t%u (%lu%%)\n",
++			   i, counts[i],
++			   (unsigned long)counts[i] * 100 / max(sum1, 1U));
++	}
++
++after_svc:
++	seq_printf(seq, "Stats thread slots:\t%d (max %lu)\n",
++		   ipvs->est_kt_count, ipvs->est_max_threads);
++	seq_printf(seq, "Stats chain max len:\t%d\n", ipvs->est_chain_max);
++	seq_printf(seq, "Stats thread ests:\t%d\n",
++		   ipvs->est_chain_max * IPVS_EST_CHAIN_FACTOR *
++		   IPVS_EST_NTICKS);
++
++	rcu_read_unlock();
++	return 0;
++}
++
+ #endif
  
--	mutex_lock(&ipvs->service_mutex);
--	spin_lock_bh(&ipvs->dest_trash_lock);
--	list_for_each_entry(dest, &ipvs->dest_trash, t_list) {
--		ip_vs_forget_dev(dest, dev);
--	}
--	spin_unlock_bh(&ipvs->dest_trash_lock);
--	mutex_unlock(&ipvs->service_mutex);
- 	return NOTIFY_DONE;
- }
+ /*
+@@ -4827,6 +4965,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
+ 				    ipvs->net->proc_net,
+ 				    ip_vs_stats_percpu_show, NULL))
+ 		goto err_percpu;
++	if (!proc_create_net_single("ip_vs_status", 0, ipvs->net->proc_net,
++				    ip_vs_status_show, NULL))
++		goto err_status;
+ #endif
  
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 9193e109e6b3..d7499f1e3af2 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -317,9 +317,11 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 	ret = ip_vs_control_net_init_sysctl(ipvs);
+@@ -4837,6 +4978,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
  
- 	if (dest) {
- 		dest_dst = __ip_vs_dst_check(dest);
--		if (likely(dest_dst))
-+		if (likely(dest_dst)) {
- 			rt = (struct rtable *) dest_dst->dst_cache;
--		else {
-+			if (ret_saddr)
-+				*ret_saddr = dest_dst->dst_saddr.ip;
-+		} else {
- 			dest_dst = ip_vs_dest_dst_alloc();
- 			spin_lock_bh(&dest->dst_lock);
- 			if (!dest_dst) {
-@@ -335,14 +337,24 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
- 				ip_vs_dest_dst_free(dest_dst);
- 				goto err_unreach;
- 			}
--			__ip_vs_dst_set(dest, dest_dst, &rt->dst, 0);
-+			/* It is forbidden to attach dest->dest_dst if
-+			 * server is deleted. We can see the flag going down,
-+			 * for very short period and it must be checked under
-+			 * dst_lock.
-+			 */
-+			if (dest->flags & IP_VS_DEST_F_AVAILABLE)
-+				__ip_vs_dst_set(dest, dest_dst, &rt->dst, 0);
-+			else
-+				noref = 0;
- 			spin_unlock_bh(&dest->dst_lock);
- 			IP_VS_DBG(10, "new dst %pI4, src %pI4, refcnt=%d\n",
- 				  &dest->addr.ip, &dest_dst->dst_saddr.ip,
- 				  rcuref_read(&rt->dst.__rcuref));
-+			if (ret_saddr)
-+				*ret_saddr = dest_dst->dst_saddr.ip;
-+			if (!noref)
-+				ip_vs_dest_dst_free(dest_dst);
- 		}
--		if (ret_saddr)
--			*ret_saddr = dest_dst->dst_saddr.ip;
- 	} else {
- 		__be32 saddr = htonl(INADDR_ANY);
+ err:
+ #ifdef CONFIG_PROC_FS
++	remove_proc_entry("ip_vs_status", ipvs->net->proc_net);
++
++err_status:
+ 	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
  
-@@ -480,9 +492,11 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
- 
- 	if (dest) {
- 		dest_dst = __ip_vs_dst_check(dest);
--		if (likely(dest_dst))
-+		if (likely(dest_dst)) {
- 			rt = (struct rt6_info *) dest_dst->dst_cache;
--		else {
-+			if (ret_saddr)
-+				*ret_saddr = dest_dst->dst_saddr.in6;
-+		} else {
- 			u32 cookie;
- 
- 			dest_dst = ip_vs_dest_dst_alloc();
-@@ -503,14 +517,19 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
- 			}
- 			rt = (struct rt6_info *) dst;
- 			cookie = rt6_get_cookie(rt);
--			__ip_vs_dst_set(dest, dest_dst, &rt->dst, cookie);
-+			if (dest->flags & IP_VS_DEST_F_AVAILABLE)
-+				__ip_vs_dst_set(dest, dest_dst, &rt->dst, cookie);
-+			else
-+				noref = 0;
- 			spin_unlock_bh(&dest->dst_lock);
- 			IP_VS_DBG(10, "new dst %pI6, src %pI6, refcnt=%d\n",
- 				  &dest->addr.in6, &dest_dst->dst_saddr.in6,
- 				  rcuref_read(&rt->dst.__rcuref));
-+			if (ret_saddr)
-+				*ret_saddr = dest_dst->dst_saddr.in6;
-+			if (!noref)
-+				ip_vs_dest_dst_free(dest_dst);
- 		}
--		if (ret_saddr)
--			*ret_saddr = dest_dst->dst_saddr.in6;
- 	} else {
- 		noref = 0;
- 		dst = __ip_vs_route_output_v6(net, daddr, ret_saddr, do_xfrm,
+ err_percpu:
+@@ -4862,6 +5006,7 @@ void __net_exit ip_vs_control_net_cleanup(struct netns_ipvs *ipvs)
+ 	ip_vs_control_net_cleanup_sysctl(ipvs);
+ 	cancel_delayed_work_sync(&ipvs->est_reload_work);
+ #ifdef CONFIG_PROC_FS
++	remove_proc_entry("ip_vs_status", ipvs->net->proc_net);
+ 	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
+ 	remove_proc_entry("ip_vs_stats", ipvs->net->proc_net);
+ 	remove_proc_entry("ip_vs", ipvs->net->proc_net);
 -- 
 2.43.0
 
