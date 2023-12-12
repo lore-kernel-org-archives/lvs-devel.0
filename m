@@ -1,38 +1,38 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="sZIy9T+J"
+	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="WjrYObcb"
 Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99BAFE8
-	for <lvs-devel@vger.kernel.org>; Tue, 12 Dec 2023 08:30:54 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E94F0E9
+	for <lvs-devel@vger.kernel.org>; Tue, 12 Dec 2023 08:30:58 -0800 (PST)
 Received: from mg.bb.i.ssi.bg (localhost [127.0.0.1])
-	by mg.bb.i.ssi.bg (Proxmox) with ESMTP id 375191E29C;
-	Tue, 12 Dec 2023 18:30:53 +0200 (EET)
+	by mg.bb.i.ssi.bg (Proxmox) with ESMTP id 8E5DD1E21B;
+	Tue, 12 Dec 2023 18:30:57 +0200 (EET)
 Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
-	by mg.bb.i.ssi.bg (Proxmox) with ESMTPS id 1AD2D1E29B;
-	Tue, 12 Dec 2023 18:30:53 +0200 (EET)
+	by mg.bb.i.ssi.bg (Proxmox) with ESMTPS id 716221E16A;
+	Tue, 12 Dec 2023 18:30:57 +0200 (EET)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by ink.ssi.bg (Postfix) with ESMTPSA id 4C8673C07D9;
+	by ink.ssi.bg (Postfix) with ESMTPSA id 8D5333C07DA;
 	Tue, 12 Dec 2023 18:30:13 +0200 (EET)
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
-	t=1702398613; bh=283+qi0/xH2KVO9dj+/Q/5nqY/xgffAAzTfNM6vftiw=;
+	t=1702398613; bh=vskMWWNXqFuWMM43rhop65ewGZh6MrUiEpS1Si22JnI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=sZIy9T+J8NX5fcXDKsI/VuaZPXwCLMpffSGNv0DZPidKaD4O0fSaVhRqoNJipEQgq
-	 iYKab2q3rrDdAlNFkyVplx3dzzSax72QY2YI2KROFAlaeyecpQTT4u78YqxE/tq7SE
-	 hI48tp1DEL4Cj9AQuPU/xMCP98E05EpA0S6h3D68=
+	b=WjrYObcbeUk8lsUOrK3t76kR5ZBNS7Ic4iejRvkweysAB79ptuEVVufiXgZvfcQzW
+	 LlEyABeTk3gPR2TOwPObadKTWIu1TbnjmAg7chQLjrFYWaVFOcX8yEI4z9GMyDel6g
+	 TGMzHXzuj7vSNVw+54gdXM4C+PD1KlTiYVNEhOqg=
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 3BCGQTaT094054;
-	Tue, 12 Dec 2023 18:26:29 +0200
+	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 3BCGQVvR094099;
+	Tue, 12 Dec 2023 18:26:31 +0200
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.17.1/8.17.1/Submit) id 3BCGQTV0094052;
-	Tue, 12 Dec 2023 18:26:29 +0200
+	by ja.home.ssi.bg (8.17.1/8.17.1/Submit) id 3BCGQVfZ094096;
+	Tue, 12 Dec 2023 18:26:31 +0200
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
         netdev@vger.kernel.org, Dust Li <dust.li@linux.alibaba.com>,
         Jiejian Wu <jiejian@linux.alibaba.com>,
         Jiri Wiesner <jwiesner@suse.de>
-Subject: [PATCHv2 RFC net-next 02/14] ipvs: make ip_vs_svc_table and ip_vs_svc_fwm_table per netns
-Date: Tue, 12 Dec 2023 18:24:32 +0200
-Message-ID: <20231212162444.93801-3-ja@ssi.bg>
+Subject: [PATCHv2 RFC net-next 12/14] ipvs: use more keys for connection hashing
+Date: Tue, 12 Dec 2023 18:24:42 +0200
+Message-ID: <20231212162444.93801-13-ja@ssi.bg>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20231212162444.93801-1-ja@ssi.bg>
 References: <20231212162444.93801-1-ja@ssi.bg>
@@ -44,619 +44,851 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Jiejian Wu <jiejian@linux.alibaba.com>
+Simon Kirby reported long time ago that IPVS connection hashing
+based only on the client address/port (caddr, cport) as hash keys
+is not suitable for setups that accept traffic on multiple virtual
+IPs and ports. It can happen for multiple VIP:VPORT services, for
+single or many fwmark service(s) that match multiple virtual IPs
+and ports or even for passive FTP with peristence in DR/TUN mode
+where we expect traffic on multiple ports for the virtual IP.
 
-Current ipvs uses one global mutex "__ip_vs_mutex" to keep the global
-"ip_vs_svc_table" and "ip_vs_svc_fwm_table" safe. But when there are
-tens of thousands of services from different netns in the table, it
-takes a long time to look up the table, for example, using "ipvsadm
--ln" from different netns simultaneously.
+Fix it by adding virtual addresses and ports to the hash function.
+This causes the traffic from NAT real servers to clients to use
+second hashing for the in->out direction.
 
-We make "ip_vs_svc_table" and "ip_vs_svc_fwm_table" per netns, and we
-add "service_mutex" per netns to keep these two tables safe instead of
-the global "__ip_vs_mutex" in current version. To this end, looking up
-services from different netns simultaneously will not get stuck,
-shortening the time consumption in large-scale deployment. It can be
-reproduced using the simple scripts below.
+As result:
 
-init.sh: #!/bin/bash
-for((i=1;i<=4;i++));do
-        ip netns add ns$i
-        ip netns exec ns$i ip link set dev lo up
-        ip netns exec ns$i sh add-services.sh
-done
+- the IN direction from client will use hash node hn0 where
+the source/dest addresses and ports used by client will be used
+as hash keys
 
-add-services.sh: #!/bin/bash
-for((i=0;i<30000;i++)); do
-        ipvsadm -A  -t 10.10.10.10:$((80+$i)) -s rr
-done
+- the OUT direction from NAT real servers will use hash node hn1
+for the traffic from real server to client
 
-runtest.sh: #!/bin/bash
-for((i=1;i<4;i++));do
-        ip netns exec ns$i ipvsadm -ln > /dev/null &
-done
-ip netns exec ns4 ipvsadm -ln > /dev/null
+- the persistence templates are hashed only with parameters based on
+the IN direction, so they now will also use the virtual address,
+port and fwmark from the service.
 
-Run "sh init.sh" to initiate the network environment. Then run "time
-./runtest.sh" to evaluate the time consumption. Our testbed is a 4-core
-Intel Xeon ECS. The result of the original version is around 8 seconds,
-while the result of the modified version is only 0.8 seconds.
+OLD:
+- all methods: c_list node: proto, caddr:cport
+- persistence templates: c_list node: proto, caddr_net:0
+- persistence engine templates: c_list node: per-PE, PE-SIP uses jhash
 
-Signed-off-by: Jiejian Wu <jiejian@linux.alibaba.com>
-Co-developed-by: Dust Li <dust.li@linux.alibaba.com>
-Signed-off-by: Dust Li <dust.li@linux.alibaba.com>
+NEW:
+- all methods: hn0 node (dir 0): proto, caddr:cport -> vaddr:vport
+- MASQ method: hn1 node (dir 1): proto, daddr:dport -> caddr:cport
+- persistence templates: hn0 node (dir 0):
+  proto, caddr_net:0 -> vaddr:vport_or_0
+  proto, caddr_net:0 -> fwmark:0
+- persistence engine templates: hn0 node (dir 0): as before
+
+Also reorder the ip_vs_conn fields, so that hash nodes are on same
+read-mostly cache line while write-mostly fields are on separate
+cache line.
+
+Reported-by: Simon Kirby <sim@hostway.ca>
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/ip_vs.h            |  13 +++
- net/netfilter/ipvs/ip_vs_ctl.c | 167 ++++++++++++++-------------------
- net/netfilter/ipvs/ip_vs_est.c |  18 ++--
- 3 files changed, 94 insertions(+), 104 deletions(-)
+ include/net/ip_vs.h             | 104 ++++++++----
+ net/netfilter/ipvs/ip_vs_conn.c | 279 ++++++++++++++++++++++++--------
+ 2 files changed, 279 insertions(+), 104 deletions(-)
 
 diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index ff406ef4fd4a..68e562bc9df2 100644
+index ed74e4e36f21..5eb11ef9601a 100644
 --- a/include/net/ip_vs.h
 +++ b/include/net/ip_vs.h
-@@ -33,6 +33,12 @@
- 
- #define IP_VS_HDR_INVERSE	1
- #define IP_VS_HDR_ICMP		2
-+/*
-+ *	Hash table: for virtual service lookups
-+ */
-+#define IP_VS_SVC_TAB_BITS 8
-+#define IP_VS_SVC_TAB_SIZE BIT(IP_VS_SVC_TAB_BITS)
-+#define IP_VS_SVC_TAB_MASK (IP_VS_SVC_TAB_SIZE - 1)
- 
- /* Generic access of ipvs struct */
- static inline struct netns_ipvs *net_ipvs(struct net* net)
-@@ -1041,6 +1047,13 @@ struct netns_ipvs {
- 	 */
- 	unsigned int		mixed_address_family_dests;
- 	unsigned int		hooks_afmask;	/* &1=AF_INET, &2=AF_INET6 */
-+
-+	/* the service mutex that protect svc_table and svc_fwm_table */
-+	struct mutex service_mutex;
-+	/* the service table hashed by <protocol, addr, port> */
-+	struct hlist_head svc_table[IP_VS_SVC_TAB_SIZE];
-+	/* the service table hashed by fwmark */
-+	struct hlist_head svc_fwm_table[IP_VS_SVC_TAB_SIZE];
+@@ -785,51 +785,48 @@ struct ip_vs_conn_param {
+ 	__u8				pe_data_len;
  };
  
- #define DEFAULT_SYNC_THRESHOLD	3
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 143a341bbc0a..7189bf6bd371 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -49,7 +49,7 @@
- 
- MODULE_ALIAS_GENL_FAMILY(IPVS_GENL_NAME);
- 
--DEFINE_MUTEX(__ip_vs_mutex); /* Serialize configuration with sockopt/netlink */
-+static struct lock_class_key __ipvs_service_key;
- 
- /* sysctl variables */
- 
-@@ -294,17 +294,6 @@ ip_vs_use_count_dec(void)
- }
- 
- 
--/*
-- *	Hash table: for virtual service lookups
-- */
--#define IP_VS_SVC_TAB_BITS 8
--#define IP_VS_SVC_TAB_SIZE (1 << IP_VS_SVC_TAB_BITS)
--#define IP_VS_SVC_TAB_MASK (IP_VS_SVC_TAB_SIZE - 1)
--
--/* the service table hashed by <protocol, addr, port> */
--static struct hlist_head ip_vs_svc_table[IP_VS_SVC_TAB_SIZE];
--/* the service table hashed by fwmark */
--static struct hlist_head ip_vs_svc_fwm_table[IP_VS_SVC_TAB_SIZE];
- 
- 
- /*
-@@ -339,8 +328,8 @@ static inline unsigned int ip_vs_svc_fwm_hashkey(struct netns_ipvs *ipvs, __u32
- }
- 
- /*
-- *	Hashes a service in the ip_vs_svc_table by <netns,proto,addr,port>
-- *	or in the ip_vs_svc_fwm_table by fwmark.
-+ *	Hashes a service in the svc_table by <netns,proto,addr,port>
-+ *	or in the svc_fwm_table by fwmark.
-  *	Should be called with locked tables.
-  */
- static int ip_vs_svc_hash(struct ip_vs_service *svc)
-@@ -355,17 +344,17 @@ static int ip_vs_svc_hash(struct ip_vs_service *svc)
- 
- 	if (svc->fwmark == 0) {
- 		/*
--		 *  Hash it by <netns,protocol,addr,port> in ip_vs_svc_table
-+		 *  Hash it by <netns,protocol,addr,port> in svc_table
- 		 */
- 		hash = ip_vs_svc_hashkey(svc->ipvs, svc->af, svc->protocol,
- 					 &svc->addr, svc->port);
--		hlist_add_head_rcu(&svc->s_list, &ip_vs_svc_table[hash]);
-+		hlist_add_head_rcu(&svc->s_list, &svc->ipvs->svc_table[hash]);
- 	} else {
- 		/*
- 		 *  Hash it by fwmark in svc_fwm_table
- 		 */
- 		hash = ip_vs_svc_fwm_hashkey(svc->ipvs, svc->fwmark);
--		hlist_add_head_rcu(&svc->f_list, &ip_vs_svc_fwm_table[hash]);
-+		hlist_add_head_rcu(&svc->f_list, &svc->ipvs->svc_fwm_table[hash]);
- 	}
- 
- 	svc->flags |= IP_VS_SVC_F_HASHED;
-@@ -414,12 +403,9 @@ __ip_vs_service_find(struct netns_ipvs *ipvs, int af, __u16 protocol,
- 	/* Check for "full" addressed entries */
- 	hash = ip_vs_svc_hashkey(ipvs, af, protocol, vaddr, vport);
- 
--	hlist_for_each_entry_rcu(svc, &ip_vs_svc_table[hash], s_list) {
--		if ((svc->af == af)
--		    && ip_vs_addr_equal(af, &svc->addr, vaddr)
--		    && (svc->port == vport)
--		    && (svc->protocol == protocol)
--		    && (svc->ipvs == ipvs)) {
-+	hlist_for_each_entry_rcu(svc, &ipvs->svc_table[hash], s_list) {
-+		if (svc->af == af && ip_vs_addr_equal(af, &svc->addr, vaddr) &&
-+		    svc->port == vport && svc->protocol == protocol) {
- 			/* HIT */
- 			return svc;
- 		}
-@@ -441,9 +427,8 @@ __ip_vs_svc_fwm_find(struct netns_ipvs *ipvs, int af, __u32 fwmark)
- 	/* Check for fwmark addressed entries */
- 	hash = ip_vs_svc_fwm_hashkey(ipvs, fwmark);
- 
--	hlist_for_each_entry_rcu(svc, &ip_vs_svc_fwm_table[hash], f_list) {
--		if (svc->fwmark == fwmark && svc->af == af
--		    && (svc->ipvs == ipvs)) {
-+	hlist_for_each_entry_rcu(svc, &ipvs->svc_fwm_table[hash], f_list) {
-+		if (svc->fwmark == fwmark && svc->af == af) {
- 			/* HIT */
- 			return svc;
- 		}
-@@ -1701,10 +1686,9 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
- 	 * Flush the service table hashed by <netns,protocol,addr,port>
- 	 */
- 	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry_safe(svc, n, &ip_vs_svc_table[idx],
-+		hlist_for_each_entry_safe(svc, n, &ipvs->svc_table[idx],
- 					  s_list) {
--			if (svc->ipvs == ipvs)
--				ip_vs_unlink_service(svc, cleanup);
-+			ip_vs_unlink_service(svc, cleanup);
- 		}
- 	}
- 
-@@ -1712,10 +1696,9 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
- 	 * Flush the service table hashed by fwmark
- 	 */
- 	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry_safe(svc, n, &ip_vs_svc_fwm_table[idx],
-+		hlist_for_each_entry_safe(svc, n, &ipvs->svc_fwm_table[idx],
- 					  f_list) {
--			if (svc->ipvs == ipvs)
--				ip_vs_unlink_service(svc, cleanup);
-+			ip_vs_unlink_service(svc, cleanup);
- 		}
- 	}
- 
-@@ -1732,12 +1715,12 @@ void ip_vs_service_nets_cleanup(struct list_head *net_list)
- 	struct net *net;
- 
- 	/* Check for "full" addressed entries */
--	mutex_lock(&__ip_vs_mutex);
- 	list_for_each_entry(net, net_list, exit_list) {
- 		ipvs = net_ipvs(net);
-+		mutex_lock(&ipvs->service_mutex);
- 		ip_vs_flush(ipvs, true);
-+		mutex_unlock(&ipvs->service_mutex);
- 	}
--	mutex_unlock(&__ip_vs_mutex);
- }
- 
- /* Put all references for device (dst_cache) */
-@@ -1775,25 +1758,20 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
- 	if (event != NETDEV_DOWN || !ipvs)
- 		return NOTIFY_DONE;
- 	IP_VS_DBG(3, "%s() dev=%s\n", __func__, dev->name);
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
- 	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry(svc, &ip_vs_svc_table[idx], s_list) {
--			if (svc->ipvs == ipvs) {
--				list_for_each_entry(dest, &svc->destinations,
--						    n_list) {
--					ip_vs_forget_dev(dest, dev);
--				}
-+		hlist_for_each_entry(svc, &ipvs->svc_table[idx], s_list) {
-+			list_for_each_entry(dest, &svc->destinations,
-+					    n_list) {
-+				ip_vs_forget_dev(dest, dev);
- 			}
- 		}
- 
--		hlist_for_each_entry(svc, &ip_vs_svc_fwm_table[idx], f_list) {
--			if (svc->ipvs == ipvs) {
--				list_for_each_entry(dest, &svc->destinations,
--						    n_list) {
--					ip_vs_forget_dev(dest, dev);
--				}
-+		hlist_for_each_entry(svc, &ipvs->svc_fwm_table[idx], f_list) {
-+			list_for_each_entry(dest, &svc->destinations,
-+					    n_list) {
-+				ip_vs_forget_dev(dest, dev);
- 			}
--
- 		}
- 	}
- 
-@@ -1802,7 +1780,7 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
- 		ip_vs_forget_dev(dest, dev);
- 	}
- 	spin_unlock_bh(&ipvs->dest_trash_lock);
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- 	return NOTIFY_DONE;
- }
- 
-@@ -1826,16 +1804,14 @@ static int ip_vs_zero_all(struct netns_ipvs *ipvs)
- 	struct ip_vs_service *svc;
- 
- 	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry(svc, &ip_vs_svc_table[idx], s_list) {
--			if (svc->ipvs == ipvs)
--				ip_vs_zero_service(svc);
-+		hlist_for_each_entry(svc, &ipvs->svc_table[idx], s_list) {
-+			ip_vs_zero_service(svc);
- 		}
- 	}
- 
- 	for(idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry(svc, &ip_vs_svc_fwm_table[idx], f_list) {
--			if (svc->ipvs == ipvs)
--				ip_vs_zero_service(svc);
-+		hlist_for_each_entry(svc, &ipvs->svc_fwm_table[idx], f_list) {
-+			ip_vs_zero_service(svc);
- 		}
- 	}
- 
-@@ -2306,9 +2282,9 @@ static struct ip_vs_service *ip_vs_info_array(struct seq_file *seq, loff_t pos)
- 
- 	/* look in hash by protocol */
- 	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry_rcu(svc, &ip_vs_svc_table[idx], s_list) {
--			if ((svc->ipvs == ipvs) && pos-- == 0) {
--				iter->table = ip_vs_svc_table;
-+		hlist_for_each_entry_rcu(svc, &ipvs->svc_table[idx], s_list) {
-+			if (pos-- == 0) {
-+				iter->table = ipvs->svc_table;
- 				iter->bucket = idx;
- 				return svc;
- 			}
-@@ -2317,10 +2293,10 @@ static struct ip_vs_service *ip_vs_info_array(struct seq_file *seq, loff_t pos)
- 
- 	/* keep looking in fwmark */
- 	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry_rcu(svc, &ip_vs_svc_fwm_table[idx],
-+		hlist_for_each_entry_rcu(svc, &ipvs->svc_fwm_table[idx],
- 					 f_list) {
--			if ((svc->ipvs == ipvs) && pos-- == 0) {
--				iter->table = ip_vs_svc_fwm_table;
-+			if (pos-- == 0) {
-+				iter->table = ipvs->svc_fwm_table;
- 				iter->bucket = idx;
- 				return svc;
- 			}
-@@ -2343,6 +2319,8 @@ static void *ip_vs_info_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- 	struct hlist_node *e;
- 	struct ip_vs_iter *iter;
- 	struct ip_vs_service *svc;
-+	struct net *net = seq_file_net(seq);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
- 
- 	++*pos;
- 	if (v == SEQ_START_TOKEN)
-@@ -2351,7 +2329,7 @@ static void *ip_vs_info_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- 	svc = v;
- 	iter = seq->private;
- 
--	if (iter->table == ip_vs_svc_table) {
-+	if (iter->table == ipvs->svc_table) {
- 		/* next service in table hashed by protocol */
- 		e = rcu_dereference(hlist_next_rcu(&svc->s_list));
- 		if (e)
-@@ -2359,13 +2337,13 @@ static void *ip_vs_info_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- 
- 		while (++iter->bucket < IP_VS_SVC_TAB_SIZE) {
- 			hlist_for_each_entry_rcu(svc,
--						 &ip_vs_svc_table[iter->bucket],
-+						 &ipvs->svc_table[iter->bucket],
- 						 s_list) {
- 				return svc;
- 			}
- 		}
- 
--		iter->table = ip_vs_svc_fwm_table;
-+		iter->table = ipvs->svc_fwm_table;
- 		iter->bucket = -1;
- 		goto scan_fwmark;
- 	}
-@@ -2378,7 +2356,7 @@ static void *ip_vs_info_seq_next(struct seq_file *seq, void *v, loff_t *pos)
-  scan_fwmark:
- 	while (++iter->bucket < IP_VS_SVC_TAB_SIZE) {
- 		hlist_for_each_entry_rcu(svc,
--					 &ip_vs_svc_fwm_table[iter->bucket],
-+					 &ipvs->svc_fwm_table[iter->bucket],
- 					 f_list)
- 			return svc;
- 	}
-@@ -2414,7 +2392,7 @@ static int ip_vs_info_seq_show(struct seq_file *seq, void *v)
- 
- 		if (svc->ipvs != ipvs)
- 			return 0;
--		if (iter->table == ip_vs_svc_table) {
-+		if (iter->table == ipvs->svc_table) {
- #ifdef CONFIG_IP_VS_IPV6
- 			if (svc->af == AF_INET6)
- 				seq_printf(seq, "%s  [%pI6]:%04X %s ",
-@@ -2736,7 +2714,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, sockptr_t ptr, unsigned int len)
- 		return ret;
- 	}
- 
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
- 	if (cmd == IP_VS_SO_SET_FLUSH) {
- 		/* Flush the virtual service */
- 		ret = ip_vs_flush(ipvs, false);
-@@ -2833,7 +2811,7 @@ do_ip_vs_set_ctl(struct sock *sk, int cmd, sockptr_t ptr, unsigned int len)
- 	}
- 
-   out_unlock:
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- 	return ret;
- }
- 
-@@ -2871,9 +2849,9 @@ __ip_vs_get_service_entries(struct netns_ipvs *ipvs,
- 	int ret = 0;
- 
- 	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry(svc, &ip_vs_svc_table[idx], s_list) {
-+		hlist_for_each_entry(svc, &ipvs->svc_table[idx], s_list) {
- 			/* Only expose IPv4 entries to old interface */
--			if (svc->af != AF_INET || (svc->ipvs != ipvs))
-+			if (svc->af != AF_INET)
- 				continue;
- 
- 			if (count >= get->num_services)
-@@ -2890,9 +2868,9 @@ __ip_vs_get_service_entries(struct netns_ipvs *ipvs,
- 	}
- 
- 	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		hlist_for_each_entry(svc, &ip_vs_svc_fwm_table[idx], f_list) {
-+		hlist_for_each_entry(svc, &ipvs->svc_fwm_table[idx], f_list) {
- 			/* Only expose IPv4 entries to old interface */
--			if (svc->af != AF_INET || (svc->ipvs != ipvs))
-+			if (svc->af != AF_INET)
- 				continue;
- 
- 			if (count >= get->num_services)
-@@ -3061,7 +3039,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
- 		return ret;
- 	}
- 
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
- 	switch (cmd) {
- 	case IP_VS_SO_GET_VERSION:
- 	{
-@@ -3160,7 +3138,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
- 	}
- 
- out:
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- 	return ret;
- }
- 
-@@ -3395,10 +3373,10 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
- 	struct net *net = sock_net(skb->sk);
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
- 	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
--		hlist_for_each_entry(svc, &ip_vs_svc_table[i], s_list) {
--			if (++idx <= start || (svc->ipvs != ipvs))
-+		hlist_for_each_entry(svc, &ipvs->svc_table[i], s_list) {
-+			if (++idx <= start)
- 				continue;
- 			if (ip_vs_genl_dump_service(skb, svc, cb) < 0) {
- 				idx--;
-@@ -3408,8 +3386,8 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
- 	}
- 
- 	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
--		hlist_for_each_entry(svc, &ip_vs_svc_fwm_table[i], f_list) {
--			if (++idx <= start || (svc->ipvs != ipvs))
-+		hlist_for_each_entry(svc, &ipvs->svc_fwm_table[i], f_list) {
-+			if (++idx <= start)
- 				continue;
- 			if (ip_vs_genl_dump_service(skb, svc, cb) < 0) {
- 				idx--;
-@@ -3419,7 +3397,7 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
- 	}
- 
- nla_put_failure:
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- 	cb->args[0] = idx;
- 
- 	return skb->len;
-@@ -3608,7 +3586,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
- 	struct net *net = sock_net(skb->sk);
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
- 
- 	/* Try to find the service for which to dump destinations */
- 	if (nlmsg_parse_deprecated(cb->nlh, GENL_HDRLEN, attrs, IPVS_CMD_ATTR_MAX, ip_vs_cmd_policy, cb->extack))
-@@ -3633,7 +3611,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
- 	cb->args[0] = idx;
- 
- out_err:
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- 
- 	return skb->len;
- }
-@@ -3919,7 +3897,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 
- 	cmd = info->genlhdr->cmd;
- 
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
- 
- 	if (cmd == IPVS_CMD_FLUSH) {
- 		ret = ip_vs_flush(ipvs, false);
-@@ -4031,7 +4009,7 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
- 	}
- 
- out:
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- 
- 	return ret;
- }
-@@ -4061,7 +4039,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
- 	if (!msg)
- 		return -ENOMEM;
- 
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
- 
- 	reply = genlmsg_put_reply(msg, info, &ip_vs_genl_family, 0, reply_cmd);
- 	if (reply == NULL)
-@@ -4129,7 +4107,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
- out_err:
- 	nlmsg_free(msg);
- out:
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- 
- 	return ret;
- }
-@@ -4246,6 +4224,7 @@ static struct genl_family ip_vs_genl_family __ro_after_init = {
- 	.small_ops	= ip_vs_genl_ops,
- 	.n_small_ops	= ARRAY_SIZE(ip_vs_genl_ops),
- 	.resv_start_op	= IPVS_CMD_FLUSH + 1,
-+	.parallel_ops	= 1,
- };
- 
- static int __init ip_vs_genl_register(void)
-@@ -4419,6 +4398,13 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
- 	int ret = -ENOMEM;
- 	int idx;
- 
-+	/* Initialize service_mutex, svc_table, svc_fwm_table per netns */
-+	__mutex_init(&ipvs->service_mutex, "ipvs->service_mutex", &__ipvs_service_key);
-+	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
-+		INIT_HLIST_HEAD(&ipvs->svc_table[idx]);
-+		INIT_HLIST_HEAD(&ipvs->svc_fwm_table[idx]);
-+	}
++/* Hash node in conn_tab */
++struct ip_vs_conn_hnode {
++	struct hlist_bl_node	node;		/* node in conn_tab */
++	u32			hash_key;	/* Key for the hash table */
++	u8			dir;		/* 0=out->in, 1=in->out */
++} __packed;
 +
- 	/* Initialize rs_table */
- 	for (idx = 0; idx < IP_VS_RTAB_SIZE; idx++)
- 		INIT_HLIST_HEAD(&ipvs->rs_table[idx]);
-@@ -4523,17 +4509,8 @@ void ip_vs_unregister_nl_ioctl(void)
+ /* IP_VS structure allocated for each dynamically scheduled connection */
+ struct ip_vs_conn {
+-	struct hlist_bl_node	c_list;         /* node in conn_tab */
+-	__u32			hash_key;	/* Key for the hash table */
+-	/* Protocol, addresses and port numbers */
++	/* Cacheline for hash table nodes - rarely modified */
++
++	struct ip_vs_conn_hnode	hn0;		/* Original direction */
++	u8			af;		/* address family */
+ 	__be16                  cport;
++	struct ip_vs_conn_hnode	hn1;		/* Reply direction */
++	u8			daf;		/* Address family of the dest */
+ 	__be16                  dport;
+-	__be16                  vport;
+-	u16			af;		/* address family */
+-	__u16                   protocol;       /* Which protocol (TCP/UDP) */
+-	__u16			daf;		/* Address family of the dest */
+-	union nf_inet_addr      caddr;          /* client address */
+-	union nf_inet_addr      vaddr;          /* virtual address */
+-	union nf_inet_addr      daddr;          /* destination address */
++	struct ip_vs_dest       *dest;          /* real server */
++	atomic_t                n_control;      /* Number of controlled ones */
+ 	volatile __u32          flags;          /* status flags */
+-	struct netns_ipvs	*ipvs;
+-
+-	/* counter and timer */
+-	refcount_t		refcnt;		/* reference count */
+-	struct timer_list	timer;		/* Expiration timer */
+-	volatile unsigned long	timeout;	/* timeout */
++	/* 44/64 */
  
- int __init ip_vs_control_init(void)
+-	/* Flags and state transition */
+-	spinlock_t              lock;           /* lock for state transition */
++	struct ip_vs_conn       *control;       /* Master control connection */
++	const struct ip_vs_pe	*pe;
++	char			*pe_data;
++	__u8			pe_data_len;
+ 	volatile __u16          state;          /* state info */
+ 	volatile __u16          old_state;      /* old state, to be used for
+ 						 * state transition triggered
+ 						 * synchronization
+ 						 */
+-	__u32			fwmark;		/* Fire wall mark from skb */
+-	unsigned long		sync_endtime;	/* jiffies + sent_retries */
++	/* 2-byte hole */
++	/* 64/96 */
+ 
+-	/* Control members */
+-	struct ip_vs_conn       *control;       /* Master control connection */
+-	atomic_t                n_control;      /* Number of controlled ones */
+-	struct ip_vs_dest       *dest;          /* real server */
+-	atomic_t                in_pkts;        /* incoming packet counter */
++	union nf_inet_addr      caddr;          /* client address */
++	union nf_inet_addr      vaddr;          /* virtual address */
++	/* 96/128 */
+ 
+-	/* Packet transmitter for different forwarding methods.  If it
+-	 * mangles the packet, it must return NF_DROP or better NF_STOLEN,
+-	 * otherwise this must be changed to a sk_buff **.
+-	 * NF_ACCEPT can be returned when destination is local.
+-	 */
+-	int (*packet_xmit)(struct sk_buff *skb, struct ip_vs_conn *cp,
+-			   struct ip_vs_protocol *pp, struct ip_vs_iphdr *iph);
++	union nf_inet_addr      daddr;          /* destination address */
++	__u32			fwmark;		/* Fire wall mark from skb */
++	__be16                  vport;
++	__u16                   protocol;       /* Which protocol (TCP/UDP) */
+ 
+ 	/* Note: we can group the following members into a structure,
+ 	 * in order to save more space, and the following members are
+@@ -837,14 +834,31 @@ struct ip_vs_conn {
+ 	 */
+ 	struct ip_vs_app        *app;           /* bound ip_vs_app object */
+ 	void                    *app_data;      /* Application private data */
++	/* 128/168 */
+ 	struct_group(sync_conn_opt,
+ 		struct ip_vs_seq  in_seq;       /* incoming seq. struct */
+ 		struct ip_vs_seq  out_seq;      /* outgoing seq. struct */
+ 	);
++	/* 152/192 */
+ 
+-	const struct ip_vs_pe	*pe;
+-	char			*pe_data;
+-	__u8			pe_data_len;
++	struct timer_list	timer;		/* Expiration timer */
++	volatile unsigned long	timeout;	/* timeout */
++	spinlock_t              lock;           /* lock for state transition */
++	refcount_t		refcnt;		/* reference count */
++	atomic_t                in_pkts;        /* incoming packet counter */
++	/* 64-bit: 4-byte gap */
++
++	/* 188/256 */
++	unsigned long		sync_endtime;	/* jiffies + sent_retries */
++	struct netns_ipvs	*ipvs;
++
++	/* Packet transmitter for different forwarding methods.  If it
++	 * mangles the packet, it must return NF_DROP or better NF_STOLEN,
++	 * otherwise this must be changed to a sk_buff **.
++	 * NF_ACCEPT can be returned when destination is local.
++	 */
++	int (*packet_xmit)(struct sk_buff *skb, struct ip_vs_conn *cp,
++			   struct ip_vs_protocol *pp, struct ip_vs_iphdr *iph);
+ 
+ 	struct rcu_head		rcu_head;
+ };
+@@ -1614,6 +1628,19 @@ int ip_vs_conn_desired_size(struct netns_ipvs *ipvs, struct ip_vs_rht *t,
+ struct ip_vs_rht *ip_vs_conn_tab_alloc(struct netns_ipvs *ipvs, int buckets,
+ 				       int lfactor);
+ 
++static inline struct ip_vs_conn *
++ip_vs_hn0_to_conn(struct ip_vs_conn_hnode *hn)
++{
++	return container_of(hn, struct ip_vs_conn, hn0);
++}
++
++static inline struct ip_vs_conn *
++ip_vs_hn_to_conn(struct ip_vs_conn_hnode *hn)
++{
++	return hn->dir ? container_of(hn, struct ip_vs_conn, hn1) :
++			 container_of(hn, struct ip_vs_conn, hn0);
++}
++
+ struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ 				  const union nf_inet_addr *daddr,
+ 				  __be16 dport, unsigned int flags,
+@@ -1966,6 +1993,13 @@ static inline char ip_vs_fwd_tag(struct ip_vs_conn *cp)
+ 	return fwd;
+ }
+ 
++/* Check if connection uses double hashing */
++static inline bool ip_vs_conn_use_hash2(struct ip_vs_conn *cp)
++{
++	return IP_VS_FWD_METHOD(cp) == IP_VS_CONN_F_MASQ &&
++	       !(cp->flags & IP_VS_CONN_F_TEMPLATE);
++}
++
+ void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 		    struct ip_vs_conn *cp, int dir);
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index a4c1f78687fb..e2fba5559df6 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -76,11 +76,19 @@ static struct kmem_cache *ip_vs_conn_cachep __read_mostly;
+ /* Lock conn_tab bucket for conn hash/unhash, not for rehash */
+ static __always_inline void
+ conn_tab_lock(struct ip_vs_rht *t, struct ip_vs_conn *cp, u32 hash_key,
+-	      bool new_hash, struct hlist_bl_head **head_ret)
++	      u32 hash_key2, bool use2, bool new_hash,
++	      struct hlist_bl_head **head_ret, struct hlist_bl_head **head2_ret)
  {
--	int idx;
+-	struct hlist_bl_head *head;
+-	u32 hash_key_new;
++	struct hlist_bl_head *head, *head2;
++	u32 hash_key_new, hash_key_new2;
++	struct ip_vs_rht *t2 = t;
++	u32 idx, idx2;
+ 
++	idx = hash_key & t->mask;
++	if (use2)
++		idx2 = hash_key2 & t->mask;
++	else
++		idx2 = idx;
+ 	if (!new_hash) {
+ 		/* We need to lock the bucket in the right table */
+ 
+@@ -88,31 +96,64 @@ conn_tab_lock(struct ip_vs_rht *t, struct ip_vs_conn *cp, u32 hash_key,
+ 		if (!ip_vs_rht_same_table(t, hash_key)) {
+ 			/* It is already moved to new table */
+ 			t = rcu_dereference(t->new_tbl);
++			/* Rehashing works in two steps and we may detect
++			 * both nodes in different tables, use idx/idx2
++			 * for proper lock ordering for heads.
++			 */
++			idx = hash_key & t->mask;
++			idx |= IP_VS_RHT_TABLE_ID_MASK;
++		}
++		if (use2) {
++			if (!ip_vs_rht_same_table(t2, hash_key2)) {
++				/* It is already moved to new table */
++				t2 = rcu_dereference(t2->new_tbl);
++				idx2 = hash_key2 & t2->mask;
++				idx2 |= IP_VS_RHT_TABLE_ID_MASK;
++			}
++		} else {
++			idx2 = idx;
+ 		}
+ 	}
+ 
+ 	head = t->buckets + (hash_key & t->mask);
++	head2 = use2 ? t2->buckets + (hash_key2 & t2->mask) : head;
+ 
+ 	local_bh_disable();
+ 	/* Do not touch seqcount, this is a safe operation */
+ 
+-	hlist_bl_lock(head);
++	if (idx <= idx2) {
++		hlist_bl_lock(head);
++		if (head != head2)
++			hlist_bl_lock(head2);
++	} else {
++		hlist_bl_lock(head2);
++		hlist_bl_lock(head);
++	}
+ 	if (!new_hash) {
+ 		/* Ensure hash_key is read under lock */
+-		hash_key_new = READ_ONCE(cp->hash_key);
++		hash_key_new = READ_ONCE(cp->hn0.hash_key);
++		hash_key_new2 = READ_ONCE(cp->hn1.hash_key);
+ 		/* Hash changed ? */
+-		if (hash_key != hash_key_new) {
++		if (hash_key != hash_key_new ||
++		    (hash_key2 != hash_key_new2 && use2)) {
++			if (head != head2)
++				hlist_bl_unlock(head2);
+ 			hlist_bl_unlock(head);
+ 			local_bh_enable();
+ 			hash_key = hash_key_new;
++			hash_key2 = hash_key_new2;
+ 			goto retry;
+ 		}
+ 	}
+ 	*head_ret = head;
++	*head2_ret = head2;
+ }
+ 
+-static inline void conn_tab_unlock(struct hlist_bl_head *head)
++static inline void conn_tab_unlock(struct hlist_bl_head *head,
++				   struct hlist_bl_head *head2)
+ {
++	if (head != head2)
++		hlist_bl_unlock(head2);
+ 	hlist_bl_unlock(head);
+ 	local_bh_enable();
+ }
+@@ -123,26 +164,34 @@ static void ip_vs_conn_expire(struct timer_list *t);
+  *	Returns hash value for IPVS connection entry
+  */
+ static u32 ip_vs_conn_hashkey(struct ip_vs_rht *t, int af, unsigned int proto,
+-			      const union nf_inet_addr *addr, __be16 port)
++			      const union nf_inet_addr *addr, __be16 port,
++			      const union nf_inet_addr *laddr, __be16 lport)
+ {
+ 	u64 a = (u32)proto << 16 | (__force u32)port;
++	u64 d;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (af == AF_INET6) {
+ 		u64 b = (u64)addr->all[0] << 32 | addr->all[1];
+ 		u64 c = (u64)addr->all[2] << 32 | addr->all[3];
+ 
+-		return (u32)siphash_3u64(a, b, c, &t->hash_key);
++		a |= (u64)laddr->all[2] << 32 ^ (__force u32)lport;
++		c ^= laddr->all[1];
++		d = (u64)laddr->all[0] << 32 | laddr->all[3];
++		return (u32)siphash_4u64(a, b, c, d, &t->hash_key);
+ 	}
+ #endif
+ 	a |= (u64)addr->all[0] << 32;
+-	return (u32)siphash_1u64(a, &t->hash_key);
++	d = (u64)laddr->all[0] << 32 | (__force u32)lport;
++	return (u32)siphash_2u64(a, d, &t->hash_key);
+ }
+ 
+ static unsigned int ip_vs_conn_hashkey_param(const struct ip_vs_conn_param *p,
+ 					     struct ip_vs_rht *t, bool inverse)
+ {
++	const union nf_inet_addr *laddr;
+ 	const union nf_inet_addr *addr;
++	__be16 lport;
+ 	__be16 port;
+ 
+ 	if (p->pe_data && p->pe->hashkey_raw)
+@@ -151,21 +200,33 @@ static unsigned int ip_vs_conn_hashkey_param(const struct ip_vs_conn_param *p,
+ 	if (likely(!inverse)) {
+ 		addr = p->caddr;
+ 		port = p->cport;
++		laddr = p->vaddr;
++		lport = p->vport;
+ 	} else {
+ 		addr = p->vaddr;
+ 		port = p->vport;
++		laddr = p->caddr;
++		lport = p->cport;
+ 	}
+ 
+-	return ip_vs_conn_hashkey(t, p->af, p->protocol, addr, port);
++	return ip_vs_conn_hashkey(t, p->af, p->protocol, addr, port, laddr,
++				  lport);
+ }
+ 
+ static unsigned int ip_vs_conn_hashkey_conn(struct ip_vs_rht *t,
+-					    const struct ip_vs_conn *cp)
++					    const struct ip_vs_conn *cp,
++					    bool out)
+ {
+ 	struct ip_vs_conn_param p;
+ 
+-	ip_vs_conn_fill_param(cp->ipvs, cp->af, cp->protocol,
+-			      &cp->caddr, cp->cport, NULL, 0, &p);
++	if (!out)
++		ip_vs_conn_fill_param(cp->ipvs, cp->af, cp->protocol,
++				      &cp->caddr, cp->cport, &cp->vaddr,
++				      cp->vport, &p);
++	else
++		ip_vs_conn_fill_param(cp->ipvs, cp->af, cp->protocol,
++				      &cp->daddr, cp->dport, &cp->caddr,
++				      cp->cport, &p);
+ 
+ 	if (cp->pe) {
+ 		p.pe = cp->pe;
+@@ -173,7 +234,7 @@ static unsigned int ip_vs_conn_hashkey_conn(struct ip_vs_rht *t,
+ 		p.pe_data_len = cp->pe_data_len;
+ 	}
+ 
+-	return ip_vs_conn_hashkey_param(&p, t, false);
++	return ip_vs_conn_hashkey_param(&p, t, out);
+ }
+ 
+ /*	Hashes ip_vs_conn in conn_tab
+@@ -182,9 +243,11 @@ static unsigned int ip_vs_conn_hashkey_conn(struct ip_vs_rht *t,
+ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ {
+ 	struct netns_ipvs *ipvs = cp->ipvs;
+-	struct hlist_bl_head *head;
++	struct hlist_bl_head *head, *head2;
++	u32 hash_key, hash_key2;
+ 	struct ip_vs_rht *t;
+-	u32 hash_key;
++	u32 hash, hash2;
++	bool use2;
  	int ret;
  
--	/* Initialize svc_table, ip_vs_svc_fwm_table */
--	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
--		INIT_HLIST_HEAD(&ip_vs_svc_table[idx]);
--		INIT_HLIST_HEAD(&ip_vs_svc_fwm_table[idx]);
--	}
--
--	smp_wmb();	/* Do we really need it now ? */
--
- 	ret = register_netdevice_notifier(&ip_vs_dst_notifier);
- 	if (ret < 0)
- 		return ret;
-diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-index c5970ba416ae..323098dc8be6 100644
---- a/net/netfilter/ipvs/ip_vs_est.c
-+++ b/net/netfilter/ipvs/ip_vs_est.c
-@@ -601,7 +601,7 @@ static void ip_vs_est_drain_temp_list(struct netns_ipvs *ipvs)
- 	while (1) {
- 		int max = 16;
+ 	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
+@@ -194,15 +257,28 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ 	t = rcu_dereference(ipvs->conn_tab);
+ 	t = rcu_dereference(t->new_tbl);
  
--		mutex_lock(&__ip_vs_mutex);
-+		mutex_lock(&ipvs->service_mutex);
+-	hash_key = ip_vs_rht_build_hash_key(t, ip_vs_conn_hashkey_conn(t, cp));
+-	conn_tab_lock(t, cp, hash_key, true /* new_hash */, &head);
++	hash = ip_vs_conn_hashkey_conn(t, cp, false);
++	hash_key = ip_vs_rht_build_hash_key(t, hash);
++	if (ip_vs_conn_use_hash2(cp)) {
++		hash2 = ip_vs_conn_hashkey_conn(t, cp, true);
++		hash_key2 = ip_vs_rht_build_hash_key(t, hash2);
++		use2 = true;
++	} else {
++		hash_key2 = hash_key;
++		use2 = false;
++	}
++	conn_tab_lock(t, cp, hash_key, hash_key2, use2, true /* new_hash */,
++		      &head, &head2);
+ 	spin_lock(&cp->lock);
  
- 		while (max-- > 0) {
- 			est = hlist_entry_safe(ipvs->est_temp_list.first,
-@@ -621,12 +621,12 @@ static void ip_vs_est_drain_temp_list(struct netns_ipvs *ipvs)
- 			}
- 			goto unlock;
- 		}
--		mutex_unlock(&__ip_vs_mutex);
-+		mutex_unlock(&ipvs->service_mutex);
- 		cond_resched();
+ 	if (!(cp->flags & IP_VS_CONN_F_HASHED)) {
+ 		cp->flags |= IP_VS_CONN_F_HASHED;
+-		WRITE_ONCE(cp->hash_key, hash_key);
++		WRITE_ONCE(cp->hn0.hash_key, hash_key);
++		WRITE_ONCE(cp->hn1.hash_key, hash_key2);
+ 		refcount_inc(&cp->refcnt);
+-		hlist_bl_add_head_rcu(&cp->c_list, head);
++		hlist_bl_add_head_rcu(&cp->hn0.node, head);
++		if (use2)
++			hlist_bl_add_head_rcu(&cp->hn1.node, head2);
+ 		ret = 1;
+ 	} else {
+ 		pr_err("%s(): request for already hashed, called from %pS\n",
+@@ -211,7 +287,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
  	}
  
- unlock:
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- }
+ 	spin_unlock(&cp->lock);
+-	conn_tab_unlock(head);
++	conn_tab_unlock(head, head2);
  
- /* Calculate limits for all kthreads */
-@@ -646,9 +646,9 @@ static int ip_vs_est_calc_limits(struct netns_ipvs *ipvs, int *chain_max)
- 	u64 val;
+ 	/* Schedule resizing if load increases */
+ 	if (atomic_read(&ipvs->conn_count) > t->u_thresh &&
+@@ -227,10 +303,11 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ {
+ 	struct netns_ipvs *ipvs = cp->ipvs;
+-	struct hlist_bl_head *head;
++	struct hlist_bl_head *head, *head2;
++	u32 hash_key, hash_key2;
+ 	struct ip_vs_rht *t;
+ 	bool ret = false;
+-	u32 hash_key;
++	bool use2;
  
- 	INIT_HLIST_HEAD(&chain);
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
- 	kd = ipvs->est_kt_arr[0];
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
- 	s = kd ? kd->calc_stats : NULL;
- 	if (!s)
- 		goto out;
-@@ -747,7 +747,7 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
- 	if (!ip_vs_est_calc_limits(ipvs, &chain_max))
- 		return;
+ 	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
+ 		return refcount_dec_if_one(&cp->refcnt);
+@@ -238,22 +315,27 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ 	rcu_read_lock();
  
--	mutex_lock(&__ip_vs_mutex);
-+	mutex_lock(&ipvs->service_mutex);
+ 	t = rcu_dereference(ipvs->conn_tab);
+-	hash_key = READ_ONCE(cp->hash_key);
++	hash_key = READ_ONCE(cp->hn0.hash_key);
++	hash_key2 = READ_ONCE(cp->hn1.hash_key);
++	use2 = ip_vs_conn_use_hash2(cp);
  
- 	/* Stop all other tasks, so that we can immediately move the
- 	 * estimators to est_temp_list without RCU grace period
-@@ -814,9 +814,9 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
- 		/* Give chance estimators to be added (to est_temp_list)
- 		 * and deleted (releasing kthread contexts)
+-	conn_tab_lock(t, cp, hash_key, false /* new_hash */, &head);
++	conn_tab_lock(t, cp, hash_key, hash_key2, use2, false /* new_hash */,
++		      &head, &head2);
+ 	spin_lock(&cp->lock);
+ 
+ 	if (cp->flags & IP_VS_CONN_F_HASHED) {
+ 		/* Decrease refcnt and unlink conn only if we are last user */
+ 		if (refcount_dec_if_one(&cp->refcnt)) {
+-			hlist_bl_del_rcu(&cp->c_list);
++			hlist_bl_del_rcu(&cp->hn0.node);
++			if (use2)
++				hlist_bl_del_rcu(&cp->hn1.node);
+ 			cp->flags &= ~IP_VS_CONN_F_HASHED;
+ 			ret = true;
+ 		}
+ 	}
+ 
+ 	spin_unlock(&cp->lock);
+-	conn_tab_unlock(head);
++	conn_tab_unlock(head, head2);
+ 
+ 	rcu_read_unlock();
+ 
+@@ -272,6 +354,7 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
+ {
+ 	DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
+ 	struct netns_ipvs *ipvs = p->ipvs;
++	struct ip_vs_conn_hnode *hn;
+ 	struct hlist_bl_head *head;
+ 	struct ip_vs_rht *t, *pt;
+ 	struct hlist_bl_node *e;
+@@ -284,9 +367,12 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
+ 		hash = ip_vs_conn_hashkey_param(p, t, false);
+ 		hash_key = ip_vs_rht_build_hash_key(t, hash);
+ 		ip_vs_rht_walk_bucket_rcu(t, hash_key, head) {
+-			hlist_bl_for_each_entry_rcu(cp, e, head, c_list) {
+-				if (READ_ONCE(cp->hash_key) == hash_key &&
+-				    p->cport == cp->cport &&
++			hlist_bl_for_each_entry_rcu(hn, e, head, node) {
++				if (READ_ONCE(hn->hash_key) != hash_key ||
++				    hn->dir != 0)
++					continue;
++				cp = ip_vs_hn0_to_conn(hn);
++				if (p->cport == cp->cport &&
+ 				    p->vport == cp->vport && cp->af == p->af &&
+ 				    ip_vs_addr_equal(p->af, p->caddr,
+ 						     &cp->caddr) &&
+@@ -376,6 +462,7 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
+ {
+ 	DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
+ 	struct netns_ipvs *ipvs = p->ipvs;
++	struct ip_vs_conn_hnode *hn;
+ 	struct hlist_bl_head *head;
+ 	struct ip_vs_rht *t, *pt;
+ 	struct hlist_bl_node *e;
+@@ -388,9 +475,11 @@ struct ip_vs_conn *ip_vs_ct_in_get(const struct ip_vs_conn_param *p)
+ 		hash = ip_vs_conn_hashkey_param(p, t, false);
+ 		hash_key = ip_vs_rht_build_hash_key(t, hash);
+ 		ip_vs_rht_walk_bucket_rcu(t, hash_key, head) {
+-			hlist_bl_for_each_entry_rcu(cp, e, head, c_list) {
+-				if (READ_ONCE(cp->hash_key) != hash_key)
++			hlist_bl_for_each_entry_rcu(hn, e, head, node) {
++				if (READ_ONCE(hn->hash_key) != hash_key ||
++				    hn->dir != 0)
+ 					continue;
++				cp = ip_vs_hn0_to_conn(hn);
+ 				if (unlikely(p->pe_data && p->pe->ct_match)) {
+ 					if (p->pe == cp->pe &&
+ 					    p->pe->ct_match(p, cp) &&
+@@ -442,6 +531,7 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
+ 	DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
+ 	struct netns_ipvs *ipvs = p->ipvs;
+ 	const union nf_inet_addr *saddr;
++	struct ip_vs_conn_hnode *hn;
+ 	struct hlist_bl_head *head;
+ 	struct ip_vs_rht *t, *pt;
+ 	struct hlist_bl_node *e;
+@@ -455,9 +545,12 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
+ 		hash = ip_vs_conn_hashkey_param(p, t, true);
+ 		hash_key = ip_vs_rht_build_hash_key(t, hash);
+ 		ip_vs_rht_walk_bucket_rcu(t, hash_key, head) {
+-			hlist_bl_for_each_entry_rcu(cp, e, head, c_list) {
+-				if (READ_ONCE(cp->hash_key) != hash_key ||
+-				    p->vport != cp->cport)
++			hlist_bl_for_each_entry_rcu(hn, e, head, node) {
++				/* dir can be 0 for DR/TUN */
++				if (READ_ONCE(hn->hash_key) != hash_key)
++					continue;
++				cp = ip_vs_hn_to_conn(hn);
++				if (p->vport != cp->cport)
+ 					continue;
+ 
+ 				if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ) {
+@@ -536,21 +629,33 @@ void ip_vs_conn_put(struct ip_vs_conn *cp)
+ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ {
+ 	struct hlist_bl_head *head, *head2, *head_new;
++	bool use2 = ip_vs_conn_use_hash2(cp);
+ 	struct netns_ipvs *ipvs = cp->ipvs;
+ 	int af_id = ip_vs_af_index(cp->af);
+ 	u32 hash_r = 0, hash_key_r = 0;
+ 	struct ip_vs_rht *t, *tp, *t2;
++	struct ip_vs_conn_hnode *hn;
+ 	u32 hash_key, hash_key_new;
+ 	struct ip_vs_conn_param p;
+ 	int ntbl;
++	int dir;
+ 
+-	ip_vs_conn_fill_param(ipvs, cp->af, cp->protocol, &cp->caddr,
+-			      cport, &cp->vaddr, cp->vport, &p);
++	/* No packets from inside, so we can do it in 2 steps. */
++	dir = use2 ? 1 : 0;
++
++next_dir:
++	if (dir)
++		ip_vs_conn_fill_param(ipvs, cp->af, cp->protocol, &cp->daddr,
++				      cp->dport, &cp->caddr, cport, &p);
++	else
++		ip_vs_conn_fill_param(ipvs, cp->af, cp->protocol, &cp->caddr,
++				      cport, &cp->vaddr, cp->vport, &p);
++	hn = dir ? &cp->hn1 : &cp->hn0;
+ 	ntbl = 0;
+ 
+ 	/* Attempt to rehash cp safely, by informing seqcount readers */
+ 	t = rcu_dereference(ipvs->conn_tab);
+-	hash_key = READ_ONCE(cp->hash_key);
++	hash_key = READ_ONCE(hn->hash_key);
+ 	tp = NULL;
+ 
+ retry:
+@@ -567,7 +672,7 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 	t2 = rcu_dereference(t->new_tbl);
+ 	/* Calc new hash once per table */
+ 	if (tp != t2) {
+-		hash_r = ip_vs_conn_hashkey_param(&p, t2, false);
++		hash_r = ip_vs_conn_hashkey_param(&p, t2, dir);
+ 		hash_key_r = ip_vs_rht_build_hash_key(t2, hash_r);
+ 		tp = t2;
+ 	}
+@@ -591,7 +696,7 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 		hlist_bl_lock(head2);
+ 
+ 	/* Ensure hash_key is read under lock */
+-	hash_key_new = READ_ONCE(cp->hash_key);
++	hash_key_new = READ_ONCE(hn->hash_key);
+ 	/* Racing with another rehashing ? */
+ 	if (unlikely(hash_key != hash_key_new)) {
+ 		if (head != head2)
+@@ -611,14 +716,21 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 		 * parameters in cp do not change, i.e. cport is
+ 		 * the only possible change.
  		 */
--		mutex_unlock(&__ip_vs_mutex);
-+		mutex_unlock(&ipvs->service_mutex);
- 		cond_resched();
--		mutex_lock(&__ip_vs_mutex);
-+		mutex_lock(&ipvs->service_mutex);
+-		WRITE_ONCE(cp->hash_key, hash_key_r);
++		WRITE_ONCE(hn->hash_key, hash_key_r);
++		if (!use2)
++			WRITE_ONCE(cp->hn1.hash_key, hash_key_r);
++		/* For dir=1 we do not check in flags if hn is already
++		 * rehashed but this check will do it.
++		 */
+ 		if (head != head2) {
+-			hlist_bl_del_rcu(&cp->c_list);
+-			hlist_bl_add_head_rcu(&cp->c_list, head_new);
++			hlist_bl_del_rcu(&hn->node);
++			hlist_bl_add_head_rcu(&hn->node, head_new);
++		}
++		if (!dir) {
++			atomic_dec(&ipvs->no_cport_conns[af_id]);
++			cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
++			cp->cport = cport;
+ 		}
+-		atomic_dec(&ipvs->no_cport_conns[af_id]);
+-		cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
+-		cp->cport = cport;
+ 	}
+ 	spin_unlock(&cp->lock);
  
- 		/* Current kt released ? */
- 		if (id >= ipvs->est_kt_count)
-@@ -892,7 +892,7 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
- 	mutex_unlock(&ipvs->est_mutex);
- 
- unlock:
--	mutex_unlock(&__ip_vs_mutex);
-+	mutex_unlock(&ipvs->service_mutex);
+@@ -628,6 +740,8 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 	write_seqcount_end(&t->seqc[hash_key & t->seqc_mask]);
+ 	preempt_enable_nested();
+ 	spin_unlock_bh(&t->lock[hash_key & t->lock_mask].l);
++	if (dir--)
++		goto next_dir;
  }
  
- void ip_vs_zero_estimator(struct ip_vs_stats *stats)
+ /* Get default load factor to map conn_count/u_thresh to t->size */
+@@ -639,6 +753,8 @@ static int ip_vs_conn_default_load_factor(struct netns_ipvs *ipvs)
+ 		factor = 3;
+ 	else
+ 		factor = 1;
++	/* Double hashing adds twice more nodes for NAT */
++	factor++;
+ 	return factor;
+ }
+ 
+@@ -679,6 +795,7 @@ static void conn_resize_work_handler(struct work_struct *work)
+ 	unsigned int resched_score = 0;
+ 	struct hlist_bl_node *cn, *nn;
+ 	struct ip_vs_rht *t, *t_new;
++	struct ip_vs_conn_hnode *hn;
+ 	struct netns_ipvs *ipvs;
+ 	struct ip_vs_conn *cp;
+ 	bool more_work = false;
+@@ -747,8 +864,9 @@ static void conn_resize_work_handler(struct work_struct *work)
+ 		write_seqcount_begin(&t->seqc[bucket & t->seqc_mask]);
+ 		hlist_bl_lock(head);
+ 
+-		hlist_bl_for_each_entry_safe(cp, cn, nn, head, c_list) {
+-			hash = ip_vs_conn_hashkey_conn(t_new, cp);
++		hlist_bl_for_each_entry_safe(hn, cn, nn, head, node) {
++			cp = ip_vs_hn_to_conn(hn);
++			hash = ip_vs_conn_hashkey_conn(t_new, cp, hn->dir);
+ 			hash_key = ip_vs_rht_build_hash_key(t_new, hash);
+ 
+ 			head2 = t_new->buckets + (hash & t_new->mask);
+@@ -756,9 +874,12 @@ static void conn_resize_work_handler(struct work_struct *work)
+ 			/* t_new->seqc are not used at this stage, we race
+ 			 * only with add/del, so only lock the bucket.
+ 			 */
+-			hlist_bl_del_rcu(&cp->c_list);
+-			WRITE_ONCE(cp->hash_key, hash_key);
+-			hlist_bl_add_head_rcu(&cp->c_list, head2);
++			hlist_bl_del_rcu(&hn->node);
++			WRITE_ONCE(hn->hash_key, hash_key);
++			/* Keep both hash keys in sync if no double hashing */
++			if (!ip_vs_conn_use_hash2(cp))
++				WRITE_ONCE(cp->hn1.hash_key, hash_key);
++			hlist_bl_add_head_rcu(&hn->node, head2);
+ 			hlist_bl_unlock(head2);
+ 			/* Too long chain? Do it in steps */
+ 			if (++limit >= 64)
+@@ -1236,10 +1357,13 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ 		return NULL;
+ 	}
+ 
+-	INIT_HLIST_BL_NODE(&cp->c_list);
++	INIT_HLIST_BL_NODE(&cp->hn0.node);
++	INIT_HLIST_BL_NODE(&cp->hn1.node);
+ 	timer_setup(&cp->timer, ip_vs_conn_expire, 0);
+ 	cp->ipvs	   = ipvs;
++	cp->hn0.dir	   = 0;
+ 	cp->af		   = p->af;
++	cp->hn1.dir	   = 1;
+ 	cp->daf		   = dest_af;
+ 	cp->protocol	   = p->protocol;
+ 	ip_vs_addr_set(p->af, &cp->caddr, p->caddr);
+@@ -1343,22 +1467,24 @@ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
+ 	struct net *net = seq_file_net(seq);
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 	struct ip_vs_rht *t = iter->t;
++	struct ip_vs_conn_hnode *hn;
+ 	struct hlist_bl_node *e;
+-	struct ip_vs_conn *cp;
+ 	int idx;
+ 
+ 	if (!t)
+ 		return NULL;
+ 	for (idx = 0; idx < t->size; idx++) {
+-		hlist_bl_for_each_entry_rcu(cp, e, &t->buckets[idx], c_list) {
++		hlist_bl_for_each_entry_rcu(hn, e, &t->buckets[idx], node) {
+ 			/* __ip_vs_conn_get() is not needed by
+ 			 * ip_vs_conn_seq_show and ip_vs_conn_sync_seq_show
+ 			 */
+-			if (!ip_vs_rht_same_table(t, READ_ONCE(cp->hash_key)))
++			if (!ip_vs_rht_same_table(t, READ_ONCE(hn->hash_key)))
+ 				break;
++			if (hn->dir != 0)
++				continue;
+ 			if (pos-- == 0) {
+ 				iter->bucket = idx;
+-				return cp;
++				return hn;
+ 			}
+ 		}
+ 		if (!(idx & 31)) {
+@@ -1391,7 +1517,7 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ 	struct ip_vs_iter_state *iter = seq->private;
+ 	struct net *net = seq_file_net(seq);
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+-	struct ip_vs_conn *cp = v;
++	struct ip_vs_conn_hnode *hn = v;
+ 	struct hlist_bl_node *e;
+ 	struct ip_vs_rht *t;
+ 
+@@ -1404,19 +1530,21 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ 		return NULL;
+ 
+ 	/* more on same hash chain? */
+-	hlist_bl_for_each_entry_continue_rcu(cp, e, c_list) {
++	hlist_bl_for_each_entry_continue_rcu(hn, e, node) {
+ 		/* Our cursor was moved to new table ? */
+-		if (!ip_vs_rht_same_table(t, READ_ONCE(cp->hash_key)))
++		if (!ip_vs_rht_same_table(t, READ_ONCE(hn->hash_key)))
+ 			break;
+-		return cp;
++		if (!hn->dir)
++			return hn;
+ 	}
+ 
+ 	while (++iter->bucket < t->size) {
+-		hlist_bl_for_each_entry_rcu(cp, e, &t->buckets[iter->bucket],
+-					    c_list) {
+-			if (!ip_vs_rht_same_table(t, READ_ONCE(cp->hash_key)))
++		hlist_bl_for_each_entry_rcu(hn, e, &t->buckets[iter->bucket],
++					    node) {
++			if (!ip_vs_rht_same_table(t, READ_ONCE(hn->hash_key)))
+ 				break;
+-			return cp;
++			if (!hn->dir)
++				return hn;
+ 		}
+ 		if (!(iter->bucket & 31)) {
+ 			cond_resched_rcu();
+@@ -1441,7 +1569,8 @@ static int ip_vs_conn_seq_show(struct seq_file *seq, void *v)
+ 		seq_puts(seq,
+    "Pro FromIP   FPrt ToIP     TPrt DestIP   DPrt State       Expires PEName PEData\n");
+ 	else {
+-		const struct ip_vs_conn *cp = v;
++		struct ip_vs_conn_hnode *hn = v;
++		const struct ip_vs_conn *cp = ip_vs_hn0_to_conn(hn);
+ 		char pe_data[IP_VS_PENAME_MAXLEN + IP_VS_PEDATA_MAXLEN + 3];
+ 		size_t len = 0;
+ 		char dbuf[IP_VS_ADDRSTRLEN];
+@@ -1608,6 +1737,7 @@ static inline bool ip_vs_conn_ops_mode(struct ip_vs_conn *cp)
+ 
+ void ip_vs_random_dropentry(struct netns_ipvs *ipvs)
+ {
++	struct ip_vs_conn_hnode *hn;
+ 	struct hlist_bl_node *e;
+ 	struct ip_vs_conn *cp;
+ 	struct ip_vs_rht *t;
+@@ -1628,7 +1758,10 @@ void ip_vs_random_dropentry(struct netns_ipvs *ipvs)
+ 		/* Don't care if due to moved entry we jump to another bucket
+ 		 * and even to new table
+ 		 */
+-		hlist_bl_for_each_entry_rcu(cp, e, &t->buckets[hash], c_list) {
++		hlist_bl_for_each_entry_rcu(hn, e, &t->buckets[hash], node) {
++			if (hn->dir != 0)
++				continue;
++			cp = ip_vs_hn0_to_conn(hn);
+ 			if (atomic_read(&cp->n_control))
+ 				continue;
+ 			if (cp->flags & IP_VS_CONN_F_TEMPLATE) {
+@@ -1693,6 +1826,7 @@ static void ip_vs_conn_flush(struct netns_ipvs *ipvs)
+ {
+ 	DECLARE_IP_VS_RHT_WALK_BUCKETS_SAFE_RCU();
+ 	struct ip_vs_conn *cp, *cp_c;
++	struct ip_vs_conn_hnode *hn;
+ 	struct hlist_bl_head *head;
+ 	struct ip_vs_rht *t, *p;
+ 	struct hlist_bl_node *e;
+@@ -1707,7 +1841,10 @@ static void ip_vs_conn_flush(struct netns_ipvs *ipvs)
+ 	/* Rely on RCU grace period while accessing cp after ip_vs_conn_del */
+ 	rcu_read_lock();
+ 	ip_vs_rht_walk_buckets_safe_rcu(ipvs->conn_tab, head) {
+-		hlist_bl_for_each_entry_rcu(cp, e, head, c_list) {
++		hlist_bl_for_each_entry_rcu(hn, e, head, node) {
++			if (hn->dir != 0)
++				continue;
++			cp = ip_vs_hn0_to_conn(hn);
+ 			if (atomic_read(&cp->n_control))
+ 				continue;
+ 			cp_c = cp->control;
+@@ -1754,6 +1891,7 @@ void ip_vs_expire_nodest_conn_flush(struct netns_ipvs *ipvs)
+ 	DECLARE_IP_VS_RHT_WALK_BUCKETS_RCU();
+ 	unsigned int resched_score = 0;
+ 	struct ip_vs_conn *cp, *cp_c;
++	struct ip_vs_conn_hnode *hn;
+ 	struct hlist_bl_head *head;
+ 	struct ip_vs_dest *dest;
+ 	struct hlist_bl_node *e;
+@@ -1767,7 +1905,10 @@ void ip_vs_expire_nodest_conn_flush(struct netns_ipvs *ipvs)
+ repeat:
+ 	smp_rmb(); /* ipvs->conn_tab and conn_tab_changes */
+ 	ip_vs_rht_walk_buckets_rcu(ipvs->conn_tab, head) {
+-		hlist_bl_for_each_entry_rcu(cp, e, head, c_list) {
++		hlist_bl_for_each_entry_rcu(hn, e, head, node) {
++			if (hn->dir != 0)
++				continue;
++			cp = ip_vs_hn0_to_conn(hn);
+ 			resched_score++;
+ 			dest = cp->dest;
+ 			if (!dest || (dest->flags & IP_VS_DEST_F_AVAILABLE))
 -- 
 2.43.0
 
