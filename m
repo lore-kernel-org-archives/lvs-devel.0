@@ -1,38 +1,38 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="ROZISrpa"
+	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="Gev/0u/s"
 Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 820CF106
-	for <lvs-devel@vger.kernel.org>; Tue, 12 Dec 2023 08:30:18 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8279711B
+	for <lvs-devel@vger.kernel.org>; Tue, 12 Dec 2023 08:30:22 -0800 (PST)
 Received: from mg.bb.i.ssi.bg (localhost [127.0.0.1])
-	by mg.bb.i.ssi.bg (Proxmox) with ESMTP id 187A31E115;
-	Tue, 12 Dec 2023 18:30:17 +0200 (EET)
+	by mg.bb.i.ssi.bg (Proxmox) with ESMTP id 1C3811E11F;
+	Tue, 12 Dec 2023 18:30:21 +0200 (EET)
 Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
-	by mg.bb.i.ssi.bg (Proxmox) with ESMTPS id F28A51E08B;
-	Tue, 12 Dec 2023 18:30:16 +0200 (EET)
+	by mg.bb.i.ssi.bg (Proxmox) with ESMTPS id 028871DE4D;
+	Tue, 12 Dec 2023 18:30:21 +0200 (EET)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by ink.ssi.bg (Postfix) with ESMTPSA id 086383C07D0;
+	by ink.ssi.bg (Postfix) with ESMTPSA id 34B173C07D1;
 	Tue, 12 Dec 2023 18:30:12 +0200 (EET)
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
-	t=1702398612; bh=LCqJ4mlbdB9LVyu6Ty+lZ84MDsYbF5Y4CPShya8Z0/c=;
+	t=1702398612; bh=mUCkdfyyh2jiVCW0T3nBduEaNuO4SA1RzVDx0bZ7GEs=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ROZISrpae/UfddFIYXmidcimd6A0vz0/SIgROhThJNWUKFe5PBse2sNF6CuK6Ca4k
-	 LvtKvtQN4FmwA+wOXwBTJNd5UskX9iA3urpex3TCPlA4+NgrS2u3QDM+GhwjRkJsra
-	 urCRj8y3KPaunG/M+5FlT3Hr99tMG6lKRpMchm98=
+	b=Gev/0u/sjiVVASoIADjHiSx1L3LnO8CFBYfqnRSN7wxvqtxJfEbneKp2O9RRMpHRd
+	 MXKVbtTciqOMZzJ0rl9D7NgkMiw5VsxB4uMrUC1QxWgGMyPZJpCUiQMbzgl2EZs4W3
+	 11XLUGj5ISVFZ5ZohwkosZGO2tW37SzkXEcsy+yk=
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 3BCGQT8f094048;
-	Tue, 12 Dec 2023 18:26:29 +0200
+	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 3BCGQWrL094107;
+	Tue, 12 Dec 2023 18:26:32 +0200
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.17.1/8.17.1/Submit) id 3BCGQT3U094047;
-	Tue, 12 Dec 2023 18:26:29 +0200
+	by ja.home.ssi.bg (8.17.1/8.17.1/Submit) id 3BCGQW0o094106;
+	Tue, 12 Dec 2023 18:26:32 +0200
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
         netdev@vger.kernel.org, Dust Li <dust.li@linux.alibaba.com>,
         Jiejian Wu <jiejian@linux.alibaba.com>,
         Jiri Wiesner <jwiesner@suse.de>
-Subject: [PATCHv2 RFC net-next 01/14] rculist_bl: add hlist_bl_for_each_entry_continue_rcu
-Date: Tue, 12 Dec 2023 18:24:31 +0200
-Message-ID: <20231212162444.93801-2-ja@ssi.bg>
+Subject: [PATCHv2 RFC net-next 14/14] ipvs: add conn_lfactor and svc_lfactor sysctl vars
+Date: Tue, 12 Dec 2023 18:24:44 +0200
+Message-ID: <20231212162444.93801-15-ja@ssi.bg>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20231212162444.93801-1-ja@ssi.bg>
 References: <20231212162444.93801-1-ja@ssi.bg>
@@ -44,103 +44,161 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Change the old hlist_bl_first_rcu to hlist_bl_first_rcu_dereference
-to indicate that it is a RCU dereference.
-
-Add hlist_bl_next_rcu and hlist_bl_first_rcu to use RCU pointers
-and use them to fix sparse warnings.
-
-Add hlist_bl_for_each_entry_continue_rcu.
+Allow the default load factor for the connection and service tables
+to be configured.
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/linux/rculist_bl.h | 49 +++++++++++++++++++++++++++++++-------
- 1 file changed, 40 insertions(+), 9 deletions(-)
+ Documentation/networking/ipvs-sysctl.rst | 31 ++++++++++
+ net/netfilter/ipvs/ip_vs_ctl.c           | 72 ++++++++++++++++++++++++
+ 2 files changed, 103 insertions(+)
 
-diff --git a/include/linux/rculist_bl.h b/include/linux/rculist_bl.h
-index 0b952d06eb0b..36363b876e53 100644
---- a/include/linux/rculist_bl.h
-+++ b/include/linux/rculist_bl.h
-@@ -8,21 +8,31 @@
- #include <linux/list_bl.h>
- #include <linux/rcupdate.h>
+diff --git a/Documentation/networking/ipvs-sysctl.rst b/Documentation/networking/ipvs-sysctl.rst
+index 3fb5fa142eef..61fdc0ec4c39 100644
+--- a/Documentation/networking/ipvs-sysctl.rst
++++ b/Documentation/networking/ipvs-sysctl.rst
+@@ -29,6 +29,28 @@ backup_only - BOOLEAN
+ 	If set, disable the director function while the server is
+ 	in backup mode to avoid packet loops for DR/TUN methods.
  
-+/* return the first ptr or next element in an RCU protected list */
-+#define hlist_bl_first_rcu(head)	\
-+	(*((struct hlist_bl_node __rcu **)(&(head)->first)))
-+#define hlist_bl_next_rcu(node)	\
-+	(*((struct hlist_bl_node __rcu **)(&(node)->next)))
++conn_lfactor - INTEGER
++	4 - default
++	Valid range: -8 (smaller table) .. 8 (larger table)
 +
- static inline void hlist_bl_set_first_rcu(struct hlist_bl_head *h,
- 					struct hlist_bl_node *n)
- {
- 	LIST_BL_BUG_ON((unsigned long)n & LIST_BL_LOCKMASK);
- 	LIST_BL_BUG_ON(((unsigned long)h->first & LIST_BL_LOCKMASK) !=
- 							LIST_BL_LOCKMASK);
--	rcu_assign_pointer(h->first,
-+	rcu_assign_pointer(hlist_bl_first_rcu(h),
- 		(struct hlist_bl_node *)((unsigned long)n | LIST_BL_LOCKMASK));
++	Controls the sizing of the connection hash table based on the
++	load factor (number of connections per table buckets).
++	As result, the table grows if load increases and shrinks when
++	load decreases in the range of 2^8 - 2^conn_tab_bits (module
++	parameter).
++	The value is a shift count where positive values select
++	buckets = (connection hash nodes << value) while negative
++	values select buckets = (connection hash nodes >> value). The
++	positive values reduce the collisions and reduce the time for
++	lookups but increase the table size. Negative values will
++	tolerate load above 100% when using smaller table is
++	preferred. If using NAT connections consider increasing the
++	value with one because they add two nodes in the hash table.
++
++	Example:
++	4: grow if load goes above 6% (buckets = nodes * 16)
++	-2: grow if load goes above 400% (buckets = nodes / 4)
++
+ conn_reuse_mode - INTEGER
+ 	1 - default
+ 
+@@ -219,6 +241,15 @@ secure_tcp - INTEGER
+ 	The value definition is the same as that of drop_entry and
+ 	drop_packet.
+ 
++svc_lfactor - INTEGER
++	3 - default
++	Valid range: -8 (smaller table) .. 8 (larger table)
++
++	Controls the sizing of the service hash table based on the
++	load factor (number of services per table buckets). The table
++	will grow and shrink in the range of 2^4 - 2^20.
++	See conn_lfactor for explanation.
++
+ sync_threshold - vector of 2 INTEGERs: sync_threshold, sync_period
+ 	default 3 50
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 802447106959..e717c1cdf59c 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -2430,6 +2430,60 @@ static int ipvs_proc_run_estimation(struct ctl_table *table, int write,
+ 	return ret;
  }
  
--static inline struct hlist_bl_node *hlist_bl_first_rcu(struct hlist_bl_head *h)
--{
--	return (struct hlist_bl_node *)
--		((unsigned long)rcu_dereference_check(h->first, hlist_bl_is_locked(h)) & ~LIST_BL_LOCKMASK);
--}
-+#define hlist_bl_first_rcu_dereference(head)				\
-+({									\
-+	struct hlist_bl_head *__head = (head);				\
-+									\
-+	(struct hlist_bl_node *)					\
-+	((unsigned long)rcu_dereference_check(hlist_bl_first_rcu(__head), \
-+					      hlist_bl_is_locked(__head)) & \
-+					      ~LIST_BL_LOCKMASK);	\
-+})
- 
- /**
-  * hlist_bl_del_rcu - deletes entry from hash list without re-initialization
-@@ -73,7 +83,7 @@ static inline void hlist_bl_add_head_rcu(struct hlist_bl_node *n,
- {
- 	struct hlist_bl_node *first;
- 
--	/* don't need hlist_bl_first_rcu because we're under lock */
-+	/* don't need hlist_bl_first_rcu* because we're under lock */
- 	first = hlist_bl_first(h);
- 
- 	n->next = first;
-@@ -93,9 +103,30 @@ static inline void hlist_bl_add_head_rcu(struct hlist_bl_node *n,
-  *
-  */
- #define hlist_bl_for_each_entry_rcu(tpos, pos, head, member)		\
--	for (pos = hlist_bl_first_rcu(head);				\
-+	for (pos = hlist_bl_first_rcu_dereference(head);		\
- 		pos &&							\
- 		({ tpos = hlist_bl_entry(pos, typeof(*tpos), member); 1; }); \
--		pos = rcu_dereference_raw(pos->next))
-+		pos = rcu_dereference_raw(hlist_bl_next_rcu(pos)))
++static int ipvs_proc_conn_lfactor(struct ctl_table *table, int write,
++				  void *buffer, size_t *lenp, loff_t *ppos)
++{
++	struct netns_ipvs *ipvs = table->extra2;
++	int *valp = table->data;
++	int val = *valp;
++	int ret;
 +
-+/**
-+ * hlist_bl_for_each_entry_continue_rcu - continue iteration over list of given
-+ *   type
-+ * @tpos:	the type * to use as a loop cursor.
-+ * @pos:	the &struct hlist_bl_node to use as a loop cursor.
-+ * @member:	the name of the hlist_bl_node within the struct.
-+ *
-+ * Continue to iterate over list of given type, continuing after
-+ * the current position which must have been in the list when the RCU read
-+ * lock was taken.
-+ * This would typically require either that you obtained the node from a
-+ * previous walk of the list in the same RCU read-side critical section, or
-+ * that you held some sort of non-RCU reference (such as a reference count)
-+ * to keep the node alive *and* in the list.
-+ */
-+#define hlist_bl_for_each_entry_continue_rcu(tpos, pos, member)		\
-+	for (pos = rcu_dereference_raw(hlist_bl_next_rcu(&(tpos)->member)); \
-+	     pos &&							\
-+	     ({ tpos = hlist_bl_entry(pos, typeof(*tpos), member); 1; }); \
-+	     pos = rcu_dereference_raw(hlist_bl_next_rcu(pos)))
++	struct ctl_table tmp_table = {
++		.data = &val,
++		.maxlen = sizeof(int),
++	};
++
++	ret = proc_dointvec(&tmp_table, write, buffer, lenp, ppos);
++	if (write && ret >= 0) {
++		if (val < -8 || val > 8) {
++			ret = -EINVAL;
++		} else {
++			*valp = val;
++			if (rcu_dereference_protected(ipvs->conn_tab, 1))
++				mod_delayed_work(system_unbound_wq,
++						 &ipvs->conn_resize_work, 0);
++		}
++	}
++	return ret;
++}
++
++static int ipvs_proc_svc_lfactor(struct ctl_table *table, int write,
++				 void *buffer, size_t *lenp, loff_t *ppos)
++{
++	struct netns_ipvs *ipvs = table->extra2;
++	int *valp = table->data;
++	int val = *valp;
++	int ret;
++
++	struct ctl_table tmp_table = {
++		.data = &val,
++		.maxlen = sizeof(int),
++	};
++
++	ret = proc_dointvec(&tmp_table, write, buffer, lenp, ppos);
++	if (write && ret >= 0) {
++		if (val < -8 || val > 8) {
++			ret = -EINVAL;
++		} else {
++			*valp = val;
++			if (rcu_dereference_protected(ipvs->svc_table, 1))
++				mod_delayed_work(system_unbound_wq,
++						 &ipvs->svc_resize_work, 0);
++		}
++	}
++	return ret;
++}
++
+ /*
+  *	IPVS sysctl table (under the /proc/sys/net/ipv4/vs/)
+  *	Do not change order or insert new entries without
+@@ -2618,6 +2672,18 @@ static struct ctl_table vs_vars[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= ipvs_proc_est_nice,
+ 	},
++	{
++		.procname	= "conn_lfactor",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= ipvs_proc_conn_lfactor,
++	},
++	{
++		.procname	= "svc_lfactor",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= ipvs_proc_svc_lfactor,
++	},
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	{
+ 		.procname	= "debug_level",
+@@ -4855,6 +4921,12 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	tbl[idx].extra2 = ipvs;
+ 	tbl[idx++].data = &ipvs->sysctl_est_nice;
  
- #endif
++	tbl[idx].extra2 = ipvs;
++	tbl[idx++].data = &ipvs->sysctl_conn_lfactor;
++
++	tbl[idx].extra2 = ipvs;
++	tbl[idx++].data = &ipvs->sysctl_svc_lfactor;
++
+ #ifdef CONFIG_IP_VS_DEBUG
+ 	/* Global sysctls must be ro in non-init netns */
+ 	if (!net_eq(net, &init_net))
 -- 
 2.43.0
 
