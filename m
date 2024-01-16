@@ -1,48 +1,39 @@
-Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D74C1B7F2;
-	Tue, 16 Jan 2024 11:19:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACBA11CD05;
+	Tue, 16 Jan 2024 16:03:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="wnFGUlym"
-Received: from mg.bb.i.ssi.bg (localhost [127.0.0.1])
-	by mg.bb.i.ssi.bg (Proxmox) with ESMTP id B7F1424587;
-	Tue, 16 Jan 2024 13:12:04 +0200 (EET)
-Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
-	by mg.bb.i.ssi.bg (Proxmox) with ESMTPS id 9D4CE24583;
-	Tue, 16 Jan 2024 13:12:04 +0200 (EET)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by ink.ssi.bg (Postfix) with ESMTPSA id 413883C043D;
-	Tue, 16 Jan 2024 13:11:59 +0200 (EET)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
-	t=1705403520; bh=UxqN8goLJo6H6a7nMjf8r0aorH2j0H/0oPA9ij7vGs8=;
-	h=Date:From:To:cc:Subject:In-Reply-To:References;
-	b=wnFGUlymIz1ag50Nx7oh8FaocUejgNj/GfPnORiHfTvVAwGn2G8y+kBE1JnNnpmtT
-	 iY5ALZ8AHHmg63lIQOHsfp/f6Rf5e7bUeXsixbVP917ZXCUnTEoObTYuxl0ntcUNnK
-	 UJIsB5lHZJhvSC2feK1i5LAxAwtfTNSW1G7tgMrE=
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 40GBBn3L041664;
-	Tue, 16 Jan 2024 13:11:50 +0200
-Date: Tue, 16 Jan 2024 13:11:49 +0200 (EET)
-From: Julian Anastasov <ja@ssi.bg>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="clg/3LK8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E5383C433F1;
+	Tue, 16 Jan 2024 16:03:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1705421015;
+	bh=bHzyF8LGYsF06hfUsvNFRxL+Xu1Z5AeKaWGruhCzQhk=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=clg/3LK86toiisIJI8OXUvyzpZk5vrEkPjyHd19PwvuGKwe5KUZxipo9cvRq9ayXw
+	 j21BDeja9CGey3UR4r2hGGMwS7sICpdxn1MwLKORq0EHdpmb8Gr3r+gFMeXlw9FLEA
+	 p522/2VNSbBCFW5A+XTpwtl9IoVnnH+jP6Zx7V2w+VeIyj565UppFza2Uz47TY92/l
+	 82L1Ju9QzX4Z4vYj8QdBYGdW0TD/jJlVxnawkaml4daCZfQ1yQiJrPleCUQL5EzGP1
+	 OandjRepUw6aG52NaXZISoMeOmjUm+IJkYicg0dTN/e2SQLfkO543sdlBGvleYgcRh
+	 eP2qzAn01YGPw==
+Date: Tue, 16 Jan 2024 16:03:29 +0000
+From: Simon Horman <horms@kernel.org>
 To: Fedor Pchelkin <pchelkin@ispras.ru>
-cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
-        Jozsef Kadlecsik <kadlec@netfilter.org>,
-        Florian Westphal <fw@strlen.de>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Dwip Banerjee <dwip@linux.vnet.ibm.com>, netdev@vger.kernel.org,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, linux-kernel@vger.kernel.org,
-        Alexey Khoroshilov <khoroshilov@ispras.ru>,
-        lvc-project@linuxtesting.org
+Cc: Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>,
+	Jozsef Kadlecsik <kadlec@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Dwip Banerjee <dwip@linux.vnet.ibm.com>, netdev@vger.kernel.org,
+	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+	coreteam@netfilter.org, linux-kernel@vger.kernel.org,
+	Alexey Khoroshilov <khoroshilov@ispras.ru>,
+	lvc-project@linuxtesting.org
 Subject: Re: [PATCH net] net: ipvs: avoid stat macros calls from preemptible
  context
-In-Reply-To: <20240115143923.31243-1-pchelkin@ispras.ru>
-Message-ID: <3964ec81-c8d2-c4c6-8ca8-2e2b50dc4240@ssi.bg>
+Message-ID: <20240116160329.GB588419@kernel.org>
 References: <20240115143923.31243-1-pchelkin@ispras.ru>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
@@ -50,13 +41,11 @@ List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20240115143923.31243-1-pchelkin@ispras.ru>
 
-
-	Hello,
-
-On Mon, 15 Jan 2024, Fedor Pchelkin wrote:
-
+On Mon, Jan 15, 2024 at 05:39:22PM +0300, Fedor Pchelkin wrote:
 > Inside decrement_ttl() upon discovering that the packet ttl has exceeded,
 > __IP_INC_STATS and __IP6_INC_STATS macros can be called from preemptible
 > context having the following backtrace:
@@ -99,41 +88,5 @@ On Mon, 15 Jan 2024, Fedor Pchelkin wrote:
 > Fixes: 8d8e20e2d7bb ("ipvs: Decrement ttl")
 > Signed-off-by: Fedor Pchelkin <pchelkin@ispras.ru>
 
-	Looks good to me, thanks!
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  net/netfilter/ipvs/ip_vs_xmit.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-> index 9193e109e6b3..65e0259178da 100644
-> --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> @@ -271,7 +271,7 @@ static inline bool decrement_ttl(struct netns_ipvs *ipvs,
->  			skb->dev = dst->dev;
->  			icmpv6_send(skb, ICMPV6_TIME_EXCEED,
->  				    ICMPV6_EXC_HOPLIMIT, 0);
-> -			__IP6_INC_STATS(net, idev, IPSTATS_MIB_INHDRERRORS);
-> +			IP6_INC_STATS(net, idev, IPSTATS_MIB_INHDRERRORS);
->  
->  			return false;
->  		}
-> @@ -286,7 +286,7 @@ static inline bool decrement_ttl(struct netns_ipvs *ipvs,
->  	{
->  		if (ip_hdr(skb)->ttl <= 1) {
->  			/* Tell the sender its packet died... */
-> -			__IP_INC_STATS(net, IPSTATS_MIB_INHDRERRORS);
-> +			IP_INC_STATS(net, IPSTATS_MIB_INHDRERRORS);
->  			icmp_send(skb, ICMP_TIME_EXCEEDED, ICMP_EXC_TTL, 0);
->  			return false;
->  		}
-> -- 
-> 2.43.0
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Acked-by: Simon Horman <horms@kernel.org>
 
