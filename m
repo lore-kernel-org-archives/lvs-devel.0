@@ -1,92 +1,100 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from mailgw.kylinos.cn (mailgw.kylinos.cn [124.126.103.232])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACBA11CD05;
-	Tue, 16 Jan 2024 16:03:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="clg/3LK8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E5383C433F1;
-	Tue, 16 Jan 2024 16:03:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1705421015;
-	bh=bHzyF8LGYsF06hfUsvNFRxL+Xu1Z5AeKaWGruhCzQhk=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=clg/3LK86toiisIJI8OXUvyzpZk5vrEkPjyHd19PwvuGKwe5KUZxipo9cvRq9ayXw
-	 j21BDeja9CGey3UR4r2hGGMwS7sICpdxn1MwLKORq0EHdpmb8Gr3r+gFMeXlw9FLEA
-	 p522/2VNSbBCFW5A+XTpwtl9IoVnnH+jP6Zx7V2w+VeIyj565UppFza2Uz47TY92/l
-	 82L1Ju9QzX4Z4vYj8QdBYGdW0TD/jJlVxnawkaml4daCZfQ1yQiJrPleCUQL5EzGP1
-	 OandjRepUw6aG52NaXZISoMeOmjUm+IJkYicg0dTN/e2SQLfkO543sdlBGvleYgcRh
-	 eP2qzAn01YGPw==
-Date: Tue, 16 Jan 2024 16:03:29 +0000
-From: Simon Horman <horms@kernel.org>
-To: Fedor Pchelkin <pchelkin@ispras.ru>
-Cc: Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>,
-	Jozsef Kadlecsik <kadlec@netfilter.org>,
-	Florian Westphal <fw@strlen.de>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Dwip Banerjee <dwip@linux.vnet.ibm.com>, netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org, linux-kernel@vger.kernel.org,
-	Alexey Khoroshilov <khoroshilov@ispras.ru>,
-	lvc-project@linuxtesting.org
-Subject: Re: [PATCH net] net: ipvs: avoid stat macros calls from preemptible
- context
-Message-ID: <20240116160329.GB588419@kernel.org>
-References: <20240115143923.31243-1-pchelkin@ispras.ru>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FB2D8F65;
+	Wed, 17 Jan 2024 07:21:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=124.126.103.232
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1705476101; cv=none; b=UGpwCkpseiDOI036cgDUWJ2I6O23BB6K6oFCn5iEuoJQeAjmvHmj5SyHXlATxbRykX6s+NlEaS5+uYFb1UJ0KZ05Pp4ANjlhhmVe+lHsrF72IQ8gHg9BnG8bkYN6+fMdV9uoMSQF619y5Xb8jQviZo2Ao+Nx0bkp8IPcjhI3Gsg=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1705476101; c=relaxed/simple;
+	bh=O85UiwYAkF07o9wiQzUPQRXlOapOHteQzq9bjUp60XQ=;
+	h=X-UUID:X-CID-P-RULE:X-CID-O-INFO:X-CID-INFO:X-CID-META:X-CID-BVR:
+	 X-CID-BAS:X-CID-FACTOR:X-UUID:Received:Received:X-ns-mid:Received:
+	 From:To:Cc:Subject:Date:Message-Id:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding; b=Rwf0tNtcY5iDKf12P6e0fJnZJCHfxqLn4BhU3Eqol39LINr9iJDIpi9XWjSQAbhc53h3nTDMyrMI1NYqQrZmEFSLcHxVpWhKb4/oh6fHYzCgitbNLpemkTwlz45RtCbIlgdM6BleWhq4MHO5VgsJA1bQowPgDGBi6MbpPdULH1E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kylinos.cn; spf=pass smtp.mailfrom=kylinos.cn; arc=none smtp.client-ip=124.126.103.232
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kylinos.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kylinos.cn
+X-UUID: 2a46221058924310b9c594314f2c70d8-20240117
+X-CID-P-RULE: Release_Ham
+X-CID-O-INFO: VERSION:1.1.35,REQID:e7c0f8e5-df89-401e-9dd4-769b4832632e,IP:10,
+	URL:0,TC:0,Content:0,EDM:25,RT:0,SF:-15,FILE:0,BULK:0,RULE:Release_Ham,ACT
+	ION:release,TS:20
+X-CID-INFO: VERSION:1.1.35,REQID:e7c0f8e5-df89-401e-9dd4-769b4832632e,IP:10,UR
+	L:0,TC:0,Content:0,EDM:25,RT:0,SF:-15,FILE:0,BULK:0,RULE:Release_Ham,ACTIO
+	N:release,TS:20
+X-CID-META: VersionHash:5d391d7,CLOUDID:9f08422f-1ab8-4133-9780-81938111c800,B
+	ulkID:240117152134M9ZOJKSL,BulkQuantity:0,Recheck:0,SF:38|24|17|19|44|66|1
+	02,TC:nil,Content:0,EDM:5,IP:-2,URL:0,File:nil,Bulk:nil,QS:nil,BEC:nil,COL
+	:0,OSI:0,OSA:0,AV:0,LES:1,SPR:NO,DKR:0,DKP:0,BRR:0,BRE:0
+X-CID-BVR: 0,NGT
+X-CID-BAS: 0,NGT,0,_
+X-CID-FACTOR: TF_CID_SPAM_FSD,TF_CID_SPAM_FSI,TF_CID_SPAM_SNR,TF_CID_SPAM_FAS
+X-UUID: 2a46221058924310b9c594314f2c70d8-20240117
+Received: from mail.kylinos.cn [(39.156.73.10)] by mailgw
+	(envelope-from <chentao@kylinos.cn>)
+	(Generic MTA)
+	with ESMTP id 697907986; Wed, 17 Jan 2024 15:21:33 +0800
+Received: from mail.kylinos.cn (localhost [127.0.0.1])
+	by mail.kylinos.cn (NSMail) with SMTP id 7AFCAE000EB9;
+	Wed, 17 Jan 2024 15:21:33 +0800 (CST)
+X-ns-mid: postfix-65A77FFD-295721259
+Received: from kernel.. (unknown [172.20.15.234])
+	by mail.kylinos.cn (NSMail) with ESMTPA id B043EE000EB9;
+	Wed, 17 Jan 2024 15:21:28 +0800 (CST)
+From: Kunwu Chan <chentao@kylinos.cn>
+To: horms@verge.net.au,
+	ja@ssi.bg,
+	pablo@netfilter.org,
+	kadlec@netfilter.org,
+	fw@strlen.de,
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com
+Cc: netdev@vger.kernel.org,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	coreteam@netfilter.org,
+	linux-kernel@vger.kernel.org,
+	Kunwu Chan <chentao@kylinos.cn>
+Subject: [PATCH net] ipvs: Simplify the allocation of ip_vs_conn slab caches
+Date: Wed, 17 Jan 2024 15:20:45 +0800
+Message-Id: <20240117072045.142215-1-chentao@kylinos.cn>
+X-Mailer: git-send-email 2.39.2
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20240115143923.31243-1-pchelkin@ispras.ru>
+Content-Transfer-Encoding: quoted-printable
 
-On Mon, Jan 15, 2024 at 05:39:22PM +0300, Fedor Pchelkin wrote:
-> Inside decrement_ttl() upon discovering that the packet ttl has exceeded,
-> __IP_INC_STATS and __IP6_INC_STATS macros can be called from preemptible
-> context having the following backtrace:
-> 
-> check_preemption_disabled: 48 callbacks suppressed
-> BUG: using __this_cpu_add() in preemptible [00000000] code: curl/1177
-> caller is decrement_ttl+0x217/0x830
-> CPU: 5 PID: 1177 Comm: curl Not tainted 6.7.0+ #34
-> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 04/01/2014
-> Call Trace:
->  <TASK>
->  dump_stack_lvl+0xbd/0xe0
->  check_preemption_disabled+0xd1/0xe0
->  decrement_ttl+0x217/0x830
->  __ip_vs_get_out_rt+0x4e0/0x1ef0
->  ip_vs_nat_xmit+0x205/0xcd0
->  ip_vs_in_hook+0x9b1/0x26a0
->  nf_hook_slow+0xc2/0x210
->  nf_hook+0x1fb/0x770
->  __ip_local_out+0x33b/0x640
->  ip_local_out+0x2a/0x490
->  __ip_queue_xmit+0x990/0x1d10
->  __tcp_transmit_skb+0x288b/0x3d10
->  tcp_connect+0x3466/0x5180
->  tcp_v4_connect+0x1535/0x1bb0
->  __inet_stream_connect+0x40d/0x1040
->  inet_stream_connect+0x57/0xa0
->  __sys_connect_file+0x162/0x1a0
->  __sys_connect+0x137/0x160
->  __x64_sys_connect+0x72/0xb0
->  do_syscall_64+0x6f/0x140
->  entry_SYSCALL_64_after_hwframe+0x6e/0x76
-> RIP: 0033:0x7fe6dbbc34e0
-> 
-> Use the corresponding preemption-aware variants: IP_INC_STATS and
-> IP6_INC_STATS.
-> 
-> Found by Linux Verification Center (linuxtesting.org).
-> 
-> Fixes: 8d8e20e2d7bb ("ipvs: Decrement ttl")
-> Signed-off-by: Fedor Pchelkin <pchelkin@ispras.ru>
+Use the new KMEM_CACHE() macro instead of direct kmem_cache_create
+to simplify the creation of SLAB caches.
 
-Acked-by: Simon Horman <horms@kernel.org>
+Signed-off-by: Kunwu Chan <chentao@kylinos.cn>
+---
+ net/netfilter/ipvs/ip_vs_conn.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_c=
+onn.c
+index a743db073887..98d7dbe3d787 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1511,9 +1511,7 @@ int __init ip_vs_conn_init(void)
+ 		return -ENOMEM;
+=20
+ 	/* Allocate ip_vs_conn slab cache */
+-	ip_vs_conn_cachep =3D kmem_cache_create("ip_vs_conn",
+-					      sizeof(struct ip_vs_conn), 0,
+-					      SLAB_HWCACHE_ALIGN, NULL);
++	ip_vs_conn_cachep =3D KMEM_CACHE(ip_vs_conn, SLAB_HWCACHE_ALIGN);
+ 	if (!ip_vs_conn_cachep) {
+ 		kvfree(ip_vs_conn_tab);
+ 		return -ENOMEM;
+--=20
+2.39.2
 
