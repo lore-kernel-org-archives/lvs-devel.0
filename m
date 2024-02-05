@@ -1,226 +1,334 @@
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.10])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-lf1-f51.google.com (mail-lf1-f51.google.com [209.85.167.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40BEE1A27E;
-	Mon,  5 Feb 2024 11:51:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=198.175.65.10
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1707133896; cv=fail; b=GO/w5J8pgwt70fmZoOnXSNGbt871QmnM5aWB6l/djB06VXX1BgSyv41D9UqRWFin4/Jv4ITebKeieksK3Cwk+XvXnBUJnsA9kNJkvKAP2VeNopWiePKMP1ADTzAQtLtPPUCKTXIMcAMB0wQYQ1J5bPbv2+t/GrIv8d6vmVyXyPE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1707133896; c=relaxed/simple;
-	bh=5SndGDgGKmBg/WeznQeJkZUwKMK1pBKjF6vY7wO9t+w=;
-	h=Date:From:To:CC:Subject:Message-ID:Content-Type:
-	 Content-Disposition:MIME-Version; b=XagkfDdA01tWtbISkChBJjtxi8X5PzoghcoQ+7godwxlPCfVGgYtdJ1jWR2NIw+x4qMMPF2S5RQwbJYSkvoLCfHSl//0uh4v0bRy8aiToIZdWduPvTPz5Uhz445ueN/UVYJYB/24g2Lz2HYA7pwcTswPa9Oi4WrImGFQ3nqxuEM=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=LkINM+eq; arc=fail smtp.client-ip=198.175.65.10
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8209E4EB24
+	for <lvs-devel@vger.kernel.org>; Mon,  5 Feb 2024 19:28:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.51
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1707161313; cv=none; b=ZjW59OBvdfzqCbsJy6iT4bPI6laHkXikHyvjCvE718nQkXM+mYl8t8R8paeCSkdeEGjIKUGkl08ri9RMv9bTQwX0Q1jNy9Dzgo0CNNRqaaUPy0s2eBig8/mKFJE6/ejdtbmBlS3v/esx5IVckrFf1B7Nyaxii0vYgY2Sffj4AdU=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1707161313; c=relaxed/simple;
+	bh=vkvgGRo1pSFs/GOYpJ8ezRcamKPDuI51v3yzsw9Qwac=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=btayK5+rGYKlZq28uRSzlg6gnvMBjY7WPNVFXoYjW0G6Ywb7qk+qS//PDxdpVvvGIGLQU6OpVrW8n8n/zJuhNKc7dfRPGOtioFHddUPkJL54pFd6F3zdKygwnduScFPUZsrDQaOOwVXM+1ZHDPAzXbKKilQz3YN9QVIjzfI/qqg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cloudflare.com; spf=pass smtp.mailfrom=cloudflare.com; dkim=pass (2048-bit key) header.d=cloudflare.com header.i=@cloudflare.com header.b=LBp2c3VH; arc=none smtp.client-ip=209.85.167.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cloudflare.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cloudflare.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="LkINM+eq"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1707133894; x=1738669894;
-  h=date:from:to:cc:subject:message-id:mime-version;
-  bh=5SndGDgGKmBg/WeznQeJkZUwKMK1pBKjF6vY7wO9t+w=;
-  b=LkINM+eqgB5m7pzIDiKXFP97uN5rQAx2jefXY3OKUDvgV5WULIcDOI4E
-   Cors3HRzc8pGkzS+8azzFc/1YiaFxSlLJupRkrscLCkYIYvEM3HEswG3b
-   PfQGfa0Uhh9cex3pvAJQEwmVsneXFBNxf2pcfaFjNjFDQFJ6KTwYkzIgs
-   hVm0Oo9+44vrxCZLo6abePDnV+UG7RH+QijyxIpTMfU416YKCT9+lcG2Q
-   v9T1tb7q5HCWtipv/sFFdE0iGNSj9De8FsYLce5ZSXQDXkKb1PlZ2eAzx
-   GxCaR/3wk61GI0tspV2vD5caQwIHvdkw7rjIQ5/Qx0obfpI18U83Sw1WW
-   g==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10974"; a="17920966"
-X-IronPort-AV: E=Sophos;i="6.05,245,1701158400"; 
-   d="scan'208";a="17920966"
-Received: from orviesa003.jf.intel.com ([10.64.159.143])
-  by orvoesa102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 05 Feb 2024 03:51:34 -0800
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.05,245,1701158400"; 
-   d="scan'208";a="5330804"
-Received: from orsmsx601.amr.corp.intel.com ([10.22.229.14])
-  by orviesa003.jf.intel.com with ESMTP/TLS/AES256-GCM-SHA384; 05 Feb 2024 03:51:34 -0800
-Received: from orsmsx610.amr.corp.intel.com (10.22.229.23) by
- ORSMSX601.amr.corp.intel.com (10.22.229.14) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.35; Mon, 5 Feb 2024 03:51:33 -0800
-Received: from orsmsx602.amr.corp.intel.com (10.22.229.15) by
- ORSMSX610.amr.corp.intel.com (10.22.229.23) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.35; Mon, 5 Feb 2024 03:51:32 -0800
-Received: from ORSEDG602.ED.cps.intel.com (10.7.248.7) by
- orsmsx602.amr.corp.intel.com (10.22.229.15) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.35 via Frontend Transport; Mon, 5 Feb 2024 03:51:32 -0800
-Received: from NAM11-BN8-obe.outbound.protection.outlook.com (104.47.58.169)
- by edgegateway.intel.com (134.134.137.103) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.1.2507.35; Mon, 5 Feb 2024 03:51:32 -0800
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=oezAtoP1/RmL7y2LHsvPr6uPnfEm2nWynZ2rnmsD+8xnDuMOV9aLq/oDjlBlBhok79ajMLWpbYjEMaqaX1kNmiftotc7VdG8X1csdrGoaGhJeyjyr0xqXC+o0l2PlL8SK0JAkFDr+h0GZ+xb3qeAX2T7q89ITWsLk7g6rLQNxQlENdsl3zV1OmhhT/gb5CHA5a78TC6B3dR7QqQJZMVCSBJ4J1SGuw+/otIhJRNBzOOeXIrm8uhc/DwZSLFtZLxr715mclHn8DQdUitjJtJ4nz+5yoC/fF6LEV6xWRwB4hj/GMCbk577oe++Ne+lsnkht/30kc/H07JQCgdeMspZEQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=pzWzqDjR53BHuKmCuJKZr1C76UFQ2URA9Rtk68bZo4w=;
- b=WLmsn1/UPPMqjJleHGJWPdVFIEpMng9BDZv6kw2Xc6yBGh/TAnPM1mqOUg6ABWTW3F5QbBGL4HMg8j/Ep92DDv/Ef62w74zIho49BAnsKkg8kb5nDGzB02VJHl+2bIfPSJ+9qr3lawlMLLZxUtXaByBi+4nE8x4pJi5zmyorDPJS96NotDAI5Tc27l8D63PRAoMtYGhI3de0iF/v3umhwvJ6x1yDLDjbSLUG736/MvaffTRWN4xfJHBP4Tj4JEkbTjDHj5b/r7MAYmLZ53Lgn43O9QvrfsLOWjBo3bw2qAvho9aQ3eM7XjG58Nm/5EWmj9PD24Gj3ErStu/IXAcLcQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=intel.com; dmarc=pass action=none header.from=intel.com;
- dkim=pass header.d=intel.com; arc=none
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=intel.com;
-Received: from CH3PR11MB8414.namprd11.prod.outlook.com (2603:10b6:610:17e::19)
- by SJ0PR11MB5168.namprd11.prod.outlook.com (2603:10b6:a03:2dc::7) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.7249.34; Mon, 5 Feb
- 2024 11:51:30 +0000
-Received: from CH3PR11MB8414.namprd11.prod.outlook.com
- ([fe80::ed34:4cf2:df58:f708]) by CH3PR11MB8414.namprd11.prod.outlook.com
- ([fe80::ed34:4cf2:df58:f708%4]) with mapi id 15.20.7249.035; Mon, 5 Feb 2024
- 11:51:29 +0000
-Date: Mon, 5 Feb 2024 19:51:21 +0800
-From: kernel test robot <lkp@intel.com>
-To: Florian Westphal <fw@strlen.de>
-CC: <llvm@lists.linux.dev>, <oe-kbuild-all@lists.linux.dev>,
-	<netdev@vger.kernel.org>, <lvs-devel@vger.kernel.org>, Phil Sutter
-	<phil@nwl.cc>
-Subject: [horms-ipvs-next:main 7/9] ld.lld: error: undefined symbol: xt_recseq
-Message-ID: <ZcDLuYTvcN/NVo9K@rli9-mobl>
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-X-ClientProxiedBy: SG2PR04CA0173.apcprd04.prod.outlook.com (2603:1096:4::35)
- To CH3PR11MB8414.namprd11.prod.outlook.com (2603:10b6:610:17e::19)
+	dkim=pass (2048-bit key) header.d=cloudflare.com header.i=@cloudflare.com header.b="LBp2c3VH"
+Received: by mail-lf1-f51.google.com with SMTP id 2adb3069b0e04-5114b2b3b73so1957309e87.0
+        for <lvs-devel@vger.kernel.org>; Mon, 05 Feb 2024 11:28:31 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=cloudflare.com; s=google09082023; t=1707161309; x=1707766109; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=uM9bfvnNjJ5wIVcYSWt719eXiAyrV1V8o/Z3/l9SYpM=;
+        b=LBp2c3VHHL1YK4Oxc5b705aSeKaiBIwyfHjyd7F+EThOeMgN0+VBBvQsvkvmQX07K5
+         HiPkUjCKmXHNRZA3kViwaLIqASCMKlpExnEohVqXF0P6xQ784L6ntCHd/VjvnbHVo2s2
+         WftY9A1Y75hp6upOLq4OBLAYNNvUmUxky5fRQLhuAR3EyTYEMDw6CZAH+5kEL9/sfEdg
+         gOBcCPdClxhjEcF8hHNtg4duIyPIrSBegcj0uhkJfqXInsRE4QSPoauMhq1MCfKUOVGU
+         D1xrzhet5hm/AkgUc69BsNbjCnnH8v98u7WdxxclIdP5N1EFD0XHV3MinHbnJcT5a1hr
+         EOSw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1707161309; x=1707766109;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=uM9bfvnNjJ5wIVcYSWt719eXiAyrV1V8o/Z3/l9SYpM=;
+        b=SGjVNLGsgrqiBPBpB7RHozL9tm8kkJb+Z5kfJgunlhcDubakMjlpGviPMIQzgOpqYW
+         W9EZBi1JFXqc6J/NaLhAmwI5QfTRtv1dNKX5HwZbwD+NsLwa2kAEEVwonQXOlZtL+N5C
+         F36fHz/MtUv0Ndrd5ubRJaHHyksdVvvkgSO2z0J4BVE+IxRhi8UsekRQANfeqmCxuikl
+         AY7rhgARrBaBqf60oxAQ/N0sjJKN/J8LdQE/ZbhmZnEThA+ScNWbq1IAlvccb6CHAS30
+         Rs0P5GQ3VH4zUWUmN0NI334e/Q31GXZb9p7KMqkd4eKr9E98RWlaaWExIQHFbwWI/9ft
+         X1ig==
+X-Gm-Message-State: AOJu0YwSLrdZfO1jc8Ql8B+NNpLjqlwYcoNaZy2xmMu8WIikUEMplp0M
+	LSJss1xnUm9DIlkE72nImf8y7Nz922X5Vn40bPPaWBrxg6dAEz0ATA40UUvl1k4=
+X-Google-Smtp-Source: AGHT+IGtNsCzgbhU7U/ubyiUXO0/4h3AjbKmSAxr3VReZ6e/awosLCDhPMapn4/j6qdpSw70rfhlSg==
+X-Received: by 2002:a19:6753:0:b0:511:4a38:351e with SMTP id e19-20020a196753000000b005114a38351emr101251lfj.34.1707161309397;
+        Mon, 05 Feb 2024 11:28:29 -0800 (PST)
+X-Forwarded-Encrypted: i=0; AJvYcCXsAQtz5Pk/+R4pz2JZD65pSIrfPg0vPLZ6EKyQkFS/am1zueK/tYgKlQQdanEqbX8E+FnkX/9M6vMIzJiUkdNO+d1Jcp6BCTofP18/A0jZPbesj9jYQ80jGRtok1mtOcbzUB4nQTfElpugpGtGHrWEQ4TsNysMHojCQzpffQgnlio/peznpu+qMNQdkXiV/zFZnCiZV8fR3URWmRCf1F26Xg+bExkBFJNJkswr0ubUN1Tkj6/9
+Received: from localhost ([2a09:bac5:4e26:15c3::22b:3a])
+        by smtp.gmail.com with ESMTPSA id se1-20020a170906ce4100b00a3743142429sm173161ejb.39.2024.02.05.11.28.29
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 05 Feb 2024 11:28:29 -0800 (PST)
+From: Terin Stock <terin@cloudflare.com>
+To: horms@verge.net.au,
+	ja@ssi.bg
+Cc: pablo@netfilter.org,
+	kadlec@netfilter.org,
+	fw@strlen.de,
+	netfilter-devel@vger.kernel.org,
+	lvs-devel@vger.kernel.org,
+	kernel-team@cloudflare.com
+Subject: [PATCH] ipvs: generic netlink multicast event group
+Date: Mon,  5 Feb 2024 19:28:28 +0000
+Message-ID: <20240205192828.187494-1-terin@cloudflare.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-Exchange-MessageSentRepresentingType: 1
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: CH3PR11MB8414:EE_|SJ0PR11MB5168:EE_
-X-MS-Office365-Filtering-Correlation-Id: 445f93e0-35fa-4674-e2b2-08dc2640ca6b
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: zNoA/03xCedeHhAPcPdafGoeTI2/2ynUQqU8OkCiioMUf42Zxjj0w+WSvENlsrOcn5D++EFkrlixprYoPaNW/zgMP3pxFab4W9FW38hVWbBt4Hc2yACBMtRET56Y+qV9cBoqO9pXto9npdwIObhpO9eQGgaNsMH7tv1nfqJJoRzZ553iWQhcUO5TvoWEgt5/Tlc+2MeVm2o5SJeFZYWT3WIz/1EoIHvxdgVi2OR+HcM7AkR2i+v3M18gYu5uESz4sEvlrI3kYpJLW7S2zA+V3cODvvjkU5wobS5iLJ2edCLH7d/Y4vSKTsCW6KfbXgg3BOosJRF7NNRczWb1oFKZsUV6TRXgxZkUObnRTy9SCelLSlm1UzaAglkVCVkERTsDmFpwgPiRwLVG3qe81BRCm9mA2WNhq5N+HZ5/cUI4Dk/QBTOosGHgTBq0vK6vbrfTvx3+izSC4hlPcp2IIAN0023I2azjfaCvaq9MS1FWSmSB0F6nnCyx/GUX3qBpm+SnZph8e/d1fd0OdPKe/zg4MVq5cBfrdPLHqxCTeltaBLY5LmhhF9TfMdM+lcnyGT3rZyjTrRIe4jK1+s6VX5gZ7A==
-X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH3PR11MB8414.namprd11.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230031)(7916004)(366004)(346002)(396003)(39860400002)(376002)(136003)(230922051799003)(1800799012)(64100799003)(451199024)(186009)(33716001)(41300700001)(82960400001)(2906002)(83380400001)(6506007)(6666004)(26005)(38100700002)(9686003)(6512007)(66946007)(66476007)(966005)(316002)(66556008)(478600001)(6916009)(6486002)(86362001)(8676002)(4326008)(5660300002)(8936002);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0: =?us-ascii?Q?F9YB/YcRNqJ7dNPTK7vAvuMS2PraCoEpzOQ0KbYNcu9DVsfuTJchivBaQV/0?=
- =?us-ascii?Q?OWkLMA7FX21zlp6kj3ERRnTLSXWNADhDJgz0ubJhzVgWs4x+A+NXCp8pon/5?=
- =?us-ascii?Q?OY9SmGxU4exSX2ZHUd9KTbmKvj2Lp87OxQUjYQJtf9tG/2BVy2JqvgNI4124?=
- =?us-ascii?Q?VksV+oq/kLQsXsCvsDnLkIQN22pEcpRlzB8wgNXW5u6eBglWP2jKaIQXKZnW?=
- =?us-ascii?Q?l/Pa2bTFx8njQNEGyqp9sDB/tMwNn7aj++GIXLgD0AfdmxdDXMrygplTS47e?=
- =?us-ascii?Q?wwYwL5qcd3IlDwe7skojd8U1phTLOt614+pr0oNL/WIgje/f+WP7yyMtAxJA?=
- =?us-ascii?Q?LFfOyvFePUc+XNRVXQ/Zp3AwARIqmxKo7IFmQ3Qn2pmlIP33I7vlveqkeMoV?=
- =?us-ascii?Q?Ll5AHA2JbgY+mi7SBNGEplRA+54H4Rz2x8DHc984AMZhx6BgVH3JYoT88PXg?=
- =?us-ascii?Q?4mtXE1mTjuszSm5GWBqc5WjhmHlr9BlcL4Y/1PnaDX2Zzk1WGrBl4C2TTpQB?=
- =?us-ascii?Q?4NkWikEpmvVXT0iCU/vI73JUlo6vsZuMCJ6RomCN0Npyxh7gmKnejV9qtg4l?=
- =?us-ascii?Q?guQSK6kig6qLKaJx4mmPseVBWnCcX/hOFDynC6yZNJ8TGIo2FrxjWgJe6fU4?=
- =?us-ascii?Q?0KQ4ex8b4IWYUDwe0cfwXatxqScIHTN+bkxDJXNsa38wBB1Ye6Fqc4gSD5pt?=
- =?us-ascii?Q?odepQNMahWCq9j+aOJs5Vn12oXmLbi1Ydh7HRMSQl05SBmGK4dGhTkykYSBG?=
- =?us-ascii?Q?OuHysXDrSPSutnPaQd42Fj+tJB8iWX9P8nSTATNp5Qra76XBsL6Mqs0bPpo1?=
- =?us-ascii?Q?BurgyI+5L0JwkLmJEpNO4mkJg0RckkIaXmwVc89wVN4x4l3B1nC2lYl6dGFk?=
- =?us-ascii?Q?lor2XQCpckSHa5ckSRS3F54ER0HaQv6ttxcEZTKWIO4nYADwSvqUvU4xn4y8?=
- =?us-ascii?Q?i/zD7yTx6osmj16HlQL4EIvPViDB/EaChtfa/N8fMsSkVH+DGqaLxiN6IXvk?=
- =?us-ascii?Q?mGojmBclJvMi3IbGx2Eki1DpgDo7CI88qlbUcZfZqKLU748O172w78JDqbUJ?=
- =?us-ascii?Q?M/INk4DaGQKffoq+HFmAX/uH73dymL07CQ3dqAhMTUrRKmTcm1CWIlR6MTJR?=
- =?us-ascii?Q?pFR55qczRD3Q2C+snRwhN8BsqEFMnrc8RJcFV2ciURXBewdybeehMHQ54/bV?=
- =?us-ascii?Q?D5K4m9J7I9iAVmcXmRY0W7VBIPyYZ82SvQH85P9XKDZL0wTZK2AwBb4E6Il6?=
- =?us-ascii?Q?H6I6083et4aF6cd/00KBUcFa2P2Q3qsX7Fb6fPrv+GwgZrNmGrt5hhJ78GEU?=
- =?us-ascii?Q?8YvBuigIzKRjWQlwbCEEZHs5YlTFC8QIFdOMCPVXxs6ZsUMp8wsGot3eYBkS?=
- =?us-ascii?Q?2+X6E0VMtnU/ubvtqtA+FeQyEw2Hb0Yn84iXjM+Rdwr3LjqOw4BuoWX1SpuG?=
- =?us-ascii?Q?o6/28aAEyzUjzCPxDJGp6zaaKQ666WKfDShOMDyVwgmYPg5jd9jPqX3Zx8Mv?=
- =?us-ascii?Q?Ws6clTddIf2qG2e9pl1kuyk/arQwU1YDNLk8jg3zANdHQsKJBge9ZA4l14J2?=
- =?us-ascii?Q?8+wTlUCpDQKni1wMk7WY07K5Knz8c+nQgpnfASjGI4oR+mc+3StgucY7ywXv?=
- =?us-ascii?Q?3w=3D=3D?=
-X-MS-Exchange-CrossTenant-Network-Message-Id: 445f93e0-35fa-4674-e2b2-08dc2640ca6b
-X-MS-Exchange-CrossTenant-AuthSource: CH3PR11MB8414.namprd11.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 05 Feb 2024 11:51:29.9143
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 46c98d88-e344-4ed4-8496-4ed7712e255d
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: mJYvXkaiC8nGzZsM4FcLjOhognAJR7OJ5MmLI8bXznv9ZrBPfj5Hs2ewV4Fylyn1JI+amgXTVL8qQ2f6r2WuKg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ0PR11MB5168
-X-OriginatorOrg: intel.com
+Content-Transfer-Encoding: 8bit
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git main
-head:   7ad269787b6615ca56bb161063331991fce51abf
-commit: 4654467dc7e111e84f43ed1b70322873ae77e7be [7/9] netfilter: arptables: allow xtables-nft only builds
-config: x86_64-randconfig-076-20240131 (https://download.01.org/0day-ci/archive/20240201/202402010345.MEUDOOiB-lkp@intel.com/config)
-compiler: clang version 17.0.6 (https://github.com/llvm/llvm-project 6009708b4367171ccdbf4b5905cb6a803753fe18)
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20240201/202402010345.MEUDOOiB-lkp@intel.com/reproduce)
+The IPVS subsystem allows for configuration from userspace programs
+using the generic netlink interface. However, the program is currently
+unable to react to changes in the configuration of services or
+destinations made on the system without polling over all configuration
+in IPVS.
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/r/202402010345.MEUDOOiB-lkp@intel.com/
+Adds an "events" multicast group for the IPVS generic netlink family,
+allowing for userspace programs to monitor changes made by any other
+netlink client (or legacy tools using the IPVS socket options). As
+service and destination statistics are separate from configuration,
+those netlink attributes are excluded in events.
 
-All errors (new ones prefixed by >>):
+Signed-off-by: Terin Stock <terin@cloudflare.com>
+---
+ include/uapi/linux/ip_vs.h     |   2 +
+ net/netfilter/ipvs/ip_vs_ctl.c | 107 +++++++++++++++++++++++++++++----
+ 2 files changed, 96 insertions(+), 13 deletions(-)
 
->> ld.lld: error: undefined symbol: xt_recseq
-   >>> referenced by x_tables.h:372 (include/linux/netfilter/x_tables.h:372)
-   >>>               vmlinux.o:(arpt_do_table)
-   >>> referenced by x_tables.h:379 (include/linux/netfilter/x_tables.h:379)
-   >>>               vmlinux.o:(arpt_do_table)
-   >>> referenced by x_tables.h:397 (include/linux/netfilter/x_tables.h:397)
-   >>>               vmlinux.o:(arpt_do_table)
-   >>> referenced 4 more times
---
->> ld.lld: error: undefined symbol: xt_alloc_table_info
-   >>> referenced by arp_tables.c:1513 (net/ipv4/netfilter/arp_tables.c:1513)
-   >>>               vmlinux.o:(arpt_register_table)
-   >>> referenced by arp_tables.c:970 (net/ipv4/netfilter/arp_tables.c:970)
-   >>>               vmlinux.o:(do_arpt_set_ctl)
---
->> ld.lld: error: undefined symbol: xt_request_find_target
-   >>> referenced by arp_tables.c:417 (net/ipv4/netfilter/arp_tables.c:417)
-   >>>               vmlinux.o:(translate_table)
---
->> ld.lld: error: undefined symbol: xt_check_target
-   >>> referenced by arp_tables.c:401 (net/ipv4/netfilter/arp_tables.c:401)
-   >>>               vmlinux.o:(translate_table)
---
->> ld.lld: error: undefined symbol: xt_unregister_table
-   >>> referenced by arp_tables.c:1489 (net/ipv4/netfilter/arp_tables.c:1489)
-   >>>               vmlinux.o:(__arpt_unregister_table)
---
->> ld.lld: error: undefined symbol: xt_find_table
-   >>> referenced by arp_tables.c:1566 (net/ipv4/netfilter/arp_tables.c:1566)
-   >>>               vmlinux.o:(arpt_unregister_table_pre_exit)
-   >>> referenced by arp_tables.c:1575 (net/ipv4/netfilter/arp_tables.c:1575)
-   >>>               vmlinux.o:(arpt_unregister_table)
---
->> ld.lld: error: undefined symbol: xt_copy_counters
-   >>> referenced by arp_tables.c:1010 (net/ipv4/netfilter/arp_tables.c:1010)
-   >>>               vmlinux.o:(do_arpt_set_ctl)
---
->> ld.lld: error: undefined symbol: xt_find_table_lock
-   >>> referenced by arp_tables.c:1014 (net/ipv4/netfilter/arp_tables.c:1014)
-   >>>               vmlinux.o:(do_arpt_set_ctl)
-   >>> referenced by arp_tables.c:862 (net/ipv4/netfilter/arp_tables.c:862)
-   >>>               vmlinux.o:(do_arpt_get_ctl)
---
->> ld.lld: error: undefined symbol: xt_table_unlock
-   >>> referenced by arp_tables.c:1040 (net/ipv4/netfilter/arp_tables.c:1040)
-   >>>               vmlinux.o:(do_arpt_set_ctl)
-   >>> referenced by arp_tables.c:944 (net/ipv4/netfilter/arp_tables.c:944)
-   >>>               vmlinux.o:(do_arpt_set_ctl)
-   >>> referenced by arp_tables.c:924 (net/ipv4/netfilter/arp_tables.c:924)
-   >>>               vmlinux.o:(do_arpt_set_ctl)
-   >>> referenced 2 more times
---
->> ld.lld: error: undefined symbol: xt_counters_alloc
-   >>> referenced by arp_tables.c:894 (net/ipv4/netfilter/arp_tables.c:894)
-   >>>               vmlinux.o:(do_arpt_set_ctl)
---
->> ld.lld: error: undefined symbol: xt_request_find_table_lock
-   >>> referenced by arp_tables.c:900 (net/ipv4/netfilter/arp_tables.c:900)
-   >>>               vmlinux.o:(do_arpt_set_ctl)
-   >>> referenced by arp_tables.c:808 (net/ipv4/netfilter/arp_tables.c:808)
-   >>>               vmlinux.o:(do_arpt_get_ctl)
-..
-
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index 1ed234e7f251..0aa119ebaf85 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -299,6 +299,8 @@ struct ip_vs_daemon_user {
+ #define IPVS_GENL_NAME		"IPVS"
+ #define IPVS_GENL_VERSION	0x1
+ 
++#define IPVS_GENL_MCAST_EVENT_NAME "events"
++
+ struct ip_vs_flags {
+ 	__u32 flags;
+ 	__u32 mask;
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 143a341bbc0a..ced232361d02 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -64,6 +64,11 @@ int ip_vs_get_debug_level(void)
+ 
+ 
+ /*  Protos */
++static struct genl_family ip_vs_genl_family;
++static int ip_vs_genl_fill_service(struct sk_buff *skb,
++				   struct ip_vs_service *svc, bool stats);
++static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest,
++				bool stats);
+ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup);
+ 
+ 
+@@ -960,6 +965,62 @@ void ip_vs_stats_free(struct ip_vs_stats *stats)
+ 	}
+ }
+ 
++static int ip_vs_genl_service_event(u8 event, struct ip_vs_service *svc)
++{
++	struct sk_buff *msg;
++	void *hdr;
++
++	msg = nlmsg_new(NLMSG_DEFAULT_SIZE, GFP_ATOMIC);
++	if (!msg)
++		return -ENOMEM;
++
++	hdr = genlmsg_put(msg, 0, 0, &ip_vs_genl_family, 0, event);
++	if (!hdr)
++		goto free_msg;
++
++	if (ip_vs_genl_fill_service(msg, svc, false))
++		goto free_msg;
++
++	genlmsg_end(msg, hdr);
++	genlmsg_multicast(&ip_vs_genl_family, msg, 0, 0, GFP_ATOMIC);
++
++	return 0;
++
++free_msg:
++	nlmsg_free(msg);
++	return -EMSGSIZE;
++}
++
++static int ip_vs_genl_dest_event(u8 event, struct ip_vs_service *svc,
++				 struct ip_vs_dest *dest)
++{
++	struct sk_buff *msg;
++	void *hdr;
++
++	msg = nlmsg_new(NLMSG_DEFAULT_SIZE, GFP_ATOMIC);
++	if (!msg)
++		return -ENOMEM;
++
++	hdr = genlmsg_put(msg, 0, 0, &ip_vs_genl_family, 0, event);
++	if (!hdr)
++		goto free_msg;
++
++	if (ip_vs_genl_fill_service(msg, svc, false))
++		goto free_msg;
++
++	if (ip_vs_genl_fill_dest(msg, dest, false))
++		goto free_msg;
++
++	genlmsg_end(msg, hdr);
++	genlmsg_multicast(&ip_vs_genl_family, msg, 0, 0, GFP_ATOMIC);
++
++	return 0;
++
++free_msg:
++	nlmsg_free(msg);
++	return -EMSGSIZE;
++}
++
+ /*
+  *	Update a destination in the given service
+  */
+@@ -1043,10 +1104,12 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+ 		sched = rcu_dereference_protected(svc->scheduler, 1);
+ 		if (sched && sched->add_dest)
+ 			sched->add_dest(svc, dest);
++		ip_vs_genl_dest_event(IPVS_CMD_NEW_DEST, svc, dest);
+ 	} else {
+ 		sched = rcu_dereference_protected(svc->scheduler, 1);
+ 		if (sched && sched->upd_dest)
+ 			sched->upd_dest(svc, dest);
++		ip_vs_genl_dest_event(IPVS_CMD_SET_DEST, svc, dest);
+ 	}
+ }
+ 
+@@ -1316,6 +1379,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 		return -ENOENT;
+ 	}
+ 
++	ip_vs_genl_dest_event(IPVS_CMD_DEL_DEST, svc, dest);
+ 	/*
+ 	 *	Unlink dest from the service
+ 	 */
+@@ -1480,6 +1544,8 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
+ 	/* Hash the service into the service table */
+ 	ip_vs_svc_hash(svc);
+ 
++	ip_vs_genl_service_event(IPVS_CMD_NEW_SERVICE, svc);
++
+ 	*svc_p = svc;
+ 
+ 	if (!ipvs->enable) {
+@@ -1593,6 +1659,8 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
+ 			atomic_dec(&svc->ipvs->conn_out_counter);
+ 	}
+ 
++	ip_vs_genl_service_event(IPVS_CMD_SET_SERVICE, svc);
++
+ out:
+ 	ip_vs_scheduler_put(old_sched);
+ 	ip_vs_pe_put(old_pe);
+@@ -1667,6 +1735,8 @@ static void ip_vs_unlink_service(struct ip_vs_service *svc, bool cleanup)
+ 	ip_vs_unregister_conntrack(svc);
+ 	/* Hold svc to avoid double release from dest_trash */
+ 	atomic_inc(&svc->refcnt);
++
++	ip_vs_genl_service_event(IPVS_CMD_DEL_SERVICE, svc);
+ 	/*
+ 	 * Unhash it from the service table
+ 	 */
+@@ -3313,7 +3383,7 @@ static int ip_vs_genl_fill_stats64(struct sk_buff *skb, int container_type,
+ }
+ 
+ static int ip_vs_genl_fill_service(struct sk_buff *skb,
+-				   struct ip_vs_service *svc)
++				   struct ip_vs_service *svc, bool stats)
+ {
+ 	struct ip_vs_scheduler *sched;
+ 	struct ip_vs_pe *pe;
+@@ -3349,10 +3419,12 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
+ 	    nla_put_be32(skb, IPVS_SVC_ATTR_NETMASK, svc->netmask))
+ 		goto nla_put_failure;
+ 	ip_vs_copy_stats(&kstats, &svc->stats);
+-	if (ip_vs_genl_fill_stats(skb, IPVS_SVC_ATTR_STATS, &kstats))
+-		goto nla_put_failure;
+-	if (ip_vs_genl_fill_stats64(skb, IPVS_SVC_ATTR_STATS64, &kstats))
+-		goto nla_put_failure;
++	if (stats) {
++		if (ip_vs_genl_fill_stats(skb, IPVS_SVC_ATTR_STATS, &kstats))
++			goto nla_put_failure;
++		if (ip_vs_genl_fill_stats64(skb, IPVS_SVC_ATTR_STATS64, &kstats))
++			goto nla_put_failure;
++	}
+ 
+ 	nla_nest_end(skb, nl_service);
+ 
+@@ -3375,7 +3447,7 @@ static int ip_vs_genl_dump_service(struct sk_buff *skb,
+ 	if (!hdr)
+ 		return -EMSGSIZE;
+ 
+-	if (ip_vs_genl_fill_service(skb, svc) < 0)
++	if (ip_vs_genl_fill_service(skb, svc, true) < 0)
+ 		goto nla_put_failure;
+ 
+ 	genlmsg_end(skb, hdr);
+@@ -3528,7 +3600,8 @@ static struct ip_vs_service *ip_vs_genl_find_service(struct netns_ipvs *ipvs,
+ 	return ret ? ERR_PTR(ret) : svc;
+ }
+ 
+-static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
++static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest,
++				bool stats)
+ {
+ 	struct nlattr *nl_dest;
+ 	struct ip_vs_kstats kstats;
+@@ -3561,10 +3634,12 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
+ 	    nla_put_u16(skb, IPVS_DEST_ATTR_ADDR_FAMILY, dest->af))
+ 		goto nla_put_failure;
+ 	ip_vs_copy_stats(&kstats, &dest->stats);
+-	if (ip_vs_genl_fill_stats(skb, IPVS_DEST_ATTR_STATS, &kstats))
+-		goto nla_put_failure;
+-	if (ip_vs_genl_fill_stats64(skb, IPVS_DEST_ATTR_STATS64, &kstats))
+-		goto nla_put_failure;
++	if (stats) {
++		if (ip_vs_genl_fill_stats(skb, IPVS_DEST_ATTR_STATS, &kstats))
++			goto nla_put_failure;
++		if (ip_vs_genl_fill_stats64(skb, IPVS_DEST_ATTR_STATS64, &kstats))
++			goto nla_put_failure;
++	}
+ 
+ 	nla_nest_end(skb, nl_dest);
+ 
+@@ -3586,7 +3661,7 @@ static int ip_vs_genl_dump_dest(struct sk_buff *skb, struct ip_vs_dest *dest,
+ 	if (!hdr)
+ 		return -EMSGSIZE;
+ 
+-	if (ip_vs_genl_fill_dest(skb, dest) < 0)
++	if (ip_vs_genl_fill_dest(skb, dest, true) < 0)
+ 		goto nla_put_failure;
+ 
+ 	genlmsg_end(skb, hdr);
+@@ -4078,7 +4153,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
+ 			ret = PTR_ERR(svc);
+ 			goto out_err;
+ 		} else if (svc) {
+-			ret = ip_vs_genl_fill_service(msg, svc);
++			ret = ip_vs_genl_fill_service(msg, svc, true);
+ 			if (ret)
+ 				goto nla_put_failure;
+ 		} else {
+@@ -4235,6 +4310,10 @@ static const struct genl_small_ops ip_vs_genl_ops[] = {
+ 	},
+ };
+ 
++static const struct genl_multicast_group ip_vs_genl_mcgrps[] = {
++	{ .name = IPVS_GENL_MCAST_EVENT_NAME },
++};
++
+ static struct genl_family ip_vs_genl_family __ro_after_init = {
+ 	.hdrsize	= 0,
+ 	.name		= IPVS_GENL_NAME,
+@@ -4246,6 +4325,8 @@ static struct genl_family ip_vs_genl_family __ro_after_init = {
+ 	.small_ops	= ip_vs_genl_ops,
+ 	.n_small_ops	= ARRAY_SIZE(ip_vs_genl_ops),
+ 	.resv_start_op	= IPVS_CMD_FLUSH + 1,
++	.mcgrps = ip_vs_genl_mcgrps,
++	.n_mcgrps = ARRAY_SIZE(ip_vs_genl_mcgrps),
+ };
+ 
+ static int __init ip_vs_genl_register(void)
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+2.43.0
 
