@@ -1,386 +1,369 @@
-Received: from mail-edgeka24.fraunhofer.de (mail-edgeka24.fraunhofer.de [153.96.1.24])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE12355C15;
-	Fri,  8 Mar 2024 11:17:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=153.96.1.24
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709896679; cv=fail; b=farc0QMC5ss9xuUCStbF7GurB4ibgjJsDzWoXRoFwRYfQeS1QN5/BXPM11IuStGEMEZmgKAoYagJ3fKLSwKuxdXN0cD2OQ8enaBJSmeMeBocF4qnX6J5X5yiEoH9nxGUKGKMBKMPOZYlLiguCCUE9Clz0SQMsF1HPS9Oahv494I=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709896679; c=relaxed/simple;
-	bh=ENGxLWOPX34Lup8xdNI091rv0zNU3CZU3rEAGcEK6/E=;
-	h=Message-ID:Date:Subject:To:CC:References:From:In-Reply-To:
-	 Content-Type:MIME-Version; b=vGFT0qxlhOLfnNHTkHMKtDYY/OkQ3PAvSOGW2QfS+8IYZOMG5pkynpjgfTE5lFLCJr3hWros3Hwz9yg0FZSBYLaQyinB+oPyAKXvtUlr+38ez64UJ3Ju41gNMw0GkEgurpU9Dg0Xe4N10K3mzJue4y5+QiYkXMt/XOoljOVeAuE=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=aisec.fraunhofer.de; spf=pass smtp.mailfrom=aisec.fraunhofer.de; dkim=pass (2048-bit key) header.d=aisec.fraunhofer.de header.i=@aisec.fraunhofer.de header.b=WnKqQuP+; dkim=pass (1024-bit key) header.d=fraunhofer.onmicrosoft.com header.i=@fraunhofer.onmicrosoft.com header.b=ldV1pwNG; arc=fail smtp.client-ip=153.96.1.24
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=aisec.fraunhofer.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=aisec.fraunhofer.de
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27374757F9;
+	Thu, 14 Mar 2024 19:20:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1710444059; cv=none; b=mkjXZFPTL1Hc4QqeJC49Hiea/L8EQzHUVR01UzaCRFx3L5wzFVOgEyQ5v7DKtzA8ArfqMXia9/XzCPDQOcvVbi5JW/p5xzeScizH9fEKrEOrdcZZT3xDIL1TiGhVU4Smlsynbd/9KDH5VSk6+W84D2iOJKTJ1U2xSleqU7cZsKY=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1710444059; c=relaxed/simple;
+	bh=q0jqW80rMlkH7Gjc1NoHoHwIuo1AK4KE0S7RaQ0u9l0=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=ORX1NpaPa3XpjN6f6NOvOEBYS/YanLYg6JZSD1BJC3/7IR8b5FR6wuqN2gwEYlnmdklJJk2Co5KtVv1q0V/EHcIVfTIM0Q/jZOqohJwAFclVhGMCsHMG8VXITBIV1sb9QFqvQ1GPWL5c1w2iz/Xqmu8i3rk5TD42ntHUr0pomTQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IgQZIuw7; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=aisec.fraunhofer.de header.i=@aisec.fraunhofer.de header.b="WnKqQuP+";
-	dkim=pass (1024-bit key) header.d=fraunhofer.onmicrosoft.com header.i=@fraunhofer.onmicrosoft.com header.b="ldV1pwNG"
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
-  d=aisec.fraunhofer.de; i=@aisec.fraunhofer.de;
-  q=dns/txt; s=emailbd1; t=1709896672; x=1741432672;
-  h=message-id:date:subject:to:cc:references:from:
-   in-reply-to:content-transfer-encoding:mime-version;
-  bh=ENGxLWOPX34Lup8xdNI091rv0zNU3CZU3rEAGcEK6/E=;
-  b=WnKqQuP+tdx5jHFOLLZ4P7HLnH+CzmDY68uTQTZJheF41UrYa4V3qaB1
-   PxDVyq4I5kcpbdvZpwpd3ckqa1JkGNOXx0fa0nCc62IykB1IKSLnbHeVF
-   MbtzX0ChHezrARhAPB/zi9HQgEU4VPY/350veMsZ3b7DhM+681eOM+Urf
-   6GB18mglp9MhAAB79v02lxmnUzyOQho1GkqmC48pTZ76r+jxOPqd6o5jo
-   LqCTkd1Y41DUwnVMUs7o09+hSw3Mj4dyPGLFm0Bga8bxJWwofaTqTdcLs
-   VsUcAuB/hgNmtYQMFI6ammjMGaaDaHosIiDvKTv0iwQNiAZDoi2lgAhxH
-   w==;
-X-CSE-ConnectionGUID: jqJnc02oQ6+1HSJROFyiAw==
-X-CSE-MsgGUID: xjj/3I89TnuqnhfMhx0qEg==
-Authentication-Results: mail-edgeka24.fraunhofer.de; dkim=pass (signature verified) header.i=@fraunhofer.onmicrosoft.com
-X-IPAS-Result: =?us-ascii?q?A2E5BAC48upl/xmnZsBaHgEBCxIMQIFEC4I5fIFfhFWDT?=
- =?us-ascii?q?41rLQOcMSqBLIElA1YPAQEBAQEBAQEBBwEBOwkEAQEDAQOEfwKHdyc2Bw4BA?=
- =?us-ascii?q?gEDAQEBAQMCAwEBAQEBAQEBBgEBBgEBAQEBAQYHAoEZhS89DYMQa4ElAQEBA?=
- =?us-ascii?q?QEBAQEBAQEBAR0CDShSAQEBAQIBIw8BDQEBNwEPCw4KAgImAgIxJQYOBQIBA?=
- =?us-ascii?q?YJ8AYIrAw4jFAayXXqBMoEBggoBAQaBCD4CDAJDrg4YgSOBHwMGCQGBEC6Da?=
- =?us-ascii?q?oQiGgEFZYlHgk+BFScLA4EGgW8+gmEBAoFBM4NGgmiBQVaDO4EmgkeGL4F1A?=
- =?us-ascii?q?YJfhmOCW4URVH8cA4EFBFoNGxAeNxEQBQ4NAwhuHQIRIjoDBQMEMgoSDAsfB?=
- =?us-ascii?q?VQDQwZJCwMCGgUDAwSBLgUNGgIQGgYMJgMDEkkCEBQDOAMDBgMKMTBVQQxQA?=
- =?us-ascii?q?2cfMgk8DwwaAhsUDSQjAiw+AwkKEAIWAx0WBDARCQsmAyoGOQISDAYGBl0gB?=
- =?us-ascii?q?w8JBCUDCAQDKykDIHURAwQaBwsHcwWCCYE9BBNHEIE0gVuDXYRtDIM2KoF7G?=
- =?us-ascii?q?E8DGSsdQAIBC209NQkLGygBHQKiNwEigT0tTAGBDggBEw4Cc4E5CxECLZJaM?=
- =?us-ascii?q?4JnrzYHgjWBYIwJlSIGDwQvhAWTPDeSNJhcjSVLlRIshSUCBAIEBQIOCIFrD?=
- =?us-ascii?q?oIBMz6DNhJAGQ+OIIN6hRSKZncCOQIHAQoBAQMJgjmEFIIjLYFLAQE?=
-IronPort-PHdr: A9a23:JIs9ZR23fLnPfzdmsmDO+QUyDhhOgF2JFhBAs8lvgudUaa3m5JTrZ
- hGBtr1m2UXEWYzL5v4DkefSurDtVT9lg96N5X4YeYFKVxgLhN9QmAolAcWfDlb8IuKsZCs/T
- 4xZAURo+3ywLU9PQoPwfVTPpH214zMIXxL5MAt+POPuHYDOys+w0rPXmdXTNitSgz/vTbpuI
- UeNsA/Tu8IK065vMb04xRaMg1caUONQ2W5uORevjg7xtOKR2bMmzSlKoPMm8ZxwFIDBOokoR
- rxRCjsrdls44sHmrzDvZguC7XhPNwdemBodGSXfty7Re4/rlyujqfFAyWqkBpbPa+sKASuEz
- KpybkG1kno1biUA3jr6lZkj6cATqkelqyIm25HyT4KvONp5XZPNZJQdXWpIf9RgZSodWa+zQ
- 6g/VuYbANxk8LDho1E3nCOwBxC8GuzoxDRNvXnc7JM0g+ArA1/J81IuPM9UvC3InvX3FYI7Y
- erq4qyU9SnhT/xG4i6hsYLyVBx8p/Guf71Bb/D87EoWSQDslgu6mY/IZW202sYGnjC0y/ZdZ
- /6AhDMnrjFQnzuU6pwwtIKOgYdMyHTvqgUg7d4NdN7tGwZrJN++F51IsDuGcpF7Wd4mXzRws
- T0hmdXu2La+dSkOjZkryBPcYqbbNYaS6w/lVOGfLC0+iH82ML68hhPn6UG70aW8Tci71l9Ws
- zBI2sfBrHED1hHfq4CHR/Jx813n2GOn2Rra9+dEJk45j+zcLZsgyaQ3jZ0drQLIGSqepQ==
-X-Talos-CUID: =?us-ascii?q?9a23=3ABz6FN2gucz/84tIITnMl5jW92DJucGT/ynyIeUi?=
- =?us-ascii?q?BVyUwaIa3c3i+6aJNjJ87?=
-X-Talos-MUID: 9a23:z2ERVAnE3fGcmskdnDSOdnpyNsUvuIX+WXwLjIwAu8ehNTwoIhqS2WE=
-X-IronPort-Anti-Spam-Filtered: true
-X-IronPort-AV: E=Sophos;i="6.07,109,1708383600"; 
-   d="scan'208";a="9850025"
-Received: from mail-mtadd25.fraunhofer.de ([192.102.167.25])
-  by mail-edgeka24.fraunhofer.de with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 08 Mar 2024 12:17:40 +0100
-X-CSE-ConnectionGUID: +Q9FKCsTTEu6hxALXRkLJw==
-X-CSE-MsgGUID: +0a4musDRVGT3kiBOb/qdQ==
-IronPort-SDR: 65eaf3d3_darhTcbzF6nDOSwKVEvnf8OWmKPIyV/TS43zRx+7Bkvn4qx
- nxTyRGU2q43fuiFsPUvTYNl646izBe1pY8LMtXQ==
-X-IPAS-Result: =?us-ascii?q?A0BSAQAw8upl/3+zYZlaHQEBAQEJARIBBQUBQAkcgRgGA?=
- =?us-ascii?q?QsBgWZSBz43WIEHhFSDTQEBhS2GSQGBdC0DOAGcIoEsgSUDVg8BAwEBAQEBB?=
- =?us-ascii?q?wEBOwkEAQGFBgKHdAInNgcOAQIBAQIBAQEBAwIDAQEBAQEBAQEGAQEFAQEBA?=
- =?us-ascii?q?gEBBgWBChOFbA2GTgEBAQECARIRDwENAQEUIwEPCw4KAgImAgIxBx4GDgUCA?=
- =?us-ascii?q?QEegl4BgisDDiMCAQEQBqZ0AYFAAoooeoEygQGCCgEBBgQEgT4CDAJDrg4Yg?=
- =?us-ascii?q?SOBHwMGCQGBEC4Bg2mEIhoBBWWJR4JPgRUnCwOBBoFvPoJhAQKBQYN5gmiBQ?=
- =?us-ascii?q?VaDO4EmgkeGL4F1AYJfhmOCW4URVH8cA4EFBFoNGxAeNxEQBQ4NAwhuHQIRI?=
- =?us-ascii?q?joDBQMEMgoSDAsfBVQDQwZJCwMCGgUDAwSBLgUNGgIQGgYMJgMDEkkCEBQDO?=
- =?us-ascii?q?AMDBgMKMTBVQQxQA2cfFhwJPA8MGgIbFA0kIwIsPgMJChACFgMdFgQwEQkLJ?=
- =?us-ascii?q?gMqBjkCEgwGBgZdIAcPCQQlAwgEAyspAyB1EQMEGgcLB3MFggmBPQQTRxCBN?=
- =?us-ascii?q?IFbg12EbQyDNiqBexhPAxkrHUACAQttPTUJCxsoAR0CojcBIoE9LUwBgQ4IA?=
- =?us-ascii?q?RMOAnOBOQsRAi2SWjOCZ682B4I1gWCMCZUiBg8EL4QFkzw3kjSYXI0lS5USL?=
- =?us-ascii?q?IUlAgQCBAUCDgEBBoFrDieBWTM+gzYSPQMZD44gg3qFFIpmRDMCOQIHAQoBA?=
- =?us-ascii?q?QMJgjmEFIIjLYFKAQE?=
-IronPort-PHdr: A9a23:+TbxMhbeJzVygfDw2tlifxb/LTFg0YqcDmcuAucPlecXIeyqqo75N
- QnE5fw30QGaFY6O8f9Agvrbv+f6VGgJ8ZuN4xVgOJAZWQUMlMMWmAItGoiCD0j6J+TtdCs0A
- IJJU1o2t2ruKkVRFc3iYEeI53Oo5CMUGhLxOBAwIeLwG4XIiN+w2fz38JrWMGAqzDroT6l1K
- UeapBnc5PILi4lvIbpj7xbSuXJHdqF36TFDIlSPkhDgo/uh5JMx1gV1lrcf+tRbUKL8LZR9a
- IcdISQtM2kz68CujhTFQQaVz1c3UmgdkUktYUDP7ETgc42qjQDfrvBY2HCFJvDnDo4PAg2Et
- JkzVznLhT4haWMjrVOOkfVe149E9UHExVR1lorYXtiNK9xRfZnRXdQ5dXpYGcFJVyVgELKOa
- ddUI+UtHtYBo5PAnWdRlAe6DzCdPO3t0y9WiXj41qgB1c4QLw+W2AYyQd0h7nr3sY/5bbsgc
- eKU6YD4x2rtaq9uxRXd55jza0x4q8uqUe92cejzxngxLS7gjWzOqqX9YRml1clX7UmXzeFND
- c2Ll1MVty5+/ziq9uYRibLl3Z4rwRfD8Hx75K1qBYSVEHYqYov3WIsVtjudMZNxWN9nWWxzp
- SImn6UPooXoFMBr4JEuxhqabuCOX6TSv1TtTu+MJzd/in9/Pr6y1F6+8kmln/X1TdL8kE1Lo
- SxMjsTWuzgT2gbS5MmKRro1/kqo1TuVkQGGwu9eKF0yla3VJoRnxbg1l5EJtl/EEDOwk0Lz5
- JI=
-IronPort-Data: A9a23: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
-IronPort-HdrOrdr: A9a23:wZH+/asZItLPzAnxfnT9SOFT7skDeNV00zEX/kB9WHVpm6uj5q
- STdZUgpHrJYVkqNE3I9eruBEDiewK/yXcW2+ks1N6ZNWGM0gaVxedZg7cKqAeQeBEWmNQ96Y
- 57fOx7EtO1DVUSt7ec3DWF
-X-Talos-CUID: 9a23:wodyiW/YfaWgmoF3+RyVvw0tS+4GWWbh8FrNfU+oIEJZcr6xa0DFrQ==
-X-Talos-MUID: 9a23:rQ61VwjafdAU3LGT1OawnMMpd59hv6GzE2w3r7o64MqFHwt6fC6RtWHi
-X-IronPort-Anti-Spam-Filtered: true
-X-IronPort-AV: E=Sophos;i="6.07,109,1708383600"; 
-   d="scan'208";a="201376654"
-Received: from 153-97-179-127.vm.c.fraunhofer.de (HELO smtp.exch.fraunhofer.de) ([153.97.179.127])
-  by mail-mtaDD25.fraunhofer.de with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 08 Mar 2024 12:17:38 +0100
-Received: from XCH-HYBRID-04.ads.fraunhofer.de (10.225.9.46) by
- XCH-HYBRID-04.ads.fraunhofer.de (10.225.9.46) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.1258.28; Fri, 8 Mar 2024 12:17:38 +0100
-Received: from DEU01-FR2-obe.outbound.protection.outlook.com (104.47.11.169)
- by XCH-HYBRID-04.ads.fraunhofer.de (10.225.9.46) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.1258.28 via Frontend Transport; Fri, 8 Mar 2024 12:17:38 +0100
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=X55k9C1cEFzx3Wf7EONx51cpeBrPyGH2Z+hfFvnz8RjZuMecEXhsci5rZgJppxaLIHQtdpyIqOlD3tzBw2OycHflEOhbLOY0Pi0dmUI/CKNYlBGX9rNNFY12HUHJ2hX2cFfK2ratnmk8nIlLMWYBKvCoH18EPP1tUd5gPZSapCEKCMqV/7yXHoeRUHGVCCbdXoKOzRjSd0u1Jq4xap+tDKDzTC+ffH7O6gRa7iBZZsncsx0Y3fHAYOIN3Rxu4yQ1c16sPbjVoZDElV4klCEP8n15GIIt+0+JSWsztERlcmZfhCkk14hwZdLcBQ3FCxsGq0IBEZiBHGCzWksMQ6/ydA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=rEr3WCMprMh1wsUy+VS3QN3V0wNKeqN65r5Z1sQF3Ew=;
- b=fSS4MHIFU5MXTszs0+gTLTMFie2bvYOiZYHx4wEBtpySiyGXTHUxUpN+RgXe5T81d6IOLVLyASiGhQiroToeDs23pY4Xm6AUPc3I05dGnFytEfWISJeVAeTZTzqYa6qEOwg1ra3bMPYNi5gnZLkS5/4Fmb6Sb1Hlitb8iyJ0z9XPFhTB0nnfjnB5Py1csnDs6mWGpP9lb4kBhKNRvw5xOJJ5NWz0GUUyChHEQNiXGGwiqHBzThxCETFwkEu2Pi1C5By1SsyAekYSqSxgxDh3UxswEEPqQC9/KTvMDASowi1TCXPc7eDPvuYR9A0PJytVxpm6FU+RFX8Qiz/i5sKOkw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=aisec.fraunhofer.de; dmarc=pass action=none
- header.from=aisec.fraunhofer.de; dkim=pass header.d=aisec.fraunhofer.de;
- arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=fraunhofer.onmicrosoft.com; s=selector2-fraunhofer-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=rEr3WCMprMh1wsUy+VS3QN3V0wNKeqN65r5Z1sQF3Ew=;
- b=ldV1pwNGkRdHoKXxq/ophaIzYZn43DgDKX1drURT7QtlbQYPfjqxvgofcmSnBYVf8lbz6gG6fKu2d1tZHjIMAXb7Fm4PtJHgxSq41bRNd5nhJJgYvREMkQ6kAp6BXkE26IdJcE0GLtUZtGg5hmXIUkSD3tVc/om1jLC7H1E0P9k=
-Received: from BEZP281MB2791.DEUP281.PROD.OUTLOOK.COM (2603:10a6:b10:50::14)
- by BEYP281MB3992.DEUP281.PROD.OUTLOOK.COM (2603:10a6:b10:ba::10) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.7362.26; Fri, 8 Mar
- 2024 11:17:37 +0000
-Received: from BEZP281MB2791.DEUP281.PROD.OUTLOOK.COM
- ([fe80::47c2:f246:3fed:4e38]) by BEZP281MB2791.DEUP281.PROD.OUTLOOK.COM
- ([fe80::47c2:f246:3fed:4e38%3]) with mapi id 15.20.7362.024; Fri, 8 Mar 2024
- 11:17:37 +0000
-Message-ID: <7113988d-3408-43b3-881e-1308c0904f2d@aisec.fraunhofer.de>
-Date: Fri, 8 Mar 2024 12:17:35 +0100
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ipvs: allow netlink configuration from non-initial user
- namespace
-Content-Language: en-US
-To: Julian Anastasov <ja@ssi.bg>
-CC: Simon Horman <horms@verge.net.au>, <gyroidos@aisec.fraunhofer.de>, Pablo
- Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>,
-	Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo
- Abeni <pabeni@redhat.com>, <netdev@vger.kernel.org>,
-	<lvs-devel@vger.kernel.org>, <netfilter-devel@vger.kernel.org>,
-	<coreteam@netfilter.org>, <linux-kernel@vger.kernel.org>
-References: <20240307203107.63815-1-michael.weiss@aisec.fraunhofer.de>
- <e1c8e477-ae59-48de-4aa8-e6df09013831@ssi.bg>
-From: =?UTF-8?Q?Michael_Wei=C3=9F?= <michael.weiss@aisec.fraunhofer.de>
-In-Reply-To: <e1c8e477-ae59-48de-4aa8-e6df09013831@ssi.bg>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-ClientProxiedBy: FR4P281CA0028.DEUP281.PROD.OUTLOOK.COM
- (2603:10a6:d10:c9::19) To BEZP281MB2791.DEUP281.PROD.OUTLOOK.COM
- (2603:10a6:b10:50::14)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IgQZIuw7"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id ADFBCC43390;
+	Thu, 14 Mar 2024 19:20:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1710444058;
+	bh=q0jqW80rMlkH7Gjc1NoHoHwIuo1AK4KE0S7RaQ0u9l0=;
+	h=From:Subject:Date:To:Cc:Reply-To:From;
+	b=IgQZIuw75KASuhxThQTAWnUbF+VuBV5lZs+pbVfa/O6lYjK5/0G9Lr7nqoO3H2Ozk
+	 jmsYW9CJJm2JGS2zKUmOqWPa1h2nAo2HVOuKZf1TPQ/wD83IOfs4FxN+V1I3rGiZHI
+	 AeHoJV/90lUB1/OHrYZ5An/nV53vvMXHuW4NaOvJi/aC89XNTMGjO/et35YKNll/rg
+	 x0x2b4vP6bPHwKpE9zyob9SShLov6EZIXIVuFqrfn+a6Ae1BBKgg2mQctwFIQ+bb+t
+	 itI2mOpKTAkQDjkh/7FGJBKjC7Ludlt/Rv6EJkNjDb0vvthwaDx89K96RzTVQmCXmM
+	 Wsoij9oNExvOw==
+Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 901D8C54E60;
+	Thu, 14 Mar 2024 19:20:58 +0000 (UTC)
+From: Joel Granados via B4 Relay <devnull+j.granados.samsung.com@kernel.org>
+Subject: [PATCH 0/4] sysctl: Remove sentinel elements from networking
+Date: Thu, 14 Mar 2024 20:20:40 +0100
+Message-Id: <20240314-jag-sysctl_remset_net-v1-0-aa26b44d29d9@samsung.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: BEZP281MB2791:EE_|BEYP281MB3992:EE_
-X-MS-Office365-Filtering-Correlation-Id: 8846f207-125e-43be-bfc6-08dc3f615c33
-X-LD-Processed: f930300c-c97d-4019-be03-add650a171c4,ExtAddr
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: Y3Qw5rJ5hyGYhmnLIN4hiE28K2EslI+kNSQAZEkj3Y8tIHpXh0+/w0wWIboSyJjzN+/1L9TRX/wTntiN5Fbvvzjw7td0iLpnRqDEWpo0Xlb2ksc3ewRy5nI8K7ci3EBG7iTiU9V2bUgPGknjrGKy+y2/y75BDcF01Y/+Eabc6SnRL+tfMm+Myzhnll1rBZbS8DQ/kzLdtFPKASdIxOdyJqmTBqu9Q0G9mEkPt/s3xPuK4b4ht31Uv0kM5q2a9kT/JsawV0cw1ZpRXW6EVGV8JD0zDwKPDXF22FNOKn26QjcZsXaweDE1VI60RnuX36mIr8cnD0kGcpyMaNBS+JjTryBk2E6kFwqiYuFLXFoaKcau5iNqp7+e5cDZkm8LOGjhueKs1fAvf4WT868Zt7yj5ZxFzatJNS3uXR8Vft+JrWfCCfu8yE55bdVPIZ6hoHvdh/Ik+leoPFnAiRD7I2LmnNX211BI9mkr4pZcyyoKCcgQEgm0XkERnJsSj0i9GhUb2NbfJv3FcthMuO/tX70Fz4CO8DMmCZVxWDKkgszd9QT+FnLsP7QxReVeulUafk4mUXuUgJ5c0LgJCVgAcwdxT0ea5cwByTLTTmUQeH+Qt2Q=
-X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BEZP281MB2791.DEUP281.PROD.OUTLOOK.COM;PTR:;CAT:NONE;SFS:(13230031)(7416005)(376005)(1800799015);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?NnZNVXhwTmgwekxPR1FweWtuc083a0Q0bnJqakVTZzlqeVd6V2tZSUFkWVdQ?=
- =?utf-8?B?NVgvaFlHZmFLbHI5Q1BOQkI0dWpPVCtzVHRlODBaWk82b0R3WDlZMXA1NERr?=
- =?utf-8?B?K0lyOHQvY3Q5TjhTWWM4YnA5VGJCenpZMm5mZHZqNThKbGZQZ3ZyeE0yTVB3?=
- =?utf-8?B?SjVaYUdPdGJiSUE2VGdVS0hURVo3TGxsQ1E4RVBYRFVxVWhaMmwxdEEvVkxC?=
- =?utf-8?B?ZTlXSlMzaHMzU3pzemtzSk13THIwN2FEV0RBdTc1OS8wYjhRbENFRC9VdVo1?=
- =?utf-8?B?K1VzMkw0bGszWkx4VEJSS1hkZ2x3VTlPbWR3MmxVcGxSUHhML0hyOGVUVzhV?=
- =?utf-8?B?SmE1K3VocWdhOW02d254cVMwS1ZrdlUvK3RVdU5UNGlhQnNXUXBoZUlQU28v?=
- =?utf-8?B?QlJUWEF2Q1o4bDlvSDBtdk91VEdBWmZhejlzWHMvN05FSjJSQTJyUHNiTFZV?=
- =?utf-8?B?OU5aNHBYa3lsK1lmeUMwNElIWGNycVhSRjh0QWg1WWJRWHBZY2N1WThlaUNv?=
- =?utf-8?B?cHk2QnJLV2FJb1Z1OFI5NklMT2VBOTRYZFByQzdMcEthMXMraExHSTdGS2NJ?=
- =?utf-8?B?dytrL1FIM2ZRbUlhNEVDdW9yRmZxM2krdzk5QkYyd052aENHZXBwdVlCdk9K?=
- =?utf-8?B?ak9Oc3FWN0wzS29LcjR1Zkg5NWg5SlZsWlhyYkdobU1MVTdXL3puNk5razB0?=
- =?utf-8?B?VVhZdFRmT3BmU1BqcWFsV0lIc0lWaHZucnBvN2V5NEZhNndLYmV4ZEpYbit0?=
- =?utf-8?B?bmVWWmxKM2tPcWpZUXBMaUV0Tll5Vno2SFpsTGRRems3dmpDaTdvRVpKTk9u?=
- =?utf-8?B?TUdzanlZZ3hqQXhFZnpZdkFMMUVmYkFqY0VVcWlYaFk2a2RLVzYvQzBMWXlJ?=
- =?utf-8?B?Rk1XVHlQb3lrZUZ3eDhWRnM1S3NVOXM3Rlc1dzhkbHR1VnlydUtZaVJrODQ1?=
- =?utf-8?B?NDFyZVNEcWc4V0lOWkwvNFA3RTZHZ2lsbTl4RFZMTmNhMDU5dXBrS1RkSXAx?=
- =?utf-8?B?S2FFL3drSjAyc1FrNGZzMEt0TFc5OHlPYjBqbVFiZEtkZEwwMXllV29mRXFy?=
- =?utf-8?B?VmVKY0QwVDZ6c1o3Q2RGVEZtM2RCeWJuYXZ4M2tIL3NQamM4ZmJnTmVTdnZr?=
- =?utf-8?B?a3VwU1NtNkVYK3RtUlQ4ZTBReS9hWmZBd1ZoWWVHbFMvblh2VWJoUGtnVXNL?=
- =?utf-8?B?emVIZnlDTnc3dFArZTQ0bE1ITmpXSGtOQmlaUGVuZ2RvcndKUktTR1RveG5m?=
- =?utf-8?B?WlBBM3hmdVVvSGV3VFc4N2k3VWdZZFlFVVZocjNOejJwcGl0M2pVSzRCSXVP?=
- =?utf-8?B?bThtY08ycmRuYWRDRUZvK0FvOXlCM3FtNUhqVjdNSS9xZFR3Qi9ILytTZ3h3?=
- =?utf-8?B?elFBMUVVVDJPM3phVGw3MG9wcFNEdjhGL0pJUU84cTAxYnlBaVIzMVFaWnJS?=
- =?utf-8?B?bHoxYnZNbXdaUGF6SC82Z1Fxb2N5MEpiOUF5V3dMMmhnait6SWhLYUVyUVYr?=
- =?utf-8?B?YWtLZHhib0dYTjMwcGNrRVlCSTZET2wya0lLOGt2Zm9PUnUzSXZyb1dvVnBk?=
- =?utf-8?B?RXVZQ21FNHdkb0VQcTRScHRvaGpZZGh5c3d2dTVJcnMxSWhSQjUxWi94MUV5?=
- =?utf-8?B?dnA3MlVaRGVPWVZEYXdxQXR1cTFWQzRjQW1GSlJLTmViUnU3QWpZWlVKMm5V?=
- =?utf-8?B?SUxvb2lmdFYrSFdveG9OTjFxMDRVdkJzSjZ3elN2d0piRlEzaGZOZlVJTUI3?=
- =?utf-8?B?TEVHMGJZUllQK0VnT001bjBMK0E3eW1WSGR0OEd6Vm9mazBpUjhKbGU0Z1N5?=
- =?utf-8?B?SWp3SzhLWlhyb2hKbENURlQ5aDN3TitEUlRGSTFnV2dvdUtjdjVLaHRZREdC?=
- =?utf-8?B?ejhJQ1ppclgvRjVTNXVlc0NwcWlzaGg1MGJQM21PcXUxSCtKd09lUklONWMx?=
- =?utf-8?B?N1lhcFFacTNjVnJuMDJOY0dtU0s2R1FOVS9na1VtMjlyVXhFNXdONE9zUXVY?=
- =?utf-8?B?M1hoT3lBZTFEcURTbUhlNWYwOFIxdVRKdURXcXFuNzZTRFl0VFU1ZFIvQzFu?=
- =?utf-8?B?S1pDZEU2QUp2TUdZbnhBa2RKVGhOYmNLcjVSSzFpWjFncEZkNjE4OHlKMXV3?=
- =?utf-8?B?YnlCd2pBYWZsa0lUekd4M2xxQk5MRHBzQ2dyMEdaVTh5bXBVUXdjWnFkVHdq?=
- =?utf-8?B?Tm1qd3VOeFNzWVZsMityRlZkL0RwZ0dQSEF6RkdRcnV3SFd5engzUFZZMlRk?=
- =?utf-8?Q?+KwaPha4ELyF9GwNxbPSBvWE9mWYnY4vbYYJvCIpj0=3D?=
-X-MS-Exchange-CrossTenant-Network-Message-Id: 8846f207-125e-43be-bfc6-08dc3f615c33
-X-MS-Exchange-CrossTenant-AuthSource: BEZP281MB2791.DEUP281.PROD.OUTLOOK.COM
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 08 Mar 2024 11:17:37.3090
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: f930300c-c97d-4019-be03-add650a171c4
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: kHGDFgR9oGSf4lrLEMX6h73DDkD13q3ifqsL3LEq+/MlTaq8DuWHaEq7QyQgKdJqkuUs8HNn81i2K9dKnvKRBlmTKbMMuozmfykFkzZaSlOGQWo8umx8x1Xx/u/ZMuKb
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BEYP281MB3992
-X-OriginatorOrg: aisec.fraunhofer.de
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAhO82UC/x2M0QpAMBRAf0X32cpMil+RNNs1V4x2l0j+3fJ4O
+ p3zAGMgZGizBwKexLT7BDLPwMzaOxRkE0NZlFWhpBSLdoJvNnEdAm6McfAYhU1SS90oW4+Q2iP
+ gRNf/7fr3/QDb4fp4ZwAAAA==
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Alexander Aring <alex.aring@gmail.com>, 
+ Stefan Schmidt <stefan@datenfreihafen.org>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, David Ahern <dsahern@kernel.org>, 
+ Steffen Klassert <steffen.klassert@secunet.com>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>, Ralf Baechle <ralf@linux-mips.org>, 
+ Remi Denis-Courmont <courmisch@gmail.com>, 
+ Allison Henderson <allison.henderson@oracle.com>, 
+ David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+ Xin Long <lucien.xin@gmail.com>, Wenjia Zhang <wenjia@linux.ibm.com>, 
+ Jan Karcher <jaka@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
+ Trond Myklebust <trond.myklebust@hammerspace.com>, 
+ Anna Schumaker <anna@kernel.org>, Chuck Lever <chuck.lever@oracle.com>, 
+ Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>, 
+ Olga Kornievskaia <kolga@netapp.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, Jon Maloy <jmaloy@redhat.com>, 
+ Ying Xue <ying.xue@windriver.com>, Martin Schiller <ms@dev.tdt.de>, 
+ Pablo Neira Ayuso <pablo@netfilter.org>, 
+ Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, 
+ Roopa Prabhu <roopa@nvidia.com>, Nikolay Aleksandrov <razor@blackwall.org>, 
+ Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
+ Joerg Reuter <jreuter@yaina.de>, Luis Chamberlain <mcgrof@kernel.org>, 
+ Kees Cook <keescook@chromium.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.linux.dev, 
+ linux-hams@vger.kernel.org, linux-rdma@vger.kernel.org, 
+ rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, 
+ linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org, 
+ linux-nfs@vger.kernel.org, tipc-discussion@lists.sourceforge.net, 
+ linux-x25@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+ coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
+ Joel Granados <j.granados@samsung.com>
+X-Mailer: b4 0.13-dev-2d940
+X-Developer-Signature: v=1; a=openpgp-sha256; l=13626;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=hH00GU1a2i6HnTxT1pllZZO38CA3VQjq1YU7KPoWsxI=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBl804W8HhgMAjPsn6aV0VGSNd2m5erfUm7I3aAW
+ L96N2FH5seJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZfNOFgAKCRC6l81St5ZB
+ T3wrDACE95aR0PSeBi8Av0Hhk47UPniVHSUFLYovrhnzT+M2J/8yA2syuPmoqTw3iWKfb9Rm7lI
+ z3i86OoseQEZ+XsPScv7T/c4r4UCqg+nIBR98ZNzY9GnOtKFglKEru2C06De4TZVeKrP6dFQuz/
+ 32s48caak1BK7EG8m2W7r/4XEZET78Q2G9z+PxTgfK7RDJynBs+W3cylSQenHsTzzw7wlDPLahS
+ KFwsmB8aLw5ikvwkbpXrofpzWajhxgsfAB3uxdKkGdR18m7B5v78pRhcX/iyiRh0SUyxYnc4oh6
+ dXnRzuyZub4WrBn/nbUBjENnMd3S8n5XdMSIze55bcZizyM/bPZ1BPn11e9h8FIpacXqZTic+9S
+ 2uKaqGHEF18hyD1A1uxy7tbOAOFFWGuUX3HFomIu5SWhPFPnobbtdaoDmpkAYg3XOcbHtPLKOF6
+ dmufKhVe11FReOXte/y7hJLGXCGddlV4hN6/P2g3oMPK9VKyPRxWa8XPbnLGtwlzAjTpU=
+X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received:
+ by B4 Relay for j.granados@samsung.com/default with auth_id=70
+X-Original-From: Joel Granados <j.granados@samsung.com>
+Reply-To: <j.granados@samsung.com>
 
-On 3/8/24 08:55, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Thu, 7 Mar 2024, Michael Weiß wrote:
-> 
->> Configuring ipvs in a non-initial user namespace using the genl
->> netlink interface, e.g., by 'ipvsadm' is currently resulting in an
->> '-EPERM'. This is due to the use of GENL_ADMIN_PERM flag in
->> 'ip_vs_ctl.c'.
->>
->> Similarly to other genl interfaces, we switch to the use of
->> GENL_UNS_ADMIN_PERM flag which allows connection from non-initial
->> user namespace. Thus, it would be feasible to configure ipvs using
->> the genl interface also from within an unprivileged system container.
->>
->> Since adding of new services and new dests are triggered from
->> userspace, accounting for the corresponding memory allocations in
->> ip_vs_new_dest() and ip_vs_add_service() is activated.
->>
->> We tested this by simply running some samples from "man ipvsadm"
->> within an unprivileged user namespaced system container in GyroidOS.
->> Further, we successfully passed an adapted version of the ipvs
->> selftest in 'tools/testing/selftests/netfilter/ipvs.sh' using
->> preliminary created network namespaces from unprivileged GyroidOS
->> containers.
-> 
-> 	I planned such change but as followup patchset to other
-> work which converts many structures to be per-netns.
-> 
-> 	There is a RFC v2 patchset for reference:
-> 
-> https://archive.linuxvirtualserver.org/html/lvs-devel/2023-12/index.html
-> 
-> 	My goal was to isolate the different namespaces as much as
-> possible: different structures, different kthreads, etc. with the
-> goal to reduce the security risks of giving power to unprivileged roots.
-> Such isolation should help when namespaces are served from different CPUs.
-> 
-> 	May be I should push fresh v3 soon, so that we can later use
-> GFP_KERNEL_ACCOUNT not only for services and dests but also
-> for allocations by schedulers, estimators, etc. The access to
-> sysctl vars should be enabled too, around comment
-> "Don't export sysctls to unprivileged users",
-> alloc_percpu => alloc_percpu_gfp(,GFP_KERNEL_ACCOUNT),
-> SLAB_ACCOUNT for kmem_cache_create, not sure about __GFP_NOWARN and
-> __GFP_NORETRY usage too.
-> 
-> 	Not sure about the sysctl vars: now they are cloned from
-> init_net, do we give full access for writing, some can be privileged,
-> etc.
+From: Joel Granados <j.granados@samsung.com>
 
-Oh yes your right that I have missed. I think non-global per-netns
-sysctls should be save to be allowed for unprivileged roots.
-sysfs can only be mounted rw in a new private netns. Just unsharing the
-userns which then does not own the netns, means that sysfs can only be
-mounted read-only or the already mounted sysfs gets the overflow uids.
+What?
+These commits remove the sentinel element (last empty element) from the
+sysctl arrays of all the files under the "net/" directory that register
+a sysctl array. The merging of the preparation patches [4] to mainline
+allows us to just remove sentinel elements without changing behavior.
+This is safe because the sysctl registration code (register_sysctl() and
+friends) use the array size in addition to checking for a sentinel [1].
 
-> 
-> 	I didn't push such changes yet because I'm not sure what
-> is needed: looks like, for now, what was needed is root from init_net to 
-> control rules in different netns and there was no demand from the 
-> virtualization world to extend this. If we can clearly define what is 
-> good and what is bad from security perspective, we can go with such 
-> changes after pushing the above patchset, i.e. the GENL_UNS_ADMIN_PERM
-> change should follow all other changes.
+Why?
+By removing the sysctl sentinel elements we avoid kernel bloat as
+ctl_table arrays get moved out of kernel/sysctl.c into their own
+respective subsystems. This move was started long ago to avoid merge
+conflicts; the sentinel removal bit came after Mathew Wilcox suggested
+it to avoid bloating the kernel by one element as arrays moved out. This
+patchset will reduce the overall build time size of the kernel and run
+time memory bloat by about ~64 bytes per declared ctl_table array (more
+info here [5]).
 
-Just to clarify the need to control ipvs from within non-init userns:
-In GyroidOS, we have only a minimal ramdisk-based system containing a
-container manager in the initial namespace. A first "core" container is
-already running in an unprivileged user namespace with a private netns.
-This container gets all physical network devices moved into its netns
-and is responsible for routing and all other networking features,
-ovs, batman, l2tp, etc... and also ipvs.
-	
-Nevertheless, it makes sense to wait for your changes to be merged first.
+When are we done?
+There are 4 patchest (25 commits [2]) that are still outstanding to
+completely remove the sentinels: files under "net/" (this patchset),
+files under "kernel/" dir, misc dirs (files under mm/ security/ and
+others) and the final set that removes the unneeded check for ->procname
+== NULL.
 
-Thanx,
-Michael
+Testing:
+* Ran sysctl selftests (./tools/testing/selftests/sysctl/sysctl.sh)
+* Ran this through 0-day with no errors or warnings
 
+Savings in vmlinux:
+  A total of 64 bytes per sentinel is saved after removal; I measured in
+  x86_64 to give an idea of the aggregated savings. The actual savings
+  will depend on individual kernel configuration.
+    * bloat-o-meter
+        - The "yesall" config saves 3976 bytes (bloat-o-meter output [6])
+        - A reduced config [3] saves 1263 bytes (bloat-o-meter output [7])
 
-> 
->> Signed-off-by: Michael Weiß <michael.weiss@aisec.fraunhofer.de>
->> ---
->>  net/netfilter/ipvs/ip_vs_ctl.c | 36 +++++++++++++++++-----------------
->>  1 file changed, 18 insertions(+), 18 deletions(-)
->>
->> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
->> index 143a341bbc0a..d39120c64207 100644
->> --- a/net/netfilter/ipvs/ip_vs_ctl.c
->> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
->> @@ -1080,7 +1080,7 @@ ip_vs_new_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
->>  			return -EINVAL;
->>  	}
->>  
->> -	dest = kzalloc(sizeof(struct ip_vs_dest), GFP_KERNEL);
->> +	dest = kzalloc(sizeof(struct ip_vs_dest), GFP_KERNEL_ACCOUNT);
->>  	if (dest == NULL)
->>  		return -ENOMEM;
->>  
->> @@ -1421,7 +1421,7 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
->>  		ret_hooks = ret;
->>  	}
->>  
->> -	svc = kzalloc(sizeof(struct ip_vs_service), GFP_KERNEL);
->> +	svc = kzalloc(sizeof(struct ip_vs_service), GFP_KERNEL_ACCOUNT);
->>  	if (svc == NULL) {
->>  		IP_VS_DBG(1, "%s(): no memory\n", __func__);
->>  		ret = -ENOMEM;
->> @@ -4139,98 +4139,98 @@ static const struct genl_small_ops ip_vs_genl_ops[] = {
->>  	{
->>  		.cmd	= IPVS_CMD_NEW_SERVICE,
->>  		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
->> -		.flags	= GENL_ADMIN_PERM,
->> +		.flags	= GENL_UNS_ADMIN_PERM,
->>  		.doit	= ip_vs_genl_set_cmd,
-> ...
-> 
-> Regards
-> 
-> --
-> Julian Anastasov <ja@ssi.bg>
+Savings in allocated memory:
+  None in this set but will occur when the superfluous allocations are
+  removed from proc_sysctl.c. I include it here for context. The
+  estimated savings during boot for config [3] are 6272 bytes. See [8]
+  for how to measure it.
+
+Comments/feedback greatly appreciated
+
+Best
+Joel
+
+[1] https://lore.kernel.org/all/20230809105006.1198165-1-j.granados@samsung.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/joel.granados/linux.git/tag/?h=sysctl_remove_empty_elem_v5
+[3] https://gist.github.com/Joelgranados/feaca7af5537156ca9b73aeaec093171
+[4] https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+
+[5]
+Links Related to the ctl_table sentinel removal:
+* Good summaries from Luis:
+  https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+  https://lore.kernel.org/all/ZMFizKFkVxUFtSqa@bombadil.infradead.org/
+* Patches adjusting sysctl register calls:
+  https://lore.kernel.org/all/20230302204612.782387-1-mcgrof@kernel.org/
+  https://lore.kernel.org/all/20230302202826.776286-1-mcgrof@kernel.org/
+* Discussions about expectations and approach
+  https://lore.kernel.org/all/20230321130908.6972-1-frank.li@vivo.com
+  https://lore.kernel.org/all/20220220060626.15885-1-tangmeng@uniontech.com
+
+[6]
+add/remove: 0/1 grow/shrink: 2/67 up/down: 76/-4052 (-3976)
+Function                                     old     new   delta
+llc_sysctl_init                              306     377     +71
+nf_log_net_init                              866     871      +5
+sysctl_core_net_init                         375     366      -9
+lowpan_frags_init_net                        618     598     -20
+ip_vs_control_net_init_sysctl               2446    2422     -24
+sysctl_route_net_init                        521     493     -28
+__addrconf_sysctl_register                   678     650     -28
+xfrm_sysctl_init                             405     374     -31
+mpls_net_init                                367     334     -33
+sctp_sysctl_net_register                     386     346     -40
+__ip_vs_lblcr_init                           546     501     -45
+__ip_vs_lblc_init                            546     501     -45
+neigh_sysctl_register                       1011     958     -53
+mpls_dev_sysctl_register                     475     419     -56
+ipv6_route_sysctl_init                       450     394     -56
+xs_tunables_table                            448     384     -64
+xr_tunables_table                            448     384     -64
+xfrm_table                                   320     256     -64
+xfrm6_policy_table                           128      64     -64
+xfrm4_policy_table                           128      64     -64
+x25_table                                    448     384     -64
+vs_vars                                     1984    1920     -64
+unix_table                                   128      64     -64
+tipc_table                                   448     384     -64
+svcrdma_parm_table                           832     768     -64
+smc_table                                    512     448     -64
+sctp_table                                   256     192     -64
+sctp_net_table                              2304    2240     -64
+rxrpc_sysctl_table                           704     640     -64
+rose_table                                   704     640     -64
+rds_tcp_sysctl_table                         192     128     -64
+rds_sysctl_rds_table                         384     320     -64
+rds_ib_sysctl_table                          384     320     -64
+phonet_table                                 128      64     -64
+nr_table                                     832     768     -64
+nf_log_sysctl_table                          768     704     -64
+nf_log_sysctl_ftable                         128      64     -64
+nf_ct_sysctl_table                          3200    3136     -64
+nf_ct_netfilter_table                        128      64     -64
+nf_ct_frag6_sysctl_table                     256     192     -64
+netns_core_table                             320     256     -64
+net_core_table                              2176    2112     -64
+neigh_sysctl_template                       1416    1352     -64
+mptcp_sysctl_table                           576     512     -64
+mpls_dev_table                               128      64     -64
+lowpan_frags_ns_ctl_table                    256     192     -64
+lowpan_frags_ctl_table                       128      64     -64
+llc_station_table                             64       -     -64
+llc2_timeout_table                           320     256     -64
+ipv6_table_template                         1344    1280     -64
+ipv6_route_table_template                    768     704     -64
+ipv6_rotable                                 320     256     -64
+ipv6_icmp_table_template                     448     384     -64
+ipv4_table                                  1024     960     -64
+ipv4_route_table                             832     768     -64
+ipv4_route_netns_table                       320     256     -64
+ipv4_net_table                              7552    7488     -64
+ip6_frags_ns_ctl_table                       256     192     -64
+ip6_frags_ctl_table                          128      64     -64
+ip4_frags_ns_ctl_table                       320     256     -64
+ip4_frags_ctl_table                          128      64     -64
+devinet_sysctl                              2184    2120     -64
+debug_table                                  384     320     -64
+dccp_default_table                           576     512     -64
+ctl_forward_entry                            128      64     -64
+brnf_table                                   448     384     -64
+ax25_param_table                             960     896     -64
+atalk_table                                  320     256     -64
+addrconf_sysctl                             3904    3840     -64
+vs_vars_table                                256     128    -128
+Total: Before=440631035, After=440627059, chg -0.00%
+
+[7]
+add/remove: 0/0 grow/shrink: 1/22 up/down: 8/-1263 (-1255)
+Function                                     old     new   delta
+sysctl_route_net_init                        189     197      +8
+__addrconf_sysctl_register                   306     294     -12
+ipv6_route_sysctl_init                       201     185     -16
+neigh_sysctl_register                        385     366     -19
+unix_table                                   128      64     -64
+netns_core_table                             256     192     -64
+net_core_table                              1664    1600     -64
+neigh_sysctl_template                       1416    1352     -64
+ipv6_table_template                         1344    1280     -64
+ipv6_route_table_template                    768     704     -64
+ipv6_rotable                                 192     128     -64
+ipv6_icmp_table_template                     448     384     -64
+ipv4_table                                   768     704     -64
+ipv4_route_table                             832     768     -64
+ipv4_route_netns_table                       320     256     -64
+ipv4_net_table                              7040    6976     -64
+ip6_frags_ns_ctl_table                       256     192     -64
+ip6_frags_ctl_table                          128      64     -64
+ip4_frags_ns_ctl_table                       320     256     -64
+ip4_frags_ctl_table                          128      64     -64
+devinet_sysctl                              2184    2120     -64
+ctl_forward_entry                            128      64     -64
+addrconf_sysctl                             3392    3328     -64
+Total: Before=8523801, After=8522546, chg -0.01%
+
+[8]
+To measure the in memory savings apply this on top of this patchset.
+
+"
+diff --git i/fs/proc/proc_sysctl.c w/fs/proc/proc_sysctl.c
+index 37cde0efee57..896c498600e8 100644
+--- i/fs/proc/proc_sysctl.c
++++ w/fs/proc/proc_sysctl.c
+@@ -966,6 +966,7 @@ static struct ctl_dir *new_dir(struct ctl_table_set *set,
+        table[0].procname = new_name;
+        table[0].mode = S_IFDIR|S_IRUGO|S_IXUGO;
+        init_header(&new->header, set->dir.header.root, set, node, table, 1);
++       printk("%ld sysctl saved mem kzalloc\n", sizeof(struct ctl_table));
+
+        return new;
+ }
+@@ -1189,6 +1190,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, s>
+                link_name += len;
+                link++;
+        }
++       printk("%ld sysctl saved mem kzalloc\n", sizeof(struct ctl_table));
+        init_header(links, dir->header.root, dir->header.set, node, link_table,
+                    head->ctl_table_size);
+        links->nreg = nr_entries;
+"
+and then run the following bash script in the kernel:
+
+accum=0
+for n in $(dmesg | grep kzalloc | awk '{print $3}') ; do
+    accum=$(calc "$accum + $n")
+done
+echo $accum
+
+Signed-off-by: Joel Granados <j.granados@samsung.com>
+
+--
+
+---
+Joel Granados (4):
+      networking: Remove the now superfluous sentinel elements from ctl_table array
+      netfilter: Remove the now superfluous sentinel elements from ctl_table array
+      appletalk: Remove the now superfluous sentinel elements from ctl_table array
+      ax.25: Remove the now superfluous sentinel elements from ctl_table array
+
+ net/appletalk/sysctl_net_atalk.c        | 1 -
+ net/ax25/sysctl_net_ax25.c              | 5 ++---
+ net/bridge/br_netfilter_hooks.c         | 1 -
+ net/core/neighbour.c                    | 5 +----
+ net/core/sysctl_net_core.c              | 9 ++++-----
+ net/dccp/sysctl.c                       | 2 --
+ net/ieee802154/6lowpan/reassembly.c     | 6 +-----
+ net/ipv4/devinet.c                      | 5 ++---
+ net/ipv4/ip_fragment.c                  | 2 --
+ net/ipv4/route.c                        | 8 ++------
+ net/ipv4/sysctl_net_ipv4.c              | 7 +++----
+ net/ipv4/xfrm4_policy.c                 | 1 -
+ net/ipv6/addrconf.c                     | 5 +----
+ net/ipv6/icmp.c                         | 1 -
+ net/ipv6/netfilter/nf_conntrack_reasm.c | 1 -
+ net/ipv6/reassembly.c                   | 2 --
+ net/ipv6/route.c                        | 5 -----
+ net/ipv6/sysctl_net_ipv6.c              | 4 +---
+ net/ipv6/xfrm6_policy.c                 | 1 -
+ net/llc/sysctl_net_llc.c                | 8 ++------
+ net/mpls/af_mpls.c                      | 3 +--
+ net/mptcp/ctrl.c                        | 1 -
+ net/netfilter/ipvs/ip_vs_ctl.c          | 5 +----
+ net/netfilter/ipvs/ip_vs_lblc.c         | 5 +----
+ net/netfilter/ipvs/ip_vs_lblcr.c        | 5 +----
+ net/netfilter/nf_conntrack_standalone.c | 6 +-----
+ net/netfilter/nf_log.c                  | 3 +--
+ net/netrom/sysctl_net_netrom.c          | 1 -
+ net/phonet/sysctl.c                     | 1 -
+ net/rds/ib_sysctl.c                     | 1 -
+ net/rds/sysctl.c                        | 1 -
+ net/rds/tcp.c                           | 1 -
+ net/rose/sysctl_net_rose.c              | 1 -
+ net/rxrpc/sysctl.c                      | 1 -
+ net/sctp/sysctl.c                       | 6 +-----
+ net/smc/smc_sysctl.c                    | 1 -
+ net/sunrpc/sysctl.c                     | 1 -
+ net/sunrpc/xprtrdma/svc_rdma.c          | 1 -
+ net/sunrpc/xprtrdma/transport.c         | 1 -
+ net/sunrpc/xprtsock.c                   | 1 -
+ net/tipc/sysctl.c                       | 1 -
+ net/unix/sysctl_net_unix.c              | 1 -
+ net/x25/sysctl_net_x25.c                | 1 -
+ net/xfrm/xfrm_sysctl.c                  | 5 +----
+ 44 files changed, 27 insertions(+), 106 deletions(-)
+---
+base-commit: e8f897f4afef0031fe618a8e94127a0934896aba
+change-id: 20240311-jag-sysctl_remset_net-d403a1a93d6b
+
+Best regards,
+-- 
+Joel Granados <j.granados@samsung.com>
+
