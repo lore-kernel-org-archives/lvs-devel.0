@@ -1,84 +1,51 @@
-Received: from smtp-relay-internal-1.canonical.com (smtp-relay-internal-1.canonical.com [185.125.188.123])
+Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53FEE1591FF
-	for <lvs-devel@vger.kernel.org>; Thu, 18 Apr 2024 11:09:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.188.123
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4BAE115FD16;
+	Thu, 18 Apr 2024 13:23:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.37
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713438565; cv=none; b=N9izu2weBcZHPWYYm0vrRF5ucT5K6ljPazOJwe3vsbUR45ppSQQb579ut2PkQTsdsEP8xy/zz4fMcfSwmjm7EO46fjdlGpc3W0qn1hUcHPf9OE0CzEL2n6x7lBvFViPGV3bIYmBo6c4issEF5yMxdpAl2i6SqkYVpA4TTSd+UYY=
+	t=1713446601; cv=none; b=dPI/TLcK/Kp00XxiCVLWKKU/onJaxqozQQwa+PNUbERB5feXmP8mnUNDtGVfzD3nVezvj+vd1wBSM4n6gOlQ8hflDXl/HF97nBeffGIV9szuDUVt7UoPEeNnjujd4BCOPcOdi8fLutS4RH/0TetVML85PZrwbmtAknezgkFqa9k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713438565; c=relaxed/simple;
-	bh=aWz5Gig2xv2dqOzuJfPq1HgDbmDRmwb4+kS753Y/Y7o=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=i33U9N1E3fw4PCwLDao+tr83mII0ebiSsIa8Da7+tVef1tFGX2wpTnLtKeBkaZCxRsfFzOANsg2YPgfhxtWf6EP/gJYLI2H8tZB/3cVDJQiolQhtWn5/mM0LtkSCRtrBBL1HpaqxOMk9IUqDcCGHVbC4er0UTxkCV5J1q0qCf5o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=canonical.com; spf=pass smtp.mailfrom=canonical.com; dkim=pass (2048-bit key) header.d=canonical.com header.i=@canonical.com header.b=YPa1yuy6; arc=none smtp.client-ip=185.125.188.123
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=canonical.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=canonical.com
+	s=arc-20240116; t=1713446601; c=relaxed/simple;
+	bh=WAl7L1iBp86eXNg2Shw1xOHGw0vm5p71Lv8WUKHUN1s=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=aHh7fq3/ZJvLEX1fLjxhhwMvgblJov0W4VWFzB/6va4IVQr/FtvmF9RmfKBGPASRZxPSb1gDiWULt+cp4uTxtZPfanqPGcV49TptFxKzPouqxEPIUY0atdRt/NE0zlH9nfcUkz/bQGbnsf1FyHZ7fiIlSYo4B3gADorWRtXPuUI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=VPMuh+U8; arc=none smtp.client-ip=193.238.174.37
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=canonical.com header.i=@canonical.com header.b="YPa1yuy6"
-Received: from mail-ej1-f70.google.com (mail-ej1-f70.google.com [209.85.218.70])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-relay-internal-1.canonical.com (Postfix) with ESMTPS id A37153F36F
-	for <lvs-devel@vger.kernel.org>; Thu, 18 Apr 2024 11:02:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=canonical.com;
-	s=20210705; t=1713438128;
-	bh=ktW00F9DIAhL7DS4TlvR8U57g+A/C2nEvJUjlW8cwMw=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version:Content-Type;
-	b=YPa1yuy6jHLMmT5EM9hdKB5AvKvfEOHSKuAj5E7jV/uMds7RbV07k+i6G1So6Ogbq
-	 urxCNbhHAa0P+IMRNG1s19LCKEKLuLJ+U+ZdNM2OwlvdZuDBJ1pxwE7i8KczfaeifT
-	 V+6a2U68AMBqWn8kg0AwPNgrELPxcxf05LwwvjnUV/pX51M5/i9+aNXrizrTVFNsR7
-	 Ae6NmVvlCmJzBvrxSg6FvsCym6Xen8iiWjrJ/RoU7RqB8Gzlenmwuibk9ZhYF6qfEj
-	 CPPHVYJ8YJ9+u0gYMQCaMyLeRmQPVfIkacZqq3lDNht7t+T3C9q0wGpOrIG8BvJ9na
-	 dXu5zdQsoHoEg==
-Received: by mail-ej1-f70.google.com with SMTP id a640c23a62f3a-a5238ca77adso200503066b.1
-        for <lvs-devel@vger.kernel.org>; Thu, 18 Apr 2024 04:02:08 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1713438128; x=1714042928;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=ktW00F9DIAhL7DS4TlvR8U57g+A/C2nEvJUjlW8cwMw=;
-        b=HQ87G/SqT+BZgUKL7ao/rHOemp4g6l5TJKQ2dxykAWl82fZj/6aUzqy+rptDjQ8xI8
-         uknUlo4nEM+IIUZjhtE79mW2mAwa0w3tY96rXtPaERDxytBUyc8DMHvmrTumk5XV3wHh
-         f/2gVE3bWE7nHriYtAOATXa/OZX9J8XHR/T33HN9SyUGv3TXqQEPytNarGlpy32swDbk
-         BcN2qnWOKDXPY4jtLhknHxkFKXC6z0t5uGrAhfElR3PrF2BxoAisF4y5rtr798phjtun
-         OXH9YC99rogjmZ0os15C0fN2N89wv3XNNqjNA04qjOSNTE+ZF42H97PyxYUfP45MnrbQ
-         X2nA==
-X-Forwarded-Encrypted: i=1; AJvYcCWUsr6glBWP/tz8hI3plVVW0nO0mWKUaGOXHiB7TPLVB1U97IGE7i65U+WLvOmtAAjVcwWVnERiGUiVzmywvPcdjVatJibZnxo9
-X-Gm-Message-State: AOJu0Yw71q3Vjn5knRecHZ1N6w+hORufXJJ/Q6KR0qSja3Hpp5gIdZbB
-	EQiABpV311sadg+0Y4MATBJunvzHSCPOyK44K27909197TrDZSus3s5+w84r+1bHU3P2cvSZs7s
-	Tg2FJ6C9ZCLC2wNBv90iWbkHrThiBo8OLonI/nSE1U1j3NM1QutPAz6nRWMqDPe38Q0T0ywzDBg
-	==
-X-Received: by 2002:a17:907:9447:b0:a52:30d4:20e6 with SMTP id dl7-20020a170907944700b00a5230d420e6mr1974025ejc.10.1713438128372;
-        Thu, 18 Apr 2024 04:02:08 -0700 (PDT)
-X-Google-Smtp-Source: AGHT+IEv+5q9kt1eWZoXNQEPQAWf0LPsfHN7n2d9j+DQUT0Ja9+xBCd4zGciLDlc/mEh9WbiEhFr4w==
-X-Received: by 2002:a17:907:9447:b0:a52:30d4:20e6 with SMTP id dl7-20020a170907944700b00a5230d420e6mr1974004ejc.10.1713438128069;
-        Thu, 18 Apr 2024 04:02:08 -0700 (PDT)
-Received: from amikhalitsyn.lan ([2001:470:6d:781:320c:9c91:fb97:fbfc])
-        by smtp.gmail.com with ESMTPSA id yk18-20020a17090770d200b00a51983e6190sm728594ejb.205.2024.04.18.04.02.06
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 18 Apr 2024 04:02:07 -0700 (PDT)
-From: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
-To: horms@verge.net.au
-Cc: netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>,
-	=?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@stgraber.org>,
-	Christian Brauner <brauner@kernel.org>,
-	Julian Anastasov <ja@ssi.bg>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Jozsef Kadlecsik <kadlec@netfilter.org>,
-	Florian Westphal <fw@strlen.de>
-Subject: [PATCH net-next v2 2/2] ipvs: allow some sysctls in non-init user namespaces
-Date: Thu, 18 Apr 2024 13:01:53 +0200
-Message-Id: <20240418110153.102781-2-aleksandr.mikhalitsyn@canonical.com>
-X-Mailer: git-send-email 2.34.1
+	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="VPMuh+U8"
+Received: from mg.ssi.bg (localhost [127.0.0.1])
+	by mg.ssi.bg (Proxmox) with ESMTP id F0A0A1836A;
+	Thu, 18 Apr 2024 16:23:09 +0300 (EEST)
+Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
+	by mg.ssi.bg (Proxmox) with ESMTPS;
+	Thu, 18 Apr 2024 16:23:09 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by ink.ssi.bg (Postfix) with ESMTPSA id BFD95900570;
+	Thu, 18 Apr 2024 16:23:05 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
+	t=1713446586; bh=WAl7L1iBp86eXNg2Shw1xOHGw0vm5p71Lv8WUKHUN1s=;
+	h=Date:From:To:cc:Subject:In-Reply-To:References;
+	b=VPMuh+U8F/Dd/e+BkI2TBEssJim6xN25jHmgFlpSmaL9wrwBSHkpkOMSCM5xXPCQw
+	 mtKTpzXsmLIvxEEtJKBz6s0S3XbZknzChjrQMGnEdndru2+08SopfQ86HOdVAcQddG
+	 3329gWCWZ+MoCyY7jaKvAqFx3TbndwCaosCxiIDM=
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 43IDMtKa057494;
+	Thu, 18 Apr 2024 16:22:57 +0300
+Date: Thu, 18 Apr 2024 16:22:55 +0300 (EEST)
+From: Julian Anastasov <ja@ssi.bg>
+To: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
+cc: horms@verge.net.au, netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Jozsef Kadlecsik <kadlec@netfilter.org>,
+        Florian Westphal <fw@strlen.de>
+Subject: Re: [PATCH net-next v2 1/2] ipvs: add READ_ONCE barrier for
+ ipvs->sysctl_amemthresh
 In-Reply-To: <20240418110153.102781-1-aleksandr.mikhalitsyn@canonical.com>
+Message-ID: <eb0b4b89-9a1f-0e1b-9744-6eb3396048bd@ssi.bg>
 References: <20240418110153.102781-1-aleksandr.mikhalitsyn@canonical.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
@@ -86,111 +53,76 @@ List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
 
-Let's make all IPVS sysctls writtable even when
-network namespace is owned by non-initial user namespace.
 
-Let's make a few sysctls to be read-only for non-privileged users:
-- sync_qlen_max
-- sync_sock_size
-- run_estimation
-- est_cpulist
-- est_nice
+	Hello,
 
-I'm trying to be conservative with this to prevent
-introducing any security issues in there. Maybe,
-we can allow more sysctls to be writable, but let's
-do this on-demand and when we see real use-case.
+On Thu, 18 Apr 2024, Alexander Mikhalitsyn wrote:
 
-This patch is motivated by user request in the LXC
-project [1]. Having this can help with running some
-Kubernetes [2] or Docker Swarm [3] workloads inside the system
-containers.
+> Cc: Julian Anastasov <ja@ssi.bg>
+> Cc: Simon Horman <horms@verge.net.au>
+> Cc: Pablo Neira Ayuso <pablo@netfilter.org>
+> Cc: Jozsef Kadlecsik <kadlec@netfilter.org>
+> Cc: Florian Westphal <fw@strlen.de>
+> Suggested-by: Julian Anastasov <ja@ssi.bg>
+> Signed-off-by: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_ctl.c | 12 +++++++-----
+>  1 file changed, 7 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index 143a341bbc0a..daa62b8b2dd1 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
 
-[1] https://github.com/lxc/lxc/issues/4278
-[2] https://github.com/kubernetes/kubernetes/blob/b722d017a34b300a2284b890448e5a605f21d01e/pkg/proxy/ipvs/proxier.go#L103
-[3] https://github.com/moby/libnetwork/blob/3797618f9a38372e8107d8c06f6ae199e1133ae8/osl/namespace_linux.go#L682
+> @@ -105,7 +106,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+>  	/* si_swapinfo(&i); */
+>  	/* availmem = availmem - (i.totalswap - i.freeswap); */
+>  
+> -	nomem = (availmem < ipvs->sysctl_amemthresh);
+> +	amemthresh = max(READ_ONCE(ipvs->sysctl_amemthresh), 0);
+> +	nomem = (availmem < amemthresh);
+>  
+>  	local_bh_disable();
+>  
+> @@ -146,8 +148,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+>  	case 1:
+>  		if (nomem) {
+>  			ipvs->drop_rate = ipvs->drop_counter
+> -				= ipvs->sysctl_amemthresh /
+> -				(ipvs->sysctl_amemthresh-availmem);
+> +				= amemthresh /
+> +				(amemthresh-availmem);
 
-Cc: Stéphane Graber <stgraber@stgraber.org>
-Cc: Christian Brauner <brauner@kernel.org>
-Cc: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Jozsef Kadlecsik <kadlec@netfilter.org>
-Cc: Florian Westphal <fw@strlen.de>
-Signed-off-by: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
----
- net/netfilter/ipvs/ip_vs_ctl.c | 21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+	Thanks, both patches look ok except that the old styling
+is showing warnings for this patch:
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index daa62b8b2dd1..f84f091626ef 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -4272,6 +4272,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
- 	struct ctl_table *tbl;
- 	int idx, ret;
- 	size_t ctl_table_size = ARRAY_SIZE(vs_vars);
-+	bool unpriv = net->user_ns != &init_user_ns;
- 
- 	atomic_set(&ipvs->dropentry, 0);
- 	spin_lock_init(&ipvs->dropentry_lock);
-@@ -4286,12 +4287,6 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
- 		tbl = kmemdup(vs_vars, sizeof(vs_vars), GFP_KERNEL);
- 		if (tbl == NULL)
- 			return -ENOMEM;
--
--		/* Don't export sysctls to unprivileged users */
--		if (net->user_ns != &init_user_ns) {
--			tbl[0].procname = NULL;
--			ctl_table_size = 0;
--		}
- 	} else
- 		tbl = vs_vars;
- 	/* Initialize sysctl defaults */
-@@ -4317,10 +4312,17 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
- 	ipvs->sysctl_sync_ports = 1;
- 	tbl[idx++].data = &ipvs->sysctl_sync_ports;
- 	tbl[idx++].data = &ipvs->sysctl_sync_persist_mode;
-+
- 	ipvs->sysctl_sync_qlen_max = nr_free_buffer_pages() / 32;
-+	if (unpriv)
-+		tbl[idx].mode = 0444;
- 	tbl[idx++].data = &ipvs->sysctl_sync_qlen_max;
-+
- 	ipvs->sysctl_sync_sock_size = 0;
-+	if (unpriv)
-+		tbl[idx].mode = 0444;
- 	tbl[idx++].data = &ipvs->sysctl_sync_sock_size;
-+
- 	tbl[idx++].data = &ipvs->sysctl_cache_bypass;
- 	tbl[idx++].data = &ipvs->sysctl_expire_nodest_conn;
- 	tbl[idx++].data = &ipvs->sysctl_sloppy_tcp;
-@@ -4343,15 +4345,22 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
- 	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
- 	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
- 	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
-+
- 	ipvs->sysctl_run_estimation = 1;
-+	if (unpriv)
-+		tbl[idx].mode = 0444;
- 	tbl[idx].extra2 = ipvs;
- 	tbl[idx++].data = &ipvs->sysctl_run_estimation;
- 
- 	ipvs->est_cpulist_valid = 0;
-+	if (unpriv)
-+		tbl[idx].mode = 0444;
- 	tbl[idx].extra2 = ipvs;
- 	tbl[idx++].data = &ipvs->sysctl_est_cpulist;
- 
- 	ipvs->sysctl_est_nice = IPVS_EST_NICE;
-+	if (unpriv)
-+		tbl[idx].mode = 0444;
- 	tbl[idx].extra2 = ipvs;
- 	tbl[idx++].data = &ipvs->sysctl_est_nice;
- 
--- 
-2.34.1
+scripts/checkpatch.pl --strict /tmp/file1.patch
+
+	It would be great if you silence them somehow in v3...
+
+	BTW, est_cpulist is masked with current->cpus_mask of the
+sysctl writer process, if that is of any help. That is why I skipped
+it but lets keep it read-only for now...
+
+>  			ipvs->sysctl_drop_packet = 2;
+>  		} else {
+>  			ipvs->drop_rate = 0;
+> @@ -156,8 +158,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+>  	case 2:
+>  		if (nomem) {
+>  			ipvs->drop_rate = ipvs->drop_counter
+> -				= ipvs->sysctl_amemthresh /
+> -				(ipvs->sysctl_amemthresh-availmem);
+> +				= amemthresh /
+> +				(amemthresh-availmem);
+>  		} else {
+>  			ipvs->drop_rate = 0;
+>  			ipvs->sysctl_drop_packet = 1;
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
 
