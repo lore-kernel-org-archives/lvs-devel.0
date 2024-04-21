@@ -1,189 +1,179 @@
-Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E7F7C10979;
-	Sun, 21 Apr 2024 11:06:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.37
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B597B1429B;
+	Sun, 21 Apr 2024 14:22:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713697621; cv=none; b=Z2g3qNuRh37A/ESXd2iONr+zKBrLKnGMeRyaQulYGxJA+qTF7CDWaTPljlfykBodopLV1xENA6W1PXHUCRko3UxVsx8hVKTBbdVkPnj2B6FwMCOYrg9lb3sA9DxMU+/ws47RTWrkJGNA3gtNLzQdQW91hCz87AXaskcGRfRpS5Y=
+	t=1713709367; cv=none; b=YZF1cWrA2R9YBPcM6vsWE19c5Ez3XuSRx/XNTrQZynoEI7ygt0VQq/KExeNAY/yzWGVkMrrv5Qd+UGHiDI6ugDBT6y9/D//y3w1v35baDe0oFvsrU/YzOBeRfajPRNNikbnJnlOo+oSbSIg/1ZMbhvAiNRiGdBgfdi2rwgBMPOc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713697621; c=relaxed/simple;
-	bh=Ner97hv7U1mBPZ7qaJ0aCMYKz05PKiaL1oq32Flq5kM=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=erXRPHu3JM6SNS+8E5M3OuonZGMA4atvWniACDxpgXtVun9em4OxH5Y/2LK4WzZcXAfNkEcgviHiKWKXQ+WwhAUegwi0Lrx7fAXYU9ZDEjxTeVaMpQ86P5PstFNiPVyAF4F53zN15u/LlD4gK7oZaV4wagzyoJ8rVb1dmApx2lM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=Oo17cw39; arc=none smtp.client-ip=193.238.174.37
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1713709367; c=relaxed/simple;
+	bh=2FtL9q5lxhcTRJOh4mdw6XudRZaWyQsJmyja/hMn7jA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=uyybJQYCbtYhp9ZwnNxm8pL/74LNSeWfRdx5RX1Z0ZH/yosf24RMEk8H+sd87ZmqqkT+kUaCvH8Wcg9RKiXGbIvFMPfrmFalUBXjp4wQmmS+zTKJAUnNyUxDdGrRpASsyqB9bccaHjR6u7aC/8qXLCfPP4lw2St5IxvG3kHJidc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=pk8nNq/u; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=Okn0s4jM; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=pk8nNq/u; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=Okn0s4jM; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="Oo17cw39"
-Received: from mg.ssi.bg (localhost [127.0.0.1])
-	by mg.ssi.bg (Proxmox) with ESMTP id B7E242259D;
-	Sun, 21 Apr 2024 14:06:56 +0300 (EEST)
-Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
-	by mg.ssi.bg (Proxmox) with ESMTPS;
-	Sun, 21 Apr 2024 14:06:55 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by ink.ssi.bg (Postfix) with ESMTPSA id C78509003A3;
-	Sun, 21 Apr 2024 14:06:51 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
-	t=1713697612; bh=Ner97hv7U1mBPZ7qaJ0aCMYKz05PKiaL1oq32Flq5kM=;
-	h=Date:From:To:cc:Subject:In-Reply-To:References;
-	b=Oo17cw39RqVFmSeyRvUmdCHsEU1FaPd0u9V09OFQAlp9FG5U+d24X5XKJcyJLQEqX
-	 bFsqAcQ66fYVxCAUMavppPzonkErsY8ydeKAjqPz67W8Ty97QxT+ZSBr7WUwF1oPuL
-	 fC37q9i/k7LyaFrzzOFI5UiXT+iZYTmih+e/0GrQ=
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 43LB6nwL035464;
-	Sun, 21 Apr 2024 14:06:49 +0300
-Date: Sun, 21 Apr 2024 14:06:49 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
-cc: horms@verge.net.au, netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        =?UTF-8?Q?St=C3=A9phane_Graber?= <stgraber@stgraber.org>,
-        Christian Brauner <brauner@kernel.org>,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Jozsef Kadlecsik <kadlec@netfilter.org>,
-        Florian Westphal <fw@strlen.de>
-Subject: Re: [PATCH net-next v3 2/2] ipvs: allow some sysctls in non-init
- user namespaces
-In-Reply-To: <20240418145743.248109-2-aleksandr.mikhalitsyn@canonical.com>
-Message-ID: <b3c6447c-7ca4-022c-5f10-3aafff900ac5@ssi.bg>
-References: <20240418145743.248109-1-aleksandr.mikhalitsyn@canonical.com> <20240418145743.248109-2-aleksandr.mikhalitsyn@canonical.com>
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="pk8nNq/u";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="Okn0s4jM";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="pk8nNq/u";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="Okn0s4jM"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id A6AFF20F10;
+	Sun, 21 Apr 2024 14:22:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1713709357; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=0KmDhdcvtj9G8gCkXxDmU3FPVVKYh9jcF0fj66UTaHo=;
+	b=pk8nNq/uNsIMRYuD0NWcz7x4n0kNs6EHnm+YEvVKiGcN0YIST7MP7KCpm4Eqz7v46giAbL
+	a1UHzLexhHy9Qqz0Vl6LxD9AMOWXSGS62l6hC5tCP7iYbi+//vxh1OFR4FqKRzekXur3F/
+	IuDBOhhYdqTgtfWT7zTDJumpdbjp6U4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1713709357;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=0KmDhdcvtj9G8gCkXxDmU3FPVVKYh9jcF0fj66UTaHo=;
+	b=Okn0s4jMQSfXtGQO5qA3yAlH9/dueBA7VD+nIUezvvsi27lcjW3Cekzb1ubDb9yjerVRXq
+	dqhvJP4HkgUpxABg==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b="pk8nNq/u";
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=Okn0s4jM
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1713709357; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=0KmDhdcvtj9G8gCkXxDmU3FPVVKYh9jcF0fj66UTaHo=;
+	b=pk8nNq/uNsIMRYuD0NWcz7x4n0kNs6EHnm+YEvVKiGcN0YIST7MP7KCpm4Eqz7v46giAbL
+	a1UHzLexhHy9Qqz0Vl6LxD9AMOWXSGS62l6hC5tCP7iYbi+//vxh1OFR4FqKRzekXur3F/
+	IuDBOhhYdqTgtfWT7zTDJumpdbjp6U4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1713709357;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=0KmDhdcvtj9G8gCkXxDmU3FPVVKYh9jcF0fj66UTaHo=;
+	b=Okn0s4jMQSfXtGQO5qA3yAlH9/dueBA7VD+nIUezvvsi27lcjW3Cekzb1ubDb9yjerVRXq
+	dqhvJP4HkgUpxABg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7CD8913981;
+	Sun, 21 Apr 2024 14:22:37 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id WVR6Gy0hJWZZYQAAD6G6ig
+	(envelope-from <iluceno@suse.de>); Sun, 21 Apr 2024 14:22:37 +0000
+From: Ismael Luceno <iluceno@suse.de>
+To: linux-kernel@vger.kernel.org
+Cc: Ismael Luceno <iluceno@suse.de>,
+	Firo Yang <firo.yang@suse.com>,
+	Andreas Taschner <andreas.taschner@suse.com>,
+	=?UTF-8?q?Michal=20Kube=C4=8Dek?= <mkubecek@suse.com>,
+	Simon Horman <horms@verge.net.au>,
+	Julian Anastasov <ja@ssi.bg>,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	netdev@vger.kernel.org,
+	coreteam@netfilter.org
+Subject: [PATCH v2] ipvs: Fix checksumming on GSO of SCTP packets
+Date: Sun, 21 Apr 2024 16:22:32 +0200
+Message-ID: <20240421142234.15764-1-iluceno@suse.de>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="-1463811672-205715629-1713697611=:3044"
-
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
----1463811672-205715629-1713697611=:3044
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+Content-Transfer-Encoding: 8bit
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	DWL_DNSWL_MED(-2.00)[suse.de:dkim];
+	MID_CONTAINS_FROM(1.00)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	BAYES_HAM(-0.00)[14.50%];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[11];
+	DKIM_TRACE(0.00)[suse.de:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email,suse.de:dkim,suse.de:email]
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: A6AFF20F10
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
 
+It was observed in the wild that pairs of consecutive packets would leave
+the IPVS with the same wrong checksum, and the issue only went away when
+disabling GSO.
 
-	Hello,
+IPVS needs to avoid computing the SCTP checksum when using GSO.
 
-On Thu, 18 Apr 2024, Alexander Mikhalitsyn wrote:
+Fixes: 90017accff61 ("sctp: Add GSO support", 2016-06-02)
+Co-developed-by: Firo Yang <firo.yang@suse.com>
+Signed-off-by: Ismael Luceno <iluceno@suse.de>
+Tested-by: Andreas Taschner <andreas.taschner@suse.com>
+CC: Michal Kubeček <mkubecek@suse.com>
+CC: Simon Horman <horms@verge.net.au>
+CC: Julian Anastasov <ja@ssi.bg>
+CC: lvs-devel@vger.kernel.org
+CC: netfilter-devel@vger.kernel.org
+CC: netdev@vger.kernel.org
+CC: coreteam@netfilter.org
+---
 
-> Let's make all IPVS sysctls writtable even when
-> network namespace is owned by non-initial user namespace.
-> 
-> Let's make a few sysctls to be read-only for non-privileged users:
-> - sync_qlen_max
-> - sync_sock_size
-> - run_estimation
-> - est_cpulist
-> - est_nice
-> 
-> I'm trying to be conservative with this to prevent
-> introducing any security issues in there. Maybe,
-> we can allow more sysctls to be writable, but let's
-> do this on-demand and when we see real use-case.
-> 
-> This patch is motivated by user request in the LXC
-> project [1]. Having this can help with running some
-> Kubernetes [2] or Docker Swarm [3] workloads inside the system
-> containers.
-> 
-> Link: https://github.com/lxc/lxc/issues/4278 [1]
-> Link: https://github.com/kubernetes/kubernetes/blob/b722d017a34b300a2284b890448e5a605f21d01e/pkg/proxy/ipvs/proxier.go#L103 [2]
-> Link: https://github.com/moby/libnetwork/blob/3797618f9a38372e8107d8c06f6ae199e1133ae8/osl/namespace_linux.go#L682 [3]
-> 
-> Cc: Stéphane Graber <stgraber@stgraber.org>
-> Cc: Christian Brauner <brauner@kernel.org>
-> Cc: Julian Anastasov <ja@ssi.bg>
-> Cc: Simon Horman <horms@verge.net.au>
-> Cc: Pablo Neira Ayuso <pablo@netfilter.org>
-> Cc: Jozsef Kadlecsik <kadlec@netfilter.org>
-> Cc: Florian Westphal <fw@strlen.de>
-> Signed-off-by: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
+Notes:
+    Changes since v1:
+    * Added skb_is_gso before skb_is_gso_sctp.
+    * Added "Fixes" tag.
 
-	Looks good to me, thanks!
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  net/netfilter/ipvs/ip_vs_ctl.c | 21 +++++++++++++++------
->  1 file changed, 15 insertions(+), 6 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index 32be24f0d4e4..c3ba71aa2654 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -4270,6 +4270,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
->  	struct ctl_table *tbl;
->  	int idx, ret;
->  	size_t ctl_table_size = ARRAY_SIZE(vs_vars);
-> +	bool unpriv = net->user_ns != &init_user_ns;
->  
->  	atomic_set(&ipvs->dropentry, 0);
->  	spin_lock_init(&ipvs->dropentry_lock);
-> @@ -4284,12 +4285,6 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
->  		tbl = kmemdup(vs_vars, sizeof(vs_vars), GFP_KERNEL);
->  		if (tbl == NULL)
->  			return -ENOMEM;
-> -
-> -		/* Don't export sysctls to unprivileged users */
-> -		if (net->user_ns != &init_user_ns) {
-> -			tbl[0].procname = NULL;
-> -			ctl_table_size = 0;
-> -		}
->  	} else
->  		tbl = vs_vars;
->  	/* Initialize sysctl defaults */
-> @@ -4315,10 +4310,17 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
->  	ipvs->sysctl_sync_ports = 1;
->  	tbl[idx++].data = &ipvs->sysctl_sync_ports;
->  	tbl[idx++].data = &ipvs->sysctl_sync_persist_mode;
-> +
->  	ipvs->sysctl_sync_qlen_max = nr_free_buffer_pages() / 32;
-> +	if (unpriv)
-> +		tbl[idx].mode = 0444;
->  	tbl[idx++].data = &ipvs->sysctl_sync_qlen_max;
-> +
->  	ipvs->sysctl_sync_sock_size = 0;
-> +	if (unpriv)
-> +		tbl[idx].mode = 0444;
->  	tbl[idx++].data = &ipvs->sysctl_sync_sock_size;
-> +
->  	tbl[idx++].data = &ipvs->sysctl_cache_bypass;
->  	tbl[idx++].data = &ipvs->sysctl_expire_nodest_conn;
->  	tbl[idx++].data = &ipvs->sysctl_sloppy_tcp;
-> @@ -4341,15 +4343,22 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
->  	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
->  	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
->  	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
-> +
->  	ipvs->sysctl_run_estimation = 1;
-> +	if (unpriv)
-> +		tbl[idx].mode = 0444;
->  	tbl[idx].extra2 = ipvs;
->  	tbl[idx++].data = &ipvs->sysctl_run_estimation;
->  
->  	ipvs->est_cpulist_valid = 0;
-> +	if (unpriv)
-> +		tbl[idx].mode = 0444;
->  	tbl[idx].extra2 = ipvs;
->  	tbl[idx++].data = &ipvs->sysctl_est_cpulist;
->  
->  	ipvs->sysctl_est_nice = IPVS_EST_NICE;
-> +	if (unpriv)
-> +		tbl[idx].mode = 0444;
->  	tbl[idx].extra2 = ipvs;
->  	tbl[idx++].data = &ipvs->sysctl_est_nice;
->  
-> -- 
-> 2.34.1
-> 
-> 
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
----1463811672-205715629-1713697611=:3044--
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index a0921adc31a9..1e689c714127 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -126,7 +126,8 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 	if (sctph->source != cp->vport || payload_csum ||
+ 	    skb->ip_summed == CHECKSUM_PARTIAL) {
+ 		sctph->source = cp->vport;
+-		sctp_nat_csum(skb, sctph, sctphoff);
++		if (!skb_is_gso(skb) || !skb_is_gso_sctp(skb))
++			sctp_nat_csum(skb, sctph, sctphoff);
+ 	} else {
+ 		skb->ip_summed = CHECKSUM_UNNECESSARY;
+ 	}
+@@ -174,7 +175,8 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 	    (skb->ip_summed == CHECKSUM_PARTIAL &&
+ 	     !(skb_dst(skb)->dev->features & NETIF_F_SCTP_CRC))) {
+ 		sctph->dest = cp->dport;
+-		sctp_nat_csum(skb, sctph, sctphoff);
++		if (!skb_is_gso(skb) || !skb_is_gso_sctp(skb))
++			sctp_nat_csum(skb, sctph, sctphoff);
+ 	} else if (skb->ip_summed != CHECKSUM_PARTIAL) {
+ 		skb->ip_summed = CHECKSUM_UNNECESSARY;
+ 	}
+-- 
+2.43.0
 
