@@ -1,145 +1,84 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53A861759F;
-	Sun, 21 Apr 2024 14:27:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30CF91BC2A;
+	Sun, 21 Apr 2024 15:58:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.37
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713709634; cv=none; b=AJ37XfYJTXeJQ5rU+NDXlmjZ0k9peypTv6qeXzo1MRt0ovFjuvWxVHVY0wDiNwZY2XIxA/fy8aqcKs7hYuABZaEaKZ57/8g//N4S3naWKXIH819jYStkKoRwvKVyVOLfQ98arqlBeSgTShRwHNM0KYHsMk4GNZQReCpsUVqXYlE=
+	t=1713715104; cv=none; b=hdW3WHocENoQrgfiujqWb5XSuHlbDjbKOXLcuqJ+0ntmftHK0NKP7wM8XA9WDnzDxIQ+oD9nxwM55JFXU31UJyz/cDTRqTX8E5fPAFdCWG/4p0gnaV6yAlVSCK3AXrxNGmgHantA8qkje634HU/He36te0faHnt+Y8GnpL3Y9Xc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713709634; c=relaxed/simple;
-	bh=aqbS0vEl6bLGOGfGGg/hrhlfxJwAKBY6mekA+zZFyu0=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=iV0pH45F/mWhq9AChxl5oMXTt6QlUpzfC0hnM5xYZXrDv6rhNVCw6+H1UCPL4/ngFjP5fezGjQrKf9gRCxBckJOhBpoNYrqj84blklb+OwE0h9NHzfsD/g8yYqRzWPNwrMxJ+PdQjq4j4mkAFSPlLPyrM7stN3/61BqRQUqW/zU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=pOFcRuuY; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=6Rhc+mKD; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=pOFcRuuY; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=6Rhc+mKD; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	s=arc-20240116; t=1713715104; c=relaxed/simple;
+	bh=O3g/dwNbPOlGeREP5DLztRfYyrPB9K8uTpS/h1FUspI=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=fzW6aHJJif4oxZoP8tof90u12W+L1oA7Q531NmKodcoU/+db1yRWVrUaAdWJEx305q1L5CcOOtd3hOMexX8E7vn4VRaZ5UnidwLcmXyi/axHI/B/2V6trbVlafn+qfSPJa/aWulUG6xHGc15QSIHlAC7GPHX+vZaFsINU1wSOas=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=Q8KrmCo4; arc=none smtp.client-ip=193.238.174.37
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="pOFcRuuY";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="6Rhc+mKD";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="pOFcRuuY";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="6Rhc+mKD"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 752C733FA3;
-	Sun, 21 Apr 2024 14:27:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1713709624; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=agFFagNCBR8vevRnpCC3TUjBPZuVAYsvS5pMWBbe2D0=;
-	b=pOFcRuuYRhCgB5S3kNgXRAupliBmJ8li3NbbytjvLStPn42oaDteYpALhfLZYzvJz0OuSb
-	5ZS5bdXrD9WFrKi2fUi/3dSyc5JqYL/H51MKLqUXmbD5Az38gAi3rUg+5W5pt5w/x2iTCt
-	xABoBUuCC4zcA7DIfjJe124ATr4vVzM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1713709624;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=agFFagNCBR8vevRnpCC3TUjBPZuVAYsvS5pMWBbe2D0=;
-	b=6Rhc+mKDtMttLBgyNVpGvZUa+yys848SgC83jo0AESUujnkEBv8KAqLDSnuU6cVgI0sGnw
-	bUkx872CYEGDoQBg==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=pOFcRuuY;
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=6Rhc+mKD
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1713709624; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=agFFagNCBR8vevRnpCC3TUjBPZuVAYsvS5pMWBbe2D0=;
-	b=pOFcRuuYRhCgB5S3kNgXRAupliBmJ8li3NbbytjvLStPn42oaDteYpALhfLZYzvJz0OuSb
-	5ZS5bdXrD9WFrKi2fUi/3dSyc5JqYL/H51MKLqUXmbD5Az38gAi3rUg+5W5pt5w/x2iTCt
-	xABoBUuCC4zcA7DIfjJe124ATr4vVzM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1713709624;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=agFFagNCBR8vevRnpCC3TUjBPZuVAYsvS5pMWBbe2D0=;
-	b=6Rhc+mKDtMttLBgyNVpGvZUa+yys848SgC83jo0AESUujnkEBv8KAqLDSnuU6cVgI0sGnw
-	bUkx872CYEGDoQBg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 514BD13687;
-	Sun, 21 Apr 2024 14:27:04 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 4zmzETgiJWZoYgAAD6G6ig
-	(envelope-from <iluceno@suse.de>); Sun, 21 Apr 2024 14:27:04 +0000
-Date: Sun, 21 Apr 2024 16:26:59 +0200
-From: Ismael Luceno <iluceno@suse.de>
-To: Julian Anastasov <ja@ssi.bg>
-Cc: linux-kernel@vger.kernel.org, Firo Yang <firo.yang@suse.com>,
-	Andreas Taschner <andreas.taschner@suse.com>,
-	Michal =?utf-8?Q?Kube=C4=8Dek?= <mkubecek@suse.com>,
-	Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org, netdev@vger.kernel.org,
-	coreteam@netfilter.org
+	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="Q8KrmCo4"
+Received: from mg.ssi.bg (localhost [127.0.0.1])
+	by mg.ssi.bg (Proxmox) with ESMTP id 708C122CE3;
+	Sun, 21 Apr 2024 18:58:18 +0300 (EEST)
+Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
+	by mg.ssi.bg (Proxmox) with ESMTPS;
+	Sun, 21 Apr 2024 18:58:17 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by ink.ssi.bg (Postfix) with ESMTPSA id 8C3AB9003A6;
+	Sun, 21 Apr 2024 18:58:13 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
+	t=1713715093; bh=O3g/dwNbPOlGeREP5DLztRfYyrPB9K8uTpS/h1FUspI=;
+	h=Date:From:To:cc:Subject:In-Reply-To:References;
+	b=Q8KrmCo46WvXg/DCTE8uZcW0Aq6r5YH34HeegfnQhfFrYiPvEB973HpGOXl5uRAYx
+	 UFlzKg6UomPiBjDgm+W78HUPI1r585vxhkAHn+SZtJwZQVPOPAp+Ben1O54k2AlaGN
+	 xVG7fOODeJnQIryRCz+BrgXSkEhSLKkmcSUvzzoA=
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.17.1/8.17.1) with ESMTP id 43LFwBYu079854;
+	Sun, 21 Apr 2024 18:58:11 +0300
+Date: Sun, 21 Apr 2024 18:58:11 +0300 (EEST)
+From: Julian Anastasov <ja@ssi.bg>
+To: Ismael Luceno <iluceno@suse.de>
+cc: linux-kernel@vger.kernel.org, Firo Yang <firo.yang@suse.com>,
+        Andreas Taschner <andreas.taschner@suse.com>,
+        =?UTF-8?Q?Michal_Kube=C4=8Dek?= <mkubecek@suse.com>,
+        Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, netdev@vger.kernel.org,
+        coreteam@netfilter.org
 Subject: Re: [PATCH] ipvs: Fix checksumming on GSO of SCTP packets
-Message-ID: <ZiUiM1tlM3smXSsR@pirotess>
-References: <20240418144434.16407-1-iluceno@suse.de>
- <fd234180-4d6f-313a-0edd-13c821bd4423@ssi.bg>
+In-Reply-To: <ZiUiM1tlM3smXSsR@pirotess>
+Message-ID: <f73be54f-8d91-bf51-f297-caba9f8fd598@ssi.bg>
+References: <20240418144434.16407-1-iluceno@suse.de> <fd234180-4d6f-313a-0edd-13c821bd4423@ssi.bg> <ZiUiM1tlM3smXSsR@pirotess>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <fd234180-4d6f-313a-0edd-13c821bd4423@ssi.bg>
-X-Spam-Level: 
-X-Spamd-Result: default: False [-3.08 / 50.00];
-	DWL_DNSWL_MED(-2.00)[suse.de:dkim];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	BAYES_HAM(-0.07)[62.34%];
-	MX_GOOD(-0.01)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	MISSING_XM_UA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	RCVD_TLS_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	RCVD_COUNT_TWO(0.00)[2];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.de:dkim];
-	DKIM_TRACE(0.00)[suse.de:+]
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: 752C733FA3
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
-X-Spam-Score: -3.08
+Content-Type: text/plain; charset=US-ASCII
 
-On 21/Apr/2024 14:01, Julian Anastasov wrote:
-<...>
-> 	Thanks for the fix, I'll accept this but skb_is_gso_sctp()
-> has comment for pre-condition: skb_is_gso(skb). Can you send v2
-> with it?
 
-Thanks; sent!
+	Hello,
 
-> 	I'm guessing what should be the Fixes line, may be?:
+On Sun, 21 Apr 2024, Ismael Luceno wrote:
+
+> On 21/Apr/2024 14:01, Julian Anastasov wrote:
 > 
-> Fixes: 90017accff61 ("sctp: Add GSO support")
+> > 	I'm guessing what should be the Fixes line, may be?:
+> > 
+> > Fixes: 90017accff61 ("sctp: Add GSO support")
+> 
+> This seems like the right one.
+> 
+> > 	because SCTP GSO was added after the IPVS code? Or the
+> > more recent commit d02f51cbcf12 which adds skb_is_gso_sctp ?
+> 
+> That doesn't seem related at all.
+> 
+> Do we need to check .gso_type in cases like this?
 
-This seems like the right one.
+	Just skb_is_gso(skb) ? IMHO, this should work.
 
-> 	because SCTP GSO was added after the IPVS code? Or the
-> more recent commit d02f51cbcf12 which adds skb_is_gso_sctp ?
+Regards
 
-That doesn't seem related at all.
+--
+Julian Anastasov <ja@ssi.bg>
 
-Do we need to check .gso_type in cases like this?
