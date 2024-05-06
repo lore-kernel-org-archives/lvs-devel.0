@@ -1,149 +1,144 @@
-Received: from mail-wr1-f50.google.com (mail-wr1-f50.google.com [209.85.221.50])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp-relay-internal-0.canonical.com (smtp-relay-internal-0.canonical.com [185.125.188.122])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0EEED4D9FD
-	for <lvs-devel@vger.kernel.org>; Fri,  3 May 2024 15:23:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.50
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98F7C7FBD0
+	for <lvs-devel@vger.kernel.org>; Mon,  6 May 2024 14:15:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.188.122
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1714749804; cv=none; b=FrCesFsf4jq1lrG8JzrbwEdhxO0q5TCwNwcjlMIn1Awgknem9YIMCON0ad/YKgNeBumEaFwyKEVrP7CbKhqCEujmT3/GDL8EJDxVbHAd/x/iISz1NjIVqgn1QIZ/8uNRfxPJTJjjh3wDTYFyvDmB4IXKDAEyxZU1x8tFWIvfpDI=
+	t=1715004905; cv=none; b=hiWZUXPiavucGVfhUlGxXykTiGMmZNVWJCVN31B7dI9bxeszL2ZoFiEAY/KDx2lPhvrdk+We+rXqmsMNCzcTswOH5VFAWAqPeGXyqpurY/pKnArqewFg/7xIz/iJ1q1QOiP7H/j++kR+B77oYaA32igIQTc3VE2gazzFDrqqAQE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1714749804; c=relaxed/simple;
-	bh=MWE7coWNqMXJleIi3yjk5awPC1JbvNBfC0e959nu6Uk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Pk+fb8f/oh8yqf78gaSVTVxRsDf0benixSG2Yun5XjDrY/9Izdzs1767MY2+ZAdQqBYlw+wF/+xKbOtMI4z4bva+YhSuiXjhFMBHfE5EoMu3d36d/oqQ/mcXsn00R6XuPIUIeAdWq67HjrJr5HY0HOtBFE81zYM3wbRBUyihNZc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org; spf=pass smtp.mailfrom=linaro.org; dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b=Y/j/j6+v; arc=none smtp.client-ip=209.85.221.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linaro.org
+	s=arc-20240116; t=1715004905; c=relaxed/simple;
+	bh=wcidanXZQTb3aE8biUO7m9uGWdjY9fC00+u5PTnfNfg=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Ti+YSYYEqkWWtLYbVWfJKPl+tLEZHCebfl3Q2KWAN6nyjXZWYDS/dot8FKtdTe133vXA8iojRacPHEDEwPTuiENrpBkLn3OZdBqtFc/RBqzJExqUuSBO4yhptx4vS+U+32fu1PkRzq0jt7PaBtCibRu4xHHK5hvBLmnDCuGWSGk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=canonical.com; spf=pass smtp.mailfrom=canonical.com; dkim=pass (2048-bit key) header.d=canonical.com header.i=@canonical.com header.b=phcptJ2Q; arc=none smtp.client-ip=185.125.188.122
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=canonical.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=canonical.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="Y/j/j6+v"
-Received: by mail-wr1-f50.google.com with SMTP id ffacd0b85a97d-34dc8d3fbf1so2065616f8f.1
-        for <lvs-devel@vger.kernel.org>; Fri, 03 May 2024 08:23:20 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google; t=1714749799; x=1715354599; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=wdt2IfwqtFqaZTN79e9iL9j98LJEO7sDYqEbNeYYJaU=;
-        b=Y/j/j6+v+RdKlz+2pP3ymSgVEMbJ8j/qzOcA0Qq2cYiciXErsGU/SXG/CckecyQBUu
-         7RXrir2aGnW4b+wadjF/S30K0hPBvLdg/MqW9kE3tGydDhz2dPuCia3rNhmdCfFQFl5d
-         WsgNFBtL3kZO/rdBy+q3xa2NF9wDQd6oPXB+AOTdL/n/tLr69XL/PIP2wsDSd10ow3K5
-         NS5FwZrLxVridIy6/2cF+nWqgj0JHc4xB9QBd+lAkHH7rKKzavPQrFwE2+oJxv9yZEGt
-         +fnYU+iQsK5j3VurttRSYvazrqYpZSZ8aC1HnSI2A9I+KWM2DKZcUGkMtCyZlj9gMMQQ
-         BQ3w==
+	dkim=pass (2048-bit key) header.d=canonical.com header.i=@canonical.com header.b="phcptJ2Q"
+Received: from mail-ej1-f69.google.com (mail-ej1-f69.google.com [209.85.218.69])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-relay-internal-0.canonical.com (Postfix) with ESMTPS id 9D4B13FA51
+	for <lvs-devel@vger.kernel.org>; Mon,  6 May 2024 14:14:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=canonical.com;
+	s=20210705; t=1715004894;
+	bh=ZyaYKGnkDPnTk6rgEgUZ2eoc97Zq0+zWClbbP5jrG5Y=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version;
+	b=phcptJ2QVN0G8jM8cNMMBXZ5gNfWBLDEoemhGjO0tdU90Nb3ykM8qrXT3sAjsxcpr
+	 KREGP2NgUd6/12S7lw8jJCPz2dG2vx6r5sJdR4sr5UzGCFp7HCyzSNiPcSuWowiNiP
+	 NkAXKTkYpHInv2dEAo1VPpGQYblhUWHpQIs/SoU3gSebJOSBbigY0CPFItPAPdE/R4
+	 eFtGOVo4zZYzW4u7xhq/hAba2J2TS3M3aBGduEP9kw4VZ94PnHbwPnt4L1AFo7BcOx
+	 RkIJ06U88vNhmFzum63uBDrQQrvJ6vlr9OuEoVsrqZqZdV0Q/FBULMxdJDiWtRqAfc
+	 0DljOOaRMjI/A==
+Received: by mail-ej1-f69.google.com with SMTP id a640c23a62f3a-a59c7586f7cso70219966b.3
+        for <lvs-devel@vger.kernel.org>; Mon, 06 May 2024 07:14:54 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1714749799; x=1715354599;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=wdt2IfwqtFqaZTN79e9iL9j98LJEO7sDYqEbNeYYJaU=;
-        b=vkhJt/TbsmRaE5a2D3Pm/A4I2WC60QkwPkTElOPpFiUNwnoD8r4NqYhn7LORzQ3Ofl
-         +I1A2YO6CIAetg/FwuNmJZYMKb4NtzkExjolUJ8fcDK36PLPGYffPoPq403qX9RBudEq
-         GrxJOs4+FNl4hfN+0yHoFV6r3We+jTKjoTOYumtcp28FKeSzG8cRf7m0UZwYVmlKzi0H
-         zV+QZnTKTu7dfreoKSbJf2jB9zETBiNY9XG8gVy/A0n9wcaRZOvwH4pSZWCW+2n5ll9A
-         n7/7TSTU4xrfxNRdHo2MdeZv5YSfKl/C3ltJkAyknmKk0H5FJFgPgf2qvJ7/+NNzCaQh
-         GSmw==
-X-Forwarded-Encrypted: i=1; AJvYcCU00/np/Ph1sBmV8MLpr1rRSJB5GnoSLuX1hO7g14+NVgVRbUAZ0hLXCTJuLmSmXhT521HsU8ceb6e9Y+zFK/t1xukwRZDoNBBO
-X-Gm-Message-State: AOJu0YyMSsTfoeYOkrySGBNED5KyCpp07xJ+5hSQnAdbOUnPIA6rsVeL
-	qKYMTGaHjyPTws488ikxxpeV/lDkAz9Z3rYip7NLuigBp4oIB6N3+6YlCNxXYoM=
-X-Google-Smtp-Source: AGHT+IF9s4k+fRR7e1yxXvSlCXD3nF/jRBs6Gtlty++TWU+4zWj+bqwN6oJg1Acr4XwoE1SLANszRA==
-X-Received: by 2002:a5d:6a8c:0:b0:34c:5af8:e491 with SMTP id s12-20020a5d6a8c000000b0034c5af8e491mr2016677wru.33.1714749799241;
-        Fri, 03 May 2024 08:23:19 -0700 (PDT)
-Received: from localhost ([102.222.70.76])
-        by smtp.gmail.com with ESMTPSA id p12-20020adfe60c000000b0034ccd06a6a3sm4011645wrm.18.2024.05.03.08.23.18
+        d=1e100.net; s=20230601; t=1715004894; x=1715609694;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=ZyaYKGnkDPnTk6rgEgUZ2eoc97Zq0+zWClbbP5jrG5Y=;
+        b=mfQIA2vbpPZiXMoBZtLbAP0Pmu8Tf18XLBG42FgHvhaZXn9Ce/r2ykNDMcwqSItYt0
+         PYMerVPgnIsXEHgLz8xHwiuxryfktlRi7mtuHJyyaalGtHHTMikZzhQ857A/pC9HOnSZ
+         0B8YkCpJ3puHCEBD2QeuuRMLp/dQpqsoIJ7nI6cMBu/yiJ4vjmLHN/MLEIoxBRYk511W
+         bEVM9DV1hELGb8sxDK2R51/RkXdxox+B0//cgwPq40Z6qIelBbLmjBA8fCyvfnSfrbUh
+         3n/uWN2ownUAtyZLdKiV+P4rKiKEnAP96hFN/9mqUbmsDlRliUGzGvwtZxZPBj09TTxj
+         +zhA==
+X-Forwarded-Encrypted: i=1; AJvYcCUj2TcvFvkC5aVi9obRPAkxcu6/Wd4t68tLQEmFkYDJzcufdjijNhM18PPDPgoGyutO8xvfJAMJerQcSapwpJGzf9bA2L2Lk9fo
+X-Gm-Message-State: AOJu0YxSxfihqDYJBg97DghZNZOze8qg8U9oiA42k467T9fUbo50oYWc
+	0RktBo+cSNTvHT+He8q2qTcfpGDjHjsiNHX3WsOl+Aa0wb7rW9nvPbFHvV17/G7na5hRJ2qsl8G
+	ZWqYPOZTx4d1mHJV81ZH6oenf57tEwzX4M3Qkmaay4Hij/qHvOwR9NdK9kQXZthNrHEzd+3fzYQ
+	==
+X-Received: by 2002:a17:906:4899:b0:a59:bfd3:2b27 with SMTP id v25-20020a170906489900b00a59bfd32b27mr2701619ejq.70.1715004894083;
+        Mon, 06 May 2024 07:14:54 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IEk/9m6RYfEf0M6hlNPk6/CFatHUn4Rb6d03W4Hp+pLLGOwdF9b9V1H4mNBZdkFpbMX/boBAw==
+X-Received: by 2002:a17:906:4899:b0:a59:bfd3:2b27 with SMTP id v25-20020a170906489900b00a59bfd32b27mr2701599ejq.70.1715004893754;
+        Mon, 06 May 2024 07:14:53 -0700 (PDT)
+Received: from amikhalitsyn.lan ([2001:470:6d:781:4703:a034:4f89:f1de])
+        by smtp.gmail.com with ESMTPSA id xh9-20020a170906da8900b00a597ff2fc0dsm4663754ejb.69.2024.05.06.07.14.52
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 03 May 2024 08:23:18 -0700 (PDT)
-Date: Fri, 3 May 2024 18:23:14 +0300
-From: Dan Carpenter <dan.carpenter@linaro.org>
-To: Joel Granados <j.granados@samsung.com>
-Cc: Sabrina Dubroca <sd@queasysnail.net>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Alexander Aring <alex.aring@gmail.com>,
-	Stefan Schmidt <stefan@datenfreihafen.org>,
-	Miquel Raynal <miquel.raynal@bootlin.com>,
-	David Ahern <dsahern@kernel.org>,
-	Steffen Klassert <steffen.klassert@secunet.com>,
-	Herbert Xu <herbert@gondor.apana.org.au>,
-	Matthieu Baerts <matttbe@kernel.org>,
-	Mat Martineau <martineau@kernel.org>,
-	Geliang Tang <geliang@kernel.org>,
-	Remi Denis-Courmont <courmisch@gmail.com>,
-	Allison Henderson <allison.henderson@oracle.com>,
-	David Howells <dhowells@redhat.com>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>,
-	Wenjia Zhang <wenjia@linux.ibm.com>,
-	Jan Karcher <jaka@linux.ibm.com>,
-	"D. Wythe" <alibuda@linux.alibaba.com>,
-	Tony Lu <tonylu@linux.alibaba.com>,
-	Wen Gu <guwen@linux.alibaba.com>,
-	Trond Myklebust <trond.myklebust@hammerspace.com>,
-	Anna Schumaker <anna@kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>,
-	Olga Kornievskaia <kolga@netapp.com>, Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>, Jon Maloy <jmaloy@redhat.com>,
-	Ying Xue <ying.xue@windriver.com>, Martin Schiller <ms@dev.tdt.de>,
+        Mon, 06 May 2024 07:14:53 -0700 (PDT)
+From: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
+To: horms@verge.net.au
+Cc: netdev@vger.kernel.org,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>,
+	Julian Anastasov <ja@ssi.bg>,
 	Pablo Neira Ayuso <pablo@netfilter.org>,
 	Jozsef Kadlecsik <kadlec@netfilter.org>,
-	Florian Westphal <fw@strlen.de>, Roopa Prabhu <roopa@nvidia.com>,
-	Nikolay Aleksandrov <razor@blackwall.org>,
-	Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>,
-	Joerg Reuter <jreuter@yaina.de>,
-	Luis Chamberlain <mcgrof@kernel.org>,
-	Kees Cook <keescook@chromium.org>, netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org, dccp@vger.kernel.org,
-	linux-wpan@vger.kernel.org, mptcp@lists.linux.dev,
-	linux-hams@vger.kernel.org, linux-rdma@vger.kernel.org,
-	rds-devel@oss.oracle.com, linux-afs@lists.infradead.org,
-	linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org,
-	linux-nfs@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
-	linux-x25@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org, bridge@lists.linux.dev,
-	lvs-devel@vger.kernel.org
-Subject: Re: [PATCH net-next v6 8/8] ax.25: x.25: Remove the now superfluous
- sentinel elements from ctl_table array
-Message-ID: <21f76a94-1b35-4cf7-914d-e341848b0b9e@moroto.mountain>
-References: <20240501-jag-sysctl_remset_net-v6-0-370b702b6b4a@samsung.com>
- <20240501-jag-sysctl_remset_net-v6-8-370b702b6b4a@samsung.com>
- <CGME20240501131616eucas1p28a33eeb55f6c084a0751e5b7b7d91d78@eucas1p2.samsung.com>
- <ZjJAikcdWzzaIr1s@hog>
- <20240503121811.fsmriwsgugzm2o7i@joelS2.panther.com>
+	Florian Westphal <fw@strlen.de>
+Subject: [PATCH v4 1/2] ipvs: add READ_ONCE barrier for ipvs->sysctl_amemthresh
+Date: Mon,  6 May 2024 16:14:43 +0200
+Message-Id: <20240506141444.145946-1-aleksandr.mikhalitsyn@canonical.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20240503121811.fsmriwsgugzm2o7i@joelS2.panther.com>
+Content-Transfer-Encoding: 8bit
 
-On Fri, May 03, 2024 at 02:18:11PM +0200, Joel Granados wrote:
-> On Wed, May 01, 2024 at 03:15:54PM +0200, Sabrina Dubroca wrote:
-> > 2024-05-01, 11:29:32 +0200, Joel Granados via B4 Relay wrote:
-> > > From: Joel Granados <j.granados@samsung.com>
-> > > diff --git a/net/ax25/ax25_ds_timer.c b/net/ax25/ax25_ds_timer.c
-> > > index c4f8adbf8144..c50a58d9e368 100644
-> > > --- a/net/ax25/ax25_ds_timer.c
-> > > +++ b/net/ax25/ax25_ds_timer.c
-> > > @@ -55,6 +55,7 @@ void ax25_ds_set_timer(ax25_dev *ax25_dev)
-> > >  	ax25_dev->dama.slave_timeout =
-> > >  		msecs_to_jiffies(ax25_dev->values[AX25_VALUES_DS_TIMEOUT]) / 10;
-> > >  	mod_timer(&ax25_dev->dama.slave_timer, jiffies + HZ);
-> > > +	return;
-> > 
-> > nit: return not needed here since we're already at the bottom of the
-> > function, but probably not worth a repost of the series.
-> > 
-> Thx. I will not repost, but I have changed them locally so they are
-> there in case a V7 is required.
-> 
+Cc: Julian Anastasov <ja@ssi.bg>
+Cc: Simon Horman <horms@verge.net.au>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Jozsef Kadlecsik <kadlec@netfilter.org>
+Cc: Florian Westphal <fw@strlen.de>
+Suggested-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
+---
+ net/netfilter/ipvs/ip_vs_ctl.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-It's a checkpatch.pl -f warning so we probably will want to fix it
-eventually.
-
-regards,
-dan carpenter
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 50b5dbe40eb8..e122fa367b81 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -94,6 +94,7 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+ {
+ 	struct sysinfo i;
+ 	int availmem;
++	int amemthresh;
+ 	int nomem;
+ 	int to_change = -1;
+ 
+@@ -105,7 +106,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+ 	/* si_swapinfo(&i); */
+ 	/* availmem = availmem - (i.totalswap - i.freeswap); */
+ 
+-	nomem = (availmem < ipvs->sysctl_amemthresh);
++	amemthresh = max(READ_ONCE(ipvs->sysctl_amemthresh), 0);
++	nomem = (availmem < amemthresh);
+ 
+ 	local_bh_disable();
+ 
+@@ -145,9 +147,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+ 		break;
+ 	case 1:
+ 		if (nomem) {
+-			ipvs->drop_rate = ipvs->drop_counter
+-				= ipvs->sysctl_amemthresh /
+-				(ipvs->sysctl_amemthresh-availmem);
++			ipvs->drop_counter = amemthresh / (amemthresh - availmem);
++			ipvs->drop_rate = ipvs->drop_counter;
+ 			ipvs->sysctl_drop_packet = 2;
+ 		} else {
+ 			ipvs->drop_rate = 0;
+@@ -155,9 +156,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
+ 		break;
+ 	case 2:
+ 		if (nomem) {
+-			ipvs->drop_rate = ipvs->drop_counter
+-				= ipvs->sysctl_amemthresh /
+-				(ipvs->sysctl_amemthresh-availmem);
++			ipvs->drop_counter = amemthresh / (amemthresh - availmem);
++			ipvs->drop_rate = ipvs->drop_counter;
+ 		} else {
+ 			ipvs->drop_rate = 0;
+ 			ipvs->sysctl_drop_packet = 1;
+-- 
+2.34.1
 
