@@ -1,64 +1,66 @@
-Received: from smtp-relay-internal-0.canonical.com (smtp-relay-internal-0.canonical.com [185.125.188.122])
+Received: from smtp-relay-internal-1.canonical.com (smtp-relay-internal-1.canonical.com [185.125.188.123])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98F7C7FBD0
-	for <lvs-devel@vger.kernel.org>; Mon,  6 May 2024 14:15:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.188.122
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5CD9F13CFAA
+	for <lvs-devel@vger.kernel.org>; Mon,  6 May 2024 14:15:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.188.123
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715004905; cv=none; b=hiWZUXPiavucGVfhUlGxXykTiGMmZNVWJCVN31B7dI9bxeszL2ZoFiEAY/KDx2lPhvrdk+We+rXqmsMNCzcTswOH5VFAWAqPeGXyqpurY/pKnArqewFg/7xIz/iJ1q1QOiP7H/j++kR+B77oYaA32igIQTc3VE2gazzFDrqqAQE=
+	t=1715004914; cv=none; b=uQfnMazRHHwWxWfHTufIZcg3Rh4AriRJcy5elyIF900a1dyH8xNWqP8pO32Iy6Nx9LTXAV3kYFxIawPA9R8iMMmmiJ+XSS111WGrPaghQKZxDdD0LodpR1pqjpqfut8iUV44g5wpEaP2X9jlsDXUAX/8BSunDTzYtzJ72oLDIkE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715004905; c=relaxed/simple;
-	bh=wcidanXZQTb3aE8biUO7m9uGWdjY9fC00+u5PTnfNfg=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Ti+YSYYEqkWWtLYbVWfJKPl+tLEZHCebfl3Q2KWAN6nyjXZWYDS/dot8FKtdTe133vXA8iojRacPHEDEwPTuiENrpBkLn3OZdBqtFc/RBqzJExqUuSBO4yhptx4vS+U+32fu1PkRzq0jt7PaBtCibRu4xHHK5hvBLmnDCuGWSGk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=canonical.com; spf=pass smtp.mailfrom=canonical.com; dkim=pass (2048-bit key) header.d=canonical.com header.i=@canonical.com header.b=phcptJ2Q; arc=none smtp.client-ip=185.125.188.122
+	s=arc-20240116; t=1715004914; c=relaxed/simple;
+	bh=+Z/Lsq8TfQLRqsZxO6NPI1XpawG5p6DBMinswkhWeM8=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=tnQIGV3l7/DD8zX0Jmdem/48PfWciukACYS2o2kfMHkRYS7bvJy0/FzD8UMxWGdSKe7kCAmWFzn+VylHL7W2SZdyuc3guSwuWpkvjDOi2kpQZXv/uplsn+DxQcaLws+tMfG6Fm9aXTuBHD2TZBYmcdXybhS+soBkEUyLNPxpSV4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=canonical.com; spf=pass smtp.mailfrom=canonical.com; dkim=pass (2048-bit key) header.d=canonical.com header.i=@canonical.com header.b=qL5ZwHPB; arc=none smtp.client-ip=185.125.188.123
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=canonical.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=canonical.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=canonical.com header.i=@canonical.com header.b="phcptJ2Q"
+	dkim=pass (2048-bit key) header.d=canonical.com header.i=@canonical.com header.b="qL5ZwHPB"
 Received: from mail-ej1-f69.google.com (mail-ej1-f69.google.com [209.85.218.69])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-relay-internal-0.canonical.com (Postfix) with ESMTPS id 9D4B13FA51
-	for <lvs-devel@vger.kernel.org>; Mon,  6 May 2024 14:14:54 +0000 (UTC)
+	by smtp-relay-internal-1.canonical.com (Postfix) with ESMTPS id C02773FE63
+	for <lvs-devel@vger.kernel.org>; Mon,  6 May 2024 14:15:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=canonical.com;
-	s=20210705; t=1715004894;
-	bh=ZyaYKGnkDPnTk6rgEgUZ2eoc97Zq0+zWClbbP5jrG5Y=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version;
-	b=phcptJ2QVN0G8jM8cNMMBXZ5gNfWBLDEoemhGjO0tdU90Nb3ykM8qrXT3sAjsxcpr
-	 KREGP2NgUd6/12S7lw8jJCPz2dG2vx6r5sJdR4sr5UzGCFp7HCyzSNiPcSuWowiNiP
-	 NkAXKTkYpHInv2dEAo1VPpGQYblhUWHpQIs/SoU3gSebJOSBbigY0CPFItPAPdE/R4
-	 eFtGOVo4zZYzW4u7xhq/hAba2J2TS3M3aBGduEP9kw4VZ94PnHbwPnt4L1AFo7BcOx
-	 RkIJ06U88vNhmFzum63uBDrQQrvJ6vlr9OuEoVsrqZqZdV0Q/FBULMxdJDiWtRqAfc
-	 0DljOOaRMjI/A==
-Received: by mail-ej1-f69.google.com with SMTP id a640c23a62f3a-a59c7586f7cso70219966b.3
-        for <lvs-devel@vger.kernel.org>; Mon, 06 May 2024 07:14:54 -0700 (PDT)
+	s=20210705; t=1715004904;
+	bh=OqRb1xOZql2PU0k7U3099kOtm3MQu6nOgdSdRzcue2o=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version;
+	b=qL5ZwHPBaaZ1otsmBSwNF8zaxbfLaWgEtRl05ARh2pH1G0Kg8Uv88S+dF/LgZHVSa
+	 AC4biBkAvJ9rTETEPtp9UV9qp8K8sHddUNQbYUKR43BNwwlvexFcY8/Mno4IkN0jis
+	 BtJmDJ8gokeoEgCV14EDTJUJafLI0tjcgTM9QsVPeAoPR8d3tKxLU8sqY4e4I4LrlG
+	 /288krH1zdbXgJs+M5mHjDa0i7MEMvpB6Fjel+w2sAvBiCA5oMcAxzhs2lndvI1cUt
+	 BfOYhpT9JYgjyNahclZgH0UHW9vOLJSFIFEUniV8GRb7lXT/yd/Ihc9fTbCuMsmVSi
+	 xtXSCtjhMYJeA==
+Received: by mail-ej1-f69.google.com with SMTP id a640c23a62f3a-a59a18de270so111589066b.3
+        for <lvs-devel@vger.kernel.org>; Mon, 06 May 2024 07:15:04 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1715004894; x=1715609694;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=ZyaYKGnkDPnTk6rgEgUZ2eoc97Zq0+zWClbbP5jrG5Y=;
-        b=mfQIA2vbpPZiXMoBZtLbAP0Pmu8Tf18XLBG42FgHvhaZXn9Ce/r2ykNDMcwqSItYt0
-         PYMerVPgnIsXEHgLz8xHwiuxryfktlRi7mtuHJyyaalGtHHTMikZzhQ857A/pC9HOnSZ
-         0B8YkCpJ3puHCEBD2QeuuRMLp/dQpqsoIJ7nI6cMBu/yiJ4vjmLHN/MLEIoxBRYk511W
-         bEVM9DV1hELGb8sxDK2R51/RkXdxox+B0//cgwPq40Z6qIelBbLmjBA8fCyvfnSfrbUh
-         3n/uWN2ownUAtyZLdKiV+P4rKiKEnAP96hFN/9mqUbmsDlRliUGzGvwtZxZPBj09TTxj
-         +zhA==
-X-Forwarded-Encrypted: i=1; AJvYcCUj2TcvFvkC5aVi9obRPAkxcu6/Wd4t68tLQEmFkYDJzcufdjijNhM18PPDPgoGyutO8xvfJAMJerQcSapwpJGzf9bA2L2Lk9fo
-X-Gm-Message-State: AOJu0YxSxfihqDYJBg97DghZNZOze8qg8U9oiA42k467T9fUbo50oYWc
-	0RktBo+cSNTvHT+He8q2qTcfpGDjHjsiNHX3WsOl+Aa0wb7rW9nvPbFHvV17/G7na5hRJ2qsl8G
-	ZWqYPOZTx4d1mHJV81ZH6oenf57tEwzX4M3Qkmaay4Hij/qHvOwR9NdK9kQXZthNrHEzd+3fzYQ
+        d=1e100.net; s=20230601; t=1715004897; x=1715609697;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=OqRb1xOZql2PU0k7U3099kOtm3MQu6nOgdSdRzcue2o=;
+        b=pZxiYLwlbaQTNwWs25UKnJpYBIa2Kw384xlpXxn1y6NUz8d68QmHNX8XcyE8E6Glfy
+         HG6PiLuh+oDupHNiEqyUuZ2NEc7s+KyL4CMKLshtjYusoKt3gn26IMFQodNLqZLQalPY
+         WI4K4VqjhX1PcxvoOjXLDXLm4sEH245CFWjahBpEuvVB4TTiN03dH0NcnFqEcDbjiocn
+         u7wier/yfWSfXlYWRjhslD3uDrpOkaW5/9Ha/k4YRzi7xvjwzjeWhPcGunC3Az7H3ws8
+         jwaH/Brx0Lm1Fc8GmFjIwyRu7gCrXH6j6udwsLKby9258yBZMB4D0FPkmwryE43+ZJe1
+         XegQ==
+X-Forwarded-Encrypted: i=1; AJvYcCXFsnknYvfWYLK0IeSvwH8rzpGRtz7LsF9+etn1kNpJ2GRWAxjCK7MGWGKD3fKIfBGjhOEsaGs71PelJiTCUCdTEZEI2LY0Mnbd
+X-Gm-Message-State: AOJu0YyqpFVh0rKputpKtIeJ6+e2/VGTSJFfAljO/E3fDE4Imb/abk0Q
+	wIncowWDxt6XeWaNkkpSD2Q0xuKVw4Vw85o+qNzDPkPuMEZD+fP4EDbH2QqQrgfpE/Fg21TFwQT
+	eLkUNE0Am0KDks9MvaWJOYHPHMYLvTaZBn+8l3W1yB2y6IQijyTrVfOyjaAMFkHiD7VgpMN1YmQ
 	==
-X-Received: by 2002:a17:906:4899:b0:a59:bfd3:2b27 with SMTP id v25-20020a170906489900b00a59bfd32b27mr2701619ejq.70.1715004894083;
-        Mon, 06 May 2024 07:14:54 -0700 (PDT)
-X-Google-Smtp-Source: AGHT+IEk/9m6RYfEf0M6hlNPk6/CFatHUn4Rb6d03W4Hp+pLLGOwdF9b9V1H4mNBZdkFpbMX/boBAw==
-X-Received: by 2002:a17:906:4899:b0:a59:bfd3:2b27 with SMTP id v25-20020a170906489900b00a59bfd32b27mr2701599ejq.70.1715004893754;
-        Mon, 06 May 2024 07:14:53 -0700 (PDT)
+X-Received: by 2002:a17:906:6a1b:b0:a59:ba18:2fb9 with SMTP id qw27-20020a1709066a1b00b00a59ba182fb9mr3733804ejc.12.1715004897350;
+        Mon, 06 May 2024 07:14:57 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IHa1Vw6hfo0afKISW9+EzWZA3flJUxebMlVAlpg8F9CpQGamqKcFf6weBYpMVMzl1sqbbZYOA==
+X-Received: by 2002:a17:906:6a1b:b0:a59:ba18:2fb9 with SMTP id qw27-20020a1709066a1b00b00a59ba182fb9mr3733786ejc.12.1715004897093;
+        Mon, 06 May 2024 07:14:57 -0700 (PDT)
 Received: from amikhalitsyn.lan ([2001:470:6d:781:4703:a034:4f89:f1de])
-        by smtp.gmail.com with ESMTPSA id xh9-20020a170906da8900b00a597ff2fc0dsm4663754ejb.69.2024.05.06.07.14.52
+        by smtp.gmail.com with ESMTPSA id xh9-20020a170906da8900b00a597ff2fc0dsm4663754ejb.69.2024.05.06.07.14.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 06 May 2024 07:14:53 -0700 (PDT)
+        Mon, 06 May 2024 07:14:56 -0700 (PDT)
 From: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
 To: horms@verge.net.au
 Cc: netdev@vger.kernel.org,
@@ -70,10 +72,12 @@ Cc: netdev@vger.kernel.org,
 	Pablo Neira Ayuso <pablo@netfilter.org>,
 	Jozsef Kadlecsik <kadlec@netfilter.org>,
 	Florian Westphal <fw@strlen.de>
-Subject: [PATCH v4 1/2] ipvs: add READ_ONCE barrier for ipvs->sysctl_amemthresh
-Date: Mon,  6 May 2024 16:14:43 +0200
-Message-Id: <20240506141444.145946-1-aleksandr.mikhalitsyn@canonical.com>
+Subject: [PATCH v4 2/2] ipvs: allow some sysctls in non-init user namespaces
+Date: Mon,  6 May 2024 16:14:44 +0200
+Message-Id: <20240506141444.145946-2-aleksandr.mikhalitsyn@canonical.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20240506141444.145946-1-aleksandr.mikhalitsyn@canonical.com>
+References: <20240506141444.145946-1-aleksandr.mikhalitsyn@canonical.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -82,63 +86,104 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
+Let's make all IPVS sysctls writtable even when
+network namespace is owned by non-initial user namespace.
+
+Let's make a few sysctls to be read-only for non-privileged users:
+- sync_qlen_max
+- sync_sock_size
+- run_estimation
+- est_cpulist
+- est_nice
+
+I'm trying to be conservative with this to prevent
+introducing any security issues in there. Maybe,
+we can allow more sysctls to be writable, but let's
+do this on-demand and when we see real use-case.
+
+This patch is motivated by user request in the LXC
+project [1]. Having this can help with running some
+Kubernetes [2] or Docker Swarm [3] workloads inside the system
+containers.
+
+Link: https://github.com/lxc/lxc/issues/4278 [1]
+Link: https://github.com/kubernetes/kubernetes/blob/b722d017a34b300a2284b890448e5a605f21d01e/pkg/proxy/ipvs/proxier.go#L103 [2]
+Link: https://github.com/moby/libnetwork/blob/3797618f9a38372e8107d8c06f6ae199e1133ae8/osl/namespace_linux.go#L682 [3]
+
 Cc: Julian Anastasov <ja@ssi.bg>
 Cc: Simon Horman <horms@verge.net.au>
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: Jozsef Kadlecsik <kadlec@netfilter.org>
 Cc: Florian Westphal <fw@strlen.de>
-Suggested-by: Julian Anastasov <ja@ssi.bg>
 Signed-off-by: Alexander Mikhalitsyn <aleksandr.mikhalitsyn@canonical.com>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 50b5dbe40eb8..e122fa367b81 100644
+index e122fa367b81..b6d0dcf3a5c3 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -94,6 +94,7 @@ static void update_defense_level(struct netns_ipvs *ipvs)
- {
- 	struct sysinfo i;
- 	int availmem;
-+	int amemthresh;
- 	int nomem;
- 	int to_change = -1;
+@@ -4269,6 +4269,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	struct ctl_table *tbl;
+ 	int idx, ret;
+ 	size_t ctl_table_size = ARRAY_SIZE(vs_vars);
++	bool unpriv = net->user_ns != &init_user_ns;
  
-@@ -105,7 +106,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
- 	/* si_swapinfo(&i); */
- 	/* availmem = availmem - (i.totalswap - i.freeswap); */
+ 	atomic_set(&ipvs->dropentry, 0);
+ 	spin_lock_init(&ipvs->dropentry_lock);
+@@ -4283,10 +4284,6 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 		tbl = kmemdup(vs_vars, sizeof(vs_vars), GFP_KERNEL);
+ 		if (tbl == NULL)
+ 			return -ENOMEM;
+-
+-		/* Don't export sysctls to unprivileged users */
+-		if (net->user_ns != &init_user_ns)
+-			ctl_table_size = 0;
+ 	} else
+ 		tbl = vs_vars;
+ 	/* Initialize sysctl defaults */
+@@ -4312,10 +4309,17 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	ipvs->sysctl_sync_ports = 1;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_ports;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_persist_mode;
++
+ 	ipvs->sysctl_sync_qlen_max = nr_free_buffer_pages() / 32;
++	if (unpriv)
++		tbl[idx].mode = 0444;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_qlen_max;
++
+ 	ipvs->sysctl_sync_sock_size = 0;
++	if (unpriv)
++		tbl[idx].mode = 0444;
+ 	tbl[idx++].data = &ipvs->sysctl_sync_sock_size;
++
+ 	tbl[idx++].data = &ipvs->sysctl_cache_bypass;
+ 	tbl[idx++].data = &ipvs->sysctl_expire_nodest_conn;
+ 	tbl[idx++].data = &ipvs->sysctl_sloppy_tcp;
+@@ -4338,15 +4342,22 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+ 	tbl[idx++].data = &ipvs->sysctl_conn_reuse_mode;
+ 	tbl[idx++].data = &ipvs->sysctl_schedule_icmp;
+ 	tbl[idx++].data = &ipvs->sysctl_ignore_tunneled;
++
+ 	ipvs->sysctl_run_estimation = 1;
++	if (unpriv)
++		tbl[idx].mode = 0444;
+ 	tbl[idx].extra2 = ipvs;
+ 	tbl[idx++].data = &ipvs->sysctl_run_estimation;
  
--	nomem = (availmem < ipvs->sysctl_amemthresh);
-+	amemthresh = max(READ_ONCE(ipvs->sysctl_amemthresh), 0);
-+	nomem = (availmem < amemthresh);
+ 	ipvs->est_cpulist_valid = 0;
++	if (unpriv)
++		tbl[idx].mode = 0444;
+ 	tbl[idx].extra2 = ipvs;
+ 	tbl[idx++].data = &ipvs->sysctl_est_cpulist;
  
- 	local_bh_disable();
+ 	ipvs->sysctl_est_nice = IPVS_EST_NICE;
++	if (unpriv)
++		tbl[idx].mode = 0444;
+ 	tbl[idx].extra2 = ipvs;
+ 	tbl[idx++].data = &ipvs->sysctl_est_nice;
  
-@@ -145,9 +147,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
- 		break;
- 	case 1:
- 		if (nomem) {
--			ipvs->drop_rate = ipvs->drop_counter
--				= ipvs->sysctl_amemthresh /
--				(ipvs->sysctl_amemthresh-availmem);
-+			ipvs->drop_counter = amemthresh / (amemthresh - availmem);
-+			ipvs->drop_rate = ipvs->drop_counter;
- 			ipvs->sysctl_drop_packet = 2;
- 		} else {
- 			ipvs->drop_rate = 0;
-@@ -155,9 +156,8 @@ static void update_defense_level(struct netns_ipvs *ipvs)
- 		break;
- 	case 2:
- 		if (nomem) {
--			ipvs->drop_rate = ipvs->drop_counter
--				= ipvs->sysctl_amemthresh /
--				(ipvs->sysctl_amemthresh-availmem);
-+			ipvs->drop_counter = amemthresh / (amemthresh - availmem);
-+			ipvs->drop_rate = ipvs->drop_counter;
- 		} else {
- 			ipvs->drop_rate = 0;
- 			ipvs->sysctl_drop_packet = 1;
 -- 
 2.34.1
 
