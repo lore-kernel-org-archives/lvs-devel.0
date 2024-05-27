@@ -1,106 +1,126 @@
-Received: from todd.t-8ch.de (todd.t-8ch.de [159.69.126.157])
+Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF177160787;
-	Mon, 27 May 2024 17:04:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=159.69.126.157
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DBFB15F41F;
+	Mon, 27 May 2024 18:08:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.37
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1716829482; cv=none; b=Yn5Tfn/wKubTtFkyyGWyp8+iAgMkBfv6ZncYNuXxkDRVDT2tyjFjWCUxMNHN6t8MZKxh5K4lgperCML6SgNj+vzx8O5hf8OaU/6Vz+7XwcT2pUV92DygMVlwfkcd/CuZIjBnsHb+VsuajoUOI8CIcjSBtvQvHPcheto0ckcjAsw=
+	t=1716833344; cv=none; b=Ihr65HHIXuYQ2nHJgn2PK6MPJHFdbv5yCygCei01QkXc5XliuPLMK2PXZx/WBAfT4m49mG5O3El1XCEobOJsXgOREjDcONJh17IUhjWpC0Oy6VI9/E9XzEa3eClpESkBI7qIH3wAWi/AWO3mlYZubAkiHfUmdJ1VXoNV62aFM/4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1716829482; c=relaxed/simple;
-	bh=ailtByMMrVQJn27XJsDw/nbP0vGnYMWIFcr3PmJgg44=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=UrV8bZcbWKtrPB4B7A5NBO7sFlbkZzuCc56Ioq3Egt6h4O7abZde1z/a3u9S2JNVGwc3EphtOA5OZMsK7o1vRI3RW4iIBpv7c3G9qp0SMsQ6BlSZyslayPdK/9TfWBNX8sjEpv/zvMjJ1cqYIQBAcsisVf8meHGuVD0GhZMpuX0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=weissschuh.net; spf=pass smtp.mailfrom=weissschuh.net; dkim=pass (1024-bit key) header.d=weissschuh.net header.i=@weissschuh.net header.b=IqE+RzwB; arc=none smtp.client-ip=159.69.126.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=weissschuh.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=weissschuh.net
+	s=arc-20240116; t=1716833344; c=relaxed/simple;
+	bh=9MFvsjCLOxLQUeqYvox4UAHsYgXHt0OZSILjh79XzQw=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=vDTQQZUobltKkfAF6+0HEj8ClHHBUZvuSn2O4Su6ayTxk17270vWo/5GiE8Vm0gDmuLjukZ2iX943gI8m27xn9y1aeXjnJ2O795WErlOsYtJftOXQl1GvZYiseQhvtBVIrsbotOxg7pZrAAagbf8bRBw0zTHmoTZVGxnA0+Q5oM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=GlJDVE5q; arc=none smtp.client-ip=193.238.174.37
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=weissschuh.net header.i=@weissschuh.net header.b="IqE+RzwB"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=weissschuh.net;
-	s=mail; t=1716829475;
-	bh=ailtByMMrVQJn27XJsDw/nbP0vGnYMWIFcr3PmJgg44=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=IqE+RzwBivIpCk4R98n5wU8NbdtFNA+FjTy44Dg0QoHNpAZkUfkT06AVDH6iZpljW
-	 OqnVmISUXO7mrkDbigqPFtiBZ4xFpfvQUu54F6B4C413eo8GTozbD0/fHz9Zs9es3Q
-	 oPyeOuQ6tKb+jjN5c+wgRUvpbiTwi/LGmQ+dzq4E=
-From: =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
-Date: Mon, 27 May 2024 19:04:23 +0200
-Subject: [PATCH net-next 5/5] ipvs: constify ctl_table arguments of utility
- functions
+	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="GlJDVE5q"
+Received: from mg.ssi.bg (localhost [127.0.0.1])
+	by mg.ssi.bg (Proxmox) with ESMTP id 407A635F2B;
+	Mon, 27 May 2024 20:59:49 +0300 (EEST)
+Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
+	by mg.ssi.bg (Proxmox) with ESMTPS;
+	Mon, 27 May 2024 20:59:48 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by ink.ssi.bg (Postfix) with ESMTPSA id D5E36900442;
+	Mon, 27 May 2024 20:59:44 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
+	t=1716832785; bh=9MFvsjCLOxLQUeqYvox4UAHsYgXHt0OZSILjh79XzQw=;
+	h=Date:From:To:cc:Subject:In-Reply-To:References;
+	b=GlJDVE5qpBrmHj8Z7pNUmlXavoobwPcF5d7zxzCGcQWybi8S1fjopwnoyX98Renzd
+	 qWdR0ZtM1u12YRrPg1pIBADW5aDGd3UbL1dWGClQALNXt5ZXlgaYmEEbOHAcrbm3ki
+	 UWj5BGB2BvgMu3SLeh7y2Y5biZdAZp6xqZv7WXzA=
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.1/8.17.1) with ESMTP id 44RHxb7L058509;
+	Mon, 27 May 2024 20:59:37 +0300
+Date: Mon, 27 May 2024 20:59:37 +0300 (EEST)
+From: Julian Anastasov <ja@ssi.bg>
+To: Ismael Luceno <iluceno@suse.de>
+cc: linux-kernel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>,
+        =?UTF-8?Q?Michal_Kube=C4=8Dek?= <mkubecek@suse.com>,
+        Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, netdev@vger.kernel.org,
+        coreteam@netfilter.org
+Subject: Re: [PATCH] ipvs: Avoid unnecessary calls to skb_is_gso_sctp
+In-Reply-To: <20240523165445.24016-1-iluceno@suse.de>
+Message-ID: <16cacbcd-2f4c-1dc1-ecf7-8c081c84c6aa@ssi.bg>
+References: <20240523165445.24016-1-iluceno@suse.de>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240527-sysctl-const-handler-net-v1-5-16523767d0b2@weissschuh.net>
-References: <20240527-sysctl-const-handler-net-v1-0-16523767d0b2@weissschuh.net>
-In-Reply-To: <20240527-sysctl-const-handler-net-v1-0-16523767d0b2@weissschuh.net>
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, David Ahern <dsahern@kernel.org>, 
- Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
- Pablo Neira Ayuso <pablo@netfilter.org>, 
- Jozsef Kadlecsik <kadlec@netfilter.org>
-Cc: Joel Granados <j.granados@samsung.com>, 
- Luis Chamberlain <mcgrof@kernel.org>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, 
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org, 
- =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716829474; l=1608;
- i=linux@weissschuh.net; s=20221212; h=from:subject:message-id;
- bh=ailtByMMrVQJn27XJsDw/nbP0vGnYMWIFcr3PmJgg44=;
- b=Ru62T8Y5h2w0VlL5uxRe86TKAf0NyNrErX+coxsEOXiZxsk2X1m5Z125qR4GW1qsgvz6opeXk
- Ute+fsbkP1mCkvqzSYzyYHVbtm+V4CfChBn24ke9FiCqBONYI60ePzj
-X-Developer-Key: i=linux@weissschuh.net; a=ed25519;
- pk=KcycQgFPX2wGR5azS7RhpBqedglOZVgRPfdFSPB1LNw=
+Content-Type: multipart/mixed; boundary="-1463811672-159640941-1716832778=:3498"
 
-The sysctl core is preparing to only expose instances of
-struct ctl_table as "const".
-This will also affect the ctl_table argument of sysctl handlers.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-As the function prototype of all sysctl handlers throughout the tree
-needs to stay consistent that change will be done in one commit.
+---1463811672-159640941-1716832778=:3498
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
 
-To reduce the size of that final commit, switch utility functions which
-are not bound by "typedef proc_handler" to "const struct ctl_table".
 
-No functional change.
+	Hello,
 
-Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
----
- net/netfilter/ipvs/ip_vs_ctl.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+On Thu, 23 May 2024, Ismael Luceno wrote:
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index b6d0dcf3a5c3..78a1cc72dc38 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1924,7 +1924,8 @@ proc_do_sync_ports(struct ctl_table *table, int write,
- 	return rc;
- }
- 
--static int ipvs_proc_est_cpumask_set(struct ctl_table *table, void *buffer)
-+static int ipvs_proc_est_cpumask_set(const struct ctl_table *table,
-+				     void *buffer)
- {
- 	struct netns_ipvs *ipvs = table->extra2;
- 	cpumask_var_t *valp = table->data;
-@@ -1962,8 +1963,8 @@ static int ipvs_proc_est_cpumask_set(struct ctl_table *table, void *buffer)
- 	return ret;
- }
- 
--static int ipvs_proc_est_cpumask_get(struct ctl_table *table, void *buffer,
--				     size_t size)
-+static int ipvs_proc_est_cpumask_get(const struct ctl_table *table,
-+				     void *buffer, size_t size)
- {
- 	struct netns_ipvs *ipvs = table->extra2;
- 	cpumask_var_t *valp = table->data;
+> In the context of the SCTP SNAT/DNAT handler, these calls can only
+> return true.
+> 
+> Ref: e10d3ba4d434 ("ipvs: Fix checksumming on GSO of SCTP packets")
 
--- 
-2.45.1
+	checkpatch.pl prefers to see the "commit" word:
+
+Ref: commit e10d3ba4d434 ("ipvs: Fix checksumming on GSO of SCTP packets")
+
+> Signed-off-by: Ismael Luceno <iluceno@suse.de>
+
+	Looks good to me for nf-next, thanks!
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+> CC: Pablo Neira Ayuso <pablo@netfilter.org>
+> CC: Michal Kubeček <mkubecek@suse.com>
+> CC: Simon Horman <horms@verge.net.au>
+> CC: Julian Anastasov <ja@ssi.bg>
+> CC: lvs-devel@vger.kernel.org
+> CC: netfilter-devel@vger.kernel.org
+> CC: netdev@vger.kernel.org
+> CC: coreteam@netfilter.org
+> ---
+>  net/netfilter/ipvs/ip_vs_proto_sctp.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> index 1e689c714127..83e452916403 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> @@ -126,7 +126,7 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  	if (sctph->source != cp->vport || payload_csum ||
+>  	    skb->ip_summed == CHECKSUM_PARTIAL) {
+>  		sctph->source = cp->vport;
+> -		if (!skb_is_gso(skb) || !skb_is_gso_sctp(skb))
+> +		if (!skb_is_gso(skb))
+>  			sctp_nat_csum(skb, sctph, sctphoff);
+>  	} else {
+>  		skb->ip_summed = CHECKSUM_UNNECESSARY;
+> @@ -175,7 +175,7 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  	    (skb->ip_summed == CHECKSUM_PARTIAL &&
+>  	     !(skb_dst(skb)->dev->features & NETIF_F_SCTP_CRC))) {
+>  		sctph->dest = cp->dport;
+> -		if (!skb_is_gso(skb) || !skb_is_gso_sctp(skb))
+> +		if (!skb_is_gso(skb))
+>  			sctp_nat_csum(skb, sctph, sctphoff);
+>  	} else if (skb->ip_summed != CHECKSUM_PARTIAL) {
+>  		skb->ip_summed = CHECKSUM_UNNECESSARY;
+> -- 
+> 2.44.0
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+---1463811672-159640941-1716832778=:3498--
 
