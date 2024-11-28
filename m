@@ -1,72 +1,99 @@
-Received: from mg.ssi.bg (mg.ssi.bg [193.238.174.37])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A857E1BBBF7;
-	Mon, 25 Nov 2024 17:59:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.37
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 74C1C149C7B
+	for <lvs-devel@vger.kernel.org>; Thu, 28 Nov 2024 08:18:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1732557597; cv=none; b=eGVacKJrGty82n6Wk6+9kr8a2O4gJOnOlWoq2YpAGPsPmNw4OW0BIVwGp43gnr7GnvKDsTUrUYTYSCY2zX3qvvvsTRu8X29e+6ag0yIpOGDmWzxtxz3zhnIiY4I7q+sE7hf8D1Nrm8hgNSDBehn0R/IR8Ff86Q84r83uXxwOblE=
+	t=1732781896; cv=none; b=Z7Tla1DOTgpvdj2+Qv2TAOFJKQg5dnkDpiSV5MVrX7i7FTSt2PGbsxpDdFnOnzdBVzArwqan9nx2/itZM4+WGvydHNOaT70ibpwYf88fEMivR6jlGof+qtl3FH9+eOgr2G6+O8h/c+KdkwFzEubXJ8h0Id/s+WTa9bkCSmz9VzE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1732557597; c=relaxed/simple;
-	bh=V5N4wSUZrBPuCZ/XKy+HU1S/9iyK0UN1290lQKfMNms=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=F3sQMqekQTwAlla21t4X6hOCBL3vuCSbO5il3ia/4l4Cvt3J4FiBMcdHU859mJYIIBW+6MkBHrcopxRsDMi38190Ct1CWcxoFG5luIZi1mNyuDarRhJOp4Fjxtn7gVfaoZgY5DDfNjq5ZxmL2iGve8Xjeofcy60nlbDgdQXnXpE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=Vz/y+APZ; arc=none smtp.client-ip=193.238.174.37
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1732781896; c=relaxed/simple;
+	bh=yiCeSBGXf1KMxfhU21keDJvktNwDMa5XEoSlV3Nu0q8=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=f3Z1oYRwLRH2ghBduGPmyqnk/XxpYALXQRXnRlcniF8JDwQ91+Jwehk9rV0KskleR2IOxKRY5mOsVWBo3FeQK13rGo1nx6nMLZDugN2hi8fgNe48ev7pR2YnQ0Byex6RL4RM6UlDaS16unSClR6PgMfnr0V7t8FooZ5ym5VcKSU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Re6N1lCB; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="Vz/y+APZ"
-Received: from mg.ssi.bg (localhost [127.0.0.1])
-	by mg.ssi.bg (Proxmox) with ESMTP id 8E5A980CAF;
-	Mon, 25 Nov 2024 19:59:44 +0200 (EET)
-Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
-	by mg.ssi.bg (Proxmox) with ESMTPS;
-	Mon, 25 Nov 2024 19:59:43 +0200 (EET)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by ink.ssi.bg (Postfix) with ESMTPSA id 37359303248;
-	Mon, 25 Nov 2024 19:59:32 +0200 (EET)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=ssi.bg; s=ink;
-	t=1732557574; bh=V5N4wSUZrBPuCZ/XKy+HU1S/9iyK0UN1290lQKfMNms=;
-	h=Date:From:To:cc:Subject:In-Reply-To:References;
-	b=Vz/y+APZW/fp7aSEDdYfl2HL12Ly4g47GuG9/uZ/SjF4n62iUW75Tjpzj8PC0DwwR
-	 KcjpelfK5wYlaKZaIbK2BecBEjiMSKOgG00anIJR5J3r+prqsxqiDA1iasgVg+kfJw
-	 aBCV8gKnx5cEDFNNupYNs/xwB5yEWAPT3ilabObE=
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.17.1) with ESMTP id 4APHxJKD053777;
-	Mon, 25 Nov 2024 19:59:21 +0200
-Date: Mon, 25 Nov 2024 19:59:19 +0200 (EET)
-From: Julian Anastasov <ja@ssi.bg>
-To: Jinghao Jia <jinghao7@illinois.edu>
-cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
-        Jozsef Kadlecsik <kadlec@netfilter.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>, Nathan Chancellor <nathan@kernel.org>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Bill Wendling <morbo@google.com>,
-        Justin Stitt <justinstitt@google.com>, Kees Cook <kees@kernel.org>,
-        netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        linux-kernel@vger.kernel.org, llvm@lists.linux.dev,
-        kernel test robot <lkp@intel.com>, Ruowen Qin <ruqin@redhat.com>
-Subject: Re: [PATCH v3 net] ipvs: fix UB due to uninitialized stack access
- in ip_vs_protocol_init()
-In-Reply-To: <20241123094256.28887-1-jinghao7@illinois.edu>
-Message-ID: <8b210ce9-19d8-eefd-fc86-febdc33394f6@ssi.bg>
-References: <20241123094256.28887-1-jinghao7@illinois.edu>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Re6N1lCB"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1732781893;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=Nk4a1vtkFew5DHjLcy2S4AhcY8OdDJOXsxrrwd1OkwQ=;
+	b=Re6N1lCBzOrKgbXPSoaZFiWNSdXTeo2UBM3dDe7hovW9U2ufSmMOH7ii9NsOa+Tq8H5ZiX
+	HSagb8+1eM/32LHQ6Ezmk9gWP5lU6Cz/aNUkkPqROEUK4qySSYwtDmlRUr2D1lvTluwm7n
+	qUdAP9bVhE4bjKB9GFhyAnBqjX92XuQ=
+Received: from mail-wr1-f71.google.com (mail-wr1-f71.google.com
+ [209.85.221.71]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-280-5BqL7x8KMMywwORRyYACJQ-1; Thu, 28 Nov 2024 03:18:11 -0500
+X-MC-Unique: 5BqL7x8KMMywwORRyYACJQ-1
+X-Mimecast-MFC-AGG-ID: 5BqL7x8KMMywwORRyYACJQ
+Received: by mail-wr1-f71.google.com with SMTP id ffacd0b85a97d-382440c1f83so862469f8f.1
+        for <lvs-devel@vger.kernel.org>; Thu, 28 Nov 2024 00:18:11 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1732781890; x=1733386690;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=Nk4a1vtkFew5DHjLcy2S4AhcY8OdDJOXsxrrwd1OkwQ=;
+        b=gznF2eX8eaQ5hE2JOSVaRd70q+azSF/2tuc9X+IjtfXh+dAA7fwnkWpQ5ODv1DG/pq
+         rN0M4aWMfC4lESxDtj44tdKRpaSp2wFokr6IENnJGjWIXIFd8nBTTt/qVYyjqA9eXrP8
+         VICw9eM3afnkuwh1wMSrmlnCs5FpM4nzIj32/RT1oP30fmKp2r/QROHOo+aVTJNE7Jvm
+         Pt9jz60DSDhAuYIUBEmGXQlIT10Pcy2zdEnjQs7baL6VBao5vwUPE0sxmKPtqvopKMeE
+         h0ywj7eVYZdyAduyvkJSidHlNEWCU+PJOIgy46tvvC9Gnua8e4DS9/9ztf1AUKXTmTVn
+         VU8w==
+X-Forwarded-Encrypted: i=1; AJvYcCX49j+B6jJrnVaJOoUZo2C6XgvNQUgir1wcTScekycpLyfE/2wmdnQujQ6K0ZYVmXEsxc6Dt1uiwqk=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz9lR+QU+GR9ZSVN024QDsWYRqvi26EZbeHt33qm0soKf/5+Tuw
+	bNLqeq9kKIdcpPEGPRvtm/eKQcI5Sx0CCIiJv2XRe9s2lrm4v9GvONogI3aXiHrYsgadMPWTjdP
+	qrW3mbNH/eEskDMfvqXefH1itOUSvUOiN2FhiYpQ5geNFw+xMjorDwzWc9g==
+X-Gm-Gg: ASbGncvizb7GAgXaj3jtOdHyYZJEeqa93sEi44318k+zQwXfrm9V76TG8kdSssYC/cG
+	Q/6ilJKnzsZMDIkbQBJ2sXSbB4HsmIkGhf0T/zWBrAAHWReNdeiO7TfeiOnqc4y7v4WCz5+tep3
+	+TJxNEcXDZU/+pT38UuOlWkqLZPJXUABfpYEtUv/khyet8t4dp1329p38faOiwzxaaq5pXUxtLR
+	FC0dVbj4Y/CezOoAvutKG/75ze1xYmKIhlqSc9XcYXthOI7b+W9w3jHbeAZ66Uok31muusVrt9T
+X-Received: by 2002:a5d:5988:0:b0:37d:46ad:127f with SMTP id ffacd0b85a97d-385cbda2969mr1891960f8f.26.1732781890475;
+        Thu, 28 Nov 2024 00:18:10 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IHiB+KlnNgeGF4jukNPYnw3UquzlV4c1ZjkZ443v33BuNe7GO30hwqhse5NtZ7b/vbBCoAnKw==
+X-Received: by 2002:a5d:5988:0:b0:37d:46ad:127f with SMTP id ffacd0b85a97d-385cbda2969mr1891928f8f.26.1732781890115;
+        Thu, 28 Nov 2024 00:18:10 -0800 (PST)
+Received: from [192.168.88.24] (146-241-60-32.dyn.eolo.it. [146.241.60.32])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-385ccd36557sm980405f8f.24.2024.11.28.00.18.08
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 28 Nov 2024 00:18:09 -0800 (PST)
+Message-ID: <70cd1035-07d8-4356-a53e-020d93c2515e@redhat.com>
+Date: Thu, 28 Nov 2024 09:18:07 +0100
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v3 net] ipvs: fix UB due to uninitialized stack access in
+ ip_vs_protocol_init()
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>,
+ Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
+ netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+ linux-kernel@vger.kernel.org, llvm@lists.linux.dev,
+ "David S. Miller" <davem@davemloft.net>, kernel test robot <lkp@intel.com>,
+ Ruowen Qin <ruqin@redhat.com>, Jinghao Jia <jinghao7@illinois.edu>,
+ Jozsef Kadlecsik <kadlec@netfilter.org>, Eric Dumazet <edumazet@google.com>,
+ Jakub Kicinski <kuba@kernel.org>, Kees Cook <kees@kernel.org>,
+ Nathan Chancellor <nathan@kernel.org>,
+ Nick Desaulniers <ndesaulniers@google.com>, Bill Wendling
+ <morbo@google.com>, Justin Stitt <justinstitt@google.com>
+References: <20241123094256.28887-1-jinghao7@illinois.edu>
+Content-Language: en-US
+From: Paolo Abeni <pabeni@redhat.com>
+In-Reply-To: <20241123094256.28887-1-jinghao7@illinois.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-
-	Hello,
-
-On Sat, 23 Nov 2024, Jinghao Jia wrote:
-
+On 11/23/24 10:42, Jinghao Jia wrote:
 > Under certain kernel configurations when building with Clang/LLVM, the
 > compiler does not generate a return or jump as the terminator
 > instruction for ip_vs_protocol_init(), triggering the following objtool
@@ -143,53 +170,14 @@ On Sat, 23 Nov 2024, Jinghao Jia wrote:
 > Signed-off-by: Ruowen Qin <ruqin@redhat.com>
 > Signed-off-by: Jinghao Jia <jinghao7@illinois.edu>
 
-	Looks good to me, thanks!
+@Pablo, @Simon, @Julian: recent ipvs patches landed either on the
+net(-next) trees or the netfiler trees according to a random (?) pattern.
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
+What is your preference here? Should such patches go via netfilter or
+net? Or something else. FTR, I *think* netfilter should be the
+preferable target, but I'm open to other options.
 
-> ---
-> Changelog:
-> v2 -> v3:
-> v2: https://lore.kernel.org/lkml/20241122045257.27452-1-jinghao7@illinois.edu/
-> * Fix changelog format based on Julian's feedback
-> 
-> v1 -> v2:
-> v1: https://lore.kernel.org/lkml/20241111065105.82431-1-jinghao7@illinois.edu/
-> * Fix small error in commit message
-> * Address Julian's feedback:
->   * Make this patch target the net tree rather than net-next
->   * Add a "Fixes" tag for the initial git commit
-> 
->  net/netfilter/ipvs/ip_vs_proto.c | 4 +---
->  1 file changed, 1 insertion(+), 3 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_proto.c b/net/netfilter/ipvs/ip_vs_proto.c
-> index f100da4ba3bc..a9fd1d3fc2cb 100644
-> --- a/net/netfilter/ipvs/ip_vs_proto.c
-> +++ b/net/netfilter/ipvs/ip_vs_proto.c
-> @@ -340,7 +340,7 @@ void __net_exit ip_vs_protocol_net_cleanup(struct netns_ipvs *ipvs)
->  
->  int __init ip_vs_protocol_init(void)
->  {
-> -	char protocols[64];
-> +	char protocols[64] = { 0 };
->  #define REGISTER_PROTOCOL(p)			\
->  	do {					\
->  		register_ip_vs_protocol(p);	\
-> @@ -348,8 +348,6 @@ int __init ip_vs_protocol_init(void)
->  		strcat(protocols, (p)->name);	\
->  	} while (0)
->  
-> -	protocols[0] = '\0';
-> -	protocols[2] = '\0';
->  #ifdef CONFIG_IP_VS_PROTO_TCP
->  	REGISTER_PROTOCOL(&ip_vs_protocol_tcp);
->  #endif
-> -- 
-> 2.47.0
+Thanks,
 
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Paolo
 
