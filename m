@@ -1,151 +1,172 @@
-Received: from ganesha.gnumonks.org (ganesha.gnumonks.org [213.95.27.120])
+Received: from Chamillionaire.breakpoint.cc (Chamillionaire.breakpoint.cc [91.216.245.30])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 04DF519924E;
-	Thu, 28 Nov 2024 12:12:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.27.120
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DDE12E3EE;
+	Tue,  3 Dec 2024 11:20:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=91.216.245.30
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1732795967; cv=none; b=ZEZ8kRu2GnkMihHMfx8e00AhMlaFdPrLWVD5xgMNjYyyHH7V8KPsqd8rce2JaysDiSQg2y+t2nQedK1fUOJnsv8ImJwhoI2DOzjyTnGNfK10TKX4I9gupSX1QKpaeMyC1qSZEaYsqj80GWWCFf95nHNpSfeFam6A99h1TbLcIrA=
+	t=1733224856; cv=none; b=EYw9x58IX1EDSHJi2KSrCsN2bqI9lpLcIf9RU/PM1fht/pPlNKKWHvxwAPSIvjMtf3pCGIiBQYN2hedPpGUAtfguKFE+okFmtlznUdDLchT6u8oKWrB2iw3j7eg5m5WPtFcMtuXw/rBZOrN8BpfiLbkj0n4v3AE6ZWo7vaTdkeI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1732795967; c=relaxed/simple;
-	bh=TuOb665RSI48F19c1IWSP3kx/J14aZG+T0RK8WWALls=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=XxNXCduRXJDTidOlW7FKu33j78If6WXBBWpGK4krDTdvMQjxOW2bCeoP0vrATmda8Bd1iOH85TgSaLpN5elIGMJ10GooTfhuavPqXbjTxd03pfBjxUttm/IdEOaKVaDAJ3xuyG4gOqLoSIUvzoqQltPOiTr06bZ6cCG+UE+KYK4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org; spf=pass smtp.mailfrom=gnumonks.org; arc=none smtp.client-ip=213.95.27.120
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gnumonks.org
-Received: from [78.30.39.247] (port=48626 helo=gnumonks.org)
-	by ganesha.gnumonks.org with esmtpsa  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-	(Exim 4.94.2)
-	(envelope-from <pablo@gnumonks.org>)
-	id 1tGdNl-00FndA-5W; Thu, 28 Nov 2024 13:12:31 +0100
-Date: Thu, 28 Nov 2024 13:12:28 +0100
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@verge.net.au>,
-	netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-	linux-kernel@vger.kernel.org, llvm@lists.linux.dev,
-	"David S. Miller" <davem@davemloft.net>,
-	kernel test robot <lkp@intel.com>, Ruowen Qin <ruqin@redhat.com>,
-	Jinghao Jia <jinghao7@illinois.edu>,
-	Jozsef Kadlecsik <kadlec@netfilter.org>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Kees Cook <kees@kernel.org>,
-	Nathan Chancellor <nathan@kernel.org>,
-	Nick Desaulniers <ndesaulniers@google.com>,
-	Bill Wendling <morbo@google.com>,
-	Justin Stitt <justinstitt@google.com>
-Subject: Re: [PATCH v3 net] ipvs: fix UB due to uninitialized stack access in
- ip_vs_protocol_init()
-Message-ID: <Z0heLGWuOEkC2n35@calendula>
-References: <20241123094256.28887-1-jinghao7@illinois.edu>
- <70cd1035-07d8-4356-a53e-020d93c2515e@redhat.com>
- <87fca918-403d-2fd5-576a-dfa730483fc2@ssi.bg>
+	s=arc-20240116; t=1733224856; c=relaxed/simple;
+	bh=mZaCnhhVXLdobmbsL6owS6DX9G3bb+SkPA5Ax5DGX3Q=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=oy4uAxlV0+sLm+ZwfTNHoLTYEIsP+XoIIDcSmqA98CnQ3eIvR6eMz4CxiM+JhveSXxwx9lYdjF2TmyTEezO3BC1ip2x/jq8faKT70aP5gZyg9UzeEIJOBJOYuYBJcW7CdwqsMln11FQN3qMd4gq8/832q/Z6z/mTJDaNMu25ZG8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=strlen.de; spf=pass smtp.mailfrom=breakpoint.cc; arc=none smtp.client-ip=91.216.245.30
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=strlen.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=breakpoint.cc
+Received: from fw by Chamillionaire.breakpoint.cc with local (Exim 4.92)
+	(envelope-from <fw@breakpoint.cc>)
+	id 1tIQxM-0006Cn-Sn; Tue, 03 Dec 2024 12:20:40 +0100
+From: Florian Westphal <fw@strlen.de>
+To: <netfilter-devel@vger.kernel.org>
+Cc: horms@verge.net.au,
+	ja@ssi.bg,
+	lvs-devel@vger.kernel.org,
+	Florian Westphal <fw@strlen.de>
+Subject: [PATCH nf-next] ipvs: speed up reads from ip_vs_conn proc file
+Date: Tue,  3 Dec 2024 12:08:30 +0100
+Message-ID: <20241203110840.10411-1-fw@strlen.de>
+X-Mailer: git-send-email 2.45.2
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <87fca918-403d-2fd5-576a-dfa730483fc2@ssi.bg>
-X-Spam-Score: -1.7 (-)
+Content-Transfer-Encoding: 8bit
 
-On Thu, Nov 28, 2024 at 01:18:39PM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Thu, 28 Nov 2024, Paolo Abeni wrote:
-> 
-> > On 11/23/24 10:42, Jinghao Jia wrote:
-> > > Under certain kernel configurations when building with Clang/LLVM, the
-> > > compiler does not generate a return or jump as the terminator
-> > > instruction for ip_vs_protocol_init(), triggering the following objtool
-> > > warning during build time:
-> > > 
-> > >   vmlinux.o: warning: objtool: ip_vs_protocol_init() falls through to next function __initstub__kmod_ip_vs_rr__935_123_ip_vs_rr_init6()
-> > > 
-> > > At runtime, this either causes an oops when trying to load the ipvs
-> > > module or a boot-time panic if ipvs is built-in. This same issue has
-> > > been reported by the Intel kernel test robot previously.
-> > > 
-> > > Digging deeper into both LLVM and the kernel code reveals this to be a
-> > > undefined behavior problem. ip_vs_protocol_init() uses a on-stack buffer
-> > > of 64 chars to store the registered protocol names and leaves it
-> > > uninitialized after definition. The function calls strnlen() when
-> > > concatenating protocol names into the buffer. With CONFIG_FORTIFY_SOURCE
-> > > strnlen() performs an extra step to check whether the last byte of the
-> > > input char buffer is a null character (commit 3009f891bb9f ("fortify:
-> > > Allow strlen() and strnlen() to pass compile-time known lengths")).
-> > > This, together with possibly other configurations, cause the following
-> > > IR to be generated:
-> > > 
-> > >   define hidden i32 @ip_vs_protocol_init() local_unnamed_addr #5 section ".init.text" align 16 !kcfi_type !29 {
-> > >     %1 = alloca [64 x i8], align 16
-> > >     ...
-> > > 
-> > >   14:                                               ; preds = %11
-> > >     %15 = getelementptr inbounds i8, ptr %1, i64 63
-> > >     %16 = load i8, ptr %15, align 1
-> > >     %17 = tail call i1 @llvm.is.constant.i8(i8 %16)
-> > >     %18 = icmp eq i8 %16, 0
-> > >     %19 = select i1 %17, i1 %18, i1 false
-> > >     br i1 %19, label %20, label %23
-> > > 
-> > >   20:                                               ; preds = %14
-> > >     %21 = call i64 @strlen(ptr noundef nonnull dereferenceable(1) %1) #23
-> > >     ...
-> > > 
-> > >   23:                                               ; preds = %14, %11, %20
-> > >     %24 = call i64 @strnlen(ptr noundef nonnull dereferenceable(1) %1, i64 noundef 64) #24
-> > >     ...
-> > >   }
-> > > 
-> > > The above code calculates the address of the last char in the buffer
-> > > (value %15) and then loads from it (value %16). Because the buffer is
-> > > never initialized, the LLVM GVN pass marks value %16 as undefined:
-> > > 
-> > >   %13 = getelementptr inbounds i8, ptr %1, i64 63
-> > >   br i1 undef, label %14, label %17
-> > > 
-> > > This gives later passes (SCCP, in particular) more DCE opportunities by
-> > > propagating the undef value further, and eventually removes everything
-> > > after the load on the uninitialized stack location:
-> > > 
-> > >   define hidden i32 @ip_vs_protocol_init() local_unnamed_addr #0 section ".init.text" align 16 !kcfi_type !11 {
-> > >     %1 = alloca [64 x i8], align 16
-> > >     ...
-> > > 
-> > >   12:                                               ; preds = %11
-> > >     %13 = getelementptr inbounds i8, ptr %1, i64 63
-> > >     unreachable
-> > >   }
-> > > 
-> > > In this way, the generated native code will just fall through to the
-> > > next function, as LLVM does not generate any code for the unreachable IR
-> > > instruction and leaves the function without a terminator.
-> > > 
-> > > Zero the on-stack buffer to avoid this possible UB.
-> > > 
-> > > Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> > > Reported-by: kernel test robot <lkp@intel.com>
-> > > Closes: https://lore.kernel.org/oe-kbuild-all/202402100205.PWXIz1ZK-lkp@intel.com/
-> > > Co-developed-by: Ruowen Qin <ruqin@redhat.com>
-> > > Signed-off-by: Ruowen Qin <ruqin@redhat.com>
-> > > Signed-off-by: Jinghao Jia <jinghao7@illinois.edu>
-> > 
-> > @Pablo, @Simon, @Julian: recent ipvs patches landed either on the
-> > net(-next) trees or the netfiler trees according to a random (?) pattern.
-> > 
-> > What is your preference here? Should such patches go via netfilter or
-> > net? Or something else. FTR, I *think* netfilter should be the
-> > preferable target, but I'm open to other options.
-> 
-> 	IPVS patches should go always via Netfilter trees.
-> It is my fault to tell people to use the 'net' tag, I'll
-> recommend the proper nf tree the next time. Sorry for the
-> confusion.
+Reading is very slow because ->start() performs a linear re-scan of the
+entire hash table until it finds the successor to the last dumped
+element.  The current implementation uses 'pos' as the 'number of
+elements to skip, then does linear iteration until it has skipped
+'pos' entries.
 
-No issue, I have applied this to nf.git, thanks for the clarification.
+Store the last bucket and the number of elements to skip in that
+bucket instead, so we can resume from bucket b directly.
+
+before this patch, its possible to read ~35k entries in one second, but
+each read() gets slower as the number of entries to skip grows:
+
+time timeout 60 cat /proc/net/ip_vs_conn > /tmp/all; wc -l /tmp/all
+real    1m0.007s
+user    0m0.003s
+sys     0m59.956s
+140386 /tmp/all
+
+Only ~100k more got read in remaining the remaining 59s, and did not get
+nowhere near the 1m entries that are stored at the time.
+
+after this patch, dump completes very quickly:
+time cat /proc/net/ip_vs_conn > /tmp/all; wc -l /tmp/all
+real    0m2.286s
+user    0m0.004s
+sys     0m2.281s
+1000001 /tmp/all
+
+Signed-off-by: Florian Westphal <fw@strlen.de>
+---
+ net/netfilter/ipvs/ip_vs_conn.c | 50 ++++++++++++++++++---------------
+ 1 file changed, 28 insertions(+), 22 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 7aba4760bbff..73f3dac159bb 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1046,28 +1046,35 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ #ifdef CONFIG_PROC_FS
+ struct ip_vs_iter_state {
+ 	struct seq_net_private	p;
+-	struct hlist_head	*l;
++	unsigned int		bucket;
++	unsigned int		skip_elems;
+ };
+ 
+-static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
++static void *ip_vs_conn_array(struct ip_vs_iter_state *iter)
+ {
+ 	int idx;
+ 	struct ip_vs_conn *cp;
+-	struct ip_vs_iter_state *iter = seq->private;
+ 
+-	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
++	for (idx = iter->bucket; idx < ip_vs_conn_tab_size; idx++) {
++		unsigned int skip = 0;
++
+ 		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
+ 			/* __ip_vs_conn_get() is not needed by
+ 			 * ip_vs_conn_seq_show and ip_vs_conn_sync_seq_show
+ 			 */
+-			if (pos-- == 0) {
+-				iter->l = &ip_vs_conn_tab[idx];
++			if (skip >= iter->skip_elems) {
++				iter->bucket = idx;
+ 				return cp;
+ 			}
++
++			++skip;
+ 		}
++
++		iter->skip_elems = 0;
+ 		cond_resched_rcu();
+ 	}
+ 
++	iter->bucket = idx;
+ 	return NULL;
+ }
+ 
+@@ -1076,9 +1083,14 @@ static void *ip_vs_conn_seq_start(struct seq_file *seq, loff_t *pos)
+ {
+ 	struct ip_vs_iter_state *iter = seq->private;
+ 
+-	iter->l = NULL;
+ 	rcu_read_lock();
+-	return *pos ? ip_vs_conn_array(seq, *pos - 1) :SEQ_START_TOKEN;
++	if (*pos == 0) {
++		iter->skip_elems = 0;
++		iter->bucket = 0;
++		return SEQ_START_TOKEN;
++	}
++
++	return ip_vs_conn_array(iter);
+ }
+ 
+ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+@@ -1086,28 +1098,22 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ 	struct ip_vs_conn *cp = v;
+ 	struct ip_vs_iter_state *iter = seq->private;
+ 	struct hlist_node *e;
+-	struct hlist_head *l = iter->l;
+-	int idx;
+ 
+ 	++*pos;
+ 	if (v == SEQ_START_TOKEN)
+-		return ip_vs_conn_array(seq, 0);
++		return ip_vs_conn_array(iter);
+ 
+ 	/* more on same hash chain? */
+ 	e = rcu_dereference(hlist_next_rcu(&cp->c_list));
+-	if (e)
++	if (e) {
++		iter->skip_elems++;
+ 		return hlist_entry(e, struct ip_vs_conn, c_list);
+-
+-	idx = l - ip_vs_conn_tab;
+-	while (++idx < ip_vs_conn_tab_size) {
+-		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
+-			iter->l = &ip_vs_conn_tab[idx];
+-			return cp;
+-		}
+-		cond_resched_rcu();
+ 	}
+-	iter->l = NULL;
+-	return NULL;
++
++	iter->skip_elems = 0;
++	iter->bucket++;
++
++	return ip_vs_conn_array(iter);
+ }
+ 
+ static void ip_vs_conn_seq_stop(struct seq_file *seq, void *v)
+-- 
+2.45.2
+
