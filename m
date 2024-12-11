@@ -1,114 +1,117 @@
-Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
+Received: from mail-lj1-f182.google.com (mail-lj1-f182.google.com [209.85.208.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E6E5225A5F
-	for <lvs-devel@vger.kernel.org>; Wed, 11 Dec 2024 13:16:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EDC32336BD
+	for <lvs-devel@vger.kernel.org>; Wed, 11 Dec 2024 13:53:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1733922998; cv=none; b=HdaIWKmQgMb5bImrQxoJf+WfRfOSKPSOc1En+xsV3o7RIwTObNfzI1YkgeX1rKH3qSE+dNUK1jp2p5ZN/18raK9d1fKOtMcdETWQA/UPKmylnTiKLEWC4ek+o1DJQknbmT6vYrp5A1BDMYlJfKeOSBpyFDXQbqVxMxQDtYBcXOs=
+	t=1733925222; cv=none; b=TMIG/SIfCjHaMF6K3oJrkhTdrS0OSmMSkXm8bbypeGWDOTl7J51x5gO+7iNfg/wEOo3bVogt8URjQCM0gcZUOqlIr+GMIfP6b4Dnqz0Itko4R3AdZwIQFNJmwo/zZkRdCNA3zj3nTarzra428JBs9Zjx0ik/3nwe0KJd6Fcivrs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1733922998; c=relaxed/simple;
-	bh=vHnOqrE9U3DzgtMQ2aewHIsU1Cqb1sBnG7bs/0nghbw=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=S+MeWwacsGU0Zxds1uuQSI19LazF7I8MRoxZ14BFTabf3do6qm4k+EtVI3v9uGsMmttn93sURdJ5VbvCiIMrwbwl2yLnvT9hsQ5irsgNVlq7RaYKlQR0FutrYQBq/E69gi3gbzGxHaqpqJTuiGLoqi2bdlPUOOeAhhnRw89mI3c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org; spf=pass smtp.mailfrom=linaro.org; dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b=M3C0fLXs; arc=none smtp.client-ip=209.85.128.49
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linaro.org
+	s=arc-20240116; t=1733925222; c=relaxed/simple;
+	bh=1ler+6t5wwhzmcNaLGwLWs8a2MX4ASG3Zvx3gT94VPY=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Q8SjtTDdjnhewbTLN711qeA68+Jce5IU3zmTgzR8R7pQ2+zjKM47XiAg6iqXeNNLLGW6s3Pfxt8RW1YtqX9FfeNbQNHAwQMTs7e91L1qyzVjAA2JbvfoJmpHX2AubBDcPg3QRJEQwavIlL7tFjIzsCy+vmWGW+U5lNMEvmlX/xk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=bgdev.pl; spf=none smtp.mailfrom=bgdev.pl; dkim=pass (2048-bit key) header.d=bgdev-pl.20230601.gappssmtp.com header.i=@bgdev-pl.20230601.gappssmtp.com header.b=omDj3KJs; arc=none smtp.client-ip=209.85.208.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=bgdev.pl
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bgdev.pl
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="M3C0fLXs"
-Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-434e69857d9so4119995e9.0
-        for <lvs-devel@vger.kernel.org>; Wed, 11 Dec 2024 05:16:36 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=bgdev-pl.20230601.gappssmtp.com header.i=@bgdev-pl.20230601.gappssmtp.com header.b="omDj3KJs"
+Received: by mail-lj1-f182.google.com with SMTP id 38308e7fff4ca-30229d5b229so26492931fa.0
+        for <lvs-devel@vger.kernel.org>; Wed, 11 Dec 2024 05:53:40 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google; t=1733922995; x=1734527795; darn=vger.kernel.org;
-        h=content-disposition:mime-version:message-id:subject:cc:to:from:date
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=U0uQFK6fLtwRvjcx8HTnxkyo0H7NF49q4SiozMOoHr0=;
-        b=M3C0fLXsAXtW9jjA7Dw43HxhJb/ma2hwbeaSImzzX7Wu7RYcE42u9NHmp+NsU0LxVR
-         udhLSSw6LSOGvUhrV0RjqVPLYf7nmiof1q/OnqAqWOxYdhUlA3OiI6gcPW9UPqUIVx+B
-         XeB3l1tY3OAa76qITBRVjT/LsZKCc1Oyf7qj5tLDzDw4KdFRJAui6XPZBA6BtPDCv+QL
-         aH6S4yeBmVOaaxDEHVJ6uk72umhFvGCRwdRvTf/AnokJ90+ZLpqQWusrWyp9I+OYSKJo
-         qMFq4jihLNTzIn+KtRcb9w8X5QY3hdoRuQHdWvdW4IaBXzhVbyRu48X3+j5L7neRv2C1
-         nFjQ==
+        d=bgdev-pl.20230601.gappssmtp.com; s=20230601; t=1733925218; x=1734530018; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=jyglwL7lcLajD1vfvAC6TyqBHbq3YqYRZog/vZd+lPo=;
+        b=omDj3KJsPkdP7UDkEBkr8I8BmUFjLlncQnR8U1KHRmWs4eX2Od9WNA0Ge1slgLs74D
+         hYp6a4U1CyacZbInWvPD/TL56ag2IN1BQUOKGZ24bAQo1knFloHJGpw6RLyKLgMI/Ich
+         FQ/eIr5U5m601YqwpLL3O61FD+9kURKiEawOMu3v9ORmtUW1sFkB3D9mopTziG+ajVix
+         8e0RXBaq3HeM/bK2ndvdwgZ4lgGxZ7oVSqCK3Y6ZlazYDPlzbcUJuk9BnvualA6K12vy
+         36remNoOn6ih/pluAhyQBzIt1XF6dN0GBvAskyEvdi7SBuoKVEa+r0ga5WUGsgSibr6l
+         nCRA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1733922995; x=1734527795;
-        h=content-disposition:mime-version:message-id:subject:cc:to:from:date
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=U0uQFK6fLtwRvjcx8HTnxkyo0H7NF49q4SiozMOoHr0=;
-        b=cHTMZrum5qRK78jsHnJD4RcjtJq6rj1E1cxr05j8+yNfuWXpWzY2VeSFOEVjOZmbPv
-         TQ3KBDuDv98HLSUqt7XrzITM9ALbTJeFtqi2K9ojVByc2Ri9ttWePQDI9uS3mNslI68i
-         VNVrB5rIpxqBmwdvqcQa+RW0MdLA4z3eTbeQcz5jvoL6IREGA/Mbi9fPPbHurDV7SO55
-         HYtaxEHXEqs8F8xdeywn+JbZOo2LJNnvCFAiAoxYg+AZlH0+BbiUjb2V05q4IZ/MrBcH
-         Bnc61rQKgLcgErSvVNjK2hEbYyfJO2EJrA0kP8BJJEo/6OH1rsesA4gCKXm4JkiP3DTl
-         Nfgg==
-X-Forwarded-Encrypted: i=1; AJvYcCVEk/TYWTIZRtB07hvCSRZUGoPAia47ysnOC8RWlGetkGluTYcjem/MMO9RIvmnGAGyP40GprxWwrk=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yy4+Vs0526jkOYKw09UzChZrzvoYUSH+CRmnOfRcC8lhZR+cDYb
-	/eNEHhkpY6Ig5Mi7X8VbItJqSyFQvt6j1iAcoFVnZEZYa1Cy7uOnPGO48lzssG8dP0IWiD8XfsN
-	N
-X-Gm-Gg: ASbGncu82uAZ3c0Pt82bZnXQMNmhCwE0J2iBRJ/g2uvILXTOs9uYnK4P7M3CeOteG0q
-	pTk0OUu2M4dKZYC9nziy1/qWel0rqlaZULa6YhcFO1jU8ZnkjrJD424Q1f+0frPJbhzrUyk0aiU
-	zDiMsPdGSQUjjaH2nF4SGEMznKr5PEipHS+tApIx4/wwjgsPPGMSuyhi5L4sAlxwKRBAml6Ewfg
-	hrrV4Y3hA9c16nlvjFG9Q8uk4u2yjMRT28W7d5r1SvWZMn7xTd+7vaAtos=
-X-Google-Smtp-Source: AGHT+IE+WdWttoicHGnSAYRa/Js50ySh4oFF39e3AO71tMfwm775Hmc486swefhbNY2eUNQZK3siyw==
-X-Received: by 2002:a05:600c:1c1c:b0:434:f1bd:1e40 with SMTP id 5b1f17b1804b1-4361c5d9386mr19966765e9.6.1733922994659;
-        Wed, 11 Dec 2024 05:16:34 -0800 (PST)
-Received: from localhost ([196.207.164.177])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-434f1125e69sm142392845e9.32.2024.12.11.05.16.33
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 11 Dec 2024 05:16:34 -0800 (PST)
-Date: Wed, 11 Dec 2024 16:16:30 +0300
-From: Dan Carpenter <dan.carpenter@linaro.org>
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Simon Horman <horms@verge.net.au>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Jozsef Kadlecsik <kadlec@netfilter.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-	linux-kernel@vger.kernel.org, Bartosz Golaszewski <brgl@bgdev.pl>,
-	David Laight <David.Laight@aculab.com>
-Subject: [PATCH net] ipvs: Fix clamp() order in ip_vs_conn_init()
-Message-ID: <1e0cf09d-406f-4b66-8ff5-25ddc2345e54@stanley.mountain>
+        d=1e100.net; s=20230601; t=1733925218; x=1734530018;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=jyglwL7lcLajD1vfvAC6TyqBHbq3YqYRZog/vZd+lPo=;
+        b=f8AdOA6np6WBd+Rj4YvqU1KJBy04i4RWrraOifFSAhqAhh/7k28+co1PVK0XsJepYG
+         rz4uxzsbUAod5ACVCb6CJluFXUndnUqazWVyNauHAJ4jZk6XPPDqoZWBBvArbVUDkiqy
+         eMP/yEpMpbyGXkPD5uo7+EI9O3nk2K7dL49h2ObnXYogngYogYt5T50Qn7SDAnDjtf58
+         IJxpArupOqZ5AWizPQzTsI68NOceoNlR5TSYj4GBiuPAOdVcO4sd0t8gacPF5+7PUsfT
+         aqT3zzXK+/BGR0ElU5rwD/XCS3Gx1D3NZOOFJS2OtF0kgqEZl6bzXVvfRKECk8S2G+0L
+         27Eg==
+X-Forwarded-Encrypted: i=1; AJvYcCU/v4eQMTqufc+v1GE5EMcb5646BchOcgDkVkShwFu2yVk6p59ul8yjh+HfnSn0kt5nnVeIZCKxub8=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwpZZG/Da+fQZfqzLLeLkjmmYYv8sZyYGySxOXD1VLGrGSm6VLW
+	EslGN9ubMgccDEsEN+sghHhWNkDQ02l1O6dErdZfRnTTfAyPWcWfxhHBHm2N5qupSnZUjWkLvoR
+	MGIWUfEqNPrclizcLOpXjNnx8AG7/Wrv3UjWsww==
+X-Gm-Gg: ASbGncuoJ1rXbBWo9U3p6SabifZvoFHhc4c7tVhWg9oi67SHTd7kyMg9cARthue5J9I
+	lv4M+Uy2JdyyQJTnhmQo/sgbypaT0gZR1losUYO8dua8k6PXgK2N/RJ65KJRhvhMAaz4=
+X-Google-Smtp-Source: AGHT+IGPGpFba0wsi4op1Gj+i5/QGCDpVBGPrx3rA3uLS79Kse28wu78qqyJ+hwtxlmidsvWthwfkHUhBW/gtPRZ2IA=
+X-Received: by 2002:a05:651c:1542:b0:300:33b1:f0d7 with SMTP id
+ 38308e7fff4ca-30240c9fc57mr9357831fa.5.1733925218339; Wed, 11 Dec 2024
+ 05:53:38 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-X-Mailer: git-send-email haha only kidding
+References: <1e0cf09d-406f-4b66-8ff5-25ddc2345e54@stanley.mountain>
+In-Reply-To: <1e0cf09d-406f-4b66-8ff5-25ddc2345e54@stanley.mountain>
+From: Bartosz Golaszewski <brgl@bgdev.pl>
+Date: Wed, 11 Dec 2024 14:53:27 +0100
+Message-ID: <CAMRc=McCc3G4D4rHVMfGBTdvi6z5Nbxqzg+k8iN11+vazffSnw@mail.gmail.com>
+Subject: Re: [PATCH net] ipvs: Fix clamp() order in ip_vs_conn_init()
+To: Dan Carpenter <dan.carpenter@linaro.org>
+Cc: Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>, 
+	Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, 
+	"David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org, 
+	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+	coreteam@netfilter.org, linux-kernel@vger.kernel.org, 
+	David Laight <David.Laight@aculab.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-We recently added some build time asserts to detect incorrect calls to
-clamp and it detected this bug which breaks the build.  The variable
-in this clamp is "max_avail" and it should be the first argument.  The
-code currently is the equivalent to max = max(max_avail, max).
+On Wed, Dec 11, 2024 at 2:16=E2=80=AFPM Dan Carpenter <dan.carpenter@linaro=
+.org> wrote:
+>
+> We recently added some build time asserts to detect incorrect calls to
+> clamp and it detected this bug which breaks the build.  The variable
+> in this clamp is "max_avail" and it should be the first argument.  The
+> code currently is the equivalent to max =3D max(max_avail, max).
+>
+> Reported-by: Linux Kernel Functional Testing <lkft@linaro.org>
+> Closes: https://lore.kernel.org/all/CA+G9fYsT34UkGFKxus63H6UVpYi5GRZkezT9=
+MRLfAbM3f6ke0g@mail.gmail.com/
+> Fixes: 4f325e26277b ("ipvs: dynamically limit the connection hash table")
+> Signed-off-by: Dan Carpenter <dan.carpenter@linaro.org>
+> ---
+> I've been trying to add stable CC's to my commits but I'm not sure the
+> netdev policy on this.  Do you prefer to add them yourself?
+>
+>  net/netfilter/ipvs/ip_vs_conn.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_c=
+onn.c
+> index 98d7dbe3d787..9f75ac801301 100644
+> --- a/net/netfilter/ipvs/ip_vs_conn.c
+> +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> @@ -1495,7 +1495,7 @@ int __init ip_vs_conn_init(void)
+>         max_avail -=3D 2;         /* ~4 in hash row */
+>         max_avail -=3D 1;         /* IPVS up to 1/2 of mem */
+>         max_avail -=3D order_base_2(sizeof(struct ip_vs_conn));
+> -       max =3D clamp(max, min, max_avail);
+> +       max =3D clamp(max_avail, min, max);
+>         ip_vs_conn_tab_bits =3D clamp_val(ip_vs_conn_tab_bits, min, max);
+>         ip_vs_conn_tab_size =3D 1 << ip_vs_conn_tab_bits;
+>         ip_vs_conn_tab_mask =3D ip_vs_conn_tab_size - 1;
+> --
+> 2.45.2
+>
 
-Reported-by: Linux Kernel Functional Testing <lkft@linaro.org>
-Closes: https://lore.kernel.org/all/CA+G9fYsT34UkGFKxus63H6UVpYi5GRZkezT9MRLfAbM3f6ke0g@mail.gmail.com/
-Fixes: 4f325e26277b ("ipvs: dynamically limit the connection hash table")
-Signed-off-by: Dan Carpenter <dan.carpenter@linaro.org>
----
-I've been trying to add stable CC's to my commits but I'm not sure the
-netdev policy on this.  Do you prefer to add them yourself?
-
- net/netfilter/ipvs/ip_vs_conn.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 98d7dbe3d787..9f75ac801301 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1495,7 +1495,7 @@ int __init ip_vs_conn_init(void)
- 	max_avail -= 2;		/* ~4 in hash row */
- 	max_avail -= 1;		/* IPVS up to 1/2 of mem */
- 	max_avail -= order_base_2(sizeof(struct ip_vs_conn));
--	max = clamp(max, min, max_avail);
-+	max = clamp(max_avail, min, max);
- 	ip_vs_conn_tab_bits = clamp_val(ip_vs_conn_tab_bits, min, max);
- 	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
- 	ip_vs_conn_tab_mask = ip_vs_conn_tab_size - 1;
--- 
-2.45.2
-
+Tested-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
+Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
