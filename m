@@ -1,213 +1,114 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2EC5239194;
-	Wed,  4 Dec 2024 18:15:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E6E5225A5F
+	for <lvs-devel@vger.kernel.org>; Wed, 11 Dec 2024 13:16:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.49
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1733336119; cv=none; b=I1u6dOf63owzQoNJ7OqP1AB5Tka2RClfZhkkWfTIEuVsoY+Mz1O8sURmzR+Q7GYCffog0kqTq7VNllyb+fO0wiIYoH4vQ2wLUQO8DokReeSUS4DhOrlcLvTRJnY7/oetZDW/vFzTkHPWvz+VmKBkC1FZuqGH6dHVemIGCQRVL/Q=
+	t=1733922998; cv=none; b=HdaIWKmQgMb5bImrQxoJf+WfRfOSKPSOc1En+xsV3o7RIwTObNfzI1YkgeX1rKH3qSE+dNUK1jp2p5ZN/18raK9d1fKOtMcdETWQA/UPKmylnTiKLEWC4ek+o1DJQknbmT6vYrp5A1BDMYlJfKeOSBpyFDXQbqVxMxQDtYBcXOs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1733336119; c=relaxed/simple;
-	bh=fCWYLBudtP48uVyMNZ6vbzB8lThADSa0FPsaUtyIHqs=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=AJQVgLxTAGYZEWWdbbd7qDVdOIgoqrU0yDbHqPpn8zhcIMfq1RVf1lZghpOnAm964GsJ2Qw+2NDzVijvVDxLy6mwB9Ak/NvigpNp13eQciQ4tRMG0Pd2RRYPuxYzHT7rwA3/KLsvH5J7AR40N0KSuyArWAqcGkX3F78gI71nN4Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=vWvBpKlv; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1733922998; c=relaxed/simple;
+	bh=vHnOqrE9U3DzgtMQ2aewHIsU1Cqb1sBnG7bs/0nghbw=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=S+MeWwacsGU0Zxds1uuQSI19LazF7I8MRoxZ14BFTabf3do6qm4k+EtVI3v9uGsMmttn93sURdJ5VbvCiIMrwbwl2yLnvT9hsQ5irsgNVlq7RaYKlQR0FutrYQBq/E69gi3gbzGxHaqpqJTuiGLoqi2bdlPUOOeAhhnRw89mI3c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org; spf=pass smtp.mailfrom=linaro.org; dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b=M3C0fLXs; arc=none smtp.client-ip=209.85.128.49
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linaro.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linaro.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="vWvBpKlv"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id D223F242D9;
-	Wed,  4 Dec 2024 20:09:58 +0200 (EET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=wMLfpq7o72dbt9EKB82m0Efw/bUExwZqJxraR2ONnR0=; b=vWvBpKlvt2JQ
-	SGKLg+tpFUPShpFDOzUC5GPtfxSjXuP1oUlLhmmBY/HICOfqKRrd9y2vwQNEbxcm
-	5NyCrx1sElYDE2oYBzcmprHriKJLvOoF5mlCLSP6Ied2apaEuSVFBl62965kRuR7
-	ecvDYnW9TgFhgi73Bl70FR7+PuPt0fEzzlgbaaTTMuubm9U6zH8rS927uKBiXqZ2
-	oDDuc5rNft93zhS80wF9dRS8/3OqgpCpAEDQ+MVEp/0ObRM5jQdx2ySKuxOaNsrM
-	D8sEUj3IhtGESvdsiJ4OwAXMBVCKbha5OmHkStHFMY/k5gzA4U8yf9Pxr6dYNBtf
-	iuJT8LujghYbiWLrnmSEMMDdn+ha3igzrqa3SAbv25UjTM9dwLUcB1cGck3sWgas
-	R2b4kXpnS1EodijsQuZUdvGfiV2N4oY3RcacGndlTPPYZBe3oP/Y+0u8f+59Y8Yo
-	9BWubVYHHcQVrHPI+wu/Pe1/FgsI02nCZ8taPZ8eJH+uIZQInBTU318zxRCOhISb
-	lwvl5zJv8cOsETc2W+nP0r0YBpwFd3PweFxP0KaC34VrDFV/9mbov82nxCbZHbTI
-	TiT55Y/LgLRnealHq/tNoCoKR3qyWMSTDeP+yKKVobFh6oj/5b+Y/PqI+VoKuwTU
-	3zYwZSC99bjOr79HtCPATZMHNP3uifE=
-Received: from ink.ssi.bg (ink.ssi.bg [193.238.174.40])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Wed,  4 Dec 2024 20:09:57 +0200 (EET)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by ink.ssi.bg (Postfix) with ESMTPSA id 7965416EED;
-	Wed,  4 Dec 2024 20:09:57 +0200 (EET)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.17.1) with ESMTP id 4B4I9rxA065623;
-	Wed, 4 Dec 2024 20:09:55 +0200
-Date: Wed, 4 Dec 2024 20:09:53 +0200 (EET)
-From: Julian Anastasov <ja@ssi.bg>
-To: Florian Westphal <fw@strlen.de>
-cc: netfilter-devel@vger.kernel.org, horms@verge.net.au,
-        lvs-devel@vger.kernel.org
-Subject: Re: [PATCH nf-next] ipvs: speed up reads from ip_vs_conn proc file
-In-Reply-To: <20241203110840.10411-1-fw@strlen.de>
-Message-ID: <4c02e290-d9be-19f1-013e-9829821ae115@ssi.bg>
-References: <20241203110840.10411-1-fw@strlen.de>
+	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="M3C0fLXs"
+Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-434e69857d9so4119995e9.0
+        for <lvs-devel@vger.kernel.org>; Wed, 11 Dec 2024 05:16:36 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google; t=1733922995; x=1734527795; darn=vger.kernel.org;
+        h=content-disposition:mime-version:message-id:subject:cc:to:from:date
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=U0uQFK6fLtwRvjcx8HTnxkyo0H7NF49q4SiozMOoHr0=;
+        b=M3C0fLXsAXtW9jjA7Dw43HxhJb/ma2hwbeaSImzzX7Wu7RYcE42u9NHmp+NsU0LxVR
+         udhLSSw6LSOGvUhrV0RjqVPLYf7nmiof1q/OnqAqWOxYdhUlA3OiI6gcPW9UPqUIVx+B
+         XeB3l1tY3OAa76qITBRVjT/LsZKCc1Oyf7qj5tLDzDw4KdFRJAui6XPZBA6BtPDCv+QL
+         aH6S4yeBmVOaaxDEHVJ6uk72umhFvGCRwdRvTf/AnokJ90+ZLpqQWusrWyp9I+OYSKJo
+         qMFq4jihLNTzIn+KtRcb9w8X5QY3hdoRuQHdWvdW4IaBXzhVbyRu48X3+j5L7neRv2C1
+         nFjQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1733922995; x=1734527795;
+        h=content-disposition:mime-version:message-id:subject:cc:to:from:date
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=U0uQFK6fLtwRvjcx8HTnxkyo0H7NF49q4SiozMOoHr0=;
+        b=cHTMZrum5qRK78jsHnJD4RcjtJq6rj1E1cxr05j8+yNfuWXpWzY2VeSFOEVjOZmbPv
+         TQ3KBDuDv98HLSUqt7XrzITM9ALbTJeFtqi2K9ojVByc2Ri9ttWePQDI9uS3mNslI68i
+         VNVrB5rIpxqBmwdvqcQa+RW0MdLA4z3eTbeQcz5jvoL6IREGA/Mbi9fPPbHurDV7SO55
+         HYtaxEHXEqs8F8xdeywn+JbZOo2LJNnvCFAiAoxYg+AZlH0+BbiUjb2V05q4IZ/MrBcH
+         Bnc61rQKgLcgErSvVNjK2hEbYyfJO2EJrA0kP8BJJEo/6OH1rsesA4gCKXm4JkiP3DTl
+         Nfgg==
+X-Forwarded-Encrypted: i=1; AJvYcCVEk/TYWTIZRtB07hvCSRZUGoPAia47ysnOC8RWlGetkGluTYcjem/MMO9RIvmnGAGyP40GprxWwrk=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy4+Vs0526jkOYKw09UzChZrzvoYUSH+CRmnOfRcC8lhZR+cDYb
+	/eNEHhkpY6Ig5Mi7X8VbItJqSyFQvt6j1iAcoFVnZEZYa1Cy7uOnPGO48lzssG8dP0IWiD8XfsN
+	N
+X-Gm-Gg: ASbGncu82uAZ3c0Pt82bZnXQMNmhCwE0J2iBRJ/g2uvILXTOs9uYnK4P7M3CeOteG0q
+	pTk0OUu2M4dKZYC9nziy1/qWel0rqlaZULa6YhcFO1jU8ZnkjrJD424Q1f+0frPJbhzrUyk0aiU
+	zDiMsPdGSQUjjaH2nF4SGEMznKr5PEipHS+tApIx4/wwjgsPPGMSuyhi5L4sAlxwKRBAml6Ewfg
+	hrrV4Y3hA9c16nlvjFG9Q8uk4u2yjMRT28W7d5r1SvWZMn7xTd+7vaAtos=
+X-Google-Smtp-Source: AGHT+IE+WdWttoicHGnSAYRa/Js50ySh4oFF39e3AO71tMfwm775Hmc486swefhbNY2eUNQZK3siyw==
+X-Received: by 2002:a05:600c:1c1c:b0:434:f1bd:1e40 with SMTP id 5b1f17b1804b1-4361c5d9386mr19966765e9.6.1733922994659;
+        Wed, 11 Dec 2024 05:16:34 -0800 (PST)
+Received: from localhost ([196.207.164.177])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-434f1125e69sm142392845e9.32.2024.12.11.05.16.33
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 11 Dec 2024 05:16:34 -0800 (PST)
+Date: Wed, 11 Dec 2024 16:16:30 +0300
+From: Dan Carpenter <dan.carpenter@linaro.org>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Simon Horman <horms@verge.net.au>,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
+	Jozsef Kadlecsik <kadlec@netfilter.org>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+	linux-kernel@vger.kernel.org, Bartosz Golaszewski <brgl@bgdev.pl>,
+	David Laight <David.Laight@aculab.com>
+Subject: [PATCH net] ipvs: Fix clamp() order in ip_vs_conn_init()
+Message-ID: <1e0cf09d-406f-4b66-8ff5-25ddc2345e54@stanley.mountain>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+X-Mailer: git-send-email haha only kidding
 
+We recently added some build time asserts to detect incorrect calls to
+clamp and it detected this bug which breaks the build.  The variable
+in this clamp is "max_avail" and it should be the first argument.  The
+code currently is the equivalent to max = max(max_avail, max).
 
-	Hello,
+Reported-by: Linux Kernel Functional Testing <lkft@linaro.org>
+Closes: https://lore.kernel.org/all/CA+G9fYsT34UkGFKxus63H6UVpYi5GRZkezT9MRLfAbM3f6ke0g@mail.gmail.com/
+Fixes: 4f325e26277b ("ipvs: dynamically limit the connection hash table")
+Signed-off-by: Dan Carpenter <dan.carpenter@linaro.org>
+---
+I've been trying to add stable CC's to my commits but I'm not sure the
+netdev policy on this.  Do you prefer to add them yourself?
 
-On Tue, 3 Dec 2024, Florian Westphal wrote:
+ net/netfilter/ipvs/ip_vs_conn.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> Reading is very slow because ->start() performs a linear re-scan of the
-> entire hash table until it finds the successor to the last dumped
-> element.  The current implementation uses 'pos' as the 'number of
-> elements to skip, then does linear iteration until it has skipped
-> 'pos' entries.
-> 
-> Store the last bucket and the number of elements to skip in that
-> bucket instead, so we can resume from bucket b directly.
-> 
-> before this patch, its possible to read ~35k entries in one second, but
-> each read() gets slower as the number of entries to skip grows:
-> 
-> time timeout 60 cat /proc/net/ip_vs_conn > /tmp/all; wc -l /tmp/all
-> real    1m0.007s
-> user    0m0.003s
-> sys     0m59.956s
-> 140386 /tmp/all
-> 
-> Only ~100k more got read in remaining the remaining 59s, and did not get
-> nowhere near the 1m entries that are stored at the time.
-> 
-> after this patch, dump completes very quickly:
-> time cat /proc/net/ip_vs_conn > /tmp/all; wc -l /tmp/all
-> real    0m2.286s
-> user    0m0.004s
-> sys     0m2.281s
-> 1000001 /tmp/all
-> 
-> Signed-off-by: Florian Westphal <fw@strlen.de>
-
-	Nice improvement, thanks!
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  net/netfilter/ipvs/ip_vs_conn.c | 50 ++++++++++++++++++---------------
->  1 file changed, 28 insertions(+), 22 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index 7aba4760bbff..73f3dac159bb 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -1046,28 +1046,35 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
->  #ifdef CONFIG_PROC_FS
->  struct ip_vs_iter_state {
->  	struct seq_net_private	p;
-> -	struct hlist_head	*l;
-> +	unsigned int		bucket;
-> +	unsigned int		skip_elems;
->  };
->  
-> -static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
-> +static void *ip_vs_conn_array(struct ip_vs_iter_state *iter)
->  {
->  	int idx;
->  	struct ip_vs_conn *cp;
-> -	struct ip_vs_iter_state *iter = seq->private;
->  
-> -	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
-> +	for (idx = iter->bucket; idx < ip_vs_conn_tab_size; idx++) {
-> +		unsigned int skip = 0;
-> +
->  		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
->  			/* __ip_vs_conn_get() is not needed by
->  			 * ip_vs_conn_seq_show and ip_vs_conn_sync_seq_show
->  			 */
-> -			if (pos-- == 0) {
-> -				iter->l = &ip_vs_conn_tab[idx];
-> +			if (skip >= iter->skip_elems) {
-> +				iter->bucket = idx;
->  				return cp;
->  			}
-> +
-> +			++skip;
->  		}
-> +
-> +		iter->skip_elems = 0;
->  		cond_resched_rcu();
->  	}
->  
-> +	iter->bucket = idx;
->  	return NULL;
->  }
->  
-> @@ -1076,9 +1083,14 @@ static void *ip_vs_conn_seq_start(struct seq_file *seq, loff_t *pos)
->  {
->  	struct ip_vs_iter_state *iter = seq->private;
->  
-> -	iter->l = NULL;
->  	rcu_read_lock();
-> -	return *pos ? ip_vs_conn_array(seq, *pos - 1) :SEQ_START_TOKEN;
-> +	if (*pos == 0) {
-> +		iter->skip_elems = 0;
-> +		iter->bucket = 0;
-> +		return SEQ_START_TOKEN;
-> +	}
-> +
-> +	return ip_vs_conn_array(iter);
->  }
->  
->  static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
-> @@ -1086,28 +1098,22 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
->  	struct ip_vs_conn *cp = v;
->  	struct ip_vs_iter_state *iter = seq->private;
->  	struct hlist_node *e;
-> -	struct hlist_head *l = iter->l;
-> -	int idx;
->  
->  	++*pos;
->  	if (v == SEQ_START_TOKEN)
-> -		return ip_vs_conn_array(seq, 0);
-> +		return ip_vs_conn_array(iter);
->  
->  	/* more on same hash chain? */
->  	e = rcu_dereference(hlist_next_rcu(&cp->c_list));
-> -	if (e)
-> +	if (e) {
-> +		iter->skip_elems++;
->  		return hlist_entry(e, struct ip_vs_conn, c_list);
-> -
-> -	idx = l - ip_vs_conn_tab;
-> -	while (++idx < ip_vs_conn_tab_size) {
-> -		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
-> -			iter->l = &ip_vs_conn_tab[idx];
-> -			return cp;
-> -		}
-> -		cond_resched_rcu();
->  	}
-> -	iter->l = NULL;
-> -	return NULL;
-> +
-> +	iter->skip_elems = 0;
-> +	iter->bucket++;
-> +
-> +	return ip_vs_conn_array(iter);
->  }
->  
->  static void ip_vs_conn_seq_stop(struct seq_file *seq, void *v)
-> -- 
-> 2.45.2
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 98d7dbe3d787..9f75ac801301 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1495,7 +1495,7 @@ int __init ip_vs_conn_init(void)
+ 	max_avail -= 2;		/* ~4 in hash row */
+ 	max_avail -= 1;		/* IPVS up to 1/2 of mem */
+ 	max_avail -= order_base_2(sizeof(struct ip_vs_conn));
+-	max = clamp(max, min, max_avail);
++	max = clamp(max_avail, min, max);
+ 	ip_vs_conn_tab_bits = clamp_val(ip_vs_conn_tab_bits, min, max);
+ 	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
+ 	ip_vs_conn_tab_mask = ip_vs_conn_tab_size - 1;
+-- 
+2.45.2
 
