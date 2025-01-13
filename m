@@ -1,49 +1,49 @@
 Received: from stravinsky.debian.org (stravinsky.debian.org [82.195.75.108])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 320B41C5F26
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3204B1C5F20
 	for <lvs-devel@vger.kernel.org>; Mon, 13 Jan 2025 19:25:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=82.195.75.108
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736796303; cv=none; b=MmvJMzi3JNsChmCt7SUOeqYBsH6tbfx6DZ1WA2IqgoKPjg77PIR9fUUvDpNOMu3s09QqMNnJhkOBEDSoCrkt9s+mbDqkOsqQIHA/zqn0bGBabDtYoHYk0L9YWtZkYzSZL8NfTn8++qfEKPMargq1fqd+GaTMYVEEHb0GYkJGofk=
+	t=1736796303; cv=none; b=Li+tyvmvdsLW3ejejlhDCSHXKmesIvSlyiKFs9HaTtWNmX7oyIc8M8bl6HZT//NHQmRPe4l+76Mi7XhQnIYef3r2cfQlkEeT5EaxWbzezEP/NyD4WVCnuBxhCPc7kERfbDZgiyG+bo/Vc7Uni4ZiSIiN4InwUEL0n7R1BBmm/MI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1736796303; c=relaxed/simple;
-	bh=Mmzd/Qs/6PMLmyl6rAemU14Pbu8UQrnl5P2kH97dC/U=;
+	bh=Auw4N6fDDSC6dS3IXR0ciZKaaden0gg0uBUHY+WKx4g=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=a1m7ZKjtueVgAwGFuDEmKNu8CeuCZkIJs03E/ymLFWj5Z1/hqdv8JcEskadNQwz+rlcxCdhhLIualEUdLBaobJ0Rq3eL8VbvSxwAGtPL8Gta5jjSwHXuUIQwOeJH6+fnnjYTgOyJ4cyRRl8q1bByj4WKQkcaDOTl2p5kqJ1mXu0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=debian.org; spf=none smtp.mailfrom=debian.org; dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b=t8xYnDdf; arc=none smtp.client-ip=82.195.75.108
+	 MIME-Version; b=DSZMPk8nV7uKwjn6gvBLnYf7BJnxcpM4srdUYVr3+zTjGSQXthvqKGryZcUUlLguCOhvJM312oSPRurBnVIas579AelvzpRFahRQn3LDEhV2+oLRfqG53JwqjdN0j3rgCov2F2b7Bu5NNmWwnLbGrcCeDE17UD6CnCmoQbmftIc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=debian.org; spf=none smtp.mailfrom=debian.org; dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b=UXUn85mO; arc=none smtp.client-ip=82.195.75.108
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=debian.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=debian.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b="t8xYnDdf"
+	dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b="UXUn85mO"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=debian.org;
 	s=smtpauto.stravinsky; h=X-Debian-User:Content-Transfer-Encoding:MIME-Version
 	:References:In-Reply-To:Message-ID:Date:Subject:To:From:Reply-To:Cc:
 	Content-Type:Content-ID:Content-Description;
-	bh=ewv8G3kcFGkD6EdxHcr5N72+DovT78ZIeujWS9V24p4=; b=t8xYnDdff4mZO6Dqfe2B1p1SC5
-	vrib//TDH2vskGRz2CrQYB8zB2o813fnmGOw4TJFl2VFO9dZi59C5R6eZhCGfiZGW2JDayMs5Bo9W
-	g8iOr8AWbAFbGJWQKBX65d7/JflQGdvZHJF/krHhFWBSm3SVB4LgFKxKdIos2MaSVMRX6XXD9eR9m
-	p+rtEzQZMdPrvhiyR28BRosY9AHm4Lyb376YERqpQwoFjmYxm3BpADvvo1VZJkaId7jDKITi2XDnA
-	9o5Mdc4UL2KHl4IZ6jZ3MpkCQ8FqhzLwGTS+9KN0OFzrPI160diFR6IMzlc40c9+pXVHQxwuPkHoK
-	QUJBZIbg==;
+	bh=LuoWwOb0wSf4ZEEqhgEKs2VEBV5YX2//HP/+biFdsnE=; b=UXUn85mOvIwq1aEipmlcQB1F7f
+	tAm7ZpoCAMWffO0zh+PjR3BRL871rqSt6cTvwk/K4jqAqRnsdEJSJQrsR3510qNFkT2k3RC/rZo34
+	DOb1QqEot57jp9zsz273zDC/4CYfzk8Ww/1vuwfG4kDGaaFoLgPD8ri6jCOqV0FtZGZ2IhCdGpnVF
+	NUTJMP0yBdLEUKNE0pNtEyjEWsrSrKBPP9VyJTYTuSX3/SCx9kZENu/hk90uKyzDpUMHHrVaDjmjr
+	LFvwpSJCjb+kvBwycsdgHozWvcnC6fD9G/xCT0/jwQ/IIZb8AXpnR6snENU7RmmejB0JhOnFcEvgj
+	43YrF/Ag==;
 Received: from authenticated user
 	by stravinsky.debian.org with esmtpsa (TLS1.3:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256)
 	(Exim 4.94.2)
 	(envelope-from <azazel@debian.org>)
-	id 1tXQ3X-000JbQ-6Y
+	id 1tXQ3X-000JbN-5P
 	for lvs-devel@vger.kernel.org; Mon, 13 Jan 2025 19:24:59 +0000
 Received: from ulthar.dreamlands.azazel.net ([2001:8b0:fb7d:d6d7:2e4d:54ff:fe4b:a9ae])
 	by taras.nevrast.org with esmtpsa  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 	(Exim 4.96)
 	(envelope-from <azazel@debian.org>)
-	id 1tXQ3W-001Uuz-1T
+	id 1tXQ3W-001Uuz-11
 	for lvs-devel@vger.kernel.org;
 	Mon, 13 Jan 2025 19:24:58 +0000
 From: Jeremy Sowden <azazel@debian.org>
 To: LVS Devel <lvs-devel@vger.kernel.org>
-Subject: [PATCH ipvsadm v2 4/5] Support environmental and command-line `*FLAGS` variable in Makefiles
-Date: Mon, 13 Jan 2025 19:24:49 +0000
-Message-ID: <20250113192450.3302635-5-azazel@debian.org>
+Subject: [PATCH ipvsadm v2 1/5] ipvsadm: increase maximum weight value
+Date: Mon, 13 Jan 2025 19:24:46 +0000
+Message-ID: <20250113192450.3302635-2-azazel@debian.org>
 X-Mailer: git-send-email 2.45.2
 In-Reply-To: <20250113192450.3302635-1-azazel@debian.org>
 References: <20250113192450.3302635-1-azazel@debian.org>
@@ -59,88 +59,42 @@ X-SA-Exim-Mail-From: azazel@debian.org
 X-SA-Exim-Scanned: No (on taras.nevrast.org); SAEximRunCond expanded to false
 X-Debian-User: azazel
 
-The Makefiles don't use `CPPFLAGS` or `LDFLAGS`, and set `CFLAGS`
-unconditionally.  Rename `CFLAGS`, and add `CPPFLAGS` and `LDFLAGS` to the
-compilation and linking recipes in order to support the common patterns of
-providing these flags via the command-line and the environment.
+The IPVS kernel module accepts weight up to 2,147,483,647 (INT_MAX), but ipvsadm
+limits it to 65,535.  Raise the user space maximum to match the kernel.
 
+Link: https://bugs.debian.org/814348
 Signed-off-by: Jeremy Sowden <azazel@debian.org>
 ---
- Makefile         |  8 ++++----
- libipvs/Makefile | 12 ++++++------
- 2 files changed, 10 insertions(+), 10 deletions(-)
+ ipvsadm.8 | 2 +-
+ ipvsadm.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/Makefile b/Makefile
-index d247d4075160..d79f72496000 100644
---- a/Makefile
-+++ b/Makefile
-@@ -47,9 +47,9 @@ INSTALL		= install
- STATIC_LIBS	= libipvs/libipvs.a
- 
- ifeq "${ARCH}" "sparc64"
--    CFLAGS = -Wall -Wunused -Wstrict-prototypes -g -m64 -pipe -mcpu=ultrasparc -mcmodel=medlow
-+    DEFAULT_CFLAGS = -Wall -Wunused -Wstrict-prototypes -g -m64 -pipe -mcpu=ultrasparc -mcmodel=medlow
- else
--    CFLAGS = -Wall -Wunused -Wstrict-prototypes -g
-+    DEFAULT_CFLAGS = -Wall -Wunused -Wstrict-prototypes -g
- endif
- 
- 
-@@ -88,7 +88,7 @@ libs:
- 		make -C libipvs
- 
- ipvsadm:	$(OBJS) $(STATIC_LIBS)
--		$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
-+		$(CC) $(DEFAULT_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
- 
- install:        all
- 		if [ ! -d $(SBIN) ]; then $(MKDIR) -p $(SBIN); fi
-@@ -140,4 +140,4 @@ debs:
- 		dpkg-buildpackage
- 
- %.o:	%.c
--		$(CC) $(CFLAGS) $(INCLUDE) $(DEFINES) -c -o $@ $<
-+		$(CC) $(DEFAULT_CFLAGS) $(CFLAGS) $(INCLUDE) $(DEFINES) $(CPPFLAGS) -c -o $@ $<
-diff --git a/libipvs/Makefile b/libipvs/Makefile
-index b31c8eac514d..f29671178422 100644
---- a/libipvs/Makefile
-+++ b/libipvs/Makefile
-@@ -2,10 +2,10 @@
- 
- CC		= gcc
- PKG_CONFIG	?= pkg-config
--CFLAGS		= -Wall -Wunused -Wstrict-prototypes -g -fPIC
-+DEFAULT_CFLAGS	= -Wall -Wunused -Wstrict-prototypes -g -fPIC
- ifneq (0,$(HAVE_NL))
--CFLAGS		+= -DLIBIPVS_USE_NL
--CFLAGS		+= $(shell \
-+DEFINES		+= -DLIBIPVS_USE_NL
-+DEFAULT_CFLAGS	+= $(shell \
- 		if which $(PKG_CONFIG) > /dev/null 2>&1; then \
- 		  if   $(PKG_CONFIG) --cflags libnl-3.0  2> /dev/null; then :; \
- 		  elif $(PKG_CONFIG) --cflags libnl-2.0  2> /dev/null; then :; \
-@@ -16,7 +16,7 @@ endif
- 
- INCLUDE		+= $(shell if [ -f ../../ip_vs.h ]; then	\
- 		     echo "-I../../."; fi;)
--DEFINES		= $(shell if [ ! -f ../../ip_vs.h ]; then	\
-+DEFINES		+= $(shell if [ ! -f ../../ip_vs.h ]; then	\
- 		    echo "-DHAVE_NET_IP_VS_H"; fi;)
- DEFINES		+= $(shell if which $(PKG_CONFIG) > /dev/null 2>&1; then \
- 			 if   $(PKG_CONFIG) --exists libnl-3.0; then :; \
-@@ -34,10 +34,10 @@ $(STATIC_LIB):	libipvs.o ip_vs_nl_policy.o
- 		ar rv $@ $^
- 
- $(SHARED_LIB):	libipvs.o ip_vs_nl_policy.o
--		$(CC) -shared -Wl,-soname,$@ -o $@ $^
-+		$(CC) $(DEFAULT_CFLAGS) $(CFLAGS) -shared -Wl,-soname,$@ $(LDFLAGS) -o $@ $^
- 
- %.o:		%.c
--		$(CC) $(CFLAGS) $(INCLUDE) $(DEFINES) -c -o $@ $<
-+		$(CC) $(DEFAULT_CFLAGS) $(CFLAGS) $(INCLUDE) $(DEFINES) $(CPPFLAGS) -c -o $@ $<
- 
- clean:
- 		rm -f *.[ao] *~ *.orig *.rej core *.so
+diff --git a/ipvsadm.8 b/ipvsadm.8
+index b3bc822aaafc..3d7541a4bf62 100644
+--- a/ipvsadm.8
++++ b/ipvsadm.8
+@@ -386,7 +386,7 @@ servers are added or modified.
+ .B -w, --weight \fIweight\fP
+ \fIWeight\fP is an integer specifying the capacity  of a server
+ relative to the others in the pool. The valid values of \fIweight\fP
+-are 0 through to 65535. The default is 1. Quiescent servers are
++are 0 through to 2147483647. The default is 1. Quiescent servers are
+ specified with a weight of zero. A quiescent server will receive no
+ new jobs but still serve the existing jobs, for all scheduling
+ algorithms distributed with the Linux Virtual Server. Setting a
+diff --git a/ipvsadm.c b/ipvsadm.c
+index 663d47ab1138..42f31a20e596 100644
+--- a/ipvsadm.c
++++ b/ipvsadm.c
+@@ -762,7 +762,7 @@ parse_options(int argc, char **argv, struct ipvs_command_entry *ce,
+ 		case 'w':
+ 			set_option(options, OPTC_WEIGHT);
+ 			if ((ce->dest.weight =
+-			     string_to_number(optarg, 0, 65535)) == -1)
++			     string_to_number(optarg, 0, INT_MAX)) == -1)
+ 				fail(2, "illegal weight specified");
+ 			break;
+ 		case 'x':
 -- 
 2.45.2
 
