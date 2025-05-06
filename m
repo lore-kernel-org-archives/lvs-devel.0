@@ -1,97 +1,57 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F4093320F;
-	Fri,  2 May 2025 22:16:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 255F825C6EA;
+	Tue,  6 May 2025 17:20:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746224174; cv=none; b=deOXzUcsRk3SsNlV/KZOkD28gESqhNILEVexQKKpkzs+vZxyrPyH5QKWorwdTy2CEJ7ntBtJt6CfhKJ1rnrbxlFSnTZli1XVvZV3mEVBuZaliC/5AdEfHgbyCkiVrabH1KosoTsiXiXGxkNxQ7me9IEZ8HBiLTnwJOiK5mdphAA=
+	t=1746552050; cv=none; b=QLNoHQpX845afLQuOosleWYfKqJNkGhph1gA2IRaK++VOYZeHt7TU6hADj/GFog9R7HsXNLIXxiz31shqIxTufLs4q+9DxiicLmJG4wn6k7XiEpo03HOyEkvvdZynVSZ7OWje3ty6QYvSafCiW/cgmLlgsoYWyOUQQ0rOYQ6lHs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746224174; c=relaxed/simple;
-	bh=YbIgEoWZ+RDbdv/qNR2kvQ/QsB+i63R4L9kxQgvqDSI=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=DE915aOylP9eC97bBwVSdB52JPqcUgpLKvHPwb/6sVHhgbKPAew1Ep4rW1DPDXrgEXwAYtLqbodNToXDma0hzUp4TchCDZEoNW3zM6iKYPSPmHc/GdgdSJh7Pnea5Cc5cjTPJk+VUGbWKYwzd/VLRqhpm3YOs/lm8V3Jy+tbe+c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=emae7WEZ; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1746552050; c=relaxed/simple;
+	bh=Jrl24qKIrJcrTt9cLE88QccwkTInmMzCHE8X6UhcXG8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=lzghjQNPeRaHERvfJESmNhIIyRmdfGOYOQIKmgu69K2yD1333O88Th3xdCjN59IPTls548GZ6pFLtxOzunWeErGo+yyBcByNY27j5Z3wteG9QStcpRqv8jxN3Fwa1RPrfqCQ6i4Yo7NqCGbeWb6CBLRzRcRGelvYkknqjY/6/Gw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KKaXvcIP; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="emae7WEZ"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id E1DB520196;
-	Sat,  3 May 2025 01:16:05 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=GV5jrpCeKAbrT1H1amlypy3VO6Qao+dT06uekrv1lr4=; b=emae7WEZg8jY
-	mX2N3BEU26n9sa4PtsCMXAhoUO0syALZlDBibW4Ownage8AkLcA1t2iY/52bR9eX
-	6Bzs08CwTYT6P89xZ0yoBQCl+5IKtIt/vF0uvmF+y+EKQ7Hd+GSYy4mPHfqxpx+3
-	Da3XIUMdp6/Vefu5lQTwWMWw0/5k+rrLTuXz0M/7LH74SUot/+r8Xq6Pw9lx+MOH
-	LVn4hBys+yNfnDw6dmuMRpIwWHe83W8WkqdqK0Ww4ppD1zgF4+sTjatc4DZxxJSX
-	rzJ23L5trl1j7shaqZyXcUNNCJuyof2SZM8RrNP5QnWjSdEWIBewSVFfVZimoXVb
-	8p83XEgAmz+8OJk5Zp6Hv9goUE036ApOxHYMm5OQM73fKYS8fN5DYcfDr+TjpbrX
-	DVxF4a22QYIuIQY9eCJcsrJsJsRvginLheo+LCsf/iHlxZ3itaauN+A0OBxZceym
-	i3YWx5EMXnuCPzKRtE3zCdtvkbfazAerRlHqItbMKNy9lEQA8IMxS3W8/vTguosw
-	qDNgg6he5+O4toKPRAbI/WCpkr4iYxAYkWa/tmKr6YVyl6g28RkFT2A6GhaLOds1
-	kpLn13qHjJsfylMMwJsr7xTvBuibXs0TxetmmTJfLRCCigVOuxr2aywQYLMzVEN0
-	fW8dQ6YxF79qV/mr+rI6PPpYoAb76Zg=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Sat,  3 May 2025 01:16:04 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 3600961BC1;
-	Sat,  3 May 2025 01:16:03 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.17.1) with ESMTP id 542MFvKL069117;
-	Sat, 3 May 2025 01:15:58 +0300
-Date: Sat, 3 May 2025 01:15:57 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: syzbot <syzbot+04b9a82855c8aed20860@syzkaller.appspotmail.com>
-cc: coreteam@netfilter.org, davem@davemloft.net, edumazet@google.com,
-        horms@verge.net.au, kadlec@netfilter.org, kuba@kernel.org,
-        linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org,
-        netdev@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        pabeni@redhat.com, pablo@netfilter.org,
-        syzkaller-bugs@googlegroups.com
-Subject: Re: [syzbot] [lvs?] KMSAN: uninit-value in do_output_route4
-In-Reply-To: <68138dfa.050a0220.14dd7d.0017.GAE@google.com>
-Message-ID: <70eb95f5-6fe9-1905-70b7-709eacd48b19@ssi.bg>
-References: <68138dfa.050a0220.14dd7d.0017.GAE@google.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KKaXvcIP"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 02907C4CEE4;
+	Tue,  6 May 2025 17:20:48 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1746552050;
+	bh=Jrl24qKIrJcrTt9cLE88QccwkTInmMzCHE8X6UhcXG8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=KKaXvcIP8WnYVbGMkEgX543fbXo8iiZ/bSzVhgvCnQgCBO4yJmJxo3EJHmZ0LlOWR
+	 4o+qBof/HmYLlC3qCrg3D8QfL97n0a00hwMulg6mA/twsT64bXgeCoUfvcxZ5NteCk
+	 M/v+W5LnS+TYF5URhXUje0VFlbiieeEBgutOwAk3oT71zW4o6uLKYIAsSdjVuPTS9H
+	 CCc1vPJkmJbhhEqR31mTJiM6GVR96m0fLxsB9WxM+nY4b9sKeDb9afG+aVs+vENXyp
+	 325+ERFRWGqm9QZKc/w3hSCf/Lhi2nDIoHzzXgKMxBeWymiwUNu1k9CcHlOsHvbC9z
+	 jAb80j6IyPcxQ==
+Date: Tue, 6 May 2025 18:20:46 +0100
+From: Simon Horman <horms@kernel.org>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>,
+	netfilter-devel@vger.kernel.org
+Subject: Re: [PATCH nf] ipvs: fix uninit-value for saddr in do_output_route4
+Message-ID: <20250506172046.GX3339421@horms.kernel.org>
+References: <20250502220118.68234-1-ja@ssi.bg>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20250502220118.68234-1-ja@ssi.bg>
 
-
-	Hello,
-
-On Thu, 1 May 2025, syzbot wrote:
-
-> Hello,
+On Sat, May 03, 2025 at 01:01:18AM +0300, Julian Anastasov wrote:
+> syzbot reports for uninit-value for the saddr argument [1].
+> commit 4754957f04f5 ("ipvs: do not use random local source address for
+> tunnels") already implies that the input value of saddr
+> should be ignored but the code is still reading it which can prevent
+> to connect the route. Fix it by changing the argument to ret_saddr.
 > 
-> syzbot found the following issue on:
-> 
-> HEAD commit:    bc3372351d0c Merge tag 'for-6.15-rc3-tag' of git://git.ker..
-> git tree:       upstream
-> console output: https://syzkaller.appspot.com/x/log.txt?x=12d64574580000
-> kernel config:  https://syzkaller.appspot.com/x/.config?x=fca45111586bf9a6
-> dashboard link: https://syzkaller.appspot.com/bug?extid=04b9a82855c8aed20860
-> compiler:       Debian clang version 15.0.6, Debian LLD 15.0.6
-> userspace arch: i386
-> 
-> Unfortunately, I don't have any reproducer for this issue yet.
-> 
-> Downloadable assets:
-> disk image: https://storage.googleapis.com/syzbot-assets/01b8968610a1/disk-bc337235.raw.xz
-> vmlinux: https://storage.googleapis.com/syzbot-assets/528a97652269/vmlinux-bc337235.xz
-> kernel image: https://storage.googleapis.com/syzbot-assets/768ed51bbb66/bzImage-bc337235.xz
-> 
-> IMPORTANT: if you fix the issue, please add the following tag to the commit:
-> Reported-by: syzbot+04b9a82855c8aed20860@syzkaller.appspotmail.com
-> 
-> =====================================================
+> [1]
 > BUG: KMSAN: uninit-value in do_output_route4+0x42c/0x4d0 net/netfilter/ipvs/ip_vs_xmit.c:147
 >  do_output_route4+0x42c/0x4d0 net/netfilter/ipvs/ip_vs_xmit.c:147
 >  __ip_vs_get_out_rt+0x403/0x21d0 net/netfilter/ipvs/ip_vs_xmit.c:330
@@ -156,15 +116,14 @@ On Thu, 1 May 2025, syzbot wrote:
 >  do_SYSENTER_32+0x1f/0x30 arch/x86/entry/syscall_32.c:369
 >  entry_SYSENTER_compat_after_hwframe+0x84/0x8e
 > 
-> CPU: 0 UID: 0 PID: 22408 Comm: syz.4.5165 Not tainted 6.15.0-rc3-syzkaller-00019-gbc3372351d0c #0 PREEMPT(undef) 
+> CPU: 0 UID: 0 PID: 22408 Comm: syz.4.5165 Not tainted 6.15.0-rc3-syzkaller-00019-gbc3372351d0c #0 PREEMPT(undef)
 > Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 02/12/2025
-> =====================================================
+> 
+> Reported-by: syzbot+04b9a82855c8aed20860@syzkaller.appspotmail.com
+> Closes: https://lore.kernel.org/netdev/68138dfa.050a0220.14dd7d.0017.GAE@google.com/
+> Fixes: 4754957f04f5 ("ipvs: do not use random local source address for tunnels")
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
 
-	I hopefully addressed this report with patch titled
-"ipvs: fix uninit-value for saddr in do_output_route4".
+Acked-by: Simon Horman <horms@kernel.org>
 
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
 
