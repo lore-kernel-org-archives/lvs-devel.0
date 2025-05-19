@@ -1,129 +1,147 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 255F825C6EA;
-	Tue,  6 May 2025 17:20:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C12FC2D023;
+	Mon, 19 May 2025 20:19:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746552050; cv=none; b=QLNoHQpX845afLQuOosleWYfKqJNkGhph1gA2IRaK++VOYZeHt7TU6hADj/GFog9R7HsXNLIXxiz31shqIxTufLs4q+9DxiicLmJG4wn6k7XiEpo03HOyEkvvdZynVSZ7OWje3ty6QYvSafCiW/cgmLlgsoYWyOUQQ0rOYQ6lHs=
+	t=1747685972; cv=none; b=EX0QUMZ34Pee9B2Hh5zpmfyjW6jaFV1BPwoZhK8MLkfLOUIxhSehiMzjn2CcPzFe9PdeXPAnd95gQM4sOObZYCTDCyW56FJh+VqevohzVICEh4uq7oZZwxMwrg4KEQTJu4pUuaNBpQkSr2qH+iWbNsC/zqpRvNC9ku2ak5BrH4c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746552050; c=relaxed/simple;
-	bh=Jrl24qKIrJcrTt9cLE88QccwkTInmMzCHE8X6UhcXG8=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=lzghjQNPeRaHERvfJESmNhIIyRmdfGOYOQIKmgu69K2yD1333O88Th3xdCjN59IPTls548GZ6pFLtxOzunWeErGo+yyBcByNY27j5Z3wteG9QStcpRqv8jxN3Fwa1RPrfqCQ6i4Yo7NqCGbeWb6CBLRzRcRGelvYkknqjY/6/Gw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KKaXvcIP; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1747685972; c=relaxed/simple;
+	bh=3uiADHrPNJCbR8kmV3bJDNN5BkrbXQw0XUyTwzxpZIk=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=UbWnI3AKL6uiP5YJWR2Q46y5ujK/BwnzSTqg0PSLTWQ0gpq1m885M7dY+Tj99iCJX/oS3X/jeGffaTBKkxmRC8w8+xXAx2E5HwCeBZyNNYZKNXeM8D9FUQA5787Uji99BbphjmCWM8/213+G8+SMmhsAFVkmcAvMyNC+7rStbqE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=nmz/RqPU; arc=none smtp.client-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KKaXvcIP"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 02907C4CEE4;
-	Tue,  6 May 2025 17:20:48 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1746552050;
-	bh=Jrl24qKIrJcrTt9cLE88QccwkTInmMzCHE8X6UhcXG8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=KKaXvcIP8WnYVbGMkEgX543fbXo8iiZ/bSzVhgvCnQgCBO4yJmJxo3EJHmZ0LlOWR
-	 4o+qBof/HmYLlC3qCrg3D8QfL97n0a00hwMulg6mA/twsT64bXgeCoUfvcxZ5NteCk
-	 M/v+W5LnS+TYF5URhXUje0VFlbiieeEBgutOwAk3oT71zW4o6uLKYIAsSdjVuPTS9H
-	 CCc1vPJkmJbhhEqR31mTJiM6GVR96m0fLxsB9WxM+nY4b9sKeDb9afG+aVs+vENXyp
-	 325+ERFRWGqm9QZKc/w3hSCf/Lhi2nDIoHzzXgKMxBeWymiwUNu1k9CcHlOsHvbC9z
-	 jAb80j6IyPcxQ==
-Date: Tue, 6 May 2025 18:20:46 +0100
-From: Simon Horman <horms@kernel.org>
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, Pablo Neira Ayuso <pablo@netfilter.org>,
-	netfilter-devel@vger.kernel.org
-Subject: Re: [PATCH nf] ipvs: fix uninit-value for saddr in do_output_route4
-Message-ID: <20250506172046.GX3339421@horms.kernel.org>
-References: <20250502220118.68234-1-ja@ssi.bg>
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="nmz/RqPU"
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 65A3922CA7;
+	Mon, 19 May 2025 23:11:19 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=IME1vTrXqk2EMehgvMvZYqjTXm8MrWZlF3kcCWEnmfA=; b=nmz/RqPU+rsA
+	8OBYmSpS2fqQ6804LIbP6ATGRIVkqDwNOLL8NtV5xPtHkggcMwDx8L8b1uLdJ5vo
+	kkK0o6A1p+LIignYuUtHFzciym4KZ0GvJFh/ApM4p8dVKcqTsgruj8aISDWyo9Q0
+	XPizR3hPyIWaOz/89ehB3+GvFjSABrlXxEv2kH4L/GAa6NecnAqwlWN3DPaptuHs
+	dKAmC9Qq3BBc1P2xy22qc0uuBmc7jShZNRXEuyR25SbRI2cjQ3bOP22R76awxAVy
+	N4a+ZDh2sj/8Lr6VEaehDaVAU0G1TsgZVlTqTsCGjLG/2B6UKoeMAmUYRpAgkqFo
+	prbPhvmsSYxcX0mmp4IQvcLpeTKn1qjgE06hKOjMuAraFMm60KfPWmQDnkKRiCmG
+	InH0auE5xHXqXdLidOv5GR8b40tsHzCp+LnUUVSdpWym8akG4pjuGKPDt2Nn+vTI
+	3Bj8KpdE4GPu4YD/kwOVTwzVuxM8PR3YLGOz3Fl8AceoBzCEOYwMUazWUu07xihl
+	4lY0y0JMdylRKLi7smfwfEuoWeIC+wU/xkLWVj5BZuMbdVrmTcUumVqTwJ5f5hiO
+	WXSouIK3PDOUmkokXE2JS6xLteY8kuGMhaE/U4/T9y96M/xkIPFgKjFSMXpaJGM6
+	PXxxRnSZ+8kZfCDmTzyF4q/h92IELyg=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Mon, 19 May 2025 23:11:17 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 4A84B6050E;
+	Mon, 19 May 2025 23:11:17 +0300 (EEST)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.1/8.17.1) with ESMTP id 54JKB9Ma066499;
+	Mon, 19 May 2025 23:11:09 +0300
+Date: Mon, 19 May 2025 23:11:09 +0300 (EEST)
+From: Julian Anastasov <ja@ssi.bg>
+To: Duan Jiong <djduanjiong@gmail.com>
+cc: pablo@netfilter.org, netdev@vger.kernel.org, lvs-devel@vger.kernel.org
+Subject: Re: [PATCH] ipvs: skip ipvs snat processing when packet dst is not
+ vip
+In-Reply-To: <20250519103203.17255-1-djduanjiong@gmail.com>
+Message-ID: <aef5ec1d-c62f-9a1c-c6f3-c3e275494234@ssi.bg>
+References: <20250519103203.17255-1-djduanjiong@gmail.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20250502220118.68234-1-ja@ssi.bg>
+Content-Type: text/plain; charset=US-ASCII
 
-On Sat, May 03, 2025 at 01:01:18AM +0300, Julian Anastasov wrote:
-> syzbot reports for uninit-value for the saddr argument [1].
-> commit 4754957f04f5 ("ipvs: do not use random local source address for
-> tunnels") already implies that the input value of saddr
-> should be ignored but the code is still reading it which can prevent
-> to connect the route. Fix it by changing the argument to ret_saddr.
-> 
-> [1]
-> BUG: KMSAN: uninit-value in do_output_route4+0x42c/0x4d0 net/netfilter/ipvs/ip_vs_xmit.c:147
->  do_output_route4+0x42c/0x4d0 net/netfilter/ipvs/ip_vs_xmit.c:147
->  __ip_vs_get_out_rt+0x403/0x21d0 net/netfilter/ipvs/ip_vs_xmit.c:330
->  ip_vs_tunnel_xmit+0x205/0x2380 net/netfilter/ipvs/ip_vs_xmit.c:1136
->  ip_vs_in_hook+0x1aa5/0x35b0 net/netfilter/ipvs/ip_vs_core.c:2063
->  nf_hook_entry_hookfn include/linux/netfilter.h:154 [inline]
->  nf_hook_slow+0xf7/0x400 net/netfilter/core.c:626
->  nf_hook include/linux/netfilter.h:269 [inline]
->  __ip_local_out+0x758/0x7e0 net/ipv4/ip_output.c:118
->  ip_local_out net/ipv4/ip_output.c:127 [inline]
->  ip_send_skb+0x6a/0x3c0 net/ipv4/ip_output.c:1501
->  udp_send_skb+0xfda/0x1b70 net/ipv4/udp.c:1195
->  udp_sendmsg+0x2fe3/0x33c0 net/ipv4/udp.c:1483
->  inet_sendmsg+0x1fc/0x280 net/ipv4/af_inet.c:851
->  sock_sendmsg_nosec net/socket.c:712 [inline]
->  __sock_sendmsg+0x267/0x380 net/socket.c:727
->  ____sys_sendmsg+0x91b/0xda0 net/socket.c:2566
->  ___sys_sendmsg+0x28d/0x3c0 net/socket.c:2620
->  __sys_sendmmsg+0x41d/0x880 net/socket.c:2702
->  __compat_sys_sendmmsg net/compat.c:360 [inline]
->  __do_compat_sys_sendmmsg net/compat.c:367 [inline]
->  __se_compat_sys_sendmmsg net/compat.c:364 [inline]
->  __ia32_compat_sys_sendmmsg+0xc8/0x140 net/compat.c:364
->  ia32_sys_call+0x3ffa/0x41f0 arch/x86/include/generated/asm/syscalls_32.h:346
->  do_syscall_32_irqs_on arch/x86/entry/syscall_32.c:83 [inline]
->  __do_fast_syscall_32+0xb0/0x110 arch/x86/entry/syscall_32.c:306
->  do_fast_syscall_32+0x38/0x80 arch/x86/entry/syscall_32.c:331
->  do_SYSENTER_32+0x1f/0x30 arch/x86/entry/syscall_32.c:369
->  entry_SYSENTER_compat_after_hwframe+0x84/0x8e
-> 
-> Uninit was created at:
->  slab_post_alloc_hook mm/slub.c:4167 [inline]
->  slab_alloc_node mm/slub.c:4210 [inline]
->  __kmalloc_cache_noprof+0x8fa/0xe00 mm/slub.c:4367
->  kmalloc_noprof include/linux/slab.h:905 [inline]
->  ip_vs_dest_dst_alloc net/netfilter/ipvs/ip_vs_xmit.c:61 [inline]
->  __ip_vs_get_out_rt+0x35d/0x21d0 net/netfilter/ipvs/ip_vs_xmit.c:323
->  ip_vs_tunnel_xmit+0x205/0x2380 net/netfilter/ipvs/ip_vs_xmit.c:1136
->  ip_vs_in_hook+0x1aa5/0x35b0 net/netfilter/ipvs/ip_vs_core.c:2063
->  nf_hook_entry_hookfn include/linux/netfilter.h:154 [inline]
->  nf_hook_slow+0xf7/0x400 net/netfilter/core.c:626
->  nf_hook include/linux/netfilter.h:269 [inline]
->  __ip_local_out+0x758/0x7e0 net/ipv4/ip_output.c:118
->  ip_local_out net/ipv4/ip_output.c:127 [inline]
->  ip_send_skb+0x6a/0x3c0 net/ipv4/ip_output.c:1501
->  udp_send_skb+0xfda/0x1b70 net/ipv4/udp.c:1195
->  udp_sendmsg+0x2fe3/0x33c0 net/ipv4/udp.c:1483
->  inet_sendmsg+0x1fc/0x280 net/ipv4/af_inet.c:851
->  sock_sendmsg_nosec net/socket.c:712 [inline]
->  __sock_sendmsg+0x267/0x380 net/socket.c:727
->  ____sys_sendmsg+0x91b/0xda0 net/socket.c:2566
->  ___sys_sendmsg+0x28d/0x3c0 net/socket.c:2620
->  __sys_sendmmsg+0x41d/0x880 net/socket.c:2702
->  __compat_sys_sendmmsg net/compat.c:360 [inline]
->  __do_compat_sys_sendmmsg net/compat.c:367 [inline]
->  __se_compat_sys_sendmmsg net/compat.c:364 [inline]
->  __ia32_compat_sys_sendmmsg+0xc8/0x140 net/compat.c:364
->  ia32_sys_call+0x3ffa/0x41f0 arch/x86/include/generated/asm/syscalls_32.h:346
->  do_syscall_32_irqs_on arch/x86/entry/syscall_32.c:83 [inline]
->  __do_fast_syscall_32+0xb0/0x110 arch/x86/entry/syscall_32.c:306
->  do_fast_syscall_32+0x38/0x80 arch/x86/entry/syscall_32.c:331
->  do_SYSENTER_32+0x1f/0x30 arch/x86/entry/syscall_32.c:369
->  entry_SYSENTER_compat_after_hwframe+0x84/0x8e
-> 
-> CPU: 0 UID: 0 PID: 22408 Comm: syz.4.5165 Not tainted 6.15.0-rc3-syzkaller-00019-gbc3372351d0c #0 PREEMPT(undef)
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 02/12/2025
-> 
-> Reported-by: syzbot+04b9a82855c8aed20860@syzkaller.appspotmail.com
-> Closes: https://lore.kernel.org/netdev/68138dfa.050a0220.14dd7d.0017.GAE@google.com/
-> Fixes: 4754957f04f5 ("ipvs: do not use random local source address for tunnels")
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
 
-Acked-by: Simon Horman <horms@kernel.org>
+	Hello,
 
+	Adding lvs-devel@ to CC...
+
+On Mon, 19 May 2025, Duan Jiong wrote:
+
+> Now suppose there are two net namespaces, one is the server and
+> its ip is 192.168.99.4, the other is the client and its ip
+> is 192.168.99.5, and the other is configured with ipvs vip
+> 192.168.99.6 in the host net namespace, configuring ipvs with
+> the backend 192.168.99.5.
+> 
+> Also configure
+> iptables -t nat -A POSTROUTING -p TCP -j MASQUERADE
+> to avoid packet loss when accessing with the specified
+> source port.
+
+	May be I don't quite understand why the MASQUERADE
+rule is used...
+
+> 
+> First we use curl --local-port 15280 to specify the source port
+> to access the vip, after the request is completed again use
+> curl --local-port 15280 to specify the source port to access
+> 192.168.99.5, this time the request will always be stuck in
+> the main.
+> 
+> The packet sent by the client arrives at the server without
+> any problem, but ipvs will process the packet back from the
+> server with the wrong snat for vip, and at this time, since
+> the client will directly rst after receiving the packet, the
+> client will be stuck until the vip ct rule on the host
+> times out.
+> 
+> Signed-off-by: Duan Jiong <djduanjiong@gmail.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_core.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index c7a8a08b7308..98abe4085a11 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -1260,6 +1260,8 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+>  		unsigned int hooknum)
+>  {
+>  	struct ip_vs_protocol *pp = pd->pp;
+> +	enum ip_conntrack_info ctinfo;
+> +	struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
+>  
+>  	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
+>  		goto after_nat;
+> @@ -1270,6 +1272,12 @@ handle_response(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+>  		goto drop;
+>  
+>  	/* mangle the packet */
+> +	if (ct != NULL &&
+> +	    hooknum == NF_INET_FORWARD &&
+> +	    !ip_vs_addr_equal(af,
+> +		    &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3,
+> +		    &cp->vaddr))
+> +		return NF_ACCEPT;
+
+	Such check will prevent SNAT for active FTP connections
+because their original direction is from real server to client.
+In which case ip_vs_addr_equal will see difference? When
+Netfilter creates new connection for packet from real server?
+It does not look good IPVS connection to be DNAT-ed but not
+SNAT-ed.
+
+	May be you can explain better what IPs/ports are present in
+the transferred packets.
+
+>  	if (pp->snat_handler &&
+>  	    !SNAT_CALL(pp->snat_handler, skb, pp, cp, iph))
+>  		goto drop;
+> -- 
+> 2.32.1 (Apple Git-133)
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
 
