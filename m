@@ -1,301 +1,142 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pl1-f194.google.com (mail-pl1-f194.google.com [209.85.214.194])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 499221D7E4A;
-	Wed,  3 Sep 2025 17:31:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F318E22333B;
+	Mon,  8 Sep 2025 06:55:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.194
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1756920705; cv=none; b=soYsDT8bLH1gJB4Oh/8tFxHa2+P3Oy/Ae+1J7ew6o9KPu7EXNP4rmzqNql3SPwKAvJX7FEAGegiNTgLYVR3q4QheOeMymJAZS3h0rQy1rKSJM2XtYDpGdDFnQfbkckUbvrUZ6TXE/YBzhcYfgZs4y/pOFc/t02nSsbGij6lGc7o=
+	t=1757314539; cv=none; b=E/kyejSR/6FPHY2rz93ewt7sC/XyWhNHB6+nF4Es+L3MjnyGZAE+hAXyRYawlOiSqQkt+arYnVgHyr3x2CCpAEG0SpxqEqy1AY7adzB9Eaf6zhaOvMOV1gjDcV1ipckiei6YOOZuposdj7flmH48oSTBCX8P8xZH2gdvpuYmMxE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1756920705; c=relaxed/simple;
-	bh=MGDuGU/WgXkaUhODXaDaVYiIi64R8bWyI3/qcxxAYEo=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=Ecvs9S3ceXzGA5CzW6P5AHYFVJXyGn4Y49H3n7YMcqKcknRY5WptWm1jihqMAbB2/OInzdutvUZmct3oJHX6CNOZKf02kw0VhwiyS0VIKc8nPz/hbMau+SX3edq7GTvQqxBelvEWuKtQ2ohs8HFrSeCgMARXcJ4ZRRT0elkjin8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=vAtJ1TEO; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1757314539; c=relaxed/simple;
+	bh=7bTeksVHgoD9R6xdLvzwlbYp8OJAiXj4vQhWz3mJ+D8=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=AoNHnmhDgOBPCgryQNNxCI5lnXaCmD9VyVz3eng/9GM/XVdqCSQI3JfP/RLlllhnJa6Cw4rm1nsXCERegwj84lSEIcobChpZnXqOXNoAc1ehJpgW8U31mH6QyOgKu1RDMyPwJD9XaA2c3HtfP8BASHZrzrwxYyK531Zyt8Zcnlg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=LRwrAnOE; arc=none smtp.client-ip=209.85.214.194
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="vAtJ1TEO"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 65EDE24007;
-	Wed,  3 Sep 2025 20:31:32 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=nPMh+2z3FdOgu+OB9tsiaQgbNXDUOZFqm8+7DccePVc=; b=vAtJ1TEO/tsF
-	OnF33kodrVcuBsljHk/rm6jPwo0owkYumJ56+HylN4yjJY8VtYv4xMAH1N0OeEQx
-	v0hQvmUFFEMfLdDIgoeF83fqezSpsTKjLUmsNLdYshTMf28Wvm60oFwNfHKVaYe6
-	QmREdB8QWveKBvYaQ38nA3NIwr71AKkfVdV2DdZ/nunmFeLuDGR+yhiA7bxG9XXI
-	3bQgNOfKjx2hvXM00ttihAtEzbPV846RtoKTz0rD+xZDiINoX0xDjwpPGKkrWQaj
-	xKzFttE40jUTWqZ22DsjBfD31Ky8x0KmmwquyQiUkFXXVcg7d1/x+u3/3oJZ5hY8
-	izlop+H2boSCdSzkuTbjd6ahB5W1kUYICBieq6OcFZg+jjT9lU+hQJ4JG8/ptsjg
-	DuxDFHE3/zg+ukDwSGQ7st8ymY4CXfqYkpOOyh5Hf8+wnctIDGdwrTsl4YbBiuvR
-	siY+/pfRdlu+8bkJarpM9WXZiy64S304sNBAHkyX2u9+h3lc1Dq5e9AxRqoaBrfz
-	DNK8VsYXpstJHBM457uj3A3EB8k3U27nLBkNTuU2aqodMDvv6/gGRcsQwESj1AO8
-	kO/FhE2T3RKS9/Brv6MKtJXFqfKyp2is7OAFA/CWYeqw4wyLqhp+xEKfXTxi5fVV
-	ewb9f126nehhszDeUBjPt2rVT0vZRck=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Wed,  3 Sep 2025 20:31:30 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 3360C602E2;
-	Wed,  3 Sep 2025 20:31:27 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 583HVMnx058850;
-	Wed, 3 Sep 2025 20:31:23 +0300
-Date: Wed, 3 Sep 2025 20:31:22 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Zhang Tengfei <zhtfdev@gmail.com>
-cc: coreteam@netfilter.org, davem@davemloft.net, dsahern@kernel.org,
-        edumazet@google.com, fw@strlen.de, horms@verge.net.au,
-        kadlec@netfilter.org, kuba@kernel.org, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, pabeni@redhat.com,
-        pablo@netfilter.org,
-        syzbot+1651b5234028c294c339@syzkaller.appspotmail.com
-Subject: Re: [PATCH v3 nf-next] ipvs: Use READ_ONCE/WRITE_ONCE for
- ipvs->enable
-In-Reply-To: <20250901134653.1308-1-zhtfdev@gmail.com>
-Message-ID: <e8c59883-4f65-a07a-220c-ff2a5960d80e@ssi.bg>
-References: <3a737b68-5a80-845d-ff36-6a1926b792a0@ssi.bg> <20250901134653.1308-1-zhtfdev@gmail.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LRwrAnOE"
+Received: by mail-pl1-f194.google.com with SMTP id d9443c01a7336-24cbd9d9f09so54436085ad.2;
+        Sun, 07 Sep 2025 23:55:37 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1757314537; x=1757919337; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=m+4an8/Jt/b4JIGzziEWzfZAC//LsinPWKCYsKZxOsU=;
+        b=LRwrAnOEvZ/oo3c0wpBTqevb3ifpqUBYAY4w38Bdeg2Sv1XpKCjnO/BrLFRSqJdGjG
+         L5IBwpwiV0gHfT6OIzglAGq9uDBZT5nywzbS92G8EOehFwlKmD/by/fbELDScnlRakZg
+         TCfYvrOVZgQPOZnj0N1kH4PWCnb7TdkYMraJhIgerAY9nPt4Q0ZW9U/d2QN2oG/35rSE
+         jwy5kguS+bR4qW4bIdrqhd041dFNnY3Wls+G/ewyRHQ97zmAUQCgWCWsEWYrwNLOJIy/
+         USA8wJ6OmJ9/a+pEzBss/9nETto6qUgKUZkvhJxK8Wg1Z25Sm5LL3A7h3mz/j8k1v48n
+         Wayg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1757314537; x=1757919337;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=m+4an8/Jt/b4JIGzziEWzfZAC//LsinPWKCYsKZxOsU=;
+        b=vmM9ufqe40ovPMPcE+coh8QMqJS3K7vrYh/zUYU3gUtKQa4pDyDqqUgj7jJbycGYmo
+         w5VksW3R3/eh1u+7Et1rvOm4m9qIqE/9pHTwrO9dVTXOZPFeRPhd4DVSb/LtZbPFxaje
+         bTxs7RoXbVEIg/vrBYRNfk8FJlkz7ls1Ms9Si84KjEBZuqI1S2UN5oKI56Ia0xGap23s
+         jJ2Tvj9jsahVrj7ZP9gFA/bD0OSdqIgTMLkSgYIIhoblzNPNSCUmIakdjtB3bP1ujaPB
+         nvrs17kNdwlGqozfaLrkM6TPsIxmmAf34oviV7sSMG4ircbECeRc1O5Da/bU+dz4Ztrd
+         tG0g==
+X-Forwarded-Encrypted: i=1; AJvYcCUDbdrIGuu6w6YuhGAdQ5JUBVG/7RHBrZrzNEZ7KcB+BXxIDAqtuzwHK/K7PS11nG53AV6oaWvvZC9OxNER/PQz@vger.kernel.org, AJvYcCUG0Kq5nNB86umSZHp3cBHNMh4aY6AhgExUiICpW40aHdnAagpLSnAsap3mzVHfyss9UucDAtyQ@vger.kernel.org, AJvYcCUZI0Uintcsw/GF/usTPZ9PNsClLpFIcgjdZYLnSprYWRHe+XorgHnUEOHKIifaNKJWnbjgyD997UXLmnQ=@vger.kernel.org, AJvYcCXtvTlynpZeWIC8WaY0wgZmwkmuL4G1NRU7ypKK+Ujw9VE7H8XZsrHiQE2mgJ0EeJ0RBBkMcVQXVifK@vger.kernel.org
+X-Gm-Message-State: AOJu0YxB/5iNfXqS5kSboAxjMMzWpGMMWwKrZq/Ffpja+rnnV/d/YpMw
+	H51rdqXYuAhRJ2rBDr9vEbC01a/iddLjg0XR2QpOJXo5kPpyoY0N8OuL
+X-Gm-Gg: ASbGncvp2NQdyNZ8cjUu09fWOAK7s9dZER8Ux4kmOjX2vbHBsQRD/auOqZ/13EK42ha
+	+20SIjRUoGLUVBf9Dh6nCEyftNfoRBZ/vi+MTT0AgJD4rOsqoXLjRNILw0coLEF2E/LIVMSIQHL
+	3VGAq307c+trFeDXd9jzIe8DwSGg5FcgnKwfzh5N44zngfoDBspwqcU9tygI/xWUQzk7XbGZm/t
+	+t2b7B9NO1VMRGRxBC1RWNitmdjMyLWlWPm+5aQ5QNHmtjhVo3AGjlk0JuC87eZ/I5XX0R1PR9V
+	yflE6KCN6GAIe2GXKm3BoeXfh2hJWYc5HGxvzp2Ccmn0acZw3cyrMs1vs1uNjottIZhKgnE84A4
+	U/mc4Vv9iAxZMUQ3LO8xx1ZekJV+OWtkJNX7guzerv/zK8SYvgRKDMg==
+X-Google-Smtp-Source: AGHT+IERpqLRWZZggZfXidF0BIQUzIIQrruf3eLug6WWMnit4W8FJL2qnWiuLeQslKVuS6tNgq261A==
+X-Received: by 2002:a17:902:e2c4:b0:24a:f7dc:cad4 with SMTP id d9443c01a7336-2516ef54e11mr65328835ad.11.1757314537095;
+        Sun, 07 Sep 2025 23:55:37 -0700 (PDT)
+Received: from LAPTOP-PN4ROLEJ.localdomain ([221.228.238.82])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-32b94a2feacsm4566083a91.8.2025.09.07.23.55.31
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 07 Sep 2025 23:55:36 -0700 (PDT)
+From: Slavin Liu <slavin452@gmail.com>
+To: Simon Horman <horms@verge.net.au>,
+	Julian Anastasov <ja@ssi.bg>
+Cc: Slavin Liu <slavin452@gmail.com>,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
+	Jozsef Kadlecsik <kadlec@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	lvs-devel@vger.kernel.org,
+	netdev@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	coreteam@netfilter.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH 1/1] IPVS: Fix use-after-free issue in ip_vs_unbind_app()
+Date: Mon,  8 Sep 2025 14:54:58 +0800
+Message-Id: <20250908065458.536-1-slavin452@gmail.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
+When exiting a network namespace, in cleanup_net()->ops_undo_list(),
+ip_vs_ftp_ops->exit() is called before ip_vs_core_ops->exit_batch().
+The ip_vs_app ip_vs_ftp and its incarnations will be freed by unregister_ip_vs_app().
+However, there could still be connections bound to ip_vs_ftp's incarnation.
+cp->app points to the free'd incarnation, which will be accessed later by
+__ip_vs_cleanup_batch()->ip_vs_conn_net_cleanup()->ip_vs_conn_flush()->ip_vs_conn_del()->
+ip_vs_conn_expire()->ip_vs_unbind_app(), causing a uaf. This vulnarability can
+lead to a local privilege escalation.
 
-	Hello,
+Reproduction steps:
+1. create a ipvs service on (127.0.0.1:21)
+2. create a ipvs destination on the service, to (127.0.0.1:<any>)
+3. send a tcp packet to (127.0.0.1:21)
+4. exit the network namespace
 
-On Mon, 1 Sep 2025, Zhang Tengfei wrote:
+I think the fix should flush all connection to ftp before unregistration.
+The simpler fix is to delete ip_vs_ftp_ops->exit, and defer the unregistration
+of ip_vs_ftp to ip_vs_app_net_cleanup(), which will unregister all ip_vs_app.
+It's after ip_vs_conn_net_cleanup() so there is no uaf issue. This patch
+seems to solve the issue but has't been fully tested yet, and is also not graceful.
 
-> KCSAN reported a data-race on the `ipvs->enable` flag, which is
-> written in the control path and read concurrently from many other
-> contexts.
-> 
-> Following a suggestion by Julian, this patch fixes the race by
-> converting all accesses to use `WRITE_ONCE()/READ_ONCE()`.
-> This lightweight approach ensures atomic access and acts as a
-> compiler barrier, preventing unsafe optimizations where the flag
-> is checked in loops (e.g., in ip_vs_est.c).
-> 
-> Additionally, the `enable` checks in the fast-path hooks
-> (`ip_vs_in_hook`, `ip_vs_out_hook`, `ip_vs_forward_icmp`) are
-> removed. These are unnecessary since commit 857ca89711de
-> ("ipvs: register hooks only with services"). The `enable=0`
-> condition they check for can only occur in two rare and non-fatal
-> scenarios: 1) after hooks are registered but before the flag is set,
-> and 2) after hooks are unregistered on cleanup_net. In the worst
-> case, a single packet might be mishandled (e.g., dropped), which
-> does not lead to a system crash or data corruption. Adding a check
-> in the performance-critical fast-path to handle this harmless
-> condition is not a worthwhile trade-off.
-> 
-> Fixes: 857ca89711de ("ipvs: register hooks only with services")
-> Reported-by: syzbot+1651b5234028c294c339@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=1651b5234028c294c339
-> Suggested-by: Julian Anastasov <ja@ssi.bg>
-> Link: https://lore.kernel.org/lvs-devel/2189fc62-e51e-78c9-d1de-d35b8e3657e3@ssi.bg/
-> Signed-off-by: Zhang Tengfei <zhtfdev@gmail.com>
+Signed-off-by: Slavin Liu <slavin452@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_ftp.c | 13 -------------
+ 1 file changed, 13 deletions(-)
 
-	Looks good to me, thanks!
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
-> v3:
-> - Restore reference to commit 857ca89711de in commit message.
-> - Add corresponding Fixes tag.
-> v2:
-> - Switched from atomic_t to the suggested READ_ONCE()/WRITE_ONCE().
-> - Removed obsolete checks from the packet processing hooks.
-> - Polished commit message based on feedback from maintainers.
-> ---
->  net/netfilter/ipvs/ip_vs_conn.c |  4 ++--
->  net/netfilter/ipvs/ip_vs_core.c | 11 ++++-------
->  net/netfilter/ipvs/ip_vs_ctl.c  |  6 +++---
->  net/netfilter/ipvs/ip_vs_est.c  | 16 ++++++++--------
->  4 files changed, 17 insertions(+), 20 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index 965f3c8e508..37ebb0cb62b 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -885,7 +885,7 @@ static void ip_vs_conn_expire(struct timer_list *t)
->  			 * conntrack cleanup for the net.
->  			 */
->  			smp_rmb();
-> -			if (ipvs->enable)
-> +			if (READ_ONCE(ipvs->enable))
->  				ip_vs_conn_drop_conntrack(cp);
->  		}
->  
-> @@ -1439,7 +1439,7 @@ void ip_vs_expire_nodest_conn_flush(struct netns_ipvs *ipvs)
->  		cond_resched_rcu();
->  
->  		/* netns clean up started, abort delayed work */
-> -		if (!ipvs->enable)
-> +		if (!READ_ONCE(ipvs->enable))
->  			break;
->  	}
->  	rcu_read_unlock();
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index c7a8a08b730..5ea7ab8bf4d 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1353,9 +1353,6 @@ ip_vs_out_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *stat
->  	if (unlikely(!skb_dst(skb)))
->  		return NF_ACCEPT;
->  
-> -	if (!ipvs->enable)
-> -		return NF_ACCEPT;
-> -
->  	ip_vs_fill_iph_skb(af, skb, false, &iph);
->  #ifdef CONFIG_IP_VS_IPV6
->  	if (af == AF_INET6) {
-> @@ -1940,7 +1937,7 @@ ip_vs_in_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state
->  		return NF_ACCEPT;
->  	}
->  	/* ipvs enabled in this netns ? */
-> -	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
-> +	if (unlikely(sysctl_backup_only(ipvs)))
->  		return NF_ACCEPT;
->  
->  	ip_vs_fill_iph_skb(af, skb, false, &iph);
-> @@ -2108,7 +2105,7 @@ ip_vs_forward_icmp(void *priv, struct sk_buff *skb,
->  	int r;
->  
->  	/* ipvs enabled in this netns ? */
-> -	if (unlikely(sysctl_backup_only(ipvs) || !ipvs->enable))
-> +	if (unlikely(sysctl_backup_only(ipvs)))
->  		return NF_ACCEPT;
->  
->  	if (state->pf == NFPROTO_IPV4) {
-> @@ -2295,7 +2292,7 @@ static int __net_init __ip_vs_init(struct net *net)
->  		return -ENOMEM;
->  
->  	/* Hold the beast until a service is registered */
-> -	ipvs->enable = 0;
-> +	WRITE_ONCE(ipvs->enable, 0);
->  	ipvs->net = net;
->  	/* Counters used for creating unique names */
->  	ipvs->gen = atomic_read(&ipvs_netns_cnt);
-> @@ -2367,7 +2364,7 @@ static void __net_exit __ip_vs_dev_cleanup_batch(struct list_head *net_list)
->  		ipvs = net_ipvs(net);
->  		ip_vs_unregister_hooks(ipvs, AF_INET);
->  		ip_vs_unregister_hooks(ipvs, AF_INET6);
-> -		ipvs->enable = 0;	/* Disable packet reception */
-> +		WRITE_ONCE(ipvs->enable, 0);	/* Disable packet reception */
->  		smp_wmb();
->  		ip_vs_sync_net_cleanup(ipvs);
->  	}
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index 6a6fc447853..4c8fa22be88 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -256,7 +256,7 @@ static void est_reload_work_handler(struct work_struct *work)
->  		struct ip_vs_est_kt_data *kd = ipvs->est_kt_arr[id];
->  
->  		/* netns clean up started, abort delayed work */
-> -		if (!ipvs->enable)
-> +		if (!READ_ONCE(ipvs->enable))
->  			goto unlock;
->  		if (!kd)
->  			continue;
-> @@ -1483,9 +1483,9 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
->  
->  	*svc_p = svc;
->  
-> -	if (!ipvs->enable) {
-> +	if (!READ_ONCE(ipvs->enable)) {
->  		/* Now there is a service - full throttle */
-> -		ipvs->enable = 1;
-> +		WRITE_ONCE(ipvs->enable, 1);
->  
->  		/* Start estimation for first time */
->  		ip_vs_est_reload_start(ipvs);
-> diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
-> index 15049b82673..93a925f1ed9 100644
-> --- a/net/netfilter/ipvs/ip_vs_est.c
-> +++ b/net/netfilter/ipvs/ip_vs_est.c
-> @@ -231,7 +231,7 @@ static int ip_vs_estimation_kthread(void *data)
->  void ip_vs_est_reload_start(struct netns_ipvs *ipvs)
->  {
->  	/* Ignore reloads before first service is added */
-> -	if (!ipvs->enable)
-> +	if (!READ_ONCE(ipvs->enable))
->  		return;
->  	ip_vs_est_stopped_recalc(ipvs);
->  	/* Bump the kthread configuration genid */
-> @@ -306,7 +306,7 @@ static int ip_vs_est_add_kthread(struct netns_ipvs *ipvs)
->  	int i;
->  
->  	if ((unsigned long)ipvs->est_kt_count >= ipvs->est_max_threads &&
-> -	    ipvs->enable && ipvs->est_max_threads)
-> +	    READ_ONCE(ipvs->enable) && ipvs->est_max_threads)
->  		return -EINVAL;
->  
->  	mutex_lock(&ipvs->est_mutex);
-> @@ -343,7 +343,7 @@ static int ip_vs_est_add_kthread(struct netns_ipvs *ipvs)
->  	}
->  
->  	/* Start kthread tasks only when services are present */
-> -	if (ipvs->enable && !ip_vs_est_stopped(ipvs)) {
-> +	if (READ_ONCE(ipvs->enable) && !ip_vs_est_stopped(ipvs)) {
->  		ret = ip_vs_est_kthread_start(ipvs, kd);
->  		if (ret < 0)
->  			goto out;
-> @@ -486,7 +486,7 @@ int ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
->  	struct ip_vs_estimator *est = &stats->est;
->  	int ret;
->  
-> -	if (!ipvs->est_max_threads && ipvs->enable)
-> +	if (!ipvs->est_max_threads && READ_ONCE(ipvs->enable))
->  		ipvs->est_max_threads = ip_vs_est_max_threads(ipvs);
->  
->  	est->ktid = -1;
-> @@ -663,7 +663,7 @@ static int ip_vs_est_calc_limits(struct netns_ipvs *ipvs, int *chain_max)
->  			/* Wait for cpufreq frequency transition */
->  			wait_event_idle_timeout(wq, kthread_should_stop(),
->  						HZ / 50);
-> -			if (!ipvs->enable || kthread_should_stop())
-> +			if (!READ_ONCE(ipvs->enable) || kthread_should_stop())
->  				goto stop;
->  		}
->  
-> @@ -681,7 +681,7 @@ static int ip_vs_est_calc_limits(struct netns_ipvs *ipvs, int *chain_max)
->  		rcu_read_unlock();
->  		local_bh_enable();
->  
-> -		if (!ipvs->enable || kthread_should_stop())
-> +		if (!READ_ONCE(ipvs->enable) || kthread_should_stop())
->  			goto stop;
->  		cond_resched();
->  
-> @@ -757,7 +757,7 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
->  	mutex_lock(&ipvs->est_mutex);
->  	for (id = 1; id < ipvs->est_kt_count; id++) {
->  		/* netns clean up started, abort */
-> -		if (!ipvs->enable)
-> +		if (!READ_ONCE(ipvs->enable))
->  			goto unlock2;
->  		kd = ipvs->est_kt_arr[id];
->  		if (!kd)
-> @@ -787,7 +787,7 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
->  	id = ipvs->est_kt_count;
->  
->  next_kt:
-> -	if (!ipvs->enable || kthread_should_stop())
-> +	if (!READ_ONCE(ipvs->enable) || kthread_should_stop())
->  		goto unlock;
->  	id--;
->  	if (id < 0)
-> -- 
-> 2.34.1
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index d8a284999544..68def1106681 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -598,22 +598,9 @@ static int __net_init __ip_vs_ftp_init(struct net *net)
+ 	unregister_ip_vs_app(ipvs, &ip_vs_ftp);
+ 	return ret;
+ }
+-/*
+- *	netns exit
+- */
+-static void __ip_vs_ftp_exit(struct net *net)
+-{
+-	struct netns_ipvs *ipvs = net_ipvs(net);
+-
+-	if (!ipvs)
+-		return;
+-
+-	unregister_ip_vs_app(ipvs, &ip_vs_ftp);
+-}
+ 
+ static struct pernet_operations ip_vs_ftp_ops = {
+ 	.init = __ip_vs_ftp_init,
+-	.exit = __ip_vs_ftp_exit,
+ };
+ 
+ static int __init ip_vs_ftp_init(void)
+-- 
+2.34.1
 
