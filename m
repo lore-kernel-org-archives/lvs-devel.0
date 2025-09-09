@@ -1,164 +1,125 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f193.google.com (mail-pf1-f193.google.com [209.85.210.193])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 521E320102C;
-	Tue,  9 Sep 2025 15:15:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68C8F2571DD;
+	Tue,  9 Sep 2025 21:21:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.193
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757430927; cv=none; b=nEdHLqW3foYtKgUHMrT0Wg56L/lizFM6EENAO/2dKmO5280SRpdJG8p0nIm9+8zxsIeMoT2GQS1xFiTAJcPurMjvC73quu5CziPxI1z78zLf+517L9CpMMJ1Svu/IyHDwVXaDQr1PKx2G7ondMa/qh/aRUlCReKpbZ1Pv1O3+VI=
+	t=1757452893; cv=none; b=oSRLUtvFWbjvhFye8O7sq3iXNUF72w7soEr1j8MBpSDwTyW81iFDPgtR6HmkG8ubZCOVsaXdbCVqEgG+/xIZyNICkZQBBPGTPYGmfVEjbBTf8wXU2Enzm4TkBrgxcO1absbpa7W4QmzNLNIHEBPZb4nWbsxWQ7WlkmttsVIAGxI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757430927; c=relaxed/simple;
-	bh=2anOpUEB8ZrluT6ZWpZLfBR8vUKUSxK7hCmigQanedM=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=jJdvIhbW9mgMroohiYvBYWz0rm87GQLMc6WsJudtDDMiACZK2t6Rg1BnPdFXZhDanjXDAQtesOJlks8U8t82f4QZP+JHRsx8roOL6lcBrLM1vBBVpzyslCohW6R7qRZoGDt0qW9PWSFWqUdMHFrXlbOjpTF9Hjpx5jJDsCcINSU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=lSFK0nHr; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1757452893; c=relaxed/simple;
+	bh=fGpYVORY+qi58YmG/3U9rcvve3DeVxRV1bOvuD50mzI=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=DmO0bilWwn5pwkv+DMgLcnbVMo8LMI1rpcGyMx1fevxiFu8P+StyImegUW5Fyv/oi/HOZsIOA7ldy0cIXrOQtMGJyQiqQj/nHKBq0/IGf7jnUZHIrs1km1wJ5WnQBUYOloQ4nmi/2ovsPugMgbbyhDygGc0ImF8CPgMz6e6gFRc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=L7RAzYS3; arc=none smtp.client-ip=209.85.210.193
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="lSFK0nHr"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 27CC920545;
-	Tue,  9 Sep 2025 18:15:14 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=DuUlhG3uOqtSZMpp6pl4y3fP1ka9SPbGB7gebbWP824=; b=lSFK0nHrsuCA
-	ejR2F/HmmWM2++InmsQweYuQfmsC5IZHceyuUfHbFklT7GOsSN9uQvrocJPjNaqz
-	v/4G3vVdTXuTwJSUJDYJX3w4wmZ1z3usgn2D7/ZkXz2IfD/ErHlwNSPbc80Fx1MT
-	7IWfqlQwTN5Ng5dZT7SmgbCl/5fILkmp6OHTtD/3oOTmg63INA4Bkq8RZKhNtBfj
-	dcvvUtswQPXpDJy4xWcGZM56gbh3RvtYL/jyDiz41bQEtxSZSPHps4mjEn0EMP4q
-	+gya1ZyEJUpi4omZb8pjW8Ig8DNftsRGtqT2uWsdb8bOkeOvlZIsA2vdVxvjEQtq
-	THDQsTK8C5Ycj65nkMjed6NQYHISPBsl0srCH0MfEw9t46ts4tV9g5fABRHmgcqH
-	GjwbgomrUTw8cENwL5t8DO/6vjtChSZzfT4nl3ziTnzOhygcj6S+7Tx0X4p5/8es
-	qP+fMihwKvPMYbud3kVmIMUV4bYNAeRKnG4NK2mYMZURpDkO/pco4Xe+7v8AjAa3
-	0rtDGvkVJWfGLhQxfZ1d9yMsRwvzxflKqzHeZ/xmpqupAk3J61Ie/INIiVmLWAbM
-	Rx1hZd6KlXsSWaAFl5g5mBQvWMTKMPlaxEyUVHIABrEsvV5WRHs/SyIVEhgDCWdj
-	cDit2fXowT4PeVJbQH6gPIuXWwme13U=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue,  9 Sep 2025 18:15:12 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 184A464D0A;
-	Tue,  9 Sep 2025 18:15:09 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 589FF4bN041717;
-	Tue, 9 Sep 2025 18:15:04 +0300
-Date: Tue, 9 Sep 2025 18:15:04 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Slavin Liu <slavin452@gmail.com>
-cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
-        Jozsef Kadlecsik <kadlec@netfilter.org>,
-        Florian Westphal <fw@strlen.de>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>, lvs-devel@vger.kernel.org,
-        netdev@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 1/1] IPVS: Fix use-after-free issue in
- ip_vs_unbind_app()
-In-Reply-To: <20250908065458.536-1-slavin452@gmail.com>
-Message-ID: <b5d51ae8-df71-713f-3f08-14cf6272f52a@ssi.bg>
-References: <20250908065458.536-1-slavin452@gmail.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L7RAzYS3"
+Received: by mail-pf1-f193.google.com with SMTP id d2e1a72fcca58-772627dd50aso22483b3a.1;
+        Tue, 09 Sep 2025 14:21:31 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1757452891; x=1758057691; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=fNIzLjHSBMLmqpsA4YNTE+ISQHf5o0XV501JWW+/q58=;
+        b=L7RAzYS3X7Ef6aGNFv/W8T936JKodRnrr5cghvHPUNn1VlLTYB1cojRJTEyQwbX5vE
+         I0YjuhmMaW5XQGpteoBRyJllMlbz4AyT597OVf93aPdpda11migNJpJGFM4wfGx9LWsG
+         Z1zbi2HlKchlLNe6gGXIhsph6I5N11pbut3+n+SKku0sJXiFaybM4l4cg6sK7SyuiCHw
+         YjWEtgITcF1e/+FcNnMM3u+EsJU0VKR1Ez13ErjPrbD/9Fxn6Jc5Lu9QqDPKzXRuP+vM
+         XJzSCBMlckSE4i++gWwHKDhydP2Sh/H5Ut5RIXQ3FKTRRV6uIDqR8wAoFg/OXAyV8PMT
+         PyKw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1757452891; x=1758057691;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=fNIzLjHSBMLmqpsA4YNTE+ISQHf5o0XV501JWW+/q58=;
+        b=vK+TZ7HNGcRkrWcIcAY8cg1qfcGXRKj3KZq0gZi+1zVXRxet2vOzWvKyd9KZDpY4Gc
+         308tpxakhyyxwBiSRo+vknjx6SDkqp+A2hHiELjNULcExYpX4JyZHVES+hSLRZHsHgCI
+         7YfqRL+C/ooWBxhXhgFZ+jX3UTpDJtebMq5SoYC8HgDACgRKiZC/B1Rq6tjJSzIXy6XX
+         SsdEnciDFuzeo6vOMkNuCxqU8zEYGL4z1jPJiEB757BSX7A4s4FR7H6HeWyb+7vqIDRH
+         prRqIRJKXgE09wJutDnzmjQCtwOMtbrpUDMdLmpXuzOlPVmSnutl92OjhIjolERj5jOR
+         HuNg==
+X-Forwarded-Encrypted: i=1; AJvYcCVMf1UCyKv2lqbMZQaLQ2DBGvvBj4eU7Hk/WdUeH3TnjqR9J8lIboM7km+h8IoeIbx1VJasWpAqKRBh2ak=@vger.kernel.org, AJvYcCWGuzp97GutlXUryEx1K1V83+PvjE/rpkAIoYF12X406N870qWSMU0mMkW6MaEJOVs655zDmnCQBD5QhbKate6M@vger.kernel.org, AJvYcCXC5fZIAESGM7GvSh7faupJPLmd7GBZRUSC4F1QIhKePJIRGKI6DAy/sjvXIlj4cwPXdtp7PnBPChH6@vger.kernel.org, AJvYcCXvB29g+acoWcDgn2WlABp1AkaRH/TKhWFSN7vATnh1/xuTzss1apQ37lo7+Y0HCpVYW3E7NACi@vger.kernel.org
+X-Gm-Message-State: AOJu0YzqgU6R8uxwwm932hRYdqSdU3aw+wawCaC365pbkn/+9l7vEEly
+	DAmdvK+1CtNtKd/Yv7RVbx/tnRCEqK9XPX+V/jON7KLyAU+dlTj/CIjM
+X-Gm-Gg: ASbGncuzkdViNHcJYOsgS3f2DO9SVKlS+7fOchQDImu8KcxwMmLDl7+XJtlZH2M/lps
+	3jtaKU19H0ZjgEhW2dwm8CmHtzf61cUysrKS9VXTJ2J6Oam7pWVUOX40utCrzI8jv+vty+w9B58
+	E/TTWjtyQdrukX6ZMkklmFzuShgKm6g4/yF+5Sz4133IEnRvN3pcxzy7YFv1u1qfbmqbZnPmHwX
+	9kopfDW2MEqvaCYY6/Ap8+exbaDfQJHw9Rzj/bbX2zk4WzVJJXOVyGFvUlQC1SotiLhNoKs86El
+	pGdOMUT3SsEx/mNleXnivYhIMrvoznwMMPJIZd+fIg43DiiR3KcsHjEToHJIKbFB5SiGNd7X235
+	BwxsLcaWNE/319UAv0qhIsIKh/dBjZTAzBuyHEncvtQro
+X-Google-Smtp-Source: AGHT+IF69GVm9IJToysR6lZUWdZsdWbHVct0EQQeI0UW59zElW5/J7tOX73xksOIgvt4CiPamd/grw==
+X-Received: by 2002:a17:902:e551:b0:24c:7bf0:6e68 with SMTP id d9443c01a7336-24cedc7aa79mr250229135ad.7.1757452890597;
+        Tue, 09 Sep 2025 14:21:30 -0700 (PDT)
+Received: from LAPTOP-PN4ROLEJ.localdomain ([223.112.146.162])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-b548a3f31a5sm658936a12.8.2025.09.09.14.21.26
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 09 Sep 2025 14:21:30 -0700 (PDT)
+From: Slavin Liu <slavin452@gmail.com>
+To: Simon Horman <horms@verge.net.au>,
+	Julian Anastasov <ja@ssi.bg>
+Cc: Slavin Liu <slavin452@gmail.com>,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
+	Jozsef Kadlecsik <kadlec@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	"David S . Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	lvs-devel@vger.kernel.org,
+	netdev@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	coreteam@netfilter.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v2] ipvs: Check ipvs->enable before unregistration in __ip_vs_ftp_exit()
+Date: Wed, 10 Sep 2025 05:21:13 +0800
+Message-Id: <20250909212113.481-1-slavin452@gmail.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20250908065458.536-1-slavin452@gmail.com> 
+References: 
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
+On netns cleanup path, before unregistration in __ip_vs_ftp_exit(),
+there could still be existing conns with valid cp->app.
 
-	Hello,
+Suggested by Julian, this patch fixes this issue by checking ipvs->enable 
+to ensure the right order of cleanup:
+1. Set ipvs->enable to 0 in ipvs_core_dev_ops->exit_batch()
+2. Skip app unregistration in ip_vs_ftp_ops->exit() by 
+	checking ipvs->enable
+3. Flush all conns in ipvs_core_ops->exit_batch()
+4. Unregister all apps in ipvs_core_ops->exit_batch()
 
-On Mon, 8 Sep 2025, Slavin Liu wrote:
+Access ipvs->enable by READ_ONCE to avoid concurrency issue.
 
-> When exiting a network namespace, in cleanup_net()->ops_undo_list(),
-> ip_vs_ftp_ops->exit() is called before ip_vs_core_ops->exit_batch().
-> The ip_vs_app ip_vs_ftp and its incarnations will be freed by unregister_ip_vs_app().
-> However, there could still be connections bound to ip_vs_ftp's incarnation.
-> cp->app points to the free'd incarnation, which will be accessed later by
-> __ip_vs_cleanup_batch()->ip_vs_conn_net_cleanup()->ip_vs_conn_flush()->ip_vs_conn_del()->
-> ip_vs_conn_expire()->ip_vs_unbind_app(), causing a uaf. This vulnarability can
-> lead to a local privilege escalation.
-> 
-> Reproduction steps:
-> 1. create a ipvs service on (127.0.0.1:21)
-> 2. create a ipvs destination on the service, to (127.0.0.1:<any>)
-> 3. send a tcp packet to (127.0.0.1:21)
-> 4. exit the network namespace
-> 
-> I think the fix should flush all connection to ftp before unregistration.
-> The simpler fix is to delete ip_vs_ftp_ops->exit, and defer the unregistration
-> of ip_vs_ftp to ip_vs_app_net_cleanup(), which will unregister all ip_vs_app.
-> It's after ip_vs_conn_net_cleanup() so there is no uaf issue. This patch
-> seems to solve the issue but has't been fully tested yet, and is also not graceful.
-> 
-> Signed-off-by: Slavin Liu <slavin452@gmail.com>
-> ---
->  net/netfilter/ipvs/ip_vs_ftp.c | 13 -------------
->  1 file changed, 13 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-> index d8a284999544..68def1106681 100644
-> --- a/net/netfilter/ipvs/ip_vs_ftp.c
-> +++ b/net/netfilter/ipvs/ip_vs_ftp.c
-> @@ -598,22 +598,9 @@ static int __net_init __ip_vs_ftp_init(struct net *net)
->  	unregister_ip_vs_app(ipvs, &ip_vs_ftp);
->  	return ret;
->  }
-> -/*
-> - *	netns exit
-> - */
-> -static void __ip_vs_ftp_exit(struct net *net)
-> -{
-> -	struct netns_ipvs *ipvs = net_ipvs(net);
-> -
-> -	if (!ipvs)
+Suggested-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Slavin Liu <slavin452@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_ftp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-	What if we change this 'if' check to:
-
-	if (!ipvs || !ipvs->enable)
-
-	If netns exits, the cleanup order is:
-
-1. exit handlers for pernet device (&ipvs_core_dev_ops) where
-	ipvs->enable is set to 0
-
-2. exit handlers for ip_vs_ftp_ops (as last pernet subsys)
-	By checking for ipvs->enable, we should not call
-	unregister_ip_vs_app() in __ip_vs_ftp_exit() because
-	there can be existing conns with valid cp->app
-
-3. exit handlers for pernet subsys (&ipvs_core_ops) where
-	ip_vs_app_net_cleanup() unregisters all apps for netns.
-	Here the apps will be freed after all conns are gone
-
-	Why we should keep the ftp pernet subsys: because when
-there are no conns using the app, the module can be removed and
-it must unregister its app from all netns where ipvs->enable will
-be 1.
-
-	But note that we have a pending patch that changes
-the access to ipvs->enable to use READ_ONCE/WRITE_ONCE:
-
-https://archive.linuxvirtualserver.org/html/lvs-devel/2025-09/msg00000.html
-
-> -		return;
-> -
-> -	unregister_ip_vs_app(ipvs, &ip_vs_ftp);
-> -}
->  
->  static struct pernet_operations ip_vs_ftp_ops = {
->  	.init = __ip_vs_ftp_init,
-> -	.exit = __ip_vs_ftp_exit,
->  };
->  
->  static int __init ip_vs_ftp_init(void)
-> -- 
-> 2.34.1
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index d8a284999544..d3e2f7798bf3 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -605,7 +605,7 @@ static void __ip_vs_ftp_exit(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+-	if (!ipvs)
++	if (!ipvs || !READ_ONCE(ipvs->enable))
+ 		return;
+ 
+ 	unregister_ip_vs_app(ipvs, &ip_vs_ftp);
+-- 
+2.34.1
 
