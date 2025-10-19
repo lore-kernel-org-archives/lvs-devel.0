@@ -1,59 +1,59 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7146F2EC559;
-	Sun, 19 Oct 2025 16:01:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2A171E6DC5;
+	Sun, 19 Oct 2025 16:01:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1760889704; cv=none; b=PBHktEWQrWQGyD0Liq3jVX9Xi0LnVHGPD7eP8z/JTH3HC6ImFkh8lqZDt/5r3B0zvWhqE9UU6k1FHRZOMfUd1RuVVqh6jRtN5Jl2P9uQWD0ANMlrhg15ktQ5Bpt0+BFxTQP/4UqvPRjfTFMWolN2pCB4Am9x/OADed34RwBmqBI=
+	t=1760889711; cv=none; b=uVZqTZbkvbtliVQ5O1XXazDwJV/Ra0VvazjzTyi11bjbQa6i+6p+ILX2xWQS5eUT+5ahWyIhbxWFmmY9Xn8a2dvUOfNPTydQsYrWCvD19v6y+7b90XA9qxqlY6sd+eeFEGG6uO0FBdcbcdl54XQPFKGzvxBf619AjvHb6yOPMVI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1760889704; c=relaxed/simple;
-	bh=F6PlUCq2Cwj8gE594/6yfkSKbNbMJdhpfQHOsu3i02o=;
+	s=arc-20240116; t=1760889711; c=relaxed/simple;
+	bh=gVpi4FdVUYp6gCe+NeJ7pBGJLCW/uLHbGCizBaO+WQs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fLVj9jk6pPNrx3K8skad4bmb/f459pqqlYG6enyJNSBZcYpySw5x0N0AMhV+EofIBJqjPo4Jd+XHK4l8EpL7afFX9XYpUpSA2uZGFn5nKUvDIKSWbDm0U2pG/AqozuvBhjjF10U5N2ojcG4d27T+ApWZGnk4QLtavmBJNzPsDzQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=rE1++aw1; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version; b=l2L5RciAK02q000Opv5i2SwlBzbjkEuxjvSh8jlN4kpKRGkWmymZACGfBu1AE0epnN9Yr94Dbsozt8+ela10koHkmb33Sb/+OUH5/ODxn40KnesUQ25to/CfrFwo2eG+O6E1B9ls3JedqM65mjNGhlSXTb/JZrufGOOP6nEwd/o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=583ZzD++; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="rE1++aw1"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="583ZzD++"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 8B98921EF6;
-	Sun, 19 Oct 2025 19:01:11 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 4B58221EF7;
+	Sun, 19 Oct 2025 19:01:12 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-transfer-encoding:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=zBbpvFr0P3JNQb9NCuyk3fBJXcG8pDfhoS4b2oo107E=; b=rE1++aw1/lf2
-	O6iEijly2y10atc3WOhZ0dAT+OVXHenOCtRQrwpAVEjzwHIFR8KJUXgqB9/pyxRW
-	r2kpeBoYqxc/OxZY64apwNitbtQfnU05wHEwyO8xoLjRNJUzA6EkeQqicagt0WuA
-	lHaC3qAQwub6wMIEB8cCzzTnAhCW+Wsua4tEGHCyMFHYWtAqrYOUC+DZNUYFDz5w
-	/8xucS52hHKFdx+L45Pdv79htjhahZFyiFpaKkJM2NMAj5yrc8TtZzbdfE0EYAwC
-	R2afUSrxRzSYQXb2fY7hwG+bPPn1St5u+Oy9f0choe35deAGYNzaKghkx+jIe0Mo
-	Bv2pmghYSMFUDcm7CfpQb3CWSMjwdQe9xDBkLZncj0cyMxvq26hUvPiHzApYxc5l
-	altZKJ/uA9o+wJkfwbHcw+kHibKofh0B8yvhJxtqsTt8D4tGYzpEz6Q5Vgw3b2cI
-	yTZw8CPif9L/6ekxjBth/CTD9Jl4nZsAFqXzonHblHy4hiljE3ENeQPVPk3bSGpJ
-	N7J253N4EQLNeWKAhsTifjpp0f2BZJbGX0FYgJx1eQMGjATM+JOm7M3NRMuG8spF
-	2cES8SQmn5klHL31qAhOjPQcrOUuPL+TcbkFZVezVgtxt3xk2L3VaB0+MwyV/iCq
-	/RR3yGyCLKqM06Rr5CPUG0h5BAzwz6w=
+	 bh=GK6QURj2FmL7ME3gKmO0ePtiQLW4/krLacCG4GUqV4s=; b=583ZzD++HPB0
+	TDHDXiIVAlG84GUCXSZAglJMJrlIAlM36dvvSjNpNYjSKDDUVaqdNdOYBXF6ymV3
+	jmQoTXB2R19ogvMWW1LJ1hcVsJGJwAgW6HWDUshnQHI1l1TYt4s5MlTv6WcIsaAl
+	PW4VlLehy3z93UfTY0uc57SBrUx3eJruXTUJ6d7RaO36TwHBUJVR14RsNtwN3Ehn
+	l1IT3MwZiL1hTpEa4enXj+TXKr6Gwu7zgVj2Dy+rDsJCGFf/L22Ecrbvzr9JqFlq
+	1Ehcqg3wlqFC0GgDzTq865OejrkRVUNKjkSFDfrkozwkmFcaQ9I0wudw8ftQl3QH
+	SzMA15CQFa1ShZ4ouEVPjOc32JCeDkLlcLYUGYW8MS9T5hUdXbiAYNvSrTfrZH/6
+	KaOQIGCoZGMGLR1K6rd8srmnHmw/GL42oQ3gkeh4bdftj4PXX9sCzAsSWI0Jn5m5
+	xoerwHiQRMW327fptvGnrw0inMykVZ96sWj9xTCp+DnwY8r7HRQ02xm/261Ml84j
+	Hp+xhuGiegC1S+PB+uybcS7OsPrpLiikNDd7iR2AA56lcR50w0o9E0Wfp+RLsduS
+	P2HIsJgWnVVzk3sDk6M4WqjO5YpC+cmDLBv9p9l+zfCH7C0EXLHE7EBp+bWm2g9I
+	j/1cf6Q27OEZbKzMqGBUjEvz+w7DMUc=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
 	Sun, 19 Oct 2025 19:01:10 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id F21BC665C7;
-	Sun, 19 Oct 2025 19:01:09 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 7A5D564EA9;
+	Sun, 19 Oct 2025 19:01:10 +0300 (EEST)
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 59JFvgNb067705;
-	Sun, 19 Oct 2025 18:57:42 +0300
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 59JFveI4067661;
+	Sun, 19 Oct 2025 18:57:40 +0300
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 59JFvg98067704;
-	Sun, 19 Oct 2025 18:57:42 +0300
+	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 59JFveID067660;
+	Sun, 19 Oct 2025 18:57:40 +0300
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
         Dust Li <dust.li@linux.alibaba.com>,
         Jiejian Wu <jiejian@linux.alibaba.com>, rcu@vger.kernel.org
-Subject: [PATCHv6 net-next 13/14] ipvs: add ip_vs_status info
-Date: Sun, 19 Oct 2025 18:57:10 +0300
-Message-ID: <20251019155711.67609-14-ja@ssi.bg>
+Subject: [PATCHv6 net-next 03/14] ipvs: some service readers can use RCU
+Date: Sun, 19 Oct 2025 18:57:00 +0300
+Message-ID: <20251019155711.67609-4-ja@ssi.bg>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20251019155711.67609-1-ja@ssi.bg>
 References: <20251019155711.67609-1-ja@ssi.bg>
@@ -65,190 +65,171 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add /proc/net/ip_vs_status to show current state of IPVS.
+Some places walk the services under mutex but they can just use RCU:
+
+* ip_vs_dst_event() uses ip_vs_forget_dev() which uses its own lock
+  to modify dest
+* ip_vs_genl_dump_services(): ip_vs_genl_fill_service() just fills skb
+* ip_vs_genl_parse_service(): move RCU lock to callers
+  ip_vs_genl_set_cmd(), ip_vs_genl_dump_dests() and ip_vs_genl_get_cmd()
+* ip_vs_genl_dump_dests(): just fill skb
 
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 145 +++++++++++++++++++++++++++++++++
- 1 file changed, 145 insertions(+)
+ net/netfilter/ipvs/ip_vs_ctl.c | 47 +++++++++++++++++-----------------
+ 1 file changed, 23 insertions(+), 24 deletions(-)
 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 3dfc01ef1890..a508e9bdde73 100644
+index 2fb9034b4f53..b18d08d79bcb 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2915,6 +2915,144 @@ static int ip_vs_stats_percpu_show(struct seq_file *seq, void *v)
- 
- 	return 0;
- }
-+
-+static int ip_vs_status_show(struct seq_file *seq, void *v)
-+{
-+	struct net *net = seq_file_single_net(seq);
-+	struct netns_ipvs *ipvs = net_ipvs(net);
-+	unsigned int resched_score = 0;
-+	struct ip_vs_conn_hnode *hn;
-+	struct hlist_bl_head *head;
-+	struct ip_vs_service *svc;
-+	struct ip_vs_rht *t, *pt;
-+	struct hlist_bl_node *e;
-+	int old_gen, new_gen;
-+	u32 counts[8];
-+	u32 bucket;
-+	int count;
-+	u32 sum1;
-+	u32 sum;
-+	int i;
-+
+@@ -1759,23 +1759,21 @@ static int ip_vs_dst_event(struct notifier_block *this, unsigned long event,
+ 	if (event != NETDEV_DOWN || !ipvs)
+ 		return NOTIFY_DONE;
+ 	IP_VS_DBG(3, "%s() dev=%s\n", __func__, dev->name);
+-	mutex_lock(&ipvs->service_mutex);
 +	rcu_read_lock();
-+
-+	t = rcu_dereference(ipvs->conn_tab);
-+
-+	seq_printf(seq, "Conns:\t%d\n", atomic_read(&ipvs->conn_count));
-+	seq_printf(seq, "Conn buckets:\t%d (%d bits, lfactor %d)\n",
-+		   t ? t->size : 0, t ? t->bits : 0, t ? t->lfactor : 0);
-+
-+	if (!atomic_read(&ipvs->conn_count))
-+		goto after_conns;
-+	old_gen = atomic_read(&ipvs->conn_tab_changes);
-+
-+repeat_conn:
-+	smp_rmb(); /* ipvs->conn_tab and conn_tab_changes */
-+	memset(counts, 0, sizeof(counts));
-+	ip_vs_rht_for_each_table_rcu(ipvs->conn_tab, t, pt) {
-+		for (bucket = 0; bucket < t->size; bucket++) {
-+			DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
-+
-+			count = 0;
-+			resched_score++;
-+			ip_vs_rht_walk_bucket_rcu(t, bucket, head) {
-+				count = 0;
-+				hlist_bl_for_each_entry_rcu(hn, e, head, node)
-+					count++;
-+			}
-+			resched_score += count;
-+			if (resched_score >= 100) {
-+				resched_score = 0;
-+				cond_resched_rcu();
-+				new_gen = atomic_read(&ipvs->conn_tab_changes);
-+				/* New table installed ? */
-+				if (old_gen != new_gen) {
-+					old_gen = new_gen;
-+					goto repeat_conn;
-+				}
-+			}
-+			counts[min(count, (int)ARRAY_SIZE(counts) - 1)]++;
-+		}
-+	}
-+	for (sum = 0, i = 0; i < ARRAY_SIZE(counts); i++)
-+		sum += counts[i];
-+	sum1 = sum - counts[0];
-+	seq_printf(seq, "Conn buckets empty:\t%u (%lu%%)\n",
-+		   counts[0], (unsigned long)counts[0] * 100 / max(sum, 1U));
-+	for (i = 1; i < ARRAY_SIZE(counts); i++) {
-+		if (!counts[i])
-+			continue;
-+		seq_printf(seq, "Conn buckets len-%d:\t%u (%lu%%)\n",
-+			   i, counts[i],
-+			   (unsigned long)counts[i] * 100 / max(sum1, 1U));
-+	}
-+
-+after_conns:
-+	t = rcu_dereference(ipvs->svc_table);
-+
-+	count = ip_vs_get_num_services(ipvs);
-+	seq_printf(seq, "Services:\t%d\n", count);
-+	seq_printf(seq, "Service buckets:\t%d (%d bits, lfactor %d)\n",
-+		   t ? t->size : 0, t ? t->bits : 0, t ? t->lfactor : 0);
-+
-+	if (!count)
-+		goto after_svc;
-+	old_gen = atomic_read(&ipvs->svc_table_changes);
-+
-+repeat_svc:
-+	smp_rmb(); /* ipvs->svc_table and svc_table_changes */
-+	memset(counts, 0, sizeof(counts));
-+	ip_vs_rht_for_each_table_rcu(ipvs->svc_table, t, pt) {
-+		for (bucket = 0; bucket < t->size; bucket++) {
-+			DECLARE_IP_VS_RHT_WALK_BUCKET_RCU();
-+
-+			count = 0;
-+			resched_score++;
-+			ip_vs_rht_walk_bucket_rcu(t, bucket, head) {
-+				count = 0;
-+				hlist_bl_for_each_entry_rcu(svc, e, head,
-+							    s_list)
-+					count++;
-+			}
-+			resched_score += count;
-+			if (resched_score >= 100) {
-+				resched_score = 0;
-+				cond_resched_rcu();
-+				new_gen = atomic_read(&ipvs->svc_table_changes);
-+				/* New table installed ? */
-+				if (old_gen != new_gen) {
-+					old_gen = new_gen;
-+					goto repeat_svc;
-+				}
-+			}
-+			counts[min(count, (int)ARRAY_SIZE(counts) - 1)]++;
-+		}
-+	}
-+	for (sum = 0, i = 0; i < ARRAY_SIZE(counts); i++)
-+		sum += counts[i];
-+	sum1 = sum - counts[0];
-+	seq_printf(seq, "Service buckets empty:\t%u (%lu%%)\n",
-+		   counts[0], (unsigned long)counts[0] * 100 / max(sum, 1U));
-+	for (i = 1; i < ARRAY_SIZE(counts); i++) {
-+		if (!counts[i])
-+			continue;
-+		seq_printf(seq, "Service buckets len-%d:\t%u (%lu%%)\n",
-+			   i, counts[i],
-+			   (unsigned long)counts[i] * 100 / max(sum1, 1U));
-+	}
-+
-+after_svc:
-+	seq_printf(seq, "Stats thread slots:\t%d (max %lu)\n",
-+		   ipvs->est_kt_count, ipvs->est_max_threads);
-+	seq_printf(seq, "Stats chain max len:\t%d\n", ipvs->est_chain_max);
-+	seq_printf(seq, "Stats thread ests:\t%d\n",
-+		   ipvs->est_chain_max * IPVS_EST_CHAIN_FACTOR *
-+		   IPVS_EST_NTICKS);
-+
+ 	for (idx = 0; idx < IP_VS_SVC_TAB_SIZE; idx++) {
+-		hlist_for_each_entry(svc, &ipvs->svc_table[idx], s_list) {
+-			list_for_each_entry(dest, &svc->destinations,
+-					    n_list) {
++		hlist_for_each_entry_rcu(svc, &ipvs->svc_table[idx], s_list)
++			list_for_each_entry_rcu(dest, &svc->destinations,
++						n_list)
+ 				ip_vs_forget_dev(dest, dev);
+-			}
+-		}
+ 
+-		hlist_for_each_entry(svc, &ipvs->svc_fwm_table[idx], f_list) {
+-			list_for_each_entry(dest, &svc->destinations,
+-					    n_list) {
++		hlist_for_each_entry_rcu(svc, &ipvs->svc_fwm_table[idx], f_list)
++			list_for_each_entry_rcu(dest, &svc->destinations,
++						n_list)
+ 				ip_vs_forget_dev(dest, dev);
+-			}
+-		}
+ 	}
 +	rcu_read_unlock();
-+	return 0;
-+}
-+
- #endif
  
- /*
-@@ -4835,6 +4973,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
- 				    ipvs->net->proc_net,
- 				    ip_vs_stats_percpu_show, NULL))
- 		goto err_percpu;
-+	if (!proc_create_net_single("ip_vs_status", 0, ipvs->net->proc_net,
-+				    ip_vs_status_show, NULL))
-+		goto err_status;
- #endif
++	mutex_lock(&ipvs->service_mutex);
+ 	spin_lock_bh(&ipvs->dest_trash_lock);
+ 	list_for_each_entry(dest, &ipvs->dest_trash, t_list) {
+ 		ip_vs_forget_dev(dest, dev);
+@@ -3318,9 +3316,9 @@ static int ip_vs_genl_fill_service(struct sk_buff *skb,
+ 			goto nla_put_failure;
+ 	}
  
- 	ret = ip_vs_control_net_init_sysctl(ipvs);
-@@ -4845,6 +4986,9 @@ int __net_init ip_vs_control_net_init(struct netns_ipvs *ipvs)
+-	sched = rcu_dereference_protected(svc->scheduler, 1);
++	sched = rcu_dereference(svc->scheduler);
+ 	sched_name = sched ? sched->name : "none";
+-	pe = rcu_dereference_protected(svc->pe, 1);
++	pe = rcu_dereference(svc->pe);
+ 	if (nla_put_string(skb, IPVS_SVC_ATTR_SCHED_NAME, sched_name) ||
+ 	    (pe && nla_put_string(skb, IPVS_SVC_ATTR_PE_NAME, pe->name)) ||
+ 	    nla_put(skb, IPVS_SVC_ATTR_FLAGS, sizeof(flags), &flags) ||
+@@ -3374,9 +3372,9 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
+ 	struct net *net = sock_net(skb->sk);
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
  
- err:
- #ifdef CONFIG_PROC_FS
-+	remove_proc_entry("ip_vs_status", ipvs->net->proc_net);
-+
-+err_status:
- 	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
+-	mutex_lock(&ipvs->service_mutex);
++	rcu_read_lock();
+ 	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
+-		hlist_for_each_entry(svc, &ipvs->svc_table[i], s_list) {
++		hlist_for_each_entry_rcu(svc, &ipvs->svc_table[i], s_list) {
+ 			if (++idx <= start)
+ 				continue;
+ 			if (ip_vs_genl_dump_service(skb, svc, cb) < 0) {
+@@ -3387,7 +3385,7 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
+ 	}
  
- err_percpu:
-@@ -4870,6 +5014,7 @@ void __net_exit ip_vs_control_net_cleanup(struct netns_ipvs *ipvs)
- 	ip_vs_control_net_cleanup_sysctl(ipvs);
- 	cancel_delayed_work_sync(&ipvs->est_reload_work);
- #ifdef CONFIG_PROC_FS
-+	remove_proc_entry("ip_vs_status", ipvs->net->proc_net);
- 	remove_proc_entry("ip_vs_stats_percpu", ipvs->net->proc_net);
- 	remove_proc_entry("ip_vs_stats", ipvs->net->proc_net);
- 	remove_proc_entry("ip_vs", ipvs->net->proc_net);
+ 	for (i = 0; i < IP_VS_SVC_TAB_SIZE; i++) {
+-		hlist_for_each_entry(svc, &ipvs->svc_fwm_table[i], f_list) {
++		hlist_for_each_entry_rcu(svc, &ipvs->svc_fwm_table[i], f_list) {
+ 			if (++idx <= start)
+ 				continue;
+ 			if (ip_vs_genl_dump_service(skb, svc, cb) < 0) {
+@@ -3398,7 +3396,7 @@ static int ip_vs_genl_dump_services(struct sk_buff *skb,
+ 	}
+ 
+ nla_put_failure:
+-	mutex_unlock(&ipvs->service_mutex);
++	rcu_read_unlock();
+ 	cb->args[0] = idx;
+ 
+ 	return skb->len;
+@@ -3454,13 +3452,11 @@ static int ip_vs_genl_parse_service(struct netns_ipvs *ipvs,
+ 		usvc->fwmark = 0;
+ 	}
+ 
+-	rcu_read_lock();
+ 	if (usvc->fwmark)
+ 		svc = __ip_vs_svc_fwm_find(ipvs, usvc->af, usvc->fwmark);
+ 	else
+ 		svc = __ip_vs_service_find(ipvs, usvc->af, usvc->protocol,
+ 					   &usvc->addr, usvc->port);
+-	rcu_read_unlock();
+ 	*ret_svc = svc;
+ 
+ 	/* If a full entry was requested, check for the additional fields */
+@@ -3587,7 +3583,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
+ 	struct net *net = sock_net(skb->sk);
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+-	mutex_lock(&ipvs->service_mutex);
++	rcu_read_lock();
+ 
+ 	/* Try to find the service for which to dump destinations */
+ 	if (nlmsg_parse_deprecated(cb->nlh, GENL_HDRLEN, attrs, IPVS_CMD_ATTR_MAX, ip_vs_cmd_policy, cb->extack))
+@@ -3599,7 +3595,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
+ 		goto out_err;
+ 
+ 	/* Dump the destinations */
+-	list_for_each_entry(dest, &svc->destinations, n_list) {
++	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
+ 		if (++idx <= start)
+ 			continue;
+ 		if (ip_vs_genl_dump_dest(skb, dest, cb) < 0) {
+@@ -3612,7 +3608,7 @@ static int ip_vs_genl_dump_dests(struct sk_buff *skb,
+ 	cb->args[0] = idx;
+ 
+ out_err:
+-	mutex_unlock(&ipvs->service_mutex);
++	rcu_read_unlock();
+ 
+ 	return skb->len;
+ }
+@@ -3915,9 +3911,12 @@ static int ip_vs_genl_set_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	if (cmd == IPVS_CMD_NEW_SERVICE || cmd == IPVS_CMD_SET_SERVICE)
+ 		need_full_svc = true;
+ 
++	/* We use function that requires RCU lock */
++	rcu_read_lock();
+ 	ret = ip_vs_genl_parse_service(ipvs, &usvc,
+ 				       info->attrs[IPVS_CMD_ATTR_SERVICE],
+ 				       need_full_svc, &svc);
++	rcu_read_unlock();
+ 	if (ret)
+ 		goto out;
+ 
+@@ -4037,7 +4036,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
+ 	if (!msg)
+ 		return -ENOMEM;
+ 
+-	mutex_lock(&ipvs->service_mutex);
++	rcu_read_lock();
+ 
+ 	reply = genlmsg_put_reply(msg, info, &ip_vs_genl_family, 0, reply_cmd);
+ 	if (reply == NULL)
+@@ -4105,7 +4104,7 @@ static int ip_vs_genl_get_cmd(struct sk_buff *skb, struct genl_info *info)
+ out_err:
+ 	nlmsg_free(msg);
+ out:
+-	mutex_unlock(&ipvs->service_mutex);
++	rcu_read_unlock();
+ 
+ 	return ret;
+ }
 -- 
 2.51.0
 
