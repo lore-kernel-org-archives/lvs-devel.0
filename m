@@ -1,100 +1,89 @@
-Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E906839DBFD
-	for <lvs-devel@vger.kernel.org>; Tue, 24 Mar 2026 19:00:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8320C272E6D;
+	Wed, 25 Mar 2026 04:55:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774378807; cv=none; b=ZZXVv0st7ejw0E9RRJeFIC5VgYcZlUK2kQfaXgumVQ5eeiEWawWixzhgxWZeouDsn8LZlCTVX6z61vOhMDwHQUdbtdvxZ/kwmC3J8NChZVdf56H/W4qjDVA6cBq7cPOPewar6zsFbnXNjDALiqHf3Gi6GbgaRShfQiPc1RkGc+o=
+	t=1774414511; cv=none; b=YgV/ZsCQO2GCYCRNVLx3Ga9hMeKls/ck91MdnkBuZYwuVgkQ9UYmJVNiTghD5HHLTrhxzSaeS/ogvZsBGKBfullLPu0FrBUPyWK8ZQZ8wU5dCdq7Jq1q3AcjBqcILsx0eJjTtEexePMV989rUsD6E02Mrh8sYMEs7fIg/Gw19Cw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774378807; c=relaxed/simple;
-	bh=jUFJvtaq69nRHMngc02znHC4Tix157JRHOphEm1e344=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ilLRHq2hUFFJl1JniIyjZdGBT5birJALFN/UEZ8MQIj1aM/e+9hFppXQDqxtVDK7vNqwvbghPpmwzdGY8xE1CxuE+5nBqj4iI//5WVKsqQaohD34S0prH+LGN0LkG/D/aehA9lVgCnNc813c62Ed1eU30lM/rqjc6v+da16IA1I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ZFYiSSQN; arc=none smtp.client-ip=209.85.128.41
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1774414511; c=relaxed/simple;
+	bh=qdImSBPzupl5FH7oqSRosfZOz2xQbStMQCbgPZiDC9o=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=UXVooIgsnvivc0S059KKaeWuCKhcV1nXufatQ/VuWIDV1/C2Qqm4GmSd/yMRgGxZHzT2SE932Hc2DQm1W9GQwCMEwLOUnDFlaPrAPZv6gVMVJmTLPjkGVcEdLsYonttSDKeJsMwKFTSZqF8/Io/KnP1/9aBvb/Ta7hfJQtJ7tec=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=5JeObb8p; arc=none smtp.client-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZFYiSSQN"
-Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-486fb14227cso17471435e9.3
-        for <lvs-devel@vger.kernel.org>; Tue, 24 Mar 2026 12:00:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1774378803; x=1774983603; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=jUFJvtaq69nRHMngc02znHC4Tix157JRHOphEm1e344=;
-        b=ZFYiSSQNv4KpQKmAMOrfP1CH/SlvSKEyOSfSlwNXgAXDFN3XHRV/5nQJFBks6keLCy
-         u42OvH7vA8FhMXPkXAcS4KNIgmbDQvyqZ98hhPGZoandyBsBL6NJyfxvlwA4m1sxDH2x
-         aVchJnGH1ruvODq0MirxQDfJSh4q6gveaq6AAb3ojto9oPAgwnARcGuZhpae20iAW5vo
-         aK2T7xugPewi3/AjDh9+kwYM/ebhIxt9pao5a5rITk3ZyIb27/9p6h8IQw/BxtIev4hf
-         tK2jEgq6INjIBWKuClp0H+Sn++OD1OX/2Oqnwhy1czR7/6lm6ec88Y6goC5JD47BFd1l
-         ydgQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774378803; x=1774983603;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=jUFJvtaq69nRHMngc02znHC4Tix157JRHOphEm1e344=;
-        b=gDVP/+IA0BYV5YPPdNAf00VlX2QPAxVF9O7MuMFdvtjJgQ316CYVEaigOndc6oc0vz
-         UInW5jhpwQ74enq0AX7prN0i8UPSGGY7LsA7EYBvBPzAkX5h9aoCoEictsEPfeI8YMjG
-         djV3G6EKr4eEy3RCTNFfgDBIyyHKci1YAoX05x7ev4QsXSdqZIUixRlWEizGoeDHlShx
-         Opv0cvROiy6Vz33I+Uto4y+SRs3lZzulOn7NbeC/OyvPWEXitt+FaleQiYbvglPq3wWX
-         HwMPhURHXlRSSNrAwPwkyoEGmBZU/qvvSs8EeGFm9512Jj1p5gBhm2HnhqeqrPGKDukM
-         E2Ag==
-X-Forwarded-Encrypted: i=1; AJvYcCUdJJ8Ak9/0eYS3iYetsbja8NBtKBDy+i3AR9652+RL5eQjR81mUVuFIwThcza0RCdlVP9vYaL8KJk=@vger.kernel.org
-X-Gm-Message-State: AOJu0YyJdLzADL3Dmgc84ox9FI6+h5AbvFlvCq6ojKzRVNKAXMuPiUNE
-	hWyICPBnOFVjlLC8BntKQg4+B9EmRPsU3/Byb//vCn0WEUzvK6GdVuwn
-X-Gm-Gg: ATEYQzwhgiA4PUJcyWAT53ruTquqwb4xs/hriG/1h6qk/mekbR8UwBS8FJpnOz6ATO+
-	VXdmsrz1a1+wLcCEZ/eYEuFF6qzHPZt+R4qK51p/Fmk8ANslMfFzVoFtt3vGNKQqQ7IyoSvZ4Tf
-	+6REZeXB7/2bWM9LppS2/pDpAJ1X+K8WWxsmbFcLpeYmtu/IzLwI0Z09dnG1nmLsDVy5xVkdRht
-	jLNu9OyL7CRogfxx+aiMyV2TnWdyDD57MIb/13p38a6f5ilqOROKci5bE8HnKLkvYkUXI/jnP3C
-	6bvkTGaMLvksw5X5RTmdJ8y6nPbEQhbpTXFAxCDhgtAbe8LwkZpyi6q9vb6RiMqrG3CMwRxvdt9
-	LQqsOHc4CAo/GxJhx3b12Ba2PYBqqOM/K5M8xy4sdwA9Gk+egmrlsQxxCgFapuyy1lb0i2nTIjg
-	k+GZbGhseq3RHF6ySpjdlvILyz0fxcnZ5vg8oLVZI=
-X-Received: by 2002:a05:600c:a4f:b0:485:3a03:ceca with SMTP id 5b1f17b1804b1-4871606c9e8mr11861135e9.23.1774378803195;
-        Tue, 24 Mar 2026 12:00:03 -0700 (PDT)
-Received: from localhost.localdomain ([102.164.100.74])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-487116ee57esm64387355e9.14.2026.03.24.11.59.50
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 24 Mar 2026 12:00:02 -0700 (PDT)
-From: David Dull <monderasdor@gmail.com>
-To: longman@redhat.com
-Cc: linux-kernel@vger.kernel.org,
-	netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	linux-sched@vger.kernel.org,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	horms@kernel.org,
-	David Dull <monderasdor@gmail.com>
-Subject: Re: [PATCH 1/2] sched/isolation: Make HK_TYPE_KTHREAD an alias of HK_TYPE_DOMAIN
-Date: Tue, 24 Mar 2026 20:59:29 +0200
-Message-ID: <review-monkeos-20260324@monderasdor>
-X-Mailer: git-send-email 2.49.0.windows.1
-In-Reply-To: <20260324151827.2006656-2-longman@redhat.com>
-References: <20260324151827.2006656-1-longman@redhat.com>
- <20260324151827.2006656-2-longman@redhat.com>
- <20260324151827.2006656-3-longman@redhat.com>
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="5JeObb8p"
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 1BCA9217F8;
+	Wed, 25 Mar 2026 06:54:58 +0200 (EET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=7UnVyPtcnhUlOcLDILTbI3B1tbIPUQ62JS9Ucwi6NEY=; b=5JeObb8pWmFE
+	vbWlGsRtlmeBiqjI9vwjW1NED5ucvi8JT3v1U0EC7SNgcDDxfbzab60u4K10yLNj
+	KPSazQKqqOItueG3D5QVBXR39IJ7hd+z2+ZllYZ54Fr+ErVSajd2ao8vLOlS26AF
+	yo3KQNYfpNvmSDcqRERm7WRLpVAmDbf3L7DEyGy5+MUfSQhmUkOPtNmhfPj9ib7Z
+	ilFFkzpwCfNlZEuau4U2ig7Ovwp36u1R7WwP5O2zfj8Fe8hFJ+flPZXcJ43S2Dhu
+	JkX01PDm5ctFVhijBy//g5fAtVrC/44ae6ZVh/l28WwdAGWZ7z6/kZIQ6zrAmVIA
+	ylxdN5PQ8Qw7UPlOAUsieJsNAbpCm2ivG7DLhJ2wmBV6NCIrJUfe0Xmsxd/JG7rZ
+	fWAHWWle5YQ/X1k/F8TlGVRD05PKBUkrobu8WS3Jh74Ld07auPBPDw4IGIcAaDWo
+	tQv4Wnvtg3CEjpuOTvWTnMxjIsYEaU50sd0ZmDO0r8L+0Ow+DUBwACMOCnwjPB7h
+	XawAvlcX3mBI46i9GhkNfLd0yNZdscbCasjEM6q/SSrG320HM9uGk7rDjqaZLTJH
+	AUPDWDqsl/6CPQqA/62x+EDzF9x2K1DD+fMdir2qMzwMp8Py+ztcs+ZsTtd4JW78
+	bghTJ97nycYlbTg1rQ8JNqdLjOchNzQ=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Wed, 25 Mar 2026 06:54:57 +0200 (EET)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 1E7F6609D8;
+	Wed, 25 Mar 2026 06:54:56 +0200 (EET)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 62P4sgY5004260;
+	Wed, 25 Mar 2026 06:54:43 +0200
+Date: Wed, 25 Mar 2026 06:54:42 +0200 (EET)
+From: Julian Anastasov <ja@ssi.bg>
+To: Florian Westphal <fw@strlen.de>
+cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
+        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+        Dust Li <dust.li@linux.alibaba.com>,
+        Jiejian Wu <jiejian@linux.alibaba.com>
+Subject: Re: [PATCH nf-next 3/3] ipvs: add conn_lfactor and svc_lfactor sysctl
+ vars
+In-Reply-To: <acKLSxnxYWCPKDBR@strlen.de>
+Message-ID: <331e1dc8-ec57-0a09-bf71-686c53462cb1@ssi.bg>
+References: <20260323162523.44964-1-ja@ssi.bg> <20260323162523.44964-4-ja@ssi.bg> <acKLSxnxYWCPKDBR@strlen.de>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=US-ASCII
 
-I went through the series.=0D
-=0D
-Patch 1 correctly updates HK_TYPE_KTHREAD to reflect the post-041ee6f3727a=
-=0D
-behavior where kthreads follow HK_TYPE_DOMAIN. Keeping it mapped to=0D
-HK_TYPE_KERNEL_NOISE is no longer accurate, so the alias is the right fix.=
-=0D
-=0D
-Patch 2 properly introduces RCU protection for accessing the=0D
-HK_TYPE_KTHREAD/HK_TYPE_DOMAIN cpumask in IPVS. Since the mask can now=0D
-change at runtime, guarding against potential UAF is required. The=0D
-changes are minimal and the helper wrappers keep call sites clean.=0D
-=0D
-Reviewed-by: David Dull <monderasdor@gmail.com>=
+
+	Hello,
+
+On Tue, 24 Mar 2026, Florian Westphal wrote:
+
+> Julian Anastasov <ja@ssi.bg> wrote:
+> > +			*valp = val;
+> > +			if (rcu_dereference_protected(ipvs->conn_tab, 1))
+> > +				mod_delayed_work(system_unbound_wq,
+> > +						 &ipvs->conn_resize_work, 0);
+> 
+> Can I change this to rcu_access_pointer()?
+
+	Yes, both proc handlers should use it, thanks!
+
+> rcu_dereference_protected( ... , 1)
+> 
+> ... always looks like a bug to me, even though its fine here.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+
