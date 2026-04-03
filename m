@@ -1,66 +1,61 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E82933A6E9;
-	Fri,  3 Apr 2026 14:16:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C61CB346AD6;
+	Fri,  3 Apr 2026 14:20:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775225783; cv=none; b=DgxzUZyWVdMpQpm5xSnaXERcnJhBycF7OaWub6kxrYAvuPV3B1NOXoslhCCBeu9zSEWvrbtTp1xzZX8TK6r2l3EaxWuWaLKxcqk1tQfQ6NQA03Vkit1PMOsqEgKwg9m6gsCvK0NaAd5amlSocbr5uXrltiZ6k1VK2JHQHYvz694=
+	t=1775226059; cv=none; b=RmtcYryuCcB9svlfaxy20EejiroaZhHyBM35luuR0x/4AnWxS3jVoYygsDKg+77xVjWNsUmt9AJOcBvvKiA0CMBBQ2G/oBy9TMtpwdES0tu/cYM5e0LLXUugCdhq1nsRtD57/q4r0pX7TNekZD/bSD5Ia0LRHAOmNkmt78O5qMo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775225783; c=relaxed/simple;
-	bh=jYbzIB7KuDQXMF/BEXEFJ2HL31cx8w4RqmD2iW7hxek=;
+	s=arc-20240116; t=1775226059; c=relaxed/simple;
+	bh=0V4h/5aTxZCmeKMm6XGQjdOuXtv/j7qdwVdMoh8vWpM=;
 	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=JD3Of99hH0OHkMid4mliCoNs5+US9e6io7qdcq4jsIb0dqaJssEJc8tNfY5EYgdE/PwUNUQMIlhNrlwzDae9u2VCCTCXTTRKS22utubsD4SpkzDVuCgEV/ZVpvBdB4ARkSkoHK7IJdfxfTF8WMU6FcP3l1R+Egy26kXiMq5HuTw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=CsB/XVUc; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version:Content-Type; b=l05Ajz6Jmn2D/Hx9VekNWV8MFJYK+Cp6m5ce6W9d4kahdv5NC97Rlf11sfe/EArRXS2iZQdelv4do62NhSJy6BImA58Gz8lFL197MqsnikFMKtv8ep+ZGcCdeQlRoZQWg5Q8Y5Xufeeli0K/YA0+ZtkHLXpMSvDNs630AoZzByg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=azT2dpY9; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="CsB/XVUc"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="azT2dpY9"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id A3F2A21C55;
-	Fri, 03 Apr 2026 17:16:08 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id E9B5621C55;
+	Fri, 03 Apr 2026 17:20:54 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-type:content-type:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=z6ZXzmDuiujBqpb4kye0eh62yZOclw7FyfwpE6HbmIo=; b=CsB/XVUc3GaQ
-	JYI1TCpbD2vsZOoJhTV3X7xZvMeCGjSd78/rKrTCMQS4B6bdeIRCTdqTJ5Z+Xz9b
-	cDLSBWsZcwcOWnjZY9V0FZVV+yvvaS5ijyeaVumD3ab5RBj73lfrJLTb7TLW0CJM
-	P6k75XKtcJz7vArwuexM2l/rKIp1UaBNndgtxTDrgMxj14Yutl3iDALlSr5PNRCw
-	Do+dhm1h+3uGduCD3jjMXS52As9WjDvWBIDmNEppc1oWmDn8+zjyf7B6h9tQWXSJ
-	FN0vLHY3AXKJEDjSeJPmGdstSdYlIWiyqVtRckovikmENdRwkDzULdj8VmKJZgKS
-	NHB1JJFcIRTpwgMajCcLj3b1Qgx6XFZ6UZWhi4Cli7BrHHEXSp3u5p9r28ktOUFH
-	ApLpwIlsswdX0dNCxHKi12oRRnNKUErhD9kiUk2/dwB4IgQRzsILMjGrCMLhXEZA
-	WbnzjtBJAvZB7p0TIlJw9yfeQ31d2F/8LEBw1DZix8XtB39CtNyja7rHnk0TeP07
-	XijMpW3bengA26BwtAt5nI2Wncf7xWxO+eh44Oe3Vcssp44rXYFA5L+XPPqaf0/Q
-	FBGqObhnncdLNoqtpS/NtyXlFDguNvQc5cHBTDQf1HKMREmebXJSMmydbsQFDAH0
-	pegfKgEXBeBLrQ02FpbDQy9dDoZFqi8=
+	 bh=3WfIBvLHzi2xCqibDwh64TIeSYwy5tR6pEXljcbdkQU=; b=azT2dpY93qJA
+	jvMFsjDZwoiqJrp/rXA12/2pZc1P4ixfOKl7fKCVW27i7MLu8JcnSzflQQA1c5xu
+	pdUj6FX4P6Tqa/MRT5XDzkf5t3qQvxHJ530lH/uuqA6IKQVlhqrymIV3zrBabW8I
+	2TdPEcGyJ8hzKlzx1cvSiDQcrHu7sGUNpKioOm46AhugyC4fGFfyJH3BiAA4aKCJ
+	PkkvQTyFMrUBGif9814wYQkoSN94ZpM/6Qk9BnTQPIjb1fYewQNQCEisz3S//bGq
+	gPmRT2+QAMSOWVsjCFd7CPOn+i/XqAwMNetHuHlHQYBhjMuf936vCQDAobcFZBzq
+	U709n373eJ5LZQMqU/AMJDyup/u0Ua+z+vcuHts9nO5if+UuUoyD5TXwIqKyGXaJ
+	qHiWomyYaOHlERV0d1Th9doHocd3BcZtjYs+NGHg5SjHsQGcVoqYY35FcdQdny/X
+	df7ze+iblpSFX4FCnAaiDmnpGp1Zuz/jJk9tbndTneuNc34kKJjjDbyOgpdgI1Vt
+	vd2iOZ1WaZm0suQvo07hVFuDwNNhC062eOrJwhu/VGp80s0F4Ib8tvGTIqU7fLRY
+	/CnV9cwjZOiKEqFGwVZ7jTv52JJ9ZaTC4+I2HDpLCj63ROh3BNjdCUmbLAhmooLi
+	MJB3j7BYI8hQlyLgyJ0ZO45k6Yiugz8=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Fri, 03 Apr 2026 17:16:07 +0300 (EEST)
+	Fri, 03 Apr 2026 17:20:53 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 33842609FA;
-	Fri,  3 Apr 2026 17:16:06 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 4D3A4609FA;
+	Fri,  3 Apr 2026 17:20:53 +0300 (EEST)
 Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 633EFodQ036518;
-	Fri, 3 Apr 2026 17:15:50 +0300
-Date: Fri, 3 Apr 2026 17:15:50 +0300 (EEST)
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 633EKoo7036674;
+	Fri, 3 Apr 2026 17:20:52 +0300
+Date: Fri, 3 Apr 2026 17:20:50 +0300 (EEST)
 From: Julian Anastasov <ja@ssi.bg>
-To: Waiman Long <longman@redhat.com>
-cc: Simon Horman <horms@verge.net.au>, "David S. Miller" <davem@davemloft.net>,
-        David Ahern <dsahern@kernel.org>, Eric Dumazet <edumazet@google.com>,
-        Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-        Frederic Weisbecker <frederic@kernel.org>,
-        Chen Ridong <chenridong@huawei.com>, Phil Auld <pauld@redhat.com>,
-        linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, sheviks <sheviks@gmail.com>
-Subject: Re: [PATCH-next v2 0/2] ipvs: Fix incorrect use of HK_TYPE_KTHREAD
- housekeeping cpumask
-In-Reply-To: <20260331165015.2777765-1-longman@redhat.com>
-Message-ID: <cd9afe18-9862-6005-f7d9-d69425b7d4cf@ssi.bg>
-References: <20260331165015.2777765-1-longman@redhat.com>
+To: Yingnan Zhang <342144303@qq.com>
+cc: horms@verge.net.au, pablo@netfilter.org, fw@strlen.de, phil@nwl.cc,
+        davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
+        pabeni@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH net v3] ipvs: fix MTU check for GSO packets in tunnel
+ mode
+In-Reply-To: <tencent_73010FBD5FA1C05C3BC23A07A50B11CEC90A@qq.com>
+Message-ID: <7a4ae8da-744e-3729-91aa-d91aaa903c9b@ssi.bg>
+References: <tencent_73010FBD5FA1C05C3BC23A07A50B11CEC90A@qq.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -72,41 +67,86 @@ Content-Type: text/plain; charset=US-ASCII
 
 	Hello,
 
-On Tue, 31 Mar 2026, Waiman Long wrote:
+On Thu, 2 Apr 2026, Yingnan Zhang wrote:
 
->  v2:
->   - Rebased on top of linux-next
+> Currently, IPVS skips MTU checks for GSO packets by excluding them with
+> the !skb_is_gso(skb) condition. This creates problems when IPVS tunnel
+> mode encapsulates GSO packets with IPIP headers.
 > 
-> Since commit 041ee6f3727a ("kthread: Rely on HK_TYPE_DOMAIN for preferred
-> affinity management"), the HK_TYPE_KTHREAD housekeeping cpumask may no
-> longer be correct in showing the actual CPU affinity of kthreads that
-> have no predefined CPU affinity. As the ipvs networking code is still
-> using HK_TYPE_KTHREAD, we need to make HK_TYPE_KTHREAD reflect the
-> reality.
+> The issue manifests in two ways:
 > 
-> This patch series makes HK_TYPE_KTHREAD an alias of HK_TYPE_DOMAIN
-> and uses RCU to protect access to the HK_TYPE_KTHREAD housekeeping
-> cpumask.
+> 1. MTU violation after encapsulation:
+>    When a GSO packet passes through IPVS tunnel mode, the original MTU
+>    check is bypassed. After adding the IPIP tunnel header, the packet
+>    size may exceed the outgoing interface MTU, leading to unexpected
+>    fragmentation at the IP layer.
 > 
-> Waiman Long (2):
->   sched/isolation: Make HK_TYPE_KTHREAD an alias of HK_TYPE_DOMAIN
->   ipvs: Guard access of HK_TYPE_KTHREAD cpumask with RCU
+> 2. Fragmentation with problematic IP IDs:
+>    When net.ipv4.vs.pmtu_disc=1 and a GSO packet with multiple segments
+>    is fragmented after encapsulation, each segment gets a sequentially
+>    incremented IP ID (0, 1, 2, ...). This happens because:
+> 
+>    a) The GSO packet bypasses MTU check and gets encapsulated
+>    b) At __ip_finish_output, the oversized GSO packet is split into
+>       separate SKBs (one per segment), with IP IDs incrementing
+>    c) Each SKB is then fragmented again based on the actual MTU
+> 
+>    This sequential IP ID allocation differs from the expected behavior
+>    and can cause issues with fragment reassembly and packet tracking.
+> 
+> Fix this by properly validating GSO packets using
+> skb_gso_validate_network_len(). This function correctly validates
+> whether the GSO segments will fit within the MTU after segmentation. If
+> validation fails, send an ICMP Fragmentation Needed message to enable
+> proper PMTU discovery.
+> 
+> Fixes: 4cdd34084d53 ("netfilter: nf_conntrack_ipv6: improve fragmentation handling")
+> Signed-off-by: Yingnan Zhang <342144303@qq.com>
 
-	The patchset looks good to me for nf-next, thanks!
+	Looks good to me for the nf tree, thanks!
 
 Acked-by: Julian Anastasov <ja@ssi.bg>
 
-	Pablo, Florian, as a bugfix this patchset missed
-the chance to be applied before the changes that are in
-nf-next in ip_vs.h, there is little fuzz there. If there
-is no chance to resolve it somehow, we can apply it
-on top of nf-next where it now applies successfully.
-
+> ---
+> v3:
+> - Fixed compilation error (removed extra closing brace in IPv6 function)
+> - Fixed indentation to match kernel style
 > 
->  include/linux/sched/isolation.h |  6 +++++-
->  include/net/ip_vs.h             | 20 ++++++++++++++++----
->  net/netfilter/ipvs/ip_vs_ctl.c  | 13 ++++++++-----
->  3 files changed, 29 insertions(+), 10 deletions(-)
+> v2: https://lore.kernel.org/netdev/20260402030541.27855-1-342144303@qq.com/
+> v1: https://lore.kernel.org/netdev/20260401152228.31190-1-342144303@qq.com/
+> ---
+>  net/netfilter/ipvs/ip_vs_xmit.c | 9 +++++----
+>  1 file changed, 5 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+> index 3601eb86d..a4ca7cad0 100644
+> --- a/net/netfilter/ipvs/ip_vs_xmit.c
+> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
+> @@ -111,8 +111,8 @@ __mtu_check_toobig_v6(const struct sk_buff *skb, u32 mtu)
+>  		 */
+>  		if (IP6CB(skb)->frag_max_size > mtu)
+>  			return true; /* largest fragment violate MTU */
+> -	}
+> -	else if (skb->len > mtu && !skb_is_gso(skb)) {
+> +	} else if (skb->len > mtu &&
+> +		   !(skb_is_gso(skb) && skb_gso_validate_network_len(skb, mtu))) {
+>  		return true; /* Packet size violate MTU size */
+>  	}
+>  	return false;
+> @@ -232,8 +232,9 @@ static inline bool ensure_mtu_is_adequate(struct netns_ipvs *ipvs, int skb_af,
+>  			return true;
+>  
+>  		if (unlikely(ip_hdr(skb)->frag_off & htons(IP_DF) &&
+> -			     skb->len > mtu && !skb_is_gso(skb) &&
+> -			     !ip_vs_iph_icmp(ipvsh))) {
+> +			     skb->len > mtu && !ip_vs_iph_icmp(ipvsh) &&
+> +			     !(skb_is_gso(skb) &&
+> +			       skb_gso_validate_network_len(skb, mtu)))) {
+>  			icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED,
+>  				  htonl(mtu));
+>  			IP_VS_DBG(1, "frag needed for %pI4\n",
+> -- 
+> 2.51.0
 
 Regards
 
