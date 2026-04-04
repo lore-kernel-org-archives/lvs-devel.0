@@ -1,120 +1,138 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42F6C248891;
-	Sat,  4 Apr 2026 14:58:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8436C2BE7AC;
+	Sat,  4 Apr 2026 15:35:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775314736; cv=none; b=jF9kmnG/kbB0116gBpiQi1emDkus29bcOyHlOVNBnuMaxHVlKmYcdeArxkJnXXbadayBFS4MmD1pnHJjUXOVgsodPC3TYWEht9hasOhWJgVYK7hfUOZvQGxPWZ/qyxh2WZvqcqyqsWKdPqQ5xgKYaNZrGr29X8VwnBT9YlZczWA=
+	t=1775316922; cv=none; b=BXYbvBq7RGJPTAjeU3mlecpB9zdBjHXw0RR6jPFjVqnSnBj+CuTGgR2S73y7ezx4mBjE6GBVAqyDQtrSWqFh8hlZlEpn5MTgKio4nr/HMHnKTQVblFvxBgvJ0d/uF01/R99XYUc2J0jTHyC5S+3bI2OtImy+5rG0cuG+/0TO2Ns=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775314736; c=relaxed/simple;
-	bh=83+KN641MOf2ZXp6EoHxWpKBgOXhkjpqI9qlN9/qu5E=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=q7vzmplIZHFGLJ8LA0Ie0DFfWeq8ow/Km+42H20NeQFFGU83Vpm3uOS2U1O6+ImcQOkxA70AI7OCfZjwpDz6Uo1XMaKcG6uOl0aTjpusp7SpcFUbvee5sDPZdLLJSvTbfiiourjDMGPO3Aov8HFTChvAq+vDhTh4hP+7Ep37aTc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=clB3bZ/Y; arc=none smtp.client-ip=193.238.174.39
+	s=arc-20240116; t=1775316922; c=relaxed/simple;
+	bh=iQlocxQMyMWHqFgoHwEOzI6MuxUgC3wX9JEWywdTnCg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Y9YhfFlXQbLf/JmBKk3iG9hLQ663qiev6yh8JiXLEp7dEH0/MqxQKH6cP/+0EOBr7yOVUOEwKQs42yQ4hd7CYJztYFa/z2xWz5QXYufS18QDGi54Q4wAnOnfdzmEc+TNlRXw0Vao9S3EXyeJ5HXLqwgmxo4iv2ES23Jo1kJqRgU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=Kd8lWSuW; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="clB3bZ/Y"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="Kd8lWSuW"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 3AE2321C5D;
-	Sat, 04 Apr 2026 17:58:44 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 8982821C5B;
+	Sat, 04 Apr 2026 18:35:16 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=3uHzP2CP40ZTuLXW5buuDvxnd6+9ysI1WLolHX3mKY4=; b=clB3bZ/YCzV8
-	ys0ID4dR92yogt5wmn6JOWod/YANOnjX26BeRaRhLlkqea6m+JoguzYAlhRay6a2
-	vMNWXvIBftA81ckPu44zIbBuJsvUhPK7dn5qX83fXn+Hw6JP5fUC/8PQklW7o74l
-	Qsmsof3/0s1syJRmY4ura5KiZlyK5WU36F5cStu7/C/vD0ruOwa8wuAvqxmSzTKy
-	qUlcKT7dc+WxP21uGvVM3mhNfedQmHeKOZLlLoOXA/FytqQLoo3ZZ8UhVAOhy+4V
-	V5+KYNZ9T3/QQI6/oJbJEAyeRuSXsJdI1rweYZlhMgVG9NoWEeLM+lA57++OBuf1
-	momozyyeIjiVKWlouNY+u0Rxkku51J+hlESm+Gvz8x5w+dXImRuAaY+ZaI9wdLdD
-	kPG4qcU0xtClkhX64Lerj2YGIK9KvHufNhDDZO0LWd2/vVHM1aFdSPQkpP5DfChv
-	wOIkhONupnEBCJNdBfaPFct0nMjadpd7qvOSeC68hVQF4MZPX0+wocC0ebMaIjPk
-	ZZ++/iYI3iBOS8+LC2GEZDZ2fudEtzDC/yv5s0NYWF/uMtBr/0DGeYzIaiccUao4
-	hqkxDxLclNwKgzPUpwCYcYbt1ETobU6NhgFyAphEzXrJ5PTohmW9q85EulEvKH+J
-	Zy7c/Y/PDCcrfiNC5oqyaPZtHmi6d/I=
+	:content-transfer-encoding:date:from:from:message-id
+	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=DpCpgUQF
+	g/lpUnIpTL+BVB0jvTO+SegIe50A7nQF0t0=; b=Kd8lWSuW1FrGgFymepRR3pyj
+	furZjOcuPjPoAErwd+Z11GEisBq0LNFK9yueWpcTxwW+ba6efRCNE5qs4XuPKJaf
+	msyAdS4cEx+RZpgm9BNkqTjjzeXTjm/wdxxHcUZDjc4rM5I3mbCwdAHrk3/UgQ52
+	YTeXzuq0Zp7yAyb8ROtVMXtvxWKcMlBDlMAnNgPEuwonsHUbtUKTRc7/7tpPrJBw
+	SYtxgKAfn5GIyCYPqYqImKsM6B/Jkz4CNsVPA4aLcP9iBmN7UgKaCmepxlGfBlEy
+	5cxOJQddyUejsTqerbh582R0Qm0xcNa0V3eyLb8c3LKQdcbO3UNpArJ04w3dajC3
+	538wg0s+XqlJkFnLC/djt8jJ93cW21p5Vk1PsXOb6/sEnrSca0hA9w2Hp+J2Vu90
+	wbTKIcvEOVmr4tcFIUWa/xIoM8kaIGxE9y45uKJFHhXmp4by5W7b0JXuGHw0vNsG
+	cYeue34Qs/9wZYmnCw+RPYkjxEQUuFWZnbnFWlx9db8762+XXNhnuLDaaIoSAMFI
+	0qfKrhJTNFZh1iigYxYOqCngq7EGtJnVe/KbRCKtyM3372LK2EjOkkg22s8VFEu3
+	a6LRfeIaHGWAPU3OpGifRtIvOmBGUsr+5wvcE6FJCwVNQBiK3vveV8+9J6xLSWDN
+	3Gp+096lz9e+qSFreNA=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Sat, 04 Apr 2026 17:58:42 +0300 (EEST)
+	Sat, 04 Apr 2026 18:35:15 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id A2DD560818;
-	Sat,  4 Apr 2026 17:58:40 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 634EwQGD026021;
-	Sat, 4 Apr 2026 17:58:26 +0300
-Date: Sat, 4 Apr 2026 17:58:26 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 911716084A;
+	Sat,  4 Apr 2026 18:35:14 +0300 (EEST)
+Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 634FZDMh030099;
+	Sat, 4 Apr 2026 18:35:13 +0300
+Received: (from root@localhost)
+	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 634FZB2A030098;
+	Sat, 4 Apr 2026 18:35:11 +0300
 From: Julian Anastasov <ja@ssi.bg>
-To: Florian Westphal <fw@strlen.de>
-cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
+To: Simon Horman <horms@verge.net.au>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
         lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
         Dust Li <dust.li@linux.alibaba.com>,
         Jiejian Wu <jiejian@linux.alibaba.com>
-Subject: Re: [PATCH nf-next 1/3] ipvs: show the current conn_tab size to
- users
-In-Reply-To: <adDoUEwfuYpdGanf@strlen.de>
-Message-ID: <ca884668-502a-bf6f-2122-95094883f3d4@ssi.bg>
-References: <20260323162523.44964-1-ja@ssi.bg> <20260323162523.44964-2-ja@ssi.bg> <adDoUEwfuYpdGanf@strlen.de>
+Subject: [PATCHv2 nf-next 0/3] IPVS changes, part 4 of 4 - extras
+Date: Sat,  4 Apr 2026 18:34:36 +0300
+Message-ID: <20260404153439.30077-1-ja@ssi.bg>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
+        Hello,
 
-	Hello,
+        This patchset is part 4 of changes that accumulated in
+recent time. It is for nf-next and should be applied when the
+patches from part 1-3 are already applied. It contains extras
+for the per-net tables.
 
-On Sat, 4 Apr 2026, Florian Westphal wrote:
+        All patches here come from the work
+"ipvs: per-net tables and optimizations" last posted
+on 19 Oct 2025 as v6, with the following changes:
 
-> Julian Anastasov <ja@ssi.bg> wrote:
-> > As conn_tab is per-net, better to show the current hash table size
-> > to users instead of the ip_vs_conn_tab_size (max).
-> > 
-> > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> > ---
-> >  net/netfilter/ipvs/ip_vs_ctl.c | 26 ++++++++++++++++++++++----
-> >  1 file changed, 22 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> > index b472e564b769..3129b15dadc2 100644
-> > --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> > +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> > @@ -281,6 +281,13 @@ static void est_reload_work_handler(struct work_struct *work)
-> >  	mutex_unlock(&ipvs->est_mutex);
-> >  }
-> >  
-> > +static int get_conn_tab_size(struct netns_ipvs *ipvs)
-> > +{
-> > +	struct ip_vs_rht *t = rcu_dereference(ipvs->conn_tab);
-> > +
-> > +	return t? t->size : 0;
-> > +}
-> 
-> Pablo suggest to make this self-contained so callers don't have to
-> handle rcu read lock:
+Patch 1 comes from v6/patch 10 with added get_conn_tab_size() helper
 
-	I created it this way because ip_vs_info_seq_show()
-and IPVS_CMD_GET_INFO case are already under RCU lock.
-I'll report v2 soon...
+Patch 2 comes from v6/patch 13 with added text for the commit
 
-> static int get_conn_tab_size(struct netns_ipvs *ipvs)
-> {
-> 	const struct ip_vs_rht *t;
-> 	int size = 0;
-> 
-> 	rcu_read_lock();
-> 	t = rcu_dereference(ipvs->conn_tab);
-> 	if (t)
-> 		size = t->size;
-> 	rcu_read_unlock();
-> 
-> 	return size;
-> }
+Patch 3 comes from v6/patch 14 with updated docs
 
-Regards
+	As result, the following patches will:
 
---
-Julian Anastasov <ja@ssi.bg>
+* As the connection table is not with fixed size, show its current
+  size to user space
+
+* Add /proc/net/ip_vs_status to show current state of IPVS, per-net
+
+cat /proc/net/ip_vs_status
+Conns:	9401
+Conn buckets:	524288 (19 bits, lfactor -5)
+Conn buckets empty:	505633 (96%)
+Conn buckets len-1:	18322 (98%)
+Conn buckets len-2:	329 (1%)
+Conn buckets len-3:	3 (0%)
+Conn buckets len-4:	1 (0%)
+Services:	12
+Service buckets:	128 (7 bits, lfactor -3)
+Service buckets empty:	116 (90%)
+Service buckets len-1:	12 (100%)
+Stats thread slots:	1 (max 16)
+Stats chain max len:	16
+Stats thread ests:	38400
+
+It shows the table size, the load factor (2^n), how many are the empty
+buckets, with percents from the all buckets, the number of buckets
+with length 1..7 where len-7 catches all len>=7 (zero values are
+not shown). The len-N percents ignore the empty buckets, so they
+are relative among all len-N buckets. It shows that smaller lfactor
+is needed to achieve len-1 buckets to be ~98%. Only real tests can
+show if relying on len-1 buckets is a better option because the
+hash table becomes too large with multiple connections. And as
+every table uses random key, the services may not avoid collision
+in all cases.
+
+* add conn_lfactor and svc_lfactor sysctl vars, so that one can tune
+  the connection/service hash table sizing
+
+v2:
+* patch 1: move RCU read lock into get_conn_tab_size() as
+  suggested by Pablo and Florian
+* patch 3: prefer rcu_access_pointer() over rcu_dereference_protected()
+  as suggested by Florian
+
+Julian Anastasov (3):
+  ipvs: show the current conn_tab size to users
+  ipvs: add ip_vs_status info
+  ipvs: add conn_lfactor and svc_lfactor sysctl vars
+
+ Documentation/networking/ipvs-sysctl.rst |  35 ++++
+ net/netfilter/ipvs/ip_vs_ctl.c           | 247 ++++++++++++++++++++++-
+ 2 files changed, 278 insertions(+), 4 deletions(-)
+
+-- 
+2.53.0
+
 
