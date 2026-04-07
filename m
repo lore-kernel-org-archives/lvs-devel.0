@@ -1,53 +1,53 @@
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.21])
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.12])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C07B83ACF05;
-	Tue,  7 Apr 2026 11:44:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.21
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8DB543A75BE;
+	Tue,  7 Apr 2026 12:23:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.12
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775562282; cv=none; b=o6sEiWvhnbb2/4qR03vBc7Q9hzzePhj/jT6ZQOwM5mtpadae7D16Ft8o+868crFaTo/k1aOCxiHN1G+pCsNrMG87Gjd7MLXIATboHu9CHeLnOFRsNkdwXBdVCtnnysbnRQUrSBcpsvIWtLNeP0Y9NVufZVG80Ko8rJQpNpswQjo=
+	t=1775564612; cv=none; b=e0GfHSmF/ssW5UGvIw/cV+RP0oNjFnQmiWez0sgUniLRHDFKn8xVIxOnkPcPgUuMAr4VU6IC3lTOpunVAPUNpCJZ7TNL6IhRZJzcq+4Q/3OEbsgb1szBSVNmHDmf52pQknzqQuoxqNEGwnq3bYvQx7DFOpM+iNJdoc/7ju5JHnE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775562282; c=relaxed/simple;
-	bh=RjtcSwRYgYtgUOHjB5w0Veky1jao+R/vSyC9jiZubNs=;
+	s=arc-20240116; t=1775564612; c=relaxed/simple;
+	bh=98kZ9Mf9OPvpt9oCK2NNyluJd0um+U6c6PA+N42I7n8=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=oKyE+yHONGriiTzOi6JvxtQazleicOSKfr2wibDxOm7fnqMTrK3VPTa0QOtbLXUhrn2kaw7k16D73tY8Umf587rf8NtVx3yPvKJnyFnLViOgrcqJiZ0jsgXSbnXAriHx1JsNa+0oTevc0ooTS1IQ6+iha3mJOYiJZgeECsDBoAw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=iYKLunS4; arc=none smtp.client-ip=198.175.65.21
+	 Content-Type:Content-Disposition:In-Reply-To; b=QkUtfW41Jt37WO/RNEgSbFEg+/5FcOjcKtDccWydpPP51FPbGttrWn56Ce31STADwdHmiS72LPEPIx9XZjCXp5dhtYpgu3dpiLjuCNGOtn2MCGtEOYGu3nxwS5vChHcbI4776MbaLA68o5kfaTeBCGptH3ODsNjnkzUYxuVScn4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=Cy2BnuPc; arc=none smtp.client-ip=198.175.65.12
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="iYKLunS4"
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="Cy2BnuPc"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1775562279; x=1807098279;
+  t=1775564612; x=1807100612;
   h=date:from:to:cc:subject:message-id:references:
    mime-version:in-reply-to;
-  bh=RjtcSwRYgYtgUOHjB5w0Veky1jao+R/vSyC9jiZubNs=;
-  b=iYKLunS4vLP/hnHX4MR89r9SXWBc4vA+sDmC3Iq3H25O1SkseIv5OPf8
-   ykoo/bhg8dZxQ72o/kc0SwTfMOsE2mnZisDYbdm57ROc+YNGocZWGQEdx
-   AsNw/x4YR+86w3CxhEikDLQ7vqdfv5AbnhTuc8P949yqMWGO2F/Nc6648
-   l/tJlTs/PaA5SWiO+W+R8z1zdo3a7tJpnLVKcKQMHYxpcokl7eH2nfwkH
-   jTO68R4zn+5LowNvttQmOSfjZYVNbuqhVdxMe6Kd3CIU6mH4CXGdc6pEs
-   C54a/7eNN3bWjx6dq+vLWKe6H8obKZaAymiNRY00sF4Wk+VPT2ETj4cFQ
-   g==;
-X-CSE-ConnectionGUID: gnY22n+vSeSgqJZ2981dnA==
-X-CSE-MsgGUID: KG9RW/HwSeu2Igl7WAfHqg==
-X-IronPort-AV: E=McAfee;i="6800,10657,11751"; a="76405084"
+  bh=98kZ9Mf9OPvpt9oCK2NNyluJd0um+U6c6PA+N42I7n8=;
+  b=Cy2BnuPcxivNf15SjUrxiXV/EGb0wZmmQj5GhYRLRzlrnwkkjWAwSzPX
+   v41Ccsc2sTluexpdD5vFhBuCXlMchoQ9Tt0FpKuriyRlf3ze9yoRDWg9u
+   HiVeRT0rlwJrfXzokDzONaqaFCAXbziQ9pioO+nJVsNTnmA1ZzEvTfdHE
+   S71C4O/46ahZeKgC3WjlU1eC5S+Sv1Ap6OblqbVCgmU5FfxOqC4IMYWgC
+   ELvsBPYlo9c3kpQkxScyEkDuscBJBh/29niwBq/HjDtB7YjrF5QNNxObR
+   0zn43+6vZWRCD18WTyrB20VHLa6szlMFhRKaMS2gJs6AW+ZZPrKruk5P7
+   Q==;
+X-CSE-ConnectionGUID: F2638YfATj+hlHa0aAuQiA==
+X-CSE-MsgGUID: /fa/hCI4SbOdQkNdn/lGIw==
+X-IronPort-AV: E=McAfee;i="6800,10657,11752"; a="87976293"
 X-IronPort-AV: E=Sophos;i="6.23,165,1770624000"; 
-   d="scan'208";a="76405084"
-Received: from fmviesa006.fm.intel.com ([10.60.135.146])
-  by orvoesa113.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 07 Apr 2026 04:44:39 -0700
-X-CSE-ConnectionGUID: elfRy3mGQ6q95nFL2OIOoQ==
-X-CSE-MsgGUID: qsKB1a2dRXigTdXZ6WAidQ==
+   d="scan'208";a="87976293"
+Received: from orviesa010.jf.intel.com ([10.64.159.150])
+  by orvoesa104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 07 Apr 2026 05:23:31 -0700
+X-CSE-ConnectionGUID: Jt71wybuSW6FMim4uXeCUw==
+X-CSE-MsgGUID: z1Z1hX0kRuaJE2YH5TjLvQ==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="6.23,165,1770624000"; 
-   d="scan'208";a="223361885"
-Received: from igk-lkp-server01.igk.intel.com (HELO 9958d990ccf2) ([10.211.93.152])
-  by fmviesa006.fm.intel.com with ESMTP; 07 Apr 2026 04:44:36 -0700
-Received: from kbuild by 9958d990ccf2 with local (Exim 4.98.2)
+   d="scan'208";a="227319123"
+Received: from lkp-server01.sh.intel.com (HELO d00eb8a6782a) ([10.239.97.150])
+  by orviesa010.jf.intel.com with ESMTP; 07 Apr 2026 05:23:28 -0700
+Received: from kbuild by d00eb8a6782a with local (Exim 4.98.2)
 	(envelope-from <lkp@intel.com>)
-	id 1wA4rB-00000000AHF-3uaf;
-	Tue, 07 Apr 2026 11:44:33 +0000
-Date: Tue, 7 Apr 2026 13:43:46 +0200
+	id 1wA5Sm-000000000ZN-1WtB;
+	Tue, 07 Apr 2026 12:23:24 +0000
+Date: Tue, 7 Apr 2026 20:22:48 +0800
 From: kernel test robot <lkp@intel.com>
 To: Yingnan Zhang <342144303@qq.com>, horms@verge.net.au, ja@ssi.bg
 Cc: oe-kbuild-all@lists.linux.dev, pablo@netfilter.org, fw@strlen.de,
@@ -57,7 +57,7 @@ Cc: oe-kbuild-all@lists.linux.dev, pablo@netfilter.org, fw@strlen.de,
 	coreteam@netfilter.org, linux-kernel@vger.kernel.org,
 	Yingnan Zhang <342144303@qq.com>
 Subject: Re: [PATCH net v2] ipvs: fix MTU check for GSO packets in tunnel mode
-Message-ID: <202604071309.RskiawHA-lkp@intel.com>
+Message-ID: <202604072049.zQPE6QFA-lkp@intel.com>
 References: <tencent_CA2C1C219C99D315086BE55E8654AF7E6009@qq.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
@@ -79,14 +79,14 @@ url:    https://github.com/intel-lab-lkp/linux/commits/Yingnan-Zhang/ipvs-fix-MT
 base:   net/main
 patch link:    https://lore.kernel.org/r/tencent_CA2C1C219C99D315086BE55E8654AF7E6009%40qq.com
 patch subject: [PATCH net v2] ipvs: fix MTU check for GSO packets in tunnel mode
-config: x86_64-rhel-9.4-ltp (https://download.01.org/0day-ci/archive/20260407/202604071309.RskiawHA-lkp@intel.com/config)
-compiler: gcc-14 (Debian 14.2.0-19) 14.2.0
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20260407/202604071309.RskiawHA-lkp@intel.com/reproduce)
+config: nios2-allmodconfig (https://download.01.org/0day-ci/archive/20260407/202604072049.zQPE6QFA-lkp@intel.com/config)
+compiler: nios2-linux-gcc (GCC) 11.5.0
+reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20260407/202604072049.zQPE6QFA-lkp@intel.com/reproduce)
 
 If you fix the issue in a separate patch/commit (i.e. not just a new version of
 the same patch/commit), kindly add following tags
 | Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202604071309.RskiawHA-lkp@intel.com/
+| Closes: https://lore.kernel.org/oe-kbuild-all/202604072049.zQPE6QFA-lkp@intel.com/
 
 All error/warnings (new ones prefixed by >>):
 
