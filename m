@@ -1,97 +1,149 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oo1-f79.google.com (mail-oo1-f79.google.com [209.85.161.79])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F41F3264FF;
-	Fri, 10 Apr 2026 06:52:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8947C3D5225
+	for <lvs-devel@vger.kernel.org>; Tue, 14 Apr 2026 10:30:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.79
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775803928; cv=none; b=MJRy9+5dHXcFLbY8uNsGt1ECxf3ek115RLMh6HZX5HHwkp9NXW5aaXWEBZC3+j0pkp7maVxwEUfuVh2ftG2oBmACm9R+pBGfQEi6SZ6czmwIfQY6u9yvXax8W5VaDoNQiKQGqNRvjZ06fkqdXNoYj2oh1Q1mfsTbL1Cgtkq2IC4=
+	t=1776162636; cv=none; b=PiU95hBXbYRYnEVduCDIa6012nE579+WEtdXAQOzL5tEsxOCVkqsfhbngG0CEUi6GGWm+G+1X58/GyPinMNvjZK9Ejd7aHViNemz198+vuO5PwVkZPsEjuxHS8uqq9bBvYHHbkunWe2otr6BW3GaNBEPgZIzub1wcByvUoXXwhc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775803928; c=relaxed/simple;
-	bh=1PoxhyRSV7JrRuAtwTi+CblKJwRESpqiBPV+2q1EFPU=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=I+Tr9vdUCsTWlW66yyLqKijEwRlDNIhOllM2s6oFzi7E8jnolCXei0uCSL0Vcb6i7j6da6T4slfPl2H5T0+qSzzMloA3Eays0KEj08TwjoYyUlmQJ3LDoewTkQDV94ZmXVOVdDPdocNz/qUdfR2350bOrNpVS6I09GIe08Y7AO8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=evB2pfiA; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="evB2pfiA"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 6BD8921CC0;
-	Fri, 10 Apr 2026 09:51:53 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=dpthAZ+MnRKjRDQ0XeJ9wZ/6Fb5SFuCP4ejYX5TNaLw=; b=evB2pfiAfE+S
-	n6qD2bu+JvPghX8UZEugmYXY7dHkPRrgr7n/DklFBvzme1U5zfwgryyYHDp3Or86
-	Q6XBEkSRyWGwIsDEykciCU0d/xQVbkeAhN98blFJDv7mv1LTVkuUfwhhLc+XUg7j
-	0xUMyQ1P0Qyi16/L+PrIVIa58wvKnZtlfRANx0ENwTyq2VGgn/QMdsUuXZXW7wza
-	+jyNy2rUdpTNOt969xJZKd1sYYjI2rV1weo4P7dCVdDwh3rPmxDnD4dw+R4lHX49
-	yiFYYAe9fdufhNd0BhT3o6NLLwPFaxV5wh5k9A3xdMIAXt70Lmf/UCvwkRLFx6yV
-	H9r526JX/OXtp6GnfF+q5h4nMaxbaxC8HcfQPy3qIN1znFDkXryrOVL6L33YJJn5
-	mK/5p96qP4QK83tJ9Q+AzwTuRPN2GP+7YN/a7aN8z5rry9e4fCISbPuGqRaOZrkN
-	OoJHlMVQDfoPmIl/9vnnfcvxafVOa6aOD5lQd4uuKZz1qSk8d9hd5aR5EVOavA3y
-	NfJ3qm6SJi8uggkTbQX7tWAMyAP7Pl6SU9rWj4vlUCY177wz56L/GlKv/0URQ2t5
-	CIxeVhb9CwnIuBrLCvz5d5FtbIGgdpGOtTf2qh/tB6/DmcDMNgFMJqqgoI+Fqrna
-	QgTtJme7cf5kP4X5Gxs+zHSA78I4pw0=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Fri, 10 Apr 2026 09:51:52 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 2FDBA6098D;
-	Fri, 10 Apr 2026 09:51:48 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63A6pVLA014912;
-	Fri, 10 Apr 2026 09:51:32 +0300
-Date: Fri, 10 Apr 2026 09:51:31 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-cc: Yingnan Zhang <342144303@qq.com>, horms@verge.net.au, fw@strlen.de,
-        phil@nwl.cc, davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
-        pabeni@redhat.com, netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH net v3] ipvs: fix MTU check for GSO packets in tunnel
- mode
-In-Reply-To: <adhOOC6hF_vNDl1g@chamomile>
-Message-ID: <f8946f64-2d31-d792-e23a-3bd7566f0f17@ssi.bg>
-References: <tencent_73010FBD5FA1C05C3BC23A07A50B11CEC90A@qq.com> <adhOOC6hF_vNDl1g@chamomile>
+	s=arc-20240116; t=1776162636; c=relaxed/simple;
+	bh=FCSBefH/oTmdgHdyyArq8Sd+rdXE9JmhilR3WYZJjdE=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=HWuLSPO4sBwqFK1FZD1izTCw5VJ16hgGqvQAVtplhP5dyLynM3G2w632A9FFNQxy412m0+T0y66phqQA0BkJYGd9sicbBaGirOZbc7pynNt42f7icrV0O1dWIKFeStctXsXLcW8MEYjJARUDIkPvKK+X0n6ZS3lU/VED+SFsAqk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.79
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oo1-f79.google.com with SMTP id 006d021491bc7-6853c2438b9so10258508eaf.3
+        for <lvs-devel@vger.kernel.org>; Tue, 14 Apr 2026 03:30:29 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1776162627; x=1776767427;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=H9YZZSGezJHiuJUYElsZmyJ9oq+8X/IHgJLyoXz58+k=;
+        b=PvnkS2nFoFfVl/PuUh0bMbQEJTTSmiPaqUhdohR9s0Gu0KDoMZyqMJCDpT9LniYqCo
+         7feXxRtLRA9faRKeHDfNtdvVtnkwhzjRzp+ZHMau1gG5KM3R1enXAB2SAvXDYswEkmRs
+         GxTzlLMhZteDcRMbYw0NSnNrwjiMuAZW6lPUHG0bkhfGY/jxIstdISo+KXc895QNMxGS
+         +i09HYuOLf02q3iJ2ya+G2lxuQiXXOQjCQcOCCtdeGJ9Knqa1b98oociPKz+uEe0Fz66
+         bgh6v63DgIg/E/Gl5wacNIWL02yUQn3SwtX8mGdwq6Hm19nsqJL8IVEhGyG6P+LQJQIP
+         jhpw==
+X-Forwarded-Encrypted: i=1; AFNElJ/HaKj/q0dPRaMl1iZ1ZyE/JiEpEtnMOOUeIP5lOzq7T9HLDye8GCe440eD+sISMZ4tU6SxsYPHa2o=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yyd9D9BPVkTOKrQyvjbXbSRxdy/1u6dDzehCPXW3oSELpKxH4Np
+	ieYmaVTvtVf4fhAZeRDaNiOCTzbf8uXzI29Gja41zJY/YgENHXXqqBFJoVEIulMG1F6N7Qva2gu
+	W9JCAZ9pKkqncAVKcSLrWd7i43b4lr3HyT2jvFJarhODRR0U5UowKK6VS5ss=
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+X-Received: by 2002:a05:6820:16a5:b0:682:7662:ccfa with SMTP id
+ 006d021491bc7-691bfecef49mr821814eaf.49.1776162627631; Tue, 14 Apr 2026
+ 03:30:27 -0700 (PDT)
+Date: Tue, 14 Apr 2026 03:30:27 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <69de1743.a00a0220.475f0.0040.GAE@google.com>
+Subject: [syzbot] [lvs?] BUG: sleeping function called from invalid context in ip_vs_conn_expire
+From: syzbot <syzbot+504e778ddaecd36fdd17@syzkaller.appspotmail.com>
+To: coreteam@netfilter.org, davem@davemloft.net, edumazet@google.com, 
+	fw@strlen.de, horms@verge.net.au, ja@ssi.bg, kuba@kernel.org, 
+	linux-kernel@vger.kernel.org, lvs-devel@vger.kernel.org, 
+	netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, pabeni@redhat.com, 
+	pablo@netfilter.org, phil@nwl.cc, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
+
+Hello,
+
+syzbot found the following issue on:
+
+HEAD commit:    1c7cc4904160 Add linux-next specific files for 20260413
+git tree:       linux-next
+console output: https://syzkaller.appspot.com/x/log.txt?x=10327cd2580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=56c2b36de3316f1b
+dashboard link: https://syzkaller.appspot.com/bug?extid=504e778ddaecd36fdd17
+compiler:       Debian clang version 21.1.8 (++20251221033036+2078da43e25a-1~exp1~20251221153213.50), Debian LLD 21.1.8
+
+Unfortunately, I don't have any reproducer for this issue yet.
+
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/91a765b703da/disk-1c7cc490.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/da75a3061146/vmlinux-1c7cc490.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/d55367ced048/bzImage-1c7cc490.xz
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+504e778ddaecd36fdd17@syzkaller.appspotmail.com
+
+BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:48
+in_atomic(): 1, irqs_disabled(): 0, non_block: 0, pid: 16, name: ktimers/0
+preempt_count: 2, expected: 0
+RCU nest depth: 3, expected: 3
+8 locks held by ktimers/0/16:
+ #0: ffffffff8de5f260 (local_bh){.+.+}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
+ #1: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
+ #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: spin_lock include/linux/spinlock_rt.h:45 [inline]
+ #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: timer_base_lock_expiry kernel/time/timer.c:1502 [inline]
+ #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: __run_timer_base+0x120/0x9f0 kernel/time/timer.c:2384
+ #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
+ #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:838 [inline]
+ #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: __rt_spin_lock kernel/locking/spinlock_rt.c:50 [inline]
+ #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rt_spin_lock+0x1e0/0x400 kernel/locking/spinlock_rt.c:57
+ #4: ffffc90000157a80 ((&cp->timer)){+...}-{0:0}, at: call_timer_fn+0xd4/0x5e0 kernel/time/timer.c:1745
+ #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
+ #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:838 [inline]
+ #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:315 [inline]
+ #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: ip_vs_conn_expire+0x257/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
+ #6: ffffffff8de5f260 (local_bh){.+.+}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
+ #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: spin_lock include/linux/spinlock_rt.h:45 [inline]
+ #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:324 [inline]
+ #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: ip_vs_conn_expire+0xd4a/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
+Preemption disabled at:
+[<ffffffff898a6358>] bit_spin_lock include/linux/bit_spinlock.h:38 [inline]
+[<ffffffff898a6358>] hlist_bl_lock+0x18/0x110 include/linux/list_bl.h:149
+CPU: 0 UID: 0 PID: 16 Comm: ktimers/0 Tainted: G        W    L      syzkaller #0 PREEMPT_{RT,(full)} 
+Tainted: [W]=WARN, [L]=SOFTLOCKUP
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 03/18/2026
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
+ __might_resched+0x329/0x480 kernel/sched/core.c:9162
+ __rt_spin_lock kernel/locking/spinlock_rt.c:48 [inline]
+ rt_spin_lock+0xc2/0x400 kernel/locking/spinlock_rt.c:57
+ spin_lock include/linux/spinlock_rt.h:45 [inline]
+ ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:324 [inline]
+ ip_vs_conn_expire+0xd4a/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
+ call_timer_fn+0x192/0x5e0 kernel/time/timer.c:1748
+ expire_timers kernel/time/timer.c:1799 [inline]
+ __run_timers kernel/time/timer.c:2374 [inline]
+ __run_timer_base+0x6a3/0x9f0 kernel/time/timer.c:2386
+ run_timer_base kernel/time/timer.c:2395 [inline]
+ run_timer_softirq+0xb7/0x170 kernel/time/timer.c:2405
+ handle_softirqs+0x1de/0x6d0 kernel/softirq.c:622
+ __do_softirq kernel/softirq.c:656 [inline]
+ run_ktimerd+0x69/0x100 kernel/softirq.c:1151
+ smpboot_thread_fn+0x541/0xa50 kernel/smpboot.c:160
+ kthread+0x388/0x470 kernel/kthread.c:436
+ ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
 
 
-	Hello,
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-On Fri, 10 Apr 2026, Pablo Neira Ayuso wrote:
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 
-> On Thu, Apr 02, 2026 at 10:46:16PM +0800, Yingnan Zhang wrote:
-> > +	} else if (skb->len > mtu &&
-> > +		   !(skb_is_gso(skb) && skb_gso_validate_network_len(skb, mtu))) {
-> 
-> Maybe helper function helps make this more readable?
-> 
-> /* Based on ip_exceeds_mtu(). */
-> static bool ip_vs_exceeds_mtu(const struct sk_buff *skb, unsigned int mtu)
-> {
->         if (skb->len <= mtu)
->                 return false;
-> 
->         if (skb_is_gso(skb) && skb_gso_validate_network_len(skb, mtu))
->                 return false;
-> 
->         return true;
-> }
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
 
-	Good idea! Yingnan Zhang, please send v4 by adding
-this new function before __mtu_check_toobig_v6()...
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
 
-Regards
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
 
---
-Julian Anastasov <ja@ssi.bg>
-
+If you want to undo deduplication, reply with:
+#syz undup
