@@ -1,59 +1,59 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EDBC44D022;
-	Tue, 28 Apr 2026 18:01:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9D72328B62;
+	Tue, 28 Apr 2026 18:01:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777399279; cv=none; b=AUcyxBFqtJZZIlIDOrfIlwF/Ljd9JBcSXO3sVe5VlaoPNEoSXMSYRrOhFIg+chrBdVPGGw+Lwo1u6LaXkLSN9eepirYe7W60gC3BVTkMiYJS5YAncLoMcHgkVD6Kgc4h2+PL5pIYpt21UOBhKg35jfBzHuLvw0DLihSvhu1T37U=
+	t=1777399285; cv=none; b=nCKnVXH9hX2L7fT5jY7a2w43W94QoFsl7QUIqGlWVHlL9Ldic/+AlYclp0bVPkXSVHcx4boJXE1xFx9y1hTyJ4nVEhncyk0Dez/y6W+RCsp2m5pq9tSxbxO6jSmA1KuenTQr70/pFPaKAhH8lv1MNK51HhA8to0BJxo8jmVP2P4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777399279; c=relaxed/simple;
-	bh=ftM5ukXQISH48XnQp4wEHNTt7YUjmI2Y/ZpTwXIbrFY=;
+	s=arc-20240116; t=1777399285; c=relaxed/simple;
+	bh=HnsSggn59XwsXpXlw26F6woxCxqLez7Uhtrw5KcGl7k=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=AW39Q+WqGTJWDQlQNJ7tvNsiTtIN03QVNFFC0lNgWSJVu3zGoAJEdKK9IOYgWtrmCk+s0rJ8YP+dr38W2QyGiXe41B62chsxWSvXBtFss/D7sqCt6avXEKvy2jJv+gvRQGjTT01dXqdpHq/aQpJibqRWH977YR3ZLUAN5dgwTIg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=PpVxxW7v; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version; b=FXnL4j2p2/93yQ9QgVRhSyrGM7R0cioXNp0JxqUADTVK/FTbok0wr18fkhMSe2I681/TpsFFlIFDMmx4hsPJxFyrDRAJweqhEuFIBYAFmRcwb+XyYBAzNtJvy6KWNi5ajCsA3be5cFp+4lgLD6isXMOhow0ttA82jIWN3H/jtEE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=xz81/0qx; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="PpVxxW7v"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="xz81/0qx"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 20BD321187;
+	by mx.ssi.bg (Potsfix) with ESMTP id 9B80521833;
 	Tue, 28 Apr 2026 21:00:56 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-transfer-encoding:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=CGEZvvNmG16fhPrQ1MGOmC9UlX+Su1JVXJPJ01Yi0Ys=; b=PpVxxW7vPvtu
-	YMq0OsvHyC6voVFk+erwFZZoSYxd5iZbdLIqdCwp7todM9SCS+a48l7CTaVx2vJL
-	81qssB3KZBfnutWkzo3TnN5Yzv6RLau4O5TORF8WxJ5fph5GGLm6Wfd2Zj6DoUut
-	McWG1hRwCncN2m4zhIluUp/kUOQ5Q9FuVYOcXrF2BX2fcWslJF3LtI7GQxrTopiK
-	4+62NVCfbczM6fAW5fRPuReSaBU9DS47jK1ROuX7YMazLQ+++lIQ3oelHyHmdWV/
-	mKd8vbP0Eti2c4wRh1vc/e3zcBwSFMuEJvSyVwoOt62gRnuwucacm+GWv8brnkEw
-	QeSPvXNUGDJphsAPFycIxZBlW4PoV6EFF0vV09rwNg7FSOh6F3L+/yZl3cDv2cSr
-	iihzqlOyDnIWTtCO5xETeHVMQkwNdcUogtuzevHH/Z8aT0KAwNU+Y57QmVqFcWyz
-	FM/bxELL2tYb/WVpkgNUIF+TAZTIJJHFnnxp/xrNDQzjlatjqpkJtUqRE59puSJh
-	16FDeFgoCrunhMYxS5MB0ZtvDxEs4UGYZkaMZBj8SRIXevE5u/CP7DxFH6JiTCRk
-	+Fi9vS/wDt7Y9jT1f0IIw2KBWZ22RjTtBI18/t9CyGABnX+ERa0l9VYqp/wrFQhz
-	Q6XNK/DEgX1hA9wm5AvppxYJ66fR09Y=
+	 bh=0/PuZJiSSrczQwBCm21KJcXxxGep/c+U2tjHmFj4Djo=; b=xz81/0qx0Xu/
+	PlNplArP29eyt/f4ojtmUqoKv7oVg/Rlp8H4RdPMKF6OJAy2xgBTKC09w2Cnkxv5
+	8tesBO3xuAjGD2kQmA/7mdhVI7XXuL9Gaujb5EeyuKJcJq1+36eHXm394DcfgUr8
+	VeLKfFW+u03SfEUAQdbACn/UEZxDl1bi9k1FVeKpjRHxZqPaesx6oBvMO8a+9wct
+	uxo/Ci20MIDKYpx22rgwBXtf0bT+EZ5VGnF79PusJ7nbmDgcYaQC6dT6GLrUsll/
+	XczRqM8mlhkkg/8yjfu0FsSaUyW1ZZkWO304ETItPxncC6CPKjDIdzm3QG7sG9nH
+	06Z8jFQrUaRm5AM/nXA1ovWhCcsShVhSWiMCeKfW3fHgXD27U21wVBKDKsjqzT6P
+	ENK/53BcgOYnmH6P/58k/a9VS0S+sHRy0xg90saO/qAUGi8hszvoOxGXspI68o87
+	Q8QE2rKbf6pfIABVw2vqgw3bh8sqNb8q6ZxZDZyBfL2/7479JLAkiKvNvtxlBm8V
+	udw+cMb5gtQnE950+h9fnfUl5/ni36I0yyqigk4vGWe3FxS8+A1WcaB4emXqBcWg
+	RmsrFSyVxYYHQeh80vSnHYuBfYhJkKf0F+KcafK7fwgPQV84efaiQp/40jlxwYnL
+	u4tUfPMmDgTxVJKMYQOAC0Cm1dF4onY=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue, 28 Apr 2026 21:00:54 +0300 (EEST)
+	Tue, 28 Apr 2026 21:00:55 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 4B7BB62AA5;
-	Tue, 28 Apr 2026 21:00:54 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 1876F62902;
+	Tue, 28 Apr 2026 21:00:55 +0300 (EEST)
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63SHvnOc072086;
-	Tue, 28 Apr 2026 20:57:49 +0300
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63SHvoG7072106;
+	Tue, 28 Apr 2026 20:57:50 +0300
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63SHvnZJ072085;
-	Tue, 28 Apr 2026 20:57:49 +0300
+	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63SHvoaR072105;
+	Tue, 28 Apr 2026 20:57:50 +0300
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
         Waiman Long <longman@redhat.com>, lvs-devel@vger.kernel.org,
         netfilter-devel@vger.kernel.org
-Subject: [PATCH nf 2/7] ipvs: fix races around the conn_lfactor and svc_lfactor sysctl vars
-Date: Tue, 28 Apr 2026 20:57:20 +0300
-Message-ID: <20260428175725.72050-3-ja@ssi.bg>
+Subject: [PATCH nf 7/7] ipvs: Guard access of HK_TYPE_KTHREAD cpumask with RCU
+Date: Tue, 28 Apr 2026 20:57:25 +0300
+Message-ID: <20260428175725.72050-8-ja@ssi.bg>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260428175725.72050-1-ja@ssi.bg>
 References: <20260428175725.72050-1-ja@ssi.bg>
@@ -65,77 +65,109 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Sashiko warns that the new sysctls vars can be changed
-after the hash tables are destroyed and their respective
-resizing works canceled, leading to mod_delayed_work()
-being called for canceled works.
+From: Waiman Long <longman@redhat.com>
 
-Solve this in different ways. conn_tab can be present even
-without services and is destroyed only on netns exit, so use
-disable_delayed_work_sync() to disable the work instead of
-adding more synchronization mechanisms.
+The ip_vs_ctl.c file and the associated ip_vs.h file are the only places
+in the kernel where HK_TYPE_KTHREAD cpumask is being retrieved and used.
+Now that HK_TYPE_KTHREAD/HK_TYPE_DOMAIN cpumask can be changed at run
+time. We need to use RCU to guard access to this cpumask to avoid a
+potential UAF problem as the returned cpumask may be freed before it
+is being used.
 
-As for the svc_table, it is destroyed when the services
-are deleted, so we must be sure that netns exit is not
-called yet (the check for 'enable') and the work is
-not canceled by checking all under same mutex lock.
+We can replace HK_TYPE_KTHREAD by HK_TYPE_DOMAIN as they are aliases
+of each other, but keeping the HK_TYPE_KTHREAD name can highlight the
+fact that it is the kthread initiated by ipvs that is being controlled.
 
-Also, use WRITE_ONCE when updating the sysctl vars as we
-already read them with READ_ONCE.
-
-Link: https://sashiko.dev/#/patchset/20260410112352.23599-1-fw%40strlen.de
-Fixes: 8d7de5477e47 ("ipvs: add conn_lfactor and svc_lfactor sysctl vars")
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Fixes: 03ff73510169 ("cpuset: Update HK_TYPE_DOMAIN cpumask from cpuset")
+Signed-off-by: Waiman Long <longman@redhat.com>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |  2 +-
- net/netfilter/ipvs/ip_vs_ctl.c  | 12 +++++++++---
- 2 files changed, 10 insertions(+), 4 deletions(-)
+ include/net/ip_vs.h            | 20 ++++++++++++++++----
+ net/netfilter/ipvs/ip_vs_ctl.c | 13 ++++++++-----
+ 2 files changed, 24 insertions(+), 9 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 2082bfb2d93c..84a4921a7865 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1835,7 +1835,7 @@ static void ip_vs_conn_flush(struct netns_ipvs *ipvs)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index d28ad8a0541f..02762ce73a0c 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1412,7 +1412,7 @@ static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
+ 	return ipvs->sysctl_run_estimation;
+ }
  
- 	if (!rcu_dereference_protected(ipvs->conn_tab, 1))
- 		return;
--	cancel_delayed_work_sync(&ipvs->conn_resize_work);
-+	disable_delayed_work_sync(&ipvs->conn_resize_work);
- 	if (!atomic_read(&ipvs->conn_count))
- 		goto unreg;
+-static inline const struct cpumask *sysctl_est_cpulist(struct netns_ipvs *ipvs)
++static inline const struct cpumask *__sysctl_est_cpulist(struct netns_ipvs *ipvs)
+ {
+ 	if (ipvs->est_cpulist_valid)
+ 		return ipvs->sysctl_est_cpulist;
+@@ -1530,7 +1530,7 @@ static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
+ 	return 1;
+ }
  
+-static inline const struct cpumask *sysctl_est_cpulist(struct netns_ipvs *ipvs)
++static inline const struct cpumask *__sysctl_est_cpulist(struct netns_ipvs *ipvs)
+ {
+ 	return housekeeping_cpumask(HK_TYPE_KTHREAD);
+ }
+@@ -1565,6 +1565,18 @@ static inline int sysctl_svc_lfactor(struct netns_ipvs *ipvs)
+ 	return READ_ONCE(ipvs->sysctl_svc_lfactor);
+ }
+ 
++static inline bool sysctl_est_cpulist_empty(struct netns_ipvs *ipvs)
++{
++	guard(rcu)();
++	return cpumask_empty(__sysctl_est_cpulist(ipvs));
++}
++
++static inline unsigned int sysctl_est_cpulist_weight(struct netns_ipvs *ipvs)
++{
++	guard(rcu)();
++	return cpumask_weight(__sysctl_est_cpulist(ipvs));
++}
++
+ /* IPVS core functions
+  * (from ip_vs_core.c)
+  */
+@@ -1904,7 +1916,7 @@ static inline void ip_vs_est_stopped_recalc(struct netns_ipvs *ipvs)
+ 	/* Stop tasks while cpulist is empty or if disabled with flag */
+ 	ipvs->est_stopped = !sysctl_run_estimation(ipvs) ||
+ 			    (ipvs->est_cpulist_valid &&
+-			     cpumask_empty(sysctl_est_cpulist(ipvs)));
++			     sysctl_est_cpulist_empty(ipvs));
+ #endif
+ }
+ 
+@@ -1920,7 +1932,7 @@ static inline bool ip_vs_est_stopped(struct netns_ipvs *ipvs)
+ static inline int ip_vs_est_max_threads(struct netns_ipvs *ipvs)
+ {
+ 	unsigned int limit = IPVS_EST_CPU_KTHREADS *
+-			     cpumask_weight(sysctl_est_cpulist(ipvs));
++			     sysctl_est_cpulist_weight(ipvs);
+ 
+ 	return max(1U, limit);
+ }
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 27e50afe9a54..caec516856e9 100644
+index 18b89f096d83..cc684dfa556d 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2469,7 +2469,7 @@ static int ipvs_proc_conn_lfactor(const struct ctl_table *table, int write,
- 		if (val < -8 || val > 8) {
- 			ret = -EINVAL;
- 		} else {
--			*valp = val;
-+			WRITE_ONCE(*valp, val);
- 			if (rcu_access_pointer(ipvs->conn_tab))
- 				mod_delayed_work(system_unbound_wq,
- 						 &ipvs->conn_resize_work, 0);
-@@ -2496,10 +2496,16 @@ static int ipvs_proc_svc_lfactor(const struct ctl_table *table, int write,
- 		if (val < -8 || val > 8) {
- 			ret = -EINVAL;
- 		} else {
--			*valp = val;
--			if (rcu_access_pointer(ipvs->svc_table))
-+			mutex_lock(&ipvs->service_mutex);
-+			WRITE_ONCE(*valp, val);
-+			/* Make sure the services are present */
-+			if (rcu_access_pointer(ipvs->svc_table) &&
-+			    READ_ONCE(ipvs->enable) &&
-+			    !test_bit(IP_VS_WORK_SVC_NORESIZE,
-+				      &ipvs->work_flags))
- 				mod_delayed_work(system_unbound_wq,
- 						 &ipvs->svc_resize_work, 0);
-+			mutex_unlock(&ipvs->service_mutex);
- 		}
- 	}
- 	return ret;
+@@ -2383,11 +2383,14 @@ static int ipvs_proc_est_cpumask_get(const struct ctl_table *table,
+ 
+ 	mutex_lock(&ipvs->est_mutex);
+ 
+-	if (ipvs->est_cpulist_valid)
+-		mask = *valp;
+-	else
+-		mask = (struct cpumask *)housekeeping_cpumask(HK_TYPE_KTHREAD);
+-	ret = scnprintf(buffer, size, "%*pbl\n", cpumask_pr_args(mask));
++	/* HK_TYPE_KTHREAD cpumask needs RCU protection */
++	scoped_guard(rcu) {
++		if (ipvs->est_cpulist_valid)
++			mask = *valp;
++		else
++			mask = (struct cpumask *)housekeeping_cpumask(HK_TYPE_KTHREAD);
++		ret = scnprintf(buffer, size, "%*pbl\n", cpumask_pr_args(mask));
++	}
+ 
+ 	mutex_unlock(&ipvs->est_mutex);
+ 
 -- 
 2.53.0
 
