@@ -1,59 +1,59 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9D72328B62;
-	Tue, 28 Apr 2026 18:01:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4B2E71448D5;
+	Tue, 28 Apr 2026 18:01:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777399285; cv=none; b=nCKnVXH9hX2L7fT5jY7a2w43W94QoFsl7QUIqGlWVHlL9Ldic/+AlYclp0bVPkXSVHcx4boJXE1xFx9y1hTyJ4nVEhncyk0Dez/y6W+RCsp2m5pq9tSxbxO6jSmA1KuenTQr70/pFPaKAhH8lv1MNK51HhA8to0BJxo8jmVP2P4=
+	t=1777399292; cv=none; b=GggazptnLln3aoM7ane9BAJ9ISiwDwmHCgT6qFklIcwh6Z/vuv857M0VSQZMXOSsAq3X1DE47FQOAc93n6hgxWG2eAw/WY066pLTCYTe6KMlW9HbfNfFpvZKPeqq9CzrC2JXU/Gn3fKdg8UivQx5R72Am1mkI6hMPFaPrQkNTcE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777399285; c=relaxed/simple;
-	bh=HnsSggn59XwsXpXlw26F6woxCxqLez7Uhtrw5KcGl7k=;
+	s=arc-20240116; t=1777399292; c=relaxed/simple;
+	bh=xNKfHpUnbuQgCKWAd0/rPtiBRJsZj1IasreB0uU5dCA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=FXnL4j2p2/93yQ9QgVRhSyrGM7R0cioXNp0JxqUADTVK/FTbok0wr18fkhMSe2I681/TpsFFlIFDMmx4hsPJxFyrDRAJweqhEuFIBYAFmRcwb+XyYBAzNtJvy6KWNi5ajCsA3be5cFp+4lgLD6isXMOhow0ttA82jIWN3H/jtEE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=xz81/0qx; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version; b=AX+XfDBPDln225dvZVtq1LMlwtJbrmSWVhgNtuWWcspIYJDwbsZJdNgy8UOWXzyqPyFbX60KS1SzYmfuGdKUsW/RWfQQijWRXK79ey0J+LR+rVnit+RP1QW0d0k8GvxAnPzfg2Q4WiIg36HBE69ra3Hb/DAQoXQ6ucEhrdn38AU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=cxO8+HWa; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="xz81/0qx"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="cxO8+HWa"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 9B80521833;
-	Tue, 28 Apr 2026 21:00:56 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 735E321834;
+	Tue, 28 Apr 2026 21:00:58 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-transfer-encoding:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=0/PuZJiSSrczQwBCm21KJcXxxGep/c+U2tjHmFj4Djo=; b=xz81/0qx0Xu/
-	PlNplArP29eyt/f4ojtmUqoKv7oVg/Rlp8H4RdPMKF6OJAy2xgBTKC09w2Cnkxv5
-	8tesBO3xuAjGD2kQmA/7mdhVI7XXuL9Gaujb5EeyuKJcJq1+36eHXm394DcfgUr8
-	VeLKfFW+u03SfEUAQdbACn/UEZxDl1bi9k1FVeKpjRHxZqPaesx6oBvMO8a+9wct
-	uxo/Ci20MIDKYpx22rgwBXtf0bT+EZ5VGnF79PusJ7nbmDgcYaQC6dT6GLrUsll/
-	XczRqM8mlhkkg/8yjfu0FsSaUyW1ZZkWO304ETItPxncC6CPKjDIdzm3QG7sG9nH
-	06Z8jFQrUaRm5AM/nXA1ovWhCcsShVhSWiMCeKfW3fHgXD27U21wVBKDKsjqzT6P
-	ENK/53BcgOYnmH6P/58k/a9VS0S+sHRy0xg90saO/qAUGi8hszvoOxGXspI68o87
-	Q8QE2rKbf6pfIABVw2vqgw3bh8sqNb8q6ZxZDZyBfL2/7479JLAkiKvNvtxlBm8V
-	udw+cMb5gtQnE950+h9fnfUl5/ni36I0yyqigk4vGWe3FxS8+A1WcaB4emXqBcWg
-	RmsrFSyVxYYHQeh80vSnHYuBfYhJkKf0F+KcafK7fwgPQV84efaiQp/40jlxwYnL
-	u4tUfPMmDgTxVJKMYQOAC0Cm1dF4onY=
+	 bh=Q+1wYlj2TMWDMHUtxtFR1v3/AEpQpZ/nztQnYdp4dz8=; b=cxO8+HWapzx6
+	fjjO6nAFUYAtqnWukoeJOSEd7nG9qEiV/rJMHY76CIlcWCl3jfLb/ZyIacaWJMKv
+	132Ug22MECT29YVOTWarHxNiDiY/8GXW24HExFzuPdIZDMGD3zBzHwa52DQud8EV
+	0OPsiS9jWsuYCgkyEBZ4vwFCSeQbCkQbTCH2twGrfsW41sYr/M2PIZ5V9dRr99Px
+	81CiA3i/4cLzEi2Bl1q3yqkLNXio9ShzKitrxXmvQhcX3Bn+zTEksYyLLiLqXZCl
+	2n9kFPS8YHUYOlPfFS9ISvr1ALC1XylLHg9p6o28k++0Xocxv7f9jh/8VVjkFpXb
+	WPlaSqAaeZdljf570QKd0Ajh9QIkb+mJsP21HzndhHAfSkdhx4grn4nZKIWPELqE
+	fsjmX+qQFuOdMBoautsnVQdGIev/z+7zvAh+8SVbn8kboEhOR7uxb3nJtTEyurT3
+	x9P6iZ5cqnO35l/fRaImZt5KYoCqoAc8JUusji4mUeuyMGVeyl00Nq92AC3fFYb7
+	lpxEsrgy8gWYOPOyLDb4hoegZEHML07KgxWfJEo0pN7VtcQVnGeLFN7Kswnsr4oW
+	t25Tbz7H3L3PTLJEHa/JYSr3dL/O8MyCZJYJ4QTmRHUweK4/xeQGto2p69RlvKqM
+	8Qb/FUu6uUSiVxDibbXKpUMr8yf2DHg=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue, 28 Apr 2026 21:00:55 +0300 (EEST)
+	Tue, 28 Apr 2026 21:00:56 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 1876F62902;
+	by box.ssi.bg (Potsfix) with ESMTPSA id C0DA56089A;
 	Tue, 28 Apr 2026 21:00:55 +0300 (EEST)
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63SHvoG7072106;
-	Tue, 28 Apr 2026 20:57:50 +0300
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63SHvnG1072090;
+	Tue, 28 Apr 2026 20:57:49 +0300
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63SHvoaR072105;
-	Tue, 28 Apr 2026 20:57:50 +0300
+	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63SHvnIO072089;
+	Tue, 28 Apr 2026 20:57:49 +0300
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
         Waiman Long <longman@redhat.com>, lvs-devel@vger.kernel.org,
         netfilter-devel@vger.kernel.org
-Subject: [PATCH nf 7/7] ipvs: Guard access of HK_TYPE_KTHREAD cpumask with RCU
-Date: Tue, 28 Apr 2026 20:57:25 +0300
-Message-ID: <20260428175725.72050-8-ja@ssi.bg>
+Subject: [PATCH nf 3/7] ipvs: fix the spin_lock usage for RT build
+Date: Tue, 28 Apr 2026 20:57:21 +0300
+Message-ID: <20260428175725.72050-4-ja@ssi.bg>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260428175725.72050-1-ja@ssi.bg>
 References: <20260428175725.72050-1-ja@ssi.bg>
@@ -65,108 +65,270 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Waiman Long <longman@redhat.com>
+syzbot reports for sleeping function called from invalid context [1].
+The recently added code for resizable hash tables uses
+hlist_bl bit locks in combination with spin_lock for
+the connection fields (cp->lock).
 
-The ip_vs_ctl.c file and the associated ip_vs.h file are the only places
-in the kernel where HK_TYPE_KTHREAD cpumask is being retrieved and used.
-Now that HK_TYPE_KTHREAD/HK_TYPE_DOMAIN cpumask can be changed at run
-time. We need to use RCU to guard access to this cpumask to avoid a
-potential UAF problem as the returned cpumask may be freed before it
-is being used.
+Fix the following problems:
 
-We can replace HK_TYPE_KTHREAD by HK_TYPE_DOMAIN as they are aliases
-of each other, but keeping the HK_TYPE_KTHREAD name can highlight the
-fact that it is the kthread initiated by ipvs that is being controlled.
+* avoid using spin_lock(&cp->lock) under locked bit lock
+because it sleeps on PREEMPT_RT
 
-Fixes: 03ff73510169 ("cpuset: Update HK_TYPE_DOMAIN cpumask from cpuset")
-Signed-off-by: Waiman Long <longman@redhat.com>
+* as the recent changes call ip_vs_conn_hash() only for newly
+allocated connection, the spin_lock can be removed there because
+the connection is still not linked to table and does not need
+cp->lock protection.
+
+* the lock can be removed also from ip_vs_conn_unlink() where we
+are the last connection user.
+
+* the last place that is fixed is ip_vs_conn_fill_cport()
+where now the cp->lock is locked before the other locks to
+ensure other packets do not modify the cp->flags in non-atomic
+way. Here we make sure cport and flags are changed only once
+if two or more packets race to fill the cport. Also, we fill
+cport early, so that if we race with resizing there will be
+valid cport key for the hashing. Add a warning if too many
+hash table changes occur for our RCU read-side critical
+section which is error condition but minor because the
+connection still can expire gracefully. Still, restore the
+cport to 0 to allow retransmitted packet to properly fill
+the cport. Problems reported by Sashiko.
+
+[1]:
+BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:48
+in_atomic(): 1, irqs_disabled(): 0, non_block: 0, pid: 16, name: ktimers/0
+preempt_count: 2, expected: 0
+RCU nest depth: 3, expected: 3
+8 locks held by ktimers/0/16:
+ #0: ffffffff8de5f260 (local_bh){.+.+}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
+ #1: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
+ #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: spin_lock include/linux/spinlock_rt.h:45 [inline]
+ #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: timer_base_lock_expiry kernel/time/timer.c:1502 [inline]
+ #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: __run_timer_base+0x120/0x9f0 kernel/time/timer.c:2384
+ #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
+ #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:838 [inline]
+ #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: __rt_spin_lock kernel/locking/spinlock_rt.c:50 [inline]
+ #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rt_spin_lock+0x1e0/0x400 kernel/locking/spinlock_rt.c:57
+ #4: ffffc90000157a80 ((&cp->timer)){+...}-{0:0}, at: call_timer_fn+0xd4/0x5e0 kernel/time/timer.c:1745
+ #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
+ #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:838 [inline]
+ #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:315 [inline]
+ #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: ip_vs_conn_expire+0x257/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
+ #6: ffffffff8de5f260 (local_bh){.+.+}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
+ #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: spin_lock include/linux/spinlock_rt.h:45 [inline]
+ #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:324 [inline]
+ #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: ip_vs_conn_expire+0xd4a/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
+Preemption disabled at:
+[<ffffffff898a6358>] bit_spin_lock include/linux/bit_spinlock.h:38 [inline]
+[<ffffffff898a6358>] hlist_bl_lock+0x18/0x110 include/linux/list_bl.h:149
+CPU: 0 UID: 0 PID: 16 Comm: ktimers/0 Tainted: G        W    L      syzkaller #0 PREEMPT_{RT,(full)}
+Tainted: [W]=WARN, [L]=SOFTLOCKUP
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 03/18/2026
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
+ __might_resched+0x329/0x480 kernel/sched/core.c:9162
+ __rt_spin_lock kernel/locking/spinlock_rt.c:48 [inline]
+ rt_spin_lock+0xc2/0x400 kernel/locking/spinlock_rt.c:57
+ spin_lock include/linux/spinlock_rt.h:45 [inline]
+ ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:324 [inline]
+ ip_vs_conn_expire+0xd4a/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
+ call_timer_fn+0x192/0x5e0 kernel/time/timer.c:1748
+ expire_timers kernel/time/timer.c:1799 [inline]
+ __run_timers kernel/time/timer.c:2374 [inline]
+ __run_timer_base+0x6a3/0x9f0 kernel/time/timer.c:2386
+ run_timer_base kernel/time/timer.c:2395 [inline]
+ run_timer_softirq+0xb7/0x170 kernel/time/timer.c:2405
+ handle_softirqs+0x1de/0x6d0 kernel/softirq.c:622
+ __do_softirq kernel/softirq.c:656 [inline]
+ run_ktimerd+0x69/0x100 kernel/softirq.c:1151
+ smpboot_thread_fn+0x541/0xa50 kernel/smpboot.c:160
+ kthread+0x388/0x470 kernel/kthread.c:436
+ ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+
+Reported-by: syzbot+504e778ddaecd36fdd17@syzkaller.appspotmail.com
+Link: https://sashiko.dev/#/patchset/20260415200216.79699-1-ja%40ssi.bg
+Link: https://sashiko.dev/#/patchset/20260420165539.85174-4-ja%40ssi.bg
+Link: https://sashiko.dev/#/patchset/20260422135823.50489-4-ja%40ssi.bg
+Fixes: 2fa7cc9c7025 ("ipvs: switch to per-net connection table")
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/ip_vs.h            | 20 ++++++++++++++++----
- net/netfilter/ipvs/ip_vs_ctl.c | 13 ++++++++-----
- 2 files changed, 24 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index d28ad8a0541f..02762ce73a0c 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1412,7 +1412,7 @@ static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
- 	return ipvs->sysctl_run_estimation;
- }
- 
--static inline const struct cpumask *sysctl_est_cpulist(struct netns_ipvs *ipvs)
-+static inline const struct cpumask *__sysctl_est_cpulist(struct netns_ipvs *ipvs)
- {
- 	if (ipvs->est_cpulist_valid)
- 		return ipvs->sysctl_est_cpulist;
-@@ -1530,7 +1530,7 @@ static inline int sysctl_run_estimation(struct netns_ipvs *ipvs)
- 	return 1;
- }
- 
--static inline const struct cpumask *sysctl_est_cpulist(struct netns_ipvs *ipvs)
-+static inline const struct cpumask *__sysctl_est_cpulist(struct netns_ipvs *ipvs)
- {
- 	return housekeeping_cpumask(HK_TYPE_KTHREAD);
- }
-@@ -1565,6 +1565,18 @@ static inline int sysctl_svc_lfactor(struct netns_ipvs *ipvs)
- 	return READ_ONCE(ipvs->sysctl_svc_lfactor);
- }
- 
-+static inline bool sysctl_est_cpulist_empty(struct netns_ipvs *ipvs)
-+{
-+	guard(rcu)();
-+	return cpumask_empty(__sysctl_est_cpulist(ipvs));
-+}
+v5:
+  restore cp->cport to 0 when ntbl reaches 2 to allow
+  connection to continue on retransmission
+
+v4:
+  add error message for too many hash table changes in
+  ip_vs_conn_fill_cport()
+
+v3:
+* use cp->lock in ip_vs_conn_fill_cport() to protect the
+  cp->flags modifications
+
+v2:
+* remove cp->lock from ip_vs_conn_fill_cport() and avoid
+  races with resizing and possible multiple attempts to fill cport.
+
+ net/netfilter/ipvs/ip_vs_conn.c | 74 ++++++++++++++++++---------------
+ 1 file changed, 41 insertions(+), 33 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 84a4921a7865..9ea6b4fa78bf 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -267,27 +267,20 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ 		hash_key2 = hash_key;
+ 		use2 = false;
+ 	}
 +
-+static inline unsigned int sysctl_est_cpulist_weight(struct netns_ipvs *ipvs)
-+{
-+	guard(rcu)();
-+	return cpumask_weight(__sysctl_est_cpulist(ipvs));
-+}
+ 	conn_tab_lock(t, cp, hash_key, hash_key2, use2, true /* new_hash */,
+ 		      &head, &head2);
+-	spin_lock(&cp->lock);
+-
+-	if (!(cp->flags & IP_VS_CONN_F_HASHED)) {
+-		cp->flags |= IP_VS_CONN_F_HASHED;
+-		WRITE_ONCE(cp->hn0.hash_key, hash_key);
+-		WRITE_ONCE(cp->hn1.hash_key, hash_key2);
+-		refcount_inc(&cp->refcnt);
+-		hlist_bl_add_head_rcu(&cp->hn0.node, head);
+-		if (use2)
+-			hlist_bl_add_head_rcu(&cp->hn1.node, head2);
+-		ret = 1;
+-	} else {
+-		pr_err("%s(): request for already hashed, called from %pS\n",
+-		       __func__, __builtin_return_address(0));
+-		ret = 0;
+-	}
+ 
+-	spin_unlock(&cp->lock);
++	cp->flags |= IP_VS_CONN_F_HASHED;
++	WRITE_ONCE(cp->hn0.hash_key, hash_key);
++	WRITE_ONCE(cp->hn1.hash_key, hash_key2);
++	refcount_inc(&cp->refcnt);
++	hlist_bl_add_head_rcu(&cp->hn0.node, head);
++	if (use2)
++		hlist_bl_add_head_rcu(&cp->hn1.node, head2);
 +
- /* IPVS core functions
-  * (from ip_vs_core.c)
-  */
-@@ -1904,7 +1916,7 @@ static inline void ip_vs_est_stopped_recalc(struct netns_ipvs *ipvs)
- 	/* Stop tasks while cpulist is empty or if disabled with flag */
- 	ipvs->est_stopped = !sysctl_run_estimation(ipvs) ||
- 			    (ipvs->est_cpulist_valid &&
--			     cpumask_empty(sysctl_est_cpulist(ipvs)));
-+			     sysctl_est_cpulist_empty(ipvs));
- #endif
+ 	conn_tab_unlock(head, head2);
++	ret = 1;
+ 
+ 	/* Schedule resizing if load increases */
+ 	if (atomic_read(&ipvs->conn_count) > t->u_thresh &&
+@@ -321,7 +314,6 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ 
+ 	conn_tab_lock(t, cp, hash_key, hash_key2, use2, false /* new_hash */,
+ 		      &head, &head2);
+-	spin_lock(&cp->lock);
+ 
+ 	if (cp->flags & IP_VS_CONN_F_HASHED) {
+ 		/* Decrease refcnt and unlink conn only if we are last user */
+@@ -334,7 +326,6 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ 		}
+ 	}
+ 
+-	spin_unlock(&cp->lock);
+ 	conn_tab_unlock(head, head2);
+ 
+ 	rcu_read_unlock();
+@@ -637,6 +628,7 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 	struct ip_vs_conn_hnode *hn;
+ 	u32 hash_key, hash_key_new;
+ 	struct ip_vs_conn_param p;
++	bool by_me = false;
+ 	int ntbl;
+ 	int dir;
+ 
+@@ -664,8 +656,16 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 		t = rcu_dereference(t->new_tbl);
+ 		ntbl++;
+ 		/* We are lost? */
+-		if (ntbl >= 2)
++		if (ntbl >= 2) {
++			spin_lock_bh(&cp->lock);
++			if (cp->flags & IP_VS_CONN_F_NO_CPORT && by_me)
++				cp->cport = 0;
++			/* hn1 will be rehashed on next packet */
++			spin_unlock_bh(&cp->lock);
++			IP_VS_ERR_RL("%s(): Too many ht changes for dir %d\n",
++				     __func__, dir);
+ 			return;
++		}
+ 	}
+ 
+ 	/* Rehashing during resize? Use the recent table for adds */
+@@ -683,10 +683,13 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 	if (head > head2 && t == t2)
+ 		swap(head, head2);
+ 
++	/* Protect the cp->flags modification */
++	spin_lock_bh(&cp->lock);
++
+ 	/* Lock seqcount only for the old bucket, even if we are on new table
+ 	 * because it affects the del operation, not the adding.
+ 	 */
+-	spin_lock_bh(&t->lock[hash_key & t->lock_mask].l);
++	spin_lock(&t->lock[hash_key & t->lock_mask].l);
+ 	preempt_disable_nested();
+ 	write_seqcount_begin(&t->seqc[hash_key & t->seqc_mask]);
+ 
+@@ -704,14 +707,23 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 		hlist_bl_unlock(head);
+ 		write_seqcount_end(&t->seqc[hash_key & t->seqc_mask]);
+ 		preempt_enable_nested();
+-		spin_unlock_bh(&t->lock[hash_key & t->lock_mask].l);
++		spin_unlock(&t->lock[hash_key & t->lock_mask].l);
++		spin_unlock_bh(&cp->lock);
+ 		hash_key = hash_key_new;
+ 		goto retry;
+ 	}
+ 
+-	spin_lock(&cp->lock);
+-	if ((cp->flags & IP_VS_CONN_F_NO_CPORT) &&
+-	    (cp->flags & IP_VS_CONN_F_HASHED)) {
++	/* Fill cport once, even if multiple packets try to do it */
++	if (cp->flags & IP_VS_CONN_F_NO_CPORT && (!cp->cport || by_me)) {
++		/* If we race with resizing make sure cport is set for dir 1 */
++		if (!cp->cport) {
++			cp->cport = cport;
++			by_me = true;
++		}
++		if (!dir) {
++			atomic_dec(&ipvs->no_cport_conns[af_id]);
++			cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
++		}
+ 		/* We do not recalc hash_key_r under lock, we assume the
+ 		 * parameters in cp do not change, i.e. cport is
+ 		 * the only possible change.
+@@ -726,21 +738,17 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 			hlist_bl_del_rcu(&hn->node);
+ 			hlist_bl_add_head_rcu(&hn->node, head_new);
+ 		}
+-		if (!dir) {
+-			atomic_dec(&ipvs->no_cport_conns[af_id]);
+-			cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
+-			cp->cport = cport;
+-		}
+ 	}
+-	spin_unlock(&cp->lock);
+ 
+ 	if (head != head2)
+ 		hlist_bl_unlock(head2);
+ 	hlist_bl_unlock(head);
+ 	write_seqcount_end(&t->seqc[hash_key & t->seqc_mask]);
+ 	preempt_enable_nested();
+-	spin_unlock_bh(&t->lock[hash_key & t->lock_mask].l);
+-	if (dir--)
++	spin_unlock(&t->lock[hash_key & t->lock_mask].l);
++
++	spin_unlock_bh(&cp->lock);
++	if (dir-- && by_me)
+ 		goto next_dir;
  }
- 
-@@ -1920,7 +1932,7 @@ static inline bool ip_vs_est_stopped(struct netns_ipvs *ipvs)
- static inline int ip_vs_est_max_threads(struct netns_ipvs *ipvs)
- {
- 	unsigned int limit = IPVS_EST_CPU_KTHREADS *
--			     cpumask_weight(sysctl_est_cpulist(ipvs));
-+			     sysctl_est_cpulist_weight(ipvs);
- 
- 	return max(1U, limit);
- }
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 18b89f096d83..cc684dfa556d 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2383,11 +2383,14 @@ static int ipvs_proc_est_cpumask_get(const struct ctl_table *table,
- 
- 	mutex_lock(&ipvs->est_mutex);
- 
--	if (ipvs->est_cpulist_valid)
--		mask = *valp;
--	else
--		mask = (struct cpumask *)housekeeping_cpumask(HK_TYPE_KTHREAD);
--	ret = scnprintf(buffer, size, "%*pbl\n", cpumask_pr_args(mask));
-+	/* HK_TYPE_KTHREAD cpumask needs RCU protection */
-+	scoped_guard(rcu) {
-+		if (ipvs->est_cpulist_valid)
-+			mask = *valp;
-+		else
-+			mask = (struct cpumask *)housekeeping_cpumask(HK_TYPE_KTHREAD);
-+		ret = scnprintf(buffer, size, "%*pbl\n", cpumask_pr_args(mask));
-+	}
- 
- 	mutex_unlock(&ipvs->est_mutex);
  
 -- 
 2.53.0
