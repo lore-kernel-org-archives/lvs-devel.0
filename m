@@ -1,59 +1,59 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 01E553BA243;
-	Wed, 29 Apr 2026 14:14:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B327D277C9D;
+	Wed, 29 Apr 2026 14:14:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777472069; cv=none; b=Oy+pSPmKGAZCUnAtZUn4wlkTRN2OPsNcni0C1nornOegVxc+cF/4MBVUpUdiWQuLtFGyxumfVqJ6CvMjQFFruvp421QNP42qT03jkb6ifMH53BY3VfSdSpds49m8j4xCqv7SBj4+ZAsTi8EbRFpLpTIV1kEBhQ1ExtZ0edGrHkw=
+	t=1777472075; cv=none; b=jsUd8TYaoEYn732wljxDxh53GyonEI8urjTxfDWGslGJf8kbM0BOHDGOpab0vAzBqti9VHn7QSJir0knk2Gyg7mKxfKi1ewJOkDi3NEYpHWDQ1NFzBJyIQKttTVplLUb0eFZswFZ1hW0Bso7D2kVOJzG2VHvoCDol0I0Q91RjyA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777472069; c=relaxed/simple;
-	bh=ftM5ukXQISH48XnQp4wEHNTt7YUjmI2Y/ZpTwXIbrFY=;
+	s=arc-20240116; t=1777472075; c=relaxed/simple;
+	bh=dTo9HHruW8QVv/6+G5t8xN35S3zWzyhJt4phdhyCqTE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=c6E1jXsznWlnItNbb8L0BRa93AvsKn8rCQcmlrzRLMgqNsF0H9Ds+KkApxYl1CUOKkoKOEPBd0PZk3Qzb5K36DIfP/1H0AJ1nJvFqUK9jZc6lkaujt51B8NxzSLI6ef6O8IEPX0wvhqsS1lepc2KOypDmslb4hQ71FK4vmBJXTw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=bQHwYHqG; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version; b=mKzaZUb4C2qIRZqHgxMAaAbCJ6AZwtUBn/E2SpQB/e3yF6t3yYeNMRrKCEXimCRXqxOKxYNDDST1UP9/aVPx7Jv5wlWphtbqfA4ot63Hx6ApZ4S2+McNTD+WWH5dd1Vbo2F8bhatOeXNLEvqbseWBs9D18Sr71/GpfFr/NW/4SA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=lL1CGDvl; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="bQHwYHqG"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="lL1CGDvl"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id B623121CBA;
-	Wed, 29 Apr 2026 17:14:10 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 8008821A73;
+	Wed, 29 Apr 2026 17:14:11 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-transfer-encoding:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=CGEZvvNmG16fhPrQ1MGOmC9UlX+Su1JVXJPJ01Yi0Ys=; b=bQHwYHqGxWAu
-	XNOrd+VOeQZBLzZZ9lKg/obxf4gQOM4ZSBDHfgZwMQ88X8Nn4caFmgT173KIHNuI
-	11SEerwjFeuPcUPYjBKay8dx7ItuEmDs3C4HWkiK5Wd9tqH+zjChj1W1eSzYSJfc
-	eVnllTcnIBGvTCMC/VlqiLNOZYVUz1VmIOKlDa8NIKo4EkbNkDvN6ttlXNS7HBaH
-	x6VLWpn5/8iDrSAPr5m48i3WINB8xukIElrjPNO/pqEVjyyDSzq7ekV5uXVtc89f
-	fawlC+NuFEgDrlLSR7+RVmTP6uSPu6rqP2Gan8o6YcJYQ0gJGU8ygC5IQ+u7/gQ7
-	aMqzrRkK5cLgpmrvWKsOmh7qDIaCT9eP0fgkktmk9Vo4u4p6KmGL3jZXoPkHKRPQ
-	ZaqX/ZKTXA+L2CeLsXfbdHyBXNryXujdhxXtBUJqRAzVE0u7NODSWY3gp6/H+Wlk
-	DPi/e7pp2+oe7ztiViKlotr7ylyQYBN+DwJ5S7IkOAmHALCrnWXkPT6p/pPvkADT
-	hOmbAUhVy2tI+MSboBWiJ9c0DYjUcr84IUfhyydtKv9WKonerX3FMNcjv4KZ2L2n
-	Nqu0t1eKN7JSmK9pahiQ5bm9MXpSKRkZ57VdQhDyq/VfDoB95GkFpTsoi//OBYfY
-	XR9EVOX94jHU2XTXbqzBc5hrmIic8ok=
+	 bh=+5l6HjIa6pEN1i6IQbOcoo3u2ww0YtZrxpJ29skJSz0=; b=lL1CGDvlbthX
+	raUjuGFSummZQkxq0baV/vrrR5TCfOWjtoq+ZAKUcXWuFS6Zh2NNxnq1tGJQhnvk
+	ZgjIjuAIHSzm7R9njqdnArqIbuWJwN8zSZGFpvLzGbcX4ZlKbTznkl85GLA1JkP0
+	jYKaT6/OkffO9VStSsYbd9YwKipb4k3dVGdUaTYuZ6Qw+THbaQ9mk/MyJpzLJFcB
+	PeLhrfLMnhCNh8cmd/PX0llnoGNlQ4euxeyJn/UTymBNn7KXqxG3s//NUeL0gNtL
+	ivESio5JZRgEc05uMZ6khMu60bvgD7SaIYPgBlttwAPdZPy0zXrxm5J6SxJClSbH
+	ar8CLjAPtlKvs3yx5qQ0ofjAc9azdfWUnGBXnOfUHuSwaolCwSxppKjLp1bvfY4t
+	CKTwH3/Z52FLxcZ+yhXCcmO/1iTbL11A+tVUAKUN7U8YENS+UN83bth9wLq9/RXB
+	NMOI2hVOmFU3VlRJruWV3md/qYgO0WGhZXJUBNL5pDm8R0eK0SkoLZTM9iImUsq3
+	IjXVTPI9P9s2QwiU9MMNGwUcIGktU6FrBkSihJ+n8ce/c6poR79BmS/yBzcFEjfg
+	iDHWBhhy8++C288U0yMADe4h1BB31HfQ+dbRWT91qnJViHM228oJW3I9TrRssLcK
+	OxAdaKIpqQD3EmDb76a9VGGgywPQVhE=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Wed, 29 Apr 2026 17:14:09 +0300 (EEST)
+	Wed, 29 Apr 2026 17:14:10 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 2F9DF6088F;
+	by box.ssi.bg (Potsfix) with ESMTPSA id D693B62AE2;
 	Wed, 29 Apr 2026 17:14:09 +0300 (EEST)
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63TEBLdP085089;
-	Wed, 29 Apr 2026 17:11:21 +0300
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63TEBMIP085098;
+	Wed, 29 Apr 2026 17:11:22 +0300
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63TEBLNr085088;
-	Wed, 29 Apr 2026 17:11:21 +0300
+	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63TEBMDZ085097;
+	Wed, 29 Apr 2026 17:11:22 +0300
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
         Waiman Long <longman@redhat.com>, lvs-devel@vger.kernel.org,
         netfilter-devel@vger.kernel.org
-Subject: [PATCHv2 nf 2/8] ipvs: fix races around the conn_lfactor and svc_lfactor sysctl vars
-Date: Wed, 29 Apr 2026 17:10:49 +0300
-Message-ID: <20260429141055.85052-3-ja@ssi.bg>
+Subject: [PATCHv2 nf 4/8] ipvs: do not leak dest after get from dest trash
+Date: Wed, 29 Apr 2026 17:10:51 +0300
+Message-ID: <20260429141055.85052-5-ja@ssi.bg>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260429141055.85052-1-ja@ssi.bg>
 References: <20260429141055.85052-1-ja@ssi.bg>
@@ -65,77 +65,80 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Sashiko warns that the new sysctls vars can be changed
-after the hash tables are destroyed and their respective
-resizing works canceled, leading to mod_delayed_work()
-being called for canceled works.
+Sashiko warns about leaked dest if ip_vs_start_estimator()
+fails in ip_vs_add_dest(). Add ip_vs_trash_put_dest() to
+put back the dest into dest trash.
 
-Solve this in different ways. conn_tab can be present even
-without services and is destroyed only on netns exit, so use
-disable_delayed_work_sync() to disable the work instead of
-adding more synchronization mechanisms.
-
-As for the svc_table, it is destroyed when the services
-are deleted, so we must be sure that netns exit is not
-called yet (the check for 'enable') and the work is
-not canceled by checking all under same mutex lock.
-
-Also, use WRITE_ONCE when updating the sysctl vars as we
-already read them with READ_ONCE.
-
-Link: https://sashiko.dev/#/patchset/20260410112352.23599-1-fw%40strlen.de
-Fixes: 8d7de5477e47 ("ipvs: add conn_lfactor and svc_lfactor sysctl vars")
+Link: https://sashiko.dev/#/patchset/20260428175725.72050-1-ja%40ssi.bg
+Fixes: 705dd3444081 ("ipvs: use kthreads for stats estimation")
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |  2 +-
- net/netfilter/ipvs/ip_vs_ctl.c  | 12 +++++++++---
- 2 files changed, 10 insertions(+), 4 deletions(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 37 ++++++++++++++++++++++------------
+ 1 file changed, 24 insertions(+), 13 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 2082bfb2d93c..84a4921a7865 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1835,7 +1835,7 @@ static void ip_vs_conn_flush(struct netns_ipvs *ipvs)
- 
- 	if (!rcu_dereference_protected(ipvs->conn_tab, 1))
- 		return;
--	cancel_delayed_work_sync(&ipvs->conn_resize_work);
-+	disable_delayed_work_sync(&ipvs->conn_resize_work);
- 	if (!atomic_read(&ipvs->conn_count))
- 		goto unreg;
- 
 diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 27e50afe9a54..caec516856e9 100644
+index caec516856e9..d81077c2457a 100644
 --- a/net/netfilter/ipvs/ip_vs_ctl.c
 +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2469,7 +2469,7 @@ static int ipvs_proc_conn_lfactor(const struct ctl_table *table, int write,
- 		if (val < -8 || val > 8) {
- 			ret = -EINVAL;
- 		} else {
--			*valp = val;
-+			WRITE_ONCE(*valp, val);
- 			if (rcu_access_pointer(ipvs->conn_tab))
- 				mod_delayed_work(system_unbound_wq,
- 						 &ipvs->conn_resize_work, 0);
-@@ -2496,10 +2496,16 @@ static int ipvs_proc_svc_lfactor(const struct ctl_table *table, int write,
- 		if (val < -8 || val > 8) {
- 			ret = -EINVAL;
- 		} else {
--			*valp = val;
--			if (rcu_access_pointer(ipvs->svc_table))
-+			mutex_lock(&ipvs->service_mutex);
-+			WRITE_ONCE(*valp, val);
-+			/* Make sure the services are present */
-+			if (rcu_access_pointer(ipvs->svc_table) &&
-+			    READ_ONCE(ipvs->enable) &&
-+			    !test_bit(IP_VS_WORK_SVC_NORESIZE,
-+				      &ipvs->work_flags))
- 				mod_delayed_work(system_unbound_wq,
- 						 &ipvs->svc_resize_work, 0);
-+			mutex_unlock(&ipvs->service_mutex);
- 		}
- 	}
- 	return ret;
+@@ -1102,6 +1102,24 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, int dest_af,
+ 	return dest;
+ }
+ 
++/* Put destination in trash */
++static void ip_vs_trash_put_dest(struct netns_ipvs *ipvs,
++				 struct ip_vs_dest *dest, unsigned long istart,
++				 bool cleanup)
++{
++	spin_lock_bh(&ipvs->dest_trash_lock);
++	IP_VS_DBG_BUF(3, "Moving dest %s:%u into trash, dest->refcnt=%d\n",
++		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port),
++		      refcount_read(&dest->refcnt));
++	if (list_empty(&ipvs->dest_trash) && !cleanup)
++		mod_timer(&ipvs->dest_trash_timer,
++			  jiffies + (IP_VS_DEST_TRASH_PERIOD >> 1));
++	/* dest lives in trash with reference */
++	list_add(&dest->t_list, &ipvs->dest_trash);
++	dest->idle_start = istart;
++	spin_unlock_bh(&ipvs->dest_trash_lock);
++}
++
+ static void ip_vs_dest_rcu_free(struct rcu_head *head)
+ {
+ 	struct ip_vs_dest *dest;
+@@ -1461,9 +1479,12 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 			      ntohs(dest->vport));
+ 
+ 		ret = ip_vs_start_estimator(svc->ipvs, &dest->stats);
++		/* On error put back dest into the trash */
+ 		if (ret < 0)
+-			return ret;
+-		__ip_vs_update_dest(svc, dest, udest, 1);
++			ip_vs_trash_put_dest(svc->ipvs, dest, dest->idle_start,
++					     false);
++		else
++			__ip_vs_update_dest(svc, dest, udest, 1);
+ 	} else {
+ 		/*
+ 		 * Allocate and initialize the dest structure
+@@ -1533,17 +1554,7 @@ static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
+ 	 */
+ 	ip_vs_rs_unhash(dest);
+ 
+-	spin_lock_bh(&ipvs->dest_trash_lock);
+-	IP_VS_DBG_BUF(3, "Moving dest %s:%u into trash, dest->refcnt=%d\n",
+-		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port),
+-		      refcount_read(&dest->refcnt));
+-	if (list_empty(&ipvs->dest_trash) && !cleanup)
+-		mod_timer(&ipvs->dest_trash_timer,
+-			  jiffies + (IP_VS_DEST_TRASH_PERIOD >> 1));
+-	/* dest lives in trash with reference */
+-	list_add(&dest->t_list, &ipvs->dest_trash);
+-	dest->idle_start = 0;
+-	spin_unlock_bh(&ipvs->dest_trash_lock);
++	ip_vs_trash_put_dest(ipvs, dest, 0, cleanup);
+ 
+ 	/* Queue up delayed work to expire all no destination connections.
+ 	 * No-op when CONFIG_SYSCTL is disabled.
 -- 
 2.53.0
 
