@@ -1,59 +1,59 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 009293FE67B;
-	Wed, 29 Apr 2026 14:14:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBB7D401489;
+	Wed, 29 Apr 2026 14:15:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777472095; cv=none; b=N1Fb56TRcKRCeg42HSkPI7U8igtFo+qaLn4z7zJK7KqrXg3sQDyntyQzSOUUuyPlXPIWjS3VVeXE9Ali1gJtBzDifFwPsHatwTqlr1RHBRb7p6roq+fhZDlcdkBEDy7kZYuTrYXVcpCYPSENgk1+HzCEMpnzw0UzYnn6+CBv2Gs=
+	t=1777472102; cv=none; b=jsH3p5vLWybmrZ/txlrOliZRfSNl1GA/JvLZ0vxwc37jGZ//o4ek/aeyiifw6bb+TzsKron5YrLpyPGA6TN0HMm6g3w199HbJsEvCsto4cYriBKWG76Yx2TVVYh1PIBtKs3Q60TEZ/fZFjN6YQWZh4kevxLQ+EGaifT0tdHh9bU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777472095; c=relaxed/simple;
-	bh=xNKfHpUnbuQgCKWAd0/rPtiBRJsZj1IasreB0uU5dCA=;
+	s=arc-20240116; t=1777472102; c=relaxed/simple;
+	bh=N14q2Qjvy2zWeTGJBbTMhz4vc3hswAAjpluy8eSEVBc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=TYOelLX/4TsjaAiBseS0l/yvOdWVTpL9lI1RYrsp8ASGpaf+rsOMiXQbsz52yLokBMHfXyUOZhm6Z4kX5s4bqGyZuDuwHgu048U5qCPhY32Tfea09v+toCdVzbUmRUzhahAB2+IdWvDvGcm8X6/MAFcNKhKxHGxwaFb5S63QZiw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=VKgHt1Yo; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version; b=EcHabA/bul38gLNxBaSuR7FnP4qYMWDBOoQAxnyie/Rk78r/jHBr8HsbMTt9jqZsqWGgzUrHcG4vhH4AF6VUXo8MzrWORYw+uV5tZMYXw60y7N2Nh6Xo9wuB4edy/t1bmafk/RIojZcLhDyq5HrISZHJB3o6YHgJqAuPg5Avdgo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=P+W6kciI; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="VKgHt1Yo"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="P+W6kciI"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 426A621C55;
-	Wed, 29 Apr 2026 17:14:15 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 53AB121CBC;
+	Wed, 29 Apr 2026 17:14:16 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-transfer-encoding:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=Q+1wYlj2TMWDMHUtxtFR1v3/AEpQpZ/nztQnYdp4dz8=; b=VKgHt1YoEbi2
-	Ablb/Q6gqEArTIyW3rRifxPbjCaBNb5HU/njeMk59XC06DfMsaTSpBwzgr7p2JJF
-	3kBt+ZKGplpOxu4tGU2G+5sSbuMbQpi9L2rhR5Gr7EABvrhVePsL9meFoU1PLn+M
-	A794A2/nuJX6DCTLERmBRyDS20Nxk9mvvohWSX3rT5HuT8LhHAxrCi1qfO6OG0kk
-	gDIWJyLWyYMQMCHsMYC8YWbIScifpvoFfRlJL3Ox+j/q1qAH61JtNwdn/j4RS2/W
-	0PuSwWkPmJwpNpiRHUUxwm8pftRxHSwKZju7MhCoJhG4N72/2k8s/XD0/P4Bkl8N
-	6soG8TrTWnOR5on8ZcCEIxlHD2yfULIkBoSRkH5s9j/M2s1uRvEVANwPcEs819rH
-	/fZqjZ8gN1gjWKBk0ubsCeF5z9twmSM6ZtUn1SKnokdEwAqXu28WWVLQQijn2mHs
-	HRDE/R3DJgNfA01Gw6q7vpvI/wypMX/WkghzROnxQj7Qyy0sy/D05939kAEXgl76
-	DrmRbqZAJTTnqdZL2qOHEXTR4Yb3odYp2IIXUQmmVzjXsuag81ZmpYose73pmOwX
-	+PEWPJpKlrYnm/g7PLx+dpG0Um+48wZ7c7pYkKPwaKyLGx/MbfnMZWFivABVY1s2
-	xSC9MaUnZpoCywsws4IHXLxXrqGwTuo=
+	 bh=VtuGHOxscL70cnjwv1JOP7+6w4V+OEdz5tAYipQwuIE=; b=P+W6kciIGC1x
+	0sTQxw+FyFa24+Hpw7WMRk0DdH9hpngOGebTj+fJ9fHKiO4xXQ9Uucb5rwzkIkUS
+	GtjLwujFb4tg58zKcm4B/iGlVztzYo375lxAUeFb28cXhnMb3EGRiP/PT3fZUwCP
+	6tIpaX4ayM34MuKW/6/bk7x5I3jvmcnx8OwdcGFt37Aiof+vPeEIGKlBr1zLqj9a
+	RlVHBk46R7L1Hpa1Yj5FHd2M+98p/jSgdpmWxMbrkGTQcLYZ3DWHfC1KCIniIOXC
+	IKjf0qxVYcHRQEHu3s6psbvEUWw7iWpCq31mpdt5Jl3mVzv4uFvnsY9C4zfGtr8B
+	u/fnwKR2UNy+6ElX8OhF8ZAuP6gy3GkPvcN0ITH6TKQjCzKPULa/3TIx92alUqmZ
+	Y82vkK/Yl9wKa12oIjnPQ0mej8LgQPFc0jo+xXUlOKjZduROlPtNxS84Z9UycSZ0
+	0qzH11JZ6iQxky01lIKsLXQtIQFETYYVIu+85dBpAD/L31mwSOSktyahnUCkhNOc
+	huvvT3/LxukGKHS2FmVsGRysorKa5P1k9fU/uJ0mXflOZjmbGhO63xOTervQ5B0d
+	jCV4B904PIi20uRxYDKUd3ZI2GK7VGaqKKx0NA0V+v9azOFrbEbY5g8BCP34aEiq
+	UkMlkCG7BBygNIVR5x/Nxu3v793FO4A=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
 	Wed, 29 Apr 2026 17:14:13 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 6E62F62AE2;
+	by box.ssi.bg (Potsfix) with ESMTPSA id E85E16088F;
 	Wed, 29 Apr 2026 17:14:12 +0300 (EEST)
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63TEBM0X085093;
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63TEBMGG085102;
 	Wed, 29 Apr 2026 17:11:22 +0300
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63TEBLGk085092;
-	Wed, 29 Apr 2026 17:11:21 +0300
+	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63TEBMfu085101;
+	Wed, 29 Apr 2026 17:11:22 +0300
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
         Waiman Long <longman@redhat.com>, lvs-devel@vger.kernel.org,
         netfilter-devel@vger.kernel.org
-Subject: [PATCHv2 nf 3/8] ipvs: fix the spin_lock usage for RT build
-Date: Wed, 29 Apr 2026 17:10:50 +0300
-Message-ID: <20260429141055.85052-4-ja@ssi.bg>
+Subject: [PATCHv2 nf 5/8] ipvs: fix races around est_mutex and est_cpulist
+Date: Wed, 29 Apr 2026 17:10:52 +0300
+Message-ID: <20260429141055.85052-6-ja@ssi.bg>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260429141055.85052-1-ja@ssi.bg>
 References: <20260429141055.85052-1-ja@ssi.bg>
@@ -65,271 +65,400 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-syzbot reports for sleeping function called from invalid context [1].
-The recently added code for resizable hash tables uses
-hlist_bl bit locks in combination with spin_lock for
-the connection fields (cp->lock).
+Sashiko reports for races and possible crash around
+the usage of est_cpulist_valid and sysctl_est_cpulist.
+The problem is that we do not lock est_mutex in some
+places which can lead to wrong write ordering and
+as result problems when calling cpumask_weight()
+and cpumask_empty().
 
-Fix the following problems:
+Fix them by moving the est_max_threads read/write under
+locked est_mutex. Do the same for one ip_vs_est_reload_start()
+call to protect the cpumask_empty() usage of sysctl_est_cpulist.
 
-* avoid using spin_lock(&cp->lock) under locked bit lock
-because it sleeps on PREEMPT_RT
+To remove the chance of deadlock while stopping the
+estimation kthreads, keep the data structure for kthread 0
+even after last estimator is removed and do not hold mutexes
+while stopping this task. Now we will use a new flag 'needed'
+to know when kthread 0 should run. The kthreads above 0
+do not use mutexes, so stop them under est_mutex because
+their kthread data still can be destroyed if they do not
+serve estimators. Now all kthreads will be started by
+the est_reload_work to properly serialize the stop/start
+for kthread 0.
 
-* as the recent changes call ip_vs_conn_hash() only for newly
-allocated connection, the spin_lock can be removed there because
-the connection is still not linked to table and does not need
-cp->lock protection.
+Reduce the use of service_mutex in ip_vs_est_calc_phase()
+because under est_mutex we can safely walk est_kt_arr to
+stop the kthreads above slot 0.
 
-* the lock can be removed also from ip_vs_conn_unlink() where we
-are the last connection user.
+As ip_vs_stop_estimator() for tot_stats should be called
+under service_mutex, do it early in the netns exit path
+in ip_vs_flush() to avoid locking the mutex again later.
+It still should be called in ip_vs_control_net_cleanup_sysctl()
+when we are called during netns init error. Use -2 for ktid
+as indicator if estimator was already stopped.
 
-* the last place that is fixed is ip_vs_conn_fill_cport()
-where now the cp->lock is locked before the other locks to
-ensure other packets do not modify the cp->flags in non-atomic
-way. Here we make sure cport and flags are changed only once
-if two or more packets race to fill the cport. Also, we fill
-cport early, so that if we race with resizing there will be
-valid cport key for the hashing. Add a warning if too many
-hash table changes occur for our RCU read-side critical
-section which is error condition but minor because the
-connection still can expire gracefully. Still, restore the
-cport to 0 to allow retransmitted packet to properly fill
-the cport. Problems reported by Sashiko.
+Finally, fix use-after-free for kd->est_row in
+ip_vs_est_calc_phase(). est->ktrow should simply switch to
+a delay value while estimator is linked to est_temp_list.
 
-[1]:
-BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:48
-in_atomic(): 1, irqs_disabled(): 0, non_block: 0, pid: 16, name: ktimers/0
-preempt_count: 2, expected: 0
-RCU nest depth: 3, expected: 3
-8 locks held by ktimers/0/16:
- #0: ffffffff8de5f260 (local_bh){.+.+}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
- #1: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
- #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: spin_lock include/linux/spinlock_rt.h:45 [inline]
- #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: timer_base_lock_expiry kernel/time/timer.c:1502 [inline]
- #2: ffff8880b8826360 (&base->expiry_lock){+...}-{3:3}, at: __run_timer_base+0x120/0x9f0 kernel/time/timer.c:2384
- #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
- #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:838 [inline]
- #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: __rt_spin_lock kernel/locking/spinlock_rt.c:50 [inline]
- #3: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rt_spin_lock+0x1e0/0x400 kernel/locking/spinlock_rt.c:57
- #4: ffffc90000157a80 ((&cp->timer)){+...}-{0:0}, at: call_timer_fn+0xd4/0x5e0 kernel/time/timer.c:1745
- #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
- #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:838 [inline]
- #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:315 [inline]
- #5: ffffffff8dfc80c0 (rcu_read_lock){....}-{1:3}, at: ip_vs_conn_expire+0x257/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
- #6: ffffffff8de5f260 (local_bh){.+.+}-{1:3}, at: __local_bh_disable_ip+0x3c/0x420 kernel/softirq.c:163
- #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: spin_lock include/linux/spinlock_rt.h:45 [inline]
- #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:324 [inline]
- #7: ffff888068d4c3f0 (&cp->lock#2){+...}-{3:3}, at: ip_vs_conn_expire+0xd4a/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
-Preemption disabled at:
-[<ffffffff898a6358>] bit_spin_lock include/linux/bit_spinlock.h:38 [inline]
-[<ffffffff898a6358>] hlist_bl_lock+0x18/0x110 include/linux/list_bl.h:149
-CPU: 0 UID: 0 PID: 16 Comm: ktimers/0 Tainted: G        W    L      syzkaller #0 PREEMPT_{RT,(full)}
-Tainted: [W]=WARN, [L]=SOFTLOCKUP
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 03/18/2026
-Call Trace:
- <TASK>
- dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
- __might_resched+0x329/0x480 kernel/sched/core.c:9162
- __rt_spin_lock kernel/locking/spinlock_rt.c:48 [inline]
- rt_spin_lock+0xc2/0x400 kernel/locking/spinlock_rt.c:57
- spin_lock include/linux/spinlock_rt.h:45 [inline]
- ip_vs_conn_unlink net/netfilter/ipvs/ip_vs_conn.c:324 [inline]
- ip_vs_conn_expire+0xd4a/0x2390 net/netfilter/ipvs/ip_vs_conn.c:1260
- call_timer_fn+0x192/0x5e0 kernel/time/timer.c:1748
- expire_timers kernel/time/timer.c:1799 [inline]
- __run_timers kernel/time/timer.c:2374 [inline]
- __run_timer_base+0x6a3/0x9f0 kernel/time/timer.c:2386
- run_timer_base kernel/time/timer.c:2395 [inline]
- run_timer_softirq+0xb7/0x170 kernel/time/timer.c:2405
- handle_softirqs+0x1de/0x6d0 kernel/softirq.c:622
- __do_softirq kernel/softirq.c:656 [inline]
- run_ktimerd+0x69/0x100 kernel/softirq.c:1151
- smpboot_thread_fn+0x541/0xa50 kernel/smpboot.c:160
- kthread+0x388/0x470 kernel/kthread.c:436
- ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
- ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
- </TASK>
-
-Reported-by: syzbot+504e778ddaecd36fdd17@syzkaller.appspotmail.com
-Link: https://sashiko.dev/#/patchset/20260415200216.79699-1-ja%40ssi.bg
-Link: https://sashiko.dev/#/patchset/20260420165539.85174-4-ja%40ssi.bg
-Link: https://sashiko.dev/#/patchset/20260422135823.50489-4-ja%40ssi.bg
-Fixes: 2fa7cc9c7025 ("ipvs: switch to per-net connection table")
+Link: https://sashiko.dev/#/patchset/20260331165015.2777765-1-longman%40redhat.com
+Link: https://sashiko.dev/#/patchset/20260420171308.87192-1-ja%40ssi.bg
+Link: https://sashiko.dev/#/patchset/20260422125123.40658-1-ja%40ssi.bg
+Link: https://sashiko.dev/#/patchset/20260424175858.54752-1-ja%40ssi.bg
+Link: https://sashiko.dev/#/patchset/20260425103918.7447-1-ja%40ssi.bg
+Fixes: f0be83d54217 ("ipvs: add est_cpulist and est_nice sysctl vars")
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
+ include/net/ip_vs.h            | 11 ++++-
+ net/netfilter/ipvs/ip_vs_ctl.c | 51 +++++++++++++++++----
+ net/netfilter/ipvs/ip_vs_est.c | 83 ++++++++++++++++++++--------------
+ 3 files changed, 100 insertions(+), 45 deletions(-)
 
-v5:
-  restore cp->cport to 0 when ntbl reaches 2 to allow
-  connection to continue on retransmission
-
-v4:
-  add error message for too many hash table changes in
-  ip_vs_conn_fill_cport()
-
-v3:
-* use cp->lock in ip_vs_conn_fill_cport() to protect the
-  cp->flags modifications
-
-v2:
-* remove cp->lock from ip_vs_conn_fill_cport() and avoid
-  races with resizing and possible multiple attempts to fill cport.
-
- net/netfilter/ipvs/ip_vs_conn.c | 74 ++++++++++++++++++---------------
- 1 file changed, 41 insertions(+), 33 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 84a4921a7865..9ea6b4fa78bf 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -267,27 +267,20 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
- 		hash_key2 = hash_key;
- 		use2 = false;
- 	}
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 72d325c81313..d28ad8a0541f 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -491,6 +491,7 @@ struct ip_vs_est_kt_data {
+ 	DECLARE_BITMAP(avail, IPVS_EST_NTICKS);	/* tick has space for ests */
+ 	unsigned long		est_timer;	/* estimation timer (jiffies) */
+ 	struct ip_vs_stats	*calc_stats;	/* Used for calculation */
++	int			needed;		/* task is needed */
+ 	int			tick_len[IPVS_EST_NTICKS];	/* est count */
+ 	int			id;		/* ktid per netns */
+ 	int			chain_max;	/* max ests per tick chain */
+@@ -1884,11 +1885,19 @@ int ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats);
+ void ip_vs_stop_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats);
+ void ip_vs_zero_estimator(struct ip_vs_stats *stats);
+ void ip_vs_read_estimator(struct ip_vs_kstats *dst, struct ip_vs_stats *stats);
+-void ip_vs_est_reload_start(struct netns_ipvs *ipvs);
++void ip_vs_est_reload_start(struct netns_ipvs *ipvs, bool restart);
+ int ip_vs_est_kthread_start(struct netns_ipvs *ipvs,
+ 			    struct ip_vs_est_kt_data *kd);
+ void ip_vs_est_kthread_stop(struct ip_vs_est_kt_data *kd);
+ 
++static inline void ip_vs_stop_estimator_tot_stats(struct netns_ipvs *ipvs)
++{
++#ifdef CONFIG_SYSCTL
++	ip_vs_stop_estimator(ipvs, &ipvs->tot_stats->s);
++	ipvs->tot_stats->s.est.ktid = -2;
++#endif
++}
 +
- 	conn_tab_lock(t, cp, hash_key, hash_key2, use2, true /* new_hash */,
- 		      &head, &head2);
--	spin_lock(&cp->lock);
--
--	if (!(cp->flags & IP_VS_CONN_F_HASHED)) {
--		cp->flags |= IP_VS_CONN_F_HASHED;
--		WRITE_ONCE(cp->hn0.hash_key, hash_key);
--		WRITE_ONCE(cp->hn1.hash_key, hash_key2);
--		refcount_inc(&cp->refcnt);
--		hlist_bl_add_head_rcu(&cp->hn0.node, head);
--		if (use2)
--			hlist_bl_add_head_rcu(&cp->hn1.node, head2);
--		ret = 1;
--	} else {
--		pr_err("%s(): request for already hashed, called from %pS\n",
--		       __func__, __builtin_return_address(0));
--		ret = 0;
--	}
- 
--	spin_unlock(&cp->lock);
-+	cp->flags |= IP_VS_CONN_F_HASHED;
-+	WRITE_ONCE(cp->hn0.hash_key, hash_key);
-+	WRITE_ONCE(cp->hn1.hash_key, hash_key2);
-+	refcount_inc(&cp->refcnt);
-+	hlist_bl_add_head_rcu(&cp->hn0.node, head);
-+	if (use2)
-+		hlist_bl_add_head_rcu(&cp->hn1.node, head2);
+ static inline void ip_vs_est_stopped_recalc(struct netns_ipvs *ipvs)
+ {
+ #ifdef CONFIG_SYSCTL
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index d81077c2457a..5c9f8e0e238f 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -261,12 +261,28 @@ static void est_reload_work_handler(struct work_struct *work)
+ 		if (!kd)
+ 			continue;
+ 		/* New config ? Stop kthread tasks */
+-		if (genid != genid_done)
+-			ip_vs_est_kthread_stop(kd);
++		if (genid != genid_done) {
++			if (!id) {
++				/* Only we can stop kt 0 but not under mutex */
++				mutex_unlock(&ipvs->est_mutex);
++				ip_vs_est_kthread_stop(kd);
++				mutex_lock(&ipvs->est_mutex);
++				if (!READ_ONCE(ipvs->enable))
++					goto unlock;
++				/* kd for kt 0 is never destroyed */
++			} else {
++				ip_vs_est_kthread_stop(kd);
++			}
++		}
+ 		if (!kd->task && !ip_vs_est_stopped(ipvs)) {
++			bool start;
 +
- 	conn_tab_unlock(head, head2);
-+	ret = 1;
- 
- 	/* Schedule resizing if load increases */
- 	if (atomic_read(&ipvs->conn_count) > t->u_thresh &&
-@@ -321,7 +314,6 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
- 
- 	conn_tab_lock(t, cp, hash_key, hash_key2, use2, false /* new_hash */,
- 		      &head, &head2);
--	spin_lock(&cp->lock);
- 
- 	if (cp->flags & IP_VS_CONN_F_HASHED) {
- 		/* Decrease refcnt and unlink conn only if we are last user */
-@@ -334,7 +326,6 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ 			/* Do not start kthreads above 0 in calc phase */
+-			if ((!id || !ipvs->est_calc_phase) &&
+-			    ip_vs_est_kthread_start(ipvs, kd) < 0)
++			if (id)
++				start = !ipvs->est_calc_phase;
++			else
++				start = kd->needed;
++			if (start && ip_vs_est_kthread_start(ipvs, kd) < 0)
+ 				repeat = true;
  		}
  	}
+@@ -1823,11 +1839,16 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
+ 	*svc_p = svc;
  
--	spin_unlock(&cp->lock);
- 	conn_tab_unlock(head, head2);
- 
- 	rcu_read_unlock();
-@@ -637,6 +628,7 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
- 	struct ip_vs_conn_hnode *hn;
- 	u32 hash_key, hash_key_new;
- 	struct ip_vs_conn_param p;
-+	bool by_me = false;
- 	int ntbl;
- 	int dir;
- 
-@@ -664,8 +656,16 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
- 		t = rcu_dereference(t->new_tbl);
- 		ntbl++;
- 		/* We are lost? */
--		if (ntbl >= 2)
-+		if (ntbl >= 2) {
-+			spin_lock_bh(&cp->lock);
-+			if (cp->flags & IP_VS_CONN_F_NO_CPORT && by_me)
-+				cp->cport = 0;
-+			/* hn1 will be rehashed on next packet */
-+			spin_unlock_bh(&cp->lock);
-+			IP_VS_ERR_RL("%s(): Too many ht changes for dir %d\n",
-+				     __func__, dir);
- 			return;
-+		}
- 	}
- 
- 	/* Rehashing during resize? Use the recent table for adds */
-@@ -683,10 +683,13 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
- 	if (head > head2 && t == t2)
- 		swap(head, head2);
- 
-+	/* Protect the cp->flags modification */
-+	spin_lock_bh(&cp->lock);
+ 	if (!READ_ONCE(ipvs->enable)) {
++		mutex_lock(&ipvs->est_mutex);
 +
- 	/* Lock seqcount only for the old bucket, even if we are on new table
- 	 * because it affects the del operation, not the adding.
- 	 */
--	spin_lock_bh(&t->lock[hash_key & t->lock_mask].l);
-+	spin_lock(&t->lock[hash_key & t->lock_mask].l);
- 	preempt_disable_nested();
- 	write_seqcount_begin(&t->seqc[hash_key & t->seqc_mask]);
+ 		/* Now there is a service - full throttle */
+ 		WRITE_ONCE(ipvs->enable, 1);
  
-@@ -704,14 +707,23 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
- 		hlist_bl_unlock(head);
- 		write_seqcount_end(&t->seqc[hash_key & t->seqc_mask]);
- 		preempt_enable_nested();
--		spin_unlock_bh(&t->lock[hash_key & t->lock_mask].l);
-+		spin_unlock(&t->lock[hash_key & t->lock_mask].l);
-+		spin_unlock_bh(&cp->lock);
- 		hash_key = hash_key_new;
- 		goto retry;
++		ipvs->est_max_threads = ip_vs_est_max_threads(ipvs);
++
+ 		/* Start estimation for first time */
+-		ip_vs_est_reload_start(ipvs);
++		ip_vs_est_reload_start(ipvs, true);
++		mutex_unlock(&ipvs->est_mutex);
  	}
  
--	spin_lock(&cp->lock);
--	if ((cp->flags & IP_VS_CONN_F_NO_CPORT) &&
--	    (cp->flags & IP_VS_CONN_F_HASHED)) {
-+	/* Fill cport once, even if multiple packets try to do it */
-+	if (cp->flags & IP_VS_CONN_F_NO_CPORT && (!cp->cport || by_me)) {
-+		/* If we race with resizing make sure cport is set for dir 1 */
-+		if (!cp->cport) {
-+			cp->cport = cport;
-+			by_me = true;
-+		}
-+		if (!dir) {
-+			atomic_dec(&ipvs->no_cport_conns[af_id]);
-+			cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
-+		}
- 		/* We do not recalc hash_key_r under lock, we assume the
- 		 * parameters in cp do not change, i.e. cport is
- 		 * the only possible change.
-@@ -726,21 +738,17 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
- 			hlist_bl_del_rcu(&hn->node);
- 			hlist_bl_add_head_rcu(&hn->node, head_new);
+ 	return 0;
+@@ -2103,6 +2124,11 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
+ 			t = p;
  		}
--		if (!dir) {
--			atomic_dec(&ipvs->no_cport_conns[af_id]);
--			cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
--			cp->cport = cport;
--		}
  	}
--	spin_unlock(&cp->lock);
- 
- 	if (head != head2)
- 		hlist_bl_unlock(head2);
- 	hlist_bl_unlock(head);
- 	write_seqcount_end(&t->seqc[hash_key & t->seqc_mask]);
- 	preempt_enable_nested();
--	spin_unlock_bh(&t->lock[hash_key & t->lock_mask].l);
--	if (dir--)
-+	spin_unlock(&t->lock[hash_key & t->lock_mask].l);
-+
-+	spin_unlock_bh(&cp->lock);
-+	if (dir-- && by_me)
- 		goto next_dir;
++	/* Stop the tot_stats estimator early under service_mutex
++	 * to avoid locking it again later.
++	 */
++	if (cleanup)
++		ip_vs_stop_estimator_tot_stats(ipvs);
+ 	return 0;
  }
  
+@@ -2348,7 +2374,7 @@ static int ipvs_proc_est_cpumask_set(const struct ctl_table *table,
+ 	/* est_max_threads may depend on cpulist size */
+ 	ipvs->est_max_threads = ip_vs_est_max_threads(ipvs);
+ 	ipvs->est_calc_phase = 1;
+-	ip_vs_est_reload_start(ipvs);
++	ip_vs_est_reload_start(ipvs, true);
+ 
+ unlock:
+ 	mutex_unlock(&ipvs->est_mutex);
+@@ -2428,7 +2454,7 @@ static int ipvs_proc_est_nice(const struct ctl_table *table, int write,
+ 			mutex_lock(&ipvs->est_mutex);
+ 			if (*valp != val) {
+ 				*valp = val;
+-				ip_vs_est_reload_start(ipvs);
++				ip_vs_est_reload_start(ipvs, true);
+ 			}
+ 			mutex_unlock(&ipvs->est_mutex);
+ 		}
+@@ -2455,7 +2481,7 @@ static int ipvs_proc_run_estimation(const struct ctl_table *table, int write,
+ 		mutex_lock(&ipvs->est_mutex);
+ 		if (*valp != val) {
+ 			*valp = val;
+-			ip_vs_est_reload_start(ipvs);
++			ip_vs_est_reload_start(ipvs, true);
+ 		}
+ 		mutex_unlock(&ipvs->est_mutex);
+ 	}
+@@ -5005,7 +5031,14 @@ static void __net_exit ip_vs_control_net_cleanup_sysctl(struct netns_ipvs *ipvs)
+ 	cancel_delayed_work_sync(&ipvs->defense_work);
+ 	cancel_work_sync(&ipvs->defense_work.work);
+ 	unregister_net_sysctl_table(ipvs->sysctl_hdr);
+-	ip_vs_stop_estimator(ipvs, &ipvs->tot_stats->s);
++	if (ipvs->tot_stats->s.est.ktid != -2) {
++		/* Not stopped yet? This happens only on netns init error and
++		 * we even do not need to lock the service_mutex for this case.
++		 */
++		mutex_lock(&ipvs->service_mutex);
++		ip_vs_stop_estimator(ipvs, &ipvs->tot_stats->s);
++		mutex_unlock(&ipvs->service_mutex);
++	}
+ 
+ 	if (ipvs->est_cpulist_valid)
+ 		free_cpumask_var(ipvs->sysctl_est_cpulist);
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index 433ba3cab58c..ab09f5182951 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -68,6 +68,11 @@
+     and the limit of estimators per kthread
+   - est_add_ktid: ktid where to add new ests, can point to empty slot where
+     we should add kt data
++  - data protected by service_mutex: est_temp_list, est_add_ktid,
++    est_kt_count(R/W), est_kt_arr(R/W), est_genid_done, kd->needed(R/W)
++  - data protected by est_mutex: est_genid, est_max_threads, sysctl_est_cpulist,
++    est_cpulist_valid, sysctl_est_nice, est_stopped, sysctl_run_estimation,
++    est_kt_count(R), est_kt_arr(R), kd->needed(R), kd->task (id > 0)
+  */
+ 
+ static struct lock_class_key __ipvs_est_key;
+@@ -227,14 +232,17 @@ static int ip_vs_estimation_kthread(void *data)
+ }
+ 
+ /* Schedule stop/start for kthread tasks */
+-void ip_vs_est_reload_start(struct netns_ipvs *ipvs)
++void ip_vs_est_reload_start(struct netns_ipvs *ipvs, bool restart)
+ {
++	lockdep_assert_held(&ipvs->est_mutex);
++
+ 	/* Ignore reloads before first service is added */
+ 	if (!READ_ONCE(ipvs->enable))
+ 		return;
+ 	ip_vs_est_stopped_recalc(ipvs);
+-	/* Bump the kthread configuration genid */
+-	atomic_inc(&ipvs->est_genid);
++	/* Bump the kthread configuration genid if stopping is requested */
++	if (restart)
++		atomic_inc(&ipvs->est_genid);
+ 	queue_delayed_work(system_long_wq, &ipvs->est_reload_work, 0);
+ }
+ 
+@@ -304,12 +312,17 @@ static int ip_vs_est_add_kthread(struct netns_ipvs *ipvs)
+ 	void *arr = NULL;
+ 	int i;
+ 
+-	if ((unsigned long)ipvs->est_kt_count >= ipvs->est_max_threads &&
+-	    READ_ONCE(ipvs->enable) && ipvs->est_max_threads)
+-		return -EINVAL;
+-
+ 	mutex_lock(&ipvs->est_mutex);
+ 
++	/* Allow kt 0 data to be created before the services are added
++	 * and limit the kthreads when services are present.
++	 */
++	if ((unsigned long)ipvs->est_kt_count >= ipvs->est_max_threads &&
++	    READ_ONCE(ipvs->enable) && ipvs->est_max_threads) {
++		ret = -EINVAL;
++		goto out;
++	}
++
+ 	for (i = 0; i < id; i++) {
+ 		if (!ipvs->est_kt_arr[i])
+ 			break;
+@@ -333,6 +346,7 @@ static int ip_vs_est_add_kthread(struct netns_ipvs *ipvs)
+ 	kd->est_timer = jiffies;
+ 	kd->id = id;
+ 	ip_vs_est_set_params(ipvs, kd);
++	kd->needed = 1;
+ 
+ 	/* Pre-allocate stats used in calc phase */
+ 	if (!id && !kd->calc_stats) {
+@@ -341,12 +355,8 @@ static int ip_vs_est_add_kthread(struct netns_ipvs *ipvs)
+ 			goto out;
+ 	}
+ 
+-	/* Start kthread tasks only when services are present */
+-	if (READ_ONCE(ipvs->enable) && !ip_vs_est_stopped(ipvs)) {
+-		ret = ip_vs_est_kthread_start(ipvs, kd);
+-		if (ret < 0)
+-			goto out;
+-	}
++	/* Request kthread to be started */
++	ip_vs_est_reload_start(ipvs, false);
+ 
+ 	if (arr)
+ 		ipvs->est_kt_count++;
+@@ -482,12 +492,11 @@ static int ip_vs_enqueue_estimator(struct netns_ipvs *ipvs,
+ /* Start estimation for stats */
+ int ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
+ {
++	struct ip_vs_est_kt_data *kd = ipvs->est_kt_count > 0 ?
++				       ipvs->est_kt_arr[0] : NULL;
+ 	struct ip_vs_estimator *est = &stats->est;
+ 	int ret;
+ 
+-	if (!ipvs->est_max_threads && READ_ONCE(ipvs->enable))
+-		ipvs->est_max_threads = ip_vs_est_max_threads(ipvs);
+-
+ 	est->ktid = -1;
+ 	est->ktrow = IPVS_EST_NTICKS - 1;	/* Initial delay */
+ 
+@@ -496,8 +505,15 @@ int ip_vs_start_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
+ 	 * will not allocate much memory, just for kt 0.
+ 	 */
+ 	ret = 0;
+-	if (!ipvs->est_kt_count || !ipvs->est_kt_arr[0])
++	if (!kd) {
+ 		ret = ip_vs_est_add_kthread(ipvs);
++	} else if (!kd->needed) {
++		mutex_lock(&ipvs->est_mutex);
++		/* We have job for the kt 0 task */
++		kd->needed = 1;
++		ip_vs_est_reload_start(ipvs, true);
++		mutex_unlock(&ipvs->est_mutex);
++	}
+ 	if (ret >= 0)
+ 		hlist_add_head(&est->list, &ipvs->est_temp_list);
+ 	else
+@@ -578,16 +594,14 @@ void ip_vs_stop_estimator(struct netns_ipvs *ipvs, struct ip_vs_stats *stats)
+ 	}
+ 
+ end_kt0:
+-	/* kt 0 is freed after all other kthreads and chains are empty */
++	/* kt 0 task is stopped after all other kt slots and chains are empty */
+ 	if (ipvs->est_kt_count == 1 && hlist_empty(&ipvs->est_temp_list)) {
+ 		kd = ipvs->est_kt_arr[0];
+-		if (!kd || !kd->est_count) {
++		if (kd && !kd->est_count) {
+ 			mutex_lock(&ipvs->est_mutex);
+-			if (kd) {
+-				ip_vs_est_kthread_destroy(kd);
+-				ipvs->est_kt_arr[0] = NULL;
+-			}
+-			ipvs->est_kt_count--;
++			/* Keep the kt0 data but request kthread_stop */
++			kd->needed = 0;
++			ip_vs_est_reload_start(ipvs, true);
+ 			mutex_unlock(&ipvs->est_mutex);
+ 			ipvs->est_add_ktid = 0;
+ 		}
+@@ -647,9 +661,9 @@ static int ip_vs_est_calc_limits(struct netns_ipvs *ipvs, int *chain_max)
+ 	u64 val;
+ 
+ 	INIT_HLIST_HEAD(&chain);
+-	mutex_lock(&ipvs->service_mutex);
++	mutex_lock(&ipvs->est_mutex);
+ 	kd = ipvs->est_kt_arr[0];
+-	mutex_unlock(&ipvs->service_mutex);
++	mutex_unlock(&ipvs->est_mutex);
+ 	s = kd ? kd->calc_stats : NULL;
+ 	if (!s)
+ 		goto out;
+@@ -748,16 +762,16 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
+ 	if (!ip_vs_est_calc_limits(ipvs, &chain_max))
+ 		return;
+ 
+-	mutex_lock(&ipvs->service_mutex);
+-
+ 	/* Stop all other tasks, so that we can immediately move the
+ 	 * estimators to est_temp_list without RCU grace period
+ 	 */
+ 	mutex_lock(&ipvs->est_mutex);
+ 	for (id = 1; id < ipvs->est_kt_count; id++) {
+ 		/* netns clean up started, abort */
+-		if (!READ_ONCE(ipvs->enable))
+-			goto unlock2;
++		if (kthread_should_stop() || !READ_ONCE(ipvs->enable)) {
++			mutex_unlock(&ipvs->est_mutex);
++			return;
++		}
+ 		kd = ipvs->est_kt_arr[id];
+ 		if (!kd)
+ 			continue;
+@@ -765,9 +779,11 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
+ 	}
+ 	mutex_unlock(&ipvs->est_mutex);
+ 
++	mutex_lock(&ipvs->service_mutex);
++
+ 	/* Move all estimators to est_temp_list but carefully,
+ 	 * all estimators and kthread data can be released while
+-	 * we reschedule. Even for kthread 0.
++	 * we reschedule.
+ 	 */
+ 	step = 0;
+ 
+@@ -849,9 +865,7 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
+ 	ip_vs_stop_estimator(ipvs, stats);
+ 	/* Tasks are stopped, move without RCU grace period */
+ 	est->ktid = -1;
+-	est->ktrow = row - kd->est_row;
+-	if (est->ktrow < 0)
+-		est->ktrow += IPVS_EST_NTICKS;
++	est->ktrow = delay;
+ 	hlist_add_head(&est->list, &ipvs->est_temp_list);
+ 	/* kd freed ? */
+ 	if (last)
+@@ -889,7 +903,6 @@ static void ip_vs_est_calc_phase(struct netns_ipvs *ipvs)
+ 	if (genid == atomic_read(&ipvs->est_genid))
+ 		ipvs->est_calc_phase = 0;
+ 
+-unlock2:
+ 	mutex_unlock(&ipvs->est_mutex);
+ 
+ unlock:
 -- 
 2.53.0
 
