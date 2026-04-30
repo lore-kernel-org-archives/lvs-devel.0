@@ -1,59 +1,59 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8EA635836B;
-	Thu, 30 Apr 2026 07:47:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D341135836B;
+	Thu, 30 Apr 2026 07:48:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777535278; cv=none; b=P5sDkaan1J0y/gOpIrgkPOpBFKRBEMOk53jsiv0XwOERgUKAkXlW6JbI/3tE5Yv1gvQ1VwrC7zB4IrCJskMX4K6JFQdtmRiAaAozT5+CVaKa+kOVMUngkJqLA4jyc7u0WymDOtrRA3F9MasNKcyOfYcP3MBUVclAUWEZ335rIu8=
+	t=1777535284; cv=none; b=RV3dK1M5ySviE7853+Os/CRXiy9Hfg5Utj2yEqhaziiufU3n9CbJPbdH2YUK5bgKhck1/a631kfVhY1b6ZsrXu9pCk45rxnstviHbeFuRqX0hc4bPbM68iFBt3bUdJmLwGUmIrfZFCnHVvz/uTyYYr04FlH8FBb53tlyt1jbEi8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777535278; c=relaxed/simple;
-	bh=q3hgn3XtgGXyTlNF4i4VVkcHuQBF9ThMMVu0/ffjyeo=;
+	s=arc-20240116; t=1777535284; c=relaxed/simple;
+	bh=dTo9HHruW8QVv/6+G5t8xN35S3zWzyhJt4phdhyCqTE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=KURNvfakzSbV/DB4IDZ7vKs3sOwtx1DotBCRxmP6Man+50Hx1udnv5ZfWn+1ypECe1mIiOCx2nREFTyLOiDoCAGfyYVyL9wax/OkbZUq52O/MvU5G+BhR2iVCjDVC6JVoHMwmnRa2gNPRhfC5NzNv8441Os+hSQilPnfy/HQHig=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=KqkpTx22; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version; b=VZPOOGmhcCocYqUydV3Bpwf7MOa7L/Wvbd1dwLhwExy77RVuwDsxO2v5qhh6FOB2HmYRETcuJ31WRbhnr/Eba10Z+Ef3oh1FM5qNFL1FEPPljMFnbvInLvsdZir6WYz4FFaslEk70GE1U4esNzQcRgT9hNzKguJRUWGr0FxmHjI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=oWIIzpra; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="KqkpTx22"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="oWIIzpra"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 0AAF42292A;
-	Thu, 30 Apr 2026 10:47:54 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 31A3A22930;
+	Thu, 30 Apr 2026 10:47:55 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-transfer-encoding:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=gw69bEhoW4BCbmbNr3RmsbECGj6mMQOxqGgLHbtIkVE=; b=KqkpTx22L3Oa
-	TLwMSmeBpYhgPiW2Wevu0/M0bu2dNqTHPsU7oX32OmqzBxn7WoqrDEfjtgsCOe5M
-	sjR4FYAb7uwcAy2+CxcxfSdSvahRm9gRzb8W55b/vydnPTGwMAynwfcC7/ljKt0t
-	OcCZMWKGVtqN71Wc3HklOvC2VOb7zXi6E4XD6OEtAiAtIA0o4id6QVaMNpsQxB7j
-	Ad/GSJ9bCphRxXe4weTg5s6a/a6vuUW2sigLh7PpEqC/KvhaDofJxbx4976J1EOd
-	Fp6+kIj+YlQMfPu241iHRh4FiWVw/0eyMoHi3QRrH4lQDP79PhMPEI+sDdxavgyW
-	ck2WQmyeWtYmkacWt+np+jfI0q2O9ZMCApi8OH/kXYAFB6YUxwRN/LxmW2zQ3f5A
-	FBhOdKRDjTG3f34jga2ivdssJweUqdK/EpgTpGMaFfEpnjybXL55OaPbqPKLIYpj
-	+oh2pJzFchL+GhflBu+KQFGLqZkRyCeJ4NI3zkQPVf5eZjHsYIkxZEfGI3TiIcJ8
-	0tjs/aKGwlClRv1oee7PLlbJ9PypjvyBEYxW1gezEWE/0kPsZ1fJHtq5e49J3bRU
-	zgg7iaIY0KcPM2Yvz96mGz8P6Ad4N3XkldCGEFaUUUUniUnYcF4u+WqXHPoOEsF+
-	zPp2n+Sm1otSn5EHUUVBi/n+DVj4Lh4=
+	 bh=+5l6HjIa6pEN1i6IQbOcoo3u2ww0YtZrxpJ29skJSz0=; b=oWIIzprak8go
+	09LmI5ewAZXaG/X9IwBWluzPXz5nLnuHGq6JB5YnipnnVa8tfiBM+oCRgJe6zpgG
+	EKca977K4ufN+XsiHPYQ+8RRwXTuiBtcoLVwzQYip3TC5wIZuYAJ0bW9/FSckduT
+	gGC08zcppk70s4gbGe0URevMZsdEFSqAeyFwKdyUudxmwGSxY3k0neYq5FH0Hi1l
+	RkUAazTBOLp9tAf2n/a+eRGwxOcyHtTWOJ731vcHszpOlrHpkoKpltMG3pgx+7vz
+	h5F4g3334qmtu8OIH9/KnpfaZC/sOwBAu0w7oqlilOCJyyP3XrVjs+rHJTjcWOeS
+	culQffY3+0zAoGsl7edip5+vPF4eu8059o5sNUSs3lKoece0NY1S6CFmK7jC/Ktk
+	o9cpQzNG1EQEqA+NxLvcifTmkVkKw8DMcujr6Iq9JBPGKirpnx4JHnyDa8fSUxAk
+	53klIjANQR37aGoNh+rP13OzppAGhbWm3H8EuX8Qzf40XbI1DTQeB2HMzyEm30k3
+	Nwv+D/o4S/GsPSWsC3gNAamR5u0SkYMyOhFACFfIKy5D/ZAV1PkjmKbY2jMXn6g+
+	O66miYrSkSvBCnCACGpUvoeZc9+cToQyGqZHAWTByO6bMXYIYKi2jvEzcQtsIVFw
+	Q2yFtoXNuhjQBmpckoKXkxspPPmkxVQ=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Thu, 30 Apr 2026 10:47:52 +0300 (EEST)
+	Thu, 30 Apr 2026 10:47:53 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 6859B60818;
+	by box.ssi.bg (Potsfix) with ESMTPSA id EECF562B23;
 	Thu, 30 Apr 2026 10:47:52 +0300 (EEST)
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63U7ixT4027482;
-	Thu, 30 Apr 2026 10:44:59 +0300
+	by ja.ssi.bg (8.18.1/8.18.1) with ESMTP id 63U7iwgu027465;
+	Thu, 30 Apr 2026 10:44:58 +0300
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63U7ixHa027481;
-	Thu, 30 Apr 2026 10:44:59 +0300
+	by ja.home.ssi.bg (8.18.1/8.18.1/Submit) id 63U7iwCP027464;
+	Thu, 30 Apr 2026 10:44:58 +0300
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
         Waiman Long <longman@redhat.com>, lvs-devel@vger.kernel.org,
         netfilter-devel@vger.kernel.org
-Subject: [PATCHv3 nf 8/8] sched/isolation: Make HK_TYPE_KTHREAD an alias of HK_TYPE_DOMAIN
-Date: Thu, 30 Apr 2026 10:44:20 +0300
-Message-ID: <20260430074420.26697-9-ja@ssi.bg>
+Subject: [PATCHv3 nf 4/8] ipvs: do not leak dest after get from dest trash
+Date: Thu, 30 Apr 2026 10:44:16 +0300
+Message-ID: <20260430074420.26697-5-ja@ssi.bg>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260430074420.26697-1-ja@ssi.bg>
 References: <20260430074420.26697-1-ja@ssi.bg>
@@ -65,49 +65,80 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Waiman Long <longman@redhat.com>
+Sashiko warns about leaked dest if ip_vs_start_estimator()
+fails in ip_vs_add_dest(). Add ip_vs_trash_put_dest() to
+put back the dest into dest trash.
 
-Since commit 041ee6f3727a ("kthread: Rely on HK_TYPE_DOMAIN for preferred
-affinity management"), kthreads default to use the HK_TYPE_DOMAIN
-cpumask. IOW, it is no longer affected by the setting of the nohz_full
-boot kernel parameter.
-
-That means HK_TYPE_KTHREAD should now be an alias of HK_TYPE_DOMAIN
-instead of HK_TYPE_KERNEL_NOISE to correctly reflect the current kthread
-behavior. Make the change as HK_TYPE_KTHREAD is still being used in
-some networking code.
-
-Fixes: 041ee6f3727a ("kthread: Rely on HK_TYPE_DOMAIN for preferred affinity management")
-Signed-off-by: Waiman Long <longman@redhat.com>
+Link: https://sashiko.dev/#/patchset/20260428175725.72050-1-ja%40ssi.bg
+Fixes: 705dd3444081 ("ipvs: use kthreads for stats estimation")
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/linux/sched/isolation.h | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ net/netfilter/ipvs/ip_vs_ctl.c | 37 ++++++++++++++++++++++------------
+ 1 file changed, 24 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/sched/isolation.h b/include/linux/sched/isolation.h
-index dc3975ff1b2e..cf0fd03dd7a2 100644
---- a/include/linux/sched/isolation.h
-+++ b/include/linux/sched/isolation.h
-@@ -20,6 +20,11 @@ enum hk_type {
- 	HK_TYPE_KERNEL_NOISE,
- 	HK_TYPE_MAX,
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index caec516856e9..d81077c2457a 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1102,6 +1102,24 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, int dest_af,
+ 	return dest;
+ }
  
-+	/*
-+	 * HK_TYPE_KTHREAD is now an alias of HK_TYPE_DOMAIN
-+	 */
-+	HK_TYPE_KTHREAD = HK_TYPE_DOMAIN,
++/* Put destination in trash */
++static void ip_vs_trash_put_dest(struct netns_ipvs *ipvs,
++				 struct ip_vs_dest *dest, unsigned long istart,
++				 bool cleanup)
++{
++	spin_lock_bh(&ipvs->dest_trash_lock);
++	IP_VS_DBG_BUF(3, "Moving dest %s:%u into trash, dest->refcnt=%d\n",
++		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port),
++		      refcount_read(&dest->refcnt));
++	if (list_empty(&ipvs->dest_trash) && !cleanup)
++		mod_timer(&ipvs->dest_trash_timer,
++			  jiffies + (IP_VS_DEST_TRASH_PERIOD >> 1));
++	/* dest lives in trash with reference */
++	list_add(&dest->t_list, &ipvs->dest_trash);
++	dest->idle_start = istart;
++	spin_unlock_bh(&ipvs->dest_trash_lock);
++}
 +
- 	/*
- 	 * The following housekeeping types are only set by the nohz_full
- 	 * boot commandline option. So they can share the same value.
-@@ -29,7 +34,6 @@ enum hk_type {
- 	HK_TYPE_RCU     = HK_TYPE_KERNEL_NOISE,
- 	HK_TYPE_MISC    = HK_TYPE_KERNEL_NOISE,
- 	HK_TYPE_WQ      = HK_TYPE_KERNEL_NOISE,
--	HK_TYPE_KTHREAD = HK_TYPE_KERNEL_NOISE
- };
+ static void ip_vs_dest_rcu_free(struct rcu_head *head)
+ {
+ 	struct ip_vs_dest *dest;
+@@ -1461,9 +1479,12 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 			      ntohs(dest->vport));
  
- #ifdef CONFIG_CPU_ISOLATION
+ 		ret = ip_vs_start_estimator(svc->ipvs, &dest->stats);
++		/* On error put back dest into the trash */
+ 		if (ret < 0)
+-			return ret;
+-		__ip_vs_update_dest(svc, dest, udest, 1);
++			ip_vs_trash_put_dest(svc->ipvs, dest, dest->idle_start,
++					     false);
++		else
++			__ip_vs_update_dest(svc, dest, udest, 1);
+ 	} else {
+ 		/*
+ 		 * Allocate and initialize the dest structure
+@@ -1533,17 +1554,7 @@ static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
+ 	 */
+ 	ip_vs_rs_unhash(dest);
+ 
+-	spin_lock_bh(&ipvs->dest_trash_lock);
+-	IP_VS_DBG_BUF(3, "Moving dest %s:%u into trash, dest->refcnt=%d\n",
+-		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port),
+-		      refcount_read(&dest->refcnt));
+-	if (list_empty(&ipvs->dest_trash) && !cleanup)
+-		mod_timer(&ipvs->dest_trash_timer,
+-			  jiffies + (IP_VS_DEST_TRASH_PERIOD >> 1));
+-	/* dest lives in trash with reference */
+-	list_add(&dest->t_list, &ipvs->dest_trash);
+-	dest->idle_start = 0;
+-	spin_unlock_bh(&ipvs->dest_trash_lock);
++	ip_vs_trash_put_dest(ipvs, dest, 0, cleanup);
+ 
+ 	/* Queue up delayed work to expire all no destination connections.
+ 	 * No-op when CONFIG_SYSCTL is disabled.
 -- 
 2.53.0
 
