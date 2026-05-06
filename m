@@ -1,52 +1,35 @@
-Received: from mail.netfilter.org (mail.netfilter.org [217.70.190.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D9E0C2FF;
-	Tue,  5 May 2026 00:17:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.190.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 07179149C6F;
+	Wed,  6 May 2026 01:11:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777940231; cv=none; b=qEPndgUSHECeI1Wql2mdC0B+tp4d2a6NkvQPW5fZU1nHs1eE0svcETeFGRMPkEXOYiLzFsFRGr/YRVduYssEPVBJXBUDrxx10AGd1sahfAfZxC9569wVHr5HPe6utHNCtXVJnNIUPrAcKp7KbGUl3684dR2fVkzmg+mRN4qxm9o=
+	t=1778029866; cv=none; b=IgXHtoZM1i8paLrBRrGnKZp6Do2pV/NuT1xohbm0qW0DqW0Vt65jyTqUz2UbUtuFViP0UqBI87ggpNdoZKGud1cilVfC9SbX+8zo+IKr99YaucVEjHOOfbh9PguHgCXZmAci2todFKUL8GSwYfFl08cmCxx7l4nBOc6qCtpNZ0s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777940231; c=relaxed/simple;
-	bh=Y7XuH2T1xYAX8hmAwPeNJJEjlmyWEM2E97iT4uoi/FU=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=hywF5mrT+s54mqTexRvfs7LLOOewvkHUK/g33MQTfLBnyulAHoM7LM5jD2FC7eFBVYtEAWZyLvPfD7s9j8uIN4PyBxrDtsTauVSwRpUofLsjgGXcI0MlGHzmCS3dixOr+P0vTcE97El25skayFi7tIWIFB7ecr4jQgkQPZgU6ec=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org; spf=pass smtp.mailfrom=netfilter.org; dkim=pass (2048-bit key) header.d=netfilter.org header.i=@netfilter.org header.b=P1Lr1FtW; arc=none smtp.client-ip=217.70.190.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=netfilter.org
+	s=arc-20240116; t=1778029866; c=relaxed/simple;
+	bh=goToXI9H6Xp4VYMlJrLNpWDyb6Q1NyOxaY3l0jvHZ9s=;
+	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
+	 In-Reply-To:To:Cc; b=D2ap8Mg8cAqtcYgd2C6ishrlW6PVZK7wE2ShqjUbSsbg2jV8My7JNZ0rhQCG8wRhPtMuzJCi0RjS5n1g3sHzOgMf8uct+U8YTTq2XHxjUosDVsAaVqvX2YwiIDy6Cp9s5ZVOjEZarojDUBdCHcJvqMkZcp91THH9nsqs6SraXrU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ll7K5q0A; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=netfilter.org header.i=@netfilter.org header.b="P1Lr1FtW"
-Received: from localhost.localdomain (mail-agni [217.70.190.124])
-	by mail.netfilter.org (Postfix) with ESMTPSA id 5AF7B60190;
-	Tue,  5 May 2026 02:17:08 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=netfilter.org;
-	s=2025; t=1777940228;
-	bh=eWoO6PceGx0ZuInGBG/K/cgrSUbT8QnGRHaTYrs6CQE=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=P1Lr1FtWCcDUlL0P0R2iurYETzLNiCnEThA3U/b8sx1v6RnZXfZwTl8qTDHQjgt5C
-	 VvckLis/zOZ8UeoUQiYeX+J7Hj5fP1RMYxlHl5r501KV8MitV7Mc9a6ItP2Lka4qSn
-	 LClI+rv9qqa9JZyEVH4PZO+Gr40zrBAV1dtSbH8gDMEinWgZ7OBhjTIpKsvmMmt8JN
-	 x0a+IssH/JxnAnAmkybvYo6Gh9laoD2SXLl7U9OQPjWygwRkdY/ZFC4SlcMwuST7P3
-	 ufjqTg/mgwzXGCYUCyaJcUGQs9ChT/hBGAavycuVxh7YXTtOGM9PEuTgfJZjSmBS1N
-	 v6DGRNckXXOYg==
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-To: netfilter-devel@vger.kernel.org
-Cc: davem@davemloft.net,
-	netdev@vger.kernel.org,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	edumazet@google.com,
-	fw@strlen.de,
-	horms@kernel.org,
-	ja@ssi.bg,
-	longman@redhat.com,
-	lvs-devel@vger.kernel.org
-Subject: [PATCH net 8/8] sched/isolation: Make HK_TYPE_KTHREAD an alias of HK_TYPE_DOMAIN
-Date: Tue,  5 May 2026 02:16:48 +0200
-Message-ID: <20260505001648.360569-9-pablo@netfilter.org>
-X-Mailer: git-send-email 2.47.3
-In-Reply-To: <20260505001648.360569-1-pablo@netfilter.org>
-References: <20260505001648.360569-1-pablo@netfilter.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ll7K5q0A"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 98C2CC2BCB4;
+	Wed,  6 May 2026 01:11:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1778029865;
+	bh=goToXI9H6Xp4VYMlJrLNpWDyb6Q1NyOxaY3l0jvHZ9s=;
+	h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+	b=ll7K5q0AzEM8gZ03P8Zu9Iy83m25lcvK13DpZYmtJjKs9HncXSk07va3ENwxysglP
+	 7HAf/HcvIx+wrPhVX8gXO27HB4KXvG6qMcZMvRSdbKNr23cK8PmjM/EDcKXbisd0NR
+	 JfI3GAzO1Ur3Lmg6axtsVCX9ALISuv6BIu34orHQ4L75yZtiM/7VPNMvgTkiMBLx6k
+	 ce0jQcbBpWc6HyHZ6MFNKd0cAzZT2dIClq3CkutKgsBHH0FA8QJXaD+p2HJvZ+6rPj
+	 Z/b1p/ERHLFxN/SOje03s7axT+sJdABYAKdnT5aWjYzj3oG/kE/IhcAsq4KbeD72La
+	 1LKXGTnGjDFow==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 02D343930780;
+	Wed,  6 May 2026 01:10:17 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -54,51 +37,61 @@ List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH net 1/8] ipvs: fixes for the new ip_vs_status info
+From: patchwork-bot+netdevbpf@kernel.org
+Message-Id: 
+ <177802981580.2332967.9254644733543379445.git-patchwork-notify@kernel.org>
+Date: Wed, 06 May 2026 01:10:15 +0000
+References: <20260505001648.360569-2-pablo@netfilter.org>
+In-Reply-To: <20260505001648.360569-2-pablo@netfilter.org>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: netfilter-devel@vger.kernel.org, davem@davemloft.net,
+ netdev@vger.kernel.org, kuba@kernel.org, pabeni@redhat.com,
+ edumazet@google.com, fw@strlen.de, horms@kernel.org, ja@ssi.bg,
+ longman@redhat.com, lvs-devel@vger.kernel.org
 
-From: Waiman Long <longman@redhat.com>
+Hello:
 
-Since commit 041ee6f3727a ("kthread: Rely on HK_TYPE_DOMAIN for preferred
-affinity management"), kthreads default to use the HK_TYPE_DOMAIN
-cpumask. IOW, it is no longer affected by the setting of the nohz_full
-boot kernel parameter.
+This series was applied to netdev/net.git (main)
+by Pablo Neira Ayuso <pablo@netfilter.org>:
 
-That means HK_TYPE_KTHREAD should now be an alias of HK_TYPE_DOMAIN
-instead of HK_TYPE_KERNEL_NOISE to correctly reflect the current kthread
-behavior. Make the change as HK_TYPE_KTHREAD is still being used in
-some networking code.
+On Tue,  5 May 2026 02:16:41 +0200 you wrote:
+> From: Julian Anastasov <ja@ssi.bg>
+> 
+> Sashiko reports some problems for the recently added
+> /proc/net/ip_vs_status:
+> 
+> * ip_vs_status_show() as a table reader may run long after the
+> conn_tab and svc_table table are released. While ip_vs_conn_flush()
+> properly changes the conn_tab_changes counter when conn_tab is removed,
+> ip_vs_del_service() and ip_vs_flush() were missing such change for
+> the svc_table_changes counter. As result, readers like
+> ip_vs_dst_event() and ip_vs_status_show() may continue to use
+> a freed table after a cond_resched_rcu() call.
+> 
+> [...]
 
-Fixes: 041ee6f3727a ("kthread: Rely on HK_TYPE_DOMAIN for preferred affinity management")
-Signed-off-by: Waiman Long <longman@redhat.com>
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
----
- include/linux/sched/isolation.h | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Here is the summary with links:
+  - [net,1/8] ipvs: fixes for the new ip_vs_status info
+    https://git.kernel.org/netdev/net/c/afbd961305eb
+  - [net,2/8] ipvs: fix races around the conn_lfactor and svc_lfactor sysctl vars
+    https://git.kernel.org/netdev/net/c/f2da9a96abb4
+  - [net,3/8] ipvs: fix the spin_lock usage for RT build
+    https://git.kernel.org/netdev/net/c/d493d9de1c21
+  - [net,4/8] ipvs: do not leak dest after get from dest trash
+    https://git.kernel.org/netdev/net/c/fbe1e01e818e
+  - [net,5/8] ipvs: fix races around est_mutex and est_cpulist
+    https://git.kernel.org/netdev/net/c/2fd109238925
+  - [net,6/8] ipvs: fix shift-out-of-bounds in ip_vs_rht_desired_size
+    https://git.kernel.org/netdev/net/c/4ee52b7021a7
+  - [net,7/8] ipvs: Guard access of HK_TYPE_KTHREAD cpumask with RCU
+    https://git.kernel.org/netdev/net/c/aa6065206987
+  - [net,8/8] sched/isolation: Make HK_TYPE_KTHREAD an alias of HK_TYPE_DOMAIN
+    https://git.kernel.org/netdev/net/c/8f78b749f3da
 
-diff --git a/include/linux/sched/isolation.h b/include/linux/sched/isolation.h
-index dc3975ff1b2e..cf0fd03dd7a2 100644
---- a/include/linux/sched/isolation.h
-+++ b/include/linux/sched/isolation.h
-@@ -20,6 +20,11 @@ enum hk_type {
- 	HK_TYPE_KERNEL_NOISE,
- 	HK_TYPE_MAX,
- 
-+	/*
-+	 * HK_TYPE_KTHREAD is now an alias of HK_TYPE_DOMAIN
-+	 */
-+	HK_TYPE_KTHREAD = HK_TYPE_DOMAIN,
-+
- 	/*
- 	 * The following housekeeping types are only set by the nohz_full
- 	 * boot commandline option. So they can share the same value.
-@@ -29,7 +34,6 @@ enum hk_type {
- 	HK_TYPE_RCU     = HK_TYPE_KERNEL_NOISE,
- 	HK_TYPE_MISC    = HK_TYPE_KERNEL_NOISE,
- 	HK_TYPE_WQ      = HK_TYPE_KERNEL_NOISE,
--	HK_TYPE_KTHREAD = HK_TYPE_KERNEL_NOISE
- };
- 
- #ifdef CONFIG_CPU_ISOLATION
+You are awesome, thank you!
 -- 
-2.47.3
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
+
 
