@@ -1,131 +1,187 @@
-Received: from mail-lj1-f175.google.com (mail-lj1-f175.google.com [209.85.208.175])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from Chamillionaire.breakpoint.cc (Chamillionaire.breakpoint.cc [91.216.245.30])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79BB41A6838
-	for <lvs-devel@vger.kernel.org>; Tue, 12 May 2026 07:37:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.175
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778571431; cv=pass; b=DiBvrgM/8J3GNrh3wu8fI/I6+5xfshw/ZJYLQdQart8OoAmWmfDw3D6Fw6wTwOCdnlxj1IQbdEK4/0h5R8uUdHtGCwF9Jh5/nlO7TJDN1jTxR3gYoyWO84KZXRAN0Lp9K1Dj+NrvVBrCL4ESOSYLDnW8qWZ+M9nT29PeIYJyjos=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778571431; c=relaxed/simple;
-	bh=bSuyYGGeEmgGvulV57SOqbxrkuecVl057GaOQUAOAak=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=M+4TQoeDSWQ6AUEPt95s5pMGoHyPmVkzGacspQVw2CiXyHBXrQhdi8jIf9B1FRYdj+i/1FboJOzAr2HuO7nu6uofveCiyoh/kejvq4q8Inrg6PMbnbyqrTzaMsNrBzyOsKvCyCJb4hmjjf+v1sO6nEUPZSrBQa/jdOZS7HZVLYk=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com; spf=pass smtp.mailfrom=suse.com; dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b=AOLMsxdl; arc=pass smtp.client-ip=209.85.208.175
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b="AOLMsxdl"
-Received: by mail-lj1-f175.google.com with SMTP id 38308e7fff4ca-38e8292423fso35190481fa.0
-        for <lvs-devel@vger.kernel.org>; Tue, 12 May 2026 00:37:09 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1778571427; cv=none;
-        d=google.com; s=arc-20240605;
-        b=Mqd5/t/ZLEnN6TvrB7I+vb0lVtQdHYDcCHVoFo8XHs1Po+VLvIhv37EQf4SF/fHBg5
-         x+PZ5yClkbWQIJFDTSC9+sb+YOLj/Kp2vm2kG9BLszK1tEQDW2Rsp7MNzGzdgFegtdgo
-         hvqsm2ix75F7Y2ukORhJO2b0S0DBieO/ENUbOTJvyc1FRjqW9IesiBmWIHB52uOtllzn
-         TEt8hSw/MHxXqQxp4VQHII1etfq/cMMAe6UEDRn9VxMr6tPxKR67DNcB458nb2fM8522
-         XmxkAdUMyU1bfXtitUqKF9OT8GfMveiUJYDv6ijKkPwWEy6cGKF+hUD5DvgNIu8r6Un5
-         aRtA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=YiGO1DzHy3oKJw39dEBo3ubhTMAjwaktPDTRNxo6tIs=;
-        fh=XOXbcenIIdfvytyPZnxwtJ4C0QdNQO9+tJqyP5fys2Q=;
-        b=dQMBn8us30+EVHaqwD0T/h55YINOyzgyfjbDWLKx/CVq/M4wSSQlbgm9VP8bLgwXbn
-         7I01y58Bo/skUdGk0wUScS4jnrlFbwIYvJ+17rW84Eh8EwUkyOMDRAqkAeumEIdxSxn9
-         X2tcKH3nO5zQrrlnhHXin3+lgASqQsV6k7D0hd0gKzly7KKZVdOLYnKdvBe3PV9OYlew
-         FHsg/lXeJhCRtZ7KCIIT3bwdfHRMp0oIHW6ilNwY1DEJiC/S2A/jHV2PV3B90Q/AOUil
-         g88M37q8Jw+083t0DgJZeM9AyvFLpX8TG6I9ZxSUAqhK7Mab61BEkcKZaRtmZHZFBkuU
-         lK4g==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=suse.com; s=google; t=1778571427; x=1779176227; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=YiGO1DzHy3oKJw39dEBo3ubhTMAjwaktPDTRNxo6tIs=;
-        b=AOLMsxdl95RNOS40d/rtmgSLXWgPQOt8ahxDC98SXp7tJzs3Z0q33cublMzo5/5b0g
-         yXX76g9PkD7gsk0pmOY7/nhW1JRZuZujU/Ov5Gg/YUQ3LpWGhv1JSjh7I8cHmfsrBaqN
-         MKl30+aVCEVIfykxhfEYhqPRXrdWeMXx6gptCRU6c8Y0pjD3CcQFlwuNyBIbdi30udYR
-         c/dKu8U2SLVAG2+TbuV70DpACrlVpAVoj4LU3id0oNhKWQLWIh9E3xjRCeSh+4k0ob+C
-         zQalwA9xV3N6u9uRNP1T+SA9b6Sn7pergW3wonQ9up/alUvVjnm/4Tyx2jOFcNgPKyZw
-         6w+A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1778571427; x=1779176227;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=YiGO1DzHy3oKJw39dEBo3ubhTMAjwaktPDTRNxo6tIs=;
-        b=op7TE5fyH8XRCngE8WxzVg7grWzoJiC6xt67O+dh8zMOqC9lxofkc77bMBezzo/73l
-         pJ4Gvxjo6tzSo2I/GHgUpRjvMLF5Owor9S6v+vCUFxNHZE3GOeN+NFaadDwXLpdMoKDq
-         hcsB4HsWN2b0/TxBV28FGEmwT61RY7QyE5D9+rhXBo4CIc6CB1wBBHX2VmMWNLdmRIUS
-         NgYy8xlALGw8hWkD70S02CQLoARjroFHwKJ3rDvNNEG3ukVGctmLVXrY1wMsHSx/M+bO
-         fSNckKyUK4gKLtOVJ9ar7YswuefgG/tg7uV5ynGHDzYo9fU3ocoOIuiB29ES1JC2RoyU
-         Sl6Q==
-X-Forwarded-Encrypted: i=1; AFNElJ9yluDtKZpqRU6QgHRbrYhOctdlMDmFjrlWkF9jpbIfynjHxRdiadTera2MAUQnJJXsPv8kbqDv+7g=@vger.kernel.org
-X-Gm-Message-State: AOJu0YzWDPNelz6GxW0n1ufV9PZSlp8t8j9kl+JU3nz1ig5fsHWIhhJD
-	qX6QOxojb1hxjzbMr8jH2539h0kBBMps0QzJgh/cz6N6Gtoldvj6XJ6rc3e220TSu556vXxs885
-	ejN7ZfZj2faSnbZIbMR52JEzqGRWMKd3ricSkP7VENw==
-X-Gm-Gg: Acq92OHl569jS22xNtsYikIhya2Rpu5TT0lwRI5WaOAC4F95noNKqwjHHJEZPmfbaQe
-	tly75meUukfnSzOhWAaTILT3LLR2kl1Vh6typ7AusH1tTcyBXJlJ0p4O9btQsR8j6DQ+nGD+csi
-	lT/lAhGLlK82ZaIdZescaBKQCo37yJAyb5+CcAUw7pOkrEutgFBUIQYXEwX6vXVmxVzrVuYF9w+
-	70YShcZDNIU3NkgAhmKmSotGyu8xIZIvVZTrvJ23iKTS06v+kqk1KDDNJOEqBfnpjHJk35BRspX
-	DkqPeFsCNoXosCMijTAqfVmhdR8KNkRQnFOSwelb
-X-Received: by 2002:ac2:4f03:0:b0:5a3:cc81:eff3 with SMTP id
- 2adb3069b0e04-5a8e31e792cmr603618e87.26.1778571427561; Tue, 12 May 2026
- 00:37:07 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68A1738AC7E;
+	Tue, 12 May 2026 18:30:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=91.216.245.30
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1778610607; cv=none; b=pSRwfWJd3qP94hudDT2uAeh+Y9awp/6u7IM727XiW0l4UVfJxFAEPc5rQWsi9I9D65lcNVDPETbDEFYAaG7vMufeCorGjxgRhMwPk4zyGuvYOnv9OcoH+9Ce9iuZOTCypL0mwtTVngeOSwBwqKvgzm/lB+b7eRRvr+pqDNzke6E=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1778610607; c=relaxed/simple;
+	bh=zajSxBKigkT3xJDwQAxK7boZO1bj6b19cCo9nh/rY0E=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=hzNTDIMzk6cBPsnebInBIwOPfGCMc6mvjH3yKuM3RDNjItSZM5jOTQzA7IYTNJhEgKE6XHDqyQTO1+KcLcpuaXvBE2ityxB9WiYtbSYLfgYNHwaMNdkNtpvk3u4NiIm+OAC2t53pxUSWvUg51GTVslStJ/jifLULdJF05DLGYjM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=strlen.de; spf=pass smtp.mailfrom=Chamillionaire.breakpoint.cc; arc=none smtp.client-ip=91.216.245.30
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=strlen.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=Chamillionaire.breakpoint.cc
+Received: by Chamillionaire.breakpoint.cc (Postfix, from userid 1003)
+	id D6C1660D66; Tue, 12 May 2026 20:29:58 +0200 (CEST)
+From: Florian Westphal <fw@strlen.de>
+To: <netfilter-devel@vger.kernel.org>
+Cc: lvs-devel@vger.kernel.org,
+	ja@ssi.bg,
+	Florian Westphal <fw@strlen.de>
+Subject: [PATCH nf-next v2] netfilter: add option for GCOV profiling
+Date: Tue, 12 May 2026 20:29:46 +0200
+Message-ID: <20260512182946.32687-1-fw@strlen.de>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260511134744.277032-1-marco.crivellari@suse.com>
- <20260511134744.277032-3-marco.crivellari@suse.com> <734b9aa0-3af4-819a-49fe-8bba7035856f@ssi.bg>
-In-Reply-To: <734b9aa0-3af4-819a-49fe-8bba7035856f@ssi.bg>
-From: Marco Crivellari <marco.crivellari@suse.com>
-Date: Tue, 12 May 2026 09:36:56 +0200
-X-Gm-Features: AVHnY4Lehk_93YiMVYGd670SPnAUadqGsUhTvlPZSmybCIwdKkGr50QbaYqby5c
-Message-ID: <CAAofZF43Yee8ZutA0mR=PnsinkbHwFEafQqtVPvcACpVNhtu=Q@mail.gmail.com>
-Subject: Re: [PATCH net-next 2/2] ipvs: Replace use of system_unbound_wq with system_dfl_wq
-To: Julian Anastasov <ja@ssi.bg>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
-	Tejun Heo <tj@kernel.org>, Lai Jiangshan <jiangshanlai@gmail.com>, 
-	Frederic Weisbecker <frederic@kernel.org>, Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
-	Michal Hocko <mhocko@suse.com>, Simon Horman <horms@verge.net.au>, Eric Dumazet <edumazet@google.com>, 
-	"David S . Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>, 
-	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
-	coreteam@netfilter.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Tue, May 12, 2026 at 6:22=E2=80=AFAM Julian Anastasov <ja@ssi.bg> wrote:
-> [...]
->         Sorry that such change was delayed but there were
-> many changes in IPVS for the last month. The last that may
-> delay this patch is:
->
-> v3 of "ipvs: avoid possible loop in ip_vs_dst_event on resizing"
-> https://lore.kernel.org/lvs-devel/20260510104605.24218-1-ja@ssi.bg/T/#u
->
->         May be we have to wait this change to reach net and
-> net-next. Also, we can reconsider which queue to use, these works
-> resize hash tables and call synchronize_rcu(), should we switch to
-> system_dfl_long_wq if such job is considered "long" ?
+Similar to a few other subsystems: add a new config toggle to
+enable netfilter gcov profiling in netfilter, including ebtables,
+arptables and so on.
 
-Hello Julian,
+ipset and ipvs gain their own, dedicated toggles.
 
-Thanks for letting me know.
+Signed-off-by: Florian Westphal <fw@strlen.de>
+---
+ v2: add dedicated toggles for ipvs and ipset;
+ I am currently not collecting profile data for these two.
 
-Yes, if it is considered long we can switch to the long unbound version.
-I will prepare the v2 with this change.
+ If you prefer to keep them under single switch thats fine,
+ just lmk.
 
-Thanks!
+ net/bridge/netfilter/Makefile | 4 ++++
+ net/ipv4/netfilter/Makefile   | 4 ++++
+ net/ipv6/netfilter/Makefile   | 4 ++++
+ net/netfilter/Kconfig         | 8 ++++++++
+ net/netfilter/Makefile        | 4 ++++
+ net/netfilter/ipset/Kconfig   | 9 +++++++++
+ net/netfilter/ipset/Makefile  | 3 +++
+ net/netfilter/ipvs/Kconfig    | 9 +++++++++
+ net/netfilter/ipvs/Makefile   | 3 +++
+ 9 files changed, 48 insertions(+)
 
---
+diff --git a/net/bridge/netfilter/Makefile b/net/bridge/netfilter/Makefile
+index b9a1303da977..af0c903aa4ac 100644
+--- a/net/bridge/netfilter/Makefile
++++ b/net/bridge/netfilter/Makefile
+@@ -38,3 +38,7 @@ obj-$(CONFIG_BRIDGE_EBT_SNAT) += ebt_snat.o
+ # watchers
+ obj-$(CONFIG_BRIDGE_EBT_LOG) += ebt_log.o
+ obj-$(CONFIG_BRIDGE_EBT_NFLOG) += ebt_nflog.o
++
++ifdef CONFIG_GCOV_PROFILE_NETFILTER
++GCOV_PROFILE := y
++endif
+diff --git a/net/ipv4/netfilter/Makefile b/net/ipv4/netfilter/Makefile
+index 85502d4dfbb4..dbfb1c4739a8 100644
+--- a/net/ipv4/netfilter/Makefile
++++ b/net/ipv4/netfilter/Makefile
+@@ -51,3 +51,7 @@ obj-$(CONFIG_IP_NF_ARP_MANGLE) += arpt_mangle.o
+ obj-$(CONFIG_IP_NF_ARPFILTER) += arptable_filter.o
+ 
+ obj-$(CONFIG_NF_DUP_IPV4) += nf_dup_ipv4.o
++
++ifdef CONFIG_GCOV_PROFILE_NETFILTER
++GCOV_PROFILE := y
++endif
+diff --git a/net/ipv6/netfilter/Makefile b/net/ipv6/netfilter/Makefile
+index 66ce6fa5b2f5..72902d8005ad 100644
+--- a/net/ipv6/netfilter/Makefile
++++ b/net/ipv6/netfilter/Makefile
+@@ -43,3 +43,7 @@ obj-$(CONFIG_IP6_NF_MATCH_SRH) += ip6t_srh.o
+ obj-$(CONFIG_IP6_NF_TARGET_NPT) += ip6t_NPT.o
+ obj-$(CONFIG_IP6_NF_TARGET_REJECT) += ip6t_REJECT.o
+ obj-$(CONFIG_IP6_NF_TARGET_SYNPROXY) += ip6t_SYNPROXY.o
++
++ifdef CONFIG_GCOV_PROFILE_NETFILTER
++GCOV_PROFILE := y
++endif
+diff --git a/net/netfilter/Kconfig b/net/netfilter/Kconfig
+index 682c675125fc..f71ff98eb5d0 100644
+--- a/net/netfilter/Kconfig
++++ b/net/netfilter/Kconfig
+@@ -1648,6 +1648,14 @@ config NETFILTER_XT_MATCH_U32
+ 
+ endif # NETFILTER_XTABLES
+ 
++config GCOV_PROFILE_NETFILTER
++	bool "Enable GCOV profiling for netfilter"
++	depends on GCOV_KERNEL
++	help
++	  Enable GCOV profiling for netfilter to check which functions/lines
++	  are executed.
++
++	  If unsure, say N.
+ endmenu
+ 
+ source "net/netfilter/ipset/Kconfig"
+diff --git a/net/netfilter/Makefile b/net/netfilter/Makefile
+index 6bfc250e474f..f0751ca302c6 100644
+--- a/net/netfilter/Makefile
++++ b/net/netfilter/Makefile
+@@ -240,3 +240,7 @@ obj-$(CONFIG_IP_VS) += ipvs/
+ 
+ # lwtunnel
+ obj-$(CONFIG_LWTUNNEL) += nf_hooks_lwtunnel.o
++
++ifdef CONFIG_GCOV_PROFILE_NETFILTER
++GCOV_PROFILE := y
++endif
+diff --git a/net/netfilter/ipset/Kconfig b/net/netfilter/ipset/Kconfig
+index b1ea054bb82c..6c4d54758106 100644
+--- a/net/netfilter/ipset/Kconfig
++++ b/net/netfilter/ipset/Kconfig
+@@ -175,4 +175,13 @@ config IP_SET_LIST_SET
+ 
+ 	  To compile it as a module, choose M here.  If unsure, say N.
+ 
++config GCOV_PROFILE_IPSET
++	bool "Enable GCOV profiling for ipset"
++	depends on GCOV_KERNEL
++	help
++	  Enable GCOV profiling for ipset to check which functions/lines
++	  are executed.
++
++	  If unsure, say N.
++
+ endif # IP_SET
+diff --git a/net/netfilter/ipset/Makefile b/net/netfilter/ipset/Makefile
+index a445a6bf4f11..4f48df5406cd 100644
+--- a/net/netfilter/ipset/Makefile
++++ b/net/netfilter/ipset/Makefile
+@@ -29,3 +29,6 @@ obj-$(CONFIG_IP_SET_HASH_NETPORTNET) += ip_set_hash_netportnet.o
+ 
+ # list types
+ obj-$(CONFIG_IP_SET_LIST_SET) += ip_set_list_set.o
++ifdef CONFIG_GCOV_PROFILE_IPSET
++GCOV_PROFILE := y
++endif
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index c203252e856d..7724cb44e6de 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -349,4 +349,13 @@ config	IP_VS_PE_SIP
+ 	help
+ 	  Allow persistence based on the SIP Call-ID
+ 
++config GCOV_PROFILE_IPVS
++	bool "Enable GCOV profiling for IPVS"
++	depends on GCOV_KERNEL
++	help
++	  Enable GCOV profiling for IPVS to check which functions/lines
++	  are executed.
++
++	  If unsure, say N.
++
+ endif # IP_VS
+diff --git a/net/netfilter/ipvs/Makefile b/net/netfilter/ipvs/Makefile
+index bb5d8125c82a..8e4cc67ad39d 100644
+--- a/net/netfilter/ipvs/Makefile
++++ b/net/netfilter/ipvs/Makefile
+@@ -43,3 +43,6 @@ obj-$(CONFIG_IP_VS_FTP) += ip_vs_ftp.o
+ 
+ # IPVS connection template retrievers
+ obj-$(CONFIG_IP_VS_PE_SIP) += ip_vs_pe_sip.o
++ifdef CONFIG_GCOV_PROFILE_IPVS
++GCOV_PROFILE := y
++endif
+-- 
+2.53.0
 
-Marco Crivellari
-
-SUSE Labs
