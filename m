@@ -1,231 +1,130 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C70053C9457;
-	Tue, 12 May 2026 20:51:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 963E73655E3
+	for <lvs-devel@vger.kernel.org>; Wed, 13 May 2026 01:41:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778619098; cv=none; b=lrGXalQQp9iQCj9+AELPkd0YS638b6/PMY0U+t6cpj6n3gkS2S2NNNAyHemqR+r3zKYtPkCjBPI5Em2wDhVoXuIgTc83d4q2p6vkhnsymZh/HCDZ5Q83HQQQ2hdJCInUF+HPBOtMFKs8WNJi7gsa1a58RjwTRJEgxq4sQRizY6Y=
+	t=1778636517; cv=none; b=G/Vji5bGOuVHUs9QFBm0OyNKFqFVrAtc+6W0wOBrf3A4HCTi1/sHM42yrqQrhwWzhEBNIEzclSZ/thQ7gOeyt2rmZbwWh2GtMV4XitfGXXN+49G9jVn+PgJ2dWwP5ibUk5KP7ZFMxEac448288+52eeKFexxfYZW24iW2LagnYg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778619098; c=relaxed/simple;
-	bh=/EjZjm4abdmBihzVZ9pe8y4+Cm42FFHB9YXjeWIVazY=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=QuT0G2avc6MDum3+Scb09py1ebyRUXFBpwPiqjmNFZFw4Q+kplFgMH6WacxYu4yTjV15+f3yN4mNg3UWEXbhiO3O5SlYvGaieqNXch4tsnDCXVJ8JGnGU7/Ms6+UxEdFPmsFnVxI9dH+Z70tFIAdAWZjAc/opWpGiMFOEFwS5rQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=DVI3RW6k; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1778636517; c=relaxed/simple;
+	bh=QpP+nVlhexDDbFF/v/fM34uLgmfJGufnyksSM6QIH74=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=iQ9xUoqCs1vIBhELGhVe/NYP87pbFHm+JkjkIxP+mhs99jgE4UolC87c67S8sGmR8X/ymcTDDcgeGR6gSEMk+4GOASezhgnuCURroMiAfEHeYpHEa5qR3mIz1DT/sLXfCLIzmTBVpF8xeYHU8n3bhSD5j7HOywa5s7HxuXRKE6Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=en1Mmekp; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="DVI3RW6k"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 2F35F2105C;
-	Tue, 12 May 2026 23:51:30 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=G8WMFhOVZAw6ew4FNICjSvBmHsGDOLIOjnkrhMlvXWw=; b=DVI3RW6kEYq8
-	WQ5QaKXFnsJMdhfGlvdOOu9J0SXitpKa+D51ABSuNUbNpob4sUs5sRc1xhktHrsW
-	oodmevMt/M+WIq91OSEfG1qMeP6HSEPKj64MoPjNxpH+CBCQOEuBxDkaQ8lR69fE
-	2dDtNC9k0jTDdeB47P7XL5KWo0dDTXSdfq/ikfP0Oh/Tu9g8YnsAbFFtd8mFl4bm
-	KfCefWxyWAV0UvspHnYo4s051J2ZUSapV7PYqppyNT88isXIXllYKyTsMGJBEVr6
-	JtG2KkdGNyMdS1USlAWm0dIghHALrk87PGuaq/wWMMKfcduTM3HhBzUbsq/XS0aV
-	fjidNdnsoDxaYh4wGfd8S2XtbDJxscWd5e9Jd8onrZ/7ugSd9S9PDyP9Ofsfn7lw
-	NiDTuCNC1/meWNkULXem7H3SYuRjGrlptooEFr2Ab8v7ZBSlI0abbJ6FZWWNfjYd
-	tVisMZgmz1hIz+aASiipR8d8KCu+L4fptml/jTngobF92Nlzy9AcrWLSB6zlerpj
-	ZDEU2cf2oRNbZjAel4DLbG3RjTgUuEVQBWaol+N4b5yXgjY/dW6J9v8/PwQLBGte
-	CyuzrQgEa19/ivOs+lrxtqEZyLEfJ2WhkrOTOwsaIfAz5z+m9zYkGhpoeOuK/Ofk
-	aG1o3OvEgDxbER87Dc5+astclCOEdXU=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue, 12 May 2026 23:51:30 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 9A6DC60A24;
-	Tue, 12 May 2026 23:51:30 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.1) with ESMTP id 64CKpNw0084581;
-	Tue, 12 May 2026 23:51:23 +0300
-Date: Tue, 12 May 2026 23:51:23 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Florian Westphal <fw@strlen.de>
-cc: netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org
-Subject: Re: [PATCH nf-next v2] netfilter: add option for GCOV profiling
-In-Reply-To: <20260512182946.32687-1-fw@strlen.de>
-Message-ID: <383b4900-e709-5f3d-ce8e-c608aad85f8a@ssi.bg>
-References: <20260512182946.32687-1-fw@strlen.de>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="en1Mmekp"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1778636511;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=UT5oGYZY32+rUjFuqBiLxCgevBNWLQoqsz5+vYhdrcg=;
+	b=en1MmekpBATQD9DDTmg2+yytog0Cbzzc7lBVgQaUypONPh1SILbEFGOdT9/M2q8mOBf+Dh
+	g4fitbFlWC4UpvU0cuhTTXrc+pSBqtXsHiIp7q90CsaWbNqqJUyJeGvaiBavJXaTSoa/5O
+	yrjFt4z2bgxEPLRB5giUQBrQcdgmsws=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-571-oLkdP7p7MimPfm9qP2zTYg-1; Tue,
+ 12 May 2026 21:41:47 -0400
+X-MC-Unique: oLkdP7p7MimPfm9qP2zTYg-1
+X-Mimecast-MFC-AGG-ID: oLkdP7p7MimPfm9qP2zTYg_1778636505
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 09B1319560A1;
+	Wed, 13 May 2026 01:41:44 +0000 (UTC)
+Received: from [10.2.16.241] (unknown [10.2.16.241])
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 1B89930001BE;
+	Wed, 13 May 2026 01:41:39 +0000 (UTC)
+Message-ID: <5734ac41-af0f-4696-8af0-073d3f15537f@redhat.com>
+Date: Tue, 12 May 2026 21:41:38 -0400
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH net 0/8] IPVS fixes for net
+To: Pablo Neira Ayuso <pablo@netfilter.org>, Julian Anastasov <ja@ssi.bg>
+Cc: netfilter-devel@vger.kernel.org, davem@davemloft.net,
+ netdev@vger.kernel.org, kuba@kernel.org, pabeni@redhat.com,
+ edumazet@google.com, fw@strlen.de, horms@kernel.org,
+ lvs-devel@vger.kernel.org, Anna-Maria Behnsen <anna-maria@linutronix.de>,
+ Frederic Weisbecker <frederic@kernel.org>, Ingo Molnar <mingo@kernel.org>,
+ Thomas Gleixner <tglx@kernel.org>
+References: <20260505001648.360569-1-pablo@netfilter.org>
+ <bce80830-1e2d-43ad-ba7f-055cb352b348@ssi.bg> <aftbVlmSOAFegQgf@chamomile>
+Content-Language: en-US
+From: Waiman Long <longman@redhat.com>
+In-Reply-To: <aftbVlmSOAFegQgf@chamomile>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
+On 5/6/26 11:16 AM, Pablo Neira Ayuso wrote:
+> Hi Julian,
+>
+> Cc'ing Waiman Long and NOHZ maintainers (apologies if this is dragging
+> more people that I should into this issue).
+>
+> On Wed, May 06, 2026 at 11:56:05AM +0300, Julian Anastasov wrote:
+> [...]
+>> 	Here are some comments after the last review from
+>> Sashiko:
+>>
+>> https://sashiko.dev/#/patchset/20260505001648.360569-1-pablo%40netfilter.org
+>>
+>> Patch 1:
+>> - while ip_vs_dst_event() should loop and ensure all dev
+>> references are released, single change of svc_table_changes
+>> does not indicate the old references are dropped by ip_vs_flush() or
+>> ip_vs_del_service(). I'll post new change to abort the loop
+>> when we are sure the services are at least once released.
+>>
+>> Patch 5:
+>> - after executing ip_vs_est_calc_phase(), data can
+>> remain only for kt0 because all estimators are stopped,
+>> unlinked and the kt data structures for kt > 0 are empty
+>> and as result freed and the kthread tasks stopped (which
+>> happens early). After this, kt 0 calls
+>> ip_vs_est_drain_temp_list() as part of its loop,
+>> so it will eventually call ip_vs_est_add_kthread()
+>> and ip_vs_est_reload_start() to request kthread tasks
+>> to be started if data for new kthreads are created.
+>> So, I don't see problem here.
+>>
+>> Patch 6:
+>> - we will add conn_max sysctl soon
+> OK, just follow up on these for 1 and 6, thanks.
+>
+>> Patch 7 and 8:
+>> - I can not decide how valid are the concerns in the review.
+> Placing here links for convenience:
+>
+> https://sashiko.dev/#/message/20260505001648.360569-8-pablo%40netfilter.org
+> https://sashiko.dev/#/message/20260505001648.360569-9-pablo%40netfilter.org
+>
+> This is away from my limited scope of knowledged.
+>
+Sorry for the late reply. The latest upstream kernel has already been 
+updated to make kthreads follow HK_TYPE_DOMAIN in determining which 
+non-housekeeping CPUs should be avoided. For full CPU isolation, users 
+should set nohz_full, isolcpus=domain and isolcpus=managed_irq to 
+specify CPUs to isolate. Just one of them isn't enough for CPU 
+isolation. In fact, the current plan is to enable runtime modification 
+to these CPU isolation features so that users can acquire additional 
+isolated CPUs or release some of them on demand. This is still a work in 
+progress. So the AI comment on patch 8 isn't a real concern.
 
-	Hello,
+Please let me know if you have additional question.
 
-On Tue, 12 May 2026, Florian Westphal wrote:
-
-> Similar to a few other subsystems: add a new config toggle to
-> enable netfilter gcov profiling in netfilter, including ebtables,
-> arptables and so on.
-> 
-> ipset and ipvs gain their own, dedicated toggles.
-> 
-> Signed-off-by: Florian Westphal <fw@strlen.de>
-
-	Looks good to me, thanks!
-
-For IPVS:
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  v2: add dedicated toggles for ipvs and ipset;
->  I am currently not collecting profile data for these two.
-> 
->  If you prefer to keep them under single switch thats fine,
->  just lmk.
-> 
->  net/bridge/netfilter/Makefile | 4 ++++
->  net/ipv4/netfilter/Makefile   | 4 ++++
->  net/ipv6/netfilter/Makefile   | 4 ++++
->  net/netfilter/Kconfig         | 8 ++++++++
->  net/netfilter/Makefile        | 4 ++++
->  net/netfilter/ipset/Kconfig   | 9 +++++++++
->  net/netfilter/ipset/Makefile  | 3 +++
->  net/netfilter/ipvs/Kconfig    | 9 +++++++++
->  net/netfilter/ipvs/Makefile   | 3 +++
->  9 files changed, 48 insertions(+)
-> 
-> diff --git a/net/bridge/netfilter/Makefile b/net/bridge/netfilter/Makefile
-> index b9a1303da977..af0c903aa4ac 100644
-> --- a/net/bridge/netfilter/Makefile
-> +++ b/net/bridge/netfilter/Makefile
-> @@ -38,3 +38,7 @@ obj-$(CONFIG_BRIDGE_EBT_SNAT) += ebt_snat.o
->  # watchers
->  obj-$(CONFIG_BRIDGE_EBT_LOG) += ebt_log.o
->  obj-$(CONFIG_BRIDGE_EBT_NFLOG) += ebt_nflog.o
-> +
-> +ifdef CONFIG_GCOV_PROFILE_NETFILTER
-> +GCOV_PROFILE := y
-> +endif
-> diff --git a/net/ipv4/netfilter/Makefile b/net/ipv4/netfilter/Makefile
-> index 85502d4dfbb4..dbfb1c4739a8 100644
-> --- a/net/ipv4/netfilter/Makefile
-> +++ b/net/ipv4/netfilter/Makefile
-> @@ -51,3 +51,7 @@ obj-$(CONFIG_IP_NF_ARP_MANGLE) += arpt_mangle.o
->  obj-$(CONFIG_IP_NF_ARPFILTER) += arptable_filter.o
->  
->  obj-$(CONFIG_NF_DUP_IPV4) += nf_dup_ipv4.o
-> +
-> +ifdef CONFIG_GCOV_PROFILE_NETFILTER
-> +GCOV_PROFILE := y
-> +endif
-> diff --git a/net/ipv6/netfilter/Makefile b/net/ipv6/netfilter/Makefile
-> index 66ce6fa5b2f5..72902d8005ad 100644
-> --- a/net/ipv6/netfilter/Makefile
-> +++ b/net/ipv6/netfilter/Makefile
-> @@ -43,3 +43,7 @@ obj-$(CONFIG_IP6_NF_MATCH_SRH) += ip6t_srh.o
->  obj-$(CONFIG_IP6_NF_TARGET_NPT) += ip6t_NPT.o
->  obj-$(CONFIG_IP6_NF_TARGET_REJECT) += ip6t_REJECT.o
->  obj-$(CONFIG_IP6_NF_TARGET_SYNPROXY) += ip6t_SYNPROXY.o
-> +
-> +ifdef CONFIG_GCOV_PROFILE_NETFILTER
-> +GCOV_PROFILE := y
-> +endif
-> diff --git a/net/netfilter/Kconfig b/net/netfilter/Kconfig
-> index 682c675125fc..f71ff98eb5d0 100644
-> --- a/net/netfilter/Kconfig
-> +++ b/net/netfilter/Kconfig
-> @@ -1648,6 +1648,14 @@ config NETFILTER_XT_MATCH_U32
->  
->  endif # NETFILTER_XTABLES
->  
-> +config GCOV_PROFILE_NETFILTER
-> +	bool "Enable GCOV profiling for netfilter"
-> +	depends on GCOV_KERNEL
-> +	help
-> +	  Enable GCOV profiling for netfilter to check which functions/lines
-> +	  are executed.
-> +
-> +	  If unsure, say N.
->  endmenu
->  
->  source "net/netfilter/ipset/Kconfig"
-> diff --git a/net/netfilter/Makefile b/net/netfilter/Makefile
-> index 6bfc250e474f..f0751ca302c6 100644
-> --- a/net/netfilter/Makefile
-> +++ b/net/netfilter/Makefile
-> @@ -240,3 +240,7 @@ obj-$(CONFIG_IP_VS) += ipvs/
->  
->  # lwtunnel
->  obj-$(CONFIG_LWTUNNEL) += nf_hooks_lwtunnel.o
-> +
-> +ifdef CONFIG_GCOV_PROFILE_NETFILTER
-> +GCOV_PROFILE := y
-> +endif
-> diff --git a/net/netfilter/ipset/Kconfig b/net/netfilter/ipset/Kconfig
-> index b1ea054bb82c..6c4d54758106 100644
-> --- a/net/netfilter/ipset/Kconfig
-> +++ b/net/netfilter/ipset/Kconfig
-> @@ -175,4 +175,13 @@ config IP_SET_LIST_SET
->  
->  	  To compile it as a module, choose M here.  If unsure, say N.
->  
-> +config GCOV_PROFILE_IPSET
-> +	bool "Enable GCOV profiling for ipset"
-> +	depends on GCOV_KERNEL
-> +	help
-> +	  Enable GCOV profiling for ipset to check which functions/lines
-> +	  are executed.
-> +
-> +	  If unsure, say N.
-> +
->  endif # IP_SET
-> diff --git a/net/netfilter/ipset/Makefile b/net/netfilter/ipset/Makefile
-> index a445a6bf4f11..4f48df5406cd 100644
-> --- a/net/netfilter/ipset/Makefile
-> +++ b/net/netfilter/ipset/Makefile
-> @@ -29,3 +29,6 @@ obj-$(CONFIG_IP_SET_HASH_NETPORTNET) += ip_set_hash_netportnet.o
->  
->  # list types
->  obj-$(CONFIG_IP_SET_LIST_SET) += ip_set_list_set.o
-> +ifdef CONFIG_GCOV_PROFILE_IPSET
-> +GCOV_PROFILE := y
-> +endif
-> diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-> index c203252e856d..7724cb44e6de 100644
-> --- a/net/netfilter/ipvs/Kconfig
-> +++ b/net/netfilter/ipvs/Kconfig
-> @@ -349,4 +349,13 @@ config	IP_VS_PE_SIP
->  	help
->  	  Allow persistence based on the SIP Call-ID
->  
-> +config GCOV_PROFILE_IPVS
-> +	bool "Enable GCOV profiling for IPVS"
-> +	depends on GCOV_KERNEL
-> +	help
-> +	  Enable GCOV profiling for IPVS to check which functions/lines
-> +	  are executed.
-> +
-> +	  If unsure, say N.
-> +
->  endif # IP_VS
-> diff --git a/net/netfilter/ipvs/Makefile b/net/netfilter/ipvs/Makefile
-> index bb5d8125c82a..8e4cc67ad39d 100644
-> --- a/net/netfilter/ipvs/Makefile
-> +++ b/net/netfilter/ipvs/Makefile
-> @@ -43,3 +43,6 @@ obj-$(CONFIG_IP_VS_FTP) += ip_vs_ftp.o
->  
->  # IPVS connection template retrievers
->  obj-$(CONFIG_IP_VS_PE_SIP) += ip_vs_pe_sip.o
-> +ifdef CONFIG_GCOV_PROFILE_IPVS
-> +GCOV_PROFILE := y
-> +endif
-> -- 
-> 2.53.0
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+Cheers,
+Longman
 
