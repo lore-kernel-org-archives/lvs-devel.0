@@ -1,90 +1,81 @@
-Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
+Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE4FD481FC8
-	for <lvs-devel@vger.kernel.org>; Fri, 15 May 2026 13:51:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 304402F8EAB
+	for <lvs-devel@vger.kernel.org>; Tue, 19 May 2026 01:55:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.174
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778853121; cv=none; b=Q/ASYA5UwGv8YQ9eeLuayxD2TCK/ZhnWlCQh0BgpvLIlI2tK5ZjWdFAx3Sj0wFweRlJT6OK7sTYyO12DrIZUGGfP/Bsw4hTBg6h/lnbOzlxDtf0FeZGBnUEgzsoiJ0cXE23A75Y+Q5SrDng2cPlYB8a3rBU5fhHaBob8STxoQec=
+	t=1779155726; cv=none; b=iUenY4ZwjQ55GTDcuqsr+Qm/C4Aak5pbDTgVL00R6iJumTPSjd1W2ZkgRd/uS67nklirxtilbIX1TU2EzDNbSurFaOoSQjoqE7daC9FJJQpED3Gqh2U7fdmNqazL1g73oy0qXmtnKqPnX/Z0FqHWNaB521fI94zo667RE8vyuD4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778853121; c=relaxed/simple;
-	bh=1BUYyH6FJjq+uusotHC0RGXtPrhUwifyqTlT3V5ZIPE=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=eALsSWGECmqSgp0HeaSFTgokWTe1veW2EJ3mjieZUT1lRrHaq8P3ef1ZKiR409ab+9ScmsPgRFxlUMb4haJXeFKzlic1yHJN6+yx3MnYpUqlzDSmfkOk23C+d48HMg8sTQN+QOGEn8Dg8b7MPejhn8aIfvizFf4MoE2iXTzMfwI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com; spf=pass smtp.mailfrom=suse.com; dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b=crNLsmaw; arc=none smtp.client-ip=209.85.128.46
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.com
+	s=arc-20240116; t=1779155726; c=relaxed/simple;
+	bh=VLgfShC+GnqWUvnm2T1qwLmUj4i+nQ5Lf0c0ffK125E=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Mu7a7rbf0Dg9rMY6Rm3Y880TGT0zNlBxYzRGLu3PSRUjoFpL4rsrm1G8csQsDVCldM1Uu9WYCIsfKW8uVD83x7LKGmsXUsHSAMezN6T4NBOrpHisBjZx4NA/5RnhDw3arPz9UYrI5VQM6B6JY9NYcb0XdD2xZcPah7J4MVVRhYs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=cm1O+m+Q; arc=none smtp.client-ip=209.85.214.174
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b="crNLsmaw"
-Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-48909558b3aso88631815e9.0
-        for <lvs-devel@vger.kernel.org>; Fri, 15 May 2026 06:51:56 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cm1O+m+Q"
+Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2bc763e2ba8so12955685ad.3
+        for <lvs-devel@vger.kernel.org>; Mon, 18 May 2026 18:55:25 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=suse.com; s=google; t=1778853115; x=1779457915; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=VA+bG9JdAKJ8uzHR2B1IeGdcCKEHHSGhLn7eeSbzPvg=;
-        b=crNLsmawSy5I0G7CrPgHYnHFdvt+hulqPo5UoyW92rWd76+QKownrE2B3DUYWlO1JL
-         2/22skQB/KbImVFeu6hVTX9ex3e52K3JsaRa5wmBsb0k/u6nr7M3G9T6OHFtwilq65sW
-         xwON24M9D5Ue3nFkwPQ0EaenIl9CDIOWvOme1bsTWeWi3cJMa2KErOp72g6lj3ASjczz
-         tN2C7Cb3VGlaAz5yc2hQRGrjvEszxAa2qzS4983uqL5JYl0iZLxPKpvHDI4qGnnpF013
-         1Y2qbng4JPUbuq2TYwUpPeD2xLWni6ZfPsnmTz11aZ/gIdO9NUhV7G7Qop9kYNUMCcpy
-         nhYA==
+        d=gmail.com; s=20251104; t=1779155724; x=1779760524; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=CrLsXHJrmnZC07Rq0XCc6PS/mOpD2keMwqnjxffoI7k=;
+        b=cm1O+m+QrGjkF/sIHe6KGD2ZTAlf/HGzAhsqpBxhlls91i/eg9CALUeBWwCFtfZJ63
+         s2WLotJq77USlrd+eAORSLOgMITKfXev8WFZsjf5KdnNZENhKzIugHGqJzD1g0yC8pfu
+         ObzMLXUU3yKt+mW+4BWqKLKWlcHyevCNx1e6ngp9WTgCKuW2awR2R4WFC0uVMFvESvF1
+         dJOA1Mz01EqRv2MckBMSdGWpfH9bykCUNNNSP60+NzaPDb8Tfh5wu6N4Lx07sNsBABG7
+         tIbZ5kaDGVHI755exmoIlmzEmE4vz5trNmdqSPbci9kfPxt7BYB836snljDq+KcRWSvb
+         Soeg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1778853115; x=1779457915;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=VA+bG9JdAKJ8uzHR2B1IeGdcCKEHHSGhLn7eeSbzPvg=;
-        b=JrPzbnCZRsel8R+yTCxHinsmACIcikO2nm/nPDrraSrZqHkzvOcyOsPbLQIl8y6/gD
-         KUqBEvttNxbKAdGi4Z5R7SnZUK60Yk3c4YW4Hq8AL+k4B4+klUfYY/wPfjzWbd7WWBnT
-         +ndWeA2FE1+sZdQa8Y8xW0TQDllgNB8eMihpZ/VdUKf3Uw8MgJqlklp6U60aiwU0Cau/
-         KMGH5daGL2EqtfyAZVw0kAyntZrtDocCDomnEYZBY3Ls3H7/1uTLPiLFnsGehiG+5HeT
-         QXxYr0o0EjTjRsJWRROAMQqv6XXkKk9wOcoh5Ho/LrmGg2NiGkwLmKcpm9GZL2GLmo2R
-         8vkQ==
-X-Forwarded-Encrypted: i=1; AFNElJ99kZTDjamyN/C5v4YXfBxL6pgxxFPhebGgD0/qesRhiiIWPvDw4t+laKHAKnvGpmlkFvi9lqPvnhI=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yw60Cj/ii3WVppzpp/ngQddRVo49Pa/HPIVziwm3pp+CPl46dBx
-	KSn13SSw5REl7+WoowSHJMZn7cPZTSCgUGTkzY24ofk/qzCmCX3gkh8uZBNuJXXpWhU=
-X-Gm-Gg: Acq92OEQ1/gGsL4+AsBIAH7umEkdb/2khsXo6h9Tq5NHsQSSA4JjidI2ygnvfG1/FhY
-	cR/G9LRRZ9dBuNsjiVIAnhZa8B6x5GsTQRf1QjAIg5uD9hjF+Qc9vRObRon8PhUlsXVfuKiRBne
-	NZvCyFJA0xRrq1A4YI7NAhLxeTvliJRi6A0D9QnvFssL8oUmnynBo6wWZXu7oHWJipmDKKd2CHt
-	5b85C+SaDk0hnfonrv4ITLmyTYLITraxhPGQAzBblYJRRSuV/eNEHmtGSNNYZ4ZnMo7IXVttv4x
-	iHr/F57hOpC4HlSIhN+0jDSOFuul5mky3ZGQoDlTbg0AqyxO8uKFQwvSu6W/LGVvTgmD6ELA3RG
-	XIH0Tg4ZcqCmL4LTmj5K5KAZ1kJ6kOHY029uqPN4HoOKisslba+TGTqw3Tk7noH5ZgqPKwFVJ19
-	XTWudjbvnNzESpE4rDEoNwnxHx7ILd+DjRRgsGS6Y5V2Vp75w=
-X-Received: by 2002:a05:600c:4fc9:b0:489:1c1f:35df with SMTP id 5b1f17b1804b1-48fe60e58ecmr54916975e9.10.1778853115149;
-        Fri, 15 May 2026 06:51:55 -0700 (PDT)
-Received: from localhost.localdomain ([2a00:6d43:105:c401:e307:1a37:2e76:ce91])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-48fdafc6741sm79592675e9.2.2026.05.15.06.51.54
+        d=1e100.net; s=20251104; t=1779155724; x=1779760524;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=CrLsXHJrmnZC07Rq0XCc6PS/mOpD2keMwqnjxffoI7k=;
+        b=tYoGaQReL8PtkLuibg4lUwx5Jxo/QWndaESqTbcB47ffelJVnbPEVTtooC7DvBZVJu
+         gcpXj3ZBUaNQPfFhyarq9fH/VOsQTUu3uct0FA/ed6mK9+1dORQ7Pq8XIFvug32m7G/2
+         A0ReSjQK7wMF6r+8ifbCaRbaJAzB4l3YhgKmj1Uov/u5C8TcZBIt+6OxhJhhAOYaKeuV
+         tlDS8no2kuYBXddToytcs098hZXdgQ3abaO6/cnsTYfrD58+3pEjk3LAs0lgLn3YVjof
+         2iSQeWjSQNK71x6V2dTsoIH97WuVbYURxOpYftdaSrAJaqGiuRSMfHFmsYuXBrOpt5kr
+         8AmQ==
+X-Forwarded-Encrypted: i=1; AFNElJ+vdeSReWOP+I82BZhW4WCVbk5HK/AwdcLumvGXzEu4+T0hsn8cKZKniM7hmzEURlx0X2G07fUGxnE=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwgcIJVMhteTPyNeE9RrYxHcXYkC/uFJwcJe7RZwKCB/tQ3zmdq
+	z1Veo8xQoMzjPX5bwETImuPgFSlNd5PMuDzaUgYoQh2xBtY0a9Y7I5dC
+X-Gm-Gg: Acq92OGaGqA6bgdqNw40tW4Ts7b23E3PvGxlMuXNA4AEWonbv24TEiEbqOiAJjSrDrO
+	rF553HTtpUNBRP8Et2gvrAnio/ZcCAhy4jGFImaAcgehnyOrhcY/zpDVTxkDcgTsq+FkD6Fg5V/
+	5E+amfX3uPiLzXg2FjjL0Jb7O+peHdb5pAwoCNRRdhix4t5fxuU589ff6Y/p3gGfsN59GB1EL0N
+	NxjSXPCtQSRv8LNBGL6EBhvvBaStefo/SZbiZ5ud8ZmleByOca4WBLEG11Q1BftOuM/GC6uIQtn
+	2JCXuOpQ7am+0qEe7kDdi/SB0q1ZWsMuzKMCqG/VOFPewI4qdcH3pKgIxE1VhGd+eoa1x9xB5pb
+	wpe5cwJNRkJ7sNHQGtaCQpzmhKBuiCpp5fTjl4wa8ALwIybQuRXdY/heVr9USdmAdW6eSXaE5FV
+	H2ARbdnUxbP6vX0y4Qb1iB35hxwmlAQwWzuNJzoRiCgQ5LsFEEFkkwPWpTX0moJmoTiSNcNBvoM
+	/QV3mloT/39IDJ9AOUVn+zu9P0qr4w4Sbc=
+X-Received: by 2002:a17:903:37ce:b0:2bd:a403:1d82 with SMTP id d9443c01a7336-2bda4031ef2mr126868885ad.21.1779155724515;
+        Mon, 18 May 2026 18:55:24 -0700 (PDT)
+Received: from ryzen ([2601:644:8000:5b5d:7285:c2ff:fe45:8a32])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2bd5d235e04sm169927115ad.80.2026.05.18.18.55.23
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 15 May 2026 06:51:54 -0700 (PDT)
-From: Marco Crivellari <marco.crivellari@suse.com>
-To: linux-kernel@vger.kernel.org,
-	netdev@vger.kernel.org
-Cc: Tejun Heo <tj@kernel.org>,
-	Lai Jiangshan <jiangshanlai@gmail.com>,
-	Frederic Weisbecker <frederic@kernel.org>,
-	Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
-	Marco Crivellari <marco.crivellari@suse.com>,
-	Michal Hocko <mhocko@suse.com>,
-	Simon Horman <horms@verge.net.au>,
-	Eric Dumazet <edumazet@google.com>,
-	"David S . Miller" <davem@davemloft.net>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
+        Mon, 18 May 2026 18:55:23 -0700 (PDT)
+From: Rosen Penev <rosenp@gmail.com>
+To: netfilter-devel@vger.kernel.org
+Cc: Simon Horman <horms@verge.net.au>,
 	Julian Anastasov <ja@ssi.bg>,
 	Pablo Neira Ayuso <pablo@netfilter.org>,
 	Florian Westphal <fw@strlen.de>,
 	Phil Sutter <phil@nwl.cc>,
-	lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org
-Subject: [PATCH v2 net-next 2/2] ipvs: Replace use of system_unbound_wq with system_dfl_long_wq
-Date: Fri, 15 May 2026 15:51:37 +0200
-Message-ID: <20260515135143.259669-3-marco.crivellari@suse.com>
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	netdev@vger.kernel.org (open list:IPVS),
+	lvs-devel@vger.kernel.org (open list:IPVS),
+	coreteam@netfilter.org (open list:NETFILTER),
+	linux-kernel@vger.kernel.org (open list)
+Subject: [PATCH] ipvs: Use flexible array for MH lookup table
+Date: Mon, 18 May 2026 18:55:06 -0700
+Message-ID: <20260519015506.634185-1-rosenp@gmail.com>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260515135143.259669-1-marco.crivellari@suse.com>
-References: <20260515135143.259669-1-marco.crivellari@suse.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -93,114 +84,61 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This patch continues the effort to refactor workqueue APIs, which has begun
-with the changes introducing new workqueues and a new alloc_workqueue flag:
+Store the Maglev hash lookup table in the scheduler state
+allocation instead of allocating it separately.
 
-   commit 128ea9f6ccfb ("workqueue: Add system_percpu_wq and system_dfl_wq")
-   commit 930c2ea566af ("workqueue: Add new WQ_PERCPU flag")
+This keeps the lookup table tied to the RCU-freed state lifetime and
+simplifies the allocation and cleanup paths.
 
-The point of the refactoring is to eventually alter the default behavior of
-workqueues to become unbound by default so that their workload placement is
-optimized by the scheduler.
-
-Before that to happen, workqueue users must be converted to the better named
-new workqueues with no intended behaviour changes:
-
-   system_wq -> system_percpu_wq
-   system_unbound_wq -> system_dfl_wq
-
-This way the old obsolete workqueues (system_wq, system_unbound_wq) can be
-removed in the future.
-
-This specific work is considered long, so enqueue it using
-system_dfl_long_wq instead of system_dfl_wq.
-
-Cc: Julian Anastasov <ja@ssi.bg>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Florian Westphal <fw@strlen.de>
-Cc: Phil Sutter <phil@nwl.cc>
-Cc: lvs-devel@vger.kernel.org
-Cc: netfilter-devel@vger.kernel.org
-Cc: coreteam@netfilter.org
-Link: https://lore.kernel.org/all/20250221112003.1dSuoGyc@linutronix.de/
-Suggested-by: Tejun Heo <tj@kernel.org>
-Signed-off-by: Marco Crivellari <marco.crivellari@suse.com>
+Assisted-by: Codex:GPT-5.5
+Signed-off-by: Rosen Penev <rosenp@gmail.com>
 ---
- net/netfilter/ipvs/ip_vs_conn.c |  4 ++--
- net/netfilter/ipvs/ip_vs_ctl.c  | 10 +++++-----
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_mh.c | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 9ea6b4fa78bf..4a5c6762489c 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -285,7 +285,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
- 	/* Schedule resizing if load increases */
- 	if (atomic_read(&ipvs->conn_count) > t->u_thresh &&
- 	    !test_and_set_bit(IP_VS_WORK_CONN_RESIZE, &ipvs->work_flags))
--		mod_delayed_work(system_unbound_wq, &ipvs->conn_resize_work, 0);
-+		mod_delayed_work(system_dfl_long_wq, &ipvs->conn_resize_work, 0);
+diff --git a/net/netfilter/ipvs/ip_vs_mh.c b/net/netfilter/ipvs/ip_vs_mh.c
+index 020863047562..d31d3c6d4216 100644
+--- a/net/netfilter/ipvs/ip_vs_mh.c
++++ b/net/netfilter/ipvs/ip_vs_mh.c
+@@ -59,11 +59,11 @@ static int primes[] = {251, 509, 1021, 2039, 4093,
  
- 	return ret;
- }
-@@ -916,7 +916,7 @@ static void conn_resize_work_handler(struct work_struct *work)
+ struct ip_vs_mh_state {
+ 	struct rcu_head			rcu_head;
+-	struct ip_vs_mh_lookup		*lookup;
+ 	struct ip_vs_mh_dest_setup	*dest_setup;
+ 	hsiphash_key_t			hash1, hash2;
+ 	int				gcd;
+ 	int				rshift;
++	struct ip_vs_mh_lookup		lookup[];
+ };
  
- out:
- 	/* Monitor if we need to shrink table */
--	queue_delayed_work(system_unbound_wq, &ipvs->conn_resize_work,
-+	queue_delayed_work(system_dfl_long_wq, &ipvs->conn_resize_work,
- 			   more_work ? 1 : 2 * HZ);
- }
+ static inline void generate_hash_secret(hsiphash_key_t *hash1,
+@@ -372,7 +372,6 @@ static void ip_vs_mh_state_free(struct rcu_head *head)
+ 	struct ip_vs_mh_state *s;
  
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index c7c7f6a7a9f6..49cbc7cfe770 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -800,7 +800,7 @@ static void svc_resize_work_handler(struct work_struct *work)
- 	if (!READ_ONCE(ipvs->enable) || !more_work ||
- 	    test_bit(IP_VS_WORK_SVC_NORESIZE, &ipvs->work_flags))
- 		return;
--	queue_delayed_work(system_unbound_wq, &ipvs->svc_resize_work, 1);
-+	queue_delayed_work(system_dfl_long_wq, &ipvs->svc_resize_work, 1);
+ 	s = container_of(head, struct ip_vs_mh_state, rcu_head);
+-	kfree(s->lookup);
+ 	kfree(s);
  }
  
- static inline void
-@@ -1833,7 +1833,7 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
- 	/* Schedule resize work */
- 	if (t && ip_vs_get_num_services(ipvs) > t->u_thresh &&
- 	    !test_and_set_bit(IP_VS_WORK_SVC_RESIZE, &ipvs->work_flags))
--		queue_delayed_work(system_unbound_wq, &ipvs->svc_resize_work,
-+		queue_delayed_work(system_dfl_long_wq, &ipvs->svc_resize_work,
- 				   1);
+@@ -382,16 +381,10 @@ static int ip_vs_mh_init_svc(struct ip_vs_service *svc)
+ 	struct ip_vs_mh_state *s;
  
- 	*svc_p = svc;
-@@ -2078,7 +2078,7 @@ static int ip_vs_del_service(struct ip_vs_service *svc)
- 	} else if (ns <= t->l_thresh &&
- 		   !test_and_set_bit(IP_VS_WORK_SVC_RESIZE,
- 				     &ipvs->work_flags)) {
--		queue_delayed_work(system_unbound_wq, &ipvs->svc_resize_work,
-+		queue_delayed_work(system_dfl_long_wq, &ipvs->svc_resize_work,
- 				   1);
- 	}
- 	return 0;
-@@ -2511,7 +2511,7 @@ static int ipvs_proc_conn_lfactor(const struct ctl_table *table, int write,
- 		} else {
- 			WRITE_ONCE(*valp, val);
- 			if (rcu_access_pointer(ipvs->conn_tab))
--				mod_delayed_work(system_unbound_wq,
-+				mod_delayed_work(system_dfl_long_wq,
- 						 &ipvs->conn_resize_work, 0);
- 		}
- 	}
-@@ -2543,7 +2543,7 @@ static int ipvs_proc_svc_lfactor(const struct ctl_table *table, int write,
- 			    READ_ONCE(ipvs->enable) &&
- 			    !test_bit(IP_VS_WORK_SVC_NORESIZE,
- 				      &ipvs->work_flags))
--				mod_delayed_work(system_unbound_wq,
-+				mod_delayed_work(system_dfl_long_wq,
- 						 &ipvs->svc_resize_work, 0);
- 			mutex_unlock(&ipvs->service_mutex);
- 		}
+ 	/* Allocate the MH table for this service */
+-	s = kzalloc_obj(*s);
++	s = kzalloc_flex(*s, lookup, IP_VS_MH_TAB_SIZE);
+ 	if (!s)
+ 		return -ENOMEM;
+ 
+-	s->lookup = kzalloc_objs(struct ip_vs_mh_lookup, IP_VS_MH_TAB_SIZE);
+-	if (!s->lookup) {
+-		kfree(s);
+-		return -ENOMEM;
+-	}
+-
+ 	generate_hash_secret(&s->hash1, &s->hash2);
+ 	s->gcd = ip_vs_mh_gcd_weight(svc);
+ 	s->rshift = ip_vs_mh_shift_weight(svc, s->gcd);
 -- 
 2.54.0
 
