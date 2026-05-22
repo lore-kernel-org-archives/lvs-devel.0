@@ -1,57 +1,65 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF25F3FF8BE;
-	Fri, 22 May 2026 14:42:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C7823BB9F5;
+	Fri, 22 May 2026 17:12:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779460978; cv=none; b=HdkVphdXeGAD/j/OZE9vvmO6fKK3D3PB0HQCGgfDBg9B+toXo+9BjJb2ohy+0LjgyHWsaCVbjLw6nv1849FW/jBZbwDsNCe2m31NU9dmW5VJdAUZZB/8X9/jg52miFYvlURMBAxpuJkbdQCwH3DVJ1wAxqOL3otinbZZomLmMSY=
+	t=1779469967; cv=none; b=NQrVqatqznmqCjDSfFVbXZWCKQdAlsIIs1CyIWmTphK34yg57Ziy/chlhozS42Ynzgue4lNQQ7ucyjyeOxv/YzNulqWcN53Xl1d47M9G+TNpbfef++lvW0WU8kiIUb0RNagUibXh7umBB8dCQXwryUj86EB8xM4kIYrjf08iR1I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779460978; c=relaxed/simple;
-	bh=LyoQ/CRdl05KZo+U/T2cF41Siz+Vd/fFm2KAr4cghDw=;
+	s=arc-20240116; t=1779469967; c=relaxed/simple;
+	bh=9TD24qnXKMXs/pwYGcu89Ppk3LT3Qlww+EtwloKv0jc=;
 	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=mKstOXGS4X6xxfvJnwK2uvDb5dedbcDV7FcIuVigXxGCCkH8QEZ9BUEbVeOkC3Ukyj6jxpAU0OJE1hdQ+evok2AWtanqJTLa48ZwJ4ws9YSpT/dR0o2Pj8XHJt54VuC0GcKK7eHcXp9HhfuGKyUj4yijT8RDumDSpcE8O9hMW/o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=TnWwjdVh; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version:Content-Type; b=czAx0pL8f8VgI/Ij7BXQ/HftW8UjlLuEiivo8Xc0Wac3Yn7JPSjkFi/tEHpnzd69qr3B02tRt84tWkBajr927yMC0yQqGhX7Nk0woWMDWjPRkr9qk7vaT2L9EkQQcgHhKIwfPvUkE+4oRMUHL9g7tgGl3KPu0XY1tOlYSs6fGSs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=7YKXerUf; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="TnWwjdVh"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="7YKXerUf"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 442BE20FC0;
-	Fri, 22 May 2026 17:42:50 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 615EB20FC0;
+	Fri, 22 May 2026 20:12:40 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-type:content-type:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=JJwVPK8XFtl90BFUrb2sR3i9TQfYYnBs+DoB/thQTTA=; b=TnWwjdVhQTdS
-	lU9JoHzZg16vy+d0ZuIh9EKvDdY1Mx13A2QIjo5ch0Bi9NWEns9h+KW/ooVp+JEy
-	hw79HcZQnhq3if7n7j25tWZwGVOwGVBQxPzcHxLqVCJ8eDeTLjS2ucyTloP1sklp
-	aPZr6Wygy0x/GxO6xkTSrPA78o8TcE5u6mwjtgjoMOvMYuaMzfISnOqyEHQQvISN
-	bUvQGGq1sc5/BBTP+UHwIiYl/+Kvuil76sxzmS0dK1Q/qEhIQ0ZQI5+S6jriyLKL
-	cZfO+I4K9eWPcwy/7uptzonwnlzKzeywH8/tSoonass8/3cbYDtBwnLIJzPqAFPM
-	8mj8t3wuSj1gPOlsR1VYM6sa5eb5+tp5CkuJcMmRLrJe3KEtkkOajrsVDsdP3LON
-	CDl24Q1Zd1IIG7T5RsjIhvCBiozoscRRJuJKc62g2I4Z2UwAHgEnXxme+kqPz4uk
-	W75RwrFcE64i0vpNsiLs6r/4wgzeQtPOo1eYP9WANQRgGvAlbOhq6DX5rGujJP6D
-	7F4J9T2FS99FEgtPSxMikx6P4EvRElBC/p0NIfrJJlyZrhd7dgmSxqunLnTiukX6
-	LvbK8NMk9waInM20MdsE84lkf+Xh0UhtD5z/kF/BvpQAoxZHyKPl4U7Uou3a5Qxz
-	5qR1eymmaT5GPrN9TccVw09rjU27+7Y=
+	 bh=TX52SlEc4bVbz/ss6p+x7zupauqWfmmslyf1wMLcJLg=; b=7YKXerUfjbCU
+	VDT+Kaw1fiLv/MLa7/F6AHqli/LfcbrmUjQvgCoaVtLuJeKZ1ttnzem6+ls77fn9
+	BY0K3NFR5pIcZFYRTBe7rHSUlPv3QdowAXHLLB8v+HRIqc5YRTjkGbMXLm7aCfnE
+	O9XFnm1Q8iEhcrOUlLuN7hkZgjUfPaErp+6W29GwzhpToq+s+bPZGXAZUS1cbQmC
+	J4t7AsRpGdccHDxU5yfRBhgPAGIXiswtjOZ37LShFVCOM9pYqh2/og3FQYqxL1EU
+	cKnILzBBa8Zl9midBNDORa7pv3BfZy6s/oJOT6P3XDoD1aUTSRLK5I8/w8i89An6
+	S2xuKpWEKzZmIdGRxfiKDNInaUz7gOVhjNPT043atWhcYe2nmW38QsOzPjanumvr
+	STXEQ7evJqysHVXk5I6aoUVeUtk6RTlzHyVnjksompsXRJAhMqu0Bu8UI7Y4qEgJ
+	pglvCcJYtLHeUMLJrFK2Veat1u3wPyU/S+Y8PX8CqH0trDEWjdNvB4KHrZzmRJEz
+	VZzE5qChc+UeGqijDgREvAjtipVp8DmKZgFF8+gkp3hubcfmBxxnR2RhWmXQ0Ca3
+	3+GKvR5U20rua/2DQC1QV6PKRfZre1O2PF9frvBUBGBtJFWuVxFVRaqfqxOEEIGj
+	wE5+BUh02F8NTMmUZ1X7d7IpRE1rCj4=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Fri, 22 May 2026 17:42:50 +0300 (EEST)
+	Fri, 22 May 2026 20:12:40 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 651C361B43;
-	Fri, 22 May 2026 17:42:49 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 3482F60400;
+	Fri, 22 May 2026 20:12:38 +0300 (EEST)
 Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.1) with ESMTP id 64MEgk32032329;
-	Fri, 22 May 2026 17:42:47 +0300
-Date: Fri, 22 May 2026 17:42:46 +0300 (EEST)
+	by ja.ssi.bg (8.18.2/8.18.1) with ESMTP id 64MHCW9P042584;
+	Fri, 22 May 2026 20:12:32 +0300
+Date: Fri, 22 May 2026 20:12:31 +0300 (EEST)
 From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: Re: [PATCH nf-next] ipvs: add conn_max sysctl to limit connections
-In-Reply-To: <20260522105546.13732-1-ja@ssi.bg>
-Message-ID: <625b823f-a97b-8be4-c3df-bb8a46506efd@ssi.bg>
-References: <20260522105546.13732-1-ja@ssi.bg>
+To: Rosen Penev <rosenp@gmail.com>
+cc: netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
+        Paolo Abeni <pabeni@redhat.com>,
+        "open list:IPVS" <netdev@vger.kernel.org>,
+        "open list:IPVS" <lvs-devel@vger.kernel.org>,
+        "open list:NETFILTER" <coreteam@netfilter.org>,
+        open list <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] ipvs: Use flexible array for MH lookup table
+In-Reply-To: <20260519015506.634185-1-rosenp@gmail.com>
+Message-ID: <ae2ed619-0562-afd8-1141-56116e9da68d@ssi.bg>
+References: <20260519015506.634185-1-rosenp@gmail.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -63,27 +71,27 @@ Content-Type: text/plain; charset=US-ASCII
 
 	Hello,
 
-On Fri, 22 May 2026, Julian Anastasov wrote:
+On Mon, 18 May 2026, Rosen Penev wrote:
 
-> Currently, we are using atomic_t to track the number of
-> connections. On 64-bit setups with large memory there is
-> a risk this counter to overflow. Also, setups with many
-> containers may need to tune the limit for connections.
+> Store the Maglev hash lookup table in the scheduler state
+> allocation instead of allocating it separately.
 > 
-> Add sysctl control to limit the number of connections to
-> 1,073,741,824 (64-bit) and 16,777,216 (32-bit).
-> Depending on the admin's privilege, the value is
-> used to change a soft or hard limit allowing
-> unprivileged admins to change the soft limit in
-> range determined by privileged admins.
+> This keeps the lookup table tied to the RCU-freed state lifetime and
+> simplifies the allocation and cleanup paths.
 > 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> Assisted-by: Codex:GPT-5.5
+> Signed-off-by: Rosen Penev <rosenp@gmail.com>
 
-	Will send v2 to address the feedback by Sashiko.
+	Thanks for the efforts but it is better to keep the table 
+allocated separately. As Sashiko [1] points out, the table size is
+properly selected and we risk double-sized allocations if we apply
+this patch.
 
-https://sashiko.dev/#/patchset/20260522105546.13732-1-ja%40ssi.bg
+	As for the problem in ip_vs_edit_service(), I have to
+provide separate bugfix...
 
-pw-bot: changes-requested
+[1]:
+https://sashiko.dev/#/patchset/20260519015506.634185-1-rosenp%40gmail.com
 
 Regards
 
