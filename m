@@ -1,110 +1,206 @@
-Received: from cstnet.cn (smtp81.cstnet.cn [159.226.251.81])
-	(using TLSv1.2 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3A6E2F691F;
-	Thu, 28 May 2026 07:22:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=159.226.251.81
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DA943AE189;
+	Thu, 28 May 2026 10:20:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779952939; cv=none; b=uRCqLakLuAMkW8XlpL31QI4nRGtmor3tacLjxCL7MVWqAIteiUKX/McnOtqE1wMxMmFEajL1gBlBV71lgtbbjoQn+aV7XAq6eD8V3SClBKOprj+h8KAqiDdVawnJnJN5UHing0xdYPJogDu7M2dcepRNkffLMCl9o8iUDsTEHlU=
+	t=1779963617; cv=none; b=MOkljpL1nUSGVc7Lb0v8VQShQj3EQfzMBXYT7ilRQ5pFF6XQwWd7KBvVcdWGYaNOdqcNtvmnqvc9hxQpSe/bSf8g0bgyeEXxtRLKXwLEoh9wAFnQ3eSnoWSXuqyY9paTod2gzjdlskXULoG7hCNMKsDRvsMmb6DUvwP7jlZXYiY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779952939; c=relaxed/simple;
-	bh=HQccW3NY6NB8F97899rtJRwOSafIKecHykuhjXPa8is=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Rlo479j2do0+8eIFBFMnRzxgSyLDCU3jkJwGVUpYmES+3whRur+HTJCZOX3B072bLvWKbzYMju/Q/qTInF1+Sp7akqMQ9BfBbOQBNk+X4M6Jd0N3gak62IRnSFkljPW8rhoQsGCnahMYrEviuuYX+BLNrrqwqXeHAStEMv1oHQc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn; spf=pass smtp.mailfrom=iscas.ac.cn; arc=none smtp.client-ip=159.226.251.81
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iscas.ac.cn
-Received: from dfae2b116770.home.arpa (unknown [36.110.52.2])
-	by APP-03 (Coremail) with SMTP id rQCowAAX_OL+7BdqDZ6tEg--.412S2;
-	Thu, 28 May 2026 15:21:34 +0800 (CST)
-From: Wentao Liang <vulab@iscas.ac.cn>
-To: Simon Horman <horms@verge.net.au>,
-	Julian Anastasov <ja@ssi.bg>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Florian Westphal <fw@strlen.de>,
-	"David S . Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>
-Cc: Phil Sutter <phil@nwl.cc>,
-	netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org,
-	linux-kernel@vger.kernel.org,
-	Wentao Liang <vulab@iscas.ac.cn>,
-	stable@vger.kernel.org
-Subject: [PATCH] netfilter: ipvs: fix ct refcount leak when template is invalid
-Date: Thu, 28 May 2026 07:21:00 +0000
-Message-Id: <20260528072100.1163109-1-vulab@iscas.ac.cn>
-X-Mailer: git-send-email 2.34.1
+	s=arc-20240116; t=1779963617; c=relaxed/simple;
+	bh=mHitKn8/RQUXFe4XCPU2rzvflbeoc0QV+Fw4MFn0u2k=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=A2/a0wnFnCpx5yK/bbSLEne7948QoI166oG7cHafFWworYJlpQr+snlemUrAafm+SeBGswuG2fIAKjREFGEG0I9KU4yZBgAxykE8PpuQZTjpe6ses5otdJ9YfcDMtQ4UPo+afLP9NzED1NASowmFIxRdeJPDb9Q634ozwHiH1vI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=JPEAt6wW; arc=none smtp.client-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="JPEAt6wW"
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 9AD5821108;
+	Thu, 28 May 2026 13:20:03 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=2LJERRdyVHL0X2Qcd5pFYIMAKNoFz88LQYmU/lTedPs=; b=JPEAt6wWVjYJ
+	M8umsGQZHLVu9idqH9ZEyeh0Vshw/j+9bYKI8QlczJAIU+p8IOfrCBVuWTqSruMG
+	FZ5vJOwBUmrdtzwZ0gIJjMxeeG0OK01muiMPg6doDZFczkS/0MF47stOUsClRp0C
+	cTGnbEjOE3XYo7L57C/gv2oTRO5KZtItnRilSnM5GiaQT1BDjF7t/I69aZ4/0ikl
+	Ra//f4ZveImz6zJMg0iIfmWo4IdkGApTSJIBIOr3X0/PuOHtLalOP76pQG7xFI+L
+	i7iZG0/8BK2iIkC48tojmP4KfB0Ggof8qwBowJrekc43TG2VGhX4QH3uErbjA/lc
+	UeJHE+Pks4sF96aICSqVr1fGFypY42Q8G9YFzaSrIYuES4xnEAG1XDE42gtu/m0H
+	9OSc6BvICtrrR104UEWRoSxssmk/kjhRPdIUtrOrracRKsxP8BFwg8Llsn2d5yK7
+	TwFJuPD6iDQWIZyESwrOswHtws3KqUdzHAB+yqxatZuO/WAet5ESjdQWeP77/por
+	wc846UhQr+Nk1SEaH7zHBJQ8Xe+x+hIY+omeu/EAhCNdb9laWE/Ss0wZkp14XUYO
+	CbBVydPRUv+5fYtUAXFreSd6ROQXRpISTxfLEWqJmlJoBN6fXnt3YTMXXmrH8bTc
+	9Jld6ArJTLWqu8O1ZnjUP4UZenSq5dc=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Thu, 28 May 2026 13:20:03 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id A1CC360983;
+	Thu, 28 May 2026 13:20:01 +0300 (EEST)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.1) with ESMTP id 64SAJlJq028963;
+	Thu, 28 May 2026 13:19:47 +0300
+Date: Thu, 28 May 2026 13:19:47 +0300 (EEST)
+From: Julian Anastasov <ja@ssi.bg>
+To: Marco Crivellari <marco.crivellari@suse.com>
+cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
+        Tejun Heo <tj@kernel.org>, Lai Jiangshan <jiangshanlai@gmail.com>,
+        Frederic Weisbecker <frederic@kernel.org>,
+        Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
+        Michal Hocko <mhocko@suse.com>, Simon Horman <horms@verge.net.au>,
+        Eric Dumazet <edumazet@google.com>,
+        "David S . Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
+        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+        coreteam@netfilter.org
+Subject: Re: [PATCH v3] ipvs: Replace use of system_unbound_wq with
+ system_dfl_long_wq
+In-Reply-To: <20260527081834.86987-1-marco.crivellari@suse.com>
+Message-ID: <5f6d330c-43be-d1d7-fe0c-e687b1dec015@ssi.bg>
+References: <20260527081834.86987-1-marco.crivellari@suse.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:rQCowAAX_OL+7BdqDZ6tEg--.412S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7KryfKFyrZrWUGr43Gw4DArb_yoW8XFy7p3
-	42kry3XrWUGryDGr4kAFyxJryakr4xAF17ur90k3s3Xwn0qF4Uta1a9rya9F48Ar4Yg3y3
-	XF4Fq39xCF95CFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9014x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F4j
-	6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
-	Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
-	I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Gr0_Cr1lOx8S6xCaFVCjc4AY6r1j6r
-	4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628v
-	n2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7x
-	kEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E
-	67AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCw
-	CI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1x
-	MIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIda
-	VFxhVjvjDU0xZFpf9x0JUqeHgUUUUU=
-X-CM-SenderInfo: pyxotu46lvutnvoduhdfq/1tbiBwkBA2oXz2JAoAABs9
+Content-Type: text/plain; charset=US-ASCII
 
-ip_vs_sched_persist() calls ip_vs_ct_in_get() to look up an existing
-connection template, which returns ct with a reference held. If the
-template exists but fails the ip_vs_check_template() validation, the
-function can leak the reference in two ways:
 
-1. If no destination is found (scheduler returns NULL), the function
-   returns NULL at the !dest check without calling ip_vs_conn_put(ct).
+	Hello,
 
-2. If a destination is found and a new template is created via
-   ip_vs_conn_new(), the old ct pointer is overwritten without its
-   reference being released.
+On Wed, 27 May 2026, Marco Crivellari wrote:
 
-Fix this by adding ip_vs_conn_put(ct) before the early return when no
-destination is found, and before overwriting ct with the new template.
+> This patch continues the effort to refactor workqueue APIs, which has begun
+> with the changes introducing new workqueues and a new alloc_workqueue flag:
+> 
+>    commit 128ea9f6ccfb ("workqueue: Add system_percpu_wq and system_dfl_wq")
+>    commit 930c2ea566af ("workqueue: Add new WQ_PERCPU flag")
+> 
+> The point of the refactoring is to eventually alter the default behavior of
+> workqueues to become unbound by default so that their workload placement is
+> optimized by the scheduler.
+> 
+> Before that to happen, workqueue users must be converted to the better named
+> new workqueues with no intended behaviour changes:
+> 
+>    system_wq -> system_percpu_wq
+>    system_unbound_wq -> system_dfl_wq
+> 
+> This way the old obsolete workqueues (system_wq, system_unbound_wq) can be
+> removed in the future.
+> 
+> This specific work is considered long, so enqueue it using
+> system_dfl_long_wq instead of system_dfl_wq.
+> 
+> Cc: Julian Anastasov <ja@ssi.bg>
+> Cc: Pablo Neira Ayuso <pablo@netfilter.org>
+> Cc: Florian Westphal <fw@strlen.de>
+> Cc: Phil Sutter <phil@nwl.cc>
+> Cc: lvs-devel@vger.kernel.org
+> Cc: netfilter-devel@vger.kernel.org
+> Cc: coreteam@netfilter.org
+> Link: https://lore.kernel.org/all/20250221112003.1dSuoGyc@linutronix.de/
+> Suggested-by: Tejun Heo <tj@kernel.org>
+> Signed-off-by: Marco Crivellari <marco.crivellari@suse.com>
 
-Cc: stable@vger.kernel.org
-Fixes: 5b57a98c1f0d ("IPVS: compact ip_vs_sched_persist()")
-Signed-off-by: Wentao Liang <vulab@iscas.ac.cn>
----
- net/netfilter/ipvs/ip_vs_core.c | 2 ++
- 1 file changed, 2 insertions(+)
+	Looks good to me for nf-next, thanks!
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index d40b404c1bf6..bdc3f296876a 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -536,6 +536,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 			IP_VS_DBG(1, "p-schedule: no dest found.\n");
- 			kfree(param.pe_data);
- 			*ignored = 0;
-+			ip_vs_conn_put(ct);
- 			return NULL;
- 		}
- 
-@@ -551,6 +552,7 @@ ip_vs_sched_persist(struct ip_vs_service *svc,
- 		if (ct == NULL) {
- 			kfree(param.pe_data);
- 			*ignored = -1;
-+			ip_vs_conn_put(ct);
- 			return NULL;
- 		}
- 
--- 
-2.34.1
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
+> ---
+> Changes in v3:
+> - removed 1/2 "ipmr: Replace use of system_unbound_wq with system_dfl_wq" because
+>   already merged.
+> 
+> Changes in v2:
+> - this is considered a long work, so change the workqueue with system_dfl_long_wq
+> 
+>  net/netfilter/ipvs/ip_vs_conn.c |  4 ++--
+>  net/netfilter/ipvs/ip_vs_ctl.c  | 10 +++++-----
+>  2 files changed, 7 insertions(+), 7 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+> index 9ea6b4fa78bf..4a5c6762489c 100644
+> --- a/net/netfilter/ipvs/ip_vs_conn.c
+> +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> @@ -285,7 +285,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+>  	/* Schedule resizing if load increases */
+>  	if (atomic_read(&ipvs->conn_count) > t->u_thresh &&
+>  	    !test_and_set_bit(IP_VS_WORK_CONN_RESIZE, &ipvs->work_flags))
+> -		mod_delayed_work(system_unbound_wq, &ipvs->conn_resize_work, 0);
+> +		mod_delayed_work(system_dfl_long_wq, &ipvs->conn_resize_work, 0);
+>  
+>  	return ret;
+>  }
+> @@ -916,7 +916,7 @@ static void conn_resize_work_handler(struct work_struct *work)
+>  
+>  out:
+>  	/* Monitor if we need to shrink table */
+> -	queue_delayed_work(system_unbound_wq, &ipvs->conn_resize_work,
+> +	queue_delayed_work(system_dfl_long_wq, &ipvs->conn_resize_work,
+>  			   more_work ? 1 : 2 * HZ);
+>  }
+>  
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index bd9cae44d214..2b53562c8605 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> @@ -821,7 +821,7 @@ static void svc_resize_work_handler(struct work_struct *work)
+>  	if (!READ_ONCE(ipvs->enable) || !more_work ||
+>  	    test_bit(IP_VS_WORK_SVC_NORESIZE, &ipvs->work_flags))
+>  		return;
+> -	queue_delayed_work(system_unbound_wq, &ipvs->svc_resize_work, 1);
+> +	queue_delayed_work(system_dfl_long_wq, &ipvs->svc_resize_work, 1);
+>  	return;
+>  
+>  unlock_m:
+> @@ -1869,7 +1869,7 @@ ip_vs_add_service(struct netns_ipvs *ipvs, struct ip_vs_service_user_kern *u,
+>  
+>  	/* Schedule resize work */
+>  	if (grow && !test_and_set_bit(IP_VS_WORK_SVC_RESIZE, &ipvs->work_flags))
+> -		queue_delayed_work(system_unbound_wq, &ipvs->svc_resize_work,
+> +		queue_delayed_work(system_dfl_long_wq, &ipvs->svc_resize_work,
+>  				   1);
+>  
+>  	*svc_p = svc;
+> @@ -2122,7 +2122,7 @@ static int ip_vs_del_service(struct ip_vs_service *svc)
+>  		rcu_read_unlock();
+>  		if (shrink && !test_and_set_bit(IP_VS_WORK_SVC_RESIZE,
+>  						&ipvs->work_flags))
+> -			queue_delayed_work(system_unbound_wq,
+> +			queue_delayed_work(system_dfl_long_wq,
+>  					   &ipvs->svc_resize_work, 1);
+>  	}
+>  	return 0;
+> @@ -2564,7 +2564,7 @@ static int ipvs_proc_conn_lfactor(const struct ctl_table *table, int write,
+>  		} else {
+>  			WRITE_ONCE(*valp, val);
+>  			if (rcu_access_pointer(ipvs->conn_tab))
+> -				mod_delayed_work(system_unbound_wq,
+> +				mod_delayed_work(system_dfl_long_wq,
+>  						 &ipvs->conn_resize_work, 0);
+>  		}
+>  	}
+> @@ -2596,7 +2596,7 @@ static int ipvs_proc_svc_lfactor(const struct ctl_table *table, int write,
+>  			    READ_ONCE(ipvs->enable) &&
+>  			    !test_bit(IP_VS_WORK_SVC_NORESIZE,
+>  				      &ipvs->work_flags))
+> -				mod_delayed_work(system_unbound_wq,
+> +				mod_delayed_work(system_dfl_long_wq,
+>  						 &ipvs->svc_resize_work, 0);
+>  			mutex_unlock(&ipvs->service_mutex);
+>  		}
+> -- 
+> 2.54.0
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
 
