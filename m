@@ -1,45 +1,46 @@
 Received: from sender-op-o17.zoho.eu (sender-op-o17.zoho.eu [136.143.169.17])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A01B5369204
-	for <lvs-devel@vger.kernel.org>; Wed, 24 Jun 2026 18:42:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D9B53EB0F0;
+	Thu, 25 Jun 2026 17:26:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.169.17
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782326528; cv=pass; b=D8UajtajrWYo7e04SI+YwsYzbAXf856ZPZomGhuwJbUa4ziPCDNG+WlZot3DXUz05bs056YWpOcd2Q+fcKAXxm+txTXsxF/ADYTK+NPBMBoRLbXTQo6Q4QSX8CMGWtsM+UVxfxMWN+Zac70et5qB8AIKn2g+rj5LO4cFztJbo9Q=
+	t=1782408417; cv=pass; b=s4l8ZoGkB9urABpoqxoooVsCg8DIXj8eGtbbrESULybtatWz+oIvRcR75sEUEpcBGBaNgvb3WGjDoyP5yrrl1R/iEq+9HnIErT0LPkwYbbfG0BQ/5YAJK6R2yBaq6801LLdkzPvtpPj3cKhcA6EQitCiaw+k19E9ePCvK5jBT+k=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782326528; c=relaxed/simple;
-	bh=IkQsTtpNf5O8v6teUrL9vw29Pt8sEnlFUc9uGuBtbXk=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=n0Zxov/SJ/0nEEVZXT/ZCvyEhbM0fsJbcP1WiVtXx5jTerMn8v0j8f3SROO7vr4AexgZ8b/7L/bPzyKB4HqOqJD5FLdsI/bp2EOtivq5KoLiLsoS6GqUQpce9N+xyWHQGwc2M781yytl752o2DKJ1tf1GwjkdKS3OuLrgCbwD5U=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=carlosgrillet.me; spf=pass smtp.mailfrom=carlosgrillet.me; dkim=pass (1024-bit key) header.d=carlosgrillet.me header.i=carlos@carlosgrillet.me header.b=fZYk/96p; arc=pass smtp.client-ip=136.143.169.17
+	s=arc-20240116; t=1782408417; c=relaxed/simple;
+	bh=qyVHdsMmvca5GvJEKqj1S7WjNbbBOdiR10TgZhkoRqM=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Rd6yU5xh39JdCL8hLmXrR9CGz+l37kJw0sZKNDrpbmi6q2I3Il5b6bRkyphZcG3hv8xM//NrtWOKnV2FMQ2Fs2oCgyFvpiD9+YWRuZAL1u3GcKDMZQTYheY0QS5htL697LdYv3NPM/hn2P3jabHK/cw6ob1AGiNWYeNyQf1FRWQ=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=carlosgrillet.me; spf=pass smtp.mailfrom=carlosgrillet.me; dkim=pass (1024-bit key) header.d=carlosgrillet.me header.i=carlos@carlosgrillet.me header.b=OzjvGITH; arc=pass smtp.client-ip=136.143.169.17
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=carlosgrillet.me
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=carlosgrillet.me
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=carlosgrillet.me header.i=carlos@carlosgrillet.me header.b="fZYk/96p"
-ARC-Seal: i=1; a=rsa-sha256; t=1782326465; cv=none; 
+	dkim=pass (1024-bit key) header.d=carlosgrillet.me header.i=carlos@carlosgrillet.me header.b="OzjvGITH"
+ARC-Seal: i=1; a=rsa-sha256; t=1782408377; cv=none; 
 	d=zohomail.eu; s=zohoarc; 
-	b=X9SYeuu16TSyQRPsN/alANO7/n+yOqQZCqLp9jT44wyyJ3dZyaeaCEKeLOWrr2ZLu0tMKyCOBhkYksAlIMYi5Rxlb6plqIXpmrkD1inLNljSDmLtTlBc4EH+swA/MkZtRLDkNoQ6+Q59NsReTrm/OLifSfvl63fXJSuka9dE9R0=
+	b=YQs3O2tfWuLu4BqQ3WfGv5cvjQssOjucsmRkE35O6qCnR3lWQ8Ggw2J2wRCUZut79jQp+NQO6EVdO96Qzx0aOTj7RC1w86ZSHiykh/JSUpxZkXkUudC91qzH02TM7h0OJz+4dHRB07xXiCSH3f0QwDMoFDWiNc4gSOH01KfiK/I=
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.eu; s=zohoarc; 
-	t=1782326465; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Subject:Subject:To:To:Message-Id:Reply-To; 
-	bh=N9PyBqyjrYTdl1NJmQEata3xoHGmh+KLI2s/D41VKiI=; 
-	b=Q128i4nqxxMV2rfJecspTNId5oAQ9PDMzdefje4s5Ii99mdqbI8TC6YNhxSsMiZlqRy1t/gsIlj2qA5Knu/1ydt8s8P70IZQzDVkidDIaMeJZMUD4TG+boE525mYaEDYvqiYRBdbrImDuCcCWF/yGjM/FwE1BuO3Nt1hR1w4gfE=
+	t=1782408377; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=Fgtcgs/n/4lVtcfTx2hoAICPdf54HOIwDkFYTERLlnI=; 
+	b=ONpLIiY2GC8zJtrVxRGiJWauRn7EWpRkd1ONe5sKjAtLe0FRrWw3+kkJzmsaRyN0aJv3ymY3bJ17hEWr3QA0dC/YNAm9+eF1Vip3GB0WrrB6RbyEq8o9fNFJkOv0jn5JNcmOwzR4avncOmVjAqQs3pfyRmkPwHNnT43FJQmOEog=
 ARC-Authentication-Results: i=1; mx.zohomail.eu;
 	dkim=pass  header.i=carlosgrillet.me;
 	spf=pass  smtp.mailfrom=carlos@carlosgrillet.me;
 	dmarc=pass header.from=<carlos@carlosgrillet.me>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1782326465;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1782408377;
 	s=zmail; d=carlosgrillet.me; i=carlos@carlosgrillet.me;
-	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
-	bh=N9PyBqyjrYTdl1NJmQEata3xoHGmh+KLI2s/D41VKiI=;
-	b=fZYk/96pH5kZJoPf2V9RR3NxqL//UlfEjzozI3OWmFiKnyq+7rpOuwXjgX3/sGoZ
-	nmaqV7/zQ8HTEQ+5Y6hejne6maTfW9iOhnmytFov3iKWPp/bP6lubPX8Es/JgwoPR5u
-	sL4a4H5zq81jPgPUys7VCZB89AVfWd87T1iWW7Gw=
-Received: by mx.zoho.eu with SMTPS id 1782326463388745.8448071704419;
-	Wed, 24 Jun 2026 20:41:03 +0200 (CEST)
+	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
+	bh=Fgtcgs/n/4lVtcfTx2hoAICPdf54HOIwDkFYTERLlnI=;
+	b=OzjvGITH9JhJ87iUGAQpSOP+qNMcnKp2P0d2Ey9RGn7wg10RoiaQCltfMvy9CJ12
+	oJFM+MTvrJP8hXhHfwm5dJ+s0+UePaW8mGuukNAUBvHKWit4IFqVaPUVYZdVj4oHXfz
+	jE+ykRHvSp64IbBcjOmkZ/XLS9J75OyifOefD7Tg=
+Received: by mx.zoho.eu with SMTPS id 1782408375291515.214453547314;
+	Thu, 25 Jun 2026 19:26:15 +0200 (CEST)
 From: Carlos Grillet <carlos@carlosgrillet.me>
-To: Simon Horman <horms@verge.net.au>,
-	Julian Anastasov <ja@ssi.bg>,
-	David Ahern <dsahern@kernel.org>,
+To: David Ahern <dsahern@kernel.org>,
 	Ido Schimmel <idosch@nvidia.com>,
+	Simon Horman <horms@verge.net.au>,
+	Julian Anastasov <ja@ssi.bg>,
 	"David S. Miller" <davem@davemloft.net>,
 	Eric Dumazet <edumazet@google.com>,
 	Jakub Kicinski <kuba@kernel.org>,
@@ -52,10 +53,12 @@ Cc: netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	netfilter-devel@vger.kernel.org,
 	coreteam@netfilter.org
-Subject: [PATCH nf-next 0/4] netfilter: replace u_int*_t with kernel int types (batch 2)
-Date: Wed, 24 Jun 2026 20:40:30 +0200
-Message-ID: <20260624184036.71051-1-carlos@carlosgrillet.me>
+Subject: [PATCH nf-next v2 3/3] netfilter: ip_vs_nfct: replace u_int8_t with u8
+Date: Thu, 25 Jun 2026 19:25:48 +0200
+Message-ID: <20260625172550.35781-4-carlos@carlosgrillet.me>
 X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20260625172550.35781-1-carlos@carlosgrillet.me>
+References: <20260625172550.35781-1-carlos@carlosgrillet.me>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -65,28 +68,43 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-ZohoMailClient: External
 
-This patch series replaces POSIX u_int8_t/u_int16_t with the preferred
-kernel types u8/u16 across several netfilter files and updates the
-corresponding header definitions.
+Use preferred kernel integer type u8 instead of the POSIX u_int8_t
+variant and update header to match definition.
 
-This continues the work started in:
-https://lore.kernel.org/all/20260616182948.96865-1-carlos@carlosgrillet.me
+No functional change.
 
-No functional changes.
+Signed-off-by: Carlos Grillet <carlos@carlosgrillet.me>
+---
+ include/net/ip_vs.h             | 2 +-
+ net/netfilter/ipvs/ip_vs_nfct.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Carlos Grillet (4):
-  netfilter: nf_conntrack_sane: replace u_int16_t with u16
-  netfilter: nf_conntrack_h323_main: replace u_int8_t with u8
-  netfilter: nf_conntrack_amanda: replace u_int16_t with u16
-  netfilter: ip_vs_nfct: replace u_int8_t with u8
-
- include/net/ip_vs.h                    | 2 +-
- net/netfilter/ipvs/ip_vs_nfct.c        | 2 +-
- net/netfilter/nf_conntrack_amanda.c    | 2 +-
- net/netfilter/nf_conntrack_h323_main.c | 2 +-
- net/netfilter/nf_conntrack_sane.c      | 2 +-
- 5 files changed, 5 insertions(+), 5 deletions(-)
-
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 49297fec448a..ed2e9bc1bb4e 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -2123,7 +2123,7 @@ void ip_vs_update_conntrack(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 			    int outin);
+ int ip_vs_confirm_conntrack(struct sk_buff *skb);
+ void ip_vs_nfct_expect_related(struct sk_buff *skb, struct nf_conn *ct,
+-			       struct ip_vs_conn *cp, u_int8_t proto,
++			       struct ip_vs_conn *cp, u8 proto,
+ 			       const __be16 port, int from_rs);
+ void ip_vs_conn_drop_conntrack(struct ip_vs_conn *cp);
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_nfct.c b/net/netfilter/ipvs/ip_vs_nfct.c
+index 81974f69e5bb..347185fd0c8c 100644
+--- a/net/netfilter/ipvs/ip_vs_nfct.c
++++ b/net/netfilter/ipvs/ip_vs_nfct.c
+@@ -208,7 +208,7 @@ static void ip_vs_nfct_expect_callback(struct nf_conn *ct,
+  * Use port 0 to expect connection from any port.
+  */
+ void ip_vs_nfct_expect_related(struct sk_buff *skb, struct nf_conn *ct,
+-			       struct ip_vs_conn *cp, u_int8_t proto,
++			       struct ip_vs_conn *cp, u8 proto,
+ 			       const __be16 port, int from_rs)
+ {
+ 	struct nf_conntrack_expect *exp;
 -- 
 2.54.0
 
