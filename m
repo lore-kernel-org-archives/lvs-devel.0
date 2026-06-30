@@ -1,227 +1,372 @@
-Received: from mail-ej1-f67.google.com (mail-ej1-f67.google.com [209.85.218.67])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2D2E3438B9
-	for <lvs-devel@vger.kernel.org>; Sun, 28 Jun 2026 05:45:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.67
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782625515; cv=pass; b=c/2r5nOmergdzMUjpFh9AebgdljZKB8qgBPk0H7ouETtD7el4LNnyl3BNefDq8+eVpOhhkv9PtTqzRTXicVOZLJzpGjTEo7DW8vx4mgBIxFGXdsdEKQmK/3RfacYyDz4bpnrE+OoF/IjEivgYR//cCIlKlgYuOSCN6ZoOIHzCoE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782625515; c=relaxed/simple;
-	bh=Hc1AF5CYasLbTlGV9oYOuBcM5iYw5fAGn0qVWD48s/c=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=u7Id+NtFBBZ0ai2vghsxubIXimXDBeH19Qo2NkY1uPgK2n3FVJoTM1rlxWqcCgJ7M16mq1czAItIo54T95OAsuRjXttW4BBh+RP5jvGGIUUwPUvQf/b3vbwfJAm6BZzCRYYxAZFGG0ZeFTTIeD0n7IILOdWu7poOuHpL7xrJcj8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=qDb0WtUB; arc=pass smtp.client-ip=209.85.218.67
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8FDF034572B;
+	Tue, 30 Jun 2026 19:38:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1782848302; cv=none; b=KqlOcO6w2n/zqrRUbE2EMZE/4PAVCAQK2fheUxfyiGnoaIDoEPiEP2Zfcv4UKCUpz5NJ6SFVePq6Tz53bGf9HiU4n+//W7StlOxn73K7UYGaUi4By1qHC90f0ZKWwofOmd/b89TlO6RcU/XsDqiLVmyN3VGId4RUeCr9OOchRJY=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1782848302; c=relaxed/simple;
+	bh=E7ri8dBlgxQzCiX93brpXTtusPkfqjJBMk1MkQI3Yjs=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=KvS343oE57qCEaBqJJQZNCqZ/NiabLuhCtlEzcMHmerHGQTqa8rROH/zcDxO/1TT7XD6j5V3Fnch1SD0kopqlZf85WUXdjEdN3XXUw8UKPVkToFKIGMDm4xfZsfBKy68mPQGBps6OpdpqZ3ATUcV6fCv1EUqSGIZ66MX3UYDI1g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=KyGlro8l; arc=none smtp.client-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qDb0WtUB"
-Received: by mail-ej1-f67.google.com with SMTP id a640c23a62f3a-c08acccf4a4so301977166b.3
-        for <lvs-devel@vger.kernel.org>; Sat, 27 Jun 2026 22:45:13 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1782625512; cv=none;
-        d=google.com; s=arc-20260327;
-        b=bXdQVPZPh7Klx2qurEX50VyYJ/QVp7lZsXtqqQkflUrpTrPwjrZGW7VCbHu+KbqNO+
-         92GQpVkvjXcH5KyR3K4cA40cVnW9dQgJy3gcQsfVBCcYFDZShixKfGgfqgt5omKfu5Bd
-         F33OmEcKOpZla/agXbEqryFNKw8L1KesvJTiQW5epnzMaiGF+y+okPiT1p9iDNMYEJqD
-         XB+cfhisXE6YLBzfC9aaUOa+WZSMcHB4HdS7QZhItMtr464FqnwkNM8sGM+sYG7yCbHT
-         70rTqmXamoCxU6xaJY+e7W/n/gJXTd20bfs5ObWevPpdunc/t+/YMEd9mb1YFS7KQV35
-         u8tw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=ryg9VsI2q7eTLjDcyzpNo1Dk3naB663ocaoFsbpektQ=;
-        fh=osKf7dWH/pJYZR36ANpiYfcVrrRjV9ByUhEsTpSKsww=;
-        b=ZRH1OvkfJA/XhbX5IfR3DIbMbGAObUWdCekbjhyoFiWitc9xs9C/2Ti32ddRTj/Qbt
-         CAp5LptVe78O9jF3JmRdXfgm5+gf6b6+cdDCbMr8QM/ZcjZUq/VzEl0oz7QQKJoZGObM
-         QjsLGquCzD3UkRuZUIXdcHVACKIkTXUHluF2qlcFrcGZ0lQj/Uv2Y4AsQLtKsGQwdPkI
-         AjU5DV9hA/rAgCZ9d0qiFjUaTH10a4o7VQHpXc5Ou95nj1dJ1QdjwUzpSsm7L/mB/005
-         EvgSrKXga4mu8dqJ3L7TYYmAvw+pIifhsj4bTYLVcjdjiPKBBdVPW3k6S08EPrQptJMg
-         XWdA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1782625512; x=1783230312; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=ryg9VsI2q7eTLjDcyzpNo1Dk3naB663ocaoFsbpektQ=;
-        b=qDb0WtUBM4TNXbdDLx3grZkIoo9ks5xMoFBWzMgZN2X1llCp5Y0zCL5Icw4GMgUEpd
-         JOQz1Qnvf9T5mqw66oEQ6Fq8OexuTVNYyC+trQ+Aw9MXSuZNgieJmtiDhlQlV9v9CczS
-         DodNVaIoniFecE1tPn1CiQiCqlBx8FSaeulgXh8rASjwFBwBVuRXbUQ+W7ORLkQ83vvS
-         JwDhZ5fterh1lkuDXuM5F6Ije1eFB2WIlpIdLMiYBnaZR0fjWyru+G4Utoch+LIPafYL
-         Qm3dahv0GZzm3G/tGmaX3D2SNsgnO2GVIdSHB7mlt1Yx34nfl6xn8hcQjd0qosh3Gdo6
-         GNJA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1782625512; x=1783230312;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=ryg9VsI2q7eTLjDcyzpNo1Dk3naB663ocaoFsbpektQ=;
-        b=XikuvMnQVTz0cRkpCLrhdf9jbzBJQWpMxDopY1oH2FDVif931LFjjRCBznsfj2AlRB
-         ozrJ/bNHjI9+T2dCOM+T6uQj6u4dtZbPLf1QXl2J8ReR8ONchvol6b5uTM1NyquDMIC3
-         bO1bV/14w9eKs8dK7k7W1e6mKZPN5jdZFpTF0nfU9F5l0PjUg01yTtRWCIAzJTEZU6Me
-         aaGGpuyInv3peDAVF6NfnKdgeJIBs4Eab9QXlcDFTgjhQjJ0xpeQBI9BTL3K8P/c2RMz
-         kOusIR3ttv2dolJj+lUe5bWc4kcI2jvjqiAl7jlCrhUOw9aduPXbEl29iZcdzH1TdU3A
-         ARsw==
-X-Forwarded-Encrypted: i=1; AHgh+RoxVsKdy6gkC5kQgpB9zk1mL7IK31WqSVlbQyZQcoSP1CBDzgvYfydZe1G5jpZBDYgHZmzez0hMLPk=@vger.kernel.org
-X-Gm-Message-State: AOJu0YwfawBTVaHq+BFGkiXCkkzTbNQvgEgnMpjdTRnADFnXYM6Pay8i
-	b8BYkoEynEHOxGpUW2cF9C0m5PQg6jmrzmlzPkTBtkkZPs7/h0wkFu9SCVv7SyFnmpo5QXulPvD
-	lqtWLcTcFnILmcNw5l8KxYSs0rjRuDYA=
-X-Gm-Gg: AfdE7clibIOkGbnJCHB7pBpw2QrRvtxBfULQK0NXyM7X2fgUKqupWx0egnqWtR1LeU+
-	bQo7jRqidNKPvnCAN/aaj60OBf6xOvaX8hya4fL345w8Dvu3fb9uT0kl/F2WmgKqDXP2UzklfPc
-	tKE7ayWJE0EI09XFDptER/Guf6Mjgg2w/ZGDZpqBngTEnlFpLc777T+S152wB8IkngVgnybCEsm
-	XDSvyCBGgHm/KuaFXQ+tPU+qva9rilSidumxfXbxZA6ImGTP4mzJfQSwUnSyFdH5/j24E/W
-X-Received: by 2002:a17:907:3c86:b0:c12:fb7:2b33 with SMTP id
- a640c23a62f3a-c120fb7321emr647148166b.22.1782625511876; Sat, 27 Jun 2026
- 22:45:11 -0700 (PDT)
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="KyGlro8l"
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 0020B21BD2;
+	Tue, 30 Jun 2026 22:38:06 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-transfer-encoding:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=68dkgmOeC1B9jFnwDUBeEnJZtjGwZ0pv5ZftAct6i5w=; b=KyGlro8l3+ns
+	td6SzVLgKMdWo+263i3C1HjeU2EmQ9tIe4MjtSW+0VcKeD56Txu4DGUtOmOf/tz1
+	i6k+Y54hn5y0g8bq1ARlWDnRfjFvZNRetWTnQeWLTeoXt8FsShY9Krrv8EITiPwt
+	zO6vv4VHMmEW1lePWOvNPCFaInp2O13RBmWzlMLs6y7tAI7211y6RnGGbxu5JzQ/
+	RYV9ay0Nw+ARbCYqbmRd8cOXJl4ySI2Emml/xAHYeLCGkRx8X5HtInU2k73TubyC
+	tLUy/5hK6jAz7Tpxsd9RrDSXu2EHG2PEah5Xp3z9oCs9+dBoxdvg1TtsfkTzwDhO
+	+xs8D5ESjy9wK4j53kElt56bN87HUFS1lX5rbGmFd6Lh5k5ZR695EoKMhliZCiqN
+	m2ETGQMKQBbsQhRe8A/U4tx+v8GEY9D/cwOjg4LPcXlLji/GkESzFHJqEwfqcrZL
+	VGc/4kn2fun9/+8PnEeCGU3ZKix4YEqE9Q7M/wlQ//DIgfisYc+D6RvHzHJcU1+s
+	ARj8rpPvqdFCa/s60vYjvPhs6PZA/iua8oyXzh4YvWTSBimi5Q8tVmAFXBCNDpZH
+	eQycv8/9jDOsulAVtS2rCk4LWpkEMq33LnUiNDpM5IHwt8iG5qoTLplDlL2vZGrK
+	87cevSbLt2i5RDfyJWArp9h6qeYfvCU=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Tue, 30 Jun 2026 22:38:06 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 1045961B49;
+	Tue, 30 Jun 2026 22:38:06 +0300 (EEST)
+Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 65UJbxMF125378;
+	Tue, 30 Jun 2026 22:37:59 +0300
+Received: (from root@localhost)
+	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 65UJbxZo125377;
+	Tue, 30 Jun 2026 22:37:59 +0300
+From: Julian Anastasov <ja@ssi.bg>
+To: tt roxy <roxy520tt@gmail.com>
+Cc: Ren Wei <n05ec@lzu.edu.cn>, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, yuantan098@gmail.com,
+        yifanwucs@gmail.com, tomapufckgml@gmail.com, bird@lzu.edu.cn
+Subject: [PATCH RFC nf 2/2] ipvs: adjust double hashing when fwd method changes
+Date: Tue, 30 Jun 2026 22:36:46 +0300
+Message-ID: <20260630193647.125280-2-ja@ssi.bg>
+X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20260630193647.125280-1-ja@ssi.bg>
+References: <CALMqdkR704S2BG_QD_bgHTFp2+1QCi7n0T4zoZyTo8mDZevYSA@mail.gmail.com>
+ <20260630193647.125280-1-ja@ssi.bg>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <cover.1782540466.git.roxy520tt@gmail.com> <1b914f41d725bc064c9ba9830dc8169329737270.1782540466.git.roxy520tt@gmail.com>
- <a37698c7-46de-1f04-5306-b6a6af7ee6c7@ssi.bg>
-In-Reply-To: <a37698c7-46de-1f04-5306-b6a6af7ee6c7@ssi.bg>
-From: tt roxy <roxy520tt@gmail.com>
-Date: Sun, 28 Jun 2026 13:44:59 +0800
-X-Gm-Features: AVVi8CfHVbnPZ1rZlBSrW9Z6b4N9_UcNROEh7oVZYpN_tGY6tdLcfHYQLaKgELM
-Message-ID: <CALMqdkR704S2BG_QD_bgHTFp2+1QCi7n0T4zoZyTo8mDZevYSA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] ipvs: preserve conn hash flags when late-binding dest
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Ren Wei <n05ec@lzu.edu.cn>, lvs-devel@vger.kernel.org, 
-	netfilter-devel@vger.kernel.org, horms@verge.net.au, pablo@netfilter.org, 
-	fw@strlen.de, phil@nwl.cc, kaber@trash.net, nick@loadbalancer.org, 
-	yuantan098@gmail.com, yifanwucs@gmail.com, tomapufckgml@gmail.com, 
-	bird@lzu.edu.cn
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Sun, Jun 28, 2026 at 4:47=E2=80=AFAM Julian Anastasov <ja@ssi.bg> wrote:
->
->
->         Hello,
->
-> On Sun, 28 Jun 2026, Ren Wei wrote:
->
-> > From: Zhiling Zou <roxy520tt@gmail.com>
-> >
-> > Synced connections can be created before their destination exists. When
-> > the destination is later added, ip_vs_try_bind_dest() binds it to the
-> > existing connection through ip_vs_bind_dest().
-> >
-> > ip_vs_bind_dest() copies destination connection flags into cp->flags.
-> > For an already hashed connection, changing flags that define conn_tab
-> > membership breaks the hash table invariants. In particular, adding
-> > IP_VS_CONN_F_ONE_PACKET after the connection has been hashed can make
-> > expiry skip unlinking it from conn_tab. Changing the forwarding method
-> > can also make unlink use a different single or double hash-node layout
-> > than the one used at insertion time.
-> >
-> > Preserve the flags that define conn_tab hashing when binding a
-> > destination to an already hashed connection.
-> >
-> > Fixes: 26ec037f9841 ("IPVS: one-packet scheduling")
->
->         The problem with the fix is that we should do it
-> in the hard way: the backup server should be able to define
-> its own forwarding methods. Otherwise, we can break existing
-> setups. For example, master can have localnode for some
-> dests, this can not be preserved in the backup for the
-> synced conns.
->
-> > Cc: stable@vger.kernel.org
-> > Reported-by: Yuan Tan <yuantan098@gmail.com>
-> > Reported-by: Yifan Wu <yifanwucs@gmail.com>
-> > Reported-by: Juefei Pu <tomapufckgml@gmail.com>
-> > Reported-by: Xin Liu <bird@lzu.edu.cn>
-> > Assisted-by: Codex:gpt-5.4
-> > Signed-off-by: Zhiling Zou <roxy520tt@gmail.com>
-> > Signed-off-by: Ren Wei <n05ec@lzu.edu.cn>
-> > ---
-> >  net/netfilter/ipvs/ip_vs_conn.c | 14 +++++++++++++-
-> >  1 file changed, 13 insertions(+), 1 deletion(-)
-> >
-> > diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs=
-_conn.c
-> > index cb36641f8d1c..016273906aac 100644
-> > --- a/net/netfilter/ipvs/ip_vs_conn.c
-> > +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> > @@ -998,7 +998,11 @@ static inline int ip_vs_dest_totalconns(struct ip_=
-vs_dest *dest)
-> >  static inline void
-> >  ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
-> >  {
-> > +     const unsigned int hash_flags =3D IP_VS_CONN_F_FWD_MASK |
-> > +                                     IP_VS_CONN_F_NOOUTPUT |
-> > +                                     IP_VS_CONN_F_ONE_PACKET;
-> >       unsigned int conn_flags;
-> > +     __u32 old_flags;
-> >       __u32 flags;
-> >
-> >       /* if dest is NULL, then return directly */
-> > @@ -1011,7 +1015,8 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_=
-vs_dest *dest)
-> >       conn_flags =3D atomic_read(&dest->conn_flags);
-> >       if (cp->protocol !=3D IPPROTO_UDP)
-> >               conn_flags &=3D ~IP_VS_CONN_F_ONE_PACKET;
-> > -     flags =3D cp->flags;
-> > +     old_flags =3D cp->flags;
-> > +     flags =3D old_flags;
-> >       /* Bind with the destination and its corresponding transmitter */
-> >       if (flags & IP_VS_CONN_F_SYNC) {
->
->         We can here unconditionally drop the IP_VS_CONN_F_ONE_PACKET flag=
-:
->
->                 conn_flags &=3D ~IP_VS_CONN_F_ONE_PACKET;
->
->         Because IP_VS_CONN_F_ONE_PACKET conns are not synced.
->
->         And here when (flags & IP_VS_CONN_F_HASHED) and the fwd
->         method changes between MASQ and non-MASQ for
->         !IP_VS_CONN_F_TEMPLATE we should call some new func
->         that properly hashes/unhashes just the hn1 node.
->         I can provide such function with proper locking.
->
+Synced conns can be created with one forwarding method
+and later updated with different one after the dest
+server is configured. This needs adjusting the hashing
+for node hn1 because only MASQ supports double hashing.
 
-Thank you for the review.
+Modify conn_tab_lock() to support seeking for hash node
+hn0 together with adding for hn1. By this way we can
+safely modify the forwarding method and hn1.hash_key
+under bucket lock for the first node hn0. The forwarding
+method is also protected by cp->lock as it is part of
+cp->flags.
 
-I agree. Preserving the forwarding method is too conservative and can
-break backup setups where the backup server intentionally uses its own
-forwarding method.
+Reported-by: Zhiling Zou <roxy520tt@gmail.com>
+Link: https://lore.kernel.org/lvs-devel/1b914f41d725bc064c9ba9830dc8169329737270.1782540466.git.roxy520tt@gmail.com/
+Fixes: f20c73b0460d ("ipvs: use more keys for connection hashing")
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ net/netfilter/ipvs/ip_vs_conn.c | 168 +++++++++++++++++++++++++-------
+ 1 file changed, 134 insertions(+), 34 deletions(-)
 
-For v2 I will drop IP_VS_CONN_F_ONE_PACKET from conn_flags
-unconditionally, since one-packet connections are not synced.
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 805ca1fc3bc8..53a7de3a9f2b 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -70,25 +70,47 @@ static struct kmem_cache *ip_vs_conn_cachep __read_mostly;
+  * bucket or hash table
+  * - hash table resize works like rehash but always rehashes into new table
+  * - bit lock on bucket serializes all operations that modify the chain
++ * - on resize, bucket from the old table is locked before bucket from the
++ * new table
+  * - cp->lock protects conn fields like cp->flags, cp->dest
+  */
+ 
+-/* Lock conn_tab bucket for conn hash/unhash, not for rehash */
++/**
++  * conn_tab_lock - Lock conn_tab buckets for conn hash/unhash, not for rehash
++  * @t:		hash table for hn0
++  * @t2:	hash table for hn1
++  * @cp:	connection
++  * @hash_key:	hash key for hn0
++  * @hash_key2:	hash key for hn1
++  * @use2:	using hn1 (double hashing) based on the forwarding method
++  * @new_hash:	mode for hn0, hash node (true) or seek node (false)
++  * @new_hash2:	mode for hn1, hash node (true) or seek node (false)
++  * @head_ret:	returned head for hn0
++  * @head2_ret:	returned head for hn1
++  *
++  * We support 3 modes:
++  * - seek mode for both nodes, used for unhashing
++  * - hash mode for both nodes, used for hashing
++  * - seek hn0 and hash hn1, used when forwarding method is changed
++  */
+ static __always_inline void
+-conn_tab_lock(struct ip_vs_rht *t, struct ip_vs_conn *cp, u32 hash_key,
+-	      u32 hash_key2, bool use2, bool new_hash,
+-	      struct hlist_bl_head **head_ret, struct hlist_bl_head **head2_ret)
++conn_tab_lock(struct ip_vs_rht *t, struct ip_vs_rht *t2, struct ip_vs_conn *cp,
++	      u32 hash_key, u32 hash_key2, bool use2, bool new_hash,
++	      bool new_hash2, struct hlist_bl_head **head_ret,
++	      struct hlist_bl_head **head2_ret)
+ {
+ 	struct hlist_bl_head *head, *head2;
+ 	u32 hash_key_new, hash_key_new2;
+-	struct ip_vs_rht *t2 = t;
+ 	u32 idx, idx2;
+ 
+ 	idx = hash_key & t->mask;
+-	if (use2)
+-		idx2 = hash_key2 & t->mask;
+-	else
+-		idx2 = idx;
++	idx2 = hash_key2 & t->mask;
++	/* Advance idx2 when new_hash is not set but hash_key2
++	 * is for new table
++	 */
++	if (new_hash2 && use2 && t != t2)
++		idx2 |= IP_VS_RHT_TABLE_ID_MASK;
++
+ 	if (!new_hash) {
+ 		/* We need to lock the bucket in the right table */
+ 
+@@ -103,24 +125,19 @@ conn_tab_lock(struct ip_vs_rht *t, struct ip_vs_conn *cp, u32 hash_key,
+ 			idx = hash_key & t->mask;
+ 			idx |= IP_VS_RHT_TABLE_ID_MASK;
+ 		}
+-		if (use2) {
+-			if (!ip_vs_rht_same_table(t2, hash_key2)) {
+-				/* It is already moved to new table */
+-				t2 = rcu_dereference(t2->new_tbl);
+-				idx2 = hash_key2 & t2->mask;
+-				idx2 |= IP_VS_RHT_TABLE_ID_MASK;
+-			}
+-		} else {
+-			idx2 = idx;
+-		}
++	}
++	if (use2 && !new_hash2 && !ip_vs_rht_same_table(t2, hash_key2)) {
++		/* It is already moved to new table */
++		t2 = rcu_dereference(t2->new_tbl);
++		idx2 = hash_key2 & t2->mask;
++		idx2 |= IP_VS_RHT_TABLE_ID_MASK;
+ 	}
+ 
++	if (!use2)
++		idx2 = idx;
+ 	head = t->buckets + (hash_key & t->mask);
+ 	head2 = use2 ? t2->buckets + (hash_key2 & t2->mask) : head;
+ 
+-	local_bh_disable();
+-	/* Do not touch seqcount, this is a safe operation */
+-
+ 	if (idx <= idx2) {
+ 		hlist_bl_lock(head);
+ 		if (head != head2)
+@@ -130,16 +147,22 @@ conn_tab_lock(struct ip_vs_rht *t, struct ip_vs_conn *cp, u32 hash_key,
+ 		hlist_bl_lock(head);
+ 	}
+ 	if (!new_hash) {
++		bool changed;
++
+ 		/* Ensure hash_key is read under lock */
+ 		hash_key_new = READ_ONCE(cp->hn0.hash_key);
+-		hash_key_new2 = READ_ONCE(cp->hn1.hash_key);
++		changed = hash_key != hash_key_new;
++		if (use2 && !new_hash2) {
++			hash_key_new2 = READ_ONCE(cp->hn1.hash_key);
++			changed |= hash_key2 != hash_key_new2;
++		} else {
++			hash_key_new2 = hash_key2;
++		}
+ 		/* Hash changed ? */
+-		if (hash_key != hash_key_new ||
+-		    (hash_key2 != hash_key_new2 && use2)) {
++		if (changed) {
+ 			if (head != head2)
+ 				hlist_bl_unlock(head2);
+ 			hlist_bl_unlock(head);
+-			local_bh_enable();
+ 			hash_key = hash_key_new;
+ 			hash_key2 = hash_key_new2;
+ 			goto retry;
+@@ -155,7 +178,6 @@ static inline void conn_tab_unlock(struct hlist_bl_head *head,
+ 	if (head != head2)
+ 		hlist_bl_unlock(head2);
+ 	hlist_bl_unlock(head);
+-	local_bh_enable();
+ }
+ 
+ static void ip_vs_conn_expire(struct timer_list *t);
+@@ -268,8 +290,9 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ 		use2 = false;
+ 	}
+ 
+-	conn_tab_lock(t, cp, hash_key, hash_key2, use2, true /* new_hash */,
+-		      &head, &head2);
++	local_bh_disable();
++	conn_tab_lock(t, t, cp, hash_key, hash_key2, use2, true /* new_hash */,
++		      true /* new_hash2 */, &head, &head2);
+ 
+ 	cp->flags |= IP_VS_CONN_F_HASHED;
+ 	WRITE_ONCE(cp->hn0.hash_key, hash_key);
+@@ -280,6 +303,7 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+ 		hlist_bl_add_head_rcu(&cp->hn1.node, head2);
+ 
+ 	conn_tab_unlock(head, head2);
++	local_bh_enable();
+ 	ret = 1;
+ 
+ 	/* Schedule resizing if load increases */
+@@ -306,18 +330,20 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ 		return refcount_dec_if_one(&cp->refcnt);
+ 
+ 	rcu_read_lock();
++	local_bh_disable();
+ 
+ 	t = rcu_dereference(ipvs->conn_tab);
+ 	hash_key = READ_ONCE(cp->hn0.hash_key);
+ 	hash_key2 = READ_ONCE(cp->hn1.hash_key);
+ 	use2 = ip_vs_conn_use_hash2(cp);
+ 
+-	conn_tab_lock(t, cp, hash_key, hash_key2, use2, false /* new_hash */,
+-		      &head, &head2);
++	conn_tab_lock(t, t, cp, hash_key, hash_key2, use2, false /* new_hash */,
++		      false /* new_hash2 */, &head, &head2);
+ 
+ 	if (cp->flags & IP_VS_CONN_F_HASHED) {
+ 		/* Decrease refcnt and unlink conn only if we are last user */
+-		if (refcount_dec_if_one(&cp->refcnt)) {
++		if (use2 == ip_vs_conn_use_hash2(cp) &&
++		    refcount_dec_if_one(&cp->refcnt)) {
+ 			hlist_bl_del_rcu(&cp->hn0.node);
+ 			if (use2)
+ 				hlist_bl_del_rcu(&cp->hn1.node);
+@@ -328,6 +354,7 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+ 
+ 	conn_tab_unlock(head, head2);
+ 
++	local_bh_enable();
+ 	rcu_read_unlock();
+ 
+ 	return ret;
+@@ -686,6 +713,16 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 	/* Protect the cp->flags modification */
+ 	spin_lock_bh(&cp->lock);
+ 
++	/* Recheck the forwarding method under lock */
++	if (use2 != ip_vs_conn_use_hash2(cp)) {
++		spin_unlock_bh(&cp->lock);
++		use2 = !use2;
++		if (dir) {
++			dir--;
++			goto next_dir;
++		}
++	}
++
+ 	/* Lock seqcount only for the old bucket, even if we are on new table
+ 	 * because it affects the del operation, not the adding.
+ 	 */
+@@ -752,6 +789,60 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
+ 		goto next_dir;
+ }
+ 
++/* Change forwarding method for hashed conn */
++static void ip_vs_conn_change_fwd_mask(struct ip_vs_conn *cp, u32 new_flags)
++{
++	struct netns_ipvs *ipvs = cp->ipvs;
++	struct hlist_bl_head *head, *head2;
++	u32 hash2, hash_key, hash_key2;
++	struct ip_vs_rht *t, *t2;
++
++	/* See ip_vs_conn_use_hash2() for reference */
++	if ((cp->flags & IP_VS_CONN_F_TEMPLATE) ||
++	    /* No change in double hashing ? */
++	    !((cp->flags ^ new_flags) & IP_VS_CONN_F_FWD_MASK)) {
++		cp->flags = new_flags;
++		return;
++	}
++	t = rcu_dereference(ipvs->conn_tab);
++	if (ip_vs_conn_use_hash2(cp)) {
++		/* Stop double hashing */
++		hash_key = READ_ONCE(cp->hn0.hash_key);
++		hash_key2 = READ_ONCE(cp->hn1.hash_key);
++
++		conn_tab_lock(t, t, cp, hash_key, hash_key2, true /* use2 */,
++			      false /* new_hash */, false /* new_hash2 */,
++			      &head, &head2);
++
++		/* Keep both hash keys in same table */
++		hash_key = READ_ONCE(cp->hn0.hash_key);
++		WRITE_ONCE(cp->hn1.hash_key, hash_key);
++		hlist_bl_del_rcu(&cp->hn1.node);
++		cp->flags = new_flags;
++
++		conn_tab_unlock(head, head2);
++	} else {
++		/* Start double hashing */
++
++		hash_key = READ_ONCE(cp->hn0.hash_key);
++
++		t2 = rcu_dereference(t->new_tbl);
++		hash2 = ip_vs_conn_hashkey_conn(t2, cp, true);
++		hash_key2 = ip_vs_rht_build_hash_key(t2, hash2);
++
++		/* Change the forwarding method under locked hn0 */
++		conn_tab_lock(t, t2, cp, hash_key, hash_key2, true /* use2 */,
++			      false /* new_hash */, true /* new_hash2 */,
++			      &head, &head2);
++
++		WRITE_ONCE(cp->hn1.hash_key, hash_key2);
++		cp->flags = new_flags;
++		hlist_bl_add_head_rcu(&cp->hn1.node, head2);
++
++		conn_tab_unlock(head, head2);
++	}
++}
++
+ /* Get default load factor to map conn_count/u_thresh to t->size */
+ static int ip_vs_conn_default_load_factor(struct netns_ipvs *ipvs)
+ {
+@@ -1024,9 +1115,18 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 			conn_flags &= ~IP_VS_CONN_F_INACTIVE;
+ 		/* connections inherit forwarding method from dest */
+ 		flags &= ~(IP_VS_CONN_F_FWD_MASK | IP_VS_CONN_F_NOOUTPUT);
++		flags |= conn_flags;
++		/* Changing forwarding method for hashed conn can
++		 * happen only under locks
++		 */
++		if (cp->flags & IP_VS_CONN_F_HASHED)
++			ip_vs_conn_change_fwd_mask(cp, flags);
++		else
++			cp->flags = flags;
++	} else {
++		flags |= conn_flags;
++		cp->flags = flags;
+ 	}
+-	flags |= conn_flags;
+-	cp->flags = flags;
+ 	cp->dest = dest;
+ 
+ 	IP_VS_DBG_BUF(7, "Bind-dest %s c:%s:%d v:%s:%d "
+-- 
+2.54.0
 
-For the MASQ/non-MASQ transition on already hashed non-template
-connections, I agree that the right fix is to update only the hn1 hash
-node instead of preserving the old forwarding method. Since this needs
-to follow the conn_tab locking rules carefully, I would appreciate the
-helper you mentioned and will use it for v2.
 
-Thanks,
-Zhiling
-
-> >               /* if the connection is not template and is created
-> > @@ -1023,6 +1028,13 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip=
-_vs_dest *dest)
-> >               flags &=3D ~(IP_VS_CONN_F_FWD_MASK | IP_VS_CONN_F_NOOUTPU=
-T);
-> >       }
-> >       flags |=3D conn_flags;
-> > +
-> > +     /* Preserve conn_tab hashing invariants after late binding. */
-> > +     if (old_flags & IP_VS_CONN_F_HASHED) {
-> > +             flags &=3D ~hash_flags;
-> > +             flags |=3D old_flags & hash_flags;
-> > +     }
-> > +
-> >       cp->flags =3D flags;
-> >       cp->dest =3D dest;
->
-> Regards
->
-> --
-> Julian Anastasov <ja@ssi.bg>
->
