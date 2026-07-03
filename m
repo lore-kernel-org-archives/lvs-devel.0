@@ -1,66 +1,67 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F28394189DD;
-	Thu,  2 Jul 2026 11:31:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C62D02E65D;
+	Fri,  3 Jul 2026 17:50:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782991902; cv=none; b=r88YPtFoLqKvK2PHkH202q+78HcDwtE9/IkdPDs53kI4noWt0LZ2sCTgRpksPbLTjNuXZzI+J/YmLy8rTpi9139wBtpPeQOr62037rystVTUxlRaweuBavZA2BfiWJkgNtxxQVYC151NSAjR0Vu5mrJUa9ceZl3T1PfrL35h+N0=
+	t=1783101027; cv=none; b=XEvD7hj/iTGeNY4nogT85RQPIW9praHVqext8V1N0GYcilzr0KbSrOLyuAQNIZZUUL+oKYWOT8JqLkAs5L+Z86CrszZFo+fYPLPB+YEpKOFuBB8JV2I9ZPF6k0WfuXUEAjfD/ZbEAQGhKOrkNnVuAJx5NssAKXxARlEUjI5lMyU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782991902; c=relaxed/simple;
-	bh=tXGbtkdTZWAv2pqpZGDXd8E3ARFn2KxITER5JobuThU=;
+	s=arc-20240116; t=1783101027; c=relaxed/simple;
+	bh=XNY10VlSAsNcW1UZpUqX2cHR5kCif4Qb1vkXpzOQomw=;
 	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=G4RksqvHGS3Ud7cGOGkarkv4i1QG5u8to5WYw4A7t/8+r8qgV9QwTOnk8/AP6Zf8Af3odEA5eA3evI8Cv5Dof4wFttomxw8jxPECeOylW/MckuWEmYk822T1Dx5u9aoaCurk+ZLyHfL9bQrRY8Efuw60UuueGX7H6BL1MR6DIJU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=yCrjjBRw; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version:Content-Type; b=tqQmtQ4BThYexS2KFNkjJwmdPyfGIS6pST25EclVq/pDE7iqlBubEtSA6ZpmNi75/FXsrt1Eu+GXTN+j9kDZsMMWU7icVTuQpz9tk0QnSTY8Ob9kfXXDrngzPRKlyD3sOwxEpYe3lHrk6y3CMY6CIZ/et2miPurLsMfZ+Zc/7KY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=jxTfnnh7; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="yCrjjBRw"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="jxTfnnh7"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id C0191229E7;
-	Thu, 02 Jul 2026 14:31:32 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id C0CD021062;
+	Fri, 03 Jul 2026 20:50:11 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-type:content-type:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=vNIDsZvLWhESGHi31+8av3uZRVUZwCUmNhPwcwKeGuY=; b=yCrjjBRw9gkC
-	LC0pjNMVHtdLgT+4Z7rzrnM45BFpaAYiM1fTte9FYqoza4tc7UhtwWV5yKLzdJFu
-	yS6z3o/hlGo1Ig5qIxdv+Ozdokki15BT/xRE2fbrMUJA5cy7ikGFc997M458VIy3
-	/pzXisJostq8f8Yn70GP1BwAnPiJQCcZa60K7uqETuRgTRXTAY/J5/mShiRPIBNH
-	9ja+3JvqKfUssVsF91rSdYfKTLV3/ScVZbKjWCougWdrEf4fDXoMGpj2UxNysA28
-	dWK7/dli4y236S0Aw/E9By1Uhh799Y3wtCrHqwg6eQ+EPR+5W41iZ19t5XzKXbBv
-	7UT2cVNSY4F+pk+cDyolaMiLDhacfPlelmxWet3200LZB0Wo8Uq/v/Hh0uJo2BTL
-	Baw43tgfw9HGGQ77Ne6Vi0vb+/pkPQrQnVc6hDaFiSwXLqf6wCXbKwq97YougY+z
-	MQgR/BcjqELSCnEzOHF86PtXfBoaWO/OJJrLcg0Rmn8LSJIofO4YmHAXxQ01lmCw
-	YPnSD1Gw5hTCIdKvJhB38jGiHQxrgo6EbFWQsDHEmtRD5Z/d/abbcredtURottvE
-	vQsDL5vuT80dMFCTzcBOP9SIe2itXhfyxe7Ygdogc8M1RiT9Cyjn4rLMZeLgzuEP
-	pPThQRfH7D540qdMGw0pr7mSZ4qVF70=
+	 bh=WzUixPFbnBAwfBwijwe0GaTTubztee6+Drj+wooRJdA=; b=jxTfnnh76xjr
+	aTxkpERuVP4FjWj1xGm00BrtDKlzMep6sHu6bqyQhN68SiZIbjXB9FRCsbXZMV5u
+	KfMsydBNhmVfvJd3YGCX059Em7krOwEf6Y6azhDxYkDPXvrKDjDlC/saeEUp0e+n
+	UIbNpEb0bD1iRHSntCJqQE1PFd1WR/ENULNfRSRwazYZ9BjTU6IvwLVadX/qHEB8
+	Ojy/Ero2/KI+T+pHLoseW41HN5LWUHkqWR1RTeKhgp/9zjLUMo0vQON0aUtH8I/b
+	3WbW+K2SbMv1zZYf6bR7fbPBmwf8H8pic/MrYPOJn+hdAEadA4/iVDQyj0wepoPn
+	KkL0ma7gsWTJGmlubUxgAukSO/fLI9Zg1cDn+n9Fu71mzTwPSVcveCExSZnGuJPE
+	NOfkFsbEQ7IotvNb+jSK1cgWFSuAT221DgGJYxtuKLpGjpeJ8DSl0B8ZI3QOgu8O
+	nHOILMsMK2QmGpwjiMG3SDLiaywLJXP4FNFoUlBi7XWdT0LcsUj6RoLGwoZHWMfY
+	rhPfr/s4F5+r3vuraBBlG9oz91XDJZO8rjrl8jIRnRYNlpGeG2sbQHmFbYIz5gQV
+	of1zKd5o1CCW156HBn+I5MwTA3xGUDtI4TykSRpL0awUlt1boSHbiB7Q9qvdrskh
+	xh7BG7Zy9hVupybyGLxriD7ayxiHSrY=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Thu, 02 Jul 2026 14:31:32 +0300 (EEST)
+	Fri, 03 Jul 2026 20:50:11 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 7602C60B21;
-	Thu,  2 Jul 2026 14:31:31 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 680506008D;
+	Fri,  3 Jul 2026 20:50:11 +0300 (EEST)
 Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 662BVT4K038906;
-	Thu, 2 Jul 2026 14:31:29 +0300
-Date: Thu, 2 Jul 2026 14:31:29 +0300 (EEST)
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 663HntcL065717;
+	Fri, 3 Jul 2026 20:49:56 +0300
+Date: Fri, 3 Jul 2026 20:49:55 +0300 (EEST)
 From: Julian Anastasov <ja@ssi.bg>
-To: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
-cc: netdev@vger.kernel.org, Simon Horman <horms@verge.net.au>,
+To: Ismael Luceno <iluceno@suse.de>
+cc: linux-kernel@vger.kernel.org, Marco Crivellari <marco.crivellari@suse.com>,
+        Tejun Heo <tj@kernel.org>, Simon Horman <horms@verge.net.au>,
         Pablo Neira Ayuso <pablo@netfilter.org>,
         Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
         "David S. Miller" <davem@davemloft.net>,
         Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-        Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>,
-        Ao Wang <wangao@seu.edu.cn>, Xuewei Feng <fengxw06@126.com>,
-        Qi Li <qli01@tsinghua.edu.cn>, Ke Xu <xuke@tsinghua.edu.cn>
-Subject: Re: [PATCH net v2] ipvs: fix PMTU for GUE/GRE tunnel ICMP errors
-In-Reply-To: <20260702073430.67680-1-zhaoyz24@mails.tsinghua.edu.cn>
-Message-ID: <c6664a17-eea8-edf3-30bc-9997265c9b57@ssi.bg>
-References: <20260702073430.67680-1-zhaoyz24@mails.tsinghua.edu.cn>
+        Paolo Abeni <pabeni@redhat.com>,
+        "open list:IPVS" <netdev@vger.kernel.org>,
+        "open list:IPVS" <lvs-devel@vger.kernel.org>,
+        "open list:NETFILTER" <netfilter-devel@vger.kernel.org>,
+        "open list:NETFILTER" <coreteam@netfilter.org>
+Subject: Re: [PATCH v2 nf-next] ipvs: Move defense_work and est_reload_work
+ to system_dfl_long_wq
+In-Reply-To: <20260702101100.24256-2-iluceno@suse.de>
+Message-ID: <c55ca48c-1f38-7f59-1ea8-632177079dcf@ssi.bg>
+References: <20260702101100.24256-2-iluceno@suse.de>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -72,88 +73,79 @@ Content-Type: text/plain; charset=US-ASCII
 
 	Hello,
 
-On Thu, 2 Jul 2026, Yizhou Zhao wrote:
+On Thu, 2 Jul 2026, Ismael Luceno wrote:
 
-> When an ICMP Fragmentation Needed error is received for a tunneled IPVS
-> connection, ip_vs_in_icmp() recomputes the MTU that the original packet
-> can use by subtracting the tunnel overhead from the reported next-hop
-> MTU.
+> Under synflood conditions binding these handlers to system_long_wq may
+> pin them to a saturated CPU.
 > 
-> The current code always subtracts sizeof(struct iphdr), which is only
-> the IPIP overhead. For GUE and GRE tunnels, ipvs_udp_decap() and
-> ipvs_gre_decap() already compute the additional tunnel header length,
-> but that value is scoped to the decapsulation block and is lost before
-> the ICMP_FRAG_NEEDED handling. As a result, the ICMP error sent back to
-> the client advertises an MTU that is too large, so PMTUD can fail to
-> converge for GUE/GRE-tunneled real servers.
+> We've observed improved throughtput on a DPDK/VPP application with this
+> change, which we attribute to the reduced context switching.
 > 
-> With a reported next-hop MTU of 1400, a GUE tunnel currently returns
-> 1380 to the client. The correct value is 1368:
+> Neither handler has per-CPU data dependencies nor cache locality
+> requirements that would prevent this change.
 > 
->   1400 - sizeof(struct iphdr) - sizeof(struct udphdr) -
->   sizeof(struct guehdr)
-> 
-> Hoist the tunnel header length into the main ip_vs_in_icmp() scope and
-> subtract sizeof(struct iphdr) + ulen in the Fragmentation Needed path.
-> The IPIP path keeps ulen as 0, so its existing 1400 - 20 = 1380 result
-> is unchanged.
-> 
-> Fixes: 508f744c0de3 ("ipvs: strip udp tunnel headers from icmp errors")
-> Cc: stable@vger.kernel.org
-> Reported-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
-> Reported-by: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
-> Reported-by: Ao Wang <wangao@seu.edu.cn>
-> Reported-by: Xuewei Feng <fengxw06@126.com>
-> Reported-by: Qi Li <qli01@tsinghua.edu.cn>
-> Reported-by: Ke Xu <xuke@tsinghua.edu.cn>
-> Assisted-by: Claude-Code:GLM-5.2
-> Signed-off-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
+> Signed-off-by: Ismael Luceno <iluceno@suse.de>
 
-	Looks good to me for the nf tree, thanks!
+	Looks good to me, thanks!
 
 Acked-by: Julian Anastasov <ja@ssi.bg>
 
 > ---
-> Changes in v2:
->   - Use the short first hunk context so patch applies without fuzz.
->   - Adjust Assisted-by to checkpatch's agent-name format.
->   - Suggested by Julian.
->   - Link to v1: https://lore.kernel.org/netdev/20260701065941.46249-1-zhaoyz24@mails.tsinghua.edu.cn/
-> ---
->  net/netfilter/ipvs/ip_vs_core.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
+> CC: Marco Crivellari <marco.crivellari@suse.com>
+> CC: Tejun Heo <tj@kernel.org>
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index d40b404c1bf6..906f2c361676 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1767,6 +1767,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  	bool tunnel, new_cp = false;
->  	union nf_inet_addr *raddr;
->  	char *outer_proto = "IPIP";
-> +	int ulen = 0;
+> Changes since v1:
+> * Rebased on nf-next
+> * Reworded commit message
+> 
+>  net/netfilter/ipvs/ip_vs_ctl.c | 6 +++---
+>  net/netfilter/ipvs/ip_vs_est.c | 2 +-
+>  2 files changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index bcf40b8c41cf..d7e669efab4d 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> @@ -235,7 +235,7 @@ #define DEFENSE_TIMER_PERIOD	1*HZ
+>  	update_defense_level(ipvs);
+>  	if (atomic_read(&ipvs->dropentry))
+>  		ip_vs_random_dropentry(ipvs);
+> -	queue_delayed_work(system_long_wq, &ipvs->defense_work,
+> +	queue_delayed_work(system_dfl_long_wq, &ipvs->defense_work,
+>  			   DEFENSE_TIMER_PERIOD);
+>  }
+>  #endif
+> @@ -290,7 +290,7 @@ #define DEFENSE_TIMER_PERIOD	1*HZ
+>  	atomic_set(&ipvs->est_genid_done, genid);
 >  
->  	*related = 1;
+>  	if (repeat)
+> -		queue_delayed_work(system_long_wq, &ipvs->est_reload_work,
+> +		queue_delayed_work(system_dfl_long_wq, &ipvs->est_reload_work,
+>  				   delay);
 >  
-> @@ -1831,7 +1832,6 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  		   /* Error for our tunnel must arrive at LOCAL_IN */
->  		   (skb_rtable(skb)->rt_flags & RTCF_LOCAL)) {
->  		__u8 iproto;
-> -		int ulen;
+>  unlock:
+> @@ -5126,7 +5126,7 @@ do_ip_vs_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+>  		goto err;
 >  
->  		/* Non-first fragment has no UDP/GRE header */
->  		if (unlikely(cih->frag_off & htons(IP_OFFSET)))
-> @@ -1936,8 +1936,8 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  				if (dest_dst)
->  					mtu = dst_mtu(dest_dst->dst_cache);
->  			}
-> -			if (mtu > 68 + sizeof(struct iphdr))
-> -				mtu -= sizeof(struct iphdr);
-> +			if (mtu > 68 + sizeof(struct iphdr) + ulen)
-> +				mtu -= sizeof(struct iphdr) + ulen;
->  			info = htonl(mtu);
->  		}
->  		/* Strip outer IP, ICMP and IPIP/UDP/GRE, go to IP header of
+>  	/* Schedule defense work */
+> -	queue_delayed_work(system_long_wq, &ipvs->defense_work,
+> +	queue_delayed_work(system_dfl_long_wq, &ipvs->defense_work,
+>  			   DEFENSE_TIMER_PERIOD);
+>  
+>  	return 0;
+> diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+> index ab09f5182951..78964aa861e9 100644
+> --- a/net/netfilter/ipvs/ip_vs_est.c
+> +++ b/net/netfilter/ipvs/ip_vs_est.c
+> @@ -243,7 +243,7 @@ #define pr_fmt(fmt) "IPVS: " fmt
+>  	/* Bump the kthread configuration genid if stopping is requested */
+>  	if (restart)
+>  		atomic_inc(&ipvs->est_genid);
+> -	queue_delayed_work(system_long_wq, &ipvs->est_reload_work, 0);
+> +	queue_delayed_work(system_dfl_long_wq, &ipvs->est_reload_work, 0);
+>  }
+>  
+>  /* Start kthread task with current configuration */
 
 Regards
 
