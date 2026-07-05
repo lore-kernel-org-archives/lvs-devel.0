@@ -1,28 +1,28 @@
-Received: from azure-sdnproxy.icoremail.net (azure-sdnproxy.icoremail.net [52.175.55.52])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id EA5DA25B08C;
-	Sun,  5 Jul 2026 12:31:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=52.175.55.52
+Received: from zg8tmtyylji0my4xnjqumte4.icoremail.net (zg8tmtyylji0my4xnjqumte4.icoremail.net [162.243.164.118])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 4BE5C33F8D9;
+	Sun,  5 Jul 2026 12:57:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.243.164.118
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783254699; cv=none; b=WDyy4/PkWdy9miJmjwyQ72JdYlTBc5ysKct3JE1OXxBeoJKJhif6kn378d4XzbPpHs0fAsPqG3kAmwKvApwtqCkLd7NMUBED9+28ElUh9q3iOB7wGXNU5KTwRMd8ZWejlTXYkf5dvC+QDeKkzGRfFnRZtDRqYowuvEwXi4msWN8=
+	t=1783256274; cv=none; b=rxQoz1qaruwIwGfUTqFcTQo7Os3W+Q1dWk7mQrDSpY3ziTL3KIFd6jkHaVnYYGEhVbCNZ95Zr91Ko8B9DDuzJG/GQHSsyigAl6ryg6zuE/PA3xWs7Q66jYBEEx07T5LYOAY8HkKJe61JuW5GK8IsUaP7VAcdmIGCYOAaH53Vo7s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783254699; c=relaxed/simple;
-	bh=PD2knw/u6d9AXJI/6yKiVENXur5UNuHjYtpY4e2et5Q=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=d3YA1qNc4XsZ2dE4p01L6vtk4xJ0+Wlr0UBesmq3RtvZdLvOXr49vABrw+DjA4Cc+1/+cZDM1k8Bf/G1kB0LJ7NL0fut2xP3+p660msliHSOaTDUbojyHSIUqnYcrQ0kw5Hhg7QsMCtsVigvcaFyl2A6J4VG0XJD4Id5+xyKWBQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn; dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b=frG/a/5T; arc=none smtp.client-ip=52.175.55.52
+	s=arc-20240116; t=1783256274; c=relaxed/simple;
+	bh=JfeaWhTgfk1VVJFOa8gpsqn7yxCKwJiVtG1OOViNics=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=GTfnvfY6vj48mYni5FVhX44cS4Dv9MZvmxDOlWcT/K0OVq3Ofs8Ck6nuJDkqLYJr4ZlPGFiyfVX9JPLEbc5rYMGSIZ70HAtt3Ycux2rRgHq0A5EPzdQWtCxie+kgtTUwKAIXuvtfHCWwbsU7+QvHfUxpS14wUHHCgSCkMZdvnCY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn; dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b=GnA8Mpap; arc=none smtp.client-ip=162.243.164.118
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b="frG/a/5T"
+	dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b="GnA8Mpap"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=mails.tsinghua.edu.cn; s=dkim; h=Received:From:To:Cc:Subject:
-	Date:Message-ID:MIME-Version:Content-Transfer-Encoding; bh=gG+XU
-	53ywe7NdIH9kWaQJFygNnvfcfysdEfINdlwKn8=; b=frG/a/5T2e7eqe8lbn1h/
-	6Kpcni6rwHS9VagGpBf/+a3VuEbKHLW0msEB7sxms8xP/WxgaFPCqxc7zS2Q9m3R
-	c+0J0NW6z4Y9TjRFAdQ7ue7VxCOvkQleEl/8HzPYPoXn74x1TAKMLYlrpCrNw7dn
-	fpDu59k5S2rctNkTq+9d60=
+	Date:Message-ID:MIME-Version:Content-Transfer-Encoding; bh=g26Y8
+	qEXSEdFe8XAykfZFO9hTc4mjOTVDG3P2EL4Q/U=; b=GnA8MpapEihW+GNu3TKo+
+	vv9RiYOQAfRw7e/EFYGUoEoOhNpSYrGZS8EBzPxg2dvI66t68tPrYZAoKwQzkK/L
+	TK/QP0uNoCRAyOU+CvmB0257gELyfRz/dV3vO/Y32+NOzJJEvjrY3lBsgNHAMf7b
+	Lxrk2kB8LNdRoPPvoTY2Yg=
 Received: from localhost.localdomain (unknown [101.5.13.242])
-	by web2 (Coremail) with SMTP id yQQGZQAXwpR4Tkpq7Yi_Ag--.12581S2;
-	Sun, 05 Jul 2026 20:30:49 +0800 (CST)
+	by web4 (Coremail) with SMTP id ywQGZQBXa6CrVEpq2NvBAg--.23888S2;
+	Sun, 05 Jul 2026 20:57:15 +0800 (CST)
 From: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
 To: netdev@vger.kernel.org
 Cc: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>,
@@ -45,9 +45,9 @@ Cc: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>,
 	Qi Li <qli01@tsinghua.edu.cn>,
 	Ke Xu <xuke@tsinghua.edu.cn>,
 	stable@vger.kernel.org
-Subject: [PATCH nf] ipvs: skip IPv6 extension headers in SCTP state lookup
-Date: Sun,  5 Jul 2026 20:30:38 +0800
-Message-ID: <20260705123040.35755-1-zhaoyz24@mails.tsinghua.edu.cn>
+Subject: [PATCH nf] ipvs: skip IPv6 extension headers in TCP state lookup
+Date: Sun,  5 Jul 2026 20:56:57 +0800
+Message-ID: <20260705125659.37744-1-zhaoyz24@mails.tsinghua.edu.cn>
 X-Mailer: git-send-email 2.46.2
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
@@ -56,46 +56,48 @@ List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:yQQGZQAXwpR4Tkpq7Yi_Ag--.12581S2
-X-Coremail-Antispam: 1UD129KBjvJXoWxZry8ArW7Ar1rZF1DZF15CFg_yoW5XF4xpa
-	90krWS9FW7Jryqvws7AryxC3y5Gws3Way7Wry8ta43Z3Z0grn5tFy0y3ya93Z8urWvg342
-	qr9Iq34UZF4kJFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9v1xkIjI8I6I8E6xAIw20EY4v20xvaj40_Wr0E3s1l8cAvFVAK
+X-CM-TRANSID:ywQGZQBXa6CrVEpq2NvBAg--.23888S2
+X-Coremail-Antispam: 1UD129KBjvJXoWxJw4xJFW3Xr4kXr1rZw18Xwb_yoW5Xw17pa
+	sak3yagryDJr90yws7Jr1xC3y5Grs3CayxWryDta45X3Z8Wrn5tF95K39F9FsYkrWvgw17
+	Xr90q345Zr4kA37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9m1xkIjI8I6I8E6xAIw20EY4v20xvaj40_Wr0E3s1l8cAvFVAK
 	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4
-	x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
-	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1lnxkEFVAIw20F6cxK64vIFxWle2I262IYc4
-	CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E74AGY7Cv6cx26r4r
-	Kr1UJr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc
-	8vx2IErcIFxwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVW8ZVWrXwCY02Av
-	z4vE14v_Xr1l42xK82IYc2Ij64vIr41l42xK82IY6x8ErcxFaVAv8VW8Ww4UJr1UMxC20s
-	026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_
-	JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14
-	v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xva
-	j40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JV
-	W8JrUvcSsGvfC2KfnxnUUI43ZEXa7VU1eWlPUUUUU==
-X-CM-SenderInfo: 52kd05r2suqzpdlo2hxwvl0wxkxdhvlgxou0/1tbiAgITAWpKHF5IggAAs6
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
+	84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2vYz4IE04k24VAvwVAKI4IrM2AIxVAIcx
+	kEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6x8ErcxFaVAv8VW8
+	Ww4UJr1UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6I
+	AqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wrylc2xS
+	Y4AK67AK6ryUMxAIw28IcxkI7VAKI48JMxAIw28IcVCjz48v1sIEY20_GrWkJr1UJwCFx2
+	IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v2
+	6r106r1rMI8E67AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67
+	AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IY
+	s7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr
+	0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUG_M-UUUUU=
+X-CM-SenderInfo: 52kd05r2suqzpdlo2hxwvl0wxkxdhvlgxou0/1tbiAgETAWpKHF5PtgAAsK
 
-set_sctp_state() reads the SCTP chunk header again in order to drive the
-IPVS SCTP state table.  For IPv6 it computes the offset with
+tcp_state_transition() reads the TCP header again in order to drive the
+IPVS TCP state table.  For IPv6 it computes the offset with
 sizeof(struct ipv6hdr), while the surrounding IPVS code uses iph->len from
 ip_vs_fill_iph_skb(), where ipv6_find_hdr() has already skipped extension
 headers and found the real transport header.
 
-This makes the state machine read from the wrong offset for IPv6 SCTP
-packets that carry extension headers.  For example, an INIT packet with an
+This makes the state machine read from the wrong offset for IPv6 TCP
+packets that carry extension headers.  For example, a SYN packet with an
 8-byte destination options header can be scheduled correctly by
-sctp_conn_schedule(), but set_sctp_state() reads the first byte of the SCTP
-verification tag as a DATA chunk type.  The connection then moves from NONE
-to ESTABLISHED instead of INIT1, gets the longer established timeout, and
-updates the active/inactive destination counters incorrectly.  This happens
-even though the SCTP handshake has not completed.
+tcp_conn_schedule(), but tcp_state_transition() reads a byte from the real
+TCP sequence number as the TCP flags.  An attacker can therefore make an
+uncompleted SYN move from NONE to ESTABLISHED or CLOSE, changing the
+connection timeout and active/inactive destination counters.  In the
+ESTABLISHED case, the half-open connection gets the 15 minute established
+timeout instead of the shorter SYN_RECV timeout, which can be used for a
+remote denial of service against an IPv6 IPVS TCP service.
 
-Use ip_vs_fill_iph_skb() in set_sctp_state() and base the chunk-header
-offset on iph.len, matching sctp_conn_schedule() and the SCTP NAT handlers.
-For IPv4 and IPv6 packets without extension headers this preserves the
-existing offset.
+Use ip_vs_fill_iph_skb() in tcp_state_transition() and read the TCP header
+from iph.len, matching tcp_conn_schedule() and the TCP NAT handlers.  For
+IPv4 and IPv6 packets without extension headers this preserves the existing
+offset.
 
-Fixes: 2906f66a5682 ("ipvs: SCTP Trasport Loadbalancing Support")
+Fixes: 0bbdd42b7efa ("IPVS: Extend protocol DNAT/SNAT and state handlers")
 Cc: stable@vger.kernel.org
 Reported-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
 Reported-by: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
@@ -106,36 +108,33 @@ Reported-by: Ke Xu <xuke@tsinghua.edu.cn>
 Assisted-by: Claude-Code:GLM-5.2
 Signed-off-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
 ---
- net/netfilter/ipvs/ip_vs_proto_sctp.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ net/netfilter/ipvs/ip_vs_proto_tcp.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-index 63c78a1f3918..6e0fc23be305 100644
---- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-+++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-@@ -375,17 +375,15 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
- 		int direction, const struct sk_buff *skb)
+diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+index 8cc0a8ce6241..6fde2165a8d6 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+@@ -581,15 +581,13 @@ tcp_state_transition(struct ip_vs_conn *cp, int direction,
+ 		     const struct sk_buff *skb,
+ 		     struct ip_vs_proto_data *pd)
  {
- 	struct sctp_chunkhdr _sctpch, *sch;
- 	unsigned char chunk_type;
+ 	struct tcphdr _tcph, *th;
 +	struct ip_vs_iphdr iph;
- 	int event, next_state;
--	int ihl, cofs;
-+	int cofs;
  
 -#ifdef CONFIG_IP_VS_IPV6
--	ihl = cp->af == AF_INET ? ip_hdrlen(skb) : sizeof(struct ipv6hdr);
+-	int ihl = cp->af == AF_INET ? ip_hdrlen(skb) : sizeof(struct ipv6hdr);
 -#else
--	ihl = ip_hdrlen(skb);
+-	int ihl = ip_hdrlen(skb);
 -#endif
 +	if (!ip_vs_fill_iph_skb(cp->af, skb, false, &iph))
 +		return;
  
--	cofs = ihl + sizeof(struct sctphdr);
-+	cofs = iph.len + sizeof(struct sctphdr);
- 	sch = skb_header_pointer(skb, cofs, sizeof(_sctpch), &_sctpch);
- 	if (sch == NULL)
+-	th = skb_header_pointer(skb, ihl, sizeof(_tcph), &_tcph);
++	th = skb_header_pointer(skb, iph.len, sizeof(_tcph), &_tcph);
+ 	if (th == NULL)
  		return;
+ 
 -- 
 2.47.3
 
