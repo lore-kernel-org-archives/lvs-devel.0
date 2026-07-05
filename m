@@ -1,169 +1,141 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BA581FDA61;
-	Sat,  4 Jul 2026 10:04:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+Received: from azure-sdnproxy.icoremail.net (azure-sdnproxy.icoremail.net [52.175.55.52])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id EA5DA25B08C;
+	Sun,  5 Jul 2026 12:31:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=52.175.55.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783159473; cv=none; b=qvjNGyUx+c6wirs7+efczuljO7dyHgNvDGJNxMAbO3Jp4dr7c3Dl5UCWJX/iq8tnE+NW02vv8pX2xaqgHw/C1T1e0aaH3HSzvB4p8ewmFi1hdXjAW/CKK1IrbilqNcA47T8+7LmWjrClwDr5DZW4w6TG4PXdPn08fksD8vu8qmY=
+	t=1783254699; cv=none; b=WDyy4/PkWdy9miJmjwyQ72JdYlTBc5ysKct3JE1OXxBeoJKJhif6kn378d4XzbPpHs0fAsPqG3kAmwKvApwtqCkLd7NMUBED9+28ElUh9q3iOB7wGXNU5KTwRMd8ZWejlTXYkf5dvC+QDeKkzGRfFnRZtDRqYowuvEwXi4msWN8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783159473; c=relaxed/simple;
-	bh=PXZewadSxh5bHnchV6e5gUu1t7eTG1LrPDL4uSf4aog=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=Pvb/jmRRBcRtCkHDSDFI1B3s6R2oQSE+7IWUGIVbWgj211tXKm0iwC2yPym3j9sQoQqGq109JuxLsLn489GqlHJIyMwXNtLOwHemaVDzWuj7AUcR9KURCAo3OMHKh6XRJ9ejVui3jT7IGHCdk9MDz6igif9svvJRtMxXBnX4jxg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=dXSzWIe8; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1783254699; c=relaxed/simple;
+	bh=PD2knw/u6d9AXJI/6yKiVENXur5UNuHjYtpY4e2et5Q=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=d3YA1qNc4XsZ2dE4p01L6vtk4xJ0+Wlr0UBesmq3RtvZdLvOXr49vABrw+DjA4Cc+1/+cZDM1k8Bf/G1kB0LJ7NL0fut2xP3+p660msliHSOaTDUbojyHSIUqnYcrQ0kw5Hhg7QsMCtsVigvcaFyl2A6J4VG0XJD4Id5+xyKWBQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn; dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b=frG/a/5T; arc=none smtp.client-ip=52.175.55.52
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="dXSzWIe8"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id B34A921065;
-	Sat, 04 Jul 2026 13:04:23 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=sgzU2fQcHKOvLO7ZxfDpdhGNqDs8DXG+GmDEqTQccio=; b=dXSzWIe8jC5F
-	h0pmJNtuKOZaOY63zwvcXmIx2JB0upkn89o9PF3WvPoPab7kQt30/sOVdeGRLgSa
-	sAS+0tUEopMHbqfY0A1GzvPp/WfAnvG1se6LzUVD4xPxKlGnG+bFUxgW+9o144FN
-	XwVyw6+T0S8AtqMW0N+2oLf0rc4XrKCFfK6uadq0iJnNpNgfFJT452M/y2UO+E9S
-	HsR/P/+lGEKnyUnqKYsozl+2910y/F7YUHxTMEfW4ytbsRlR2oi5dVaz9KE6N+QF
-	Yp7wbQ/O/hiee1wzmLr9KZ2H7G8qu0ls53MGp91AFJRnSZqTknVPjTAbgOU+MQV9
-	AxKc9Ggvn1MIrSn3KCku/9lbLIgU5K35sa1RALekGkvEcC117WYAnY1422ThzzI7
-	sfdJxjbnqxb5LDRTOas9aQzLoRBMGCr4E4vLY1KGVDH0jcX60zHOlXMMQVVWKlmu
-	3eiMSCFI48aJ6d9mp6cAP1ZVKQbT6LryBlAmn8wIe2bCwgB0tkr/5vVJmhGqN3h3
-	CIUFd3rkf7Od7ipaK/YDYBL1G03b7MbC2PXnXYH+T/WW8cRIw48rOFZH3qZoPSGD
-	Ani5snr6TxUPNYNkZAUERaQDuDmSBMRqVXQVD6ANaEK8eecChvm9/ncInKSY9WnX
-	sf/BYX8YCouMnh0SzqjmPX61ZKLcXeM=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Sat, 04 Jul 2026 13:04:23 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 84CB760820;
-	Sat,  4 Jul 2026 13:04:11 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 664A3rFk007693;
-	Sat, 4 Jul 2026 13:03:56 +0300
-Date: Sat, 4 Jul 2026 13:03:53 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
-cc: netdev@vger.kernel.org, Simon Horman <horms@verge.net.au>,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-        Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>,
-        Ao Wang <wangao@seu.edu.cn>, Xuewei Feng <fengxw06@126.com>,
-        Qi Li <qli01@tsinghua.edu.cn>, Ke Xu <xuke@tsinghua.edu.cn>
-Subject: Re: [PATCH net v2] ipvs: fix PMTU for GUE/GRE tunnel ICMP errors
-In-Reply-To: <20260702073430.67680-1-zhaoyz24@mails.tsinghua.edu.cn>
-Message-ID: <3e6a69e0-7e17-6e07-8dbf-8a04f45e7adf@ssi.bg>
-References: <20260702073430.67680-1-zhaoyz24@mails.tsinghua.edu.cn>
+	dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b="frG/a/5T"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=mails.tsinghua.edu.cn; s=dkim; h=Received:From:To:Cc:Subject:
+	Date:Message-ID:MIME-Version:Content-Transfer-Encoding; bh=gG+XU
+	53ywe7NdIH9kWaQJFygNnvfcfysdEfINdlwKn8=; b=frG/a/5T2e7eqe8lbn1h/
+	6Kpcni6rwHS9VagGpBf/+a3VuEbKHLW0msEB7sxms8xP/WxgaFPCqxc7zS2Q9m3R
+	c+0J0NW6z4Y9TjRFAdQ7ue7VxCOvkQleEl/8HzPYPoXn74x1TAKMLYlrpCrNw7dn
+	fpDu59k5S2rctNkTq+9d60=
+Received: from localhost.localdomain (unknown [101.5.13.242])
+	by web2 (Coremail) with SMTP id yQQGZQAXwpR4Tkpq7Yi_Ag--.12581S2;
+	Sun, 05 Jul 2026 20:30:49 +0800 (CST)
+From: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
+To: netdev@vger.kernel.org
+Cc: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>,
+	Simon Horman <horms@verge.net.au>,
+	Julian Anastasov <ja@ssi.bg>,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	Phil Sutter <phil@nwl.cc>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	coreteam@netfilter.org,
+	linux-kernel@vger.kernel.org,
+	Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>,
+	Ao Wang <wangao@seu.edu.cn>,
+	Xuewei Feng <fengxw06@126.com>,
+	Qi Li <qli01@tsinghua.edu.cn>,
+	Ke Xu <xuke@tsinghua.edu.cn>,
+	stable@vger.kernel.org
+Subject: [PATCH nf] ipvs: skip IPv6 extension headers in SCTP state lookup
+Date: Sun,  5 Jul 2026 20:30:38 +0800
+Message-ID: <20260705123040.35755-1-zhaoyz24@mails.tsinghua.edu.cn>
+X-Mailer: git-send-email 2.46.2
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:yQQGZQAXwpR4Tkpq7Yi_Ag--.12581S2
+X-Coremail-Antispam: 1UD129KBjvJXoWxZry8ArW7Ar1rZF1DZF15CFg_yoW5XF4xpa
+	90krWS9FW7Jryqvws7AryxC3y5Gws3Way7Wry8ta43Z3Z0grn5tFy0y3ya93Z8urWvg342
+	qr9Iq34UZF4kJFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9v1xkIjI8I6I8E6xAIw20EY4v20xvaj40_Wr0E3s1l8cAvFVAK
+	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
+	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1lnxkEFVAIw20F6cxK64vIFxWle2I262IYc4
+	CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E74AGY7Cv6cx26r4r
+	Kr1UJr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc
+	8vx2IErcIFxwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVW8ZVWrXwCY02Av
+	z4vE14v_Xr1l42xK82IYc2Ij64vIr41l42xK82IY6x8ErcxFaVAv8VW8Ww4UJr1UMxC20s
+	026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_
+	JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14
+	v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xva
+	j40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JV
+	W8JrUvcSsGvfC2KfnxnUUI43ZEXa7VU1eWlPUUUUU==
+X-CM-SenderInfo: 52kd05r2suqzpdlo2hxwvl0wxkxdhvlgxou0/1tbiAgITAWpKHF5IggAAs6
 
+set_sctp_state() reads the SCTP chunk header again in order to drive the
+IPVS SCTP state table.  For IPv6 it computes the offset with
+sizeof(struct ipv6hdr), while the surrounding IPVS code uses iph->len from
+ip_vs_fill_iph_skb(), where ipv6_find_hdr() has already skipped extension
+headers and found the real transport header.
 
-	Hello,
+This makes the state machine read from the wrong offset for IPv6 SCTP
+packets that carry extension headers.  For example, an INIT packet with an
+8-byte destination options header can be scheduled correctly by
+sctp_conn_schedule(), but set_sctp_state() reads the first byte of the SCTP
+verification tag as a DATA chunk type.  The connection then moves from NONE
+to ESTABLISHED instead of INIT1, gets the longer established timeout, and
+updates the active/inactive destination counters incorrectly.  This happens
+even though the SCTP handshake has not completed.
 
-On Thu, 2 Jul 2026, Yizhou Zhao wrote:
+Use ip_vs_fill_iph_skb() in set_sctp_state() and base the chunk-header
+offset on iph.len, matching sctp_conn_schedule() and the SCTP NAT handlers.
+For IPv4 and IPv6 packets without extension headers this preserves the
+existing offset.
 
-> When an ICMP Fragmentation Needed error is received for a tunneled IPVS
-> connection, ip_vs_in_icmp() recomputes the MTU that the original packet
-> can use by subtracting the tunnel overhead from the reported next-hop
-> MTU.
-> 
-> The current code always subtracts sizeof(struct iphdr), which is only
-> the IPIP overhead. For GUE and GRE tunnels, ipvs_udp_decap() and
-> ipvs_gre_decap() already compute the additional tunnel header length,
-> but that value is scoped to the decapsulation block and is lost before
-> the ICMP_FRAG_NEEDED handling. As a result, the ICMP error sent back to
-> the client advertises an MTU that is too large, so PMTUD can fail to
-> converge for GUE/GRE-tunneled real servers.
-> 
-> With a reported next-hop MTU of 1400, a GUE tunnel currently returns
-> 1380 to the client. The correct value is 1368:
-> 
->   1400 - sizeof(struct iphdr) - sizeof(struct udphdr) -
->   sizeof(struct guehdr)
-> 
-> Hoist the tunnel header length into the main ip_vs_in_icmp() scope and
-> subtract sizeof(struct iphdr) + ulen in the Fragmentation Needed path.
-> The IPIP path keeps ulen as 0, so its existing 1400 - 20 = 1380 result
-> is unchanged.
-> 
-> Fixes: 508f744c0de3 ("ipvs: strip udp tunnel headers from icmp errors")
-> Cc: stable@vger.kernel.org
-> Reported-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
-> Reported-by: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
-> Reported-by: Ao Wang <wangao@seu.edu.cn>
-> Reported-by: Xuewei Feng <fengxw06@126.com>
-> Reported-by: Qi Li <qli01@tsinghua.edu.cn>
-> Reported-by: Ke Xu <xuke@tsinghua.edu.cn>
-> Assisted-by: Claude-Code:GLM-5.2
-> Signed-off-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
+Fixes: 2906f66a5682 ("ipvs: SCTP Trasport Loadbalancing Support")
+Cc: stable@vger.kernel.org
+Reported-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
+Reported-by: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
+Reported-by: Ao Wang <wangao@seu.edu.cn>
+Reported-by: Xuewei Feng <fengxw06@126.com>
+Reported-by: Qi Li <qli01@tsinghua.edu.cn>
+Reported-by: Ke Xu <xuke@tsinghua.edu.cn>
+Assisted-by: Claude-Code:GLM-5.2
+Signed-off-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
+---
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-	I'm late for this patch, in case there is another iteration:
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	BTW, I prepared followup patch to add the needed pskb_may_pull()
-as suggested by Sashiko:
-
-https://sashiko.dev/#/patchset/20260702073430.67680-1-zhaoyz24%40mails.tsinghua.edu.cn
-
-	I'll wait this patch to be applied before posting it...
-
-> ---
-> Changes in v2:
->   - Use the short first hunk context so patch applies without fuzz.
->   - Adjust Assisted-by to checkpatch's agent-name format.
->   - Suggested by Julian.
->   - Link to v1: https://lore.kernel.org/netdev/20260701065941.46249-1-zhaoyz24@mails.tsinghua.edu.cn/
-> ---
->  net/netfilter/ipvs/ip_vs_core.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index d40b404c1bf6..906f2c361676 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1767,6 +1767,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  	bool tunnel, new_cp = false;
->  	union nf_inet_addr *raddr;
->  	char *outer_proto = "IPIP";
-> +	int ulen = 0;
->  
->  	*related = 1;
->  
-> @@ -1831,7 +1832,6 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  		   /* Error for our tunnel must arrive at LOCAL_IN */
->  		   (skb_rtable(skb)->rt_flags & RTCF_LOCAL)) {
->  		__u8 iproto;
-> -		int ulen;
->  
->  		/* Non-first fragment has no UDP/GRE header */
->  		if (unlikely(cih->frag_off & htons(IP_OFFSET)))
-> @@ -1936,8 +1936,8 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  				if (dest_dst)
->  					mtu = dst_mtu(dest_dst->dst_cache);
->  			}
-> -			if (mtu > 68 + sizeof(struct iphdr))
-> -				mtu -= sizeof(struct iphdr);
-> +			if (mtu > 68 + sizeof(struct iphdr) + ulen)
-> +				mtu -= sizeof(struct iphdr) + ulen;
->  			info = htonl(mtu);
->  		}
->  		/* Strip outer IP, ICMP and IPIP/UDP/GRE, go to IP header of
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 63c78a1f3918..6e0fc23be305 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -375,17 +375,15 @@ set_sctp_state(struct ip_vs_proto_data *pd, struct ip_vs_conn *cp,
+ 		int direction, const struct sk_buff *skb)
+ {
+ 	struct sctp_chunkhdr _sctpch, *sch;
+ 	unsigned char chunk_type;
++	struct ip_vs_iphdr iph;
+ 	int event, next_state;
+-	int ihl, cofs;
++	int cofs;
+ 
+-#ifdef CONFIG_IP_VS_IPV6
+-	ihl = cp->af == AF_INET ? ip_hdrlen(skb) : sizeof(struct ipv6hdr);
+-#else
+-	ihl = ip_hdrlen(skb);
+-#endif
++	if (!ip_vs_fill_iph_skb(cp->af, skb, false, &iph))
++		return;
+ 
+-	cofs = ihl + sizeof(struct sctphdr);
++	cofs = iph.len + sizeof(struct sctphdr);
+ 	sch = skb_header_pointer(skb, cofs, sizeof(_sctpch), &_sctpch);
+ 	if (sch == NULL)
+ 		return;
+-- 
+2.47.3
 
