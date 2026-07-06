@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 65ED93DC852;
-	Mon,  6 Jul 2026 10:50:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E51613F39E8;
+	Mon,  6 Jul 2026 10:50:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783335039; cv=none; b=Prn6p/T//RGlgsNcULoyUUh20y8lsdwGjcan+DOuaED461QzzjDow3yK2zeMrzV6LNItRZyQiERZvofzAmZj/9SD5pd/D/VhtG5Im6JOiD/mmd8PHZcMgqxlPJ/lcySngbw5J4Nb3SPr3QSdy9pMdMwHY5wkTwnD9sRtuNJZD4Q=
+	t=1783335043; cv=none; b=ijkJC5Wsvzq93AK2G8SWX9thg8ZwRpVewOQ8/ynDIynQCAhjxZ+PKT30mxtka7Qvv2auSQrij4QC49AeonvviYwmsQq9n3zZOcYvNaTrTcvYssVZTmnQ9gv1mVICPXtcB4fVJX/oTtglUt2doBbqmoXWMrXVs4TxgCE9CRDEAVg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783335039; c=relaxed/simple;
-	bh=Z4ELmo9MEWlYiApwu5QIhUGqOzqG193QuEkEslfhYjM=;
+	s=arc-20240116; t=1783335043; c=relaxed/simple;
+	bh=yctoVFD91OFx4fFlRA1MPazNYejGlaXFotK29gkw3PE=;
 	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc; b=NGM4+ByrMlVhTeU8tWClwgagItpFjuKaVvAHJ6SX6jAqLUTJbqE9dX+RW3e5JyQbO7nIuY5OPOzGW8WjNE4yqtv3PRWXOpSM/rs+JiufTwZX5SxT2GBexkDtLjJrUO21NNph8pjRDg4ofTH7OYBDL/LVH2tospxACzGoUO/yeJc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Onzed0Ey; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=JJLZ4WLeEpfQOBUIQjx+PhyZYn/heMQj1l5DPvu5DmDn/CGoP7j3olM74l9DcIfu0+6JCjs3xGpg45prqoNGp1BrYAAoBqOTmmxhurKUV/D3oQmCLfiMHhCrPsmd11VZP8cLWoA5z/cHeP4RdXn5jhR0Xj7EXPMnFajx0O7D5GM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W8tOvrpS; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Onzed0Ey"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0707F1F000E9;
-	Mon,  6 Jul 2026 10:50:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W8tOvrpS"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 817EE1F000E9;
+	Mon,  6 Jul 2026 10:50:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783335037;
-	bh=fGMnIZozpGLzsIivQPg0TjggSvulpvqr6PDXfZXNOzc=;
+	s=k20260515; t=1783335041;
+	bh=yHJBd2n2Sa1J667oouse/pt4NTBKScB7z7klNN5CAW4=;
 	h=Subject:From:Date:References:In-Reply-To:To:Cc;
-	b=Onzed0EynogY4zJYYVUfViJeUN19Hd8DJ8vAM6UE8XKkpetEhOqU6IpVV/TSBId/S
-	 I9QjCNPdz8O0aHClC1XJ7Uu4ot4fG+CmKl/p3sxP0xzY1O6/YGE2/VflV/j1PjQLF0
-	 +/qusJ7G93tjMn049UYbY5hzAGMAO71RLuaSp4eYogf//zKh3mGSzz+1gX8wa/Rul6
-	 rG0B1F0vLhXpXhIedFu2sn54GZHKAcByS10kttafBzDcUghX9VQYjgj2RTrmtHzyGx
-	 JvPBMBt8SdHq2DM0SwiMd3yzLbfztSp9TPxtFUpPSSagPKN2jhPjSKDx0BZjwVKTwX
-	 KahNWrZgdxk0Q==
+	b=W8tOvrpS0wE/XmOlbNX/4iDM9O9oBpzhAYZB9E4myqREVCZvlpm2ENicf4Umj1wgm
+	 J+z78r96kEnsPoRAsugoIt0xPxGMxkje/OzsxYuTFeloZVOPjl6d4sGzE80X7ahbmC
+	 9pQSe9gKu7dVDsuw7NolP6hD7mybDC+C6e8NImZHR30zndQ3Jv7RHJnbvThLjYsyLe
+	 iFa/30wzdk4eqdYVWdX+vZbFnsjtNYNedX5FS4WnyioozbL4Jhs7SF6di65iWEG08/
+	 dS7zZQVtGTbGDyqsx9bEOqnimCZiX8eKSM/SDGY0UXsRet013wt3w0TXdzg0gvGb3H
+	 EiPO7dmRYfBaQ==
 Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id D0A573ABD2A5;
-	Mon,  6 Jul 2026 10:50:18 +0000 (UTC)
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 56B3C3ABD2A5;
+	Mon,  6 Jul 2026 10:50:23 +0000 (UTC)
 Content-Type: text/plain; charset="utf-8"
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
@@ -37,13 +37,13 @@ List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH net] ipvs: reset full ip_vs_seq structs in ip_vs_conn_new
+Subject: Re: [PATCH net v2] ipvs: fix PMTU for GUE/GRE tunnel ICMP errors
 From: patchwork-bot+netdevbpf@kernel.org
 Message-Id: 
- <178333501739.500093.9836567879441424973.git-patchwork-notify@kernel.org>
-Date: Mon, 06 Jul 2026 10:50:17 +0000
-References: <20260702112837.81121-1-zhaoyz24@mails.tsinghua.edu.cn>
-In-Reply-To: <20260702112837.81121-1-zhaoyz24@mails.tsinghua.edu.cn>
+ <178333502188.500093.18161993584904393152.git-patchwork-notify@kernel.org>
+Date: Mon, 06 Jul 2026 10:50:21 +0000
+References: <20260702073430.67680-1-zhaoyz24@mails.tsinghua.edu.cn>
+In-Reply-To: <20260702073430.67680-1-zhaoyz24@mails.tsinghua.edu.cn>
 To: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
 Cc: netdev@vger.kernel.org, horms@verge.net.au, ja@ssi.bg,
  pablo@netfilter.org, fw@strlen.de, phil@nwl.cc, davem@davemloft.net,
@@ -58,27 +58,25 @@ Hello:
 This patch was applied to netdev/net.git (main)
 by Florian Westphal <fw@strlen.de>:
 
-On Thu,  2 Jul 2026 19:28:36 +0800 you wrote:
-> Commit 9a05475cebdd ("ipvs: avoid kmem_cache_zalloc in
-> ip_vs_conn_new") changed ip_vs_conn_new() to allocate an ip_vs_conn
-> object with kmem_cache_alloc().  The function then initializes many
-> fields explicitly, but only resets in_seq.delta and out_seq.delta in the
-> two struct ip_vs_seq members.
+On Thu,  2 Jul 2026 15:34:28 +0800 you wrote:
+> When an ICMP Fragmentation Needed error is received for a tunneled IPVS
+> connection, ip_vs_in_icmp() recomputes the MTU that the original packet
+> can use by subtracting the tunnel overhead from the reported next-hop
+> MTU.
 > 
-> That leaves init_seq and previous_delta uninitialized.  This is normally
-> harmless while the corresponding IP_VS_CONN_F_IN_SEQ or
-> IP_VS_CONN_F_OUT_SEQ flag is clear.  For connections learned from a sync
-> message, however, ip_vs_proc_conn() preserves those flags from
-> IP_VS_CONN_F_BACKUP_MASK and passes opt=NULL when the message omits
-> IPVS_OPT_SEQ_DATA.  In that case the new connection can be hashed with
-> SEQ flags set but with the rest of in_seq/out_seq still containing stale
-> slab data.
+> The current code always subtracts sizeof(struct iphdr), which is only
+> the IPIP overhead. For GUE and GRE tunnels, ipvs_udp_decap() and
+> ipvs_gre_decap() already compute the additional tunnel header length,
+> but that value is scoped to the decapsulation block and is lost before
+> the ICMP_FRAG_NEEDED handling. As a result, the ICMP error sent back to
+> the client advertises an MTU that is too large, so PMTUD can fail to
+> converge for GUE/GRE-tunneled real servers.
 > 
 > [...]
 
 Here is the summary with links:
-  - [net] ipvs: reset full ip_vs_seq structs in ip_vs_conn_new
-    https://git.kernel.org/netdev/net/c/2975324d164c
+  - [net,v2] ipvs: fix PMTU for GUE/GRE tunnel ICMP errors
+    https://git.kernel.org/netdev/net/c/6b335af0d0d1
 
 You are awesome, thank you!
 -- 
