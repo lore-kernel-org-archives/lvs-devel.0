@@ -1,170 +1,187 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 74BBF38B7D2;
-	Mon,  6 Jul 2026 17:49:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+Received: from azure-sdnproxy.icoremail.net (azure-sdnproxy.icoremail.net [13.76.78.106])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id E331E386429;
+	Tue,  7 Jul 2026 05:39:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.76.78.106
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783360192; cv=none; b=XJv1+UgQHWgjWK4S+IS9gJ2u5CCAMsKkt9jbg9qi/8ltpuvxpwjKAxVtxBTP9QegWDagOIeo4cOfWrPBywU4UCqZxG/YaXFeejXs4TjZ8o8v82mKbWNjPsUXn/d68+Bxl+XsDa8PsstOErE4uB1f7mg4dURICr95XilVFn+wSdI=
+	t=1783402758; cv=none; b=CZYGeEJgMOgUvbflfBPfjb5FRWzpvv5C5QQHfhFSs/VZUuZ5yLLDmizYHkvGFhllk0M1J2L9xRtNNqS9dslp4XP9CW9Xo5TNhgCZriH+HPATffZQfuPEcPhPfHRT8Xxnpxvw1CNF4NwlKp56ASrN18VY46zbBgTWoSXwqJGpObU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783360192; c=relaxed/simple;
-	bh=9mgN9FBObo5jfv2jVyWw9wE/5/6AY8KOxsZPvgFu9Fw=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=hV3BsZ2vkHGDEe6qG71xtAPwFodvEXbBYGXt9uexx2dpPDPuEwDP8XM/oC0NM5MifjRho0xe0c5NrsxjLY5i2DxRQK2lvFJ+CUGfXlmBnWOO2p38WHRnMEUUb2k3qPZL2ed/M63F/Y3sbJau+RH56nCysExZLyeL4aJ+wj7c0As=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=jcHs1NCc; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1783402758; c=relaxed/simple;
+	bh=SY4IMC/Ddp2wMdcBI7IRusXV9eWYkEXvUrqXCdfG+fc=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=dwhGqTbEf4I6diQsQzaNu6PMZsP05Gsbp6iH+9L99GddSniaHsgziu9kgKYjW7f+HA26Zepca5xXGOS11uuH9o8hi25lCkHVZoMmna/HNlafb2FIC+Gx67de12ixzi5C15NVtJ9UFzhlb5BfnsjwnLgKfB3WuVaI7I/Af/BHKHs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn; dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b=q/k/j+Vd; arc=none smtp.client-ip=13.76.78.106
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="jcHs1NCc"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id D39A62121E;
-	Mon, 06 Jul 2026 20:49:39 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=IbLlxJn2gQ5pGB9X0b0W9uzW2omQ2lnoGr+RQKENeqg=; b=jcHs1NCc6Ll+
-	pM2JyKL+q4WObx1lO8yYUp5tmGkHgALTpuKQ2ptNoQr7KgGaJ8X5QGoR0WuylWGW
-	tjVBASNwPA16uuFrBNB+CptC/f9fnxrQGPpWGKOYhX1SErdjMwySmso5mlmz3gmp
-	zOLS95E7tU1c5WZ5huomjQjyRnxgUv/iUCT8VKH0QWT5rIFeiD4Jk59iBiziYfgw
-	Edck8wl8+97yPhWw3xHe6NlQOXwZ9uZxF6DijhJeNalHYf5Dp1dqoVya9Aa+7fOt
-	K4QuS5AS4FBf6PbVWpMQjZLsKRPU5SGRt1/fHOrSl4P6zsvgOFFrHsPhma8HTzpw
-	rVXThkBte/540fcvUz4gk+gzw4tHuUuBJyb7dxhmsrj/KFvvnzMmE7lfkFrsrYul
-	LFf/YdNHEss7ORoxY/+Jih1XDKwjsbP2/YF5O9wwJVFSb0jKxpFd4UJwaX134CX9
-	SLaWCBcVriF0KnXwFAxgDLSr2w2a366v5eq1BdNlWqhsv72QJMkwPp5DpmfyTT+s
-	mogaGxCNfTvCACZUSQ6J2xxvnTND+kEKwdgWfhaEw5UCGi937GV2PSGQf5cTsSNq
-	tXZ9tmoL6QhmeE5K+G+9jTTx/T/HNFUrzyI+SE/RV7f/oBTvhkVO1ZsmYO19aZ1J
-	G80Gcs41Nga/aCPxm2k1lonJXzX8gaU=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Mon, 06 Jul 2026 20:49:39 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id D9B3B60546;
-	Mon,  6 Jul 2026 20:49:38 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 666HnTnf078467;
-	Mon, 6 Jul 2026 20:49:30 +0300
-Date: Mon, 6 Jul 2026 20:49:29 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: Re: [PATCH nf] ipvs: ensure inner headers in ICMP errors are in
- headroom
-In-Reply-To: <20260706151041.62630-1-ja@ssi.bg>
-Message-ID: <cf9af9ab-8404-9609-5e0c-81e175e69781@ssi.bg>
-References: <20260706151041.62630-1-ja@ssi.bg>
+	dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b="q/k/j+Vd"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=mails.tsinghua.edu.cn; s=dkim; h=Received:Content-Type:
+	Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	Content-Transfer-Encoding:Message-Id:References:To; bh=HKp8jKsDh
+	acYe+U+r45zxu77QLGaXMYgMAaK8XzGGzQ=; b=q/k/j+VdJCH26dQXVLdbqVw2q
+	CRlvaLbEIVhEbjKcpgOUlKSuyWKIOqtMNIaNePn0b5jdb8hqSbKeKYQUw4Y59PrM
+	meEQm3Pq/mntTBo3pUJylvUbuBI6jNQOIwwGQQLURksDZK/m1EFhgucMCAkfDnlo
+	e6ckUPbatU0N2hFAxQ=
+Received: from smtpclient.apple (unknown [101.5.13.242])
+	by web2 (Coremail) with SMTP id yQQGZQDXsprTkExqpkjKAg--.28065S2;
+	Tue, 07 Jul 2026 13:38:28 +0800 (CST)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3826.700.81.1.8\))
+Subject: Re: [PATCH nf] ipvs: skip IPv6 extension headers in SCTP state lookup
+From: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
+In-Reply-To: <bcd7f0e6-b2fc-4e54-f9ac-e1c8b1b0c497@ssi.bg>
+Date: Tue, 7 Jul 2026 13:38:18 +0800
+Cc: netdev@vger.kernel.org,
+ Simon Horman <horms@verge.net.au>,
+ Pablo Neira Ayuso <pablo@netfilter.org>,
+ Florian Westphal <fw@strlen.de>,
+ Phil Sutter <phil@nwl.cc>,
+ "David S. Miller" <davem@davemloft.net>,
+ Eric Dumazet <edumazet@google.com>,
+ Jakub Kicinski <kuba@kernel.org>,
+ Paolo Abeni <pabeni@redhat.com>,
+ lvs-devel@vger.kernel.org,
+ netfilter-devel@vger.kernel.org,
+ coreteam@netfilter.org,
+ linux-kernel@vger.kernel.org,
+ Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>,
+ Ao Wang <wangao@seu.edu.cn>,
+ Xuewei Feng <fengxw06@126.com>,
+ Qi Li <qli01@tsinghua.edu.cn>,
+ Ke Xu <xuke@tsinghua.edu.cn>,
+ stable@vger.kernel.org
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <52493DF7-5590-48A1-B76B-21BBC2401687@mails.tsinghua.edu.cn>
+References: <20260705123040.35755-1-zhaoyz24@mails.tsinghua.edu.cn>
+ <92783c87-7e6a-e90a-b2fc-e5d1332139e0@ssi.bg>
+ <87E04893-B2B2-485F-B242-9CACF2F176D6@mails.tsinghua.edu.cn>
+ <bcd7f0e6-b2fc-4e54-f9ac-e1c8b1b0c497@ssi.bg>
+To: Julian Anastasov <ja@ssi.bg>
+X-Mailer: Apple Mail (2.3826.700.81.1.8)
+X-CM-TRANSID:yQQGZQDXsprTkExqpkjKAg--.28065S2
+X-Coremail-Antispam: 1UD129KBjvJXoWxAryrZry8Kw48KF1UXFyfCrg_yoW5tFWUpa
+	ykKa4fXrZrJrWftwn7GryfXa48Gr1DGry7WrZ5KryfCFn8tr13KFnIk3yYkFZruryqkFy8
+	tFyYva4DZ3Wqy3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9v1xkIjI8I6I8E6xAIw20EY4v20xvaj40_Wr0E3s1l8cAvFVAK
+	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
+	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1lnxkEFVAIw20F6cxK64vIFxWle2I262IYc4
+	CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E74AGY7Cv6cx26r4r
+	Kr1UJr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc
+	8vx2IErcIFxwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVW8ZVWrXwCY02Av
+	z4vE14v_GrWl42xK82IYc2Ij64vIr41l42xK82IY6x8ErcxFaVAv8VW8Ww4UJr1UMxC20s
+	026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_
+	JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14
+	v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xva
+	j40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JV
+	W8JrUvcSsGvfC2KfnxnUUI43ZEXa7VU1veHPUUUUU==
+X-CM-SenderInfo: 52kd05r2suqzpdlo2hxwvl0wxkxdhvlgxou0/1tbiAQUBAWpMKrKTLgABsG
 
+Hi Julian,
 
-	Hello,
+> On Jul 6, 2026, at 22:17, Julian Anastasov <ja@ssi.bg> wrote:
+>=20
+>=20
+> Hello,
+>=20
+> On Mon, 6 Jul 2026, Yizhou Zhao wrote:
+>=20
+>>> On Jul 6, 2026, at 01:35, Julian Anastasov <ja@ssi.bg> wrote:
+>>>=20
+>>> May be it is better starting from ip_vs_set_state()
+>>> to provide new arg 'int iph_len/offset' (set to iph.len), down to
+>>> state_transition(), sctp_state_transition() and set_sctp_state().
+>>> Same for all protos. It should cost less stack and ipv6_find_hdr()
+>>> calls and what matters most, correct iph context in case we
+>>> have IP+ICMP+TCP (with just two ports or even with TCP flags)
+>>> and are scheduling ICMP, i.e. not IP+TCP as usually.
+>>=20
+>> I agree that the already parsed transport-header offset should be=20
+>> passed from ip_vs_set_state() down to the protocol state_transition()=20=
 
-On Mon, 6 Jul 2026, Julian Anastasov wrote:
+>> callbacks, instead of reparsing the skb in set_sctp_state(). We will=20=
 
-> Sashiko points out that after stripping the outer headers
-> with pskb_pull() we should ensure the inner IP headers
-> in ICMP errors from tunnels are present in the skb headroom
-> for functions like ipv4_update_pmtu(), icmp_send() and
-> IP_VS_DBG().
-> 
-> Also, add more checks for the length of the inner headers.
-> 
-> Fixes: f2edb9f7706d ("ipvs: implement passive PMTUD for IPIP packets")
-> Link: https://sashiko.dev/#/patchset/20260702073430.67680-1-zhaoyz24%40mails.tsinghua.edu.cn
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+>> send a v2 that does this for SCTP, TCP and the other IPVS protocols=20=
 
-	Ignore this, will send v2 with more checks...
-        
-pw-bot: changes-requested
+>> in one combined fix.
+>>=20
+>>> But what I see is that ip_vs_in_icmp*() are missing
+>>> the ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd) call just
+>>> after ip_vs_in_stats() and before ip_vs_icmp_xmit() where
+>>> we should provide ciph.len. That is why we don't reach the
+>>> set_tcp_state() calls to set correct cp->state and timeout
+>>> when scheduling related ICMP. So, this should be fixed too.
+>>=20
+>> For the ICMP path, I agree that the missing ip_vs_set_state() call is
+>> worth looking at, but using ICMP errors to drive the upper L4 state=20=
 
-> ---
->  net/netfilter/ipvs/ip_vs_core.c | 20 +++++++++++++++-----
->  1 file changed, 15 insertions(+), 5 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 906f2c361676..f332ba422a65 100644
+>> needs some care, because spoofed ICMP packets can match an=20
+>> existing embedded tuple before the endpoint TCP/SCTP stack=20
+>> performs its own validation. Maybe this change needs further
+>> discussion?
+>=20
+> May be only for the schedule_icmp case while the other
+> ICMP replies should not change it:
+>=20
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c =
+b/net/netfilter/ipvs/ip_vs_core.c
+> index 7f93239898ff..05fdcf4ce2c0 100644
 > --- a/net/netfilter/ipvs/ip_vs_core.c
 > +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1767,6 +1767,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  	bool tunnel, new_cp = false;
->  	union nf_inet_addr *raddr;
->  	char *outer_proto = "IPIP";
-> +	unsigned int hlen_ipip = 0;
->  	int ulen = 0;
->  
->  	*related = 1;
-> @@ -1822,9 +1823,10 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  		/* Only for known tunnel */
->  		if (!dest || dest->tun_type != IP_VS_CONN_F_TUNNEL_TYPE_IPIP)
->  			return NF_ACCEPT;
-> -		offset += cih->ihl * 4;
-> +		hlen_ipip = cih->ihl * 4;
-> +		offset += hlen_ipip;
->  		cih = skb_header_pointer(skb, offset, sizeof(_ciph), &_ciph);
-> -		if (cih == NULL)
-> +		if (!(cih && cih->version == 4 && cih->ihl >= 5))
->  			return NF_ACCEPT; /* The packet looks wrong, ignore */
->  		tunnel = true;
->  	} else if ((cih->protocol == IPPROTO_UDP ||	/* Can be UDP encap */
-> @@ -1836,7 +1838,8 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  		/* Non-first fragment has no UDP/GRE header */
->  		if (unlikely(cih->frag_off & htons(IP_OFFSET)))
->  			return NF_ACCEPT;
-> -		offset2 = offset + cih->ihl * 4;
-> +		hlen_ipip = cih->ihl * 4;
-> +		offset2 = offset + hlen_ipip;
->  		if (cih->protocol == IPPROTO_UDP) {
->  			ulen = ipvs_udp_decap(ipvs, skb, offset2, AF_INET,
->  					      raddr, &iproto);
-> @@ -1905,6 +1908,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  	}
->  
->  	if (tunnel) {
-> +		unsigned int hlen_orig = cih->ihl * 4;
->  		__be32 info = ic->un.gateway;
->  		__u8 type = ic->type;
->  		__u8 code = ic->code;
-> @@ -1921,6 +1925,9 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  				goto ignore_tunnel;
->  			offset2 -= ihl + sizeof(_icmph);
->  			skb_reset_network_header(skb);
-> +			/* Ensure the IP header is present in headroom */
-> +			if (!pskb_may_pull(skb, hlen_ipip))
-> +				goto ignore_tunnel;
->  			IP_VS_DBG(12, "ICMP for %s %pI4->%pI4: mtu=%u\n",
->  				  outer_proto, &ip_hdr(skb)->saddr,
->  				  &ip_hdr(skb)->daddr, mtu);
-> @@ -1936,8 +1943,8 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  				if (dest_dst)
->  					mtu = dst_mtu(dest_dst->dst_cache);
->  			}
-> -			if (mtu > 68 + sizeof(struct iphdr) + ulen)
-> -				mtu -= sizeof(struct iphdr) + ulen;
-> +			if (mtu > 68 + hlen_ipip + ulen)
-> +				mtu -= hlen_ipip + ulen;
->  			info = htonl(mtu);
->  		}
->  		/* Strip outer IP, ICMP and IPIP/UDP/GRE, go to IP header of
-> @@ -1946,6 +1953,9 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
->  		if (pskb_pull(skb, offset2) == NULL)
->  			goto ignore_tunnel;
->  		skb_reset_network_header(skb);
-> +		/* Ensure the IP header is present in headroom */
-> +		if (!pskb_may_pull(skb, hlen_orig))
-> +			goto ignore_tunnel;
->  		IP_VS_DBG(12, "Sending ICMP for %pI4->%pI4: t=%u, c=%u, i=%u\n",
->  			&ip_hdr(skb)->saddr, &ip_hdr(skb)->daddr,
->  			type, code, ntohl(info));
-> -- 
-> 2.55.0
+> @@ -1971,6 +1971,8 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct =
+sk_buff *skb, int *related,
+>=20
+> /* do the statistics and put it back */
+> ip_vs_in_stats(cp, skb);
+> + if (new_cp)
+> + ip_vs_set_state(cp, IP_VS_DIR_INPUT, skb, pd, offset);
+> if (IPPROTO_TCP =3D=3D cih->protocol || IPPROTO_UDP =3D=3D =
+cih->protocol ||
+>    IPPROTO_SCTP =3D=3D cih->protocol)
+> offset +=3D 2 * sizeof(__u16);
+>=20
+> Here is why schedule_icmp was added:
+>=20
+> =
+https://archive.linuxvirtualserver.org/html/lvs-devel/2015-08/msg00015.htm=
+l
+>=20
+> But the inner TCP header should be generated by the
+> real server, not from the client, so things can go wrong. We can
+> leave it as it is now - we will forward the ICMP to the right real=20
+> server by using short conn timeout...
 
-Regards
+I agree. The embedded TCP/SCTP header in this path may not have the same
+meaning as a normal client packet reaching the virtual service, so I do =
+not
+see a good fix for the ICMP state update part at the moment.
 
---
-Julian Anastasov <ja@ssi.bg>
+BTW, we have kept the ICMP handling unchanged and submitted a v2 series
+for the parsed transport-offset issue only, following your earlier =
+suggestion
+to pass the already parsed offset from ip_vs_set_state() down to the =
+protocol
+state handlers. The v2 also puts the TCP and SCTP fixes in the same =
+thread:
+
+=
+https://lore.kernel.org/netdev/20260706101624.69471-1-zhaoyz24@mails.tsing=
+hua.edu.cn/
+
+Thanks for the review.
+
+>=20
+> Regards
+>=20
+> --
+> Julian Anastasov <ja@ssi.bg>
+
+Thanks,
+Yizhou=
 
