@@ -1,319 +1,335 @@
-Received: from zg8tmtyylji0my4xnjqumte4.icoremail.net (zg8tmtyylji0my4xnjqumte4.icoremail.net [162.243.164.118])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id E343E28FFF6;
-	Sat, 11 Jul 2026 14:10:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.243.164.118
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CA6721ABBB;
+	Sat, 11 Jul 2026 17:17:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783779049; cv=none; b=nD2WwFfaZ+8LbH3y+i8pdjBldAwDe2jbiUiArPRf5fj+WUPkLg/f9m+vh5KkTQwozdOkW+aT3TZMw2ud2DnuY9uNsxkOHfMOCpJpADRhLtIJI66CFKeOKd8r3bYsHAuBxVdqY4tEPVwUG1I3wneh64mkXm7SKsenWndAAtvtr3A=
+	t=1783790245; cv=none; b=tlGXmV/hNvQeajPxg487D16+Q86DYjhx9uCD3EDY0iqgMAtzo5lYZfpDlkNWSkeNEct1QUCTWQfTwl/r6OZgPircnGYLqaD2Mo6JvZCL8B/C4cSXAslB3liH4Ug5SxAJBNeWm67C3YKvs/wcAf2kGNU9+BhbOEErmaTV8rLpUZ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783779049; c=relaxed/simple;
-	bh=iZrV/G6W2EBYy/GOZ2MrGZG+vuXDtEmGSA/u5BOK/jE=;
-	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=k5OMQ9XBpK6OCJffjC+vMjRVcs55vg3Dm6RfZAtY3IpGAbXF2vm+Pevw5Yv/KMxLer7pm0Tbdu75Gt2rhdyD+8Ld2I6wyBtvH4sHKvUVQVOAwmjypX88e+PNIFHGw6s+YG8eF5podf09Q4szwoabZDC62h8nC56yDgV+gueXcTI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn; dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b=BtZFF6a5; arc=none smtp.client-ip=162.243.164.118
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn
+	s=arc-20240116; t=1783790245; c=relaxed/simple;
+	bh=pmmG46B+j2gfAcSZj1gE7RQW/eAHZuPUKanmy59ZrB4=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=FiXnoM0uKqCfG3VPX0FACT6M4Tzcolo+4BFIuEdUPsvlYI0yd4rch9wXZE2f7XbSe5Zogny7xTMmHxbmFu11M5romMSV8V7PcJ3AyyJOC4rdAtiaUR0JjYL5fHSoxbfFczr7I+XtuCzYva7ox7eap5DaylpleXIAAvum85VZ270=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=IRmJNcRV; arc=none smtp.client-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b="BtZFF6a5"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=mails.tsinghua.edu.cn; s=dkim; h=Received:Content-Type:
-	Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	Content-Transfer-Encoding:Message-Id:References:To; bh=Atq63KY0v
-	n5TLHmiu/IOKgqIrZXoAVWMmb1SR6++EHo=; b=BtZFF6a5iiI2iKEvmvYgt/tMi
-	ECQiU1oh9gcF4W+jfHvN+kMdbkYRFsF5HGsAiENHHqsJ0Rgs8lKW2BZfdIqEjqHZ
-	wVhHLxfCQ3OmiO1In795vNCABLiDo/xJlLFu9gC4Ms26qOg71SczP8YW/yRUCOuo
-	j97GlazvAk+9szIJK8=
-Received: from smtpclient.apple (unknown [121.229.84.237])
-	by web2 (Coremail) with SMTP id yQQGZQAnA5utTlJqBuXeAg--.58248S2;
-	Sat, 11 Jul 2026 22:09:50 +0800 (CST)
-Content-Type: text/plain;
-	charset=us-ascii
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="IRmJNcRV"
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 07D6320259;
+	Sat, 11 Jul 2026 20:17:09 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=a5WcwgPpgbRpwxvyWM4zEyCq8vz2iBvoZybBwQMvEBA=; b=IRmJNcRVaSuB
+	cPEQqxrBrpOcMlRp3CzOy1bQa9RQoXdsDGq4Hx3h3U7v4r5ed0f10bbo7tQCDzXS
+	RH7klgSgLFQ2i5UTo0WlkXtIiHZykTnDxgce8ZN/NHa+aJ2iB4dRr0e5XFX9WJlJ
+	NGRZob/FVcIJmPAVEAdjq7rCgpxG9udLyIpXo8hEvZ343S8QOQeKhX1zuroYOXq6
+	mdD7F9KQBrlR4ItX8XpmWepq8ZZe0xRjGdxA1TNTRp6QjDlFuVpvcvM8UxcxeFQ0
+	Lfedz/2l9/SR76VKD4EnVEMw8KSogeIp4XZcKMs2DwtKF0FF3F+mFxcSiTBZ+DOU
+	cdDsPS9mfiW6NBE1/MpLnDGxqnRAczD5ymsy1KLCNFFBaPScCL+AqOFErLZDauLe
+	6V0T+Y2FtIlvcLXax4nfm+dqIPKlUG7fIXLSaoFIOYabGnK47QQbrPwf1LNEPl0s
+	4A8Em+JTU5zar+7CWCuxgHJDXBLd0ZUQUN/EN5c5yVTWCTqOemKhXt3vRNpnlP/3
+	fJ/GpXA+vNjDPjwy/Rp02gzPi25HFOYxWd9Rm3T4y5dS+I6J9P9ONibCc9QSSgGe
+	0Jbb4Amm6pDcHkXXajtxDJOsDS22Jy8nlZRyE1H/ATKQy0FqDZlspobwk8CI/H/v
+	PHQYRDbDffyb9sBYr3SpRVv1h1vN4TY=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Sat, 11 Jul 2026 20:17:08 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id D0B1061BBF;
+	Sat, 11 Jul 2026 20:17:08 +0300 (EEST)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 66BHH3Qv052268;
+	Sat, 11 Jul 2026 20:17:06 +0300
+Date: Sat, 11 Jul 2026 20:17:03 +0300 (EEST)
+From: Julian Anastasov <ja@ssi.bg>
+To: Simon Horman <horms@verge.net.au>
+cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Subject: Re: [PATCH nf] ipvs: fix the checksum validations
+In-Reply-To: <20260709202356.104307-1-ja@ssi.bg>
+Message-ID: <014e0c4c-eab0-d7ce-d82f-d410c5fec5c7@ssi.bg>
+References: <20260709202356.104307-1-ja@ssi.bg>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.600.51.1.1\))
-Subject: Re: [PATCH nf] ipvs: make destination flags atomic
-From: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
-In-Reply-To: <afcdb34c-ec10-de8e-083c-624bcedca90e@ssi.bg>
-Date: Sat, 11 Jul 2026 22:09:39 +0800
-Cc: Simon Horman <horms@verge.net.au>,
- David Ahern <dsahern@kernel.org>,
- Ido Schimmel <idosch@nvidia.com>,
- "David S. Miller" <davem@davemloft.net>,
- Eric Dumazet <edumazet@google.com>,
- Jakub Kicinski <kuba@kernel.org>,
- Paolo Abeni <pabeni@redhat.com>,
- Pablo Neira Ayuso <pablo@netfilter.org>,
- Florian Westphal <fw@strlen.de>,
- Phil Sutter <phil@nwl.cc>,
- Alexander Frolkin <avf@eldamar.org.uk>,
- netdev@vger.kernel.org,
- lvs-devel@vger.kernel.org,
- linux-kernel <linux-kernel@vger.kernel.org>,
- netfilter-devel@vger.kernel.org,
- coreteam@netfilter.org,
- stable@vger.kernel.org,
- Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>,
- Ao Wang <wangao@seu.edu.cn>,
- Xuewei Feng <fengxw06@126.com>,
- Qi Li <qli01@tsinghua.edu.cn>,
- Ke Xu <xuke@tsinghua.edu.cn>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <F48F3350-4E00-46F0-BD11-AECB45AD8722@mails.tsinghua.edu.cn>
-References: <20260707085706.96322-1-zhaoyz24@mails.tsinghua.edu.cn>
- <41c3d792-af7d-5582-5057-ac3df5f7bfd6@ssi.bg>
- <91509A0C-9E4A-4F0E-A45C-ABD29396067E@mails.tsinghua.edu.cn>
- <afcdb34c-ec10-de8e-083c-624bcedca90e@ssi.bg>
-To: Julian Anastasov <ja@ssi.bg>
-X-Mailer: Apple Mail (2.3864.600.51.1.1)
-X-CM-TRANSID:yQQGZQAnA5utTlJqBuXeAg--.58248S2
-X-Coremail-Antispam: 1UD129KBjvJXoW3AF45tFWDWF18WFW5Kw18uFg_yoW3Wr4fpr
-	W8JF929rWUWa1UGFs8tF13ZrWFkF18JFyUWFn8Ka43J3WDArn0qFnYkFWDCFs7CFs7Cr1f
-	CFW5t34qka4kXFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9v1xkIjI8I6I8E6xAIw20EY4v20xvaj40_Wr0E3s1l8cAvFVAK
-	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4
-	x0Y4vE2Ix0cI8IcVCY1x0267AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2
-	z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1lnxkEFVAIw20F6cxK64vIFxWle2I262IYc4
-	CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E74AGY7Cv6cx26r4r
-	Kr1UJr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc
-	8vx2IErcIFxwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AKxVW8ZVWrXwCY02Av
-	z4vE14v_Xryl42xK82IYc2Ij64vIr41l42xK82IY6x8ErcxFaVAv8VW8Ww4UJr1UMxC20s
-	026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_
-	JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14
-	v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xva
-	j40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JV
-	W8JrUvcSsGvfC2KfnxnUUI43ZEXa7VU1m9aPUUUUU==
-X-CM-SenderInfo: 52kd05r2suqzpdlo2hxwvl0wxkxdhvlgxou0/1tbiAQMFAWpRcLLNAQABsy
-
-Hello Julian,
-
-Thank you for the detailed proposal. Yes, I am happy to handle the
-follow-up conversion of the overload flag to bitops.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 
 
-> On Jul 8, 2026, at 23:53, Julian Anastasov <ja@ssi.bg> wrote:
->=20
->=20
-> Hello,
->=20
-> On Wed, 8 Jul 2026, Yizhou Zhao wrote:
->=20
->>> On Jul 8, 2026, at 03:18, Julian Anastasov <ja@ssi.bg> wrote:
->>>=20
->>> On Tue, 7 Jul 2026, Yizhou Zhao wrote:
->>>=20
->>=20
->> We have posted a v2 patch at:
->> =
-https://lore.kernel.org/netfilter-devel/20260708060454.20534-1-zhaoyz24@ma=
-ils.tsinghua.edu.cn/
->>=20
->> The v2 patch updates the commit message with more conservative
->> wording, and fixes the checkpatch logical-continuation warnings.
->=20
-> After looking again at the code, I think we can
-> do it in different way:
->=20
-> - IP_VS_DEST_F_AVAILABLE and IP_VS_DEST_F_OVERLOAD are defined
-> in include/uapi/linux/ip_vs.h but we never export them to user
-> space. So, we are free to change them. We can move them to=20
-> include/net/ip_vs.h, see below...
->=20
-> - IP_VS_DEST_F_AVAILABLE is changed only under service_mutex,
-> so we can keep its usage
->=20
-> - IP_VS_DEST_F_OVERLOAD needs different access methods.
-> We can add 'unsigned long flags2;', may be after l_threshold.
-> And to switch to such usage (F_OVERLOAD -> FL_OVERLOAD):
->=20
-> - test_bit(IP_VS_DEST_FL_OVERLOAD, &dest->flags2)
-> - set_bit(IP_VS_DEST_FL_OVERLOAD, &dest->flags2)
->=20
-> Sometimes if (test_bit()) clear_bit() can avoid
-> full memory barrier in ip_vs_dest_update_overload()
->=20
-> - clear_bit(IP_VS_DEST_FL_OVERLOAD, &dest->flags2)
-> test_bit() guard can help here too
->=20
-> As there are other races involved, something like
-> this can be a starting point for such change. It tries harder
-> to update the overload flag on dest edit/add but it does not
-> include the proposed bitops:
->=20
+	Hello,
+
+On Thu, 9 Jul 2026, Julian Anastasov wrote:
+
+> TCP/UDP checksum validation for CHECKSUM_COMPLETE is broken
+> before the git history.
+> 
+> Expecting skb->csum to cover data starting from the protocol
+> header is wrong. As IPVS works at the IP layer, the csum for
+> the IP header is not subtracted yet.
+> 
+> ip_vs_in_icmp_v6() is missing checksum validation for ICMPv6
+> packets from clients.
+> 
+> Also, Sashiko points out that handle_response_icmp() being
+> common for IPv4 and IPv6 is missing the pseudo-header
+> calculation while validating ICMPv6 messages from real
+> servers which is a problem if checksum is not validated
+> by the hardware.
+> 
+> Fix the problems by creating ip_vs_checksum_common_check()
+> helper and use it for TCP/UDP/ICMP both for IPv4 and IPv6.
+> 
+> Also, ip_vs_checksum_complete() can be marked static.
+> 
+> Fixes: 2a3b791e6e11 ("IPVS: Add/adjust Netfilter hook functions and helpers for v6")
+> Link: https://sashiko.dev/#/patchset/20260708180315.77413-1-ja%40ssi.bg
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+
+	This patch needs changes, will send v2.
+
+pw-bot: changes-requested
+
+> ---
+>  include/net/ip_vs.h                  |  5 ++-
+>  net/netfilter/ipvs/ip_vs_core.c      | 63 ++++++++++++++++++++++++++--
+>  net/netfilter/ipvs/ip_vs_proto_tcp.c | 35 ++--------------
+>  net/netfilter/ipvs/ip_vs_proto_udp.c | 39 +++--------------
+>  4 files changed, 71 insertions(+), 71 deletions(-)
+> 
 > diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-> index 49297fec448a..b34631270e24 100644
+> index 49297fec448a..fd18b1cd6471 100644
 > --- a/include/net/ip_vs.h
 > +++ b/include/net/ip_vs.h
-> @@ -1906,6 +1906,8 @@ static inline void =
-ip_vs_dest_put_and_free(struct ip_vs_dest *dest)
-> kfree(dest);
-> }
->=20
-> +void ip_vs_dest_update_overload(struct ip_vs_dest *dest);
+> @@ -2065,8 +2065,6 @@ void ip_vs_nat_icmp_v6(struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  		       struct ip_vs_conn *cp, int dir);
+>  #endif
+>  
+> -__sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset);
+> -
+>  static inline __wsum ip_vs_check_diff4(__be32 old, __be32 new, __wsum oldsum)
+>  {
+>  	__be32 diff[2] = { ~old, new };
+> @@ -2092,6 +2090,9 @@ static inline __wsum ip_vs_check_diff2(__be16 old, __be16 new, __wsum oldsum)
+>  	return csum_partial(diff, sizeof(diff), oldsum);
+>  }
+>  
+> +bool ip_vs_checksum_common_check(int af, struct sk_buff *skb, int proto,
+> +				 int offset);
 > +
-> /* IPVS sync daemon data and function prototypes
->  * (from ip_vs_sync.c)
->  */
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c =
-b/net/netfilter/ipvs/ip_vs_conn.c
-> index d19caf66afeb..3fd221996e6e 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -1087,6 +1087,26 @@ static inline int ip_vs_dest_totalconns(struct =
-ip_vs_dest *dest)
-> + atomic_read(&dest->inactconns);
-> }
->=20
-> +__always_inline void ip_vs_dest_update_overload(struct ip_vs_dest =
-*dest)
+>  /* Forget current conntrack (unconfirmed) and attach notrack entry */
+>  static inline void ip_vs_notrack(struct sk_buff *skb)
+>  {
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index c9c88c99d07b..ceb1cbf33dd7 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -867,11 +867,56 @@ static int sysctl_nat_icmp_send(struct netns_ipvs *ipvs) { return 0; }
+>  
+>  #endif
+>  
+> -__sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset)
+> +static __sum16 ip_vs_checksum_complete(struct sk_buff *skb, int offset)
+>  {
+>  	return csum_fold(skb_checksum(skb, offset, skb->len - offset, 0));
+>  }
+>  
+> +/**
+> + * ip_vs_checksum_common_check - validate checksum for TCP/UDP/ICMP
+> + * @af: AF_INET/AF_INET6
+> + * @skb: socket buffer
+> + * @proto: IPPROTO_xxx
+> + * @offset: offset of protocol header
+> + */
+> +bool ip_vs_checksum_common_check(int af, struct sk_buff *skb, int proto,
+> +				 int offset)
 > +{
-> + int conns, l, u;
+> +	__wsum csum;
 > +
-> + u =3D READ_ONCE(dest->u_threshold);
-> + if (!u)
-> + goto unset;
-> + conns =3D ip_vs_dest_totalconns(dest);
-> + if (conns >=3D u) {
-> + dest->flags |=3D IP_VS_DEST_F_OVERLOAD;
-> + return;
-> + }
-> + l =3D READ_ONCE(dest->l_threshold) ? : (u * 3 / 4);
-> + if (conns >=3D l && l)
-> + return;
+> +	if (skb_csum_unnecessary(skb))
+> +		return true;
+> +	if (skb->ip_summed == CHECKSUM_NONE) {
+> +		csum = skb_checksum(skb, offset, skb->len - offset, 0);
+> +	} else if (skb->ip_summed == CHECKSUM_COMPLETE) {
+> +		/* IPVS works at IP layer, so skb->csum covers data from
+> +		 * IP header, strip it up to the protocol header
+> +		 */
+> +		csum = csum_sub(skb->csum, skb_checksum(skb, 0, offset, 0));
+> +	} else {
+> +		/* No need to checksum. */
+> +		return true;
+> +	}
+> +#ifdef CONFIG_IP_VS_IPV6
+> +	if (af == AF_INET6) {
+> +		if (csum_ipv6_magic(&ipv6_hdr(skb)->saddr,
+> +				    &ipv6_hdr(skb)->daddr,
+> +				    skb->len - offset, proto,
+> +				    csum))
+> +			return false;
+> +	} else
+> +#endif
+> +		if (proto == IPPROTO_ICMP)
+> +			return !csum_fold(csum);
+> +		else if (csum_tcpudp_magic(ip_hdr(skb)->saddr,
+> +					   ip_hdr(skb)->daddr,
+> +					   skb->len - offset, proto,
+> +					   csum))
+> +			return false;
 > +
-
-I noticed one integer-rounding detail in the proposed helper. The
-existing default lower-threshold check:
-
-ip_vs_dest_totalconns(dest) * 4 < dest->u_threshold * 3
-
-clears OVERLOAD when conns is below ceil(3 * u / 4), assuming the
-multiplications do not overflow. In the proposed helper:
-
-l =3D u * 3 / 4;
-if (conns >=3D l && l)
-return;
-
-the division rounds down, so the boundary is different when u is not a
-multiple of four. For example, with u =3D=3D 2 and conns =3D=3D 1, the =
-existing
-code clears OVERLOAD while the helper keeps it set. Would using
-
-l =3D u - u / 4;
-
-for the default lower threshold preserve the existing behavior while
-also avoiding the multiplication overflow?
-
-> +unset:
-> + dest->flags &=3D ~IP_VS_DEST_F_OVERLOAD;
+> +	return true;
 > +}
 > +
-> /*
->  * Bind a connection entry with a virtual service destination
->  * Called just after a new connection entry is created.
-> @@ -1161,9 +1181,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct =
-ip_vs_dest *dest)
-> atomic_inc(&dest->persistconns);
-> }
->=20
-> - if (dest->u_threshold !=3D 0 &&
-> -    ip_vs_dest_totalconns(dest) >=3D dest->u_threshold)
-> - dest->flags |=3D IP_VS_DEST_F_OVERLOAD;
-> + ip_vs_dest_update_overload(dest);
-> }
->=20
->=20
-> @@ -1257,16 +1275,8 @@ static inline void ip_vs_unbind_dest(struct =
-ip_vs_conn *cp)
-> atomic_dec(&dest->persistconns);
-> }
->=20
-> - if (dest->l_threshold !=3D 0) {
-> - if (ip_vs_dest_totalconns(dest) < dest->l_threshold)
-> - dest->flags &=3D ~IP_VS_DEST_F_OVERLOAD;
-> - } else if (dest->u_threshold !=3D 0) {
-> - if (ip_vs_dest_totalconns(dest) * 4 < dest->u_threshold * 3)
-> - dest->flags &=3D ~IP_VS_DEST_F_OVERLOAD;
-> - } else {
-> - if (dest->flags & IP_VS_DEST_F_OVERLOAD)
-> - dest->flags &=3D ~IP_VS_DEST_F_OVERLOAD;
-> - }
-> + if (dest->flags & IP_VS_DEST_F_OVERLOAD)
-> + ip_vs_dest_update_overload(dest);
->=20
-> ip_vs_dest_put(dest);
-> }
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c =
-b/net/netfilter/ipvs/ip_vs_ctl.c
-> index bcf40b8c41cf..2871116e46ec 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -1315,6 +1315,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, =
-struct ip_vs_dest *dest,
-> struct ip_vs_service *old_svc;
-> struct ip_vs_scheduler *sched;
-> int conn_flags;
-> + bool upd_thresh;
->=20
-> /* We cannot modify an address and change the address family */
-> BUG_ON(!add && udest->af !=3D dest->af);
-> @@ -1370,10 +1371,12 @@ __ip_vs_update_dest(struct ip_vs_service *svc, =
-struct ip_vs_dest *dest,
-> /* set the dest status flags */
-> dest->flags |=3D IP_VS_DEST_F_AVAILABLE;
->=20
-> - if (udest->u_threshold =3D=3D 0 || udest->u_threshold > =
-dest->u_threshold)
-> - dest->flags &=3D ~IP_VS_DEST_F_OVERLOAD;
-> - dest->u_threshold =3D udest->u_threshold;
-> - dest->l_threshold =3D udest->l_threshold;
-> + upd_thresh =3D READ_ONCE(dest->u_threshold) !=3D udest->u_threshold =
-||
-> +     READ_ONCE(dest->l_threshold) !=3D udest->l_threshold;
-> + WRITE_ONCE(dest->u_threshold, udest->u_threshold);
-> + WRITE_ONCE(dest->l_threshold, udest->l_threshold);
-> + if (upd_thresh)
-> + ip_vs_dest_update_overload(dest);
->=20
-> dest->af =3D udest->af;
->=20
-> @@ -3667,8 +3670,8 @@ __ip_vs_get_dest_entries(struct netns_ipvs =
-*ipvs, const struct ip_vs_get_dests *
-> entry.port =3D dest->port;
-> entry.conn_flags =3D atomic_read(&dest->conn_flags);
-> entry.weight =3D atomic_read(&dest->weight);
-> - entry.u_threshold =3D dest->u_threshold;
-> - entry.l_threshold =3D dest->l_threshold;
-> + entry.u_threshold =3D READ_ONCE(dest->u_threshold);
-> + entry.l_threshold =3D READ_ONCE(dest->l_threshold);
-> entry.activeconns =3D atomic_read(&dest->activeconns);
-> entry.inactconns =3D atomic_read(&dest->inactconns);
-> entry.persistconns =3D atomic_read(&dest->persistconns);
-> @@ -4277,8 +4280,10 @@ static int ip_vs_genl_fill_dest(struct sk_buff =
-*skb, struct ip_vs_dest *dest)
-> dest->tun_port) ||
->    nla_put_u16(skb, IPVS_DEST_ATTR_TUN_FLAGS,
-> dest->tun_flags) ||
-> -    nla_put_u32(skb, IPVS_DEST_ATTR_U_THRESH, dest->u_threshold) ||
-> -    nla_put_u32(skb, IPVS_DEST_ATTR_L_THRESH, dest->l_threshold) ||
-> +    nla_put_u32(skb, IPVS_DEST_ATTR_U_THRESH,
-> + READ_ONCE(dest->u_threshold)) ||
-> +    nla_put_u32(skb, IPVS_DEST_ATTR_L_THRESH,
-> + READ_ONCE(dest->l_threshold)) ||
->    nla_put_u32(skb, IPVS_DEST_ATTR_ACTIVE_CONNS,
-> atomic_read(&dest->activeconns)) ||
->    nla_put_u32(skb, IPVS_DEST_ATTR_INACT_CONNS,
->=20
-> Regards
->=20
-> --
-> Julian Anastasov <ja@ssi.bg>
+>  static inline enum ip_defrag_users ip_vs_defrag_user(unsigned int hooknum)
+>  {
+>  	if (NF_INET_LOCAL_IN == hooknum)
+> @@ -1039,12 +1084,13 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
+>  				unsigned int hooknum)
+>  {
+>  	unsigned int verdict = NF_DROP;
+> +	int iproto = af == AF_INET6 ? IPPROTO_ICMPV6 : IPPROTO_ICMP;
+>  
+>  	if (IP_VS_FWD_METHOD(cp) != IP_VS_CONN_F_MASQ)
+>  		goto after_nat;
+>  
+>  	/* Ensure the checksum is correct */
+> -	if (!skb_csum_unnecessary(skb) && ip_vs_checksum_complete(skb, ihl)) {
+> +	if (!ip_vs_checksum_common_check(af, skb, iproto, ihl)) {
+>  		/* Failed checksum! */
+>  		IP_VS_DBG_BUF(1, "Forward ICMP: failed checksum from %s!\n",
+>  			      IP_VS_DBG_ADDR(af, snet));
+> @@ -1898,7 +1944,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
+>  	verdict = NF_DROP;
+>  
+>  	/* Ensure the checksum is correct */
+> -	if (!skb_csum_unnecessary(skb) && ip_vs_checksum_complete(skb, ihl)) {
+> +	if (!ip_vs_checksum_common_check(AF_INET, skb, IPPROTO_ICMP, ihl)) {
+>  		/* Failed checksum! */
+>  		IP_VS_DBG(1, "Incoming ICMP: failed checksum from %pI4!\n",
+>  			  &iph->saddr);
+> @@ -2064,6 +2110,17 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
+>  		goto out;
+>  	}
+>  
+> +	verdict = NF_DROP;
+> +
+> +	/* Ensure the checksum is correct */
+> +	if (!ip_vs_checksum_common_check(AF_INET6, skb, IPPROTO_ICMPV6,
+> +					 iph->len)) {
+> +		/* Failed checksum! */
+> +		IP_VS_DBG(1, "Incoming ICMPv6: failed checksum from %pI6c!\n",
+> +			  &iph->saddr);
+> +		goto out;
+> +	}
+> +
+>  	/* do the statistics and put it back */
+>  	ip_vs_in_stats(cp, skb);
+>  
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> index 8cc0a8ce6241..147cf01708ff 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> @@ -304,39 +304,10 @@ static int
+>  tcp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  	       unsigned int tcphoff)
+>  {
+> -	switch (skb->ip_summed) {
+> -	case CHECKSUM_NONE:
+> -		skb->csum = skb_checksum(skb, tcphoff, skb->len - tcphoff, 0);
+> -		fallthrough;
+> -	case CHECKSUM_COMPLETE:
+> -#ifdef CONFIG_IP_VS_IPV6
+> -		if (af == AF_INET6) {
+> -			if (csum_ipv6_magic(&ipv6_hdr(skb)->saddr,
+> -					    &ipv6_hdr(skb)->daddr,
+> -					    skb->len - tcphoff,
+> -					    IPPROTO_TCP,
+> -					    skb->csum)) {
+> -				IP_VS_DBG_RL_PKT(0, af, pp, skb, 0,
+> -						 "Failed checksum for");
+> -				return 0;
+> -			}
+> -		} else
+> -#endif
+> -			if (csum_tcpudp_magic(ip_hdr(skb)->saddr,
+> -					      ip_hdr(skb)->daddr,
+> -					      skb->len - tcphoff,
+> -					      ip_hdr(skb)->protocol,
+> -					      skb->csum)) {
+> -				IP_VS_DBG_RL_PKT(0, af, pp, skb, 0,
+> -						 "Failed checksum for");
+> -				return 0;
+> -			}
+> -		break;
+> -	default:
+> -		/* No need to checksum. */
+> -		break;
+> +	if (!ip_vs_checksum_common_check(af, skb, IPPROTO_TCP, tcphoff)) {
+> +		IP_VS_DBG_RL_PKT(0, af, pp, skb, 0, "Failed checksum for");
+> +		return 0;
+>  	}
+> -
+>  	return 1;
+>  }
+>  
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+> index f9de632e38cd..d10713ca74f7 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_udp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+> @@ -306,40 +306,11 @@ udp_csum_check(int af, struct sk_buff *skb, struct ip_vs_protocol *pp,
+>  	if (uh == NULL)
+>  		return 0;
+>  
+> -	if (uh->check != 0) {
+> -		switch (skb->ip_summed) {
+> -		case CHECKSUM_NONE:
+> -			skb->csum = skb_checksum(skb, udphoff,
+> -						 skb->len - udphoff, 0);
+> -			fallthrough;
+> -		case CHECKSUM_COMPLETE:
+> -#ifdef CONFIG_IP_VS_IPV6
+> -			if (af == AF_INET6) {
+> -				if (csum_ipv6_magic(&ipv6_hdr(skb)->saddr,
+> -						    &ipv6_hdr(skb)->daddr,
+> -						    skb->len - udphoff,
+> -						    IPPROTO_UDP,
+> -						    skb->csum)) {
+> -					IP_VS_DBG_RL_PKT(0, af, pp, skb, 0,
+> -							 "Failed checksum for");
+> -					return 0;
+> -				}
+> -			} else
+> -#endif
+> -				if (csum_tcpudp_magic(ip_hdr(skb)->saddr,
+> -						      ip_hdr(skb)->daddr,
+> -						      skb->len - udphoff,
+> -						      ip_hdr(skb)->protocol,
+> -						      skb->csum)) {
+> -					IP_VS_DBG_RL_PKT(0, af, pp, skb, 0,
+> -							 "Failed checksum for");
+> -					return 0;
+> -				}
+> -			break;
+> -		default:
+> -			/* No need to checksum. */
+> -			break;
+> -		}
+> +	if (!uh->check)
+> +		return 1;
+> +	if (!ip_vs_checksum_common_check(af, skb, IPPROTO_UDP, udphoff)) {
+> +		IP_VS_DBG_RL_PKT(0, af, pp, skb, 0, "Failed checksum for");
+> +		return 0;
+>  	}
+>  	return 1;
+>  }
+> -- 
+> 2.55.0
 
-Please go ahead with the ip_vs_dest_update_overload() patch. I will base
-the follow-up on the posted version and check the resulting struct
-ip_vs_dest layout as Vadim suggested.
+Regards
 
-Regards,
-Yizhou
+--
+Julian Anastasov <ja@ssi.bg>
 
