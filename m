@@ -1,222 +1,253 @@
-Received: from fhigh-a6-smtp.messagingengine.com (fhigh-a6-smtp.messagingengine.com [103.168.172.157])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 955E7149DF1;
-	Sun, 12 Jul 2026 11:02:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.157
+Received: from zg8tmja5ljk3lje4mi4ymjia.icoremail.net (zg8tmja5ljk3lje4mi4ymjia.icoremail.net [209.97.182.222])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 553A03E44E4;
+	Mon, 13 Jul 2026 09:49:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.97.182.222
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783854159; cv=none; b=qfR97Md3x03z4XsjxwSfQOSlgkA4VB4cyZjZv3RaebcL1h61Vtp820wjBGfsXSqogsmBgLoqBF3br6ni9Mf82WBzmNAANviLGhpU9VO2LVmFe6GwF5U4k5otZFglnf6gheTc1IrJ2UpQVcise745g5FKBwz8BVxWQaXg2k1QFnc=
+	t=1783936151; cv=none; b=r6CR+8NK2yIO94BInmHPVBSPwjCpS/OFzTRE05ZOVEdQB3/fxhNkI6UIfwQPtcMs4KbaVgxTZZZHTezZuewdM6A9qVJN6JHMSgf0Q8l+cnH97a3m6+WazggBEuxXjr/vOrpiA7tRQ4GEI0xtsQ3z07neUiHHmtUYOM7TCE6+7UA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783854159; c=relaxed/simple;
-	bh=QFAERGkwm7FFeWB0LrovUamDAkSprs7aihtdoZvXuKE=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=NKoWjzE/U9Cg81q8x/q+xGMA4Dju/BDKtzUlmXLX0P+/vgeMv2dgD7brrPKZqRPslrVfKKuG/wygnWi2EbpqE7SpjguHA8X987epUkETbAPw3BX/AP4rrrvLI7lz9cujWCucBJ4cd0qgsBWNkvrEucHW0ECWq80VWQu4vKXYC3I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arndb.de; spf=pass smtp.mailfrom=arndb.de; dkim=pass (2048-bit key) header.d=arndb.de header.i=@arndb.de header.b=zpHRfiC5; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=l6PtvRhd; arc=none smtp.client-ip=103.168.172.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arndb.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=arndb.de
+	s=arc-20240116; t=1783936151; c=relaxed/simple;
+	bh=3/BP5uD5nRa0nxQHzhS+ZEMFFDOehR5f0M7Qj3EYLUw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=vCjPoYkUywh4Juul5+AsDmxohb8tsaKo+djT1Hv3iZljKfErgoFexgjW+k8j144YQ2g6QAx19VFc8vIDXdYlOUwLgdBBqUaD9d9OcsHYaKS/5wT1d8ja9kZLNhQGMw9FsrCYtOiH0BwHgbkFBwmdSjjSxxU8MeX0xPuKMeq1avE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn; dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b=MsrA1vj7; arc=none smtp.client-ip=209.97.182.222
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=arndb.de header.i=@arndb.de header.b="zpHRfiC5";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="l6PtvRhd"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfhigh.phl.internal (Postfix) with ESMTP id B209314000F9;
-	Sun, 12 Jul 2026 07:02:36 -0400 (EDT)
-Received: from phl-imap-05 ([10.202.2.95])
-  by phl-compute-04.internal (MEProxy); Sun, 12 Jul 2026 07:02:36 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=arndb.de; h=cc
-	:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to; s=fm1; t=1783854156;
-	 x=1783940556; bh=VmtnK3tqoDU1aIaol+aWaActTb6DTRuQA5S8IlUXC6U=; b=
-	zpHRfiC5EPwl520ahCHYKKw5slNvnULR9f0KFrRT9y/2496pQCwk5KRBRbFgaYwK
-	qG5F+qyc+u6zQHl69ceJPRiSScFtXeE7ZyRSVgJSuprmdrpegDBkSA7FMJ5iWHIW
-	SWlwkvdzIryhehvQjfxl6CaW2ssS7P7s2gf6gPSaRBitFcji6E7w6O+D9MGOTq8e
-	KhN1cpA/Tqcli21P3rrlWr0Xxua3FpQ5R7OFYe9FPdjPs6R+VvBCiyDkT0HtPl2f
-	qii8ZEdh5SWDrMrxQFPHLV29au4QVk00LL5Ct/0KCqib5HX/6aJG4Up8UlRvgkJY
-	nRorXxeir3laErJG81MisA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=1783854156; x=
-	1783940556; bh=VmtnK3tqoDU1aIaol+aWaActTb6DTRuQA5S8IlUXC6U=; b=l
-	6PtvRhdAV0qi2d8e9JUkK2fFLlwxNVY88bcJ+5Aj5gdngpmAYCMSgprFJ8wo710r
-	L3GX7fLDfky6/oZ5HVFMbvr3LfslQE3A4w7QmId8Pn6hgVlensKX8wbHDxXJXMEw
-	ljaGdMaWuSttqpLIh1kRGvTz2JKn9ccjs3FegrO0y+RbRlkAzKbQ2dqj069GeO+7
-	KiNB7ReoNHH0ZUF3RSAIMtQSTjbO3t+zGQmSf4gQWGO8/uy+Wvbs6Xl2gDkoDMV7
-	CmCc8Ljjg46b8emiC9vxMTJkV1Aw2OeUhRq5fNYVA+WvlRG7ZcpAMzEUPYx0xvod
-	o+8ewgiMwgBexztrVjN5Q==
-X-ME-Sender: <xms:SXRTar8WT3jXuGcKhip6v_oZ_ev_MYJ3TiCDPsHDGOy_4qyk61nOpA>
-    <xme:SXRTaigdv70_fhLJe4evVFXvY38h-PROEIkCw6nfAYtcRrN4q0volhQFULkdIqZ6L
-    z8_glaP7Vjxtth72FHcVVja1cD22b3GdPb5JUl06P7cs54F9UBgiclm>
-X-ME-Proxy-Cause: dmFkZTGLo78njPg/nVe+uHWg3AzWojEtguj4DH8KNv19gE9YnhOLAIWMCTf4qhQuAaKC9P
-    oqyQsM8pSAEKHb797BqDSo1aNsM3rLblcv7PG7RotKu6L/VmYg2dW8zs2GiGwBQBqITK1u
-    X7zWoJgFJCv+6+BhbAHafVgja8Z3pTN2uEr2UPDO/nE22eQsOCXiJJSQPkNMNg99Cf35b5
-    J+tdL50vwyZ/VB0b7S4W+UsY7ZTc+cfBHJYz0U/kX691quZfggwKD0RgbG/U6czrjHfrvF
-    6fq/4yXwXeSj8YJFVVakjVNKSPD+23ViVy8tbJNIxUaNcajIR7AH0T/de5rCVSDzK344tx
-    U0x24Up+ufBa9p+NAvwC4cO2T9HS+kz0KnK//dY/mOxOe/QpD8tgteUxcBF++TLDigfVC1
-    C3EJFOtWxRFUioYMCn8qg0rQx+yCJX0thmaTY7UEVDucc/9mhpzue03w8Dp+CxjgmXdcGu
-    RSCzsnIT3+hEirvAmIyFtq70pAE1IonG2VSteXv8IfwRKlnb463XanbbZobuFZ9GMPY1GC
-    8nsnv82zjPtzkRalpSto4MmL5kHeehrV6iIR1EmzKUc5FkQFY5TKbxBu61Nz8jJ7suNzU3
-    Cyvv5MNgqU18rt3jpb2tgZMGlm2/SgzvbBaj3jXxb82AJ7qi2ot7EKTwTDoQ
-X-ME-Proxy: <xmx:SXRTapHAhWRiFbB-4amYjFgmwydjtOdojLMQlh0VZZlQEErKhomHig>
-    <xmx:SXRTaoKLDK9Ecbgry1ger4QfqGLLQ1xOkTzua4qZzvVI-kaPbzgKWw>
-    <xmx:SXRTap8dLyvqloUGHlP29AnEVqPiM2OIYq0126wYr_cBo0x_TFVHVA>
-    <xmx:SXRTaqegpYaBne9K3glgOErxceihkfr_b7_lWpHaESTvei9pJ8qgGA>
-    <xmx:THRTagApbQu8pd3LegvnC51UZb7KkVStZc2jhlRfHD_OxzYfyYsDaYFF>
-Feedback-ID: i56a14606:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 29B00182007E; Sun, 12 Jul 2026 07:02:33 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b="MsrA1vj7"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=mails.tsinghua.edu.cn; s=dkim; h=Received:From:To:Cc:Subject:
+	Date:Message-ID:In-Reply-To:References:MIME-Version:
+	Content-Transfer-Encoding; bh=F+rleY0S+475U+nqz/aNKWhnUEDWwsADbM
+	8b2BXmTuU=; b=MsrA1vj7QwlbC1vjeGPAfUOoI8k4LQ3eNxATyW0vfJOK5C3lal
+	lx6dgUu1b4bi8Uxx0oShuiSL2JahoF7arAaB4eq6hcQlVqwvTzGZWZmJhGYbr+QJ
+	n8OsVzeTNw9h4KDW9krUZ6c1NKYQ97s9+3UG4z/67ahvdJAPvS+1aImy4=
+Received: from localhost.localdomain (unknown [121.229.84.192])
+	by web5 (Coremail) with SMTP id zAQGZQCXT79htFRqkRUmAw--.5011S3;
+	Mon, 13 Jul 2026 17:48:30 +0800 (CST)
+From: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
+To: David Ahern <dsahern@kernel.org>,
+	Ido Schimmel <idosch@nvidia.com>,
+	Simon Horman <horms@verge.net.au>,
+	Julian Anastasov <ja@ssi.bg>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	Phil Sutter <phil@nwl.cc>
+Cc: netdev@vger.kernel.org,
+	lvs-devel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	coreteam@netfilter.org,
+	Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>,
+	Ao Wang <wangao@seu.edu.cn>,
+	Xuewei Feng <fengxw06@126.com>,
+	Qi Li <qli01@tsinghua.edu.cn>,
+	Ke Xu <xuke@tsinghua.edu.cn>
+Subject: [PATCH nf v3 1/2] ipvs: properly update the overload flag on dest edit
+Date: Mon, 13 Jul 2026 17:48:01 +0800
+Message-ID: <82748f09f01858b0d9910f372ed67e9ab539fe35.1783931964.git.zhaoyz24@mails.tsinghua.edu.cn>
+X-Mailer: git-send-email 2.46.2
+In-Reply-To: <cover.1783931964.git.zhaoyz24@mails.tsinghua.edu.cn>
+References: <cover.1783931964.git.zhaoyz24@mails.tsinghua.edu.cn>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: ARmmoW1aQeCk
-Date: Sun, 12 Jul 2026 13:01:52 +0200
-From: "Arnd Bergmann" <arnd@arndb.de>
-To: "Fernando Fernandez Mancera" <fmancera@suse.de>,
- Netdev <netdev@vger.kernel.org>
-Cc: "David S . Miller" <davem@davemloft.net>,
- "Eric Dumazet" <edumazet@google.com>, "Jakub Kicinski" <kuba@kernel.org>,
- "Paolo Abeni" <pabeni@redhat.com>, "David Ahern" <dsahern@kernel.org>,
- "Simon Horman" <horms@kernel.org>, "Ido Schimmel" <idosch@nvidia.com>,
- "Jason Gunthorpe" <jgg@ziepe.ca>, "Leon Romanovsky" <leon@kernel.org>,
- "Andrew Lunn" <andrew+netdev@lunn.ch>,
- "Anthony L Nguyen" <anthony.l.nguyen@intel.com>,
- "Przemek Kitszel" <przemyslaw.kitszel@intel.com>,
- "Elad Nachman" <enachman@marvell.com>,
- "Saeed Mahameed" <saeedm@nvidia.com>, "Tariq Toukan" <tariqt@nvidia.com>,
- "Mark Bloch" <mbloch@nvidia.com>, "Petr Machata" <petrm@nvidia.com>,
- "Edward Cree" <ecree.xilinx@gmail.com>,
- "Maxime Coquelin" <mcoquelin.stm32@gmail.com>,
- "Alexandre Torgue" <alexandre.torgue@foss.st.com>,
- "Arend van Spriel" <arend.vanspriel@broadcom.com>,
- "Miri Korenblit" <miriam.rachel.korenblit@intel.com>,
- "Keith Busch" <kbusch@kernel.org>, "Jens Axboe" <axboe@kernel.dk>,
- "Christoph Hellwig" <hch@lst.de>, "Sagi Grimberg" <sagi@grimberg.me>,
- "Chaitanya Kulkarni" <kch@nvidia.com>,
- "Saurav Kashyap" <skashyap@marvell.com>,
- "Javed Hasan" <jhasan@marvell.com>,
- GR-QLogic-Storage-Upstream@marvell.com,
- "James E . J . Bottomley" <James.Bottomley@hansenpartnership.com>,
- "Martin K. Petersen" <martin.petersen@oracle.com>,
- "Nilesh Javali" <njavali@marvell.com>,
- "Manish Rangankar" <mrangankar@marvell.com>,
- "Varun Prakash" <varun@chelsio.com>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
- "David Howells" <dhowells@redhat.com>,
- "Marc Dionne" <marc.dionne@auristor.com>,
- "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Chuck Lever" <cel@kernel.org>,
- "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Marek Lindner" <marek.lindner@mailbox.org>,
- "Simon Wunderlich" <sw@simonwunderlich.de>,
- "Antonio Quartulli" <antonio@mandelbit.com>,
- "Sven Eckelmann" <sven@narfation.org>,
- "Nikolay Aleksandrov" <razor@blackwall.org>,
- "Pablo Neira Ayuso" <pablo@netfilter.org>,
- "Florian Westphal" <fw@strlen.de>, "Phil Sutter" <phil@nwl.cc>,
- "Johannes Berg" <johannes@sipsolutions.net>,
- "Matthieu Baerts" <matttbe@kernel.org>,
- "Mat Martineau" <martineau@kernel.org>,
- "Geliang Tang" <geliang@kernel.org>, "Julian Anastasov" <ja@ssi.bg>,
- "Aaron Conole" <aconole@redhat.com>,
- "Eelco Chaudron" <echaudro@redhat.com>,
- "Ilya Maximets" <i.maximets@ovn.org>,
- "Allison Henderson" <achender@kernel.org>,
- "Jamal Hadi Salim" <jhs@mojatatu.com>, "Jiri Pirko" <jiri@resnulli.us>,
- "Marcelo Ricardo Leitner" <marcelo.leitner@gmail.com>,
- "Xin Long" <lucien.xin@gmail.com>,
- "D. Wythe" <alibuda@linux.alibaba.com>,
- "Dust Li" <dust.li@linux.alibaba.com>,
- "Sidraya Jayagond" <sidraya@linux.ibm.com>,
- "Wenjia Zhang" <wenjia@linux.ibm.com>,
- "Mahanta Jambigi" <mjambigi@linux.ibm.com>,
- "Tony Lu" <tonylu@linux.alibaba.com>, "Wen Gu" <guwen@linux.alibaba.com>,
- "Jon Maloy" <jmaloy@redhat.com>,
- "Steffen Klassert" <steffen.klassert@secunet.com>,
- "Herbert Xu" <herbert@gondor.apana.org.au>,
- "Vikas Gupta" <vikas.gupta@broadcom.com>,
- "Rajashekar Hudumula" <rajashekar.hudumula@broadcom.com>,
- "Justin Chen" <justin.chen@broadcom.com>,
- "Bhargava Marreddy" <bhargava.marreddy@broadcom.com>,
- "Nicolai Buchwitz" <nb@tipi-net.de>,
- "Florian Fainelli" <florian.fainelli@broadcom.com>,
- "Heiner Kallweit" <hkallweit1@gmail.com>,
- "Krzysztof Kozlowski" <krzk@kernel.org>,
- "Russell King" <rmk+kernel@armlinux.org.uk>, "Yao Zi" <me@ziyao.cc>,
- "Yanteng Si" <siyanteng@cqsoftware.com.cn>,
- "Maxime Chevallier" <maxime.chevallier@bootlin.com>,
- "Julian Braha" <julianbraha@gmail.com>,
- "Joey Lu" <a0987203069@gmail.com>,
- "Shangjuan Wei" <weishangjuan@eswincomputing.com>,
- "Chen-Yu Tsai" <wens@kernel.org>, "Inochi Amaoto" <inochiama@gmail.com>,
- "Lad, Prabhakar" <prabhakar.mahadev-lad.rj@bp.renesas.com>,
- "Qingfang Deng" <qingfang.deng@linux.dev>,
- "Greg Kroah-Hartman" <gregkh@linuxfoundation.org>,
- "Eric Biggers" <ebiggers@kernel.org>,
- "Ethan Nelson-Moore" <enelsonmoore@gmail.com>,
- "Ard Biesheuvel" <ardb@kernel.org>,
- "Dmitry Safonov" <0x7f454c46@gmail.com>,
- "Kuniyuki Iwashima" <kuniyu@google.com>, "Alyssa Ross" <hi@alyssa.is>,
- linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
- "intel-wired-lan@lists.osuosl.org" <intel-wired-lan@lists.osuosl.org>,
- "open list:NETRONOME ETHERNET DRIVERS" <oss-drivers@corigine.com>,
- linux-net-drivers@amd.com, linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
- brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
- linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
- target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
- b.a.t.m.a.n@lists.open-mesh.org,
- "open list:ETHERNET BRIDGE" <bridge@lists.linux.dev>,
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
- mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
- rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
- linux-s390@vger.kernel.org,
- "open list:TIPC NETWORK LAYER" <tipc-discussion@lists.sourceforge.net>
-Message-Id: <12ffac6a-649a-4e4a-8d12-0b48171e1d95@app.fastmail.com>
-In-Reply-To: <20260712013941.4570-2-fmancera@suse.de>
-References: <20260712013941.4570-1-fmancera@suse.de>
- <20260712013941.4570-2-fmancera@suse.de>
-Subject: Re: [PATCH 01/13 RFC net-next] net: ipv4: introduce CONFIG_IPV4 to decouple
- the IPv4 stack
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:zAQGZQCXT79htFRqkRUmAw--.5011S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxKFyxZrykZr4xCFWrWFyrXrb_yoWxXrykpr
+	WxJasF9r4UWr4DWFs8tFnxZrZ5GF18JFW7WF98KasxJ3ZrArn0qFnakFWDGFsrAFs7AFyf
+	GFW5t34Yka4DJFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9m1xkIjI8I6I8E6xAIw20EY4v20xvaj40_Wr0E3s1l8cAvFVAK
+	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l
+	84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2vYz4IE04k24VAvwVAKI4IrM2AIxVAIcx
+	kEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6x8ErcxFaVAv8VW8
+	Ww4UJr1UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6I
+	AqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wrylc2xS
+	Y4AK67AK6r4fMxAIw28IcxkI7VAKI48JMxAIw28IcVCjz48v1sIEY20_GrWkJr1UJwCFx2
+	IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v2
+	6r106r1rMI8E67AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67
+	AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IY
+	s7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr
+	0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUJ8nOUUUUU=
+X-CM-SenderInfo: 52kd05r2suqzpdlo2hxwvl0wxkxdhvlgxou0/1tbiAQIHAWpUpbIhPQAAsw
 
-On Sun, Jul 12, 2026, at 03:38, Fernando Fernandez Mancera wrote:
-> Historically, the IPv4 protocol has been linked to the core INET
-> subsystem. Because shared infrastructure like the TCP/UDP engine,
-> routing or INET hashtables live inside net/ipv4/, it has been impossible
-> to compile a kernel with only IPv6 support.
->
-> This patch introduces the CONFIG_IPV4 Kconfig symbol, which is set to
-> 'def_bool y' for now. This does not allow to completely disable the
-> IPv4 stack yet but it lays the necessary build-system work for that
-> goal.
+From: Julian Anastasov <ja@ssi.bg>
 
-I expect this will cause additional (trivial) build regression in the
-next step when randconfig builds run into obscure corner cases, either
-with INET=y IPV4=n IPV6=y or with INET=y IPV4=n IPV6=n.
+The upper/lower connection thresholds for dest can be changed,
+so use ip_vs_dest_update_overload() to properly update the
+dest overload flag.
 
-I can probably give your patch (with IPV4 visible or disabled) an
-early go on the randconfig tree to find these more quickly.
-If I run into regressions, should I just add more 'depends on IPV4',
-or do you have other plans?
+The thresholds were not limited, fit them in the 0 .. INT_MAX
+range as already done in ipvsadm.
 
-Should we have some logic to ensure that at least one of IPV4 or
-IPV6 is enabled? I think this would work
+As the thresholds are also read when connections are created
+and expired, use WRITE_ONCE/READ_ONCE to access them.
 
-config IPV4
-      bool "The IPv4 protocol" if IPV6
-      default INET
+As the lower threshold is optional, use (u - (u >> 2)) to
+calculate the 75% default value based on the upper threshold
+by preserving the integer rounding, as suggested by Yizhou Zhao.
 
-which only allows turning IPV4 off if IPV6 has enabled.
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ include/net/ip_vs.h             |  2 ++
+ net/netfilter/ipvs/ip_vs_conn.c | 43 +++++++++++++++++++++++----------
+ net/netfilter/ipvs/ip_vs_ctl.c  | 26 ++++++++++++++------
+ 3 files changed, 50 insertions(+), 21 deletions(-)
 
-       Arnd
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 417ff51f62fc..3fc864a320fb 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1907,6 +1907,8 @@ static inline void ip_vs_dest_put_and_free(struct ip_vs_dest *dest)
+ 		kfree(dest);
+ }
+ 
++void ip_vs_dest_update_overload(struct ip_vs_dest *dest);
++
+ /* IPVS sync daemon data and function prototypes
+  * (from ip_vs_sync.c)
+  */
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 6ed2622363f0..fa3fbd597f3f 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -991,6 +991,33 @@ static inline int ip_vs_dest_totalconns(struct ip_vs_dest *dest)
+ 		+ atomic_read(&dest->inactconns);
+ }
+ 
++/* Update overload flag based on number of dest conns and lower/upper
++ * connection thresholds:
++ * - conns reach u_threshold and exceed it: set the flag
++ * - conns go below l_threshold (or 75% of u_threshold): clear the flag
++ */
++__always_inline void ip_vs_dest_update_overload(struct ip_vs_dest *dest)
++{
++	int conns;
++	u32 l, u;
++
++	u = READ_ONCE(dest->u_threshold);
++	if (!u)
++		goto unset;
++	conns = ip_vs_dest_totalconns(dest);
++	if (conns >= u) {
++		dest->flags |= IP_VS_DEST_F_OVERLOAD;
++		return;
++	}
++	/* Low threshold defaults to 75% of upper threshold */
++	l = READ_ONCE(dest->l_threshold) ? : (u - (u >> 2));
++	if (conns >= l)
++		return;
++
++unset:
++	dest->flags &= ~IP_VS_DEST_F_OVERLOAD;
++}
++
+ /*
+  *	Bind a connection entry with a virtual service destination
+  *	Called just after a new connection entry is created.
+@@ -1053,9 +1080,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 		atomic_inc(&dest->persistconns);
+ 	}
+ 
+-	if (dest->u_threshold != 0 &&
+-	    ip_vs_dest_totalconns(dest) >= dest->u_threshold)
+-		dest->flags |= IP_VS_DEST_F_OVERLOAD;
++	ip_vs_dest_update_overload(dest);
+ }
+ 
+ 
+@@ -1149,16 +1174,8 @@ static inline void ip_vs_unbind_dest(struct ip_vs_conn *cp)
+ 		atomic_dec(&dest->persistconns);
+ 	}
+ 
+-	if (dest->l_threshold != 0) {
+-		if (ip_vs_dest_totalconns(dest) < dest->l_threshold)
+-			dest->flags &= ~IP_VS_DEST_F_OVERLOAD;
+-	} else if (dest->u_threshold != 0) {
+-		if (ip_vs_dest_totalconns(dest) * 4 < dest->u_threshold * 3)
+-			dest->flags &= ~IP_VS_DEST_F_OVERLOAD;
+-	} else {
+-		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
+-			dest->flags &= ~IP_VS_DEST_F_OVERLOAD;
+-	}
++	if (dest->flags & IP_VS_DEST_F_OVERLOAD)
++		ip_vs_dest_update_overload(dest);
+ 
+ 	ip_vs_dest_put(dest);
+ }
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index bcf40b8c41cf..62f73d892f97 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1370,10 +1370,12 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+ 	/* set the dest status flags */
+ 	dest->flags |= IP_VS_DEST_F_AVAILABLE;
+ 
+-	if (udest->u_threshold == 0 || udest->u_threshold > dest->u_threshold)
+-		dest->flags &= ~IP_VS_DEST_F_OVERLOAD;
+-	dest->u_threshold = udest->u_threshold;
+-	dest->l_threshold = udest->l_threshold;
++	if (READ_ONCE(dest->u_threshold) != udest->u_threshold ||
++	    READ_ONCE(dest->l_threshold) != udest->l_threshold) {
++		WRITE_ONCE(dest->u_threshold, udest->u_threshold);
++		WRITE_ONCE(dest->l_threshold, udest->l_threshold);
++		ip_vs_dest_update_overload(dest);
++	}
+ 
+ 	dest->af = udest->af;
+ 
+@@ -1486,6 +1488,9 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 		return -ERANGE;
+ 	}
+ 
++	if (udest->u_threshold > INT_MAX)
++		return -EINVAL;
++
+ 	if (udest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
+ 		if (udest->tun_port == 0) {
+ 			pr_err("%s(): tunnel port is zero\n", __func__);
+@@ -1559,6 +1564,9 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+ 		return -ERANGE;
+ 	}
+ 
++	if (udest->u_threshold > INT_MAX)
++		return -EINVAL;
++
+ 	if (udest->tun_type == IP_VS_CONN_F_TUNNEL_TYPE_GUE) {
+ 		if (udest->tun_port == 0) {
+ 			pr_err("%s(): tunnel port is zero\n", __func__);
+@@ -3667,8 +3675,8 @@ __ip_vs_get_dest_entries(struct netns_ipvs *ipvs, const struct ip_vs_get_dests *
+ 			entry.port = dest->port;
+ 			entry.conn_flags = atomic_read(&dest->conn_flags);
+ 			entry.weight = atomic_read(&dest->weight);
+-			entry.u_threshold = dest->u_threshold;
+-			entry.l_threshold = dest->l_threshold;
++			entry.u_threshold = READ_ONCE(dest->u_threshold);
++			entry.l_threshold = READ_ONCE(dest->l_threshold);
+ 			entry.activeconns = atomic_read(&dest->activeconns);
+ 			entry.inactconns = atomic_read(&dest->inactconns);
+ 			entry.persistconns = atomic_read(&dest->persistconns);
+@@ -4277,8 +4285,10 @@ static int ip_vs_genl_fill_dest(struct sk_buff *skb, struct ip_vs_dest *dest)
+ 			 dest->tun_port) ||
+ 	    nla_put_u16(skb, IPVS_DEST_ATTR_TUN_FLAGS,
+ 			dest->tun_flags) ||
+-	    nla_put_u32(skb, IPVS_DEST_ATTR_U_THRESH, dest->u_threshold) ||
+-	    nla_put_u32(skb, IPVS_DEST_ATTR_L_THRESH, dest->l_threshold) ||
++	    nla_put_u32(skb, IPVS_DEST_ATTR_U_THRESH,
++			READ_ONCE(dest->u_threshold)) ||
++	    nla_put_u32(skb, IPVS_DEST_ATTR_L_THRESH,
++			READ_ONCE(dest->l_threshold)) ||
+ 	    nla_put_u32(skb, IPVS_DEST_ATTR_ACTIVE_CONNS,
+ 			atomic_read(&dest->activeconns)) ||
+ 	    nla_put_u32(skb, IPVS_DEST_ATTR_INACT_CONNS,
+-- 
+2.34.1
+
