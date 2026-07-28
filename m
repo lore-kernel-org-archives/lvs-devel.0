@@ -1,156 +1,132 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qv1-f43.google.com (mail-qv1-f43.google.com [209.85.219.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E0E431ED80;
-	Mon, 27 Jul 2026 22:56:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35F2D3A2E2B
+	for <lvs-devel@vger.kernel.org>; Tue, 28 Jul 2026 04:21:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785192965; cv=none; b=U47DxFXbM4HSYkKH1TZ2axzuplxkbkf8KKI8o1YJlm97sd6Vkubuxi8O654JlElW0yvVMZzBYkSuCr/NebeLhb2YdPtHCZrDD7LLM/ubRugmef+vTmzSCKxUYUwXXIsPXodYrFJ6Y+1EMO6jKxWheLj50mPo595YuRGvLB71gDE=
+	t=1785212504; cv=none; b=i/0S9hTrnUYfOVX3MWgE17fp17xBNg+IBrWsEidzmrB1f2D04lswe38SX4vo04pM1lgbBwBT4iCsNc4I/YKn3h+BiGsLt8YEXxWb0niwwr8woe0j1J6uhfpE6WoRZXmpXSPDtJ2n3u6Gav6DQDkGo21JROqWpJzjUr/WbuEy660=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785192965; c=relaxed/simple;
-	bh=oEgoEtojyQ9PC8g7uhG7viM9B7fGAJubrsCe9lk5/YY=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Message-Id:Date:
-	 MIME-Version:Content-Type; b=DIUMCMU2SIQHdp3QhJBxNx+FOc7dtpZh/E2wUrQZvOXlkSOCbHcf1/2BOUUe0jVtPq7Su0hSdgrWmxjKIeQQu1q/E/Tl6qozvJU2kZidb6zjqZGsFuVg61zAcbaZzOtFBM5Or0IMMa3V9lkaygGaDwUriiaKa2QrMZIm+0LQ1gY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iwaG5uRX; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785212504; c=relaxed/simple;
+	bh=z9YDVT9dO7eY3oONRZrnB8Un+kTHwUZmgKWSt69DsFU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=FXOtzCwu2xL29g+vDc5SR7Nk3TnNDm67Qqjx+7pn6/Ee0PfgDGwDEYOHl3n+VqRHE4iZLIp9eKhb/O9KAmPvYIvYpSgzCVAeO3L90YEtMSnrxy/rN8cC46pVVIIYKaNhGYV07TONXb+FxuFbar5/QnHLzWatgupEWuSZ3kfUq78=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai; spf=pass smtp.mailfrom=nebusec.ai; dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b=XgHKgA97; arc=none smtp.client-ip=209.85.219.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nebusec.ai
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iwaG5uRX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 04CDB1F000E9;
-	Mon, 27 Jul 2026 22:55:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785192964;
-	bh=QggSvxtNQ67iS+XUwqrDlrH2xraHrxGb+vgcG7y0WsY=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Date;
-	b=iwaG5uRX32rTgcSQn1oI8cDhvVdBgF7xNVMcmwA5nB2roQEpjWkBM9/elDUKMWR+e
-	 A0p9zb+3tSs36tELwjTyibEs5znVgnOoeBgaUwvlk+h9jnbCN1e+v9elShDExZRawl
-	 S9FIBGMRZSowIq2RtsqIUQJ/GKy2epEJEkS13zWkXc/uH+dFvxm4jWJtqykilYp8FZ
-	 n/dZuVVGnI4Oh8Jv/TOV8zbNHWDjAXhVQbUPhHErbAZOrGNAAwjAULYVaj3h2kBbW9
-	 ED2feS2pNPbAGb5xCgo1ctL4J3aD2Ir+AJmF+Wa3lGIyvJ/mNC9waIoSbc3rE33Rm4
-	 vgzkKLQuteGUQ==
-From: Mark Brown <broonie@kernel.org>
-To: Julia.Lawall@inria.fr, Alex Deucher <alexander.deucher@amd.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, 
- Andrew Lunn <andrew@lunn.ch>, Andrew Morton <akpm@linux-foundation.org>, 
- Arkadiusz Kubalewski <arkadiusz.kubalewski@intel.com>, 
- Borislav Petkov <bp@alien8.de>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, 
- David Airlie <airlied@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Eric Dumazet <edumazet@google.com>, Florian Westphal <fw@strlen.de>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Hans de Goede <hansg@kernel.org>, Hans Verkuil <hverkuil@kernel.org>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Jakub Kicinski <kuba@kernel.org>, 
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- Jani Nikula <jani.nikula@linux.intel.com>, Jaroslav Kysela <perex@perex.cz>, 
- Jason Gunthorpe <jgg@ziepe.ca>, Jiri Pirko <jiri@resnulli.us>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Johan Hovold <johan@kernel.org>, 
- Jonathan Cameron <jic23@kernel.org>, 
- Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
- Julian Anastasov <ja@ssi.bg>, Leon Romanovsky <leon@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Linus Walleij <linusw@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>, 
- Matthew Sakai <msakai@redhat.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Maxime Ripard <mripard@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Mike Rapoport <rppt@kernel.org>, 
- Miri Korenblit <miriam.rachel.korenblit@intel.com>, 
- Nicolas Palix <nicolas.palix@imag.fr>, 
- Pablo Neira Ayuso <pablo@netfilter.org>, Paolo Abeni <pabeni@redhat.com>, 
- Ping-Ke Shih <pkshih@realtek.com>, "Rafael J. Wysocki" <rafael@kernel.org>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, Sebastian Reichel <sre@kernel.org>, 
- Shuah Khan <shuah@kernel.org>, Simona Vetter <simona@ffwll.ch>, 
- Simon Horman <horms@verge.net.au>, Stephen Boyd <sboyd@kernel.org>, 
- Steve French <sfrench@samba.org>, Takashi Iwai <tiwai@suse.com>, 
- Thomas Renninger <trenn@suse.com>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Tony Luck <tony.luck@intel.com>, Tvrtko Ursulin <tursulin@ursulin.net>, 
- Vadim Fedorenko <vadim.fedorenko@linux.dev>, Vinod Koul <vkoul@kernel.org>, 
- Will Deacon <will@kernel.org>, Yazen Ghannam <Yazen.Ghannam@amd.com>, 
- Sang-Heon Jeon <ekffu200098@gmail.com>
-Cc: cocci@inria.fr, amd-gfx@lists.freedesktop.org, 
- dmaengine@vger.kernel.org, dm-devel@lists.linux.dev, 
- dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org, 
- intel-wired-lan@lists.osuosl.org, iommu@lists.linux.dev, 
- linux-cifs@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-crypto@vger.kernel.org, linux-edac@vger.kernel.org, 
- linux-gpio@vger.kernel.org, linux-iio@vger.kernel.org, 
- linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-mm@kvack.org, linux-pm@vger.kernel.org, 
- linux-rdma@vger.kernel.org, linux-rtc@vger.kernel.org, 
- linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
- linux-sound@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-wireless@vger.kernel.org, lvs-devel@vger.kernel.org, 
- netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, 
- nouveau@lists.freedesktop.org, platform-driver-x86@vger.kernel.org
-In-Reply-To: <20260723184538.3888637-1-ekffu200098@gmail.com>
-References: <20260723184538.3888637-1-ekffu200098@gmail.com>
-Subject: Re: (subset) [PATCH 00/36] treewide: remove conditional returns
- with no effect
-Message-Id: <178515520105.50339.6347304746485042237.b4-ty@b4>
-Date: Mon, 27 Jul 2026 13:26:41 +0100
+	dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b="XgHKgA97"
+Received: by mail-qv1-f43.google.com with SMTP id 6a1803df08f44-8f256eaedf8so35624036d6.2
+        for <lvs-devel@vger.kernel.org>; Mon, 27 Jul 2026 21:21:40 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=nebusec.ai; s=google; t=1785212500; x=1785817300; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=wIfReckQIvU7mcolyJLQK/Nsuz3ePy+9i+ZRkaCU5Kc=;
+        b=XgHKgA97fDN3gSBgJZa41SvzwmhSb3izPkMpnopAJI474//YQz0Gv9uTw0J6qxoCdC
+         iC1Wb+4BdSH8PKh/dH3Uaj31Q5TW8QE29JL8PFr6fRk+XsrnvA5zKcQeoOjCjkzyQ+Yt
+         fixb0bHy5NyFmAFQs17slmV7F4U1X0JGgMAQ8qVToCUPYnlNd87Z69v8W3rnk1SUigoy
+         q3KzQmEt3Jgrnv6Le7YezTzDLjxmPbKKUrzEqmkgrFQXZNTU4bn3QBQmB6xmIpAJFpyc
+         2T1PvCm5jbzbxPGdllMUL4jPvNTFiUh1tqLk0nCkNfroYWCP+iOYvdlzTqQ5cdIMYqw4
+         IgYA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785212500; x=1785817300;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=wIfReckQIvU7mcolyJLQK/Nsuz3ePy+9i+ZRkaCU5Kc=;
+        b=kzmWFYTd4yeadHj7kVwr7zxjiqxCpJr9mYr39hsatJDdzxkn7s27Jd8q3/pP0WobtL
+         KzdIMfgcXXM9oL+oUiSKYwwzUJvd9sY7XD3ROgMRfIWb9k8CywTzILuK6faT6dlGsTXF
+         Y9NlHexUaHfrjxj0g0nwuUNt3L7S340wx+ooYFtMbWEoMzD0ivtZKDQ5HuDg8XpddXJU
+         vqPV3kPc4B5zex2CmoYgfawZMn4LnMoORiLxcmLuSGUeOAAVHyz0e0lknJi9gAacDzxD
+         JihvdGFBU4HowiOJ6u2OKBRRr7MHskoCdzJdIfSMkgIiwZmpxrqnoeKGJIeQS5HnGXo0
+         Koxg==
+X-Forwarded-Encrypted: i=1; AHgh+RqBd0pvXs4fhoaEG8aJQwCEHvdWqRE+5/OI8NR18D01u7n7HghN9NdWLB/rmBLwPtUwC+O6mlGLl3I=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwEbw8bkA8eD2ELanrZSBKXNpcPsuAO6SXo3/RlHU3dkVuKG1fL
+	/gkscDE8v0rktJUBbsb/xpDvs8a8pECW4XECqZf0GsS1MQMIzLzSIFJPZ1rNZi8az2N3
+X-Gm-Gg: AR+sD10AiHJ2ib0f8gucB3YK7iviby+Ycxp56X6x3jS/BsI4BXPwQcYWckH1f1dfy/F
+	op2UDq1LpimsOV9dwn+4kx4ReXg1lNIBHDeNaLeFcKWFoVpZ41kGlLsipzppTmY0Mqpe4BWGkwV
+	dQ8LZ2QUGwSmvsWLiuYuPn7opUBh+gMtnFvirHe5nvTM6mgYnFag8RyIBPN0hs126glY04NZbyH
+	VMa/bfyVCArbn/ZDFJUcnu4h3IYv5cJbcTZw04GLFgc0R3CWkFCMQHeQl+7CvgwcOq3KSblCyMc
+	tW+COKzwDovKKK6rxlRY+f8gfe9WP3syXpWKZqsHyh3s8f6kkf/7ZkTbQJqPO8gPob68E6gglcI
+	Rl/hSy+xEfvDkk2MOhewen4JpzFgL0jJpP/LT3f+rnuIbHOrzm1CQXgS/6jswh+SJvWLcXAMb5P
+	Wo4vcXQeN+A8tNQRpVCg==
+X-Received: by 2002:ad4:5e8b:0:b0:8fd:6e32:2bff with SMTP id 6a1803df08f44-908173a13fcmr7841726d6.64.1785212499622;
+        Mon, 27 Jul 2026 21:21:39 -0700 (PDT)
+Received: from Roxy.localdomain ([203.175.14.58])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-907e86d499dsm79520786d6.42.2026.07.27.21.21.36
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 27 Jul 2026 21:21:39 -0700 (PDT)
+From: Zhiling Zou <zhilinz@nebusec.ai>
+To: ja@ssi.bg,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org
+Cc: horms@verge.net.au,
+	pablo@netfilter.org,
+	fw@strlen.de,
+	phil@nwl.cc,
+	jwiesner@suse.de,
+	vega@nebusec.ai,
+	zhilinz@nebusec.ai
+Subject: [PATCH nf v2 1/1] ipvs: stop estimator after disabled calc phase
+Date: Tue, 28 Jul 2026 12:21:28 +0800
+Message-ID: <03a7ee4873f9dfc51add97df5b67bf0b0d793dbe.1785211268.git.zhilinz@nebusec.ai>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1395; i=broonie@kernel.org;
- h=from:subject:message-id; bh=oEgoEtojyQ9PC8g7uhG7viM9B7fGAJubrsCe9lk5/YY=;
- b=owEBbQGS/pANAwAKASTWi3JdVIfQAcsmYgBqZ+HxlIWhtS7M/+/D/kSsIotZNE7ycdvTNKMa6
- lyMcsUy1YGJATMEAAEKAB0WIQSt5miqZ1cYtZ/in+ok1otyXVSH0AUCamfh8QAKCRAk1otyXVSH
- 0NGoB/9aZSWKSSxB+DoiO9o+r0R7LvQ0b9P0b+u/ow+7Ti4Va043c7UzGI2RzCGdUpf18XgLn6f
- SgEv95GzlB+upqVsxmPG9VHhXWw4Ho9J4p/hSGXTDgAS8ErF8GjIkiAzWtWwlF1NwqBzKdr1HBU
- 4bzLooMHmkm+sRhw0K+K8vYxKzoIVIF4rw3OtvuVpbcnMjoni4zgFcLTc5cd+g7gZ+ms/PpNPge
- 1bCGwvXOdpSE1Sx0RqUVVFnzDZUByQ/Qgq4t95aAwkznICTyGzRGtCagn7hNdby/Adb/VqLQiGG
- EXfGwi5kgCay4GMGfP+CcNTcNXARRSisUOfJQUCdGh8to0xz
-X-Developer-Key: i=broonie@kernel.org; a=openpgp;
- fpr=3F2568AAC26998F9E813A1C5C3F436CA30F5D8EB
+Content-Transfer-Encoding: 8bit
 
-On Fri, 24 Jul 2026 03:45:02 +0900, Sang-Heon Jeon wrote:
-> treewide: remove conditional returns with no effect
-> 
-> Hello,
-> 
-> While reading mm/memblock, I found a conditional return where both
-> branches return the same value:
-> 
-> [...]
+IPVS estimator kthread 0 starts with zeroed chain and tick limits until
+its initial calculation phase completes. If network namespace teardown
+clears ipvs->enable during that phase, ip_vs_est_calc_phase() can return
+without installing positive limits.
 
-Applied to
+The kthread can then continue into its main loop and drain
+est_temp_list with zero chain_max, tick_max and est_max_count values.
+Each enqueue consumes one available tick row, but est_count never
+reaches the zero est_max_count value. After all rows are consumed, the
+row lookup returns IPVS_EST_NTICKS and ip_vs_enqueue_estimator() writes
+past the ticks and tick_len arrays.
 
-   https://git.kernel.org/pub/scm/linux/kernel/git/broonie/regulator.git for-7.3
+Exit kthread 0 after the calculation phase if the kthread is stopping or
+IPVS has been disabled. That keeps temporary estimators from being
+drained after the limits failed to initialize.
 
-Thanks!
+Fixes: 705dd3444081 ("ipvs: use kthreads for stats estimation")
+Cc: stable@vger.kernel.org
+Reported-by: Vega <vega@nebusec.ai>
+Signed-off-by: Zhiling Zou <zhilinz@nebusec.ai>
+---
+changes in v2:
+- Exit the estimator kthread after the calculation phase if IPVS
+  has been disabled or the kthread is stopping, as suggested by
+  Julian Anastasov.
+- Drop the later enqueue and drain guards from v1.
+- v1 Link: https://lore.kernel.org/all/6359e0031f0ee7cc969bae3483308de362d3c709.1784878022.git.zhilinz@nebusec.ai
 
-[14/36] ASoC: remove conditional return with no effect
-        https://git.kernel.org/broonie/misc/c/ca9b51f41c9d
-[28/36] regulator: wm831x-isink: remove conditional return with no effect
-        https://git.kernel.org/broonie/misc/c/9396a1d9e142
+ net/netfilter/ipvs/ip_vs_est.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-All being well this means that it will be integrated into the linux-next
-tree (usually sometime in the next 24 hours) and sent to Linus during
-the next merge window (or sooner if it is a bug fix), however if
-problems are discovered then the patch may be dropped or reverted.
-
-You may get further e-mails resulting from automated or manual testing
-and review of the tree, please engage with people reporting problems and
-send followup patches addressing any issues that are reported if needed.
-
-If any updates are required or you are submitting further changes they
-should be sent as incremental updates against current git, existing
-patches will not be replaced.
-
-Please add any relevant lists and maintainers to the CCs when replying
-to this mail.
-
-Thanks,
-Mark
+diff --git a/net/netfilter/ipvs/ip_vs_est.c b/net/netfilter/ipvs/ip_vs_est.c
+index ab09f51829512..86d20f19fe317 100644
+--- a/net/netfilter/ipvs/ip_vs_est.c
++++ b/net/netfilter/ipvs/ip_vs_est.c
+@@ -191,8 +191,11 @@ static int ip_vs_estimation_kthread(void *data)
+ 		}
+ 
+ 		/* kthread 0 will handle the calc phase */
+-		if (ipvs->est_calc_phase)
++		if (ipvs->est_calc_phase) {
+ 			ip_vs_est_calc_phase(ipvs);
++			if (kthread_should_stop() || !READ_ONCE(ipvs->enable))
++				return 0;
++		}
+ 	}
+ 
+ 	while (1) {
+-- 
+2.43.0
 
