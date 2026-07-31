@@ -1,61 +1,84 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qt1-f176.google.com (mail-qt1-f176.google.com [209.85.160.176])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A98FE2DA775;
-	Thu, 30 Jul 2026 18:39:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 237083F0750
+	for <lvs-devel@vger.kernel.org>; Fri, 31 Jul 2026 14:08:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.176
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785436788; cv=none; b=sE4nuN6MnOHZg6N9i5/l0f1KgNb5dAUBA+fovr8blvChqwKMz30492IeWjfixtmEucDtJIktxVr+Lg2Mv7UxysnWg6+wzmclRUrwrR/xlaK4X7UcU8LVP76OBx+wpo9srEnbkmYSs8/QDPbzwPkHHNssS5IOf4Bd4XOFTNRBKMY=
+	t=1785506907; cv=none; b=EH7kjQ7h8JmabmebecWUESC6Wym3njPB5U96lzf62FH2l6tfvoUtaDe1zDXxJ8zl1HRh18kOkqbRbYC9RySz3X2OfIEUl7Gzh4mlC4ttAirt3f2e9VXmtRQD3uxvrDLICvnBw8JWFTAu2gc3/CeMw0YieKq1rrNq2aaLxlNIIKA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785436788; c=relaxed/simple;
-	bh=bniUsQ6u1JZRM59YUbs8Kwvx7wTHHn8ldOx/wm0Q9HQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=lBzBe9dsA7ojY6OUESbUrFI8NFce8jHBHCS5uqAZ7Mo9Nl3j7u/Kmv0Ys6YYIQeFkDpQxcH/S8gGNcOgPn3ElWmAN6VcBf8o5OzV58e/Y2lRMEus89ds51nMVK1bOvbQQF5FAs1h3QDEz7ezuIVzrB+46zKqAbxWYUixQhZOohk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=RcVmhR9C; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1785506907; c=relaxed/simple;
+	bh=S8ZYhVxFV3d81I8luPNn70FLZtYvMhbuabZAfFkqwIg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=dJO23TWAFKOziuAPisGVHtDN2b7qsmEIx4k3EE8VqCgf6pIm9weOr8cpUbK7t8gg9+MfY8wDf/6INYwS9ilQqYGk7pKbp869es5uIF+cS+V7zcwgy94o75PaNH1aXp5nlJQ63zuH8Ywbc5+56aUxBHfzamz9FeiLebQGpSx3K+k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=trailofbits.com; spf=pass smtp.mailfrom=trailofbits.com; dkim=pass (2048-bit key) header.d=trailofbits.com header.i=@trailofbits.com header.b=D6lFA0k2; arc=none smtp.client-ip=209.85.160.176
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=trailofbits.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=trailofbits.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="RcVmhR9C"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id D45A3216C7;
-	Thu, 30 Jul 2026 21:39:00 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-transfer-encoding:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=xX9uUmHaYlCktnwIS88QJ+fzr5Cdm5BEUmee6TVCCmQ=; b=RcVmhR9C2U/m
-	aTpfzbDGKSzckFGF+apSti94FgTVO6vUqmPF1Xk35TyRZpYzUsRmXNum9/3Pjn68
-	iPeHgz0wiAgV06j4Y8QAS/Ak2AEaXHFnLmRPJItbicKJpNZeHzZYhbuH4vT3Ea5a
-	PznnUpnlaNzOquph0wRrDQy66V0VW54ivFYoSRo+Z+8DtUyheQc4Iq702l4g+b7C
-	v+4078M9wPA0gjTlZ1Qu4f76i7W43oN6wq66H8/7xGCqWiVJzAvlyyj61+dCY68N
-	9OZ/KtjxnQsIXscC9BUNHINBBMhFLC1OJBJN5XphVI/oikBIu/hWYFysulejmGiv
-	4Nj4LCyk/8DAAfSkipk1Hp2PMFWU9eewdDIbp0nJRjY6rRYh2y5Z0j0zufVUO14x
-	5R+i1q0CubUdcHyTT1Co89clAhxNEqbvIz8a5uMpwUlyLFazT6EpBTICxjZz4AQJ
-	T30DBSQOTGL6OBImsb6/7v1pFUuCA1absTLwkvRhiB2GiWKYlaL6/rY4NTsIfhGq
-	YE/ec37H7seCjFoS2cP8+FOHYNjtooI5w6ODoftj1G0M69hP59ErIVku8r70/bMo
-	kzybV6emR9TQr2Bz36oVtD26Y76thlPTKMqxiNHuIlYWSte7qnMUyIpPND4Fq6/F
-	1qA262E10ZuV1KdMk41fzK3N7VJQffU=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Thu, 30 Jul 2026 21:39:00 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id C0C7A61BEF;
-	Thu, 30 Jul 2026 21:39:01 +0300 (EEST)
-Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 66UIaDhY087547;
-	Thu, 30 Jul 2026 21:36:13 +0300
-Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 66UIaD1x087546;
-	Thu, 30 Jul 2026 21:36:13 +0300
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: [PATCH nf v3 1/2] ipvs: avoid out-of-bounds write in ip_vs_nat_icmp
-Date: Thu, 30 Jul 2026 21:35:05 +0300
-Message-ID: <20260730183506.87473-2-ja@ssi.bg>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260730183506.87473-1-ja@ssi.bg>
-References: <20260730183506.87473-1-ja@ssi.bg>
+	dkim=pass (2048-bit key) header.d=trailofbits.com header.i=@trailofbits.com header.b="D6lFA0k2"
+Received: by mail-qt1-f176.google.com with SMTP id d75a77b69052e-51c0ecfaee7so5892051cf.0
+        for <lvs-devel@vger.kernel.org>; Fri, 31 Jul 2026 07:08:24 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=trailofbits.com; s=google; t=1785506904; x=1786111704; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=4CYqaoDHFTXverpQiHzNbFE4tLgoDQ4zGj2U6cQ1kUE=;
+        b=D6lFA0k2d+qI7i6En2Q2Y3mDRPFJAr7PRpHhc8NoYXZWmwn7BT3qoc/xV+iQZcdmEO
+         N6kHiy+mV94Ie89UxbGSNX8WC4ztQN8LODekF49M0r7dBJysGlCQdyo+oW30hujfefLE
+         q+c6eu2mIbi4+GBp0xKPWKbaoOFdambS61TBDcvZmAGfXuMW+SQ0J9WBolO0AD1lbtlW
+         ewPHR1JD3egBiYl7XnfFPT0IDIvMnDSOq9X8XgAxqY3MYoOADzVA3FzMPEGdCMS7m2fJ
+         aE/vPM8R6SPYS4II1doR+tXAaM02bZvK5wRETTIZwG8soIZM9L7a6Sc2XeQGKXl8ACYw
+         RdwQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785506904; x=1786111704;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=4CYqaoDHFTXverpQiHzNbFE4tLgoDQ4zGj2U6cQ1kUE=;
+        b=MIPeJezOxgfBlgMgtGjzEUrCE3/05VS5jM5b0IzbOSMcAtpNmVrmcemetm0QzvI2GT
+         Gfx7Mkn2nKw0WPcF1XZhWdI8L3qZO0X6Qtn704IQ6es07l2lAmGO7hjbeeMPlv1m0y3x
+         WF88GNzo0V/xIOSRwvMi8X9/AT8R9fyS2XIlvu6TiL5EP8hVDWYbhG16212NyGpemt+V
+         k/py/vLdQLBbznkJ9mL252swJ+xgfDXkaKpQ7NvFILmP6ciqiUcu6mNxe99DgC7mq9Xr
+         61YRumS8zJkdEhlflyzcVdaJn++NElUDq84w/6LpVm9i3QLAbXhbwbjX4ilvpU287aRn
+         euOQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rp6W3h5SdkM67MW3zFx6RAe3FJVUCIIwq53BRSxg6Roc3oB2aPM/hX15/6TfJ9eu1NiNvoWj7bYzIQ=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy6JyEyfoeB2VpEnJlHklsHMV8n+WE7EFscwPR7zHB7bdeUhi4J
+	32c5pMr9smzbhWopYjcL23gEQhV+hiN/gFhx08tUF589p4pIIFOKbPGYTBhhZ+D4rnE=
+X-Gm-Gg: AR+sD120i2p+jyBDOOHZP8jtciMIwXbqaI6jQy7z0d1AamSQgdPx5KWfLwsulOhrCNu
+	5UbXTSfbx2BMIShifcDxLFNgWWodClxAuy6FjWTYdtinMxAPOPNv4L/T1vbdzlQ/ioheY/R3JXj
+	SAOUFlBCg8O78upZNz6tuOHpIU1FiWS6f+hr/Wio0iyk9zR11SWdnhfXnCueZAZnORQWf1iBKqJ
+	3CHHtL+ospVxytEgCkkurO/by+Z1rvfYug7FU5Gm4PZ0ZL+vHxsw9ptQ5qIAHHAbEPI/yryvDZ0
+	G2DQD4c1C1yxzZzSDgnupkOqdXm865VBLX+qDyAW/m+TB3hyCe+B2jqpjoa/XG6cFpITeDEBlKU
+	vyHrfQETvOaPUypWvtXEOtcE9/N3uBFEmg67+JYcxlWE0ggtfqbooryUl3W8ixO95men1x85EfD
+	YJ/GNAHFU4jzSR89u6OQpE0qMn6013mOzTi4xArOBpaQ+r6Fdgx5b0z1FpWNdKRGNTIQ==
+X-Received: by 2002:a05:622a:8f:b0:51b:f563:f613 with SMTP id d75a77b69052e-52b567c6399mr3664281cf.35.1785506903762;
+        Fri, 31 Jul 2026 07:08:23 -0700 (PDT)
+Received: from localhost ([146.190.222.192])
+        by smtp.gmail.com with UTF8SMTPSA id d75a77b69052e-52b4ebeb909sm8257931cf.29.2026.07.31.07.08.23
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 31 Jul 2026 07:08:23 -0700 (PDT)
+From: David Lee <david.lee@trailofbits.com>
+To: horms@verge.net.au,
+	ja@ssi.bg,
+	pablo@netfilter.org,
+	fw@strlen.de,
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com
+Cc: David Lee <david.lee@trailofbits.com>,
+	Kyle Zeng <kylebot@openai.com>,
+	Dominik 'Disconnect3d' Czarnota <dominik.czarnota@trailofbits.com>,
+	phil@nwl.cc,
+	netdev@vger.kernel.org,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	coreteam@netfilter.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+Subject: [PATCH] ipvs: clear IPv4 options after rebasing tunnel ICMP errors
+Date: Fri, 31 Jul 2026 14:08:22 +0000
+Message-ID: <20260731140822.567128-1-david.lee@trailofbits.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -64,252 +87,45 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Sashiko warns that local attacker can modify the packet
-while it is processed by IPVS. Some places read the
-IP ihl field multiple times which can cause out-of-bounds
-access. One such place is ip_vs_nat_icmp where we
-can write after the validated area.
+ip_vs_in_icmp() rebases an skb from the outer ICMP packet to the
+quoted original request before passing it to icmp_send(). However,
+IPCB(skb)->opt still describes the outer IPv4 header.
 
-Fix it by providing ciph argument just like it is done for
-IPv6 and use ciph->len as offset to the embedded transport
-header.
+A timestamp option in the outer header can therefore leave an offset
+that points into the quoted transport header after the rebase.
+__ip_options_echo() treats a byte at that stale location as the option
+length and copies it into the fixed-size option storage on the
+__icmp_send() stack, causing a stack out-of-bounds write.
 
-Modify some IPv4 header checks by reading the ihl field
-only once.
+Clear the stale option metadata after resetting the network header.
+Keep the remaining control block fields, including the ingress
+interface used by the ICMP response path.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Link: https://sashiko.dev/#/patchset/20260722101517.36313-1-ja%40ssi.bg
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Fixes: f2edb9f7706d ("ipvs: implement passive PMTUD for IPIP packets")
+Cc: stable@vger.kernel.org
+Bug found and triaged by OpenAI Security Research and 
+validated by Trail of Bits.
+
+Assisted-by: Codex:gpt-5.6-sol gpt-5.5-cyber
+Signed-off-by: Kyle Zeng <kylebot@openai.com>
 ---
- include/net/ip_vs.h             |  2 +-
- net/netfilter/ipvs/ip_vs_core.c | 67 +++++++++++++++++----------------
- net/netfilter/ipvs/ip_vs_xmit.c |  2 +-
- 3 files changed, 36 insertions(+), 35 deletions(-)
+Trail of Bits has a reproducer for this bug that triggers a
+KASAN stack-out-of-bounds write in __ip_options_echo() and can share if needed.
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index e6ca930a3507..1235f1934e94 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -2062,7 +2062,7 @@ static inline bool ip_vs_conn_use_hash2(struct ip_vs_conn *cp)
- 
- void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		    struct ip_vs_conn *cp, int dir, unsigned int toff,
--		    bool has_ports);
-+		    bool has_ports, struct ip_vs_iphdr *ciph);
- 
- #ifdef CONFIG_IP_VS_IPV6
- void ip_vs_nat_icmp_v6(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ net/netfilter/ipvs/ip_vs_core.c | 1 +
+ 1 file changed, 1 insertion(+)
+
 diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 6b79e0c4d9e2..0bdaeb4ed61e 100644
+index bafab9345..fe06c380c 100644
 --- a/net/netfilter/ipvs/ip_vs_core.c
 +++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -925,28 +925,27 @@ static int ip_vs_route_me_harder(struct netns_ipvs *ipvs, int af,
-  */
- void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		    struct ip_vs_conn *cp, int inout, unsigned int toff,
--		    bool has_ports)
-+		    bool has_ports, struct ip_vs_iphdr *ciph)
- {
- 	struct iphdr *iph	 = ip_hdr(skb);
- 	struct icmphdr *icmph	 = (struct icmphdr *)(skb->data + toff);
--	struct iphdr *ciph	 = (struct iphdr *)(icmph + 1);
--	unsigned int coff __maybe_unused = toff + sizeof(struct icmphdr);
-+	struct iphdr *cih	 = (struct iphdr *)(icmph + 1);
- 
- 	if (inout) {
- 		iph->saddr = cp->vaddr.ip;
- 		ip_send_check(iph);
--		ciph->daddr = cp->vaddr.ip;
--		ip_send_check(ciph);
-+		cih->daddr = cp->vaddr.ip;
-+		ip_send_check(cih);
- 	} else {
- 		iph->daddr = cp->daddr.ip;
- 		ip_send_check(iph);
--		ciph->saddr = cp->daddr.ip;
--		ip_send_check(ciph);
-+		cih->saddr = cp->daddr.ip;
-+		ip_send_check(cih);
- 	}
- 
- 	/* the TCP/UDP/SCTP port */
- 	if (has_ports) {
--		__be16 *ports = (void *)ciph + ciph->ihl*4;
-+		__be16 *ports = (void *)(skb->data + ciph->len);
- 
- 		if (inout)
- 			ports[1] = cp->vport;
-@@ -960,10 +959,10 @@ void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 	skb->ip_summed = CHECKSUM_UNNECESSARY;
- 
- 	if (inout)
--		IP_VS_DBG_PKT(11, AF_INET, pp, skb, coff,
-+		IP_VS_DBG_PKT(11, AF_INET, pp, skb, ciph->off,
- 			      "Forwarding altered outgoing ICMP");
- 	else
--		IP_VS_DBG_PKT(11, AF_INET, pp, skb, coff,
-+		IP_VS_DBG_PKT(11, AF_INET, pp, skb, ciph->off,
- 			      "Forwarding altered incoming ICMP");
- }
- 
-@@ -1056,7 +1055,7 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 		ip_vs_nat_icmp_v6(skb, pp, cp, 1, toff, has_ports, ciph);
- 	else
- #endif
--		ip_vs_nat_icmp(skb, pp, cp, 1, toff, has_ports);
-+		ip_vs_nat_icmp(skb, pp, cp, 1, toff, has_ports, ciph);
- 
- 	if (ip_vs_route_me_harder(cp->ipvs, af, skb, hooknum))
- 		goto out;
-@@ -1092,7 +1091,7 @@ static int ip_vs_out_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 	struct ip_vs_iphdr ciph;
- 	struct ip_vs_conn *cp;
- 	struct ip_vs_protocol *pp;
--	unsigned int offset, ihl;
-+	unsigned int offset;
- 	union nf_inet_addr snet;
- 
- 	*related = 1;
-@@ -1105,7 +1104,6 @@ static int ip_vs_out_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 			return NF_ACCEPT;
- 	}
- 
--	ihl = ipvsh->len;
- 	offset = ipvsh->len;
- 	ic = skb_header_pointer(skb, offset, sizeof(_icmph), &_icmph);
- 	if (ic == NULL)
-@@ -1131,11 +1129,15 @@ static int ip_vs_out_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 
- 	/* Now find the contained IP header */
- 	offset += sizeof(_icmph);
-+	if (!ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, true, &ciph))
-+		return NF_ACCEPT; /* The packet looks wrong, ignore */
-+
- 	cih = skb_header_pointer(skb, offset, sizeof(_ciph), &_ciph);
--	if (!(cih && cih->version == 4 && cih->ihl >= 5))
-+	if (!(cih && cih->version == 4 &&
-+	      ciph.len - ciph.off >= sizeof(struct iphdr)))
- 		return NF_ACCEPT; /* The packet looks wrong, ignore */
- 
--	pp = ip_vs_proto_get(cih->protocol);
-+	pp = ip_vs_proto_get(ciph.protocol);
- 	if (!pp)
- 		return NF_ACCEPT;
- 
-@@ -1146,8 +1148,6 @@ static int ip_vs_out_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 	IP_VS_DBG_PKT(11, AF_INET, pp, skb, offset,
- 		      "Checking outgoing ICMP for");
- 
--	ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, true, &ciph);
--
- 	/* The embedded headers contain source and dest in reverse order */
- 	cp = INDIRECT_CALL_1(pp->conn_out_get, ip_vs_conn_out_get_proto,
- 			     ipvs, AF_INET, skb, &ciph);
-@@ -1155,8 +1155,8 @@ static int ip_vs_out_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 		return NF_ACCEPT;
- 
- 	snet.ip = ipvsh->saddr.ip;
--	return handle_response_icmp(AF_INET, skb, &snet, cp, pp, &ciph, ihl,
--				    hooknum);
-+	return handle_response_icmp(AF_INET, skb, &snet, cp, pp, &ciph,
-+				    ipvsh->len, hooknum);
- }
- 
- #ifdef CONFIG_IP_VS_IPV6
-@@ -1803,10 +1803,12 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
- 	/* Now find the contained IP header */
- 	offset += sizeof(_icmph);
- 	cih = skb_header_pointer(skb, offset, sizeof(_ciph), &_ciph);
--	if (!(cih && cih->version == 4 && cih->ihl >= 5))
-+	if (!cih)
- 		return NF_ACCEPT; /* The packet looks wrong, ignore */
--	raddr = (union nf_inet_addr *)&cih->daddr;
- 	hlen_ipip = cih->ihl * 4;
-+	if (!(cih->version == 4 && hlen_ipip >= sizeof(struct iphdr)))
-+		return NF_ACCEPT; /* The packet looks wrong, ignore */
-+	raddr = (union nf_inet_addr *)&cih->daddr;
- 
- 	/* Special case for errors for IPIP/UDP/GRE tunnel packets */
- 	tunnel = false;
-@@ -1823,9 +1825,6 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
- 		if (!dest || dest->tun_type != IP_VS_CONN_F_TUNNEL_TYPE_IPIP)
- 			return NF_ACCEPT;
- 		offset += hlen_ipip;
--		cih = skb_header_pointer(skb, offset, sizeof(_ciph), &_ciph);
--		if (!(cih && cih->version == 4 && cih->ihl >= 5))
--			return NF_ACCEPT; /* The packet looks wrong, ignore */
- 		tunnel = true;
- 	} else if ((cih->protocol == IPPROTO_UDP ||	/* Can be UDP encap */
- 		    cih->protocol == IPPROTO_GRE) &&	/* Can be GRE encap */
-@@ -1850,21 +1849,25 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
- 			/* Skip IP and UDP/GRE tunnel headers */
- 			offset = offset2 + ulen;
- 			/* Now we should be at the original IP header */
--			cih = skb_header_pointer(skb, offset, sizeof(_ciph),
--						 &_ciph);
--			if (cih && cih->version == 4 && cih->ihl >= 5 &&
--			    iproto == IPPROTO_IPIP)
-+			if (iproto == IPPROTO_IPIP)
- 				tunnel = true;
- 			else
- 				return NF_ACCEPT;
- 		}
- 	}
- 
--	pd = ip_vs_proto_data_get(ipvs, cih->protocol);
-+	if (!ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, !tunnel, &ciph))
-+		return NF_ACCEPT;
-+	pd = ip_vs_proto_data_get(ipvs, ciph.protocol);
- 	if (!pd)
- 		return NF_ACCEPT;
- 	pp = pd->pp;
- 
-+	cih = skb_header_pointer(skb, offset, sizeof(_ciph), &_ciph);
-+	if (!(cih && cih->version == 4 &&
-+	      ciph.len - ciph.off >= sizeof(struct iphdr)))
-+		return NF_ACCEPT; /* The packet looks wrong, ignore */
-+
- 	/* Is the embedded protocol header present? */
- 	if (unlikely(cih->frag_off & htons(IP_OFFSET) && !pp->dont_defrag))
- 		return NF_ACCEPT;
-@@ -1872,9 +1875,6 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
- 	IP_VS_DBG_PKT(11, AF_INET, pp, skb, offset,
- 		      "Checking incoming ICMP for");
- 
--	offset2 = offset;
--	ip_vs_fill_iph_skb_icmp(AF_INET, skb, offset, !tunnel, &ciph);
--
- 	/* The embedded headers contain source and dest in reverse order.
- 	 * For IPIP/UDP/GRE tunnel this is error for request, not for reply.
- 	 */
-@@ -1904,11 +1904,12 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
- 	}
- 
- 	if (tunnel) {
--		unsigned int hlen_orig = cih->ihl * 4;
-+		unsigned int hlen_orig = ciph.len - ciph.off;
- 		__be32 info = ic->un.gateway;
- 		__u8 type = ic->type;
- 		__u8 code = ic->code;
- 
-+		offset2 = offset;
- 		/* Update the MTU */
- 		if (ic->type == ICMP_DEST_UNREACH &&
- 		    ic->code == ICMP_FRAG_NEEDED) {
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index cdc567ceabf4..4469dcc4bb1e 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -1582,7 +1582,7 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	if (skb_cow(skb, rt->dst.dev->hard_header_len))
- 		goto tx_error;
- 
--	ip_vs_nat_icmp(skb, pp, cp, 0, toff, has_ports);
-+	ip_vs_nat_icmp(skb, pp, cp, 0, toff, has_ports, ciph);
- 
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->ignore_df = 1;
+@@ -1951,6 +1951,7 @@ ip_vs_in_icmp(struct netns_ipvs *ipvs, struct sk_buff *skb, int *related,
+ 		if (pskb_pull(skb, offset2) == NULL)
+ 			goto ignore_tunnel;
+ 		skb_reset_network_header(skb);
++		memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
+ 		/* Ensure the IP header is present in headroom */
+ 		if (!pskb_may_pull(skb, hlen_orig))
+ 			goto ignore_tunnel;
 -- 
-2.55.0
-
-
+2.53.0
