@@ -1,158 +1,174 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4514B3C585B;
-	Thu,  6 Aug 2026 10:52:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC3294C77D1;
+	Thu,  6 Aug 2026 19:07:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.177.32
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786013565; cv=none; b=mkjhEInZr4M3WL1XzdrbchUzTdWkymuD5CJzthlwH4c3pkzmWdOh+BEa0SWLxA42+/YAuU5Vo078YPn2L8ZwA4rgnlovz6eTbEvemMEd60TGGTwr8Byq/xmwvMgtL01xdPJ47eOY4PmFRPBypPyf5yxNumf+gAmGxK0mS8Sg1+k=
+	t=1786043241; cv=none; b=XA7yYFuFFFAEYu+M0Hx8Op5xzSjBE853LviW5VeC6mOdihp8C5/MkwcD4iGoZJDTYzhg1X08+eibzaJrd2b1lxxvYLrKpn8SNzHBsszDAXZE88ougZ8Uiw5GlrjAMDegtnknNtNSlAOQq/+Ht0AyCNKjYseQiijCorVYbUvVkdc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786013565; c=relaxed/simple;
-	bh=lTlT2Yck3ZMSIrpvZH6FezaAJF3yU2DijFQbI0dRJQA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=QUTNgXN73a3WltflwQIdN+NuHSpi/CKhiP3Vk2/j5wYCdZK7hQO8jDn5FsVGASn9OVYZH61lhoUoBjFPJy8fzQ7EzNSpA123tmgYUuW9MU5C4KntZ2Z0ZJ3wK6mQYkDh6f44KlO7UuOUGk9zKy3wzak53SUytKd0ELlTuzUejoA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=WEW54dQc; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1786043241; c=relaxed/simple;
+	bh=WXcm2Yb5I04oLe14dcXdrEPwOR8hGoCD+QeGAqYfYQw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=AEHc1hF25SowMbEOHH1pCtzo+9NhhXR8eZdjexjXEJITmo4nkfXlmFAGt1iIzc8D9d8ucOiSMcc8J+ZsgNaH6p36PVOAfJwd1Bn33oFKpmet3FB1qRxL7dTgXvVPFzmpP7Ah/od8cky199kShTwnh3+V41NlwUo//i2daPkIZe0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=nA1aUYEN; arc=none smtp.client-ip=205.220.177.32
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="WEW54dQc"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 34E7721CD4;
-	Thu, 06 Aug 2026 13:52:29 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-transfer-encoding:date:from:from:message-id
-	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=HKMqzPTr
-	AmLDH7yG4j41bLRLsuahuF+lj0/OYWBhNhM=; b=WEW54dQcbfYiPGeTyV7gtmjR
-	rXyddQQdzdw44BqxVoApySviKPVt/2qt4LnjR29iC1urRByq+izar4rr2SNrGGAQ
-	J8npIkrp0uHX5am+53eJYk4rsL4314ZUzvPRW1NYl3M6Vnlrl3YS7RFWlzAqgKOa
-	vobU77FwwvmZZ45mTCi3p4Z1IeWAqmgQ3dFqRIgQAWCHhyEoL4wNIvfDpd4eHrH0
-	btAnnnqO8HKBaviTofXHem+ZNzspsAHMFOVZ5W19IxeP1BTo58VZqIhAPtwFG1r1
-	RyuxO7zIto8pcmeO6TElTRK6VCJq0Q0DkNSn9n3X60v5aAhzfLe3CJfliPOmwV10
-	8JOHbIFVadALBkUweLhD7yQrmz/zHck20ZlaG3UJcEMd7A4PLsYzvCFlC2bdenB+
-	pztlgrWTYE/HXF5UXphdXMcWZ81NKAT/l7D3iEHA+N0VtOaO5ISVZ/fej1DuwK1m
-	KrR4YhQIoqURwZbvdEmn9HtRd0H/dOC7jiUX7okmJ9X6SUfbhBxhnX1TnBktb2mw
-	WmoRidVI8XOdb9NvUzD/mDPuFjElBb22hFGHTT73aKVw+Ydj/hpGTHhO/+YaUeLZ
-	YDI6bFEEzOyE+Hul5tpv7WywLl/v9EXYTIwViiQv3g3L2asSmqDoNValIIhnf68I
-	EnQ+CxZyz+Augp17Rh8=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Thu, 06 Aug 2026 13:52:29 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id D82F060585;
-	Thu,  6 Aug 2026 13:52:29 +0300 (EEST)
-Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 676AqMbg034636;
-	Thu, 6 Aug 2026 13:52:22 +0300
-Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 676AqJIP034634;
-	Thu, 6 Aug 2026 13:52:19 +0300
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: [PATCH nf] ipvs: revalidate ihl to prevent out-of-bounds access
-Date: Thu,  6 Aug 2026 13:52:11 +0300
-Message-ID: <20260806105211.34622-1-ja@ssi.bg>
-X-Mailer: git-send-email 2.55.0
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="nA1aUYEN"
+Received: from pps.filterd (m0333520.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 676Ftr4v4168306;
+	Thu, 6 Aug 2026 19:06:26 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=
+	corp-2025-04-25; bh=85JNUC8SyfLYyGobZYpdZmxyQGF0qjVqbjDUd/Wkets=; b=
+	nA1aUYENomsR9p7hfDkQr6KalTZrWQW8NET0IkudX6kxW006ofYrtz87Qku7QfJU
+	1lbtfpVmJ42Q3AQE1tcbOw0dHj5dJSylYxq+m2+YcyLW9melEp/Zo40HFGHB54iG
+	OcTwtR+niQLcarL+4OWP5kUShgYJOMrLwxEqqSkY7Lj2zjgD/sgtw+C5rg7PDGAH
+	Gv3g1ppfRFvZh8DYeUX2gV+upEZO5qZ40tc03kMw1uUKshv2LOqjagJ3HbvFdCxa
+	5hBpF9vOLZ/60dXew31tSvX4uLcqli6uolj+khGTMmHGGzK/4pK/rJL+YY5xBUHb
+	pPRuZrwRVaPtUZ7W/V2+uA==
+Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4fs8ugpqtf-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Thu, 06 Aug 2026 19:06:26 +0000 (GMT)
+Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.7/8.18.1.7) with ESMTP id 676J0b6k024663;
+	Thu, 6 Aug 2026 19:06:25 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 4fs78w56e3-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Thu, 06 Aug 2026 19:06:25 +0000 (GMT)
+Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+	by pps.reinject (8.18.1.12/8.18.1.12) with ESMTP id 676J6LgY011247;
+	Thu, 6 Aug 2026 19:06:24 GMT
+Received: from ca-mkp2.ca.oracle.com.com (mpeterse-ol9.allregionaliads.osdevelopmeniad.oraclevcn.com [100.100.251.135])
+	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 4fs78w56b9-3;
+	Thu, 06 Aug 2026 19:06:24 +0000 (GMT)
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+To: Julia.Lawall@inria.fr, Alex Deucher <alexander.deucher@amd.com>,
+        Alexander Shishkin <alexander.shishkin@linux.intel.com>,
+        Alexandre Belloni <alexandre.belloni@bootlin.com>,
+        Andrew Lunn <andrew@lunn.ch>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Arkadiusz Kubalewski <arkadiusz.kubalewski@intel.com>,
+        Borislav Petkov <bp@alien8.de>,
+        =?UTF-8?q?Christian=20K=C3=B6nig?= <christian.koenig@amd.com>,
+        Daniel Lezcano <daniel.lezcano@kernel.org>,
+        David Airlie <airlied@gmail.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Dmitry Torokhov <dmitry.torokhov@gmail.com>,
+        Eric Dumazet <edumazet@google.com>, Florian Westphal <fw@strlen.de>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Hans de Goede <hansg@kernel.org>, Hans Verkuil <hverkuil@kernel.org>,
+        Heikki Krogerus <heikki.krogerus@linux.intel.com>,
+        Herbert Xu <herbert@gondor.apana.org.au>,
+        =?UTF-8?q?Ilpo=20J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>,
+        Jakub Kicinski <kuba@kernel.org>,
+        "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
+        Jani Nikula <jani.nikula@linux.intel.com>,
+        Jaroslav Kysela <perex@perex.cz>, Jason Gunthorpe <jgg@ziepe.ca>,
+        Jiri Pirko <jiri@resnulli.us>, "Joerg Roedel (AMD)" <joro@8bytes.org>,
+        Johan Hovold <johan@kernel.org>, Jonathan Cameron <jic23@kernel.org>,
+        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
+        Julian Anastasov <ja@ssi.bg>, Leon Romanovsky <leon@kernel.org>,
+        Liam Girdwood <lgirdwood@gmail.com>, Linus Walleij <linusw@kernel.org>,
+        Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
+        Mark Brown <broonie@kernel.org>, Matthew Sakai <msakai@redhat.com>,
+        Mauro Carvalho Chehab <mchehab@kernel.org>,
+        Maxime Ripard <mripard@kernel.org>,
+        Michael Turquette <mturquette@baylibre.com>,
+        Mike Rapoport <rppt@kernel.org>,
+        Miri Korenblit <miriam.rachel.korenblit@intel.com>,
+        Nicolas Palix <nicolas.palix@imag.fr>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Paolo Abeni <pabeni@redhat.com>, Ping-Ke Shih <pkshih@realtek.com>,
+        "Rafael J. Wysocki" <rafael@kernel.org>,
+        Rodrigo Vivi <rodrigo.vivi@intel.com>,
+        Sebastian Reichel <sre@kernel.org>, Shuah Khan <shuah@kernel.org>,
+        Simona Vetter <simona@ffwll.ch>, Simon Horman <horms@verge.net.au>,
+        Stephen Boyd <sboyd@kernel.org>, Steve French <sfrench@samba.org>,
+        Takashi Iwai <tiwai@suse.com>, Thomas Renninger <trenn@suse.com>,
+        Thomas Zimmermann <tzimmermann@suse.de>,
+        Tony Luck <tony.luck@intel.com>, Tvrtko Ursulin <tursulin@ursulin.net>,
+        Vadim Fedorenko <vadim.fedorenko@linux.dev>,
+        Vinod Koul <vkoul@kernel.org>, Will Deacon <will@kernel.org>,
+        Yazen Ghannam <Yazen.Ghannam@amd.com>,
+        Sang-Heon Jeon <ekffu200098@gmail.com>
+Cc: "Martin K . Petersen" <martin.petersen@oracle.com>, cocci@inria.fr,
+        amd-gfx@lists.freedesktop.org, dmaengine@vger.kernel.org,
+        dm-devel@lists.linux.dev, dri-devel@lists.freedesktop.org,
+        intel-gfx@lists.freedesktop.org, intel-wired-lan@lists.osuosl.org,
+        iommu@lists.linux.dev, linux-cifs@vger.kernel.org,
+        linux-clk@vger.kernel.org, linux-crypto@vger.kernel.org,
+        linux-edac@vger.kernel.org, linux-gpio@vger.kernel.org,
+        linux-iio@vger.kernel.org, linux-input@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-media@vger.kernel.org,
+        linux-mm@kvack.org, linux-pm@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-rtc@vger.kernel.org,
+        linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-sound@vger.kernel.org, linux-usb@vger.kernel.org,
+        linux-wireless@vger.kernel.org, lvs-devel@vger.kernel.org,
+        netdev@vger.kernel.org, netfilter-devel@vger.kernel.org,
+        nouveau@lists.freedesktop.org, platform-driver-x86@vger.kernel.org
+Subject: Re: (subset) [PATCH 00/36] treewide: remove conditional returns with no effect
+Date: Thu,  6 Aug 2026 15:06:08 -0400
+Message-ID: <178589207129.336697.9870225893827541543.b4-ty@oracle.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260723184538.3888637-1-ekffu200098@gmail.com>
+References: <20260723184538.3888637-1-ekffu200098@gmail.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-08-06_02,2026-08-06_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0
+ spamscore=0 malwarescore=0 bulkscore=0 lowpriorityscore=0 mlxscore=0
+ phishscore=0 mlxlogscore=672 suspectscore=0 classifier=spam adjust=0
+ reason=mlx scancount=1 engine=8.19.0-2606160000 definitions=main-2608060149
+X-Proofpoint-ORIG-GUID: XGMDaQGIFMb57T6Q2yvPQTQQt2debxfq
+X-Authority-Analysis: v=2.4 cv=XqnK/1F9 c=1 sm=1 tr=0 ts=6a74db32 b=1 cx=c_pps
+ a=e1sVV491RgrpLwSTMOnk8w==:117 a=e1sVV491RgrpLwSTMOnk8w==:17
+ a=IkcTkHD0fZMA:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=jiCTI4zE5U7BLdzWsZGv:22 a=BqU2WV_vvsyTyxaotp0D:22 a=VwQbUJbxAAAA:8
+ a=Br-j9HdbvUlrMjNZj6IA:9 a=QEXdDO2ut3YA:10 a=5yU3S35YU4bGjq-dph-N:22
+ a=Bho9c0fBagfJEIQBS7DQ:22 cc=ntf awl=host:13510
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODA2MDE0OSBTYWx0ZWRfX6uIK9jT+2Jev
+ rYS5Xc6Wjv9hMYRtyD0NY9wioUhY1o9ts8S44XrOIykROIC2fMM+q3H5rjkub44bNgkLDQ3tnSe
+ fkx9LiuU0Ioed9eVzRB8PP2qYuZIVaHGDH9Vr333gSb2ZgsHD92v
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODA2MDE0OSBTYWx0ZWRfX43FUiflrVixJ
+ FNgAKsr+fsfl0ktZltC3fvW6MVFcRQRy/oySHj8nQQDMOHwfS94QLWHrXArK3j62D1c6aNzQrnl
+ 2DtOuGbPQocnjuSCI1ny1WWYx/7jkkjlcfyl+lp7TEesEfkx307+KuCZo0OgIxbIwfa72MWD4em
+ tn6/hMd/QXx6zH3wP5OlhrMzlp2qKgIxJlelAMfUWIkruyj4hnvKzGUkqPoF4QRZ71As9I8pV2j
+ DMm/cMIaHufC6lXcsuKfUk0yiqWTx1Zr8LtQAR498eW34hEj3pAMHucta0+1CKmEnv9EN7lkU/M
+ FG7jgW8yHOjl2TgueMJFzovO4heKYSqjW47oC3CHVujyZPMUqifsWdUKFoxdhd+EKhXdCEJL9b0
+ LGCES5HP/CdGIqj2UaaWymZGJVFVJ4RBD/aEk7/710HO5x59Z+gVx3LZGgty2YUYCbgJE7oGTWH
+ QPXliDM2eYx5QgvaSSBlrfWn/1V9lBD33lbCDCaI=
+X-Proofpoint-GUID: XGMDaQGIFMb57T6Q2yvPQTQQt2debxfq
 
-While the outer IP header is already pulled into the skb head,
-we must be careful and revalidate the embedded headers after
-reading them from the skb frags to prevent out-of-bounds
-access.
+On Fri, 24 Jul 2026 03:45:02 +0900, Sang-Heon Jeon wrote:
 
-One such place reported by Sashiko is ip_vs_nat_icmp() where
-local process can change the ihl field and after
-skb_ensure_writable() we can see larger value which is a
-problem for the ip_send_check(cih) calls.
+> While reading mm/memblock, I found a conditional return where both
+> branches return the same value:
+> 
+> 	err = do_something();
+> 	if (err)
+> 		return err;
+> 	return err;
+> 
+> [...]
 
-Add check to drop the packet if the ihl field is changed.
+Applied to 7.3/scsi-queue, thanks!
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Link: https://sashiko.dev/#/patchset/20260730183506.87473-1-ja%40ssi.bg
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- include/net/ip_vs.h             |  2 +-
- net/netfilter/ipvs/ip_vs_core.c | 11 +++++++++--
- net/netfilter/ipvs/ip_vs_xmit.c |  3 ++-
- 3 files changed, 12 insertions(+), 4 deletions(-)
+[30/36] scsi: mpt3sas: remove conditional return with no effect
+        https://git.kernel.org/mkp/scsi/c/c79f9bf2d87f
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index fc2ef5ef31a6..be3a6617adf4 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -2068,7 +2068,7 @@ static inline bool ip_vs_conn_use_hash2(struct ip_vs_conn *cp)
- 	       !(cp->flags & IP_VS_CONN_F_TEMPLATE);
- }
- 
--void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+bool ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		    struct ip_vs_conn *cp, int dir, unsigned int toff,
- 		    bool has_ports, struct ip_vs_iphdr *ciph);
- 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 95af77b68851..1a0661d19d9f 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -923,7 +923,7 @@ static int ip_vs_route_me_harder(struct netns_ipvs *ipvs, int af,
-  * Packet has been made sufficiently writable in caller
-  * - inout: 1=in->out, 0=out->in
-  */
--void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
-+bool ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 		    struct ip_vs_conn *cp, int inout, unsigned int toff,
- 		    bool has_ports, struct ip_vs_iphdr *ciph)
- {
-@@ -931,6 +931,11 @@ void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 	struct icmphdr *icmph	 = (struct icmphdr *)(skb->data + toff);
- 	struct iphdr *cih	 = (struct iphdr *)(icmph + 1);
- 
-+	/* Before now we may used ihl from skb frag, revalidate it after
-+	 * copying it into skb head to prevent out-of-bounds access
-+	 */
-+	if (cih->ihl * 4 != ciph->len - ciph->off)
-+		return false;
- 	if (inout) {
- 		iph->saddr = cp->vaddr.ip;
- 		ip_send_check(iph);
-@@ -964,6 +969,7 @@ void ip_vs_nat_icmp(struct sk_buff *skb, struct ip_vs_protocol *pp,
- 	else
- 		IP_VS_DBG_PKT(11, AF_INET, pp, skb, ciph->off,
- 			      "Forwarding altered incoming ICMP");
-+	return true;
- }
- 
- #ifdef CONFIG_IP_VS_IPV6
-@@ -1055,7 +1061,8 @@ static int handle_response_icmp(int af, struct sk_buff *skb,
- 		ip_vs_nat_icmp_v6(skb, pp, cp, 1, toff, has_ports, ciph);
- 	else
- #endif
--		ip_vs_nat_icmp(skb, pp, cp, 1, toff, has_ports, ciph);
-+		if (!ip_vs_nat_icmp(skb, pp, cp, 1, toff, has_ports, ciph))
-+			goto out;
- 
- 	if (ip_vs_route_me_harder(cp->ipvs, af, skb, hooknum))
- 		goto out;
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 3d3c72c9dda4..f5f72a2135e1 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -1582,7 +1582,8 @@ ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 	if (skb_cow(skb, rt->dst.dev->hard_header_len))
- 		goto tx_error;
- 
--	ip_vs_nat_icmp(skb, pp, cp, 0, toff, has_ports, ciph);
-+	if (!ip_vs_nat_icmp(skb, pp, cp, 0, toff, has_ports, ciph))
-+		goto tx_error;
- 
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->ignore_df = 1;
 -- 
-2.55.0
-
-
+Martin K. Petersen
