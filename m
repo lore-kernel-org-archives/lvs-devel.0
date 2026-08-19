@@ -1,38 +1,38 @@
 Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC6104BCAA9;
-	Wed, 19 Aug 2026 18:16:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD5B34BC002;
+	Wed, 19 Aug 2026 18:16:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787163409; cv=none; b=Spt7HfYgjmF+XFIBDV65zRImD8MFUbwFL1nGOCqviGGB3kIUQC4CAIfqlRIYZBQTDdRD1PRlJGMIbzb9NVoMdPRXg8zlm+NMA1hnTa0nKWoYhInWENOwZptkFilGUy9iX49svkir7LTRs4tBMiVZuL+bLSqabQDfNT3LDpunIbg=
+	t=1787163416; cv=none; b=XhSsVKSTf76HppgeL+wccqUDoU8sp5fEq9k7xnIYif4B7RF+jASDNivyyDTy5YWVNcfL1znri9F2C8ITzF+X9FgMpdIHhxIvu425HUKsRgLWSzHKAFMbc2pbomFr2bHtiFUFE/kDfJiY1gQhAFxo7nZcz+DgxRqXuyteDxt2ciw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787163409; c=relaxed/simple;
-	bh=ghXZ0pNg3bc/gxhG0S2yq9sZf92+3XHOPiwZNweiMFQ=;
+	s=arc-20240116; t=1787163416; c=relaxed/simple;
+	bh=wRLwCiuqMttYVsCHPxBkzo19GaoHrSC1wLITrsCEBiI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=qI0wV1xTV/rGRKpFS+rzlFc1sjt22GEnnIAAfjTA3sp0tYvpDxnrGP+ZwnP5CzxEm8POXowQ9etNJNVEXC99LAIgrpcI/g5TtApHt3+0mSbVxbD9KWJNtMzG0tgDBzjjcXZe9QNfGzYymCjTkOabK7o55Vi4a0V+E0ZqEZwq2p8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=fY2hWMl9; arc=none smtp.client-ip=213.97.179.56
+	 In-Reply-To:To:Cc; b=ORLS5CALRS/o7w5aDZPh2max97gHvQrK+OCgWRMAY2Jz7iI5Iu8hdl7tQ3jrrQ0Q6OwmSJG/l5yxz3oeD0/Jwc8ANkTGv2lodeZuUg/y3pfsLjNAlmzjgpSRxnPOZTrxG3X2fuWJZMUhHGIUKl5FWWNPTVXIr3jLnKuKDPMx0wk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=iWuYsS5t; arc=none smtp.client-ip=213.97.179.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="fY2hWMl9"
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="iWuYsS5t"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
 	s=20170329; h=Cc:To:Message-Id:Content-Transfer-Encoding:Content-Type:
 	MIME-Version:Subject:Date:From:From:Reply-To;
-	bh=/zj38NG0Jtad2NvlMhx+0HTiUM61a7Li0ehqHM7SWK0=; b=fY2hWMl9Buh+eGqIGMOtOcKqBR
-	I27G4cDHfHxplGJ+f4SuPft3vJsSlFI4MryHdoGkV5oh/37feb31SamacRnx/lXtFDVauNCCLBDdF
-	Yao8hJPoD1jEAw3zIHWFeGlWspIKFt8mP8fzlQnnnIm7nW+aDgzIkyzWM6VFxzFsFR6JRaM9YTw/h
-	F0A8NYNDE917h7Bd5ENPfCm1HmBdDyDFS2y/GC4RlKpo0SyzQ9BnNdJfdju56zVmY+4ONLuCM2FpQ
-	gen/hdyJxWwg2bpC+W8tnC1+UZegPuIpuA0dkjrMBh0fKWD4yKG8f12dH5a2Se1+tvdZYda/HL2af
-	uDdBC7xw==;
+	bh=JxjRhJ2z8K0GvxyVrmaAYfCElgRxeZGrAv21+ElqaE4=; b=iWuYsS5tm52pjQ4kgmlptYTgtd
+	aifA9yQgQdT+nxm3VOjYbywN6MsP1YBHVg3VDWxMP95M75P//gjgSE/tCcLHxdYSJPQJwL7Zey+08
+	s5aNQLAqT1CKIgkEh9e4hdchMruAE6HyUHcm91q8zvnio4vZSyZJYqGoFIlO0/OrpPx5+xn1ST2JT
+	S9jo+yqtNq88/mklFXnw3sCwDGuTtwESCA0etBxC1XhX23NEv6Kv36US6yvqzLp1dMNYB6pM+i6dz
+	KsdX4yL/MP6ijbKTU9LOyc3VqhqMooKawKNoTKa4ueXetef9dCeDK+l36m8P3uyb7MrWguAGbk8Ki
+	oISyBZFg==;
 Received: from 186-249-147-181.shared.desktop.com.br ([186.249.147.181] helo=[127.0.1.1])
 	by fanzine2.igalia.com with esmtpsa 
 	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
-	id 1wwkqD-006ENH-6W; Wed, 19 Aug 2026 20:16:45 +0200
+	id 1wwkqK-006ENH-D5; Wed, 19 Aug 2026 20:16:52 +0200
 From: Mauricio Faria de Oliveira <mfo@igalia.com>
-Date: Wed, 19 Aug 2026 15:16:21 -0300
-Subject: [PATCH RFC v3 08/13] sysctl, net: update
- register_net_sysctl_sz(ARRAY_SIZE(table_tmpl)) with template arguments
+Date: Wed, 19 Aug 2026 15:16:22 -0300
+Subject: [PATCH RFC v3 09/13] sysctl, ipv6: update
+ register_net_sysctl{_sz}() callers with template arguments
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -41,7 +41,7 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260819-sysctl-module-aliases-v3-8-aab90569365d@igalia.com>
+Message-Id: <20260819-sysctl-module-aliases-v3-9-aab90569365d@igalia.com>
 References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
 In-Reply-To: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
 To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
@@ -61,235 +61,103 @@ Cc: kernel-dev@igalia.com, linux-riscv@lists.infradead.org,
  virtualization@lists.linux.dev, Mauricio Faria de Oliveira <mfo@igalia.com>
 X-Mailer: b4 0.14.2
 
-Reduce register_net_sysctl_sz(net, path, table, ARRAY_SIZE(table_tmpl)) to
-register_net_sysctl(net, path, table, table_tmpl) which does it internally.
+The sysctl table definition and registration must be in the same file,
+in order for the macro to work.
+
+Add plumbing to register ipv6_{route,icmp}_table in their own files.
+With this, ipv6_{route,icmp}_sysctl_table_size() can be removed.
 
 Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
 ---
- drivers/net/vrf.c                       | 3 +--
- net/bridge/br_netfilter_hooks.c         | 3 +--
- net/ipv4/devinet.c                      | 3 +--
- net/ipv4/ip_fragment.c                  | 3 +--
- net/ipv4/xfrm4_policy.c                 | 3 +--
- net/ipv6/netfilter/nf_conntrack_reasm.c | 4 ++--
- net/ipv6/reassembly.c                   | 3 +--
- net/ipv6/xfrm6_policy.c                 | 3 +--
- net/mptcp/ctrl.c                        | 3 +--
- net/netfilter/ipvs/ip_vs_ctl.c          | 4 +---
- net/netfilter/nf_conntrack_standalone.c | 5 ++---
- net/rds/tcp.c                           | 4 ++--
- net/unix/sysctl_net_unix.c              | 3 +--
- net/vmw_vsock/af_vsock.c                | 4 ++--
- 14 files changed, 18 insertions(+), 30 deletions(-)
+ include/net/ipv6.h         |  6 ++++--
+ net/ipv6/icmp.c            |  6 ++++--
+ net/ipv6/route.c           | 10 +++++++---
+ net/ipv6/sysctl_net_ipv6.c | 10 ++--------
+ 4 files changed, 17 insertions(+), 15 deletions(-)
 
-diff --git a/drivers/net/vrf.c b/drivers/net/vrf.c
-index a0557a3a70260a404b2c2c6262e8466aec5be391..19dacbe69d6de81e2cf5cd2b6e750a25f9cef092 100644
---- a/drivers/net/vrf.c
-+++ b/drivers/net/vrf.c
-@@ -1875,8 +1875,7 @@ static int vrf_netns_init_sysctl(struct net *net, struct netns_vrf *nn_vrf)
- 	/* init the extra1 parameter with the reference to current netns */
- 	table[0].extra1 = net;
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index 3de07e738538f783e0fb4628c92ce50a7e36f9f5..29a095798abe8f5730ab0a046931ebf78f481bdf 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -1220,9 +1220,11 @@ static inline int snmp6_unregister_dev(struct inet6_dev *idev) { return 0; }
  
--	nn_vrf->ctl_hdr = register_net_sysctl_sz(net, "net/vrf", table,
--						 ARRAY_SIZE(vrf_table));
-+	nn_vrf->ctl_hdr = register_net_sysctl(net, "net/vrf", table, vrf_table);
- 	if (!nn_vrf->ctl_hdr) {
- 		kfree(table);
- 		return -ENOMEM;
-diff --git a/net/bridge/br_netfilter_hooks.c b/net/bridge/br_netfilter_hooks.c
-index 0a394e5f439168fc32f3beb08721bee063ca5f17..ce5deb724608cf01103581f7f3e57210ffb85657 100644
---- a/net/bridge/br_netfilter_hooks.c
-+++ b/net/bridge/br_netfilter_hooks.c
-@@ -1251,8 +1251,7 @@ static int br_netfilter_sysctl_init_net(struct net *net)
+ #ifdef CONFIG_SYSCTL
+ struct ctl_table *ipv6_icmp_sysctl_init(struct net *net);
+-size_t ipv6_icmp_sysctl_table_size(void);
++struct ctl_table_header *ipv6_icmp_sysctl_register(struct net *net,
++						   const struct ctl_table *table);
+ struct ctl_table *ipv6_route_sysctl_init(struct net *net);
+-size_t ipv6_route_sysctl_table_size(struct net *net);
++struct ctl_table_header *ipv6_route_sysctl_register(struct net *net,
++						    const struct ctl_table *table);
+ int ipv6_sysctl_register(void);
+ void ipv6_sysctl_unregister(void);
+ #endif
+diff --git a/net/ipv6/icmp.c b/net/ipv6/icmp.c
+index a95b0351824f3237815e43bf8448110070955884..bb170b8c867c3c6eaccc41aab8ab1c65eb0aa24b 100644
+--- a/net/ipv6/icmp.c
++++ b/net/ipv6/icmp.c
+@@ -1450,8 +1450,10 @@ struct ctl_table * __net_init ipv6_icmp_sysctl_init(struct net *net)
+ 	return table;
+ }
  
- 	br_netfilter_sysctl_default(brnet);
+-size_t ipv6_icmp_sysctl_table_size(void)
++struct ctl_table_header *ipv6_icmp_sysctl_register(struct net *net,
++						   const struct ctl_table *table)
+ {
+-	return ARRAY_SIZE(ipv6_icmp_table_template);
++	return register_net_sysctl(net, "net/ipv6/icmp", table,
++				   ipv6_icmp_table_template);
+ }
+ #endif
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 16dfac54a259a11410ba736535f0462070979276..9e3f849d3564f4312d7b64157471f50c8168aafd 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -6698,13 +6698,17 @@ struct ctl_table * __net_init ipv6_route_sysctl_init(struct net *net)
+ 	return table;
+ }
  
--	brnet->ctl_hdr = register_net_sysctl_sz(net, "net/bridge", table,
--						ARRAY_SIZE(brnf_table));
-+	brnet->ctl_hdr = register_net_sysctl(net, "net/bridge", table, brnf_table);
- 	if (!brnet->ctl_hdr) {
- 		if (!net_eq(net, &init_net))
- 			kfree(table);
-diff --git a/net/ipv4/devinet.c b/net/ipv4/devinet.c
-index a466163dad7fe7f8b5b1c2897dd5fe548c288442..fad5483287c29f75a0c09aa833af389e51f36cfb 100644
---- a/net/ipv4/devinet.c
-+++ b/net/ipv4/devinet.c
-@@ -2884,8 +2884,7 @@ static __net_init int devinet_init_net(struct net *net)
- 		goto err_reg_dflt;
+-size_t ipv6_route_sysctl_table_size(struct net *net)
++struct ctl_table_header *ipv6_route_sysctl_register(struct net *net,
++						    const struct ctl_table *table)
+ {
++	size_t table_size = ARRAY_SIZE(ipv6_route_table_template);
++
+ 	/* Don't export sysctls to unprivileged users */
+ 	if (net->user_ns != &init_user_ns)
+-		return 1;
++		table_size = 1;
  
- 	err = -ENOMEM;
--	forw_hdr = register_net_sysctl_sz(net, "net/ipv4", tbl,
--					  ARRAY_SIZE(ctl_forward_entry));
-+	forw_hdr = register_net_sysctl(net, "net/ipv4", tbl, ctl_forward_entry);
- 	if (!forw_hdr)
- 		goto err_reg_ctl;
- 	net->ipv4.forw_hdr = forw_hdr;
-diff --git a/net/ipv4/ip_fragment.c b/net/ipv4/ip_fragment.c
-index c790d2f494870e1debd7e73b2d67df017a29f8a8..122aae5b4a384c12db5786bc34314107b4794b63 100644
---- a/net/ipv4/ip_fragment.c
-+++ b/net/ipv4/ip_fragment.c
-@@ -604,8 +604,7 @@ static int __net_init ip4_frags_ns_ctl_register(struct net *net)
- 	table[2].data	= &net->ipv4.fqdir->timeout;
- 	table[3].data	= &net->ipv4.fqdir->max_dist;
- 
--	hdr = register_net_sysctl_sz(net, "net/ipv4", table,
--				     ARRAY_SIZE(ip4_frags_ns_ctl_table));
-+	hdr = register_net_sysctl(net, "net/ipv4", table, ip4_frags_ns_ctl_table);
- 	if (!hdr)
- 		goto err_reg;
- 
-diff --git a/net/ipv4/xfrm4_policy.c b/net/ipv4/xfrm4_policy.c
-index ab7a01029d490416d36482f7a3189f83d6670f42..cdd69d31a2757b0a23d65fb4b7d6d7de97c08706 100644
---- a/net/ipv4/xfrm4_policy.c
-+++ b/net/ipv4/xfrm4_policy.c
-@@ -177,8 +177,7 @@ static __net_init int xfrm4_net_sysctl_init(struct net *net)
- 			goto err_alloc;
- 	}
- 
--	hdr = register_net_sysctl_sz(net, "net/ipv4", table,
--				     ARRAY_SIZE(xfrm4_policy_table));
-+	hdr = register_net_sysctl(net, "net/ipv4", table, xfrm4_policy_table);
- 	if (!hdr)
- 		goto err_reg;
- 
-diff --git a/net/ipv6/netfilter/nf_conntrack_reasm.c b/net/ipv6/netfilter/nf_conntrack_reasm.c
-index 599c49bf0a0afd5054e926a5f2b1f0677bcd8b4d..09c98f2b9c3a04f622b232987dbc6a72f41238b4 100644
---- a/net/ipv6/netfilter/nf_conntrack_reasm.c
-+++ b/net/ipv6/netfilter/nf_conntrack_reasm.c
-@@ -86,8 +86,8 @@ static int nf_ct_frag6_sysctl_register(struct net *net)
- 	table[2].data	= &nf_frag->fqdir->high_thresh;
- 	table[2].extra1	= &nf_frag->fqdir->low_thresh;
- 
--	hdr = register_net_sysctl_sz(net, "net/netfilter", table,
--				     ARRAY_SIZE(nf_ct_frag6_sysctl_table));
-+	hdr = register_net_sysctl(net, "net/netfilter", table,
-+				  nf_ct_frag6_sysctl_table);
- 	if (hdr == NULL)
- 		goto err_reg;
- 
-diff --git a/net/ipv6/reassembly.c b/net/ipv6/reassembly.c
-index 05c51f669754a1a10e944bb7c4433565bcaacb40..372c85b253fa1c2fe1f54765e2dea02f8ba047f9 100644
---- a/net/ipv6/reassembly.c
-+++ b/net/ipv6/reassembly.c
-@@ -471,8 +471,7 @@ static int __net_init ip6_frags_ns_sysctl_register(struct net *net)
- 	table[1].extra2	= &net->ipv6.fqdir->high_thresh;
- 	table[2].data	= &net->ipv6.fqdir->timeout;
- 
--	hdr = register_net_sysctl_sz(net, "net/ipv6", table,
--				     ARRAY_SIZE(ip6_frags_ns_ctl_table));
-+	hdr = register_net_sysctl(net, "net/ipv6", table, ip6_frags_ns_ctl_table);
- 	if (!hdr)
- 		goto err_reg;
- 
-diff --git a/net/ipv6/xfrm6_policy.c b/net/ipv6/xfrm6_policy.c
-index 5ec063cb4aa4378e70fff002dd03abf2029b247f..1c5a0ba14a7d03542d0691ea4c0f6a60443c20f6 100644
---- a/net/ipv6/xfrm6_policy.c
-+++ b/net/ipv6/xfrm6_policy.c
-@@ -223,8 +223,7 @@ static int __net_init xfrm6_net_sysctl_init(struct net *net)
- 			goto err_alloc;
- 	}
- 
--	hdr = register_net_sysctl_sz(net, "net/ipv6", table,
--				     ARRAY_SIZE(xfrm6_policy_table));
-+	hdr = register_net_sysctl(net, "net/ipv6", table, xfrm6_policy_table);
- 	if (!hdr)
- 		goto err_reg;
- 
-diff --git a/net/mptcp/ctrl.c b/net/mptcp/ctrl.c
-index 63c5747f0f63cf75e516f68ac6cdde5ba5522278..df87f20f72ab86506b69ea40b403002ebf828348 100644
---- a/net/mptcp/ctrl.c
-+++ b/net/mptcp/ctrl.c
-@@ -406,8 +406,7 @@ static int mptcp_pernet_new_table(struct net *net, struct mptcp_pernet *pernet)
- 	/* table[12] is for available_path_managers which is read-only info */
- 	table[13].data = &pernet->add_addr_v6_port_drop_ts;
- 
--	hdr = register_net_sysctl_sz(net, MPTCP_SYSCTL_PATH, table,
--				     ARRAY_SIZE(mptcp_sysctl_table));
-+	hdr = register_net_sysctl(net, MPTCP_SYSCTL_PATH, table, mptcp_sysctl_table);
- 	if (!hdr)
- 		goto err_reg;
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 4c1c739446b76ea455dab2958a844d05e31a46a7..c65ccdebc285926ed993aeddc21d17b0e2cbef40 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -5048,7 +5048,6 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
- 	struct net *net = ipvs->net;
- 	struct ctl_table *tbl;
- 	int idx, ret;
--	size_t ctl_table_size = ARRAY_SIZE(vs_vars);
- 	bool unpriv = net->user_ns != &init_user_ns;
- 
- 	atomic_set(&ipvs->dropentry, 0);
-@@ -5166,8 +5165,7 @@ static int __net_init ip_vs_control_net_init_sysctl(struct netns_ipvs *ipvs)
+-	return ARRAY_SIZE(ipv6_route_table_template);
++	return register_net_sysctl_sz(net, "net/ipv6/route", table,
++				      table_size, ipv6_route_table_template);
+ }
  #endif
  
- 	ret = -ENOMEM;
--	ipvs->sysctl_hdr = register_net_sysctl_sz(net, "net/ipv4/vs", tbl,
--						  ctl_table_size);
-+	ipvs->sysctl_hdr = register_net_sysctl(net, "net/ipv4/vs", tbl, vs_vars);
- 	if (!ipvs->sysctl_hdr)
- 		goto err;
- 	ipvs->sysctl_tbl = tbl;
-diff --git a/net/netfilter/nf_conntrack_standalone.c b/net/netfilter/nf_conntrack_standalone.c
-index f4f2d82192d54ed9831b9677743f1139820e5a2e..a2f70cf4cd665e55f8e182bdf45da89b39434e11 100644
---- a/net/netfilter/nf_conntrack_standalone.c
-+++ b/net/netfilter/nf_conntrack_standalone.c
-@@ -1043,9 +1043,8 @@ static int nf_conntrack_standalone_init_sysctl(struct net *net)
- 		table[NF_SYSCTL_CT_BUCKETS].mode = 0444;
- 	}
+diff --git a/net/ipv6/sysctl_net_ipv6.c b/net/ipv6/sysctl_net_ipv6.c
+index 75ba17cb7c0ccb4769d61e74220c75d0b3e2bcd9..88138fbd42b85d54d00cd15dfd7d6848ebabd607 100644
+--- a/net/ipv6/sysctl_net_ipv6.c
++++ b/net/ipv6/sysctl_net_ipv6.c
+@@ -280,17 +280,11 @@ static int __net_init ipv6_sysctl_net_init(struct net *net)
+ 	if (!net->ipv6.sysctl.hdr)
+ 		goto out_ipv6_icmp_table;
  
--	cnet->sysctl_header = register_net_sysctl_sz(net, "net/netfilter",
--						     table,
--						     ARRAY_SIZE(nf_ct_sysctl_table));
-+	cnet->sysctl_header = register_net_sysctl(net, "net/netfilter", table,
-+						  nf_ct_sysctl_table);
- 	if (!cnet->sysctl_header)
- 		goto out_unregister_netfilter;
+-	net->ipv6.sysctl.route_hdr = register_net_sysctl_sz(net,
+-							    "net/ipv6/route",
+-							    ipv6_route_table,
+-							    ipv6_route_sysctl_table_size(net));
++	net->ipv6.sysctl.route_hdr = ipv6_route_sysctl_register(net, ipv6_route_table);
+ 	if (!net->ipv6.sysctl.route_hdr)
+ 		goto out_unregister_ipv6_table;
  
-diff --git a/net/rds/tcp.c b/net/rds/tcp.c
-index b263634ac750d204a0d5726db6abe04023aa9c17..37fadb675faddf8e21f0aac04b96985ce3709bff 100644
---- a/net/rds/tcp.c
-+++ b/net/rds/tcp.c
-@@ -588,8 +588,8 @@ static __net_init int rds_tcp_init_net(struct net *net)
- 	}
- 	tbl[RDS_TCP_SNDBUF].data = &rtn->sndbuf_size;
- 	tbl[RDS_TCP_RCVBUF].data = &rtn->rcvbuf_size;
--	rtn->rds_tcp_sysctl = register_net_sysctl_sz(net, "net/rds/tcp", tbl,
--						     ARRAY_SIZE(rds_tcp_sysctl_table));
-+	rtn->rds_tcp_sysctl = register_net_sysctl(net, "net/rds/tcp", tbl,
-+						  rds_tcp_sysctl_table);
- 	if (!rtn->rds_tcp_sysctl) {
- 		pr_warn("could not register sysctl\n");
- 		err = -ENOMEM;
-diff --git a/net/unix/sysctl_net_unix.c b/net/unix/sysctl_net_unix.c
-index 47660d5726bbd7d812762f4feffa9a0a42499d7d..6d3d8d6905ace1c1b022951fab9b3f26c4a87c0a 100644
---- a/net/unix/sysctl_net_unix.c
-+++ b/net/unix/sysctl_net_unix.c
-@@ -48,8 +48,7 @@ int __net_init unix_sysctl_register(struct net *net)
- 			goto err_alloc;
- 	}
- 
--	net->unx.ctl = register_net_sysctl_sz(net, "net/unix", table,
--					      ARRAY_SIZE(unix_table));
-+	net->unx.ctl = register_net_sysctl(net, "net/unix", table, unix_table);
- 	if (net->unx.ctl == NULL)
- 		goto err_reg;
- 
-diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c
-index caebef73ea58d2b6043ca3fe3b6872f92fbe9fa6..b1fe08249050e95d4c945a8b670f21d5c444ebf4 100644
---- a/net/vmw_vsock/af_vsock.c
-+++ b/net/vmw_vsock/af_vsock.c
-@@ -2952,8 +2952,8 @@ static int __net_init vsock_sysctl_register(struct net *net)
- 			goto err_alloc;
- 	}
- 
--	net->vsock.sysctl_hdr = register_net_sysctl_sz(net, "net/vsock", table,
--						       ARRAY_SIZE(vsock_table));
-+	net->vsock.sysctl_hdr = register_net_sysctl(net, "net/vsock", table,
-+						    vsock_table);
- 	if (!net->vsock.sysctl_hdr)
- 		goto err_reg;
+-	net->ipv6.sysctl.icmp_hdr = register_net_sysctl_sz(net,
+-							   "net/ipv6/icmp",
+-							   ipv6_icmp_table,
+-							   ipv6_icmp_sysctl_table_size());
++	net->ipv6.sysctl.icmp_hdr = ipv6_icmp_sysctl_register(net, ipv6_icmp_table);
+ 	if (!net->ipv6.sysctl.icmp_hdr)
+ 		goto out_unregister_route_table;
  
 
 -- 
