@@ -1,38 +1,38 @@
 Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71B064B8DDA;
-	Wed, 19 Aug 2026 18:16:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D1184B8DDA;
+	Wed, 19 Aug 2026 18:16:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787163388; cv=none; b=I5WB/iBLEfJNmkn0dSFFyeaJ1MeEGdKjTruaBcpZnEgvBjPlNoFBGBdwOztrHXMuq+Qpt8HQp1qklmebrfDlTENt+8D6OZTC/Um3tlmg2SiwEdi3fZn85gF7ezk5WGqAoLfg1UhYEjI6cMO+CdW7083YOWuTc4n13r0iLZd3oMs=
+	t=1787163394; cv=none; b=bG2GYryg5wbZdcbBHRgHtVeoPOrRA70OV55IUEHBgwv3B75I/00XGFFpfVTiRBZK+kBCSUVsqNPB1mK7HjidUt8hUS4hj8Tt7hJvw6KEmzEeily/sCtW2Nqfoz1+Zmzj/WKdADTPfSYe79Cj9dNxaB/XaRyy1dG7TCP3GTk0ipA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787163388; c=relaxed/simple;
-	bh=6sl9aUdgsqr1MH5G5ILk8v03G3sClQ3TxOzzAtQ4RdI=;
+	s=arc-20240116; t=1787163394; c=relaxed/simple;
+	bh=TGS8JrPjXAoBKDAl/mlNITsrhTwiuneA68Wy0j9sKr4=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=putuNIWa9/xnAgJ9uDDUFsSnIglDpcHN4VOvZzdmfUg6jIBPExz5IwB2LMIFt0om1+mAWd0adEq99oaEout5Sd3uKxKLp5PW4KlaSDZqxLALU4vlsWJ3mNUjPlca0rfaf17+RmA3+OY/iVTVKIMfLUZdN+ThUP6gy70JBfIWX4s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=FDOOVmnE; arc=none smtp.client-ip=213.97.179.56
+	 In-Reply-To:To:Cc; b=EykE2yrKLHT5KctmAV2Vw4eXsMHdR4/qZbDJH3SPdbyvfLgbFgpMG0woEzy9ZhKiONBLh6ES5f7EEMS1EBTcyGHeq1ei+vrwjYWdT+zfj4f7+N+9l21BH82II2eL4FL3AKv0DD8y3U7BdM9/52kjxMrjx/UKdseovzFGCSLKZOE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=MyutY6rG; arc=none smtp.client-ip=213.97.179.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="FDOOVmnE"
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="MyutY6rG"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
 	s=20170329; h=Cc:To:Message-Id:Content-Transfer-Encoding:Content-Type:
 	MIME-Version:Subject:Date:From:From:Reply-To;
-	bh=joqvbHqdM9HpjwaYMD+5G7FBevrqRTEc0btSZWyP7jQ=; b=FDOOVmnEQUiY/vACI1d5qtUYpE
-	L4yHNPeTmCytvNHHbIcvv+Yp03iI8RpOe8mEW9LqX+tIRa774tmLLgCG2KSW9q/oA1jK3fI1ow9yA
-	U94MJCsZyG3xSiOtUAN/8KikJ/hoZOXhWq9ZfxUxwpT+MehaeOdKScINDMNzW3P4WRG0+lftHhyB7
-	4xmfXmBa5oaF5ALkEHCVD6olVN7IcueXx/aypnA2nkREVfJpE2Y2n0BQI+Cs2pTMJW2Gmk70OucwW
-	tHlQeqjYCanmvCTkPwDkPSiX4RUn/OA/a+RCffMtM4gvXx5i39FYab6cZKyM4lCfjxwMi1PH2Pfcj
-	h4ihah+Q==;
+	bh=XU8q8BLh95waaYKBoAp1NCJxsyOka/nIGvWcgZihLBw=; b=MyutY6rGyDy4+3kvV6rPdLKv9M
+	D0/9MW1r/dP6TUCnj9F40ajpfDYKq2YViQWLUCY6QbB3tb29teaDGzTTRbgkE4/65ViBK40pu7UvG
+	37x3TLBBVDAz/fgir0WDKIXcJcESDBPL2FtagvSpA376Ek+1jVeQLJsEIx4qyrwjsE2OJs6lyEfTy
+	Hwb/OFc/djVkQF5ODKaZ+wAVbsGd7dP+9jCEO56JqfGBpHxy1ZCGUxO3m/qzvMEBNBCE4iIGhk0K8
+	ebljwMilvJ6AUc9wrVPDXww7BY1TjHspnjXPomaZPTM9f6QvdJtqhcj1n5FLw0r1Csm7j+KAcUxnU
+	vM02QDZg==;
 Received: from 186-249-147-181.shared.desktop.com.br ([186.249.147.181] helo=[127.0.1.1])
 	by fanzine2.igalia.com with esmtpsa 
 	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
-	id 1wwkpr-006ENH-JA; Wed, 19 Aug 2026 20:16:23 +0200
+	id 1wwkpy-006ENH-Pi; Wed, 19 Aug 2026 20:16:31 +0200
 From: Mauricio Faria de Oliveira <mfo@igalia.com>
-Date: Wed, 19 Aug 2026 15:16:18 -0300
-Subject: [PATCH RFC v3 05/13] sysctl, parport: update register_sysctl()
- callers with template arguments
+Date: Wed, 19 Aug 2026 15:16:19 -0300
+Subject: [PATCH RFC v3 06/13] sysctl, net: add register_net_sysctl{_sz}()
+ wrappers for MODULE_SYSCTL_TABLE
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -41,7 +41,7 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260819-sysctl-module-aliases-v3-5-aab90569365d@igalia.com>
+Message-Id: <20260819-sysctl-module-aliases-v3-6-aab90569365d@igalia.com>
 References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
 In-Reply-To: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
 To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
@@ -61,88 +61,127 @@ Cc: kernel-dev@igalia.com, linux-riscv@lists.infradead.org,
  virtualization@lists.linux.dev, Mauricio Faria de Oliveira <mfo@igalia.com>
 X-Mailer: b4 0.14.2
 
-Update callers with dynamic table/path to use template arguments.
+Add a MODULE_SYSCTL_TABLE call into register_net_sysctl{_sz}() for existing
+callers to automatically use it.
+
+Add optional 'template arguments' to support a dynamic table/path defined
+at run-time based on a 'template' available at build-time.
+
+Split the update of callers with template arguments into separate commits,
+disabling the macro for now.
 
 Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
 ---
- drivers/parport/procfs.c | 26 +++++++++++++++++++-------
- 1 file changed, 19 insertions(+), 7 deletions(-)
+ include/linux/sysctl.h      |  3 +++
+ include/net/net_namespace.h | 47 +++++++++++++++++++++++++++++++++++++++------
+ net/sysctl_net.c            | 10 +++++-----
+ 3 files changed, 49 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/parport/procfs.c b/drivers/parport/procfs.c
-index cda3221e386ed7a4afc898b3d0313081dee5b49b..7c048e9a973aa96251930e21581aed045c41cc35 100644
---- a/drivers/parport/procfs.c
-+++ b/drivers/parport/procfs.c
-@@ -13,7 +13,7 @@
-  * Cleaned up include files - Russell King <linux@arm.uk.linux.org>
+diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
+index b808fbc1d964f453db8e354825fd8800db1eecd3..7241dbf7eb81ce9f906e33645d03944671c5e6f1 100644
+--- a/include/linux/sysctl.h
++++ b/include/linux/sysctl.h
+@@ -309,6 +309,9 @@ struct ctl_table_root {
+  *
+  * Define the macro SYSCTL_MODULE_ALIASES_DISABLE to disable this.
   */
++
++#define SYSCTL_MODULE_ALIASES_DISABLE
++
+ #if defined(CONFIG_SYSCTL_MODULE_ALIASES) && defined(MODULE) &&			\
+     !defined(SYSCTL_MODULE_ALIASES_DISABLE)
  
--#define SYSCTL_MODULE_ALIASES_DISABLE
-+#define SYSCTL_MODULE_ALIASES_UNIQUE_ID
+diff --git a/include/net/net_namespace.h b/include/net/net_namespace.h
+index e5ee673b9fcf846aefcc309d4cca1a8fc870aae2..c38ea2de35fe85c7ab8f1153a5c5681880b84840 100644
+--- a/include/net/net_namespace.h
++++ b/include/net/net_namespace.h
+@@ -520,17 +520,52 @@ void unregister_pernet_device(struct pernet_operations *);
  
- #include <linux/string.h>
- #include <linux/init.h>
-@@ -434,13 +434,17 @@ int parport_proc_register(struct parport *port)
- #endif /* IEEE 1284 support */
- 	}
+ struct ctl_table;
  
--	tmp_dir_path = kasprintf(GFP_KERNEL, "dev/parport/%s/devices", port->name);
-+#define tmp_dir_tmpl "dev/parport/%s/devices"
-+	tmp_dir_path = kasprintf(GFP_KERNEL, tmp_dir_tmpl, port->name);
- 	if (!tmp_dir_path) {
- 		err = -ENOMEM;
- 		goto exit_free_t;
- 	}
+-#define register_net_sysctl(net, path, table)	\
+-	register_net_sysctl_sz(net, path, table, ARRAY_SIZE(table))
++/*
++ * The register_net_sysctl{_sz}() wrappers for MODULE_SYSCTL_TABLE
++ * automatically create symbols in sysctl registration sites.
++ *
++ * See register_sysctl() and MODULE_SYSCTL_TABLE() in <linux/sysctl.h>
++ * for information about template arguments and options for the macro.
++ *
++ * Usage:
++ * - register_net_sysctl(net, path, table);
++ * - register_net_sysctl(net, path, table, table_tmpl);
++ * - register_net_sysctl(net, path, table, table_tmpl, path_tmpl);
++ * - register_net_sysctl_sz(net, path, table, size);
++ * - register_net_sysctl_sz(net, path, table, size, table_tmpl);
++ * - register_net_sysctl_sz(net, path, table, size, table_tmpl, path_tmpl);
++ */
++#define _register_net_sysctl_sz(net, path, table, size, table_tmpl, path_tmpl)	\
++({										\
++	MODULE_SYSCTL_TABLE(path_tmpl, table_tmpl);				\
++	__register_net_sysctl_sz(net, path, table, size);			\
++})
++
++#define register_net_sysctl_sz(net, path, table, size, tmpl_args...)		\
++	_register_net_sysctl_sz(net, path, table, size,				\
++				__sysctl_table_tmpl_or_default(table,		\
++							       ## tmpl_args),	\
++				__sysctl_path_tmpl_or_default(path,		\
++							      ## tmpl_args))
++#define register_net_sysctl(net, path, table, tmpl_args...)			\
++	register_net_sysctl_sz(net, path, table,				\
++			       __sysctl_table_array_size(table, ## tmpl_args),	\
++			       ## tmpl_args)
++
++/* Helper macro for optional template arguments */
++#define __sysctl_table_array_size(table, tmpl_args...)	\
++	ARRAY_SIZE(__sysctl_table_tmpl_or_default(table, ## tmpl_args))
++
+ #ifdef CONFIG_SYSCTL
+ int net_sysctl_init(void);
+-struct ctl_table_header *register_net_sysctl_sz(struct net *net, const char *path,
+-						const struct ctl_table *table,
+-						size_t table_size);
++struct ctl_table_header *__register_net_sysctl_sz(struct net *net,
++						  const char *path,
++						  const struct ctl_table *table,
++						  size_t table_size);
+ void unregister_net_sysctl_table(struct ctl_table_header *header);
+ #else
+ static inline int net_sysctl_init(void) { return 0; }
+-static inline struct ctl_table_header *register_net_sysctl_sz(struct net *net,
++static inline struct ctl_table_header *__register_net_sysctl_sz(struct net *net,
+ 	const char *path, const struct ctl_table *table, size_t table_size)
+ {
+ 	return NULL;
+diff --git a/net/sysctl_net.c b/net/sysctl_net.c
+index e190a639eef2f6929c4aed85ad625aaf8a6ebd6a..e003210e0917760b707dae1e738c50d7c3969deb 100644
+--- a/net/sysctl_net.c
++++ b/net/sysctl_net.c
+@@ -160,10 +160,10 @@ static int ensure_safe_net_sysctl(struct net *net, const char *path,
+ 	return 0;
+ }
  
--	t->devices_header = register_sysctl(tmp_dir_path, t->device_dir);
-+	t->devices_header = register_sysctl(tmp_dir_path, t->device_dir,
-+					    parport_sysctl_template.device_dir,
-+					    tmp_dir_tmpl);
-+#undef tmp_dir_tmpl
- 	if (t->devices_header == NULL) {
- 		err = -ENOENT;
- 		goto  exit_free_tmp_dir_path;
-@@ -448,13 +452,17 @@ int parport_proc_register(struct parport *port)
+-struct ctl_table_header *register_net_sysctl_sz(struct net *net,
+-						const char *path,
+-						const struct ctl_table *table,
+-						size_t table_size)
++struct ctl_table_header *__register_net_sysctl_sz(struct net *net,
++						  const char *path,
++						  const struct ctl_table *table,
++						  size_t table_size)
+ {
+ 	if (!net_eq(net, &init_net))
+ 		if (ensure_safe_net_sysctl(net, path, table, table_size))
+@@ -171,7 +171,7 @@ struct ctl_table_header *register_net_sysctl_sz(struct net *net,
  
- 	kfree(tmp_dir_path);
+ 	return __register_sysctl_table(&net->sysctls, path, table, table_size);
+ }
+-EXPORT_SYMBOL_GPL(register_net_sysctl_sz);
++EXPORT_SYMBOL_GPL(__register_net_sysctl_sz);
  
--	tmp_dir_path = kasprintf(GFP_KERNEL, "dev/parport/%s", port->name);
-+#define tmp_dir_tmpl "dev/parport/%s"
-+	tmp_dir_path = kasprintf(GFP_KERNEL, tmp_dir_tmpl,  port->name);
- 	if (!tmp_dir_path) {
- 		err = -ENOMEM;
- 		goto unregister_devices_h;
- 	}
- 
--	t->port_header = register_sysctl(tmp_dir_path, t->vars);
-+	t->port_header = register_sysctl(tmp_dir_path, t->vars,
-+					 parport_sysctl_template.vars,
-+					 tmp_dir_tmpl);
-+#undef tmp_dir_tmpl
- 	if (t->port_header == NULL) {
- 		err = -ENOENT;
- 		goto unregister_devices_h;
-@@ -500,7 +508,8 @@ int parport_device_proc_register(struct pardevice *device)
- 		return -ENOMEM;
- 
- 	/* Allocate a buffer for two paths: dev/parport/PORT/devices/DEVICE. */
--	tmp_dir_path = kasprintf(GFP_KERNEL, "dev/parport/%s/devices/%s", port->name, device->name);
-+#define tmp_dir_tmpl "dev/parport/%s/devices/%s"
-+	tmp_dir_path = kasprintf(GFP_KERNEL, tmp_dir_tmpl, port->name, device->name);
- 	if (!tmp_dir_path) {
- 		err = -ENOMEM;
- 		goto exit_free_t;
-@@ -508,7 +517,10 @@ int parport_device_proc_register(struct pardevice *device)
- 
- 	t->vars[0].data = &device->timeslice;
- 
--	t->sysctl_header = register_sysctl(tmp_dir_path, t->vars);
-+	t->sysctl_header = register_sysctl(tmp_dir_path, t->vars,
-+					   parport_device_sysctl_template.vars,
-+					   tmp_dir_tmpl);
-+#undef tmp_dir_tmpl
- 	if (t->sysctl_header == NULL) {
- 		kfree(t);
- 		t = NULL;
+ void unregister_net_sysctl_table(struct ctl_table_header *header)
+ {
 
 -- 
 2.47.3
