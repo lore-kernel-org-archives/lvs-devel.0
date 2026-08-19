@@ -1,291 +1,161 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 05CDB376A16;
-	Tue, 18 Aug 2026 20:17:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BEE1350285;
+	Wed, 19 Aug 2026 02:29:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787084248; cv=none; b=QewTUSe8vlqVxvwyBDm+9dBNDBRxnBdehBPA97ArhBe7SVJUt0N3Nonx07wRelYR/p6u+MsG2NB+vdUEorT8kgMdhgJ7PyD4KhDNyxfXyf+ychxRDL5CuIceMLgtqOMZ/NbLDWQsOkdM0Lk+AaX/7BNFkRmPranj3ZPbwhO5HjY=
+	t=1787106552; cv=none; b=rr6KSn/XVCLpGk9c18lEkjXzRUyIGr0XAQ4CzFa+W3xYcow9zbinH40WnSWUmYmmnOBrc/IcInV7LA0PaTo3LuHWuPRLxFIQOBbvSbhjflUAFZfKnAZA8OzbMM2lXrnh0V1un8vOA/YxITqC4W62FEdYlzrrmhqsOZr5nFn1ofE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787084248; c=relaxed/simple;
-	bh=JpHHj35FkGBLiU/LWm6Hzh64bz7NqhwxKdzb3VX0EOI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=pF3fM2AM2JQVq4QK1FzHFt8hdMj6pBDfNXCe4fsq5NvCWxhqQwyTpU3FBv4N1xRQCGnaaV0Dnxdlr1CO+SoFpz4NOs3682Ch/wS9XYin97eScRha3BSSot2w7592mOtzKMBqD1VPm5Jcrz4aOXqcxAYAk7ov+cAY+BQW459EdF0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=5IvFN7+w; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1787106552; c=relaxed/simple;
+	bh=hSDaHlp+AtiPrqNRHKQvKu/6PNks2N1dJWDbN7fuL1I=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=M3obCYh3yuV3cLmZLquVY2dZPjBiW1NRdl9M6VCITfSdhHphNAxMcyx29s7CRPvqKBa0ZTUGYG2V8bDMpa//O6zS2EZvmJ28jiYC0UrDzRQSj+Op6VXElFgsEyrrQO3ONauN7G9osrwf9s7ec77g9KF2tJn2nTYQsuSjs4GH4xw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=n2z84/Bk; arc=none smtp.client-ip=213.97.179.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="5IvFN7+w"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 2489221DBF;
-	Tue, 18 Aug 2026 23:17:13 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-transfer-encoding:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=m+dvpQnJxszAtsaLlh834Lb4G8Qek8B1GHTn5sF2l18=; b=5IvFN7+wB4cy
-	YC0vt+gwhGlCbC5AReOvrP6KpJfX25upRxRflELip0mgYY6Ce/gIdSdSsGKwKsj4
-	c189+odEYH8ZqaVOYFU0W7Ch5Wdi9hnxlm2gFWbuUGdCgIYau3RBy7ZIp6yaFBr5
-	rGGR2Vrc/yo8zjbeAQWG887L3XpuwiDcm9bsCLmHvCFdzCPpr+mRyWzpinxh4f5F
-	z8iUP3jzDOUaotFn1GAYpBI4fylbGRscuzyh3BH30wRDdC7J+nOU5LXGCBVVNcNN
-	LJlQTqOeNCjFySIHvqzD9p/CIao6biPJyyEv1ocep45LvzOZ9MGgdRy2+anJFLVn
-	czBD7hnna6Lh8xV7/Y+jyOmzz105VK2gVjus2SRbGfzH4bqw229UwvWMpVo6uolu
-	vmxKv0wEQyfYXIX/pyGWOjOEPqZnAtDcF6Ew07BIqSO+wrlE3IwugQVRdAbs6rSP
-	t4P9Jlk2I0UGFDZYV8OsCs2ay3iyDDwdWvJKCtQN2tswcRO86/RaUMnvtNm/dA33
-	98UW2XBivnJ/K4lVwYtZBioKYMWbnY29HgokYcW3eaOMuNokpgy51Xhu6GdFkdUS
-	RQg4FX+iHDiR34rtxTWU1z4tGoBi2sh1bnOi/NV5WW5gfdFpoJcyQNARaZ0SeSXK
-	SLjlBuLeXE0+tJj957ww59Ond6cjxjg=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue, 18 Aug 2026 23:17:13 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 37D9E61DD5;
-	Tue, 18 Aug 2026 23:17:15 +0300 (EEST)
-Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 67IKH4Js121476;
-	Tue, 18 Aug 2026 23:17:04 +0300
-Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 67IKH4T1121474;
-	Tue, 18 Aug 2026 23:17:04 +0300
-From: Julian Anastasov <ja@ssi.bg>
-To: stable@vger.kernel.org
-Cc: Simon Horman <horms@verge.net.au>, lvs-devel@vger.kernel.org,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Florian Westphal <fw@strlen.de>, netfilter-devel@vger.kernel.org
-Subject: [PATCH -stable 1/1] ipvs: separate destination availability state
-Date: Tue, 18 Aug 2026 23:16:38 +0300
-Message-ID: <20260818201638.121446-2-ja@ssi.bg>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260818201638.121446-1-ja@ssi.bg>
-References: <20260818201638.121446-1-ja@ssi.bg>
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="n2z84/Bk"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
+	s=20170329; h=Cc:To:Message-Id:Content-Transfer-Encoding:Content-Type:
+	MIME-Version:Subject:Date:From:From:Reply-To;
+	bh=gXUB1QrnxsrjbOi4xhXBQHCEC2KmzTwW0NuAmy9Ikto=; b=n2z84/Bkg38wflHDu1N8jwEOo2
+	ZhL3oGXbc/uFEJNt0XoVhkQqsRre2N2fOyTCQuNQcmupM5U4xH/zfSaLtYI1aRIDo/YO0g1gqt4Ju
+	7p9NoN2QQbxE+l00ISPoz7HIP+7oCZcG92EJgUl3QzGaqJjQh9auxNr8bS4ZA9nATHJaFhzpDvRmO
+	UlKyIzG3ehc7I51bRyD7vFd+x0m4H27sXkgltjUagvY3qf8XeMChZzB0feZbvbrgL7xapazL7ucBq
+	NhoOXUbeOhAb812rK3zQurHa3LPJNqJjitOwEpKMCimzS3v+RLDXhGMeQuH+MLoIeR1UI6irvfMur
+	sXWvDxfA==;
+Received: from 186-249-144-28.shared.desktop.com.br ([186.249.144.28] helo=[127.0.1.1])
+	by fanzine2.igalia.com with esmtpsa 
+	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
+	id 1wwW39-005tfG-1g; Wed, 19 Aug 2026 04:29:07 +0200
+From: Mauricio Faria de Oliveira <mfo@igalia.com>
+Date: Tue, 18 Aug 2026 23:28:00 -0300
+Subject: [PATCH RFC v2 01/13] keys, pidns, fs/verity, riscv/vector: reorder
+ '#include <linux/sysctl.h>'
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+Message-Id: <20260818-sysctl-module-aliases-v2-1-d5a69dae5798@igalia.com>
+References: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
+In-Reply-To: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
+To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
+ Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: kernel-dev@igalia.com, linux-riscv@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, fsverity@lists.linux.dev, 
+ keyrings@vger.kernel.org, bpf@vger.kernel.org, 
+ linux-fsdevel@vger.kernel.org, linux-kbuild@vger.kernel.org, 
+ netdev@vger.kernel.org, linux-wpan@vger.kernel.org, 
+ lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+ coreteam@netfilter.org, linux-sctp@vger.kernel.org, 
+ linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org, 
+ bridge@lists.linux.dev, mptcp@lists.linux.dev, rds-devel@oss.oracle.com, 
+ virtualization@lists.linux.dev, Mauricio Faria de Oliveira <mfo@igalia.com>
+X-Mailer: b4 0.14.2
 
-From: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
+Fix an include loop error in preparation for sysctl.h to include module.h:
 
-commit cdcc4e46180df8161f4d2f3c6fd6beaf6990133d upstream.
+    CC [M]  arch/x86/events/amd/uncore.o
+  In file included from .../include/linux/fs.h:44,         <<<
+                   from .../include/linux/compat.h:17,
+                   from .../arch/x86/include/asm/ia32.h:7,
+                   from .../arch/x86/include/asm/elf.h:10,
+                   from .../include/linux/elf.h:6,
+                   from .../include/linux/module.h:20,     <<<
+                   from .../include/linux/sysctl.h:245,    <<<
+                   from .../include/linux/key.h:17,        <<<
+                   from .../include/linux/cred.h:13,       <<<
+                   from .../include/linux/sched/signal.h:10,
+                   from .../include/linux/ptrace.h:7,
+                   from .../include/uapi/asm-generic/bpf_perf_event.h:4,
+                   from ./arch/x86/include/generated/uapi/asm/
+                        bpf_perf_event.h:1,
+                   from .../include/uapi/linux/bpf_perf_event.h:11,
+                   from .../include/linux/perf_event.h:18,
+                   from .../arch/x86/events/amd/uncore.c:8:
+  .../include/linux/mnt_idmapping.h: In function ‘mapped_fsuid’:
+  .../include/linux/mnt_idmapping.h:231:59: error: implicit declaration
+    of function ‘current_fsuid’ [-Wimplicit-function-declaration]
 
-IPVS configuration paths update destination availability while connection
-accounting updates destination overload state. The two independent states
-share dest->flags, so their read-modify-write updates can race and lose one
-another.
+Reason:
+ - cred.h includes key.h *before* defining current_fsuid();
+ - key.h includes sysctl.h;
+ - sysctl.h includes module.h;
+ - module.h includes fs.h via elf.h > asm/elf.h > asm/ia32.h > compat.h;
+ - fs.h includes mnt_idmapping.h, which uses *undefined* current_fsuid().
 
-Keep OVERLOAD in flags, where the preceding patch serializes its updates
-with dst_lock, and move AVAILABLE to cflags. This keeps configuration-
-controlled availability out of the scheduler hot cacheline until a
-scheduler needs to check it. It also prevents availability updates from
-clobbering overload state.
+Note that fs.h does include cred.h (which defines current_fsuid()) right
+before mnt_idmapping.h (which uses it), but it is not parsed because the
+include guard of cred.h is defined earlier.
 
-The destination status bits are not exposed through the IPVS sockopt or
-netlink interfaces, so keep their definitions in the internal IPVS header.
+Address this by removing sysctl.h from key.h, which does not need it,
+and adding it to files that actually need it.
 
-Readers can still observe stale destination state; this does not provide a
-cross-field snapshot.
-
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
-Reported-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
-Reported-by: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
-Reported-by: Ao Wang <wangao@seu.edu.cn>
-Reported-by: Xuewei Feng <fengxw06@126.com>
-Reported-by: Qi Li <qli01@tsinghua.edu.cn>
-Reported-by: Ke Xu <xuke@tsinghua.edu.cn>
-Link: https://lore.kernel.org/all/8913381c-1e02-35c7-0ec4-61de5a12fd35@ssi.bg/
-Assisted-by: Claude-Code:GLM-5.2
-Suggested-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
-Acked-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
-(cherry picked from commit cdcc4e46180df8161f4d2f3c6fd6beaf6990133d)
-[ Julian: Backport by removing the hunks from ip_vs_xmit.c ]
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
 ---
- include/net/ip_vs.h              | 7 +++++++
- include/uapi/linux/ip_vs.h       | 6 ------
- net/netfilter/ipvs/ip_vs_conn.c  | 4 ++--
- net/netfilter/ipvs/ip_vs_core.c  | 6 +++---
- net/netfilter/ipvs/ip_vs_ctl.c   | 4 ++--
- net/netfilter/ipvs/ip_vs_dh.c    | 4 ++--
- net/netfilter/ipvs/ip_vs_lblc.c  | 2 +-
- net/netfilter/ipvs/ip_vs_lblcr.c | 8 ++++----
- 8 files changed, 21 insertions(+), 20 deletions(-)
+ arch/riscv/kernel/vector.c    | 1 +
+ fs/verity/init.c              | 1 +
+ include/linux/key.h           | 1 -
+ include/linux/pid_namespace.h | 1 +
+ 4 files changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index b65009a226e0..94dfc3a265ee 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -34,6 +34,12 @@
- #define IP_VS_HDR_INVERSE	1
- #define IP_VS_HDR_ICMP		2
+diff --git a/arch/riscv/kernel/vector.c b/arch/riscv/kernel/vector.c
+index b112166d51e9f584f84c52d0f84feb92ccd60df1..9eac47c99f114304521fdc539018f3f84507e75f 100644
+--- a/arch/riscv/kernel/vector.c
++++ b/arch/riscv/kernel/vector.c
+@@ -10,6 +10,7 @@
+ #include <linux/sched.h>
+ #include <linux/uaccess.h>
+ #include <linux/prctl.h>
++#include <linux/sysctl.h>
  
-+/* Destination Server Flags */
-+#define IP_VS_DEST_F_OVERLOAD	0x0002		/* server is overloaded */
-+
-+/* Destination Server Config Flags */
-+#define IP_VS_DEST_CF_AVAILABLE	0x0001		/* server is available */
-+
- /* Generic access of ipvs struct */
- static inline struct netns_ipvs *net_ipvs(struct net* net)
- {
-@@ -725,6 +731,7 @@ struct ip_vs_dest {
- 	volatile unsigned int	flags;		/* dest status flags */
- 	atomic_t		conn_flags;	/* flags to copy to conn */
- 	atomic_t		weight;		/* server weight */
-+	unsigned long		cflags;		/* config flags */
- 	atomic_t		last_weight;	/* server latest weight */
- 	__u16			tun_type;	/* tunnel type */
- 	__be16			tun_port;	/* tunnel port */
-diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-index 1ed234e7f251..2c37c6ac7525 100644
---- a/include/uapi/linux/ip_vs.h
-+++ b/include/uapi/linux/ip_vs.h
-@@ -28,12 +28,6 @@
- #define IP_VS_SVC_F_SCHED_SH_FALLBACK	IP_VS_SVC_F_SCHED1 /* SH fallback */
- #define IP_VS_SVC_F_SCHED_SH_PORT	IP_VS_SVC_F_SCHED2 /* SH use port */
+ #include <asm/thread_info.h>
+ #include <asm/processor.h>
+diff --git a/fs/verity/init.c b/fs/verity/init.c
+index 3aa55dec88fc919792a2cb4be476f8481ef78a9e..d460eef74fcfe49f6cf69974a8194a65de486819 100644
+--- a/fs/verity/init.c
++++ b/fs/verity/init.c
+@@ -9,6 +9,7 @@
+ #include "fsverity_private.h"
  
--/*
-- *      Destination Server Flags
-- */
--#define IP_VS_DEST_F_AVAILABLE	0x0001		/* server is available */
--#define IP_VS_DEST_F_OVERLOAD	0x0002		/* server is overloaded */
--
- /*
-  *      IPVS sync daemon states
-  */
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index e42fed876596..7da11628073b 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -759,7 +759,7 @@ int ip_vs_check_template(struct ip_vs_conn *ct, struct ip_vs_dest *cdest)
- 	 * Checking the dest server status.
- 	 */
- 	if ((dest == NULL) ||
--	    !(dest->flags & IP_VS_DEST_F_AVAILABLE) ||
-+	    !(dest->cflags & IP_VS_DEST_CF_AVAILABLE) ||
- 	    expire_quiescent_template(ipvs, dest) ||
- 	    (cdest && (dest != cdest))) {
- 		IP_VS_DBG_BUF(9, "check_template: dest not available for "
-@@ -1408,7 +1408,7 @@ void ip_vs_expire_nodest_conn_flush(struct netns_ipvs *ipvs)
- 				continue;
+ #include <linux/ratelimit.h>
++#include <linux/sysctl.h>
  
- 			dest = cp->dest;
--			if (!dest || (dest->flags & IP_VS_DEST_F_AVAILABLE))
-+			if (!dest || (dest->cflags & IP_VS_DEST_CF_AVAILABLE))
- 				continue;
+ #ifdef CONFIG_SYSCTL
+ static const struct ctl_table fsverity_sysctl_table[] = {
+diff --git a/include/linux/key.h b/include/linux/key.h
+index 81b8f05c68985c6f0a5c5bbe0f1fd6661912c618..a74f8f1b7936d6ede584c0a8cd520f858f6a9758 100644
+--- a/include/linux/key.h
++++ b/include/linux/key.h
+@@ -14,7 +14,6 @@
+ #include <linux/list.h>
+ #include <linux/rbtree.h>
+ #include <linux/rcupdate.h>
+-#include <linux/sysctl.h>
+ #include <linux/rwsem.h>
+ #include <linux/atomic.h>
+ #include <linux/assoc_array.h>
+diff --git a/include/linux/pid_namespace.h b/include/linux/pid_namespace.h
+index b20baaa7e62b755e7e561fcd8018e2b61213503e..94b23471c7dec135e24c4c0c1fdbf841cea2e5de 100644
+--- a/include/linux/pid_namespace.h
++++ b/include/linux/pid_namespace.h
+@@ -10,6 +10,7 @@
+ #include <linux/nsproxy.h>
+ #include <linux/ns_common.h>
+ #include <linux/idr.h>
++#include <linux/sysctl.h>
  
- 			if (atomic_read(&cp->n_control))
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index d121ea3d16bc..1f62ca2f7330 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -124,7 +124,7 @@ ip_vs_in_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
- 	struct ip_vs_dest *dest = cp->dest;
- 	struct netns_ipvs *ipvs = cp->ipvs;
- 
--	if (dest && (dest->flags & IP_VS_DEST_F_AVAILABLE)) {
-+	if (dest && (dest->cflags & IP_VS_DEST_CF_AVAILABLE)) {
- 		struct ip_vs_cpu_stats *s;
- 		struct ip_vs_service *svc;
- 
-@@ -160,7 +160,7 @@ ip_vs_out_stats(struct ip_vs_conn *cp, struct sk_buff *skb)
- 	struct ip_vs_dest *dest = cp->dest;
- 	struct netns_ipvs *ipvs = cp->ipvs;
- 
--	if (dest && (dest->flags & IP_VS_DEST_F_AVAILABLE)) {
-+	if (dest && (dest->cflags & IP_VS_DEST_CF_AVAILABLE)) {
- 		struct ip_vs_cpu_stats *s;
- 		struct ip_vs_service *svc;
- 
-@@ -2030,7 +2030,7 @@ ip_vs_in_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state
- 	}
- 
- 	/* Check the server status */
--	if (cp && cp->dest && !(cp->dest->flags & IP_VS_DEST_F_AVAILABLE)) {
-+	if (cp && cp->dest && !(cp->dest->cflags & IP_VS_DEST_CF_AVAILABLE)) {
- 		/* the destination server is not available */
- 		if (sysctl_expire_nodest_conn(ipvs)) {
- 			bool old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 5dea5a14e85f..c0257ef4d8b0 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1058,7 +1058,7 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
- 	}
- 
- 	/* set the dest status flags */
--	dest->flags |= IP_VS_DEST_F_AVAILABLE;
-+	dest->cflags |= IP_VS_DEST_CF_AVAILABLE;
- 
- 	if (READ_ONCE(dest->u_threshold) != udest->u_threshold ||
- 	    READ_ONCE(dest->l_threshold) != udest->l_threshold) {
-@@ -1325,7 +1325,7 @@ static void __ip_vs_unlink_dest(struct ip_vs_service *svc,
- 				struct ip_vs_dest *dest,
- 				int svcupd)
- {
--	dest->flags &= ~IP_VS_DEST_F_AVAILABLE;
-+	dest->cflags &= ~IP_VS_DEST_CF_AVAILABLE;
- 
- 	/*
- 	 *  Remove it from the d-linked destination list.
-diff --git a/net/netfilter/ipvs/ip_vs_dh.c b/net/netfilter/ipvs/ip_vs_dh.c
-index 75f4c231f4a0..f04d2530a093 100644
---- a/net/netfilter/ipvs/ip_vs_dh.c
-+++ b/net/netfilter/ipvs/ip_vs_dh.c
-@@ -220,8 +220,8 @@ ip_vs_dh_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 
- 	s = (struct ip_vs_dh_state *) svc->sched_data;
- 	dest = ip_vs_dh_get(svc->af, s, &iph->daddr);
--	if (!dest
--	    || !(dest->flags & IP_VS_DEST_F_AVAILABLE)
-+	if (!dest ||
-+	    !(dest->cflags & IP_VS_DEST_CF_AVAILABLE)
- 	    || atomic_read(&dest->weight) <= 0
- 	    || is_overloaded(dest)) {
- 		ip_vs_scheduler_err(svc, "no destination available");
-diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
-index 156181a3bacd..9bb1e05063dc 100644
---- a/net/netfilter/ipvs/ip_vs_lblc.c
-+++ b/net/netfilter/ipvs/ip_vs_lblc.c
-@@ -503,7 +503,7 @@ ip_vs_lblc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
- 		 */
- 
- 		dest = en->dest;
--		if ((dest->flags & IP_VS_DEST_F_AVAILABLE) &&
-+		if ((dest->cflags & IP_VS_DEST_CF_AVAILABLE) &&
- 		    atomic_read(&dest->weight) > 0 && !is_overloaded(dest, svc))
- 			goto out;
- 	}
-diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
-index a021e6aba3d7..1a53c1254fe5 100644
---- a/net/netfilter/ipvs/ip_vs_lblcr.c
-+++ b/net/netfilter/ipvs/ip_vs_lblcr.c
-@@ -170,8 +170,8 @@ static inline struct ip_vs_dest *ip_vs_dest_set_min(struct ip_vs_dest_set *set)
- 		if (least->flags & IP_VS_DEST_F_OVERLOAD)
- 			continue;
- 
--		if ((atomic_read(&least->weight) > 0)
--		    && (least->flags & IP_VS_DEST_F_AVAILABLE)) {
-+		if ((atomic_read(&least->weight) > 0) &&
-+		    (least->cflags & IP_VS_DEST_CF_AVAILABLE)) {
- 			loh = ip_vs_dest_conn_overhead(least);
- 			goto nextstage;
- 		}
-@@ -187,8 +187,8 @@ static inline struct ip_vs_dest *ip_vs_dest_set_min(struct ip_vs_dest_set *set)
- 
- 		doh = ip_vs_dest_conn_overhead(dest);
- 		if (((__s64)loh * atomic_read(&dest->weight) >
--		     (__s64)doh * atomic_read(&least->weight))
--		    && (dest->flags & IP_VS_DEST_F_AVAILABLE)) {
-+		     (__s64)doh * atomic_read(&least->weight)) &&
-+		    (dest->cflags & IP_VS_DEST_CF_AVAILABLE)) {
- 			least = dest;
- 			loh = doh;
- 		}
+ /* MAX_PID_NS_LEVEL is needed for limiting size of 'struct pid' */
+ #define MAX_PID_NS_LEVEL 32
+
 -- 
-2.55.0
-
+2.47.3
 
