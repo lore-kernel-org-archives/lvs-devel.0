@@ -1,38 +1,37 @@
 Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 501A43BBA0F;
-	Wed, 19 Aug 2026 02:30:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A524481B1;
+	Wed, 19 Aug 2026 02:30:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787106615; cv=none; b=Q+qyLUm8ibMhT9a+PZTGFqG/u4yfxYfZQgwpVuPNx9CDDf7/P9EQRMA2avnVyiJd43dAjanvx87T1m7dAdZA1j0c4NlbPmggGqP1ohatyWWmCRI8jUytsOxF7YXbLgWofTkSMzQNcX/pNmO8sN+nMLYUuSBHdoQUZI0maD8ghfI=
+	t=1787106622; cv=none; b=I303VjCtYg2oUbEJDqPt8NgnUetX6pWcdfDNSB2IDNiNu5uTFznym6Isi6j7nwl8xUDi6F7SniVrrZes4d/GxzLTNIeqNJB0ovmVCgMj1jqiP9y+2ZMc90vCkQD2BabiS1HFVefmqahp3VB/VIZ+SumzlFMofQ5wl/aHJWZKy+8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787106615; c=relaxed/simple;
-	bh=8ufdlGQoDs+51tVl3N2x5MnJ7S98wl7FolVU0AHZNNA=;
+	s=arc-20240116; t=1787106622; c=relaxed/simple;
+	bh=WnJK16aZlJCfl4caW7N9hPaZqf5/RToHwGPjPgIoN7A=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=oKbZM/ZNb8ZTgzsZR3HAdpp1ZtjYHE8o9iC4OAmur2uWdAKSre51icF2ytlgItGp9ce/9veD/4NcWLMt9KRJec65dWFSVTPF+sqRylxfGIN1ZZOKn2BUuQ87rZJccGhmsVyZqE71DrCiMaPvMc/NoJtstY/WzMoyaDl6+Mk1iW4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=GNwOgvD1; arc=none smtp.client-ip=213.97.179.56
+	 In-Reply-To:To:Cc; b=IU0Co4Cp6z95FoDHKKttbqJC1awIyCGjU/mCHOKF22jJhA4lwulnegKF8E8X8LmJJsUOk0C5VAytqCW7+ShEziBF63AhjiLn/h5uFqecuDFCi1X0goK5YZ0nDItb0c9L6rRloKjahPTACyGNBbozRdtZOyzPWG8s+1pT1/dt7t4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=BEOtuYvk; arc=none smtp.client-ip=213.97.179.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="GNwOgvD1"
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="BEOtuYvk"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
 	s=20170329; h=Cc:To:Message-Id:Content-Transfer-Encoding:Content-Type:
 	MIME-Version:Subject:Date:From:From:Reply-To;
-	bh=IuE38fL6h7PEmzt/UNWdPfgVu72Lk4CiXzTD+qO+pWo=; b=GNwOgvD1AZmUImC0F5BHb4J4CH
-	J4W97Eo0NkLvb5hoXYMflby0Bjo1H2wBsJFdmKWDTh869qriEPgapAimR58yHbMEIt8eAU8WIdMFD
-	Beq0RuAkALqd6jSDkwAmeC9JafZ037OIGKKfczG4HnQqy0lP8dLDffdZ9n7Ooc+wmWeKZF7rdicud
-	keGSVF7hEkO2GLVq7tToxxmSj/Aq6vkBYY4UvPxBmpZTbjlyekrRFJC5axfOKE3VLoF40QnFI31Aq
-	nvlFuRiaeB/SLm0R1MVCeEVWlvSFEW6CkHiRr7MqI+ah6buGMEfc6jhXXFHXKHmiWazlZai3FLQ77
-	Pr1VBPQg==;
+	bh=jcWdQbXP/kHWb1xcpo26FcJ2qHm9uH6N5DjjZNrZnS8=; b=BEOtuYvkZx34qtwPCbyxsdAsY6
+	wt1vEcZkneUIRDRvOjlvxWGKMLwGz4LB5AulnRi+hi2VF/YgQJMigWj0G6OcRTrnRRPIc+u6lHxVh
+	99019UvHalg7deeX6cY5LcGi0gXIBYrLkTjmdTrJYnpVZT9fHkcr9vwcCQC2P5RHnhEyleMv/iMRE
+	0b5a0cSslBLc+6mj05KF9pvvh0jLjS6JdJY9ktYVFg09l74rRgKv9MJ3cLq153lIfP3dnq0tPLyfe
+	T/8v3hIBd+X+5ToJ4s7UaHrOB4QhkU3y7ZFvMM++E59w9yj7Vl+gJa2tbVAEv9aYQeGp+IdxQEzSj
+	5vaLg+wQ==;
 Received: from 186-249-144-28.shared.desktop.com.br ([186.249.144.28] helo=[127.0.1.1])
 	by fanzine2.igalia.com with esmtpsa 
 	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
-	id 1wwW4B-005tfG-0q; Wed, 19 Aug 2026 04:30:11 +0200
+	id 1wwW4I-005tfG-44; Wed, 19 Aug 2026 04:30:18 +0200
 From: Mauricio Faria de Oliveira <mfo@igalia.com>
-Date: Tue, 18 Aug 2026 23:28:09 -0300
-Subject: [PATCH RFC v2 10/13] sysctl, net: update register_net_sysctl_sz()
- edge case
+Date: Tue, 18 Aug 2026 23:28:10 -0300
+Subject: [PATCH RFC v2 11/13] sysctl: unrandomize struct ctl_table.procname
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -41,7 +40,7 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-sysctl-module-aliases-v2-10-d5a69dae5798@igalia.com>
+Message-Id: <20260818-sysctl-module-aliases-v2-11-d5a69dae5798@igalia.com>
 References: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
 In-Reply-To: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
 To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
@@ -61,51 +60,53 @@ Cc: kernel-dev@igalia.com, linux-riscv@lists.infradead.org,
  virtualization@lists.linux.dev, Mauricio Faria de Oliveira <mfo@igalia.com>
 X-Mailer: b4 0.14.2
 
-Handle the last (edge) case:
-- nf_log.c: ignore sysctl table with template set at run-time.
+The 'struct ctl_table.procname' field (sysctl filename) cannot be accessed
+by scripts since it is defined in kernel headers (see "don't include kernel
+headers into userspace" in file2alias.c) and its offset may be randomized.
 
-And re-enable the macro.
+Unrandomize '.procname' as the first field so its offset is always zero and
+match the 'struct ctl_table' symbol address, which can be found by scripts.
 
+Originally-by: Mauricio Faria de Oliveira <mfo@canonical.com>
 Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
 ---
- include/linux/sysctl.h | 3 ---
- net/netfilter/nf_log.c | 9 +++++----
- 2 files changed, 5 insertions(+), 7 deletions(-)
+ include/linux/sysctl.h | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
 diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
-index 9e00a086ff1d47ab18021b3d79b0e8a93037cb2d..7e05fafd5544e1c4a3283dc13b0692f39515d01e 100644
+index 7e05fafd5544e1c4a3283dc13b0692f39515d01e..120c0f05bd083e08d8104ff05136138f2e8cdb07 100644
 --- a/include/linux/sysctl.h
 +++ b/include/linux/sysctl.h
-@@ -309,9 +309,6 @@ struct ctl_table_root {
-  *
-  * Define the macro SYSCTL_MODULE_ALIASES_DISABLE to disable this.
-  */
--
--#define SYSCTL_MODULE_ALIASES_DISABLE
--
- #if defined(CONFIG_SYSCTL_MODULE_ALIASES) && defined(MODULE) &&			\
-     !defined(SYSCTL_MODULE_ALIASES_DISABLE)
+@@ -220,7 +220,14 @@ static inline void *proc_sys_poll_event(struct ctl_table_poll *poll)
  
-diff --git a/net/netfilter/nf_log.c b/net/netfilter/nf_log.c
-index f4d80654dfe6ab6abd886e224f400e4444bcd29b..ed4a5a6b8d95b82676397f6747ef5d988c9060ea 100644
---- a/net/netfilter/nf_log.c
-+++ b/net/netfilter/nf_log.c
-@@ -518,10 +518,11 @@ static int netfilter_log_sysctl_init(struct net *net)
- 	for (i = NFPROTO_UNSPEC; i < NFPROTO_NUMPROTO; i++)
- 		table[i].extra2 = net;
+ /* A sysctl table is an array of struct ctl_table: */
+ struct ctl_table {
++
++	/* This must be the first field for module aliases (file2alias.c) */
+ 	const char *procname;		/* Text ID for /proc/sys */
++
++#ifdef CONFIG_SYSCTL_MODULE_ALIASES
++	/* This begins the randomizable portion of the struct. */
++	randomized_struct_fields_start
++#endif
+ 	void *data;
+ 	int maxlen;
+ 	umode_t mode;
+@@ -228,7 +235,14 @@ struct ctl_table {
+ 	struct ctl_table_poll *poll;
+ 	void *extra1;
+ 	void *extra2;
++#ifdef CONFIG_SYSCTL_MODULE_ALIASES
++	/* New fields go above here, so they are in the randomized portion. */
++	randomized_struct_fields_end
++};
++static_assert(offsetof(const struct ctl_table, procname) == 0);
++#else
+ } __randomize_layout;
++#endif
  
--	net->nf.nf_log_dir_header = register_net_sysctl_sz(net,
--							   "net/netfilter/nf_log",
--							   table,
--							   ARRAY_SIZE(nf_log_sysctl_table));
-+	/* MODULE_SYSCTL_TABLE(): template table's .procname set at run-time. */
-+	net->nf.nf_log_dir_header = __register_net_sysctl_sz(net,
-+							     "net/netfilter/nf_log",
-+							     table,
-+							     ARRAY_SIZE(nf_log_sysctl_table));
- 	if (!net->nf.nf_log_dir_header)
- 		goto err_reg;
- 
+ struct ctl_node {
+ 	struct rb_node node;
 
 -- 
 2.47.3
