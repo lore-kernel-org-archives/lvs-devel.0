@@ -1,38 +1,38 @@
 Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7EFCA3BADA9;
-	Wed, 19 Aug 2026 02:29:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37375392C3D;
+	Wed, 19 Aug 2026 02:29:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787106576; cv=none; b=rhegZn/lCDOgcoDl4DZ8kdjQq/kPx8g7rgNlMhY7URw5MGDzrYj+C4UMd7L2o3JxvArFniGx4ep1BmRNTHvk178IaPmCv9or2nK98gAherTibR65RvO5cevEMYmZyG0Oi29Oh53r7z99uPKSdl2QFqJ+y4CbAilBh30/1hwPh28=
+	t=1787106579; cv=none; b=BDlJB1fdn+eDFViNzwi3qsbiEJBN0d1MQsl4Dl9CbuMsfA70betJ4e3Td09UEGntZJalN1VYrFgVkG+qxxiYofQ62t6UccOBIzy5gaEnNV+kmc4RBObyY1vYTs0cs2QRkPtYg8OKfyDGR+ommePxAMtchGpC4x9dlNf8aAtVT60=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787106576; c=relaxed/simple;
-	bh=O9XYwa7yAn4nrumcNR9l1To+tQ/PPu/6nFL/o0V1g4o=;
+	s=arc-20240116; t=1787106579; c=relaxed/simple;
+	bh=6sl9aUdgsqr1MH5G5ILk8v03G3sClQ3TxOzzAtQ4RdI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=r3EIBVLYUgMqb2X7fOTRg9W8uPJarAG72YrfdF0daousWKubox01B98S5d9PXvJY0oHJb13HqRI7+UlDHq0jdhcwim9ZkG1UaByTQhgmHH02zPWW6vU2QwU5wSA9hUKf+0RKoW+0OpRj1NhgOTlBVqvNwczLJHKTIo/7WPbdcoM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=WFIwbDwf; arc=none smtp.client-ip=213.97.179.56
+	 In-Reply-To:To:Cc; b=l8idJtAeG2f2U/mrcsuBrB4FeN8oZ7nIaVJ+Pnx3sBc+Q9vooVYHEjF5/xdoxUx17gJMfjayVD5iTKkPxVILXScEjEsR2GxwILAr0DGOIYoz5rGBvqq2OOUBrsL46lBQqHHK4kcmv3xeJemubZCfySn+F0FEMAdX+D/EqfqLcMM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=fCgiJSi+; arc=none smtp.client-ip=213.97.179.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="WFIwbDwf"
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="fCgiJSi+"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
 	s=20170329; h=Cc:To:Message-Id:Content-Transfer-Encoding:Content-Type:
 	MIME-Version:Subject:Date:From:From:Reply-To;
-	bh=iJ7zO28rhwgh2iY91IivmtIIfG4kkjgiEZp5znqK2CA=; b=WFIwbDwfSLMv+t0GggmUXvUkEL
-	fuMxSplCr1E6k93B/pmfgDEy4kbcB/VwZew72gwidfjH4bfXp60x2CZgCB43b5Iro41RTRfygfMby
-	fDoIzwDySLE2qe+I47Ehydz1nCwXKOHYuMQGHzyjafQ8ynkvluTPmW/cuI3RUfZLARxft0hPIuF40
-	M0tfotxNDpG4MGwan8WPum4E5hI4malrjFvopubnaQp5dsyrDq3AX5XbWPA6yKb/lPNT/pE0rxVcD
-	ytr80BMMm/tcOJcV5QbkPaXOfzjg5IGFUvklPVraNO20IUILLisOFVGi4PLaWxKteOzkqfsdu8sq8
-	9PbEVRuQ==;
+	bh=joqvbHqdM9HpjwaYMD+5G7FBevrqRTEc0btSZWyP7jQ=; b=fCgiJSi+uXfD9MWWWckx9j0axB
+	KFZV+FkjgtUWf0pKxS+d6Aa3SKHYUB8L78RI3rbrnA+eNkyWg6blzdLwnoJNbDcKAqHkkBZtKboth
+	Y2g0uii9RA027moEGWvo9xcB7cznm1zHtvZCGHMvEsfy8WUrbyVpY2woPT8VzHLTWRZZ18T/R3Zjc
+	scFrUFehUVjql030yigSWSS8FGRzvFLu7oKMf355M4d5lIuI9P4eWDH9nN0Wd1ec/r1jryp0BTs97
+	zqtFrld4yqzjwN6slHBg9stZyB1Vv4AUZdOlAMRpuLeyYl4Bi1+Od7Cdv5E6ih4sSAK/E8vbRlC0a
+	DYgCPLbw==;
 Received: from 186-249-144-28.shared.desktop.com.br ([186.249.144.28] helo=[127.0.1.1])
 	by fanzine2.igalia.com with esmtpsa 
 	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
-	id 1wwW3U-005tfG-Cs; Wed, 19 Aug 2026 04:29:28 +0200
+	id 1wwW3b-005tfG-G2; Wed, 19 Aug 2026 04:29:35 +0200
 From: Mauricio Faria de Oliveira <mfo@igalia.com>
-Date: Tue, 18 Aug 2026 23:28:03 -0300
-Subject: [PATCH RFC v2 04/13] sysctl: add register_sysctl() wrapper for
- MODULE_SYSCTL_TABLE
+Date: Tue, 18 Aug 2026 23:28:04 -0300
+Subject: [PATCH RFC v2 05/13] sysctl, parport: update register_sysctl()
+ callers with template arguments
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -41,7 +41,7 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-sysctl-module-aliases-v2-4-d5a69dae5798@igalia.com>
+Message-Id: <20260818-sysctl-module-aliases-v2-5-d5a69dae5798@igalia.com>
 References: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
 In-Reply-To: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
 To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
@@ -61,102 +61,88 @@ Cc: kernel-dev@igalia.com, linux-riscv@lists.infradead.org,
  virtualization@lists.linux.dev, Mauricio Faria de Oliveira <mfo@igalia.com>
 X-Mailer: b4 0.14.2
 
-Add a MODULE_SYSCTL_TABLE call into register_sysctl() for existing callers
-to automatically use it.
-
-Add optional 'template arguments' to support a dynamic table/path defined
-at run-time based on a 'template' table/path available at build-time.
-
-Split the update of callers with template arguments into another commit for
-clarity, disabling them for now.
-
-Note: there is no register_sysctl_sz() wrapper, as it is used in even more
-dynamic cases (e.g., table generated at run-time not based on a template).
+Update callers with dynamic table/path to use template arguments.
 
 Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
 ---
- drivers/parport/procfs.c |  2 ++
- include/linux/sysctl.h   | 54 ++++++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 54 insertions(+), 2 deletions(-)
+ drivers/parport/procfs.c | 26 +++++++++++++++++++-------
+ 1 file changed, 19 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/parport/procfs.c b/drivers/parport/procfs.c
-index 3880460e67f25a7d8708a734c6f4d9e6c363c726..cda3221e386ed7a4afc898b3d0313081dee5b49b 100644
+index cda3221e386ed7a4afc898b3d0313081dee5b49b..7c048e9a973aa96251930e21581aed045c41cc35 100644
 --- a/drivers/parport/procfs.c
 +++ b/drivers/parport/procfs.c
-@@ -13,6 +13,8 @@
+@@ -13,7 +13,7 @@
   * Cleaned up include files - Russell King <linux@arm.uk.linux.org>
   */
  
-+#define SYSCTL_MODULE_ALIASES_DISABLE
-+
+-#define SYSCTL_MODULE_ALIASES_DISABLE
++#define SYSCTL_MODULE_ALIASES_UNIQUE_ID
+ 
  #include <linux/string.h>
  #include <linux/init.h>
- #include <linux/module.h>
-diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
-index 6960fe22c50bfd8a9acc79870e494c2775fa040a..7e05fafd5544e1c4a3283dc13b0692f39515d01e 100644
---- a/include/linux/sysctl.h
-+++ b/include/linux/sysctl.h
-@@ -335,8 +335,58 @@ struct ctl_table_root {
- #define MODULE_SYSCTL_TABLE(path, table)
- #endif
+@@ -434,13 +434,17 @@ int parport_proc_register(struct parport *port)
+ #endif /* IEEE 1284 support */
+ 	}
  
--#define register_sysctl(path, table)	\
--	register_sysctl_sz(path, table, ARRAY_SIZE(table))
-+/*
-+ * The register_sysctl() wrapper for the MODULE_SYSCTL_TABLE macro
-+ * automatically creates symbols in sysctl table registration sites.
-+ *
-+ * Usage:
-+ * - register_sysctl(path, table);
-+ * - register_sysctl(path, table, table_tmpl);
-+ * - register_sysctl(path, table, table_tmpl, path_tmpl);
-+ *
-+ * The optional 'template arguments' ('table_tmpl' and 'path_tmpl')
-+ * can support callers with non-static variables: dynamic table/path
-+ * defined at run-time based on a 'template' available at build-time.
-+ *
-+ * For example, a sysctl table, or table and path, which is/are:
-+ *
-+ * - per-namespace: different tables based on a template table
-+ *   (i.e., same files in each namespace) with identical path
-+ *   (i.e., same path in each namespace).
-+ *
-+ * - per-device: different tables based on a template table
-+ *   (i.e., same files for each device) with different paths
-+ *   (i.e., diff paths for each device) based on a template path.
-+ *
-+ * The wrapper passes the build-time parameters (templates) to the macro
-+ * and the dynamic/run-time parameters (instances) to the wrapped function.
-+ *
-+ * The wrapper reduces to the wrapped function when either the macro or the
-+ * config option is disabled.
-+ */
-+#define _register_sysctl(path, table, table_tmpl, path_tmpl)			\
-+({										\
-+	MODULE_SYSCTL_TABLE(path_tmpl, table_tmpl);				\
-+	register_sysctl_sz(path, table, ARRAY_SIZE(table));			\
-+})
-+
-+#define register_sysctl(path, table, tmpl_args...)				\
-+	_register_sysctl(path, table,						\
-+			 __sysctl_table_tmpl_or_default(table, ## tmpl_args),	\
-+			 __sysctl_path_tmpl_or_default(path, ## tmpl_args))	\
-+
-+/* Helper macros for optional template arguments */
-+#define __sysctl_table_tmpl(skip, table_tmpl, ...)				\
-+	table_tmpl
-+
-+#define __sysctl_path_tmpl(skip, table_tmpl, path_tmpl, ...)			\
-+	path_tmpl
-+
-+#define __sysctl_table_tmpl_or_default(default, tmpl_args...)			\
-+	__sysctl_table_tmpl(, ## tmpl_args, default)
-+
-+#define __sysctl_path_tmpl_or_default(default, tmpl_args...)			\
-+	__sysctl_path_tmpl(, ## tmpl_args, default, default)
+-	tmp_dir_path = kasprintf(GFP_KERNEL, "dev/parport/%s/devices", port->name);
++#define tmp_dir_tmpl "dev/parport/%s/devices"
++	tmp_dir_path = kasprintf(GFP_KERNEL, tmp_dir_tmpl, port->name);
+ 	if (!tmp_dir_path) {
+ 		err = -ENOMEM;
+ 		goto exit_free_t;
+ 	}
  
- #ifdef CONFIG_SYSCTL
+-	t->devices_header = register_sysctl(tmp_dir_path, t->device_dir);
++	t->devices_header = register_sysctl(tmp_dir_path, t->device_dir,
++					    parport_sysctl_template.device_dir,
++					    tmp_dir_tmpl);
++#undef tmp_dir_tmpl
+ 	if (t->devices_header == NULL) {
+ 		err = -ENOENT;
+ 		goto  exit_free_tmp_dir_path;
+@@ -448,13 +452,17 @@ int parport_proc_register(struct parport *port)
  
+ 	kfree(tmp_dir_path);
+ 
+-	tmp_dir_path = kasprintf(GFP_KERNEL, "dev/parport/%s", port->name);
++#define tmp_dir_tmpl "dev/parport/%s"
++	tmp_dir_path = kasprintf(GFP_KERNEL, tmp_dir_tmpl,  port->name);
+ 	if (!tmp_dir_path) {
+ 		err = -ENOMEM;
+ 		goto unregister_devices_h;
+ 	}
+ 
+-	t->port_header = register_sysctl(tmp_dir_path, t->vars);
++	t->port_header = register_sysctl(tmp_dir_path, t->vars,
++					 parport_sysctl_template.vars,
++					 tmp_dir_tmpl);
++#undef tmp_dir_tmpl
+ 	if (t->port_header == NULL) {
+ 		err = -ENOENT;
+ 		goto unregister_devices_h;
+@@ -500,7 +508,8 @@ int parport_device_proc_register(struct pardevice *device)
+ 		return -ENOMEM;
+ 
+ 	/* Allocate a buffer for two paths: dev/parport/PORT/devices/DEVICE. */
+-	tmp_dir_path = kasprintf(GFP_KERNEL, "dev/parport/%s/devices/%s", port->name, device->name);
++#define tmp_dir_tmpl "dev/parport/%s/devices/%s"
++	tmp_dir_path = kasprintf(GFP_KERNEL, tmp_dir_tmpl, port->name, device->name);
+ 	if (!tmp_dir_path) {
+ 		err = -ENOMEM;
+ 		goto exit_free_t;
+@@ -508,7 +517,10 @@ int parport_device_proc_register(struct pardevice *device)
+ 
+ 	t->vars[0].data = &device->timeslice;
+ 
+-	t->sysctl_header = register_sysctl(tmp_dir_path, t->vars);
++	t->sysctl_header = register_sysctl(tmp_dir_path, t->vars,
++					   parport_device_sysctl_template.vars,
++					   tmp_dir_tmpl);
++#undef tmp_dir_tmpl
+ 	if (t->sysctl_header == NULL) {
+ 		kfree(t);
+ 		t = NULL;
 
 -- 
 2.47.3
