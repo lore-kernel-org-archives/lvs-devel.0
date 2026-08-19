@@ -1,37 +1,37 @@
 Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AEAB72E888A;
-	Wed, 19 Aug 2026 02:30:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A2AB23CEB99;
+	Wed, 19 Aug 2026 18:15:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787106636; cv=none; b=qiH46Y6T8QTdtl4fAlhGvh02RdDKA5i4numzoyckglTQsGImeDI1QA/H5NEEjYvzoA7bpFveOOX9JxUQk2pgCnNXL3pJByE05S7F3d+h0tnuLyzYLkGnqH1JVT8I7W/uJKZYJpUnWGlqr8BQob1L3kjh/N/b/Jx6Do0LSP72lDk=
+	t=1787163362; cv=none; b=YurhwXLgyGnCx12C4vHn17j/xvW9GYCwkjlFy+dMo4kcryl9Eo3LY6ddHeSeQ33obcUvPaXxT3/6QsZHnAc+58qW0tNvgEbW9KEZFaWpeSlb97YW5QBDG5JF7cZPZwXVXqp1CHX5ef5zVVOGt/7jAHo/Z2ZJdu6rZGvTjpl5Qd4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787106636; c=relaxed/simple;
-	bh=f5o2O9UPHv5pX2VWOxwFtCNED6SACshLVdHxs505Pu8=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=jCRkZn2Wg4jwLS+1bl4MFS3QyjGhpCS56p3nOggZkkv16Co4BsFEJa9H1MjLq0US4qCSrBEp5hyVQ6+1Quw9r927ZUb9FlsHkBLohr3+M0hSryuQy/CdrICx/xPO100itJxeZeYwSC6L+RAzgx22572hDfhJ+ezZIbFZuAiRZAE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=giJOjMqU; arc=none smtp.client-ip=213.97.179.56
+	s=arc-20240116; t=1787163362; c=relaxed/simple;
+	bh=hxty/hn4eltm6C0Y4EZQnHbws7rSxIFBmMOEDEavcn4=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=ugTBPWmn6bPhWtL10mP0QU1x35L1uU195HfhaImiPwHumpOWfEePfEWLsU4Z+7OnUMqT0L0wkgJT6cOUnCDWZxUXm81VLNcZwF9YAW6TCc0+slMdgM3D1jmeE2nUFIGzFZDiq89qohnSmTI5s7ZMGx429R3IgWS2pHVT06KwoLs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=j6B0Jy5s; arc=none smtp.client-ip=213.97.179.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="giJOjMqU"
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="j6B0Jy5s"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
-	s=20170329; h=Cc:To:Message-Id:Content-Transfer-Encoding:Content-Type:
-	MIME-Version:Subject:Date:From:From:Reply-To;
-	bh=wddugAF1IEM+cZdWDVa5PB4xseG8bsMauhbh/5skNPc=; b=giJOjMqUhmbHyNS+EgzZmF35wF
-	ORFZgD/3YorjInbQI8oHNtL6VUZzZaDvelmiT4s7DmbmAKhQjMJRu3fjqqAA6pAUQZv0xrla2k8/A
-	oc4ZNUzP6xTkwASejvoefETSBHm9I+J6S9lDuinbYAeVXnuSYQShxIx6ys7nktysLLq5zcGcM2mYj
-	WjvdyfO8WL489Tf/YtFncC3dj8B1EI5bwPW8kAE9iyuEpgblK4AKH+mZlQQTCXC/yAzKXJB0A3bZG
-	oY6KeZy3VpEba6Sqsib/YR1CnpLtdf+JoEYHjGnWXmVshPCIokphl8tuQmEhCoedfSVynLKFpTyP5
-	0ZrTKzjg==;
-Received: from 186-249-144-28.shared.desktop.com.br ([186.249.144.28] helo=[127.0.1.1])
+	s=20170329; h=Cc:To:Content-Transfer-Encoding:Content-Type:MIME-Version:
+	Message-Id:Date:Subject:From:From:Reply-To;
+	bh=fdQkiyp3Qsqh2GCyFxM5saepTDceNMzdb1x19L1bJys=; b=j6B0Jy5s0l1rIqoAIFUFYRNw0A
+	O8zrKTcRNqYe8rdyon/tzyD/f+r40qZQ7xbPPGamCanY/2lKECgUFlsAbWuIiWsKJ1uNL7wtKRWk+
+	cPXGDEGxS3HvolMLPzNOY28Kvn6oRBQCJdkcQsttJeBjiMHhNAR5TCc275oy7UBPYFoxzvLCb2dsT
+	s+0Bni82WNohP8aBWozbNZO3ullR3nDwaNzrKvoTnob3s/xCOxd7ENU0zSyAh33ApHNg5CrkT0jyW
+	tx4C8qWCUjFsSc/ZqPM+8Cf3aly39EwR7qsWIcA1xwW4acnjRr5lLTbFLnksh8HBG1pzPaVoHK1Nr
+	wEee9tBw==;
+Received: from 186-249-147-181.shared.desktop.com.br ([186.249.147.181] helo=[127.0.1.1])
 	by fanzine2.igalia.com with esmtpsa 
 	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
-	id 1wwW4W-005tfG-BK; Wed, 19 Aug 2026 04:30:32 +0200
+	id 1wwkpH-006ENH-4M; Wed, 19 Aug 2026 20:15:47 +0200
 From: Mauricio Faria de Oliveira <mfo@igalia.com>
-Date: Tue, 18 Aug 2026 23:28:12 -0300
-Subject: [PATCH RFC v2 13/13] modpost: handle MODULE_SYSCTL_TABLE symbols
+Subject: [PATCH RFC v3 00/13] sysctl: add module aliases
+Date: Wed, 19 Aug 2026 15:16:13 -0300
+Message-Id: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -40,9 +40,11 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-sysctl-module-aliases-v2-13-d5a69dae5798@igalia.com>
-References: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
-In-Reply-To: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
+X-B4-Tracking: v=1; b=H4sIAO3yhWoC/4WNQQqDMBBFryKzbkqSosauhEIP0G1xEc2oA2pKx
+ kpFvHtTL9Dl/4///gaMgZDhmmwQcCEmP8VwOSXQ9HbqUJCLGbTUmTTKCF65mQcxevceUNiBLCM
+ L3aZGqlphnSuI21fAlj6H9wmP+w2qWPbEsw/r8bXoA/3RLlpI4VKbFc5imhempO7Hzo0fodr3/
+ QtVQJ5iwAAAAA==
+X-Change-ID: 20260818-sysctl-module-aliases-2f5801b1eb71
 To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
  Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
@@ -60,356 +62,259 @@ Cc: kernel-dev@igalia.com, linux-riscv@lists.infradead.org,
  virtualization@lists.linux.dev, Mauricio Faria de Oliveira <mfo@igalia.com>
 X-Mailer: b4 0.14.2
 
-Update file2alias.c to handle 'mod_devicetable' symbols with type 'sysctl'.
+This series adds 'sysctl:' aliases to modules that register sysctl tables; e.g.:
 
-The key operation is to iterate over relocation entries, so add the helper
-for_each_reloc() with a function callback, and the functions to:
+        $ modinfo ./mpls_router.ko  | grep sysctl:
+        alias:          sysctl:*/net/mpls/conf/*/input
+        alias:          sysctl:*/net/mpls/default_ttl
+        alias:          sysctl:*/net/mpls/ip_ttl_propagate
+        alias:          sysctl:*/net/mpls/platform_labels
 
-1) Find the sysctl path and table in the 'sysctl' module symbol.
+It provides a trivial way to map /proc/sys files to modules (not trivial today),
+and for userspace to handle nonexistent /proc/sys files (e.g., procps's sysctl
+and systemd-sysctl applying tunables) with "modprobe sysctl:<...>" and a retry.
 
-2) Find the sysctl table's entries and their '.procname' field,
-   adding a module alias 'sysctl:*/<path>/<procname>' for each.
+This is done almost automatically with register_sysctl(), register_net_sysctl()
+and friends as wrappers of MODULE_SYSCTL_TABLE (similar to MODULE_DEVICE_TABLE),
+which emits symbols for file2alias/modpost to find and parse the sysctl tables.
 
-Originally-by: Mauricio Faria de Oliveira <mfo@canonical.com>
+The big exception to 'almost' are sysctl tables and paths allocated or defined
+at runtime (e.g., per-namespace or per-device), as all information is required
+at build-time. Fortunately, such tables and paths are often based on 'templates'
+which are static and can be used.
+
+This is done by plumbing the template table/path as optional arguments (macros
+with default values as default_gfp()), so not to create functions for all cases:
+
+        register_sysctl(path, table [, table_tmpl [, path_tmpl]]);
+        register_net_sysctl(net, path, table [, table_tmpl[, path_tmpl]]);
+        register_net_sysctl_sz(net, path, table, size [, table_tmpl[, path_tmpl]]);
+
+In this series:
+- Patch 1 prevents a build error later.
+- Patch 2 adds CONFIG_SYSCTL_MODULE_ALIASES.
+- Patch 3 adds MODULE_SYSCTL_TABLE().
+- Patches 4-5 add register_sysctl() wrapper and update some callers.
+- Patches 6-10 add register_net_sysctl[_sz]() wrappers and update some callers.
+- Patches 11-13 add file2alias support.
+
+Not all maintainers/reviewers (specially for the many changes in net/) are
+in To/Cc in respect of their time, as this RFC probably needs more general
+and earlier feedback before settling on specific changes for their review.
+All lists are included for visibility, though.
+
+Example
+=======
+
+To put it all together, 'mpls_router.ko' (used above) from 'net/mpls/af_mpls.c':
+        
+- Tables:
+
+        static const struct ctl_table mpls_table[] = {
+                {
+                        .procname       = "platform_labels",
+                ...
+                        .procname       = "ip_ttl_propagate",
+                ...
+                        .procname       = "default_ttl",
+                },
+        };
+        
+        static const struct ctl_table mpls_dev_table[] = {
+                {
+                        .procname       = "input",
+                ...
+                },
+        };
+
+- Registration:
+
+        net->mpls.ctl = register_net_sysctl_sz(net, "net/mpls", table,
+                                               table_size, mpls_table);
+
+        #define path_template "net/mpls/conf/%s"
+        ...
+        mdev->sysctl = register_net_sysctl_sz(net, path, table, table_size,
+                                              mpls_dev_table, path_template);
+
+- Symbols:
+
+        $ objdump -t net/mpls/mpls_router.ko \
+          | grep '__mod_device_table__.*__sysctl__'
+        0000000000000900 l     O .data  0000000000000018
+                __mod_device_table__kmod_mpls_router__sysctl__mpls_table.177
+        0000000000000940 l     O .data  0000000000000018
+                __mod_device_table__kmod_mpls_router__sysctl__mpls_dev_table.174
+
+- file2alias:
+
+        $ grep '^MODULE_ALIAS("sysctl:' net/mpls/mpls_router.mod.c
+        MODULE_ALIAS("sysctl:*/net/mpls/platform_labels");
+        MODULE_ALIAS("sysctl:*/net/mpls/ip_ttl_propagate");
+        MODULE_ALIAS("sysctl:*/net/mpls/default_ttl");
+        MODULE_ALIAS("sysctl:*/net/mpls/conf/*/input");
+
+- modinfo:
+
+        $ modinfo ./mpls_router.ko  | grep sysctl:
+        alias:          sysctl:*/net/mpls/conf/*/input
+        alias:          sysctl:*/net/mpls/default_ttl
+        alias:          sysctl:*/net/mpls/ip_ttl_propagate
+        alias:          sysctl:*/net/mpls/platform_labels
+
+Testing
+=======
+
+Configurations:
+- allmodconfig with the option enabled (check for 'MODULE_ALIAS("sysctl:' lines)
+- allmodconfig with the option disabled (check for code errors)
+- allyesconfig with the option enabled (check for include errors)
+
+Architectures (test different bitness, endianness, and ELF handling)
+- x86_64, i386
+- arm, arm64
+- arc
+- alpha
+- loongarch
+- m68k
+- mips(64)(el)
+- parisc(64)
+- powerpc(64(le))
+- riscv
+- sparc64
+- s390
+
+The resulting '.mod.c' files of allmodconfig with the option enabled was checked
+for consistency across all architectures, and that the new aliases lines are the
+difference to allmodconfig with the option disabled.
+
+Disabling
+=========
+
+- Per-call:
+
+  Use 'register_sysctl_sz()' or '__register_net_sysctl_sz()' directly.
+
+- Per-file:
+
+  Use '#define SYSCTL_MODULE_ALIASES_DISABLE'.
+
+- System-wide:
+
+  Maybe something along these lines:
+
+        # cat /etc/modprobe.d/no-sysctl.conf
+        alias sysctl:* no-sysctl
+        install no-sysctl /bin/false
+
+        # modinfo -F name sysctl:/proc/net/mpls/default_ttl
+        mpls_router
+
+        # modprobe sysctl:/proc/net/mpls/default_ttl
+        modprobe: ERROR: Error running install command '/bin/false' for module no_sysctl: retcode 1
+        modprobe: ERROR: could not insert 'no_sysctl': Invalid argument
+
+P.S.
+====
+
+I wrote proof-of-concept patches for procps sysctl and systemd-sysctl some time
+ago, which worked as expected, i.e., successfully set sysctl tunables which did
+not exist in /proc/sys, by running 'modprobe sysctl:/proc/sys/...' and retrying.
+
+Should this series eventually be merged, the patches will be submitted upstream
+as well, for userspace to start consuming it.
+
 Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
+
+Changes in v3:
+- All issues were reported by sashiko-bot@kernel.org.
+- Tested allmodconfig with option enabled on x86_64.
+- Patch 2:
+  - Fix typo ('s/options/option/').
+- Patch 3:
+  - Fix usage of __UNIQUE_ID().
+  - Add __must_be_array() in MODULE_SYSCTL_TABLE().
+- Patch 4:
+  - Remove trailing backslash in register_sysctl().
+- Patch 6:
+  - Fix missing __register_net_sysctl_sz() in !CONFIG_SYSCTL.
+- Patch 13:
+  - Fix potential out-of-bounds read in do_sysctl_entry().
+  - Add check for entry size of zero.
+- Link to v2: https://lore.kernel.org/r/20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com
+
+Changes in v2:
+- This is based on the series submitted 4 years ago,
+  with Originally-by: tags added in related patches.
+- Link to v1: https://lore.kernel.org/linux-fsdevel/20220722022416.137548-1-mfo@canonical.com/
+
 ---
- scripts/mod/file2alias.c | 230 +++++++++++++++++++++++++++++++++++++++++++++++
- scripts/mod/modpost.c    |  11 ++-
- scripts/mod/modpost.h    |  23 +++++
- 3 files changed, 262 insertions(+), 2 deletions(-)
+Mauricio Faria de Oliveira (13):
+      keys, pidns, fs/verity, riscv/vector: reorder '#include <linux/sysctl.h>'
+      proc: add config option SYSCTL_MODULE_ALIASES
+      sysctl, mod_devicetable: add macro MODULE_SYSCTL_TABLE
+      sysctl: add register_sysctl() wrapper for MODULE_SYSCTL_TABLE
+      sysctl, parport: update register_sysctl() callers with template arguments
+      sysctl, net: add register_net_sysctl{_sz}() wrappers for MODULE_SYSCTL_TABLE
+      sysctl, net: update register_net_sysctl{_sz}() callers with template arguments
+      sysctl, net: update register_net_sysctl_sz(ARRAY_SIZE(table_tmpl)) with template arguments
+      sysctl, ipv6: update register_net_sysctl{_sz}() callers with template arguments
+      sysctl, net: update register_net_sysctl_sz() edge case
+      sysctl: unrandomize struct ctl_table.procname
+      modpost: move addend_*_rel() calls into addend_rel()
+      modpost: handle MODULE_SYSCTL_TABLE symbols
 
-diff --git a/scripts/mod/file2alias.c b/scripts/mod/file2alias.c
-index 8d36c74dec2d55840de60b3f8ec22b646d16ff8b..797cfc2f478e25dd2ba5f9a5a063a2919fe58cc5 100644
---- a/scripts/mod/file2alias.c
-+++ b/scripts/mod/file2alias.c
-@@ -1531,6 +1531,231 @@ static const struct devtable devtable[] = {
- 	{"pnp_card", SIZE_pnp_card_device_id, do_pnp_card_entry},
- };
- 
-+// Looks like: sysctl:*/path/procname
-+static void do_sysctl_entry(const char *procname, const char *path,
-+			    struct module *mod)
-+{
-+	const char *src;
-+	char *dst, buf[256], *end = buf + sizeof(buf) - 1; /* -1 for NUL byte */
-+
-+	/* Replace '%s' from path template with '*' for wildcard in modprobe. */
-+	for (src = path, dst = buf; *src && dst < end; src++, dst++)
-+		*dst = (*src == '%') ? (src++, '*') : *src;
-+	*dst = '\0';
-+
-+	module_alias_printf(mod, false, "sysctl:*/%s/%s", buf, procname);
-+}
-+
-+/*
-+ * Execute a callback function for each relocation entry in relocation section.
-+ * The caller must ensure sechdr->sh_type is SHT_RELA or SHT_REL.
-+ */
-+static void for_each_reloc(struct elf_info *elf, unsigned int shndx,
-+			   bool (*fn)(struct elf_info *elf, Elf_Shdr *sechdr,
-+				      Elf_Sym *sym, Elf_Addr r_offset,
-+				      Elf_Addr r_addend, void *data),
-+			   void *data)
-+{
-+	Elf_Shdr *sechdr = &elf->sechdrs[shndx];
-+	const Elf_Rela *rela; /* used as Elf_Rel[a] on SHT_REL[A] */
-+	const Elf_Rela *start = (void *) elf->hdr + sechdr->sh_offset;
-+	const Elf_Rela *stop = (void *) start + sechdr->sh_size;
-+	size_t size = (sechdr->sh_type == SHT_RELA) ? sizeof(Elf_Rela)
-+						    : sizeof(Elf_Rel);
-+
-+	for (rela = start; rela < stop; rela = (Elf_Rela *)((void *) rela + size)) {
-+		Elf_Sym *sym;
-+		Elf_Addr r_offset, r_addend;
-+		unsigned int r_type, r_sym;
-+
-+		r_offset = TO_NATIVE(rela->r_offset);
-+		get_rel_type_and_sym(elf, rela->r_info, &r_type, &r_sym);
-+
-+		sym = elf->symtab_start + r_sym;
-+		r_addend = (sechdr->sh_type == SHT_RELA)
-+					? TO_NATIVE(rela->r_addend)
-+					: addend_rel(elf, sechdr->sh_info,
-+						     r_type, r_offset, sym);
-+
-+		if (fn(elf, sechdr, sym, r_offset, r_addend, data))
-+			break;
-+	}
-+}
-+
-+/*
-+ * Callback parameters and function to loop over the sysctl entries in struct
-+ * module_sysctl_table's .table symbol (found below) in its reloction section.
-+ */
-+struct sysctl_entries {
-+	Elf_Addr table_offset;
-+	ssize_t table_size;
-+	ssize_t entry_size;
-+	const char *path;
-+	const char *modsymname;
-+	struct module *mod;
-+};
-+
-+static bool do_sysctl_entries(struct elf_info *elf, Elf_Shdr *sechdr, Elf_Sym *sym,
-+			      Elf_Addr r_offset, Elf_Addr r_addend, void *data)
-+{
-+	struct sysctl_entries *sysctl_entries = (struct sysctl_entries *) data;
-+
-+	/* Skip until .table starts */
-+	if (r_offset < sysctl_entries->table_offset)
-+		return false;
-+
-+	/* Stop after .table ends */
-+	if (r_offset >= sysctl_entries->table_offset + sysctl_entries->table_size)
-+		return true;
-+
-+	/* Check for alignment with an array entry (.procname at offset zero) */
-+	if ((r_offset - sysctl_entries->table_offset) % sysctl_entries->entry_size == 0) {
-+
-+		/* The symbol for .procname points to a string */
-+		const char *procname = (const char *)
-+				       sym_get_data_addend(elf, sym, r_addend);
-+
-+		if (!procname) {
-+			warn("%s [%s] found entry with NULL .procname (skip)\n",
-+			     sysctl_entries->modsymname, sysctl_entries->mod->name);
-+			return false;
-+		}
-+
-+		do_sysctl_entry(procname, sysctl_entries->path, sysctl_entries->mod);
-+	}
-+
-+	/* Continue at next entry */
-+	return false;
-+}
-+
-+/*
-+ * Callback parameters and function to search for struct module_sysctl_table's
-+ * pointers (.path and .table) in relocation entries of a relocation section.
-+ */
-+struct sysctl_pointers {
-+	/* Input: offsets */
-+	Elf_Addr path_offset;
-+	Elf_Addr table_offset;
-+
-+	/* Output: symbols and relocation addends */
-+	Elf_Sym *path_sym;
-+	Elf_Sym *table_sym;
-+	Elf_Addr path_r_addend;
-+	Elf_Addr table_r_addend;
-+};
-+
-+static bool do_sysctl_pointers(struct elf_info *elf, Elf_Shdr *sechdr, Elf_Sym *sym,
-+			       Elf_Addr r_offset, Elf_Addr r_addend, void *data)
-+{
-+	struct sysctl_pointers *sysctl_pointers = (struct sysctl_pointers *) data;
-+
-+	/* Check for relocation entry's offset matching .path or .table */
-+	if (!sysctl_pointers->path_sym &&
-+	     sysctl_pointers->path_offset == r_offset) {
-+		sysctl_pointers->path_sym = sym;
-+		sysctl_pointers->path_r_addend = r_addend;
-+	} else if (!sysctl_pointers->table_sym &&
-+		    sysctl_pointers->table_offset == r_offset) {
-+		sysctl_pointers->table_sym = sym;
-+		sysctl_pointers->table_r_addend = r_addend;
-+	}
-+
-+	/* Stop once both .path and .table are found */
-+	return (sysctl_pointers->path_sym && sysctl_pointers->table_sym);
-+}
-+
-+static void do_sysctl_table(const char *modsymname, void *modsymval,
-+			    Elf_Sym *modsym, struct module *mod,
-+			    struct elf_info *info)
-+{
-+	/*
-+	 * The struct module_sysctl_table symbol contains 4 fields:
-+	 *  .path: pointer to string with the dirname in /proc/sys
-+	 *  .table: pointer to struct ctl_table array with filenames (.procname)
-+	 *  .table_size: size of struct ctl_table array
-+	 *  .entry_size: size of struct ctl_table entry in the array
-+	 */
-+
-+	/* The size values can be read directly. */
-+	DEF_FIELD(modsymval, module_sysctl_table, table_size);
-+	DEF_FIELD(modsymval, module_sysctl_table, entry_size);
-+
-+	struct sysctl_entries sysctl_entries = {
-+		.table_size = table_size,
-+		.entry_size = entry_size,
-+		.modsymname = modsymname,
-+		.mod = mod,
-+	};
-+
-+	/*
-+	 * Step 1:
-+	 *
-+	 * Each pointer has a relocation entry in a relocation section,
-+	 * that links the pointer with the symbol it points to.
-+	 *
-+	 * In order to access the symbols pointed to by .path and .table pointers:
-+	 * 1) find the relocation section of the struct module_sysctl_table symbol;
-+	 * 2) find the relocation entries for these pointers by their field offset;
-+	 * 3) then use the symbols found in these relocation entries.
-+	 */
-+
-+	struct sysctl_pointers sysctl_pointers = {
-+		.path_offset = modsym->st_value + OFF_module_sysctl_table_path,
-+		.path_sym = NULL,
-+		.table_offset = modsym->st_value + OFF_module_sysctl_table_table,
-+		.table_sym = NULL,
-+	};
-+
-+	unsigned int shndx;
-+
-+	/* Find the relocation section for struct module_sysctl_table symbol. */
-+	shndx = get_reloc_secindex(info, modsym);
-+	if (shndx == SHN_UNDEF) {
-+		error("%s [%s.ko] cannot find relocation section for symbol\n",
-+		      modsymname, mod->name);
-+		return;
-+	}
-+
-+	/* Find the relocation entries for the .path and .table pointers. */
-+	for_each_reloc(info, shndx, do_sysctl_pointers, &sysctl_pointers);
-+	if (!sysctl_pointers.path_sym || !sysctl_pointers.table_sym) {
-+		error("%s [%s.ko] cannot find relocation entry for path/table\n",
-+		      modsymname, mod->name);
-+		return;
-+	}
-+
-+	/*
-+	 * Step 2:
-+	 *
-+	 * The .table symbol is the struct ctl_table array where each entry has
-+	 * a .procname pointer with a relocation entry for the filename string.
-+	 *
-+	 * In order to access the strings pointed to by .procname pointers:
-+	 * 1) Find the relocation section of the struct ctl_table array symbol;
-+	 * 2) Find the relocation entries for these pointers by their field offset;
-+	 * 3) Then use the symbols found in these relocation entries.
-+	 */
-+
-+	/* Find the relocation section for the struct ctl_table array. */
-+	shndx = get_reloc_secindex(info, sysctl_pointers.table_sym);
-+	if (shndx == SHN_UNDEF) {
-+		/* Edge case: empty .table: no relocation section. */
-+		return;
-+	}
-+
-+	/* The .path symbol can be read directly. */
-+	sysctl_entries.path = (const char *)
-+			   sym_get_data_addend(info, sysctl_pointers.path_sym,
-+						sysctl_pointers.path_r_addend);
-+
-+	/* The .table symbol is the struct ctl_table array. */
-+	sysctl_entries.table_offset = sysctl_pointers.table_sym->st_value +
-+				   sysctl_pointers.table_r_addend;
-+
-+	/* Add module aliases for entries in the struct ctl_table array. */
-+	for_each_reloc(info, shndx, do_sysctl_entries, &sysctl_entries);
-+}
-+
- /* Create MODULE_ALIAS() statements.
-  * At this time, we cannot write the actual output C source yet,
-  * so we write into the mod->dev_table_buf buffer. */
-@@ -1542,6 +1767,7 @@ void handle_moddevtable(struct module *mod, struct elf_info *info,
- 	const char *type, *name, *modname;
- 	size_t typelen, modnamelen;
- 	static const char *prefix = "__mod_device_table__";
-+	bool sym_is_devtable = false;
- 
- 	/* We're looking for a section relative symbol */
- 	if (!sym->st_shndx || get_secindex(info, sym) >= info->num_sections)
-@@ -1586,10 +1812,14 @@ void handle_moddevtable(struct module *mod, struct elf_info *info,
- 		if (sym_is(type, typelen, p->device_id)) {
- 			do_table(name, symval, sym->st_size, p->id_size,
- 				 p->device_id, p->do_entry, mod);
-+			sym_is_devtable = true;
- 			break;
- 		}
- 	}
- 
-+	if (!sym_is_devtable && sym_is(type, typelen, "sysctl"))
-+		do_sysctl_table(name, symval, sym, mod, info);
-+
- 	if (mod->is_vmlinux) {
- 		struct module_alias *alias;
- 
-diff --git a/scripts/mod/modpost.c b/scripts/mod/modpost.c
-index d18a87b882a67f06d5f75ee92f4c26dc713d83b8..10eb7273cdd817da788fa3bce87d695661dd1b93 100644
---- a/scripts/mod/modpost.c
-+++ b/scripts/mod/modpost.c
-@@ -340,6 +340,13 @@ void *sym_get_data(const struct elf_info *info, const Elf_Sym *sym)
- 				      sym->st_value);
- }
- 
-+void *sym_get_data_addend(const struct elf_info *info, const Elf_Sym *sym,
-+			  Elf_Addr r_addend)
-+{
-+	return sym_get_data_by_offset(info, get_secindex(info, sym),
-+				      sym->st_value + r_addend);
-+}
-+
- static const char *sech_name(const struct elf_info *info, Elf_Shdr *sechdr)
- {
- 	return sym_get_data_by_offset(info, info->secindex_strings,
-@@ -1338,8 +1345,8 @@ Elf_Addr addend_rel(struct elf_info *elf, unsigned int secndx,
- #define R_LARCH_ALIGN		102
- #endif
- 
--static void get_rel_type_and_sym(struct elf_info *elf, uint64_t r_info,
--				 unsigned int *r_type, unsigned int *r_sym)
-+void get_rel_type_and_sym(struct elf_info *elf, uint64_t r_info,
-+			  unsigned int *r_type, unsigned int *r_sym)
- {
- 	typedef struct {
- 		Elf64_Word    r_sym;	/* Symbol index */
-diff --git a/scripts/mod/modpost.h b/scripts/mod/modpost.h
-index a98811552bd2996c31cf73fd3619e6c58bac8a6d..409fdfc844c4bfcea30fd6ae758f4042384e3e56 100644
---- a/scripts/mod/modpost.h
-+++ b/scripts/mod/modpost.h
-@@ -186,6 +186,25 @@ static inline unsigned int get_secindex(const struct elf_info *info,
- 	return index;
- }
- 
-+/* Find the relocation section for the section of a symbol */
-+static inline unsigned int get_reloc_secindex(const struct elf_info *info,
-+					      const Elf_Sym *sym)
-+{
-+	unsigned int sym_secindex = get_secindex(info, sym);
-+	unsigned int secindex;
-+
-+	for (secindex = 0; secindex < info->num_sections; secindex++) {
-+		Elf_Shdr *shdr = &info->sechdrs[secindex];
-+
-+		if ((shdr->sh_type == SHT_RELA || shdr->sh_type == SHT_REL) &&
-+		    (shdr->sh_flags & SHF_INFO_LINK) &&
-+		    shdr->sh_info == sym_secindex)
-+			return secindex;
-+	}
-+
-+	return SHN_UNDEF;
-+}
-+
- /*
-  * If there's no name there, ignore it; likewise, ignore it if it's
-  * one of the magic symbols emitted used by current tools.
-@@ -222,8 +241,12 @@ const char *get_basename(const char *path);
- char *read_text_file(const char *filename);
- char *get_line(char **stringp);
- void *sym_get_data(const struct elf_info *info, const Elf_Sym *sym);
-+void *sym_get_data_addend(const struct elf_info *info, const Elf_Sym *sym,
-+			  Elf_Addr r_addend);
- Elf_Addr addend_rel(struct elf_info *elf, unsigned int secndx,
- 		    unsigned int r_type, Elf_Addr r_offset, Elf_Sym *tsym);
-+void get_rel_type_and_sym(struct elf_info *elf, uint64_t r_info,
-+			  unsigned int *r_type, unsigned int *r_sym);
- 
- void __attribute__((format(printf, 3, 4)))
- modpost_log(bool is_error, struct module *mod, const char *fmt, ...);
+ arch/riscv/kernel/vector.c              |   1 +
+ drivers/net/vrf.c                       |   3 +-
+ drivers/parport/procfs.c                |  26 +++-
+ fs/proc/Kconfig                         |  13 ++
+ fs/verity/init.c                        |   1 +
+ include/linux/key.h                     |   1 -
+ include/linux/mod_devicetable.h         |   7 +
+ include/linux/pid_namespace.h           |   1 +
+ include/linux/sysctl.h                  | 110 ++++++++++++++-
+ include/net/ipv6.h                      |   6 +-
+ include/net/net_namespace.h             |  47 ++++++-
+ net/bridge/br_netfilter_hooks.c         |   3 +-
+ net/core/neighbour.c                    |  11 +-
+ net/core/sysctl_net_core.c              |   3 +-
+ net/ieee802154/6lowpan/reassembly.c     |   2 +-
+ net/ipv4/devinet.c                      |  12 +-
+ net/ipv4/ip_fragment.c                  |   3 +-
+ net/ipv4/route.c                        |   3 +-
+ net/ipv4/sysctl_net_ipv4.c              |   2 +-
+ net/ipv4/xfrm4_policy.c                 |   3 +-
+ net/ipv6/addrconf.c                     |   7 +-
+ net/ipv6/icmp.c                         |   6 +-
+ net/ipv6/netfilter/nf_conntrack_reasm.c |   4 +-
+ net/ipv6/reassembly.c                   |   3 +-
+ net/ipv6/route.c                        |  10 +-
+ net/ipv6/sysctl_net_ipv6.c              |  13 +-
+ net/ipv6/xfrm6_policy.c                 |   3 +-
+ net/mpls/af_mpls.c                      |   9 +-
+ net/mptcp/ctrl.c                        |   3 +-
+ net/netfilter/ipvs/ip_vs_ctl.c          |   4 +-
+ net/netfilter/ipvs/ip_vs_lblc.c         |   3 +-
+ net/netfilter/ipvs/ip_vs_lblcr.c        |   3 +-
+ net/netfilter/nf_conntrack_standalone.c |   5 +-
+ net/netfilter/nf_log.c                  |   9 +-
+ net/rds/tcp.c                           |   4 +-
+ net/sctp/sysctl.c                       |   3 +-
+ net/smc/smc_sysctl.c                    |   2 +-
+ net/sysctl_net.c                        |  10 +-
+ net/unix/sysctl_net_unix.c              |   3 +-
+ net/vmw_vsock/af_vsock.c                |   4 +-
+ net/xfrm/xfrm_sysctl.c                  |   2 +-
+ scripts/mod/devicetable-offsets.c       |   6 +
+ scripts/mod/file2alias.c                | 237 ++++++++++++++++++++++++++++++++
+ scripts/mod/modpost.c                   |  46 ++++---
+ scripts/mod/modpost.h                   |  25 ++++
+ 45 files changed, 575 insertions(+), 107 deletions(-)
+---
+base-commit: 2697ef8943c9985c14708a6429e21812693857b2
+change-id: 20260818-sysctl-module-aliases-2f5801b1eb71
 
+Best regards,
 -- 
-2.47.3
+Mauricio Faria de Oliveira <mfo@igalia.com>
 
