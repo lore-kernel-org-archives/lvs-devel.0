@@ -1,102 +1,82 @@
-Received: from mx.swemel.ru (mx.swemel.ru [95.143.211.150])
+Received: from stravinsky.debian.org (stravinsky.debian.org [82.195.75.108])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 241523F1042;
-	Fri, 28 Aug 2026 09:05:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.143.211.150
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B7A73905F0;
+	Fri, 28 Aug 2026 09:33:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=82.195.75.108
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787907908; cv=none; b=JNWxxJrTrA4nFJT4VAYwOFFC7Ybb2/rWzYMeZvJonUHGomKE4gsxyC0rxtwv9BxdRRzXJSAFr22jVVEisIx5p9wsULTusOAj8wdifx+hLuYyB7XHRlNqR0dSR2dUnMktLgXnUzILd0MOGwQmt8zhyFYevxNfoSSKQKTmucQl6iY=
+	t=1787909591; cv=none; b=fe21VfLeVC3KGvVPz3LiHdp1yLUb9MxEZkxdgosR+iXpf4oDMRqaYEUUXV5MGF62pvR67OY7l4wNY5grV1K4bg+QACdxdN0cBFZbkE8bWEUZizwnum4AK9EyE6vcKlYFyMerigeMWASNrrOQH/f4Ibgo3GUtTJeGJRkdkUhwTbc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787907908; c=relaxed/simple;
-	bh=Ejf70St9xv35smMJRlt75iZRTrv+MkSeYJX80TfDbYI=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=BNaPej0k+w288fuV89mXVIPtKATwFzi1kyBi/2rhNFSomx5rv7td4tO5aUbIQWrgtMLfjLy7MXpK6M+VJ814puOzgoBHY3EI7jd5ebgxwHaO69WwYSwYwQQW3hNjYMNKCo8FYB7i+raezWVzDJ57SwVrIsFOrDyhKwMSA9XVkjA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=swemel.ru; spf=pass smtp.mailfrom=swemel.ru; dkim=pass (1024-bit key) header.d=swemel.ru header.i=@swemel.ru header.b=iw1e0k7T; arc=none smtp.client-ip=95.143.211.150
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=swemel.ru
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=swemel.ru
+	s=arc-20240116; t=1787909591; c=relaxed/simple;
+	bh=gFGESkEnaYY6xmTzY8wle3SNahbizO9UAow6Oloksrg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=cilhajQ2+8IfUUwUrq8cGNx9rgzQXBztrjOjgKGDQWICTrpRo9sqF3yLyYNrGVldvSbVKmiZCue/tAz1EmcSPtZqnVUaTBZ2nAFh7q8RA8bWoPozCIIfxTzIbQLvRvtRUwNkZAQ7lh8WF8FpMYa2WvjMxgIBDhn7EZRyOE6MB4Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=debian.org; spf=pass smtp.mailfrom=debian.org; dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b=SVnjDUpz; arc=none smtp.client-ip=82.195.75.108
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=debian.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=debian.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=swemel.ru header.i=@swemel.ru header.b="iw1e0k7T"
-From: Denis Arefev <arefev@swemel.ru>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=swemel.ru; s=mail;
-	t=1787907322;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=kDm083ubOGPoeNyTcgkSzWZYrZQ4GupNUIX+4IAgrbM=;
-	b=iw1e0k7T//K0LXM0/oS2ZLYjls91dFlNFynVCHITC+zWpWiIYyy0tCj0TovmOQPmZXF0r2
-	p9t+jQyryEqERsGoENfCiG93kmI5+0mUVDcMYytuq1x17t90UVwn6hdUqWNEe1CTaaGmTb
-	i1O9MOZobUc4sZnD5u5CHykIOiVtSGM=
-To: stable@vger.kernel.org,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Wensong Zhang <wensong@linux-vs.org>,
-	Simon Horman <horms@verge.net.au>,
-	Julian Anastasov <ja@ssi.bg>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Jozsef Kadlecsik <kadlec@netfilter.org>,
-	Florian Westphal <fw@strlen.de>,
-	"David S. Miller" <davem@davemloft.net>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Dwip Banerjee <dwip@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org,
+	dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b="SVnjDUpz"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=debian.org;
+	s=smtpauto.stravinsky; h=X-Debian-User:In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=6UJWbhtuWI0OcYV8DoACzNDsaVGPnMK9sBA1/f6ey/M=; b=SVnjDUpzFczRCwN6Z0P0ywFRqy
+	2SdxrvFcxickFaj8pE3LuY/7HJWy0cTvF9IXAyD8LHSlQLm1jfU7oi2GzHgIQaOqCgTuuoSfZKcjz
+	RFPEAtu3UmGwAS8ieseE44ecCZEKaZUemsj24ea6e8gai+zkr+o1Ut21ZoZD+4FL1ykiLPXTwe2OD
+	iLzcihXaoXe5PNnmL1PK5od9W8jyWPHZddppGJU8swLPv1JLhLvfCHXRq4iXpeaMUCC12eL6UyeDL
+	Yr16JrhDvzRNBySXXodm+UOn7k3XB0GgD0JlzgPJGy25SDh1T+cA1xBlAAn2DJpKEgKUzayCxZOFc
+	T9t5IbRA==;
+Received: from authenticated-user
+	by stravinsky.debian.org with esmtpsa (TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256)
+	(Exim 4.96)
+	(envelope-from <leitao@debian.org>)
+	id 1wzsxD-00Gg0A-2O;
+	Fri, 28 Aug 2026 09:32:55 +0000
+Date: Fri, 28 Aug 2026 02:32:50 -0700
+From: Breno Leitao <leitao@debian.org>
+To: Denis Arefev <arefev@swemel.ru>
+Cc: stable@vger.kernel.org, 
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Wensong Zhang <wensong@linux-vs.org>, 
+	Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
+	Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, 
+	Florian Westphal <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>, 
+	Jakub Kicinski <kuba@kernel.org>, Dwip Banerjee <dwip@linux.vnet.ibm.com>, netdev@vger.kernel.org, 
+	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, 
 	linux-kernel@vger.kernel.org
-Subject: [PATCH 5.10/6.1] ipvs: reload ip header after head reallocation
-Date: Fri, 28 Aug 2026 11:55:21 +0300
-Message-ID: <20260828085522.31015-1-arefev@swemel.ru>
+Subject: Re: [PATCH 5.10/6.1] ipvs: reload ip header after head reallocation
+Message-ID: <apFViEhRXxJOb3SC@gmail.com>
+References: <20260828085522.31015-1-arefev@swemel.ru>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260828085522.31015-1-arefev@swemel.ru>
+X-Debian-User: leitao
 
-From: Florian Westphal <fw@strlen.de>
+On Fri, Aug 28, 2026 at 11:55:21AM +0300, Denis Arefev wrote:
+> From: Florian Westphal <fw@strlen.de>
+> 
+> commit a2f57827bf7c695b8c72dc4511cae8e86582369d upstream.
+> 
+> __ip_vs_get_out_rt() calls skb_ensure_writable() which may
+> reallocate skb->head.
+> 
+> Fixes: 8d8e20e2d7bb ("ipvs: Decrement ttl")
+> Cc: stable@vger.kernel.org
+> Assisted-by: Claude:claude-sonnet-4-6
+> Acked-by: Julian Anastasov <ja@ssi.bg>
+> Signed-off-by: Florian Westphal <fw@strlen.de>
+> [Denis Arefev: adapted for 5.10/6.1: keep EnterFunction/LeaveFunction
+> instrumentation]
 
-commit a2f57827bf7c695b8c72dc4511cae8e86582369d upstream.
+yea, the backport seems fine and match commit a2f57827bf7c69 ("ipvs:
+reload ip header after head reallocation")
 
-__ip_vs_get_out_rt() calls skb_ensure_writable() which may
-reallocate skb->head.
+> Signed-off-by: Denis Arefev <arefev@swemel.ru>
 
-Fixes: 8d8e20e2d7bb ("ipvs: Decrement ttl")
-Cc: stable@vger.kernel.org
-Assisted-by: Claude:claude-sonnet-4-6
-Acked-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Florian Westphal <fw@strlen.de>
-[Denis Arefev: adapted for 5.10/6.1: keep EnterFunction/LeaveFunction
-instrumentation]
-Signed-off-by: Denis Arefev <arefev@swemel.ru>
----
-Backport fix for CVE-2026-68476 
-Link: https://nvd.nist.gov/vuln/detail/CVE-2026-68476 
----
- net/netfilter/ipvs/ip_vs_xmit.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-index 9e199f00eea7..29ca141e3795 100644
---- a/net/netfilter/ipvs/ip_vs_xmit.c
-+++ b/net/netfilter/ipvs/ip_vs_xmit.c
-@@ -718,15 +718,13 @@ int
- ip_vs_bypass_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
- 		  struct ip_vs_protocol *pp, struct ip_vs_iphdr *ipvsh)
- {
--	struct iphdr  *iph = ip_hdr(skb);
--
- 	EnterFunction(10);
- 
--	if (__ip_vs_get_out_rt(cp->ipvs, cp->af, skb, NULL, iph->daddr,
--			       IP_VS_RT_MODE_NON_LOCAL, NULL, ipvsh) < 0)
-+	if (__ip_vs_get_out_rt(cp->ipvs, cp->af, skb, NULL, ip_hdr(skb)->daddr,
-+			       IP_VS_RT_MODE_NON_LOCAL, NULL, ipvsh) < 0)
- 		goto tx_error;
- 
--	ip_send_check(iph);
-+	ip_send_check(ip_hdr(skb));
- 
- 	/* Another hack: avoid icmp_send in ip_fragment */
- 	skb->ignore_df = 1;
--- 
-2.43.0
+Reviewed-by: Breno Leitao <leitao@debian.org>
 
