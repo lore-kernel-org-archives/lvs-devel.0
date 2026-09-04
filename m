@@ -1,38 +1,81 @@
-Received: from mail-m49197.qiye.163.com (mail-m49197.qiye.163.com [45.254.49.197])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pg1-f177.google.com (mail-pg1-f177.google.com [209.85.215.177])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15395388391;
-	Fri,  4 Sep 2026 07:19:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.254.49.197
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E8A336D500
+	for <lvs-devel@vger.kernel.org>; Fri,  4 Sep 2026 11:45:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.177
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788506362; cv=none; b=ZHk0FO2QRBdGVteMdC4onm8g+ZI/6fp6fQuUky7gQJ4YMsJOfkRR6JzQUOFtcn1O3ouhVF0feKwsL+umv/C1yHU+3xogPh6qOwdS/BOd+9VA05EXnemepw1vJF8R0lBTY77u7W2F0zrbbBm7Vt3XBYmm4FW3zTPKLYboc/GaGMo=
+	t=1788522348; cv=none; b=gydPuJPWfzxrFFe693dx/AwpUzBm4cyagw+Ry6vFYlcfzkD3IQVROgDD2Bvw5+FL7nWXuB+95L3Qg0++AskAsyZs4cN9bXWrccC6/pAgElHOycTqR1reLgHk0TyIj+7umlPe7TViy1dXAApk/U0fpgnxIDWv/c3JoqkBUZn2O4s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788506362; c=relaxed/simple;
-	bh=WjPgyhsJhdzJK/5eZTmlpOqsb5WAQS2B2xKFpuZ3xdU=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Yfuep6casJTsUqmma/uYP+MAFKIYgNO81xtCaLgSWcNpDvhm1tycdkSDPLx0w4X5t6+YGWxLNEFIWN7ilaL78eXTvFJGkc/QuaoNveMzy0Hs3qnDxgvsn3oAstxUwAK4B4sWFanfcClviidaPnonhc4lKDXDXnLVUAoiusNkZns=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=seu.edu.cn; spf=pass smtp.mailfrom=seu.edu.cn; dkim=pass (1024-bit key) header.d=seu.edu.cn header.i=@seu.edu.cn header.b=njBUSfnt; arc=none smtp.client-ip=45.254.49.197
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=seu.edu.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=seu.edu.cn
+	s=arc-20240116; t=1788522348; c=relaxed/simple;
+	bh=4DYiEOsZKjx/4f4PSXfRJejITB67NJXF4cNdrqZROfk=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=aD3gBLc1+kw3n6r91CAJQKaxLOMYUuqZ5WXJwQqvdoXOaTQoGORjeDZiVFnw6XOOiH0lBaPL1IDGJA1DVoNKyG4mRFSaZRNVRkd0GZu7Ga45Ugu9qL6X4XfsfChSIaDi2rCbzIq8tbhD+ojBHqY7HGrG1uQXxY7adDLx/Wua6+A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=glMIBwnc; arc=none smtp.client-ip=209.85.215.177
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=seu.edu.cn header.i=@seu.edu.cn header.b="njBUSfnt"
-Received: from PC-202605011814.localdomain (unknown [222.191.246.242])
-	by smtp.qiye.163.com (Hmail) with ESMTP id 4c87b05b0;
-	Fri, 4 Sep 2026 15:19:13 +0800 (GMT+08:00)
-From: Runyu Xiao <runyu.xiao@seu.edu.cn>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="glMIBwnc"
+Received: by mail-pg1-f177.google.com with SMTP id 41be03b00d2f7-cc1cc1b42b5so1025472a12.2
+        for <lvs-devel@vger.kernel.org>; Fri, 04 Sep 2026 04:45:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1788522345; x=1789127145; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=Ypdm6ycnQEZOWN8WJPUUE2HwMGTgKp4dCj8wtNt7vJI=;
+        b=glMIBwncTttwvAe5mGxgfuLlNw2tGMxm8GK/vE00V2EV+D5nQR4OM6pDKnTCDJrarr
+         VRIIWrSu6Be0a4wwUH4gjT8BU5fH1e37niqC+ldAEXYVqls70gcwILPRRkzbx7xiHlwo
+         J1qS6IFF5XtXKY5Rf9gUlzA2eHQRg9qSOWhVh/M2Q/KayChmZdJnhnjGVCfLMD2Gx3qh
+         qg6L6OBBKVIizJqTTuMEq6xrsiI95TFv0ww/I0nj3vRANAIJEwlWuWQ0w+elFtwMZxRN
+         EGjA5Q8W5qjTrdOW4B0X1q3TpCr/6qsCZ1PLme9zvwwwKlzwtNqiVV3+IRDknIlfRDYA
+         KJAQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788522345; x=1789127145;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=Ypdm6ycnQEZOWN8WJPUUE2HwMGTgKp4dCj8wtNt7vJI=;
+        b=tXyNVwSwNdRIbyhhI7HJ2ngtfT/jb+jSqwYTZagKhOeqVCnKNc9No0UDipXTvS5/Pe
+         A5dBLTrQ3k90VQ+OclMlj5b9MCxC4CZod+hVWpvDfRHGAGsDn7d575vEjPVgAeC37k14
+         wV21o3Xf1uWmbHj4nIR4gkOVhnhhB+kIHNwAAbfJ0AF1FGrEKS4UMCMOjootfrqdnnfC
+         iPoUK36BheDcmnW+gEywXYj1eMz+MY2YANrNHObWJPWk0fsGgQkWFtalmT6RjGpGUoJb
+         rJwF0bIdRcomnSM4Etb12S6vA+ktQyTdQ+INfox3snZnadQ2j9MguFjMF+ba1Kx81QMg
+         LCNw==
+X-Forwarded-Encrypted: i=1; AKwUvBxuruF3plMMJrctOIQftOtJnUbmdN7jbDC8AO51LGuXz8qCsv4fp7bL3VPIV4WdrZc3u9Gl85ygyxI=@vger.kernel.org
+X-Gm-Message-State: AFuF++l7YbWISpxZwjKNIVUX0Wlh/4IoO4/7WaMRQKnBcEOcLMTNez30
+	9cl9nl0dGfjL6h5RhWazXZUJG4H0eEujpvALkXXA0PbEO+gmv+RROTjj
+X-Gm-Gg: AYBFou0a3k0z1ZAZ1nZDbFgGlchzZkIRW97H/kxqNYNX6vZWRM8WzqYtbdy9TbCAZB1
+	pRivEw06OdBQA+dSf4U4S6QRWGLslExZYLsrZ3HQlWf29BwhTBpTu+jpeUyqJUTYBzcMyVbSz7J
+	oKkSV6xn5wxeavSQK9pjA8D9q0iBH2mxxbJVIy/MbTdKu9dGl1fkO1vT5S6j1c106Pp47eJfBgP
+	1h6a+nfOODQvmM9pmyHDfXmR8nZ34w+a0Qatrjjnt1DX9+7MaX7yiDEiNk3Pfor5rKtYtcJKOcm
+	fCU3XepMnIKv7MmWNrwXf7CF3qQRntLojWGTW1RpwcTtrEVx7dWy715FfFwmoCez3eqQV/0LCCq
+	d8DEoFUpGP2xL7qFfr92IAL2ZDP9BI83ecPfLnumfjwKNhW6f63o6dlNQxT/98qI+5yVBj5VcKM
+	m5izv/AWaZtQoopdEHS1TFkaXmEVl+GCwatn+11Siw1ahNEYqcVZCKngT3+3FYtb4A+H8i7qE0I
+	sXlrRrTvDjTfktcRS0qrWn4nw==
+X-Received: by 2002:a17:90a:e7c2:b0:398:9be8:ea66 with SMTP id 98e67ed59e1d1-39b261da126mr7004862a91.19.1788522344797;
+        Fri, 04 Sep 2026 04:45:44 -0700 (PDT)
+Received: from volcano9f6e-hostos.amd.com ([165.204.217.251])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3339885ca07sm7148372eec.1.2026.09.04.04.45.40
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 04 Sep 2026 04:45:44 -0700 (PDT)
+From: Hemanth Selam <hemanth.selam@gmail.com>
 To: Simon Horman <horms@verge.net.au>,
 	Julian Anastasov <ja@ssi.bg>,
-	Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: netdev@vger.kernel.org,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	Phil Sutter <phil@nwl.cc>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>
+Cc: linux-kernel@vger.kernel.org,
+	netdev@vger.kernel.org,
 	lvs-devel@vger.kernel.org,
 	netfilter-devel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org,
-	Runyu Xiao <runyu.xiao@seu.edu.cn>,
-	Jianhao Xu <jianhao.xu@seu.edu.cn>
-Subject: [PATCH net] ipvs: shut down destination trash timer on netns cleanup
-Date: Fri,  4 Sep 2026 15:19:08 +0800
-Message-Id: <20260904071908.4052966-1-runyu.xiao@seu.edu.cn>
-X-Mailer: git-send-email 2.34.1
+	coreteam@netfilter.org
+Subject: [PATCH] net: netfilter: fix typo "specifiy" in comment
+Date: Fri,  4 Sep 2026 17:15:36 +0530
+Message-ID: <20260904114537.29953-1-hemanth.selam@gmail.com>
+X-Mailer: git-send-email 2.48.1
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -40,43 +83,30 @@ List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-HM-Tid: 0aa06b492fca03a1kunmc2bb1dbc2dfe3
-X-HM-MType: 10
-X-HM-Spam-Status: e1kfGhgUHx5ZQUpXWQgPGg8OCBgUHx5ZQUlOS1dZFg8aDwILHllBWSg2Ly
-	tZV1koWUFITzdXWRgWCB1ZQUpXWS1ZQUlXWQ8JGhUIEh9ZQVkaT0xPVk5CGR5JSEoeGEhJT1YeHw
-	5VEwETFhoSFyQUDg9ZV1kYEgtZQVlJSUlVSkJKVUlPTVVJT0lZV1kWGg8SFR0UWUFZT0tIVUpLSE
-	pPSExVSktLVUpCS0tZBg++
-DKIM-Signature: a=rsa-sha256;
-	b=njBUSfntNTF6zelMXWxmvGK0pgBkoH3JDqSwLQtV8agBObwlw5WzhsDaAnXp9OI7r73OclR8pJha0sgxrxz0xLIa7yREr3k6LERxkPu8i/4H+1GQTWk2HhCmTUSJYl+T25jIJluDOXvY9T/3aZhzeoliaA3KRgkzR7olsI/6Pew=; c=relaxed/relaxed; s=default; d=seu.edu.cn; v=1;
-	bh=tnj/RY/ptp6lpQUCEDvXfPt6ryVtxdbMi4SqTFsPpmQ=;
-	h=date:mime-version:subject:message-id:from;
 
-ip_vs_dest_trash_expire() accesses the per-network-namespace IPVS state
-and rearms the destination trash timer while entries remain.  The
-cleanup path uses timer_delete_sync(), which waits for a running callback
-but still allows a racing callback to rearm the timer.
+Correct "specifiy" to "Specify", reported by scripts/checkpatch.pl using
+the misspelling list in scripts/spelling.txt.  Only touches comments, no
+code changes.
 
-Use timer_shutdown_sync() when the per-network-namespace destination
-trash is finally cleaned up.  This prevents the callback from being
-queued again before the IPVS state is released.
+Assisted-by: Cursor:claude-opus-5
+Signed-off-by: Hemanth Selam <hemanth.selam@gmail.com>
+---
+ net/netfilter/ipvs/ip_vs_sync.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Fixes: f2431e6e9255 ("IPVS: netns, trash handling")
-Cc: stable@vger.kernel.org
-Assisted-by: Codex:GPT-5
-Signed-off-by: Runyu Xiao <runyu.xiao@seu.edu.cn>
-
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 4c1c73944..0eb6cdb5f 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -1192,7 +1192,7 @@ static void ip_vs_trash_cleanup(struct netns_ipvs *ipvs)
- {
- 	struct ip_vs_dest *dest, *nxt;
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index ea5fdd4f4ce7..5ddde3ab2e59 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -1344,7 +1344,7 @@ static void set_mcast_pmtudisc(struct sock *sk, int val)
+ }
  
--	timer_delete_sync(&ipvs->dest_trash_timer);
-+	timer_shutdown_sync(&ipvs->dest_trash_timer);
- 	/* No need to use dest_trash_lock */
- 	list_for_each_entry_safe(dest, nxt, &ipvs->dest_trash, t_list) {
- 		list_del(&dest->t_list);
+ /*
+- *      Specifiy default interface for outgoing multicasts
++ *      Specify default interface for outgoing multicasts
+  */
+ static int set_mcast_if(struct sock *sk, struct net_device *dev)
+ {
 -- 
-2.34.1
+2.48.1
+
