@@ -1,175 +1,126 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B849581234;
-	Wed,  9 Sep 2026 15:55:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 801C037C0FC;
+	Wed,  9 Sep 2026 17:29:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788969317; cv=none; b=t5enVzTvYwSnxb2szdi6VsecZUEZJomTBR5jVxwOI77lXOv3EW15YDanSAjwIKI5kbx0g6oMsoLMfssj4WuL9cVodr8k9TBC84VSpe7Gx/tTqd7TWxFTBMSblqOPvj+y/q886pXVRrlP1HnxaPdlX0Yxiu9FHr4N1G1NiKkYd54=
+	t=1788974998; cv=none; b=R6/YiAQskoq0KQt6FN+n1A+bmyloJq62Nr8D0IZueSLhK4TQ+RLwipgDSe3JIGX7yWmpx8M+q2ObyOu/12SCEyAIlacxV8Ocpm1i7MATTiLL8T/xtiEpXcHJJCN+panfBiKuXPhpWGLCLvxFzwTjJPmP+RAwCzItkLaVEtXotJQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788969317; c=relaxed/simple;
-	bh=cL0zduDZ+Uh7SypxcH47U7FhOhEzA5AXIsrQP794xwM=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=faarabQiFQN5lZ/1PRR+EpLU5BlupriuRIMD8ySUrQrXu/QtsvgfdCm4jkg5wf6RMYOMEbUP5g5C4JwEvCf0Lm+RvSeVtZSiG4gmdgq6vl4S8IFpR9uf7OPSqpJpuGSWR6aWG/HcJd7grCWoRF2PRRRZxd7hs54pc1OuII/cfPI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=AleeRk4/; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1788974998; c=relaxed/simple;
+	bh=5D7SoVhjzEokScNygSteAqf9Ex3y5nz2gk7swf3GT9c=;
+	h=MIME-Version:Date:From:To:Cc:Subject:In-Reply-To:References:
+	 Message-ID:Content-Type; b=gDmwF+J/rj7iNGvZy3//wBz1/35Picg7f9t1poNBw0/DUxD5eepICxeAVl+LFazpl9xLP0p89B86qUlsMLn/t4T8AyA/J2RZKBC6ioBxB3fQ1NlqIGKe9lu1n92gP6M5r0iwAFB7yqqwxruQpoDsxBasB4WA0viOKdfBu8MVEXk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=KMw6Bqep; arc=none smtp.client-ip=213.97.179.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="AleeRk4/"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id A8AC322737;
-	Wed, 09 Sep 2026 18:55:07 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-transfer-encoding:date:from:from:message-id
-	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=CJRqYoiX
-	4mnD2csBwQEQCxhjzxrL6PbBq0k8ROtB8gM=; b=AleeRk4/TP7iD8rR4sJpiZeF
-	6QbpkiRcPRtTth7vnoECjLwqJ/rKMEQgWT3uo4/cMb+T+6Mob7Mj1CDGAjcNbeq3
-	IJVlyQswSwTc2DHFRuKZOiNiofgEUa3bRi9jPGQIZVw3b8lL/FIYl66Mz7L39nMY
-	b6QmQBOBRMbHMpYvjqYDhVysxQZ6lBThvqUKi2WJt1pnQHaeeXXxqpzqzWnkjBzY
-	t3SlTPUMhyB2355cK6ghoIO6j9gFtHv1Fw5gINahMXouKHD8QiCA0wK9UALYj+bZ
-	kdZV5Ak18ro7Xt8QToi30VZnt8Hq13LpqYMwBQSF8V01VS8sF/wnnRIAeBk53LE6
-	jZWNRpWCisIh6mH6+iiYbCe42F817C8oR9f2kjduPCOSFLsSNg0zJ5oGvYvCtUc8
-	K60EBVL0DsYEqUtvu0CtWQta5UoY92NiLKUKERciloSZbMo5fGW61qow3F+X8vPa
-	R7cfGQh+O3mpjkZhSt6eBi4tbQJta+N3jqWJpDJiM8yTKdwLLZe55T0QSTdRv3O+
-	v/p682lJEoGyAJPerbSumO9LgdQuvkCW66Csqca8fKV3RXyV4dHy/fwMXnp1w1Nd
-	AzrHOPG+dGc64342QnDgPPQgt8hYd+Op5w8qqiJka9JuXI0Yiu+IbSOOanUsfjM9
-	f7on+JOFUiX2QNXAOMA=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Wed, 09 Sep 2026 18:55:07 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 2590E607B8;
-	Wed,  9 Sep 2026 18:55:09 +0300 (EEST)
-Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 689Ft8ej068287;
-	Wed, 9 Sep 2026 18:55:08 +0300
-Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 689Ft7OI068286;
-	Wed, 9 Sep 2026 18:55:07 +0300
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: [PATCH nf] ipvs: fix buffer overflow when sending sync messages
-Date: Wed,  9 Sep 2026 18:55:00 +0300
-Message-ID: <20260909155500.68273-1-ja@ssi.bg>
-X-Mailer: git-send-email 2.55.0
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="KMw6Bqep"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
+	s=20170329; h=Content-Transfer-Encoding:Content-Type:Message-ID:Subject:Cc:To
+	:From:Date:MIME-Version:From:Reply-To;
+	bh=ixMZSD8+UhNtarF+6aKvQsI19PdlMWk8UdPjHUJ+BP8=; b=KMw6Bqep7POVCO8ABQLqn26u4z
+	Vm92Tg+j/0+PmqqK/dvW828O7HrV+w+lZ60KY8e00z2BinoAcJO+teusI18GQwPZa93g46fWpKzrh
+	AgVGA7OW13ikcCWBdkNHyCF5MJrQ4LKcZ+GKP5SaO3VjFYCmljrmH6AfZWccpFDtmCtNfrdPm7mPs
+	y4KaCldihKnLxKrccLdvn9dRcj2yIzJUCoUAgq4c2VAAZwBqHbq49TxRAg0vo9Q8rWDVmDAvS1GYm
+	9TAWMFQFYzZ/e/mtZNAnThAS4lu2g6BMirzitO5ItyIEr8XkzcaGF4jYGgtJDCV/itEvyRHzncwMa
+	n8Da47kw==;
+Received: from maestria.local.igalia.com ([192.168.10.14] helo=mail.igalia.com)
+	by fanzine2.igalia.com with esmtps 
+	(Cipher TLS1.3:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
+	id 1x4M72-00HA6O-2e; Wed, 09 Sep 2026 19:29:32 +0200
+Received: from webmail.service.igalia.com ([192.168.21.45])
+	by mail.igalia.com with esmtp (Exim)
+	id 1x4M71-008Hsn-5l; Wed, 09 Sep 2026 19:29:31 +0200
+Received: from localhost ([127.0.0.1] helo=webmail.igalia.com)
+	by webmail.service.igalia.com with esmtp (Exim 4.98.2)
+	(envelope-from <mfo@igalia.com>)
+	id 1x4M71-00000007Q64-0Tnk;
+	Wed, 09 Sep 2026 19:29:30 +0200
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Date: Wed, 09 Sep 2026 14:29:30 -0300
+From: Mauricio Faria de Oliveira <mfo@igalia.com>
+To: Joel Granados <joel.granados@kernel.org>
+Cc: Kees Cook <kees@kernel.org>, Nathan Chancellor <nathan@kernel.org>,
+ Nicolas Schier <nsc@kernel.org>, "David S. Miller" <davem@davemloft.net>,
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo
+ Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>,
+ kernel-dev@igalia.com, linux-riscv@lists.infradead.org,
+ linux-kernel@vger.kernel.org, fsverity@lists.linux.dev,
+ keyrings@vger.kernel.org, bpf@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-kbuild@vger.kernel.org,
+ netdev@vger.kernel.org, linux-wpan@vger.kernel.org,
+ lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+ coreteam@netfilter.org, linux-sctp@vger.kernel.org,
+ linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org,
+ bridge@lists.linux.dev, mptcp@lists.linux.dev, rds-devel@oss.oracle.com,
+ virtualization@lists.linux.dev
+Subject: Re: [PATCH RFC v3 00/13] sysctl: add module aliases
+In-Reply-To: <rywhz6soawf5dzyui5g7dnbufsgpxr7ma7honuhejwgncemzrm@f32at7hl6ugm>
+References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
+ <bpnqwggtidgiec5akns3fa5edbsvl7xf55dxabtwng2xspy4pn@ue554aii2ngk>
+ <53155340c897560bfc67e61ba9568fd6@igalia.com>
+ <mokz5pdtwswkyab4byfq7q7m6ac2g6ceoi6jflyxmaszaibzqa@su6m4kamtdpy>
+ <b1a6cec17e7c828fcebe310ca2a0d25b@igalia.com>
+ <rywhz6soawf5dzyui5g7dnbufsgpxr7ma7honuhejwgncemzrm@f32at7hl6ugm>
+Message-ID: <6e93af907298022f077126f1be7bd386@igalia.com>
+X-Sender: mfo@igalia.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+X-Spam-Report: NO, Score=-2.1, Tests=ALL_TRUSTED=-3,BAYES_50=0.8,KAM_DMARC_NONE=0.125,KAM_DMARC_STATUS=0.005
+X-Spam-Score: -20
+X-Spam-Bar: --
 
-Sashiko reports for possible heap buffer overflow when
-generating sync message for the v0 and v1 message formats.
-We should read the cp->flags only once because another
-CPU can concurrently set the SEQ_MASK between the two
-reads.
+On 2026-09-09 11:07, Joel Granados wrote:
+> On Fri, Sep 04, 2026 at 02:45:23PM -0300, Mauricio Faria de Oliveira wrote:
+>> On 2026-09-04 10:41, Joel Granados wrote:
+>> > On Thu, Aug 20, 2026 at 06:22:13PM -0300, Mauricio Faria de Oliveira wrote:
+>> >> On 2026-08-20 09:51, Joel Granados wrote:
+>> >> > On Wed, Aug 19, 2026 at 03:16:13PM -0300, Mauricio Faria de Oliveira wrote:
+>> >> >> This series adds 'sysctl:' aliases to modules that register sysctl tables; e.g.:
+> <... snip ...>
+>> > use the correct call moving forward?
+>> 
+>> This scheme currently covers all modules, AFAIK, as it is wrapped in the
+>> functions that register sysctl tables.
+>> 
+>> On moving forward: usage of such functions in a way that breaks a
+>> requirement of this series (e.g., failing to specify the template
+>> table/path parameter(s), or not having constant initializers) hits a
+>> build error, as the requirements are actually from the compiler.
+>> 
+>> >> I guess that a different design could use MODULE_SYSCTL_TABLE() as
+>> >> MODULE_DEVICE_TABLE(), declared per table instead of wrapped into
+>> >> register sysctl functions.
+>> >> However, it seems to require moving the value of the path argument (or
+>> >> its template) into the macro and still referencing it in the function
+>> >> (or its instantiation of the template), which adds obfuscation, to all
+>> >> callers. 
+>> >> 
+>> >> What do you think?
+>> > It might be that having it inside the module subsys is more work, but I
+>> > believe that there is the right place to have it. I still don't see that
+>> > adding a module specific arg to the sysctl register is a good thing.
+>> 
+>> Ok, cool. I can work on a different design.
+>> 
+>> Please just let me know whether you are OK with the remaining (above),
+>> and I'll be happy to tackle this.
+> 
+> What is "the remaining"?
 
-Note that IPVS does not set the SEQ_MASK anymore for the
-ip_vs_ftp.c helper starting from commit 7f1c40757951
-("IPVS: make FTP work with full NAT support") (2.6.36+),
-so the problem should not be reproducible.
+I meant the rest of the email, addressing the points/questions you
+raised.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Link: https://sashiko.dev/#/patchset/20260903004149.1037028-1-pablo%40netfilter.org
-Link: https://sashiko.dev/#/patchset/20260909111338.44357-1-ja%40ssi.bg
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- net/netfilter/ipvs/ip_vs_sync.c | 23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+cheers,
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 5383aeafb0ae..dfa8487ec0c2 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -543,13 +543,15 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
- 	struct ip_vs_sync_conn_v0 *s;
- 	struct ip_vs_sync_buff *buff;
- 	struct ipvs_master_sync_state *ms;
--	int id;
-+	u32 flags, seq_mask;
- 	unsigned int len;
-+	int id;
- 
- 	if (unlikely(cp->af != AF_INET))
- 		return;
-+	flags = READ_ONCE(cp->flags);
- 	/* Do not sync ONE PACKET */
--	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
-+	if (flags & IP_VS_CONN_F_ONE_PACKET)
- 		return;
- 
- 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
-@@ -564,8 +566,8 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
- 	id = select_master_thread_id(ipvs, cp);
- 	ms = &ipvs->ms[id];
- 	buff = ms->sync_buff;
--	len = (cp->flags & IP_VS_CONN_F_SEQ_MASK) ? FULL_CONN_SIZE :
--		SIMPLE_CONN_SIZE;
-+	seq_mask = flags & IP_VS_CONN_F_SEQ_MASK;
-+	len = seq_mask ? FULL_CONN_SIZE : SIMPLE_CONN_SIZE;
- 	if (buff) {
- 		m = (struct ip_vs_sync_mesg_v0 *) buff->mesg;
- 		/* Send buffer if it is for v1 */
-@@ -597,9 +599,9 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
- 	s->caddr = cp->caddr.ip;
- 	s->vaddr = cp->vaddr.ip;
- 	s->daddr = cp->daddr.ip;
--	s->flags = htons(cp->flags & ~IP_VS_CONN_F_HASHED);
-+	s->flags = htons(flags & ~IP_VS_CONN_F_HASHED);
- 	s->state = htons(cp->state);
--	if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
-+	if (seq_mask) {
- 		struct ip_vs_sync_conn_options *opt =
- 			(struct ip_vs_sync_conn_options *)&s[1];
- 		memcpy(opt, &cp->sync_conn_opt, sizeof(*opt));
-@@ -635,6 +637,7 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- 	int id;
- 	__u8 *p;
- 	unsigned int len, pe_name_len, pad;
-+	u32 flags, seq_mask;
- 
- 	/* Handle old version of the protocol */
- 	if (sysctl_sync_ver(ipvs) == 0) {
-@@ -647,6 +650,7 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- sloop:
- 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
- 		goto control;
-+	flags = READ_ONCE(cp->flags);
- 
- 	/* Sanity checks */
- 	pe_name_len = 0;
-@@ -674,7 +678,8 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- #endif
- 		len = sizeof(struct ip_vs_sync_v4);
- 
--	if (cp->flags & IP_VS_CONN_F_SEQ_MASK)
-+	seq_mask = flags & IP_VS_CONN_F_SEQ_MASK;
-+	if (seq_mask)
- 		len += sizeof(struct ip_vs_sync_conn_options) + 2;
- 
- 	if (cp->pe_data_len)
-@@ -720,7 +725,7 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- 	/* Set message type  & copy members */
- 	s->v4.type = (cp->af == AF_INET6 ? STYPE_F_INET6 : 0);
- 	s->v4.ver_size = htons(len & SVER_MASK);	/* Version 0 */
--	s->v4.flags = htonl(cp->flags & ~IP_VS_CONN_F_HASHED);
-+	s->v4.flags = htonl(flags & ~IP_VS_CONN_F_HASHED);
- 	s->v4.state = htons(cp->state);
- 	s->v4.protocol = cp->protocol;
- 	s->v4.cport = cp->cport;
-@@ -744,7 +749,7 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- 		s->v4.vaddr = cp->vaddr.ip;
- 		s->v4.daddr = cp->daddr.ip;
- 	}
--	if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
-+	if (seq_mask) {
- 		*(p++) = IPVS_OPT_SEQ_DATA;
- 		*(p++) = sizeof(struct ip_vs_sync_conn_options);
- 		hton_seq(&cp->in_seq, (struct ip_vs_seq *)p);
+> 
+> Best
+
 -- 
-2.55.0
-
-
+Mauricio
