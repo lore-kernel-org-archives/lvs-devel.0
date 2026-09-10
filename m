@@ -1,271 +1,155 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C3ED37DABC;
-	Wed,  9 Sep 2026 17:44:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC5373ACEE2;
+	Thu, 10 Sep 2026 07:29:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788975858; cv=none; b=ReToka+wge1fBGryV7Vd0QjXveYeFKPh9s7xaQf8q3tObDxeoYGnawmyYCCy7w1PguH/dKmcnY1FL6tNxCRMoFIGXn+LT1okiqfHYiqJd5QPWeeB/nNJMGKq3q8IZguIcIJ8KVKJ/nqhSAlPqJ1H7LQqxB1fsvIhTbCegN/FuXE=
+	t=1789025361; cv=none; b=rUO1sQycoKLkbggS8bViJ0LydPdWXaQMvUYKuS7Ugf62YM2hlQaeIS0r6i7Mq4RsT/PTk1YGW704s0It72/+RXWcz55gNZDndKrOYnN7B0ywYampJtTMRMzzVXvFk/gjnJK7o5CC04R3TzGcMxW55L+CuSGt3N/tn3QjFn4u4uU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788975858; c=relaxed/simple;
-	bh=MiiLH/OdJXMg0v8zo9wnApI3cu3wqp6cF0tWI27hb6c=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=hMLYtpGMEoz8dtDIkYNiCiaMKIQmNmPsnaaj5MF1nTFarNSdIDwCOO2+44FqS2Wi4ZzG6YTIm2ytBtXjDTsaKn10mEyXhNkSDkGZgfGQi7fy8yIiW5QN5vsET0CUhjKzPHDX5yFeEEtp/oe+W5gYSNIq3KkHGdNSExJrKFxINUE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=qN0UmTLV; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1789025361; c=relaxed/simple;
+	bh=SDMg6oyZQw6A03eQKQ3Uptuv442Scy0myCx4pmCTZ2Y=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=FHQz6scCWV33MkIR946szX9zjH0u7lV9vCWs1XGSf+MwewJQ2+lwTvHvcjy54nNBUGWh+FgOhgvS46fSujU5m7guQMTpMa9KkMvP/tWCxIWQysMQCEL5mfbYFsPKEZ/UQ1W0gzce9ntQMpDOvf9JvApGqT0DyADNmn132ATMePU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MY03GOet; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="qN0UmTLV"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id E11B322738;
-	Wed, 09 Sep 2026 20:44:08 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=QYKRAQ0r6ZCGOZ9b51KFtxND4eEbYBAPgnmZCP3+T0k=; b=qN0UmTLVizE7
-	7yagMMRJJVvxXHbcZWubWe5RpdmoXG09wWwIqi028L4bQ86CCFr5mdAeC0zfKFtw
-	qOGqoquLLA8ohHYYXd2orSvQtHqzu1mK8k7D44qo7T+WotuFb1+lcQzixX3YvrQL
-	FzjPcp+FRY7GgQ3Q/I4XV8jJ20B1S0nQV80uA042BiBe6GRg58gNNRsgFQ/7B80N
-	G6GRCcfxO0zPwyW7N3yco2TgRVdNpIGdbQhliINxsXmPlEcrIp6oWqfFaF/ktfIz
-	+QN1NQ35wlHI+tqCiW+CdvV5zE905svV+H/jHKEqiM2cpZ0V/SR5pADsZ00CsfbM
-	ey4EmmSBLiip2JRoc1goTXLIQG3K+eeQDXcmh6qqNlq8P4s0K9eCJgSJ8YdkGqL3
-	773MnTXR69nbXdj5Hx+2jaoIJ9Vz2wDMjAVOhq4k3bNd9r2EEsPwSkW52GIo8GNd
-	i4gHghhD5KuAtYm//TbNUbQaX7AeskYHLAV8xWvlZShl0OIr1bvVyQVMNnh2RvnU
-	s2j6HjnB9MNIlCux0o/Euh5lAVWO5XlgUKbVLOcIwJKkfJHLc0bPNENWr8MD52QJ
-	MvvWIFY5M9dMk+QJAcPGz2MpztxKua5GQSrRA0kzpguIg57nhBXn/Zt2tN0n7eh5
-	dMuwGgLTj+kkUfEIyOlvse1SxLfv5OU=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Wed, 09 Sep 2026 20:44:08 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 362AA607BF;
-	Wed,  9 Sep 2026 20:44:10 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 689Hi4mN077569;
-	Wed, 9 Sep 2026 20:44:06 +0300
-Date: Wed, 9 Sep 2026 20:44:04 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>
-Subject: Re: [PATCH nf] ipvs: fix more races around the overload flag
-In-Reply-To: <20260907183453.112559-1-ja@ssi.bg>
-Message-ID: <368ee412-ae97-a977-f28b-e94727f79b27@ssi.bg>
-References: <20260907183453.112559-1-ja@ssi.bg>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MY03GOet"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9E611F0089E;
+	Thu, 10 Sep 2026 07:29:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789025359;
+	bh=u3R7KOyofrS0wRSjak8aNV75X2Czsw9QjnW4+38O/ZQ=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=MY03GOetu5SKBp9nkWTrxqdG7Jl6/NG2Hl+PUb+xVMhfRY77IW+ocH4B48v9OlZH+
+	 2jNjsuE5l7TpMAH4tErFkuASZJQp1s4gqxabcfqFAipFRFLnJoAF9of4isP7Umzi7X
+	 Br84MtRcqTzhRIQx94sSrFT2GUsb/WfFTvrliT9WRrtFns/42kuCEHMX+eQj6SGnZj
+	 6SKyKJyXMZFLIO/MXaq1HQg5I1fUaIXvYvH2imSIKOP1ZdPpYtxN5Nzhby8vBAnpSq
+	 IKWJdVIggpp6it5npUAN6DPsZWIKMJdRJSMqtDQcP+//G3+4DT/6tHCVZ5uOWCi/vM
+	 lQfu9E+dLqOeg==
+Date: Thu, 10 Sep 2026 09:29:14 +0200
+From: Joel Granados <joel.granados@kernel.org>
+To: Mauricio Faria de Oliveira <mfo@igalia.com>
+Cc: Kees Cook <kees@kernel.org>, Nathan Chancellor <nathan@kernel.org>, 
+	Nicolas Schier <nsc@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
+	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+	Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, kernel-dev@igalia.com, 
+	linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, fsverity@lists.linux.dev, 
+	keyrings@vger.kernel.org, bpf@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kbuild@vger.kernel.org, netdev@vger.kernel.org, linux-wpan@vger.kernel.org, 
+	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, 
+	linux-sctp@vger.kernel.org, linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org, 
+	bridge@lists.linux.dev, mptcp@lists.linux.dev, rds-devel@oss.oracle.com, 
+	virtualization@lists.linux.dev
+Subject: Re: [PATCH RFC v3 00/13] sysctl: add module aliases
+Message-ID: <uufwu7rqyxf7h55lgavcwrnylnq5gdbd7o5d7mfugrxpblds2d@adra5c2z22gg>
+References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
+ <bpnqwggtidgiec5akns3fa5edbsvl7xf55dxabtwng2xspy4pn@ue554aii2ngk>
+ <53155340c897560bfc67e61ba9568fd6@igalia.com>
+ <mokz5pdtwswkyab4byfq7q7m6ac2g6ceoi6jflyxmaszaibzqa@su6m4kamtdpy>
+ <b1a6cec17e7c828fcebe310ca2a0d25b@igalia.com>
+ <rywhz6soawf5dzyui5g7dnbufsgpxr7ma7honuhejwgncemzrm@f32at7hl6ugm>
+ <6e93af907298022f077126f1be7bd386@igalia.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/signed; micalg=pgp-sha512;
+	protocol="application/pgp-signature"; boundary="fccfp65dlmdatj3e"
+Content-Disposition: inline
+In-Reply-To: <6e93af907298022f077126f1be7bd386@igalia.com>
 
 
-	Hello,
+--fccfp65dlmdatj3e
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-On Mon, 7 Sep 2026, Julian Anastasov wrote:
+On Wed, Sep 09, 2026 at 02:29:30PM -0300, Mauricio Faria de Oliveira wrote:
+> On 2026-09-09 11:07, Joel Granados wrote:
+> > On Fri, Sep 04, 2026 at 02:45:23PM -0300, Mauricio Faria de Oliveira wr=
+ote:
+> >> On 2026-09-04 10:41, Joel Granados wrote:
+> >> > On Thu, Aug 20, 2026 at 06:22:13PM -0300, Mauricio Faria de Oliveira=
+ wrote:
+> >> >> On 2026-08-20 09:51, Joel Granados wrote:
+> >> >> > On Wed, Aug 19, 2026 at 03:16:13PM -0300, Mauricio Faria de Olive=
+ira wrote:
+> >> >> >> This series adds 'sysctl:' aliases to modules that register sysc=
+tl tables; e.g.:
+> > <... snip ...>
+> >> > use the correct call moving forward?
+> >>=20
+> >> This scheme currently covers all modules, AFAIK, as it is wrapped in t=
+he
+> >> functions that register sysctl tables.
+> >>=20
+> >> On moving forward: usage of such functions in a way that breaks a
+> >> requirement of this series (e.g., failing to specify the template
+> >> table/path parameter(s), or not having constant initializers) hits a
+> >> build error, as the requirements are actually from the compiler.
+> >>=20
+> >> >> I guess that a different design could use MODULE_SYSCTL_TABLE() as
+> >> >> MODULE_DEVICE_TABLE(), declared per table instead of wrapped into
+> >> >> register sysctl functions.
+> >> >> However, it seems to require moving the value of the path argument =
+(or
+> >> >> its template) into the macro and still referencing it in the functi=
+on
+> >> >> (or its instantiation of the template), which adds obfuscation, to =
+all
+> >> >> callers.=20
+> >> >>=20
+> >> >> What do you think?
+> >> > It might be that having it inside the module subsys is more work, bu=
+t I
+> >> > believe that there is the right place to have it. I still don't see =
+that
+> >> > adding a module specific arg to the sysctl register is a good thing.
+> >>=20
+> >> Ok, cool. I can work on a different design.
+> >>=20
+> >> Please just let me know whether you are OK with the remaining (above),
+> >> and I'll be happy to tackle this.
+> >=20
+> > What is "the remaining"?
+>=20
+> I meant the rest of the email, addressing the points/questions you
+> raised.
 
-> Sashiko warns that we still have races when the dest overload
-> thresholds are updated. If we narrow the range between
-> thresholds the lockless readers (ip_vs_bind_dest and
-> ip_vs_unbind_dest) may use old threshold values and
-> as result to skip the required flag change.
-> 
-> To solve the problem ip_vs_bind_dest() and ip_vs_unbind_dest()
-> will have the chance as before to change the overload
-> state not only at the exact threshold positions but
-> at any conn count below the lower and above the upper thresholds.
-> To make it work without entering the locked region for
-> every connection, we introduce l_threshold_val. Together with
-> u_threshold_val we will switch between two states:
-> 
-> 1. not overloaded: where l_threshold_val is set to 0
-> to close the door for more ip_vs_unbind_dest() calls
-> to clear the overload state.
-> 
-> 2. overloaded: where u_threshold_val is set to INT_MAX
-> to close the door for more ip_vs_bind_dest() calls
-> to set the overload state.
-> 
-> If a race occurs, multiple CPUs can repeat the state change
-> but this should be for short time window.
-> 
-> With the introduction of l_threshold_val the
-> IP_VS_DEST_F_OVERLOAD flag and the 'flags' field are not
-> needed anymore. We will use the ip_vs_dest_is_overloaded()
-> helper for all places that read the overload state.
-> 
-> Do not check IP_VS_DEST_CF_AVAILABLE in ip_vs_dh.c because
-> we do not hold reference to dest after it is removed and
-> rely on RCU to access the available dests.
-> 
-> To reduce the cacheline accesses while selecting destination,
-> keep the mostly used fields (weight and l_threshold_val)
-> at the first read-mostly cacheline together with the hash
-> nodes.
-> 
-> Fixes: 8f843441c4e7 ("ipvs: properly update the overload flag on dest edit")
-> Link: https://sashiko.dev/#/patchset/20260810190621.894119-1-pablo%40netfilter.org
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
->  include/net/ip_vs.h              | 50 ++++++++++++++++++++------------
->  net/netfilter/ipvs/ip_vs_conn.c  |  8 ++---
->  net/netfilter/ipvs/ip_vs_ctl.c   | 38 ++++++++++++------------
->  net/netfilter/ipvs/ip_vs_dh.c    | 16 ++--------
->  net/netfilter/ipvs/ip_vs_fo.c    |  2 +-
->  net/netfilter/ipvs/ip_vs_lblc.c  |  4 +--
->  net/netfilter/ipvs/ip_vs_lblcr.c |  8 ++---
->  net/netfilter/ipvs/ip_vs_lc.c    |  2 +-
->  net/netfilter/ipvs/ip_vs_mh.c    |  2 +-
->  net/netfilter/ipvs/ip_vs_nq.c    |  2 +-
->  net/netfilter/ipvs/ip_vs_ovf.c   |  2 +-
->  net/netfilter/ipvs/ip_vs_rr.c    |  2 +-
->  net/netfilter/ipvs/ip_vs_sed.c   |  4 +--
->  net/netfilter/ipvs/ip_vs_sh.c    |  2 +-
->  net/netfilter/ipvs/ip_vs_twos.c  |  4 +--
->  net/netfilter/ipvs/ip_vs_wlc.c   |  4 +--
->  net/netfilter/ipvs/ip_vs_wrr.c   |  2 +-
->  17 files changed, 76 insertions(+), 76 deletions(-)
-> 
+* The dependency on a sysctl path to load a module still is
+  backwards to me. It should be: I need feature A, I load modules
+  M{1,2,3} for A and I set sysctl S{1,2,3...}. Not sure why sysctl tools
+  do it the other way around.
 
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index 8f9a8e491ad6..5de69404a5e0 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -1309,32 +1309,32 @@ void ip_vs_stats_free(struct ip_vs_stats *stats)
->   * - conns reach u_threshold and exceed it: set the flag
->   * - conns go below l_threshold (or 75% of u_threshold): clear the flag
->   */
-> -static void __ip_vs_dest_update_overload(struct ip_vs_dest *dest, int mode)
-> +static void __ip_vs_dest_update_overload(struct ip_vs_dest *dest, bool overload)
->  {
->  	int conns;
->  	u32 l, u;
->  
->  	lockdep_assert_held(&dest->dst_lock);
->  	u = READ_ONCE(dest->u_threshold);
-> -	if (!u)
-> -		goto unset;
-> -	l = READ_ONCE(dest->l_threshold_val);
-> -	conns = atomic_read(&dest->totalconns);
-> -	if (conns >= (mode > 0 ? l : u)) {
-> -		dest->flags |= IP_VS_DEST_F_OVERLOAD;
-> -		return;
-> +	if (u) {
-> +		/* Low threshold defaults to 75% of upper threshold */
-> +		l = READ_ONCE(dest->l_threshold) ? : (u - (u >> 2));
-> +		conns = atomic_read(&dest->totalconns);
-> +		if (conns >= (overload ? l : u)) {
-> +			WRITE_ONCE(dest->u_threshold_val, INT_MAX);
-> +			WRITE_ONCE(dest->l_threshold_val, l);
-> +			return;
-> +		}
->  	}
+* The fact that the invariance is in the sysctl path and not the module
+  identifier maybe points to a deeper issue.=20
 
-	Comments about the Sashiko review here:
+* I still believe that this is better placed outside the sysctl
+  subsys as it does not cater solely to module loading.
 
-https://sashiko.dev/#/patchset/20260907183453.112559-1-ja%40ssi.bg
+Best
 
-Sashiko said:
 
-> Can a lockless time-of-check to time-of-use race here permanently brick 
-> an IPVS destination?
-> It seems there is a race window between reading the connections and 
-> updating
-> l_threshold_val. Because l_threshold_val acts as a dynamic gate for
-> ip_vs_unbind_dest(), concurrent unbinds might fail to synchronize with 
-> this thread.
-> 
-> If we have the following sequence:
-> CPU1 in ip_vs_bind_dest():
->   - increments totalconns to u_threshold
->   - evaluates tc >= u_threshold_val and calls 
-> ip_vs_dest_update_overload()
->   - acquires dst_lock in __ip_vs_dest_update_overload()
->   - reads conns = atomic_read(&dest->totalconns)
-> CPU2 in ip_vs_unbind_dest():
->   - decrements totalconns, returning the old value
->   - evaluates tc <= READ_ONCE(dest->l_threshold_val)
->   - CPU1 hasn't updated l_threshold_val yet, so it is still 0
->   - the condition is false, so CPU2 bypasses the lock and does not
->     clear the overload state
-> CPU1 resumes:
->   - evaluates conns >= l (using its stale read)
->   - writes INT_MAX to u_threshold_val and l to l_threshold_val
->   - returns, leaving the destination in an overloaded state
-> 
-> Because the destination is marked overloaded, it receives no new 
-> traffic.
-> And because it has no traffic, unbind will never be called to clear the
-> overloaded state. Does this leave the destination permanently bricked 
-> with 0 active connections?
 
-	The destination is not permanently blocked because for
-this connection ip_vs_unbind_dest() should be called after
-its timer expires. But it is true that the dest can be blocked
-for long time.
 
-	My opinion is that we still should apply this patch because
-it improves the handling from the previously applied patch. And we
-are still searching for solution that does not hurt the performance.
+--fccfp65dlmdatj3e
+Content-Type: application/pgp-signature; name="signature.asc"
 
-	The problem is that the CPU that is about to mark the dest
-as overloaded can be interrupted while at the same time timers
-expired on other CPUs can reduce the total conns down to 1
-leaving the only connection attached to a blocked dest
-where the schedulers do not select this dest until the
-connection expires and clears the overload state.
+-----BEGIN PGP SIGNATURE-----
 
-	May be followup patches should allow the schedulers
-to re-evaluate the overload state if not done "recently".
-Or some other mechanism that will unblock the dest.
+iQGzBAABCgAdFiEErkcJVyXmMSXOyyeQupfNUreWQU8FAmqiXEIACgkQupfNUreW
+QU+Jpgv/QNMzfwgyYS5bGcjcIdeGmbwPVB4niFRMrcLkDpeUPt2bAuU2q0Si+c2j
+8ZRwIaAx22BLUNWWDpobcza7W5C1A17rIR76XCMUnFSb0n/IWP5htK0UHazibk/r
+s8lxhIQXP5lQAHUSyOaKXEqmO60aWL/VkIxb+qJe3ThcHSESPRVQxL56e054d/fG
+0Hh+/ckA3Yy8AAKkaF1Q52F6thgEqtHKMSNZkdp+XN3Q+IQHRUGULXvXeTgvp4QY
+u5WK/w8RJz5+KQwW6//kpXBCY9uVado45tRrFS/H0fClXF6ovdXuTK169krtJi92
+qouie+C4qFsAjPRGPOQjOYXmCIa8/sKwsArW4CmTg0J9WN3BwQxJksy0jWqaxULM
+xRPx9OxYsSrYZGglZitaJMnNQnc+X20/vQ4lBotfmrMPdUgSrMAzOHO0AcFXBUs9
+s1DSQoFZe+/Kg4RCkGzgk55VbnT0V81UPFbcYx6yuyjb+yZWoTMUpHy8Q47//r54
+Y5lWmFsv
+=Y70+
+-----END PGP SIGNATURE-----
 
-> -	if (conns >= (mode < 0 ? u : l))
-> -		return;
->  
-> -unset:
-> -	dest->flags &= ~IP_VS_DEST_F_OVERLOAD;
-> +	WRITE_ONCE(dest->u_threshold_val, u ? : INT_MAX);
-> +	WRITE_ONCE(dest->l_threshold_val, 0);
->  }
->  
-> -void ip_vs_dest_update_overload(struct ip_vs_dest *dest, int mode)
-> +void ip_vs_dest_update_overload(struct ip_vs_dest *dest, bool overload)
->  {
->  	spin_lock_bh(&dest->dst_lock);
-> -	__ip_vs_dest_update_overload(dest, mode);
-> +	__ip_vs_dest_update_overload(dest, overload);
->  	spin_unlock_bh(&dest->dst_lock);
->  }
->  
-> @@ -1406,15 +1406,13 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
->  
->  	if (READ_ONCE(dest->u_threshold) != udest->u_threshold ||
->  	    READ_ONCE(dest->l_threshold) != udest->l_threshold) {
-> +		bool overload;
-> +
->  		spin_lock_bh(&dest->dst_lock);
-
-	As for the uninitialized u_threshold_val, the initialization
-will happen later, so it is deferred, which is unintentionally better
-from configuration point of view.
-
->  		WRITE_ONCE(dest->u_threshold, udest->u_threshold);
->  		WRITE_ONCE(dest->l_threshold, udest->l_threshold);
-> -		/* Low threshold defaults to 75% of upper threshold */
-> -		WRITE_ONCE(dest->l_threshold_val,
-> -			   udest->l_threshold ? :
-> -			   (udest->u_threshold -
-> -			    (udest->u_threshold >> 2)));
-> -		__ip_vs_dest_update_overload(dest, 0);
-> +		overload = ip_vs_dest_is_overloaded(dest);
-> +		__ip_vs_dest_update_overload(dest, overload);
->  		spin_unlock_bh(&dest->dst_lock);
->  	}
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
-
+--fccfp65dlmdatj3e--
