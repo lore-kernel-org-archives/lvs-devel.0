@@ -1,59 +1,62 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D92F53BB67B;
-	Thu, 10 Sep 2026 10:08:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B15811CA9;
+	Thu, 10 Sep 2026 10:13:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789034946; cv=none; b=LqZEXlyPkbUVvca5tuaoY5vLRf2SK5IduqyznXKnD610PZSe/JCS4kcXp4Fqyfi+Gcq0Kuecl89fmNCZBGkXzqWgQkT53oQdp9xnqo3tUM2Inn+qzsXPguWADgF2S7TuhD9Jh/uHTddllIvyWVkRKzQ3oG1Z27iEMRmQubtMfUI=
+	t=1789035193; cv=none; b=OrbBL53Sa3YWfJ+sl0DFXPOK7LQHLj0rhY36KZOLhKnpckBC36OaSXSZtyd4fgpCzx3871zBUUyuh+do5213qp5FEIefpe+IHzyaHBLBX9BNvXG6B66EusVHHpoj+3jierQPg90YGJt8tVwlC0DRcRWPtY7v7IPPHeVZODAkoZg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789034946; c=relaxed/simple;
-	bh=FX9XDAbDZWnoMTIqZDv/VgnpuqfCuSRsP+R8RsclWmc=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=hoAU4nSTFrI3vFAzVkoOlHqtRG5J8+9St64ErknlMhiv0KhwamyRl8E0892OVbScIAF1TtfpEwfq7HmzTkuk4LjfJdnTlqW26dE/fSyER9DmyvRTseIY3+HYJ5hSixEuq5ZyM1VX8tDaC4BQO/AF0IK2twlsDddiwkKPIY3lGf0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=cxfNRHAS; arc=none smtp.client-ip=193.238.174.39
+	s=arc-20240116; t=1789035193; c=relaxed/simple;
+	bh=lBs3tv1f/poNw+ggNFuo+a9U1b5O5ZLw0/bHAEABrWs=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=VhaJTjO4jvRoI0/GwIc0n5MfIBDR7OhgavFCMKOpG9rCHr9XEnPWj5vxBXPUOv7s3hX3TVSlbHdeUprX8umvPwfl0XjrSDbAAa6uohq6hc3jZIvN5FBNrBM8nP+eHaGF01GqPr2BHXajyGBg5cVvqeWgeRqLwTuF42okuk91tLk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=SS6WZTnF; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="cxfNRHAS"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="SS6WZTnF"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 23C6A2273D;
-	Thu, 10 Sep 2026 13:08:51 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 747592273A;
+	Thu, 10 Sep 2026 13:13:02 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-transfer-encoding:date:from:from:message-id
-	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=pSM5IFkA
-	3yMbofT6O98BZjd9m9fATl6Q0dOKsONnyco=; b=cxfNRHASTeZNtY+7+T0ImYrl
-	qUHLTUBau64NShI1fjFtXXF7vd1OHbusiZgGwCBBRypnKe/sgikYgg87KvmSda9u
-	kwkK1KDJILyawgmWR0PpMhcu/ut+iIkvOU6ZGDDB37AILDKv166+oGU39ezH9OpQ
-	yXLR8X2430srKuPvAp47aHgvc6r/EZpQ2hd9xvWTRZjwbRFSWWJCX8ZLnhI+Bjm7
-	ueUBNOqnEAE+YiEs1m0+2pnTwiYLzVDVHYuJaTT3Py6Ub8nGKY393bwvQQqj2V7L
-	9urBK7OoIA0uDnKiqR1ZJgmoTeevzc8PF7iIpWoSeYSGCKbXo0zuOdKye7cf2G3Z
-	5w/FNmUWuq3IyzQQuXJ3QFR2vB83CtkX0oUn4PMK16SmG//tIH0BiywulnVye3Yk
-	5BS9oATtWpB8YbLwhet0UBjG1lA7Ss1/aKgFg5VbRxn9VzqXNrdvgiVdQsw3Aiy1
-	CjGJDj/nyaI1hQYf5gdDmWDFTam2bWkRppnRX1UYsXWvcO4I+9k4SLuWEm0dy8ML
-	SJoXr24RdvlorUGagYyyVF4jczEoocMH/O8PHd43cYCdgBZtMnYruxVn+0cD2VVc
-	L4DqeYWIIBcMt6DDNbEuQ7GUPaKC5/7P9tXOrvvozS1E60r5gmLaIbquVxp1HEy2
-	ZgGDCajdU8ooEoDWNeI=
+	:content-transfer-encoding:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=O8YCirpJJGa6BmQs/iFQT1hmiaNAEmnym5oIUjS6OLI=; b=SS6WZTnFh8/q
+	YUj8Ga/r3DnMXa32Bop+Y/JW2UXNcU4GgJniJYVBProyFsjVJ5A7E7MADnAMHs4m
+	sbdPLMtWQZfD62xaEM+pZ2eACAuIgCitEO47GxKEuoSP2f1cggkETVdWN4w0utCu
+	+IPPPtnbMlqkd5xAJUBovjCo+RkDCsAY7TEJvOXB/ikmvBj0oXGAzr/4SIEumCQ0
+	xHIbQfAc9GqLYEpKquyJnbs+n16OqlC4YH9y2pzMVbOP782Zx8WJMjylAOQ+2BTg
+	sDMx+WAi9zt1e9l4G/th4YslBy5JU8kXjL0/Tey6fS3F7BrKX4Grrc+IFfgzlz/k
+	6ofZ9UYErrRhmek39xZ5C6pX+ocLQ3K3WN5fqdroOWjQKDY+QiCvPa6OCucju2O1
+	EufYc7kwDdp2pq5t92E39nskZccfNpPHl+uzFBfOISso5LUTRTo/MgQvsqkkUq2a
+	30LRgPgm9sgDHnhHPCq8JRks3X4oS7f1wvxJKLA8RMnJQQIU2A6YURyA86GdQ8Cx
+	uKtPL+v4j7d3h8NfKP0w5bwqW5UYjDx1fg0CRNmQ7AwYOGf47/951TuxH2k85kTs
+	C32lfwK1dYhPlDkRuc+6XFpB0aejQwOz0g6nydUZ50tEKcVeRRm3q/l2GeZMiV5Z
+	A6OEzVSsCsxqgyr4CG+8h1LRboZZF58=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Thu, 10 Sep 2026 13:08:51 +0300 (EEST)
+	Thu, 10 Sep 2026 13:13:02 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 9C7A860FC3;
-	Thu, 10 Sep 2026 13:08:52 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 0669E60457;
+	Thu, 10 Sep 2026 13:13:04 +0300 (EEST)
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68AA8oIn036022;
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68AA8oGF036026;
 	Thu, 10 Sep 2026 13:08:50 +0300
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 68AA8ljX036019;
-	Thu, 10 Sep 2026 13:08:47 +0300
+	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 68AA8oaG036025;
+	Thu, 10 Sep 2026 13:08:50 +0300
 From: Julian Anastasov <ja@ssi.bg>
 To: Simon Horman <horms@verge.net.au>
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
         lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
         Zhiling Zou <zhilinz@nebusec.ai>, vega@nebusec.ai
-Subject: [PATCH v4 nf 0/2] ipvs: fix LBLC and LBLCR cache growth
-Date: Thu, 10 Sep 2026 13:08:30 +0300
-Message-ID: <20260910100832.36004-1-ja@ssi.bg>
+Subject: [PATCH v4 nf 1/2] ipvs: fix missing counter decrement in lblc
+Date: Thu, 10 Sep 2026 13:08:31 +0300
+Message-ID: <20260910100832.36004-2-ja@ssi.bg>
 X-Mailer: git-send-email 2.55.0
+In-Reply-To: <20260910100832.36004-1-ja@ssi.bg>
+References: <20260910100832.36004-1-ja@ssi.bg>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -62,58 +65,32 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
+LBLC may delete cache entries for destinations that are
+removed or overloaded and replace them with available ones.
+But ip_vs_lblc_new() forgets to decrement the tbl->entries
+counter after calling ip_vs_lblc_del(). This can lead to
+increased shrinking of the cache with every new garbage
+collection.
 
-        Hello,
+Fixes: 2f3d771a35fe ("ipvs: do not use dest after ip_vs_dest_put in LBLC")
+Link: https://sashiko.dev/#/patchset/0bdd5abe9968ded7ca2b9cb6844ba83d94cc8d53.1787318053.git.zhilinz%40nebusec.ai
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ net/netfilter/ipvs/ip_vs_lblc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-        Following is a patchset with two changes:
-
-1. fix for a missing decrement in LBLC
-
-2. v3 of the LBLC/LBLCR patch from Zhiling Zou applied on top of the
-first patch, as v4
-
-        Zhiling Zou <zhilinz@nebusec.ai> explained the problem in v3:
-
-We found and validated an issue in net/netfilter/ipvs/ip_vs_lblcr.c.
-The bug is reachable by a non-root user through a new user and network
-namespace. The same cache growth bound is also missing from the sibling
-LBLC scheduler in net/netfilter/ipvs/ip_vs_lblc.c.
-
-Bug details:
-
-ip_vs_lblcr_new() allocates and publishes an LBLCR cache entry for
-every previously unseen destination address. Although tbl->max_size is
-initialized to 16384 entries, it is only used by the periodic collector
-after cache growth has already exceeded the limit. The collector runs
-once per minute and does not reclaim recently used entries.
-
-An attacker can configure a fwmark-based LBLCR service and
-continuously send UDP packets to distinct destination addresses. Each
-new address creates an entry, allowing the table to grow without bound.
-The allocations use GFP_ATOMIC and are not charged to the originating
-socket or memory cgroup.
-
-LBLC uses the same cache model and periodic collector. Bound new LBLC
-cache entries the same way so both scheduler variants stop growing after
-their table reaches max_size * 3 / 2.
-
-The scheduler selects a destination before attempting to cache it and
-already continues to use that destination when cache creation fails.
-The fix therefore rejects only new cache entries once the table reaches
-max_size * 3 / 2, while normal traffic to new addresses remains
-serviceable without further cache growth.
-
-
-Julian Anastasov (1):
-  ipvs: fix missing counter decrement in lblc
-
-Zhiling Zou (1):
-  ipvs: bound LBLCR and LBLC cache growth
-
- net/netfilter/ipvs/ip_vs_lblc.c  | 4 ++++
- net/netfilter/ipvs/ip_vs_lblcr.c | 3 +++
- 2 files changed, 7 insertions(+)
-
+diff --git a/net/netfilter/ipvs/ip_vs_lblc.c b/net/netfilter/ipvs/ip_vs_lblc.c
+index bff109c1c959..4d36c83d84cb 100644
+--- a/net/netfilter/ipvs/ip_vs_lblc.c
++++ b/net/netfilter/ipvs/ip_vs_lblc.c
+@@ -203,6 +203,7 @@ ip_vs_lblc_new(struct ip_vs_lblc_table *tbl, const union nf_inet_addr *daddr,
+ 		if (en->dest == dest)
+ 			return en;
+ 		ip_vs_lblc_del(en);
++		atomic_dec(&tbl->entries);
+ 	}
+ 	en = kmalloc_obj(*en, GFP_ATOMIC);
+ 	if (!en)
 -- 
 2.55.0
 
