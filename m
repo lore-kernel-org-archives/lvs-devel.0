@@ -1,155 +1,242 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1D094BB286;
-	Fri, 11 Sep 2026 18:35:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA6764ACC7F;
+	Fri, 11 Sep 2026 18:40:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789151713; cv=none; b=cYbPQxPlSpa3EjyqlgSEpB8Bvk8Xk/Frq+Uiq1YLcZC6j9I5slgadZdJwKFqVo4VjKEQTVbvYUTe2wUJB8U8bLe+2b6SDTJnt9rJgVJlZSaldHPUffa2GlneHrC5xGlqOzagildPSZHVoACK2JXtM2+trWvhUnaEH+2FGLy2Hc8=
+	t=1789152008; cv=none; b=EZUzuiUz4On/qWu8pN5PG5IV7L1E1mY8gAjS3M4H8kxDTCf9UJcBm/WOKYoQWKJEs+xWJWj5bl7txgrUOiv3GUTtYcVC04ClIzXI0hMWrvXI3Z1m0+0tKUv1OuHhcawyobbGmj7ox8dICCytV7glCXUQr5d1ZI6mqUpHE8sE7uM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789151713; c=relaxed/simple;
-	bh=j0HSsYmgt2/44/bdjWEMXVRVeo/KHZOQP+3jyumGF20=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=hxMNQzDN4zoDBHbI8rhOTxwjQWbvqZUm9MN3bfRvUzRxVacWQHHI8g0NMH4T5K2aWvx/vzDQODe5nxPvfC249xyLmuMPeC/+B+BWh7Vmn4JILHfnCQCubzg7gI5CB+yABBdRxsWEFWkH52d9eGrEqoG4IbLAQGPb3SCNk7TLsIQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=5eM0Slaj; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1789152008; c=relaxed/simple;
+	bh=CAT5HRGMISPwSstxpYn0XyQUJw2V5SxwKKO4N5YieQc=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=nl1KBkovhf9luIuFV8ZxtaR38+Vx4Gqf/tTxe03PNCl0YPjkkE286kRZ5KdFIMXgB2T03TqDmHgNLf2Uan6NrTaYkit2E0zWAZ3hyCjvFQat3tB9mJ0BujlEA+uckRl/q/s60WjF/8Bsm6ajN0vZs2t++NalEBD/7H5ldOXmcqQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=jQvT/hNL; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=LjXuC2zN; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=ul8oYidE; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=CSmkM9nN; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="5eM0Slaj"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 832C92273F;
-	Fri, 11 Sep 2026 21:34:53 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-transfer-encoding:date:from:from:message-id
-	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=vglOpQ4Z
-	fvJMYsB362bRvZqbl5+CVLjJdtE0pY8zIh8=; b=5eM0SlajpIIvQ3y/Aza7yfm3
-	0D/nwgaVp2OQtLmz3GAY1gfidTKpgDGkN/zdoCYupt7VdgMoCCcRAf8g7b9WhPL1
-	owkrzv2NElZEUPsEEjPNb2bmo9wSVPhmZf7WUjn+6Lc8gyx19SCF+tElA9AkaLN+
-	HxWGHazKXqXUEZAmLosX2niaUbPVGO6dDe5TBz3OCLKmPr6N3CQ1W7GqO64CWCjZ
-	V12DbqZ1tuDsVlPFRyqq9Ah1gj7k1xPyJ6EBdt71ra4CI/F5ba0nBcq/o7yK+lZB
-	jvvEaul8+IFt1/MNfiewNpDVf0Jiq66NQ8DAIahSE1TqLPJK5nBLysN2O0SS3HJm
-	bk23iCP2Gh+O5mSYiMxFBBoES3Q3sbTd3CU0GyQDCWvmoj5pvmrcxOFkdcyVn4HA
-	5xOWFVT9WxrJlFID7YAocPF1lZDddZ05OJqBm6ky3BhdJ/Gp9pWF8UjoIZOI/4gq
-	mza9z4ophs2pxTq6IC+WbxiUtE9bcRobcceky0tm78bYniGUkLHUCxJ7va6lxmbi
-	0wkHmM1912t/X8OGBvzmLZ6ilmdXBo4vf8egtClbUw206NC1duAmtj74aC1BsDcl
-	j0zhn1iTGG4bsFIJktFmWfdAsSmTQsIPa9L4friIp8G6Ph25eE3yiVPfkWAajSQz
-	NQ1h/hZw4u+8OUnSuQ8=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Fri, 11 Sep 2026 21:34:53 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 1A38360888;
-	Fri, 11 Sep 2026 21:34:55 +0300 (EEST)
-Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68BIYmXD071228;
-	Fri, 11 Sep 2026 21:34:48 +0300
-Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 68BIYjOP071226;
-	Fri, 11 Sep 2026 21:34:45 +0300
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: [PATCH nf] ipvs: filter some flags received in the backup server
-Date: Fri, 11 Sep 2026 21:34:29 +0300
-Message-ID: <20260911183429.71212-1-ja@ssi.bg>
-X-Mailer: git-send-email 2.55.0
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="jQvT/hNL";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="LjXuC2zN";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="ul8oYidE";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="CSmkM9nN"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id C035221D77;
+	Fri, 11 Sep 2026 18:39:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1789151999; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=mP56pOa4KGNcQ6l0ipS7wSf0GWV8mz2Zhv5wIhH4rVY=;
+	b=jQvT/hNLseNTOBEemFSNARlCXWKP2e4so8AW5lBP7Od/oZfcMhnGuBXX45mpo2ZC9ZQcIq
+	nyh7In5EcGcTuubSALewLCrx7qgYTPhsNpExEBudSfp9VDoUCrTIQExSUn7hNcAjodDbMU
+	TemTPkxHYqjXxuvN0STISPcLWS3ZbEM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1789151999;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=mP56pOa4KGNcQ6l0ipS7wSf0GWV8mz2Zhv5wIhH4rVY=;
+	b=LjXuC2zNVa0kAgOsGh9AysxRDEQhs0Jmi+qRz8BHgyBxLrnJ/bqb45O7323NdYHfnzktFY
+	5JmFVUzXVx8H0nCA==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1789151995; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=mP56pOa4KGNcQ6l0ipS7wSf0GWV8mz2Zhv5wIhH4rVY=;
+	b=ul8oYidEl3s5A8NRIfwyKcVcj0SGx+WsBh3+UE9Dccx6gY+zohi+x+e6hwh8jSXE+gObAd
+	NV75uaDsxqR0UY6CPfLl8YJhnVXKDDsXko24VKloUVa0DirbQIUHSuHhrfhkVmpbdaxA3K
+	VMm1v3qsN1COmnh1eBjSb3oDODbJyJk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1789151995;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=mP56pOa4KGNcQ6l0ipS7wSf0GWV8mz2Zhv5wIhH4rVY=;
+	b=CSmkM9nNI3cKI3Y5Y7JZBmKSl5oJhrB8oMTDovxD6JbikM1s63ZS0E//l7OLojSiSKX7Ve
+	tHVAwdauixCBz0Ag==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 10D7B132D3;
+	Fri, 11 Sep 2026 18:39:49 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id KIZRAfVKpGqufAAAD6G6ig
+	(envelope-from <fmancera@suse.de>); Fri, 11 Sep 2026 18:39:49 +0000
+Message-ID: <986c5a6c-b904-477d-bb41-186b66f4b258@suse.de>
+Date: Fri, 11 Sep 2026 20:39:07 +0200
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 01/13 net-next] net: ipv4: introduce CONFIG_IPV4 to
+ decouple the IPv4 stack
+To: Sven Eckelmann <sven@narfation.org>, netdev@vger.kernel.org
+Cc: horms@kernel.org, kuba@kernel.org, pabeni@redhat.com,
+ edumazet@google.com, davem@davemloft.net, Jason Gunthorpe <jgg@ziepe.ca>,
+ Leon Romanovsky <leon@kernel.org>, Andrew Lunn <andrew+netdev@lunn.ch>,
+ Tony Nguyen <anthony.l.nguyen@intel.com>,
+ Przemek Kitszel <przemyslaw.kitszel@intel.com>,
+ Elad Nachman <enachman@marvell.com>, Saeed Mahameed <saeedm@nvidia.com>,
+ Tariq Toukan <tariqt@nvidia.com>, Mark Bloch <mbloch@nvidia.com>,
+ Ido Schimmel <idosch@nvidia.com>, Petr Machata <petrm@nvidia.com>,
+ Edward Cree <ecree.xilinx@gmail.com>,
+ Maxime Chevallier <maxime.chevallier@bootlin.com>,
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>,
+ Alexandre Torgue <alexandre.torgue@foss.st.com>,
+ Arend van Spriel <arend.vanspriel@broadcom.com>,
+ Miri Korenblit <miriam.rachel.korenblit@intel.com>,
+ Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
+ Chaitanya Kulkarni <kch@nvidia.com>, Saurav Kashyap <skashyap@marvell.com>,
+ Javed Hasan <jhasan@marvell.com>, GR-QLogic-Storage-Upstream@marvell.com,
+ "James E.J. Bottomley" <James.Bottomley@hansenpartnership.com>,
+ "Martin K. Petersen" <mkp@kernel.org>, Nilesh Javali <njavali@marvell.com>,
+ Manish Rangankar <mrangankar@marvell.com>, Varun Prakash
+ <varun@chelsio.com>, Alexander Viro <viro@zeniv.linux.org.uk>,
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+ David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ Marek Lindner <marek.lindner@mailbox.org>,
+ Simon Wunderlich <sw@simonwunderlich.de>,
+ Antonio Quartulli <antonio@mandelbit.com>,
+ Nikolay Aleksandrov <razor@blackwall.org>,
+ Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+ Phil Sutter <phil@nwl.cc>, Johannes Berg <johannes@sipsolutions.net>,
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>,
+ Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
+ Aaron Conole <aconole@redhat.com>, Eelco Chaudron <echaudro@redhat.com>,
+ Ilya Maximets <i.maximets@ovn.org>, Allison Henderson <achender@kernel.org>,
+ Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>,
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+ Xin Long <lucien.xin@gmail.com>, "D. Wythe" <alibuda@linux.alibaba.com>,
+ Dust Li <dust.li@linux.alibaba.com>, Sidraya Jayagond
+ <sidraya@linux.ibm.com>, Mahanta Jambigi <mjambigi@linux.ibm.com>,
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>,
+ Jon Maloy <jmaloy@redhat.com>, Tung Quang Nguyen
+ <tung.quang.nguyen@est.tech>, Steffen Klassert
+ <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>,
+ Casey Schaufler <casey@schaufler-ca.com>, Paul Moore <paul@paul-moore.com>,
+ James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>,
+ Vikas Gupta <vikas.gupta@broadcom.com>,
+ Bhargava Marreddy <bhargava.marreddy@broadcom.com>,
+ Rajashekar Hudumula <rajashekar.hudumula@broadcom.com>,
+ Nicolai Buchwitz <nb@tipi-net.de>, =?UTF-8?Q?Markus_Bl=C3=B6chl?=
+ <markus@blochl.de>, Arnd Bergmann <arnd@arndb.de>,
+ Heiner Kallweit <hkallweit1@gmail.com>,
+ Florian Fainelli <florian.fainelli@broadcom.com>,
+ Krzysztof Kozlowski <krzk@kernel.org>,
+ Qingfang Deng <qingfang.deng@linux.dev>, Julian Braha
+ <julianbraha@gmail.com>, Ethan Nelson-Moore <enelsonmoore@gmail.com>,
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ Eric Biggers <ebiggers@kernel.org>, Ard Biesheuvel <ardb@kernel.org>,
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>,
+ Willem de Bruijn <willemb@google.com>, Alyssa Ross <hi@alyssa.is>,
+ Joel Granados <joel.granados@kernel.org>, Oleg Nesterov <oleg@redhat.com>,
+ linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+ intel-wired-lan@lists.osuosl.org, oss-drivers@corigine.com,
+ linux-net-drivers@amd.com, linux-stm32@st-md-mailman.stormreply.com,
+ linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
+ brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
+ linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
+ target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+ b.a.t.m.a.n@lists.open-mesh.org, bridge@lists.linux.dev,
+ netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+ mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
+ rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
+ linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
+ linux-security-module@vger.kernel.org
+References: <20260910144914.8025-1-fmancera@suse.de>
+ <20260910144914.8025-2-fmancera@suse.de> <2927239.BEx9A2HvPv@ripper>
+Content-Language: en-US
+From: Fernando Fernandez Mancera <fmancera@suse.de>
+In-Reply-To: <2927239.BEx9A2HvPv@ripper>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Spam-Score: -0.80
+X-Spam-Level: 
+X-Spamd-Result: default: False [-0.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	FORGED_RECIPIENTS(2.00)[m:sven@narfation.org,m:horms@kernel.org,m:kuba@kernel.org,m:edumazet@google.com,m:davem@davemloft.net,m:leon@kernel.org,m:andrew+netdev@lunn.ch,m:anthony.l.nguyen@intel.com,m:przemyslaw.kitszel@intel.com,m:enachman@marvell.com,m:saeedm@nvidia.com,m:tariqt@nvidia.com,m:mbloch@nvidia.com,m:idosch@nvidia.com,m:petrm@nvidia.com,m:ecree.xilinx@gmail.com,m:maxime.chevallier@bootlin.com,m:mcoquelin.stm32@gmail.com,m:alexandre.torgue@foss.st.com,m:arend.vanspriel@broadcom.com,m:miriam.rachel.korenblit@intel.com,m:kbusch@kernel.org,m:axboe@kernel.dk,m:hch@lst.de,m:sagi@grimberg.me,m:kch@nvidia.com,m:skashyap@marvell.com,m:jhasan@marvell.com,m:GR-QLogic-Storage-Upstream@marvell.com,m:James.Bottomley@hansenpartnership.com,m:mkp@kernel.org,m:njavali@marvell.com,m:mrangankar@marvell.com,m:varun@chelsio.com,m:brauner@kernel.org,m:marc.dionne@auristor.com,m:trondmy@kernel.org,m:anna@kernel.org,m:cel@kernel.org,m:jlayton@kernel.org,m:neil@brown.name,m:Dai.Ngo@oracle.com,m:ma
+ rek.lindner@mailbox.org,m:antonio@mandelbit.com,m:razor@blackwall.org,m:pablo@netfilter.org,m:phil@nwl.cc,m:matttbe@kernel.org,m:martineau@kernel.org,m:geliang@kernel.org,m:i.maximets@ovn.org,m:achender@kernel.org,m:jhs@mojatatu.com,m:marcelo.leitner@gmail.com,m:lucien.xin@gmail.com,m:alibuda@linux.alibaba.com,m:dust.li@linux.alibaba.com,m:sidraya@linux.ibm.com,m:mjambigi@linux.ibm.com,m:tonylu@linux.alibaba.com,m:guwen@linux.alibaba.com,m:tung.quang.nguyen@est.tech,m:herbert@gondor.apana.org.au,m:paul@paul-moore.com,m:jmorris@namei.org,m:serge@hallyn.com,m:vikas.gupta@broadcom.com,m:bhargava.marreddy@broadcom.com,m:rajashekar.hudumula@broadcom.com,m:markus@blochl.de,m:arnd@arndb.de,m:hkallweit1@gmail.com,m:florian.fainelli@broadcom.com,m:krzk@kernel.org,m:qingfang.deng@linux.dev,m:julianbraha@gmail.com,m:enelsonmoore@gmail.com,m:gregkh@linuxfoundation.org,m:ebiggers@kernel.org,m:ardb@kernel.org,s:oleg@redhat.com,s:linux-stm32@st-md-mailman.stormreply.com,s:linux-fsdevel@vger.kernel
+ .org,s:linux-kernel@vger.kernel.org,s:linux-nfs@vger.kernel.org,s:linux-rdma@vger.kernel.org,s:linux-s390@vger.kernel.org,s:linux-scsi@vger.kernel.org,s:linux-sctp@vger.kernel.org,s:linux-security-module@vger.kernel.org,s:linux-wireless@vger.kernel.org,s:lvs-devel@vger.kernel.org,s:netfilter-devel@vger.kernel.org,s:target-devel@vger.kernel.org];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	NEURAL_HAM_SHORT(-0.20)[-0.999];
+	MIME_GOOD(-0.10)[text/plain];
+	TAGGED_RCPT(0.00)[netdev];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	MID_RHS_MATCH_FROM(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[kernel.org,redhat.com,google.com,davemloft.net,ziepe.ca,lunn.ch,intel.com,marvell.com,nvidia.com,gmail.com,bootlin.com,foss.st.com,broadcom.com,kernel.dk,lst.de,grimberg.me,hansenpartnership.com,chelsio.com,zeniv.linux.org.uk,suse.cz,auristor.com,brown.name,oracle.com,talpey.com,mailbox.org,simonwunderlich.de,mandelbit.com,blackwall.org,netfilter.org,strlen.de,nwl.cc,sipsolutions.net,ssi.bg,ovn.org,mojatatu.com,resnulli.us,linux.alibaba.com,linux.ibm.com,est.tech,secunet.com,gondor.apana.org.au,schaufler-ca.com,paul-moore.com,namei.org,hallyn.com,tipi-net.de,blochl.de,arndb.de,linux.dev,linuxfoundation.org,alyssa.is,vger.kernel.org,lists.osuosl.org,corigine.com,amd.com,st-md-mailman.stormreply.com,lists.infradead.org,lists.linux.dev,lists.open-mesh.org,openvswitch.org,oss.oracle.com,lists.sourceforge.net];
+	R_RATELIMIT(0.00)[to_ip_from(RLzghooyjbkt4nddgixz9uws5c)];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	TO_MATCH_ENVRCPT_SOME(0.00)[];
+	RCPT_COUNT_GT_50(0.00)[133];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.de:mid]
+X-Spam-Flag: NO
 
-While the IPVS SYNC protocol is not secure by design
-we can still protect the backup server from messages that
-can wreak havoc.
+On 9/10/26 6:56 PM, Sven Eckelmann wrote:
+> On Thursday, 10 September 2026 16:48:26 CEST Fernando Fernandez Mancera wrote:
+>> diff --git a/net/batman-adv/Kconfig b/net/batman-adv/Kconfig
+>> index 58c408b7a7d9..60ad4b09be6e 100644
+>> --- a/net/batman-adv/Kconfig
+>> +++ b/net/batman-adv/Kconfig
+>> @@ -9,6 +9,7 @@
+>>   
+>>   config BATMAN_ADV
+>>          tristate "B.A.T.M.A.N. Advanced Meshing Protocol"
+>> +       depends on IPV4
+>>          select CRC32
+>>          help
+>>            B.A.T.M.A.N. (better approach to mobile ad-hoc networking) is
+> 
+> This doesn't make a lot of sense to me IPV4 is not a requirement for
+> batman-adv. Only very specific features will require symbols from IPv4:
+> 
+> * CONFIG_BATMAN_ADV_BLA
+> 
+>    - arp_create
+> 
+> * CONFIG_BATMAN_ADV_DAT
+> 
+>    - arp_create
+> 
+> * CONFIG_BATMAN_ADV_MCAST
+> 
+>    - ip_mc_check_igmp
+> 
+> 
+> Basically things which currently depend on INET in net/batman-adv/Kconfig
+> 
+> Or am I missing something here?
+> 
 
-This commit addresses problems from received connection flags
-or their combinations. We now drop messages as follows:
+Yes, you are right. I must re-check all the symbols again. So thank you!
 
-1. the NO_CPORT+TEMPLATE combination allows lookups for normal
-connections to hit template which can break in many ways
-
-2. ONE_PACKET: it is not sent by master, so we do not
-expect it in backup. Before now it was ignored by
-IP_VS_CONN_F_BACKUP_MASK for protocol v1 while protocol
-v0 created connections that are not hashed and dropped
-immediately. Better to apply the IP_VS_CONN_F_BACKUP_MASK
-also to the flags from v0 messages for consistency with v1.
-
-Fixes: 87375ab47cd0 ("[IPVS]: ip_vs_ftp breaks connections using persistence")
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- net/netfilter/ipvs/ip_vs_sync.c | 33 ++++++++++++++++++++++++++++++---
- 1 file changed, 30 insertions(+), 3 deletions(-)
-
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index dfa8487ec0c2..1a30817fbbaf 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -954,6 +954,21 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
- 	ip_vs_conn_put(cp);
- }
- 
-+/* Check for incompatible flags */
-+static bool ip_vs_sync_validate_flags(u32 flags)
-+{
-+	/* We do not expect NO_CPORT, especially to allow lookups
-+	 * to hit templates
-+	 */
-+	if (flags & IP_VS_CONN_F_NO_CPORT) {
-+		if (flags & IP_VS_CONN_F_TEMPLATE)
-+			return false;
-+	}
-+	if (flags & IP_VS_CONN_F_ONE_PACKET)
-+		return false;
-+	return true;
-+}
-+
- /*
-  *  Process received multicast message for Version 0
-  */
-@@ -977,8 +992,7 @@ static void ip_vs_process_message_v0(struct netns_ipvs *ipvs, const char *buffer
- 			return;
- 		}
- 		s = (struct ip_vs_sync_conn_v0 *) p;
--		flags = ntohs(s->flags) | IP_VS_CONN_F_SYNC;
--		flags &= ~IP_VS_CONN_F_HASHED;
-+		flags = ntohs(s->flags);
- 		if (flags & IP_VS_CONN_F_SEQ_MASK) {
- 			opt = (struct ip_vs_sync_conn_options *)&s[1];
- 			p += FULL_CONN_SIZE;
-@@ -991,6 +1005,13 @@ static void ip_vs_process_message_v0(struct netns_ipvs *ipvs, const char *buffer
- 			p += SIMPLE_CONN_SIZE;
- 		}
- 
-+		if (!ip_vs_sync_validate_flags(flags)) {
-+			IP_VS_DBG(2, "BACKUP v0, Invalid flags 0x%X\n", flags);
-+			continue;
-+		}
-+		flags &= IP_VS_CONN_F_BACKUP_MASK;
-+		flags |= IP_VS_CONN_F_SYNC;
-+
- 		state = ntohs(s->state);
- 		if (!(flags & IP_VS_CONN_F_TEMPLATE)) {
- 			pp = ip_vs_proto_get(s->protocol);
-@@ -1146,7 +1167,13 @@ static inline int ip_vs_proc_sync_conn(struct netns_ipvs *ipvs, __u8 *p, __u8 *m
- 	}
- 
- 	/* Get flags and Mask off unsupported */
--	flags  = ntohl(s->v4.flags) & IP_VS_CONN_F_BACKUP_MASK;
-+	flags = ntohl(s->v4.flags);
-+	if (!ip_vs_sync_validate_flags(flags)) {
-+		IP_VS_DBG(3, "BACKUP, Invalid flags 0x%X\n", flags);
-+		retc = 25;
-+		goto out;
-+	}
-+	flags &= IP_VS_CONN_F_BACKUP_MASK;
- 	flags |= IP_VS_CONN_F_SYNC;
- 	state = ntohs(s->v4.state);
- 
--- 
-2.55.0
-
+> Regards,
+> 	Sven
 
