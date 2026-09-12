@@ -1,146 +1,160 @@
-Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9986034D4E9
-	for <lvs-devel@vger.kernel.org>; Sat, 12 Sep 2026 17:32:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68D8935F184;
+	Sat, 12 Sep 2026 17:50:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789234358; cv=none; b=mE2ISNgsGAn77USDqF76uAPHa1hacTgXro+xaup+oVwkYF6rFZt2qEdg33frMHc1Ckks4+uEfvH3dkwX1MT6mTDYPLK9hBDSFNsNzoInqg45EDw6XZlkkl1HAfxcw9PbP9gRRDBgEu58vF6e1WOCaxen9q0sszO1+CHPhjjvhIs=
+	t=1789235453; cv=none; b=H+4eEwc0/LeC648t8KGxF7d5Rvr9D5nZlPfJtUi7ZgiI5a+8aDDaJ/mRGg0XrwT3sPsizcOw8ejn/ZiKJTFOLC5nd1XPE1sJ3be6s2RlzGGltupcYqHB2RspxsgXS19oaQJeQaa62RtW0JG/cg6bCHc0/Hz4Y2A0ZyQg+yIc+ik=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789234358; c=relaxed/simple;
-	bh=lve2EsB2hs9Y8E9j67jUUT/nDLV2/u9vDOpqbLUHmI8=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=sU+aLrrTm9gRY7BWvC7r20O1qnZNbboNCk8+WnUNrPBtXF5/Ugnqa1uf4xTn0qxiFPOBv+X+GkVOcWjBGP25XUbipp3JXQlgyQfN0Qi73ipdh38LA8rZSWpOp/A5SE2nrb8n5WTdpHDRO9gvI/qhJYThkFsBguD91Z5Su+oZPLk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai; spf=pass smtp.mailfrom=nebusec.ai; dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b=S2THpxcz; arc=none smtp.client-ip=74.125.227.140
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nebusec.ai
+	s=arc-20240116; t=1789235453; c=relaxed/simple;
+	bh=52mxefBNL18TSW0EPrMFo62pk6fFfbgczGcDISCects=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=FMTSJ6FVGGTgsCwSfvvJax92gQlCDLk8ub6Jv+EwHS2JfgobJWz5ereAGsgZxJdsIZD94Ib5Zba/ratuHsQUeTLqtbq1B/xPqFEX640YUbXmm/rVxk77HS/dRNgHCbA+oJpwnpDQGrVq3cVXHusgU/uK4VWQnIrCjjWwzuxCiU8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=OJGID+qA; arc=none smtp.client-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b="S2THpxcz"
-Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2db18fe433fso4239255ad.2
-        for <lvs-devel@vger.kernel.org>; Sat, 12 Sep 2026 10:32:37 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=nebusec.ai; s=google; t=1789234357; x=1789839157; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=Ec521DbyAbnsfPoQqBQrUW9bKkbot60dD0ws3n8tHwA=;
-        b=S2THpxczX1FOvPf/t1rKCEmcPQAwNKj7wmcOYL502QM0007I0Un/X1VdTFaz/ee49K
-         Vb6dp/VhGSv2InwhNC1930G8byRUVPSRYYZqpajfCNaZmgtVfb5w/m0lyCLU8GaPqOsF
-         CJshUHkKx/qeirkl4Pwg8alptZRZS2fnn5IuyG2EHcvKitC+aiBHt4vkU375l7B+jHyi
-         6IxryrEiNsO1mYOwLmxBGsEPOiCK91NODUHaxomsdXetsUS8EWbX98S1x0SBRPja1ioP
-         bc17MXOCUkCaYeP55a9FCsEmW/FF2KXOj2DnbQnhMI4xtMH4oVLU2Oe2Y2BQtfZC/Yzc
-         HeQg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1789234357; x=1789839157;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=Ec521DbyAbnsfPoQqBQrUW9bKkbot60dD0ws3n8tHwA=;
-        b=DqzJqSzrm/shD7Ajuaea1gRzFCH+MNpxrOOtOGDb8YcNZJaJxbAO7ItGAfH3+WyJEV
-         gTdk9XRkxdzhSaKivEDxsLI7hycOsw+cg2GxY4aU+AFwQrrh54B6Rj1eCgkRGb5xuGXf
-         GDxvzL6JeAYq5eV3U4Mofrotktn6lueUsTvltJWqtcG2IEdwBqGmXSFf/V1dWPRH9RCq
-         xb0Vk4138V3pdW3/wllqrAe4qyX1ps2tqoOgWO0WVdzZQzpj7av95fAJZUiSrebDhW8m
-         HZQcMWCZn1ZwG6jLzlUqqqt3Z2hOQGmZZGx7s2gS/mP9XMUODinqN8hWfyp5ORDBqiNC
-         Wnyg==
-X-Gm-Message-State: AFuF++n06JeSP574G9wy6rrr2jQhj6ucm1ZZGHwRoMOaZwo/bXSR0NhC
-	xddWzfIRde7XNbWVf+9sO+tGr0q4SL5vmyGkGomj5QPbQc/Ozbq6lXpiBJjRo4MVrC7VCaVGlaX
-	w3URuR9g8
-X-Gm-Gg: AYBFou3t9HvusI5Oq3x+EIGRCUOr0RN4lK7egFZeCqTOatz2vKS+B02SsjWZKPHicN1
-	WnDIG1QlQlxAmxmDDeWvRLGQLRZc32usijaXsIirEPn9VbD1syUuW7nZTwb8nfcX9BOpF/XIK6N
-	obVgsjGlgLncVtoKvBIKxzKM8NakzlejuJZo0fFZXtIPHvhxJvaRb16zzxyzQyYyyj8GwumWsmL
-	cr7Xlal9JIL9+sZaBeItVnBHT0EQcOqDugfipv2iWN+IzbWhzIo+670cUs/VaoGrFUALVuaa4oE
-	S24qLgQNX2trGuTMWF8kRbNHUxVITz4xBzyQZqisnenAjphRHclnSv3QzYbhqP0jNGQXvQf1oMU
-	kQLbu2wAIuuIO/ULpk3fNg8p+BCo8gydXora+eY+OGbIVV4c5VRxCJYzIxGnB0W7HiWzSzlUQH/
-	W17HKCBguihX4gR37STX7sK1MWvHWHRXeOLpbS06VXHg5Oh/Yt7YYmALe+gN3U3k+HSn9Q3QzRj
-	oZKNOzCCg==
-X-Received: by 2002:a17:902:dac4:b0:2db:20fa:9443 with SMTP id d9443c01a7336-2dd4bd64dbbmr62198645ad.13.1789234356998;
-        Sat, 12 Sep 2026 10:32:36 -0700 (PDT)
-Received: from enjou-Legion-Y7000P-2019 ([167.71.204.91])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2dd2ce9c8besm25541255ad.18.2026.09.12.10.32.31
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 12 Sep 2026 10:32:36 -0700 (PDT)
-From: Ren Wei <weir@nebusec.ai>
-To: lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org
-Cc: horms@verge.net.au,
-	ja@ssi.bg,
-	pablo@netfilter.org,
-	fw@strlen.de,
-	phil@nwl.cc,
-	darby.payne@gmail.com,
-	vega@nebusec.ai,
-	zzyy19904204639@163.com,
-	weir@nebusec.ai
-Subject: [PATCH net 1/1] ipvs: bound twos scheduler destination walks
-Date: Sun, 13 Sep 2026 01:31:49 +0800
-Message-ID: <d8b3a70308530e670f94249ec28d31b23e6d5968.1789117690.git.zzyy19904204639@163.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1789117690.git.zzyy19904204639@163.com>
-References: <cover.1789117690.git.zzyy19904204639@163.com>
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="OJGID+qA"
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 55DB222741;
+	Sat, 12 Sep 2026 20:50:31 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=7r8oFDAgjy8muNhyo4CeqelFFPqnHlw5fWun4gzb8Z4=; b=OJGID+qAQy2Y
+	3zRJitxMU8ygncW89pWOrD56ChopmCF9pL6S2/KCzTmVuwkoAl8tB7gOHfwfIPvV
+	Tz8PH7mliLoxvSJznImrkM+WH7tIJNHQZqDDvELTwvRJjU1cLAXdGR1Bqx5AEtUa
+	Ibnq+7AJTu3dNqv98Yf/1WoPFQUcLVs4v1Xt9cCZZC5B7y+NjdXMJir96VlEz3/F
+	0GrS2tymlWH2o8RrFKmWIAsPxalOU+u0cF1ooah0+PCfqKkM0BklZq3TSPFAfWHQ
+	4ZAAC+09kyIs5Xf+jSI4Emm8RSqFi8EVMK6GJqBz2bnSjC28c2FD4wUDYp76AldX
+	/qQ9AR+IGV2Ocow5r3H+vwe7KIVa4X3IFwAiaSyPgWQAsQAbPuI0GMIKFfK0E18Z
+	YYdBWmSZXWZX+sfXk0Zz1u6wiW9/9YK6zuM0ByBEFZ8AJHOH8GGweuhkjIQJfwZi
+	Sv+sBJAVHnCNh0ONZkfqOY2djeMThUkVf0YVZb9SDq+fN28ycGKm55/0ex67ISZC
+	4X+ydQQJNiBeWps5Y5ZURX0/brPsoCYRdNGAT2DbaCtU2X4ju6P02wY+wnvyYxHM
+	JD9IdVmKfnBwb6AcFQQxPTb/jxHfnddP25B2i2SzeLNDr+0MsH+Z4oseuBq9oHpi
+	iOkSdgK97iKT9ky1uDlvnEY4t/FwNIA=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Sat, 12 Sep 2026 20:50:31 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id E2A0360898;
+	Sat, 12 Sep 2026 20:50:32 +0300 (EEST)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68CHoTkT030622;
+	Sat, 12 Sep 2026 20:50:29 +0300
+Date: Sat, 12 Sep 2026 20:50:29 +0300 (EEST)
+From: Julian Anastasov <ja@ssi.bg>
+To: Zihan Xi <zihanx@nebusec.ai>
+cc: horms@verge.net.au, pablo@netfilter.org, fw@strlen.de, davem@davemloft.net,
+        edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, phil@nwl.cc,
+        netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+        linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH nf 0/1] ipvs: avoid stack overflow from recursive connection
+ expiration
+In-Reply-To: <cover.1789110326.git.zihanx@nebusec.ai>
+Message-ID: <d99cb205-24fc-7446-55ad-4ec9d79aac1d@ssi.bg>
+References: <cover.1789110326.git.zihanx@nebusec.ai>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
 
-From: Darong Lu <zzyy19904204639@163.com>
 
-Bound both TWOS scheduler passes by the number of destinations in the
-service. Destination list entries can be unlinked and reused while an RCU
-reader is traversing the list. If a destination is relinked before the
-reader completes, following the list can otherwise leave the original
-service list and loop indefinitely.
+	Hello,
 
-Keep the existing RCU list traversal and scheduler behavior while ensuring
-that a stale iterator cannot run without bound.
+On Sat, 12 Sep 2026, Zihan Xi wrote:
 
-Fixes: 012da53d1afb ("ipvs: add weighted random twos choice algorithm")
-Cc: stable@vger.kernel.org
-Reported-by: Vega <vega@nebusec.ai>
-Assisted-by: LLM
-Signed-off-by: Darong Lu <zzyy19904204639@163.com>
-Signed-off-by: Ren Wei <weir@nebusec.ai>
----
- net/netfilter/ipvs/ip_vs_twos.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+> Hi Linux kernel maintainers,
+> 
+> We found and validated an issue triggered through
+> net/netfilter/ipvs/ip_vs_ftp.c. An unprivileged user can trigger it by
+> creating a user namespace and a network namespace. We tested the fix with
+> the same trigger. The change applies to the generic
+> ip_vs_conn_expire() control-chain cleanup path. For the reported trigger,
+> it only defers recursive controller expiration; testing showed no change to
+> other IPVS behavior.
+> 
+> We will provide detailed information about the bug
+> in this email, along with a PoC to trigger it.
+> 
+> ---- details below ----
+> 
+> Bug details:
+> 
+> The trigger entry point is ip_vs_ftp_out() in
+> net/netfilter/ipvs/ip_vs_ftp.c. It parses an EPSV reply and creates a
+> wildcard data connection using the advertised port. If that port is 21,
+> ip_vs_conn_new() binds the new connection to the FTP helper a second time,
+> because 21 is the helper's control port. The connection has
+> IP_VS_CONN_F_NO_CPORT, so the next connection from the same client to the
+> VIP on port 21 matches the wildcard entry instead of creating a new
+> top-level entry. Repeating EPSV builds a chain of controlled connections.
 
-diff --git a/net/netfilter/ipvs/ip_vs_twos.c b/net/netfilter/ipvs/ip_vs_twos.c
-index dbb7f5fd4688..42a9c07b94e4 100644
---- a/net/netfilter/ipvs/ip_vs_twos.c
-+++ b/net/netfilter/ipvs/ip_vs_twos.c
-@@ -44,14 +44,19 @@ static struct ip_vs_dest *ip_vs_twos_schedule(struct ip_vs_service *svc,
- 					      const struct sk_buff *skb,
- 					      struct ip_vs_iphdr *iph)
- {
--	struct ip_vs_dest *dest, *choice1 = NULL, *choice2 = NULL;
- 	int rweight1, rweight2, weight1 = -1, weight2 = -1, overhead1 = 0;
-+	struct ip_vs_dest *dest, *choice1 = NULL, *choice2 = NULL;
- 	int overhead2, total_weight = 0, weight;
-+	unsigned int num_dests;
+	Hm, may be we should also avoid such long chains.
+Probably in separate patch, for example:
+
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 9e3e005a8263..0622169b5970 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -237,6 +237,17 @@ static int ip_vs_ftp_get_addrport(char *data, char *data_limit,
+ 	return 1;
+ }
  
- 	IP_VS_DBG(6, "%s(): Scheduling...\n", __func__);
- 
-+	num_dests = READ_ONCE(svc->num_dests);
++static bool is_control_port(u16 port)
++{
++	int i;
 +
- 	/* Generate a random weight between [0,sum of all weights) */
- 	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
-+		if (!num_dests--)
-+			break;
- 		if (!(dest->flags & IP_VS_DEST_F_OVERLOAD)) {
- 			weight = atomic_read(&dest->weight);
- 			if (weight > 0) {
-@@ -74,7 +79,10 @@ static struct ip_vs_dest *ip_vs_twos_schedule(struct ip_vs_service *svc,
- 	rweight2 = get_random_u32_below(total_weight);
++	for (i = 0; i < ports_count; i++) {
++		if (ports[i] == port)
++			return true;
++	}
++	return false;
++}
++
+ /* Look at outgoing ftp packets to catch the response to a PASV/EPSV command
+  * from the server (inside-to-outside).
+  * When we see one, we build a connection entry with the client address,
+@@ -293,6 +304,9 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
  
- 	/* Pick two weighted servers */
-+	num_dests = READ_ONCE(svc->num_dests);
- 	list_for_each_entry_rcu(dest, &svc->destinations, n_list) {
-+		if (!num_dests--)
-+			break;
- 		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
- 			continue;
+ 		IP_VS_DBG(7, "PASV response (%pI4:%u) -> %pI4:%u detected\n",
+ 			  &from.ip, ntohs(port), &cp->caddr.ip, 0);
++		/* Do not redirect data to control ports */
++		if (!port || is_control_port(ntohs(port)))
++			return 0;
+ 	} else if (cp->app_data == (void *) IP_VS_FTP_EPSV) {
+ 		data = ip_vs_ftp_data_ptr(skb, ipvsh);
+ 		data_limit = skb_tail_pointer(skb);
+@@ -529,6 +543,9 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 		return 1;
+ 	}
  
--- 
-2.53.0
++	if (!port)
++		return 0;
++
+ 	/* Passive mode off */
+ 	cp->app_data = (void *) IP_VS_FTP_ACTIVE;
+
+	The only problem I see with your proposed change is
+that we may need 2-3 timer ticks to expire a DATA->CTL->TPL
+chain. Or it expires on the same tick?
+
+	Alternative would be to jump to the beginnig of the
+function after successful timer_delete() for our cp->control,
+i.e. to use loop instead of recursion. I.e. ip_vs_conn_del_put()
+can be converted to function that returns bool instead of
+calling ip_vs_conn_expire(), so that we can know if to loop.
+
+	If ip_vs_conn_flush() demands faster expiring, a
+loop will work faster. What do you think?
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+
