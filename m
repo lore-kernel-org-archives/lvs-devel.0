@@ -1,136 +1,132 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-vs2-f12.google.com (mail-vs2-f12.google.com [74.125.227.12])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBBB1448BAC;
-	Tue, 15 Sep 2026 19:40:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 515EE39449C
+	for <lvs-devel@vger.kernel.org>; Tue, 15 Sep 2026 22:41:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.12
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789501209; cv=none; b=ZASHVA/7r/tHiomvsavBUSePst2DGyx+FfPWbweUL998Xh4ceeArQQJhftA8lu63/YRdcJAVsr1PCvHipj3+70YbJ5kK6RxLyeEW+rjKAnpuNkwKqVbQBD195OylLba3YmYA/vJyPB3kxyzshIIZ+xYx9g4pY81OIR1Sh0JQjII=
+	t=1789512090; cv=none; b=IRplES2an2CU712O8MOSUaamPdjKfVe1AuJwLLg9kq0oLKhDf1Z7XkilPoBXGLObdV9Xn8hpP+Q9wHDCuIpG1wmguYB4OMZY7zzAUwgO6HdcmlsRtTbuDrN58ouIqa87pmJHV8tkrTHa1QlrXEACzKeJV7bL61u5RIfbo34/hCs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789501209; c=relaxed/simple;
-	bh=d6KieFsD/iu17BDGAAdr2x9QVR2UPdRXdPnYmocbMYE=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=P+vMa/Lg39XhsNUEpNoHVbhar1GWBBojsdGaQYtnMC2wu2HknNfiIZdIkYlpxRfG7J+/aAjpSHID4ZxoqMd23qiU22KiToqgHJOO/jPzVSJsj8KMcNQsV8tmQd21f3uqkJ3igU+G0g2pSUzzQeSk0P/BuOOEuRlFOhIpcnWt8jA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=iHx4fqed; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1789512090; c=relaxed/simple;
+	bh=HXRJLUmYpVXaPYu3xm4e2KWCtmr+oTkErwLQssltxUs=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=mv1PjGxjYTf+GWIa+rDoSquVwvA5vj7MjZMhu7WIf3XVxGrH0ip7iuKbkYLfgZDcvD3RVsICWmzkPHR/SgDrU2HNX8RtUlkMTVFMNUPLxZBSRcBzwSl456PlXbJujX5Xnx6NrSBSHWUFx4ZuSdkqw/AT4qblRnM+r0F3+5F0OE4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=nxVTWmOC; arc=none smtp.client-ip=74.125.227.12
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="iHx4fqed"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 8C6B1217BB;
-	Tue, 15 Sep 2026 22:39:53 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=2XRwvH3hz2elsKYDGcI/F3nq02hym7ZMDIB5sc84l/4=; b=iHx4fqed77tj
-	ygsgXiZaZTRIUOs66MkorSn80HV0NXGgA9TPNCOaYoy5fISBvwLNUe+MFVkyGmLL
-	sviXHfSIiYGBTutw2yGvHwLBihZpHcUS+00LiNsJrGHZcS9fTnqrZAb8blljDNS1
-	BuK7KX+7xsnRMEubTwq+ggdqiOmoHaK9EbGyK0w+DPtgcilwP4787A/182PCFHLq
-	c7hyBOz4pycyYa9+5A+sCkfjb3UqES6b0i8NtgMQPzfBhLQ2Z1X5T0BuTMDQTN+j
-	ZooH5VUSm69TxmmBFlfJm9DEEx20QqOWOGEplLGug8sAlUx2QmZtykebHD6SNrJ/
-	KQN8S0aGU+52HJ5LwohhBqv8lOklHG5IIT9rAAOycBKo09tRLgNCX3ziqUkyzvnB
-	3n+lE7HQETGvpwdlAS5SB40wthld61cFuO7t5l08+4iRLWy+6X5kWEtS9GYV1gok
-	1IOJftAiCbTeF7f+JFkQa8Iv9V+DMJ8I8UkUg8dewiXaROwD1vmgpr3DXdbDODI7
-	hVdfjovdAos6yTG1UYzCKcVl5ujuhsptMwuh4cwnEKsvYduMsBR3nI71/EJOOXDv
-	xM22+o+rpzCSa1JphXAXU1vi8BhuizWpU8Np2ley81Vew892QBccCYTdht2EzABI
-	As61PVeD+AHZyo9vRJWi0dKDsReX/k0=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue, 15 Sep 2026 22:39:53 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 76E49608B2;
-	Tue, 15 Sep 2026 22:39:55 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68FJdjEC099682;
-	Tue, 15 Sep 2026 22:39:45 +0300
-Date: Tue, 15 Sep 2026 22:39:45 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Adriano Cordova <adrianox@gmail.com>
-cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
-        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-        "David S . Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>, Shuah Khan <shuah@kernel.org>,
-        netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org
-Subject: Re: [PATCH 0/4] ipvs: add per-service secure_tcp
-In-Reply-To: <20260912013216.588300-1-adrianox@gmail.com>
-Message-ID: <7f129041-0578-ec05-9e90-2ad29206df74@ssi.bg>
-References: <20260912013216.588300-1-adrianox@gmail.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nxVTWmOC"
+Received: by mail-vs2-f12.google.com with SMTP id 71dfb90a1353d-5c7bd056863so114432e0c.0
+        for <lvs-devel@vger.kernel.org>; Tue, 15 Sep 2026 15:41:29 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789512088; x=1790116888; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=7tWlVXda5b86jyOaJH/zkj7mUpxWfUU7DwT43zc3LkY=;
+        b=nxVTWmOCCz8OV2PvOIr9MJfGemyXJ78EeQ0UkcsyKhfv0ZxtNqSS8gpABlmqIqCRsh
+         cvGGDuXrCxUc3dYq5VRef8KQ83WLsuZkRL9fmEZ5gf+GONgFKY8up5OzSjzvd8u4OmPk
+         9P6rWuod1RGoY6qJCdf7DQIxUGLYC7uQ7/Ldq7jSk0YS2aGjpexUx7aVryNdBpDosukC
+         62ecAF8JZtZJzDNVyVEloJBk3fNeqXrsyT9I0HmD96vSvGNRmlFdrNznCI5XmzcY15sa
+         ljNGi7pTmemBhdLy66samHVtnJu4DySFGRAZi4DVBLLqB6eyh3NhNqnfGFT+amYx0Den
+         Kvwg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789512088; x=1790116888;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=7tWlVXda5b86jyOaJH/zkj7mUpxWfUU7DwT43zc3LkY=;
+        b=sXh6eEBq3GRMj38MrFn09pE4mjvoowch3ZZEX8gLGIRDDmIxC8rb0YxIHfA2LsnooA
+         Lks5G4wDRcEYTkh+78lw1snRlfCsraMLjBAt2ws9ygZDnabcvl0GehiMBqPjVMS9YWBb
+         8T/kF6WN5EyO2pcuiI4OdXXg+vkRAjUDe6ITJimjKHsWtk7nij9DX7Mdzbc+K/f7ALAA
+         S2AAtU3/TGCHhZttG2TWm2oymKu1CZBb0pF12oPEdRaa5UlZ8cWwTUI0/EqqugYJQaSl
+         dRD4AL/CmKWR8C0+YIdENGIQePTleudzWahNFaym39dO1c8191bNVdWtbqrYgU4/0FFy
+         xvMA==
+X-Forwarded-Encrypted: i=1; AKwUvByaKGxqVCzPQEp8yg5b9uoKraw2d1iHQTkl+fylAFhuAsVddEF6i//VKh4zqFBMimb9THTHG1DPARI=@vger.kernel.org
+X-Gm-Message-State: AFuF++lJuGwWwovClALMvIWbW9AzZFqp5FayooG/vsUCHYXGVPjZvNKa
+	mQ5A+1q0UR7XCikygGhAxMb3MAsASM5K2spjAmRYYdQ7rkzMJX2nTDrj
+X-Gm-Gg: AYBFou29M+fXGn71tx9LHbyBTkACxoKxeRUyQslLWum3khqNsDfSU/56+lWt/oCyl8b
+	hD3UHQkFEHUej4u73ChUBq2J3GsiIfEL74TiFYuov4R9Z28uNj3U3y7JhMtlqVtm7PMquppD9mq
+	obSJIDKYOoCfs8ISfbtza0Y/iQY04Zb0lsp4OqQIzFUFNoTyhnjVbwvHkZSJsxlvXJalpec4/C9
+	kLkVVIbiv7GRMsqOgG6pvSVqcq6uMB841VWPg+f8F0VoxS0TRGoHhvSAt9Rz1oAKfOTQtDqMPKE
+	KlsvJWl2xal3z2j8RjNbxVgG8+DXaNnTwVSzW9ix0764KfcmK5Ed4XRO9PGCoDS/oGnx3pt9M/+
+	vOGsXB799Her0l98LacjCzY/mzYhwcYnesn7PaErpaHeVEoZl33sviqkkDIiLn5cozJLdGPoW1V
+	Jr6o9Cahvgf8ukxk4YYbGLoY7cBtmw+VbtRwRjwjr7GvflvN3LbOTr8CO25NgKDX4=
+X-Received: by 2002:a05:6122:8b10:b0:5c7:f1ba:aa12 with SMTP id 71dfb90a1353d-5c99aea978cmr111500e0c.4.1789512088068;
+        Tue, 15 Sep 2026 15:41:28 -0700 (PDT)
+Received: from adriano ([190.215.95.120])
+        by smtp.gmail.com with ESMTPSA id 71dfb90a1353d-5c9988e5f27sm974975e0c.1.2026.09.15.15.41.24
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 15 Sep 2026 15:41:27 -0700 (PDT)
+From: Adriano Cordova <adrianox@gmail.com>
+To: Simon Horman <horms@verge.net.au>,
+	Julian Anastasov <ja@ssi.bg>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	Phil Sutter <phil@nwl.cc>,
+	"David S . Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Shuah Khan <shuah@kernel.org>,
+	netdev@vger.kernel.org,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	Adriano Cordova <adrianox@gmail.com>
+Subject: [PATCH v2 0/4] ipvs: add per-service secure_tcp
+Date: Tue, 15 Sep 2026 19:41:00 -0300
+Message-ID: <20260915224104.639985-1-adrianox@gmail.com>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
+IPVS currently exposes secure_tcp as a per-netns sysctl. It switches the
+TCP state machine to the hardened tcp_states_dos table.
 
-	Hello,
+These patches make it per-service: a virtual service can set
+IP_VS_SVC_F_SECURE_TCP which is passed into IP_VS_CONN_F_SECURE_TCP at
+connection creation. set_tcp_state() then selects tcp_states_dos for those
+connections with IP_VS_CONN_F_SECURE_TCP set and keeps pd->tcp_state_table
+(the netns default, including the nomem floor) otherwise.
 
-On Fri, 11 Sep 2026, Adriano Cordova wrote:
+  1. uapi: define the per-service secure_tcp flags
+  2. stamp the flag in ip_vs_bind_dest() (cache-bypass has no dest)
+  3. honor it in the TCP state machine, resolving the stale FIXME
+  4. kselftest contrasting a secure vs. a plain service
 
-> IPVS currently exposes secure_tcp as a per-netns sysctl. It switches the
-> TCP state machine to the hardened tcp_states_dos table.
-> 
-> These patches make it per-service: a virtual service can set
-> IP_VS_SVC_F_SECURE_TCP which is passed into IP_VS_CONN_F_SECURE_TCP at
-> connection creation. set_tcp_state() then selects tcp_states_dos for those
-> connections with IP_VS_CONN_F_SECURE_TCP set and keeps pd->tcp_state_table
-> (the netns default, including the nomem floor) otherwise.
-> 
-> The flag is part of BACKUP_MASK, so it is preserved on sync to backups.
-> 
->   1. uapi: define the per-service secure_tcp flags
->   2. carry the flag on every connection-creation path (scheduler,
->      persistence, RS-initiated, cache-bypass) and on FTP data channels
->   3. honor it in the TCP state machine, resolving the stale FIXME
->   4. kselftest contrasting a secure vs. a plain service.
+Changes in v2:
+- Let IP_VS_SVC_F_SECURE_TCP be 0x0100, leaving 0x0040/0x0080 for the
+  scheduler flags. Let IP_VS_CONN_F_SECURE_TCP be (1 << 17) and no longer
+  in IP_VS_CONN_F_BACKUP_MASK.
+- Set flag in ip_vs_bind_dest() instead of at every ip_vs_conn_new()
+  call site.
+- selftest: send probes with TTL=1 instead of an nft drop, and fix
+  Sashiko comments.
 
-	Note that there is a review for patch 4 by Sashiko:
+Not sure about patch 4... could be dropped or absorbed into ipvs.sh
 
-https://sashiko.dev/#/patchset/20260912013216.588300-1-adrianox%40gmail.com
+Adriano Cordova (4):
+  ipvs: add flags for per-service secure TCP state table
+  ipvs: stamp per-service secure_tcp on connections
+  ipvs: tcp: enable per-connection secure_tcp in state machine
+  selftests: netfilter: ipvs: add per-service secure_tcp test
 
-	My comments:
+ include/uapi/linux/ip_vs.h                    |   2 +
+ net/netfilter/ipvs/ip_vs_conn.c               |   4 +
+ net/netfilter/ipvs/ip_vs_core.c               |   3 +
+ net/netfilter/ipvs/ip_vs_proto_tcp.c          |  16 +-
+ .../testing/selftests/net/netfilter/Makefile  |   6 +
+ .../selftests/net/netfilter/gen_tcp_probe.c   | 141 ++++++++
+ .../net/netfilter/ipvs_secure_tcp.sh          | 153 +++++++++
+ .../net/netfilter/ipvs_secure_tcp_mln.c       | 323 ++++++++++++++++++
+ 8 files changed, 641 insertions(+), 7 deletions(-)
+ create mode 100644 tools/testing/selftests/net/netfilter/gen_tcp_probe.c
+ create mode 100755 tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh
+ create mode 100644 tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c
 
-	Patch 1:
-
-- lets start IP_VS_SVC_F_SECURE_TCP from 0x0100, i.e. to reserve
-some bits for the schedulers
-
-- IP_VS_CONN_F_SECURE_TCP: should we really sync this flag?
-It can be configured in every director differently. As
-pd->tcp_state_table can be changed at any time, it should be
-safe to sync cp->state between different secure_tcp
-modes (directors). So, if it is not synced, next free value
-should be (1 << 17).
-
-	Patch 2:
-
-- looks like we have many places that read svc->flags.
-Better ip_vs_bind_dest() to check for IP_VS_SVC_F_SECURE_TCP
-and to set IP_VS_CONN_F_SECURE_TCP. It will allow the synced
-connection to inherit the flag from the local director.
-
-	Patch 3:
-
-- there was even tcp_timeouts_dos, see commit f1f71e03b17d.
-The idea was to use reduced timeouts under attack which can
-be also tuned by user space, something that can be implemented
-by using the netlink interface.
-
-	Patch 4:
-
-- if you do not want packets to reach the real server you can
-send with TTL=1, the TCP state machine will be updated but at
-sending time an ICMP will be sent back.
-
-> Not sure about patch 4... could be dropped or absorbed into ipvs.sh
-
-	I'm not sure too.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+-- 
+2.51.0
 
