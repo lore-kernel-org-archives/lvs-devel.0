@@ -1,57 +1,62 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 093253A1A55
-	for <lvs-devel@vger.kernel.org>; Tue, 15 Sep 2026 17:20:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBBB1448BAC;
+	Tue, 15 Sep 2026 19:40:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789492842; cv=none; b=X7iQlCzLPkNxBhBZ0qgJ3Pwmc+rDzZ6gM1SHsfUbQAbmj4Il+yJshSOWexBX5SCqhqICIzznOdoqEkZps/eINbTkRmLSCKEmitCbcDPsogWo3lpgOl6920iaJYJbzbrwZdmRHUJrU0SyFLcC/txykJ9tcClTbd8hYM6rpITCRgA=
+	t=1789501209; cv=none; b=ZASHVA/7r/tHiomvsavBUSePst2DGyx+FfPWbweUL998Xh4ceeArQQJhftA8lu63/YRdcJAVsr1PCvHipj3+70YbJ5kK6RxLyeEW+rjKAnpuNkwKqVbQBD195OylLba3YmYA/vJyPB3kxyzshIIZ+xYx9g4pY81OIR1Sh0JQjII=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789492842; c=relaxed/simple;
-	bh=TnpTVFsOS2DpHOA6eZtbqIcjsBDg3Dqk9jO0aIDedFI=;
+	s=arc-20240116; t=1789501209; c=relaxed/simple;
+	bh=d6KieFsD/iu17BDGAAdr2x9QVR2UPdRXdPnYmocbMYE=;
 	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=GiTa2P8/APlv6NCkLo1O7Q0VgJkhFp6MoWuAHUt97YIZkz0lds1Btq+mcTDoFvadIUSwqwaFGCXqWJjHj80giKTDlobhQLfHH7fEs7ePcxXgjhqVTG50ClU1UGrUI1qF6Jd6G/z/poedEakQlmjHv/LJeuVv9EFCtGpMP8xrRYU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=um2x1YDS; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version:Content-Type; b=P+vMa/Lg39XhsNUEpNoHVbhar1GWBBojsdGaQYtnMC2wu2HknNfiIZdIkYlpxRfG7J+/aAjpSHID4ZxoqMd23qiU22KiToqgHJOO/jPzVSJsj8KMcNQsV8tmQd21f3uqkJ3igU+G0g2pSUzzQeSk0P/BuOOEuRlFOhIpcnWt8jA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=iHx4fqed; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="um2x1YDS"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="iHx4fqed"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 261C9217B5;
-	Tue, 15 Sep 2026 20:20:32 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 8C6B1217BB;
+	Tue, 15 Sep 2026 22:39:53 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-type:content-type:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=k+rMdoZwOHAQimwEhuncB+edlbRlknAhbI6kAl9fJCI=; b=um2x1YDSFtt1
-	ozH0S68UF4UdHc/uDfCEE9oa8biYT2zr/Xc1xfJXWWoz6a8+Nq1pT5XyGDxo2gt1
-	apbJ2FonHg4Rv5mer5bUR93Mnmjxyt/I9DTfVWWEe5Gv8fkeFESV3NwrOyZnukzU
-	fy/Vh8MG1gKBtEmZMPNKtSrIMgjCKvbUpjlRy4ASUTLYG0CqBmTbka6PIdRCGTuW
-	piiEuk2NOEzy9+mh3DfWGq8Rx+diM5VCdF6aztlsuMc2oDmBgmAkFTCvQxstQ9gs
-	3Ko1H781+h4urarkYAT0fRYcPJt4jvX6vjC7k++8jYgI2ALvsiA9syNaSpYhJZEe
-	EUE8IVUDdbtA0SwJdcfje/358SudR0oP2GGqP8IK5pEswvit1Hi+T7CpbeNtSj1a
-	5Du67JJLdeEWRzXK+PLnYxSkMzqbNnlB2yz52OXtIRU2811SyKRmzIzqeeYc/D0J
-	eJXNkaAnlxvcHbo7T8+c089MlLIO/DuNJUqn0HY9Yf/+39lfMeTn/TTgplew5TdM
-	Heugj9T+JqHmfKP4ALVUG1VHShK8Tmw+b7EdDpQTEWYVWLZbfPkP+/ac+CSYvUi2
-	W4Eewn1AEcV+59VIwRJVUfIZ2X2WZ39qvT9Pd/qthzWuQdNzU3glcOcbd1IQat9J
-	hmSapS8LYLOc0VNCtvT3I0xxH1z6P6M=
+	 bh=2XRwvH3hz2elsKYDGcI/F3nq02hym7ZMDIB5sc84l/4=; b=iHx4fqed77tj
+	ygsgXiZaZTRIUOs66MkorSn80HV0NXGgA9TPNCOaYoy5fISBvwLNUe+MFVkyGmLL
+	sviXHfSIiYGBTutw2yGvHwLBihZpHcUS+00LiNsJrGHZcS9fTnqrZAb8blljDNS1
+	BuK7KX+7xsnRMEubTwq+ggdqiOmoHaK9EbGyK0w+DPtgcilwP4787A/182PCFHLq
+	c7hyBOz4pycyYa9+5A+sCkfjb3UqES6b0i8NtgMQPzfBhLQ2Z1X5T0BuTMDQTN+j
+	ZooH5VUSm69TxmmBFlfJm9DEEx20QqOWOGEplLGug8sAlUx2QmZtykebHD6SNrJ/
+	KQN8S0aGU+52HJ5LwohhBqv8lOklHG5IIT9rAAOycBKo09tRLgNCX3ziqUkyzvnB
+	3n+lE7HQETGvpwdlAS5SB40wthld61cFuO7t5l08+4iRLWy+6X5kWEtS9GYV1gok
+	1IOJftAiCbTeF7f+JFkQa8Iv9V+DMJ8I8UkUg8dewiXaROwD1vmgpr3DXdbDODI7
+	hVdfjovdAos6yTG1UYzCKcVl5ujuhsptMwuh4cwnEKsvYduMsBR3nI71/EJOOXDv
+	xM22+o+rpzCSa1JphXAXU1vi8BhuizWpU8Np2ley81Vew892QBccCYTdht2EzABI
+	As61PVeD+AHZyo9vRJWi0dKDsReX/k0=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue, 15 Sep 2026 20:20:31 +0300 (EEST)
+	Tue, 15 Sep 2026 22:39:53 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id A6C7B601AB;
-	Tue, 15 Sep 2026 20:20:33 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 76E49608B2;
+	Tue, 15 Sep 2026 22:39:55 +0300 (EEST)
 Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68FHKQsI084382;
-	Tue, 15 Sep 2026 20:20:30 +0300
-Date: Tue, 15 Sep 2026 20:20:26 +0300 (EEST)
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68FJdjEC099682;
+	Tue, 15 Sep 2026 22:39:45 +0300
+Date: Tue, 15 Sep 2026 22:39:45 +0300 (EEST)
 From: Julian Anastasov <ja@ssi.bg>
-To: Quentin Armitage <quentin@armitage.org.uk>
-cc: lvs-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>
-Subject: Re: [PATCH] Document support of twos scheduler - leading spaces now
- resolved
-In-Reply-To: <d4ef159477c479f99c8d4a2e3e817eb0451da4e1.camel@armitage.org.uk>
-Message-ID: <998fa489-ba3f-2024-a172-21ae4688d75a@ssi.bg>
-References: <d4ef159477c479f99c8d4a2e3e817eb0451da4e1.camel@armitage.org.uk>
+To: Adriano Cordova <adrianox@gmail.com>
+cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
+        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
+        "David S . Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
+        Paolo Abeni <pabeni@redhat.com>, Shuah Khan <shuah@kernel.org>,
+        netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org
+Subject: Re: [PATCH 0/4] ipvs: add per-service secure_tcp
+In-Reply-To: <20260912013216.588300-1-adrianox@gmail.com>
+Message-ID: <7f129041-0578-ec05-9e90-2ad29206df74@ssi.bg>
+References: <20260912013216.588300-1-adrianox@gmail.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -63,49 +68,66 @@ Content-Type: text/plain; charset=US-ASCII
 
 	Hello,
 
-On Mon, 14 Sep 2026, Quentin Armitage wrote:
+On Fri, 11 Sep 2026, Adriano Cordova wrote:
 
-> The Linux kernel has supported the twos scheduler since v6.12. Make
-> sure ipvsadm users know it exists.
+> IPVS currently exposes secure_tcp as a per-netns sysctl. It switches the
+> TCP state machine to the hardened tcp_states_dos table.
 > 
-> Signed-off-by: Quentin Armitage <quentin@armitage.org.uk>
-
-	Looks good to me, thanks! Simon, please consider
-for the ipvsadm tree.
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  SCHEDULERS | 2 +-
->  ipvsadm.8  | 5 +++++
->  2 files changed, 6 insertions(+), 1 deletion(-)
+> These patches make it per-service: a virtual service can set
+> IP_VS_SVC_F_SECURE_TCP which is passed into IP_VS_CONN_F_SECURE_TCP at
+> connection creation. set_tcp_state() then selects tcp_states_dos for those
+> connections with IP_VS_CONN_F_SECURE_TCP set and keeps pd->tcp_state_table
+> (the netns default, including the nomem floor) otherwise.
 > 
-> diff --git a/SCHEDULERS b/SCHEDULERS
-> index 06d3357..8ddef23 100644
-> --- a/SCHEDULERS
-> +++ b/SCHEDULERS
-> @@ -1 +1 @@
-> -rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq|fo|ovf|mh
-> +rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq|fo|ovf|mh|twos
-> diff --git a/ipvsadm.8 b/ipvsadm.8
-> index 3d7541a..fe0f481 100644
-> --- a/ipvsadm.8
-> +++ b/ipvsadm.8
-> @@ -286,6 +286,11 @@ server as it was before.
->  This scheduler has two flags: mh-fallback, which enables fallback to a
->  different server if the selected server was unavailable, and mh-port,
->  which adds the source port number to the hash computation.
-> +.sp
-> +\fBtwos\fR - random twos choice: the algorithm picks two random
-> +servers based on weights then selects the server with the least
-> +amount of connections normalized by weight. The algorithm avoids
-> +the "herd behavior" problem.
->  .TP
->  .B -p, --persistent [\fItimeout\fP]
->  Specify that a virtual service is persistent. If this option is
+> The flag is part of BACKUP_MASK, so it is preserved on sync to backups.
 > 
-> --
-> 2.55.0
+>   1. uapi: define the per-service secure_tcp flags
+>   2. carry the flag on every connection-creation path (scheduler,
+>      persistence, RS-initiated, cache-bypass) and on FTP data channels
+>   3. honor it in the TCP state machine, resolving the stale FIXME
+>   4. kselftest contrasting a secure vs. a plain service.
+
+	Note that there is a review for patch 4 by Sashiko:
+
+https://sashiko.dev/#/patchset/20260912013216.588300-1-adrianox%40gmail.com
+
+	My comments:
+
+	Patch 1:
+
+- lets start IP_VS_SVC_F_SECURE_TCP from 0x0100, i.e. to reserve
+some bits for the schedulers
+
+- IP_VS_CONN_F_SECURE_TCP: should we really sync this flag?
+It can be configured in every director differently. As
+pd->tcp_state_table can be changed at any time, it should be
+safe to sync cp->state between different secure_tcp
+modes (directors). So, if it is not synced, next free value
+should be (1 << 17).
+
+	Patch 2:
+
+- looks like we have many places that read svc->flags.
+Better ip_vs_bind_dest() to check for IP_VS_SVC_F_SECURE_TCP
+and to set IP_VS_CONN_F_SECURE_TCP. It will allow the synced
+connection to inherit the flag from the local director.
+
+	Patch 3:
+
+- there was even tcp_timeouts_dos, see commit f1f71e03b17d.
+The idea was to use reduced timeouts under attack which can
+be also tuned by user space, something that can be implemented
+by using the netlink interface.
+
+	Patch 4:
+
+- if you do not want packets to reach the real server you can
+send with TTL=1, the TCP state machine will be updated but at
+sending time an ICMP will be sent back.
+
+> Not sure about patch 4... could be dropped or absorbed into ipvs.sh
+
+	I'm not sure too.
 
 Regards
 
