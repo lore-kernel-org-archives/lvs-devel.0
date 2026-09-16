@@ -1,166 +1,176 @@
-Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-vs2-f41.google.com (mail-vs2-f41.google.com [74.125.227.41])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B116B342538;
-	Wed, 16 Sep 2026 00:41:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ABB063BCD25
+	for <lvs-devel@vger.kernel.org>; Wed, 16 Sep 2026 20:50:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.41
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789519270; cv=none; b=dUY0FdVr0exrJEzroe7SUjafV7yxgyq4cojbwdJhxhwpDYNhT6/tZDIfCeW1EZ9KpHzn+UWcAoF1aT4LIikTLyOcZOlZ2RSM9V2ITBrf5SU4MwtaDUPgR+17DZMeAB26R9hFvkPA0PJeSCTTXM2u6OF6fdCc1wq8fgtjMWuXsxA=
+	t=1789591835; cv=none; b=TR9TKIYxnIMQN/uCSe4jBc3FaE4qGBRPZMoJkMBfLjqd4Nv/d3hbC5RLj+uCc1SMmXYf0eqrqOoAa1P/LpNp+sjmYvlLLwpCbUDXHMftRVK4wXqT5R2CfyrmUteDQ+z5A3D/DNnMlSoMhHPnXkxFHcD7l9re/z8vYKDeXITrLdA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789519270; c=relaxed/simple;
-	bh=PiYQJkAGkuJBIyzKHKtgcR6WQgdtYuoTQCzilchGnWs=;
-	h=MIME-Version:Date:From:To:Cc:Subject:In-Reply-To:References:
-	 Message-ID:Content-Type; b=t7H5uJX4wCQHoxL/0fZS3oKhXLd5fBMXQJ2HGsYsaMFBOmrif/3xEGFfxUzZ7o7ign6+boHVuURfhPUAB7pcmo1P0t1mIRnDMmMZHF5g8cyV2HKanlppZV8BhBeZ3yoGp5Of4KfGFnBYTD+yCRPh6ZgV6kulCosOcuUv5KRU0uY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=sOZbLu5e; arc=none smtp.client-ip=213.97.179.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
+	s=arc-20240116; t=1789591835; c=relaxed/simple;
+	bh=r4G5Ta8DgCpNKxXd+Tmp2CKseIRyFZZjfIzJ3sbKUC4=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=K4zOWVxYuN0bTbMpAluVm8u5aBiwUzp0j8uqVXvJwOB1JZE7fgTuiOq6gnv+Xp/lnAtYJmnQzpaE0COa1YjMuruZ660Shl1oBx6dZfVIgBfl20OvqKKuWgOlpbbnoiIXIDuuNAv4Lcyjva6IvvORtXRVsmc6paLoh85wwy9vz/c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=AcCB7A90; arc=none smtp.client-ip=74.125.227.41
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="sOZbLu5e"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
-	s=20170329; h=Content-Transfer-Encoding:Content-Type:Message-ID:Subject:Cc:To
-	:From:Date:MIME-Version:From:Reply-To;
-	bh=NheJufshGj64fhQKNC2c1j1k0ck6W8lDGbWhTay9uUc=; b=sOZbLu5ewE2w8rWxU4D/CswcOx
-	vscT/TR8V1ChxhajcNhxsAxXX1GdIm1/RSRx7ubFcr0dhqE/e/Aer1+4AVYBL2AlOv1C4Q4APfSgV
-	bRUb14/0B5DwqRLMIYou200gkuWYkYtB9Mb8rQ6eSfBtDTDYS7QqI4UH9SzM8KxR8GhZrq7sMc/Bd
-	DSCwoISx0sN0zEwd5oiMfAhueKhCXJO8CRKnmS91PYW62IzBRAnIGt97wWKyLxiNvisbUFbYC3vBs
-	gLqbtDk2oQLAcdruS5xD7b4sKxqWd7Y/XGluJ1o57LoXxm07Kd4Y5Oari8tZ2vtnzM3eg77XVBp+Z
-	mnfwUndg==;
-Received: from maestria.local.igalia.com ([192.168.10.14] helo=mail.igalia.com)
-	by fanzine2.igalia.com with esmtps 
-	(Cipher TLS1.3:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
-	id 1x6dhc-002hgB-1A; Wed, 16 Sep 2026 02:40:43 +0200
-Received: from webmail.service.igalia.com ([192.168.21.45])
-	by mail.igalia.com with esmtp (Exim)
-	id 1x6dha-0087zL-Kq; Wed, 16 Sep 2026 02:40:43 +0200
-Received: from localhost ([127.0.0.1] helo=webmail.igalia.com)
-	by webmail.service.igalia.com with esmtp (Exim 4.98.2)
-	(envelope-from <mfo@igalia.com>)
-	id 1x6dha-00000002ADJ-2w79;
-	Wed, 16 Sep 2026 02:40:42 +0200
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AcCB7A90"
+Received: by mail-vs2-f41.google.com with SMTP id ada2fe7eead31-785686d2764so40056137.2
+        for <lvs-devel@vger.kernel.org>; Wed, 16 Sep 2026 13:50:29 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789591828; x=1790196628; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=HSr0kw5vQg14RdBAH3z3ZmTLwP6SZgfcuyqihKeKt2U=;
+        b=AcCB7A90RXmTOiPQFMW3SPPCkzaWVe4pHvC0LQq1VQOXzdJVz7ziHkjWmnToVUSERZ
+         mXkq/7xTHDQN7VjYmHwHaKgLH23IAalRbJWXCmX5jyt1Y6H27KoMA0ZajKbsXf2pn1Oy
+         91GqAEMvkIBzFJ5Yh01JddAjIstioH6YcYKDY2duina3s5TMxzN6ovc4y4O2ak8BUUg5
+         JU1ssB3HwBFX8jb85MkO1pCa62zp9nbTg+VjllAKotDfV1safHXglObHxjWf2HXdKGce
+         4kfd7urAOoLAe8oXk4yjG98gCxe6MbrtUIVV60z5icDUyBILoB/kAQ4+DWZKskQ5W+ox
+         Y5bg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789591828; x=1790196628;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=HSr0kw5vQg14RdBAH3z3ZmTLwP6SZgfcuyqihKeKt2U=;
+        b=dPiFCEJKxishZtyLZjMz5pVFXg4V74Bwc0IDlEaISLx/5N1tJet8gLh5b3YLWb2YPB
+         jzlfDqlFUWQe/v4nhR7FmvyXCfZgIeS9PC89WNfFRBa6S53D/HG1e27wZpxEl4z5ub+9
+         a4zp2aGMcsXTkuZurIZH2ac0Ckd1xwsCi3Mij+7uCkt0BXuLspVLUcEiKLuZ8YsoOk/M
+         2vtyKeEDFRyOESlbcL2oIGtUZSN/JFdekW87rEQswsX4QZvnybDHw6gY83ACnU1PGTZQ
+         3a/1TvZWKzA7JFytuwKrQvHpiULNEJLTQsHOKYVddBpmz+c9CNMrhNA9EKcpfCWbrprE
+         bY8Q==
+X-Forwarded-Encrypted: i=1; AKwUvBxS1WHSC8B3Rd0uaB/hsrqo6ko5wiwBApb3Jx3Ra4zSok4IRoUzjNQJ7uA5qRRa+2v7HIqVKdpXt60=@vger.kernel.org
+X-Gm-Message-State: AFuF++k4Ige9vx6c2sCitKBlti+C/+wXDLHfVVc+ZsrakiTykFqDe0/X
+	SkJ2dG7oJ0SRLthEbx+0Qq57K7zefSvT3wdhntFO1D1bNeIqKuEsy3M6
+X-Gm-Gg: AYBFou2oYXnPXFHysNtNWDEX46IZGLvz+71obQWV7MK/gvzX7D0Sq1qplkas/XaYawg
+	THmujEJr1CbjTEAAslbe3FLvhUByCHlQ3hNIch1vz+G73gehNYTAGgCs0oomZRW1eDboH3J3sb9
+	7pI0J7T+6r+MhDLPwuTLkyUMW+iQcp5v0sA8JsvoTiJVXfI2BSfsZfc9CZU34Xptxi/A1iThwUU
+	Dw+YbkDuz18zH59/yQvfSxfatAk/WdbthjHoKGXfU9golhqlqfOHuHZwG6JdEew9XodYCKmwA+W
+	Hzm5KlHWk2s+cNbgSXtlvj3JFCxoBmiw5Q98+R3f6tHHRWmMZ2vKL+uaJdibdIZaITXeUX62GN0
+	eB8AEYnoeYfesI5AWKG1y6P4lrT7OD+3fRZiykpdIQ/Xw1Dkf0gfWCKwvdLT+g99AVADPsZSPDa
+	i2pMs9uvKU33YkWINeYr8r0n5wijbj2N8Ruk28DbNRQprvimsak8yZckobES4XduUE
+X-Received: by 2002:a05:6102:f9c:b0:7a1:f7d2:e80d with SMTP id ada2fe7eead31-7a1f7e27e6bmr657555137.21.1789591828210;
+        Wed, 16 Sep 2026 13:50:28 -0700 (PDT)
+Received: from adriano ([190.215.95.120])
+        by smtp.gmail.com with ESMTPSA id a1e0cc1a2514c-9832354a8aasm947799241.10.2026.09.16.13.50.24
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 16 Sep 2026 13:50:27 -0700 (PDT)
+From: Adriano Cordova <adrianox@gmail.com>
+To: Simon Horman <horms@verge.net.au>,
+	Julian Anastasov <ja@ssi.bg>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>,
+	Florian Westphal <fw@strlen.de>,
+	Phil Sutter <phil@nwl.cc>,
+	"David S . Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Shuah Khan <shuah@kernel.org>,
+	netdev@vger.kernel.org,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	Adriano Cordova <adrianox@gmail.com>
+Subject: [PATCH v3 nf-next 1/3] ipvs: add flags for per-service secure TCP state table
+Date: Wed, 16 Sep 2026 17:50:02 -0300
+Message-ID: <20260916205004.647194-2-adrianox@gmail.com>
+X-Mailer: git-send-email 2.51.0
+In-Reply-To: <20260916205004.647194-1-adrianox@gmail.com>
+References: <20260916205004.647194-1-adrianox@gmail.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Date: Tue, 15 Sep 2026 21:40:42 -0300
-From: Mauricio Faria de Oliveira <mfo@igalia.com>
-To: Joel Granados <joel.granados@kernel.org>
-Cc: Kees Cook <kees@kernel.org>, Nathan Chancellor <nathan@kernel.org>,
- Nicolas Schier <nsc@kernel.org>, "David S. Miller" <davem@davemloft.net>,
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo
- Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>,
- kernel-dev@igalia.com, linux-riscv@lists.infradead.org,
- linux-kernel@vger.kernel.org, fsverity@lists.linux.dev,
- keyrings@vger.kernel.org, bpf@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-kbuild@vger.kernel.org,
- netdev@vger.kernel.org, linux-wpan@vger.kernel.org,
- lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
- coreteam@netfilter.org, linux-sctp@vger.kernel.org,
- linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org,
- bridge@lists.linux.dev, mptcp@lists.linux.dev, rds-devel@oss.oracle.com,
- virtualization@lists.linux.dev
-Subject: Re: [PATCH RFC v3 00/13] sysctl: add module aliases
-In-Reply-To: <uufwu7rqyxf7h55lgavcwrnylnq5gdbd7o5d7mfugrxpblds2d@adra5c2z22gg>
-References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
- <bpnqwggtidgiec5akns3fa5edbsvl7xf55dxabtwng2xspy4pn@ue554aii2ngk>
- <53155340c897560bfc67e61ba9568fd6@igalia.com>
- <mokz5pdtwswkyab4byfq7q7m6ac2g6ceoi6jflyxmaszaibzqa@su6m4kamtdpy>
- <b1a6cec17e7c828fcebe310ca2a0d25b@igalia.com>
- <rywhz6soawf5dzyui5g7dnbufsgpxr7ma7honuhejwgncemzrm@f32at7hl6ugm>
- <6e93af907298022f077126f1be7bd386@igalia.com>
- <uufwu7rqyxf7h55lgavcwrnylnq5gdbd7o5d7mfugrxpblds2d@adra5c2z22gg>
-Message-ID: <cdc75421500371a8839fe5347af5c103@igalia.com>
-X-Sender: mfo@igalia.com
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-X-Spam-Report: NO, Score=-2.1, Tests=ALL_TRUSTED=-3,BAYES_50=0.8,KAM_DMARC_NONE=0.125,KAM_DMARC_STATUS=0.005
-X-Spam-Score: -20
-X-Spam-Bar: --
+Content-Transfer-Encoding: 8bit
 
-On 2026-09-10 04:29, Joel Granados wrote:
-> On Wed, Sep 09, 2026 at 02:29:30PM -0300, Mauricio Faria de Oliveira wrote:
->> On 2026-09-09 11:07, Joel Granados wrote:
->> > On Fri, Sep 04, 2026 at 02:45:23PM -0300, Mauricio Faria de Oliveira wrote:
->> >> On 2026-09-04 10:41, Joel Granados wrote:
->> >> > On Thu, Aug 20, 2026 at 06:22:13PM -0300, Mauricio Faria de Oliveira wrote:
->> >> >> On 2026-08-20 09:51, Joel Granados wrote:
->> >> >> > On Wed, Aug 19, 2026 at 03:16:13PM -0300, Mauricio Faria de Oliveira wrote:
->> >> >> >> This series adds 'sysctl:' aliases to modules that register sysctl tables; e.g.:
->> > <... snip ...>
->> >> > use the correct call moving forward?
->> >>
->> >> This scheme currently covers all modules, AFAIK, as it is wrapped in the
->> >> functions that register sysctl tables.
->> >>
->> >> On moving forward: usage of such functions in a way that breaks a
->> >> requirement of this series (e.g., failing to specify the template
->> >> table/path parameter(s), or not having constant initializers) hits a
->> >> build error, as the requirements are actually from the compiler.
->> >>
->> >> >> I guess that a different design could use MODULE_SYSCTL_TABLE() as
->> >> >> MODULE_DEVICE_TABLE(), declared per table instead of wrapped into
->> >> >> register sysctl functions.
->> >> >> However, it seems to require moving the value of the path argument (or
->> >> >> its template) into the macro and still referencing it in the function
->> >> >> (or its instantiation of the template), which adds obfuscation, to all
->> >> >> callers.
->> >> >>
->> >> >> What do you think?
->> >> > It might be that having it inside the module subsys is more work, but I
->> >> > believe that there is the right place to have it. I still don't see that
->> >> > adding a module specific arg to the sysctl register is a good thing.
->> >>
->> >> Ok, cool. I can work on a different design.
->> >>
->> >> Please just let me know whether you are OK with the remaining (above),
->> >> and I'll be happy to tackle this.
->> >
->> > What is "the remaining"?
->> 
->> I meant the rest of the email, addressing the points/questions you
->> raised.
-> 
-> * The dependency on a sysctl path to load a module still is
->   backwards to me. It should be: I need feature A, I load modules
->   M{1,2,3} for A and I set sysctl S{1,2,3...}. Not sure why sysctl tools
->   do it the other way around.
+Add IP_VS_SVC_F_SECURE_TCP to mark a virtual service for the
+DoS-hardened TCP connection state table, and
+IP_VS_CONN_F_SECURE_TCP to carry that capability on a connection
+so the TCP state machine can select the hardened table for it.
 
-Right, but note:
-- the feature may, or may not, be built as a module (unknown to sysctl
-tool).
-- there is no simple way to identify which module provides a sysctl,
-today.
+The service flag is 0x0100: bits 0x0008/0x0010/0x0020 are the
+scheduler bits, so leave 0x0040/0x0080 free for schedulers.
 
-Let's compare this with device-id module aliases: userspace doesn't know
-whether a driver is built-in or a module, but it can load the module, if
-any, based on the device-id, not the module name.
+Set IP_VS_CONN_F_SECURE_TCP on every connection bound to a
+destination whose service carries IP_VS_SVC_F_SECURE_TCP.
 
-> * The fact that the invariance is in the sysctl path and not the module
->   identifier maybe points to a deeper issue.
+Signed-off-by: Adriano Cordova <adrianox@gmail.com>
+---
+Changes in v2:
+- Let IP_VS_SVC_F_SECURE_TCP be 0x0100, leaving 0x0040/0x0080 free for
+  scheduler flags.
+- Let IP_VS_CONN_F_SECURE_TCP be (1 << 17) and drop it from
+  IP_VS_CONN_F_BACKUP_MASK.
+- Set the flag in ip_vs_bind_dest() instead of at every ip_vs_conn_new()
+  call site.
 
-It does seem that the invariance in the sysctl path is correct, as that
-doesn't change with the variable of whether the code is built-in or a
-module.
+(no changes since v2)
 
-A similar comparison with device-id module aliases applies, IIUIC.
+ include/uapi/linux/ip_vs.h      | 2 ++
+ net/netfilter/ipvs/ip_vs_conn.c | 4 ++++
+ net/netfilter/ipvs/ip_vs_core.c | 3 +++
+ 3 files changed, 9 insertions(+)
 
-> * I still believe that this is better placed outside the sysctl
->   subsys as it does not cater solely to module loading.
-
-Understood; your point about a module-specific argument in sysctl
-register functions precisely confirmed that this approach is misplaced.
-
-I'll try a different design, more similar to MODULE_DEVICE_TABLE().
-Maybe the only requirement from sysctl is for struct
-ctl_table.procname's offset to be zero (for file2alias). And apparently
-something with the path string in a table declaration macro. We'll see.
-
-Thanks again for reviewing and providing constructive feedback. That's
-very appreciated.
-
-> 
-> Best
-
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index 2c37c6ac7525..ade170109ff4 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -27,6 +27,7 @@
+ 
+ #define IP_VS_SVC_F_SCHED_SH_FALLBACK	IP_VS_SVC_F_SCHED1 /* SH fallback */
+ #define IP_VS_SVC_F_SCHED_SH_PORT	IP_VS_SVC_F_SCHED2 /* SH use port */
++#define IP_VS_SVC_F_SECURE_TCP	0x0100		/* use the hardened TCP table */
+ 
+ /*
+  *      IPVS sync daemon states
+@@ -105,6 +106,7 @@
+ 
+ /* Flags that are not sent to backup server start from bit 16 */
+ #define IP_VS_CONN_F_NFCT	(1 << 16)	/* use netfilter conntrack */
++#define IP_VS_CONN_F_SECURE_TCP	(1 << 17)	/* use the hardened TCP table */
+ 
+ /* Connection flags from destination that can be changed by user space */
+ #define IP_VS_CONN_F_DEST_MASK (IP_VS_CONN_F_FWD_MASK | \
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 6fa3e1dc534c..0b465298b64b 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1090,6 +1090,7 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ {
+ 	unsigned int conn_flags;
+ 	__u32 flags;
++	struct ip_vs_service *svc;
+ 
+ 	/* if dest is NULL, then return directly */
+ 	if (!dest)
+@@ -1102,6 +1103,9 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
+ 	if (cp->protocol != IPPROTO_UDP)
+ 		conn_flags &= ~IP_VS_CONN_F_ONE_PACKET;
+ 	flags = cp->flags;
++	svc = rcu_dereference(dest->svc);
++	if (svc && (svc->flags & IP_VS_SVC_F_SECURE_TCP))
++		flags |= IP_VS_CONN_F_SECURE_TCP;
+ 	/* Bind with the destination and its corresponding transmitter */
+ 	if (flags & IP_VS_CONN_F_SYNC) {
+ 		/* Synced conns are hashed, so they can not get this flag */
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index ba0957798bad..aa8a3a964ffd 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -784,6 +784,9 @@ int ip_vs_leave(struct ip_vs_service *svc, struct sk_buff *skb,
+ 				      IP_VS_CONN_F_ONE_PACKET : 0;
+ 		union nf_inet_addr daddr = { .all = { 0, 0, 0, 0 } };
+ 
++		if (svc->flags & IP_VS_SVC_F_SECURE_TCP)
++			flags |= IP_VS_CONN_F_SECURE_TCP;
++
+ 		/* create a new connection entry */
+ 		IP_VS_DBG(6, "%s(): create a cache_bypass entry\n", __func__);
+ 		{
 -- 
-Mauricio
+2.51.0
+
