@@ -1,164 +1,161 @@
-Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
+Received: from mta0.migadu.com (out-212.mta0.migadu.com [91.218.175.212])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F52E3A0B3F
-	for <lvs-devel@vger.kernel.org>; Thu, 17 Sep 2026 03:03:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C4EA04FB9D1
+	for <lvs-devel@vger.kernel.org>; Thu, 17 Sep 2026 12:42:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=91.218.175.212
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789614195; cv=none; b=X/Ptc4QCDJWaO7jHj5d5smfHeCq4Sao2/hLsMBgTdB4yyWxRhETTCm2kVEy30ZkXPH5ez66omjAnj8+NexmjUvpnBxRYBS71e6IDKlV0y/dfF4C9dQdT4GNj0t2VKqIeuZnrtxa3e99w4lLjzNkj6SjH//g3kcQYcX3B3WKTVwI=
+	t=1789648939; cv=none; b=FAcmzaMp2+JRjZT2OtOxzmNHYr38dclORN+5+o9HxEjngABTx/5rVg6CXL4Snt+lQNsHP3K2dDs8/PSLRvE2YMWx4xy2M9xqHdi8rYfXbXNXNi2kCaFe5Yro2bGH0yhEJBP0wAPw2wIqMeurmZKwMXmVeOfyhmQ3BdQWNjVDgdk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789614195; c=relaxed/simple;
-	bh=ZAnMJFfRyn/L7UjKQ6wtOpZX1ERwvLKzcxMf+sbJyxU=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=D+SKahGNB3l98zSoIbc0V23hT3RxEWTeM6WP0PAm1mFsWbPGgukFqfcg12teDP6uiFCPEgd9dtclgUhMtQ2+VHpbgLnF8K2X5h/DIRWVKx/yRjyAmnkFmXpEtjceBB9UhvV7t2gXelWKJxA73SbZZpQcQUVSNIVj1uWdt9IxGzY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai; spf=pass smtp.mailfrom=nebusec.ai; dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b=ko2XybKf; arc=none smtp.client-ip=74.125.227.140
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=nebusec.ai
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nebusec.ai
+	s=arc-20240116; t=1789648939; c=relaxed/simple;
+	bh=X8Rwlaxr4CS6AlKne4l5YvG9acTFvMARS52buVLDJkc=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=RKyNYmlpBxgBLt+JI9p08GqOhlu03/wRwaaQQNt+21NtDR5Hv3CZykDC/7HflozIzwKZ0tJzL5wZ4L8yWfNJVcrDIJxlda0FA2h2Wcwm6Q+TusyFF8hvxZTmsWtr4UyWUAx988fhAmr7OKMaFfgeaRaXM+bNNoQKui3kdamRGjY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=EW81XCCg; arc=none smtp.client-ip=91.218.175.212
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nebusec.ai header.i=@nebusec.ai header.b="ko2XybKf"
-Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2d90ba1d807so4116705ad.3
-        for <lvs-devel@vger.kernel.org>; Wed, 16 Sep 2026 20:03:12 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=nebusec.ai; s=google; t=1789614190; x=1790218990; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=bEiJ73gdk+1H2UniqJzXdx9Ojg0hZPLKGrnSs4IPJHI=;
-        b=ko2XybKf+ORIdYCZGisQEx+vJ90W4rwUFC+yt/UmDoIucUX3CJlNfEx/m0E5hYYiiF
-         vE3yYs7g03ua78cYT/714tTFpd+T00ig3wnoE6+NSYH70jYFyeqF4rkzXytzfYUkJo8X
-         /fG5dy0XxE4zFdIRt8GglWF89aeWyPpK14Q3aK/W3Veco3WmWhwDMNUeTWp+6QMiAcTS
-         641xbiHUYWoe5ffuGxAMXfFsrRfR9G0qgGvuQGLLcfAjVSVy5lolL8J5Sp7nz/TXNseI
-         FjlOW51EO+2GWMPwo0rKZm/mMldNTQC8TaZ77cPHBtGFvzAgu9NpMuaTsvD9nDj0S5/P
-         LmsA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789614190; x=1790218990;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=bEiJ73gdk+1H2UniqJzXdx9Ojg0hZPLKGrnSs4IPJHI=;
-        b=ZhGnbvMQVV2GdO2HzwWrlWKPpqp1gcDx5awQdtKyS1RYB4ETMdCMHwCuJoKeSGsNRR
-         yT2xY3CKXLtq2gqkjSzXw9I30vtVTAhfypukUlslt0sSOBACMhV3Lty7lRcGc6n060ml
-         0GyQsBG7Jh4dPdvNaanOOOA/jD64pEE71dx7Ii7c83B7CH5z8w7iSkNhiDTg6BoojXFZ
-         0R+OJ8Lovh+F9xbelPqQqg0mRarzxwb91U9Wfmdf6+C+FtDfjDLNjlsQijprgMIrwFw0
-         kHu7LlH11/n3MHWMKubqp763JVHdUlKe5IazyMl8ts4JPmsLgXA5zy8QB6vjk1iDidNk
-         yyqA==
-X-Forwarded-Encrypted: i=1; AKwUvByIZh6x2L/cf39Yw9aUz6Vsvj3LKb/mfxErhJ3K8zAsHhRH2ExYMQ1Cg0zw6BmuJjmdmkmmc+fKrQw=@vger.kernel.org
-X-Gm-Message-State: AFuF++lC4Qsl5bkuZwidCZHxpii1XH8cPHoUkbHGVDit5If6CgXJod0K
-	D0P8CcjtaApKmMdqMvYlDwItAP+qP8GWKKbsqseIxJMk8bbEI2LM+CAmPvQ14PzV3Wlr
-X-Gm-Gg: AYBFou2PE3KtnkPMcY6MgAK06Ow0eONoiXe2UJgfGMDSASWFYIPi0mzElCusFdp8RAt
-	twgjZ0Cx3MmWhp6TNKWCgF2W+riu42IMeqOYRi5cSrYTF4C/jx2Ci/JLgCNXLiEfsCYwnsxUhNe
-	uTCn1697nNoTzSJrNXzRbNghaoVCu8uVIhou+JDgHAsFAhSCjAVUvI4l502QqVErlVKQoHb3sZl
-	4KmTxnbQvIVcnwv8baoOxbeA1lDLL5vQrAFzCS+/eYDu6xQsN7Ra+rC+cqU/G3ym3IPu1zK+72+
-	cav4jqKMjkeasJSVfqDbWLGaUS1shQjxo3UA92wiTBPXeiLLJMxl8jSDE+ewzeDiPjVVysY1BRy
-	jWX3KVWzoD1MED7zHV0Ww/Na8lGj117pZkrOmQ8PLDYjfd3/GStvryTcYhX4yNqQ4nhXzEcTFhn
-	uuflN138obXOlamrmnaXi9VQUWEPrLxFgRGQv9JEciuI70GkdYmQXWZfT3EDLszdarqgQ/iYaO8
-	qduFputB/4lK7+x1MMr03iBLdzzlGirNaTy76Dy
-X-Received: by 2002:a17:902:ebc3:b0:2d7:107c:917b with SMTP id d9443c01a7336-2dd8ccaa304mr114450195ad.0.1789614190034;
-        Wed, 16 Sep 2026 20:03:10 -0700 (PDT)
-Received: from b6ad5085b32f.. ([122.51.212.64])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2dd89f1b862sm19167845ad.71.2026.09.16.20.03.06
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 16 Sep 2026 20:03:09 -0700 (PDT)
-From: Zihan Xi <zihanx@nebusec.ai>
-To: Simon Horman <horms@verge.net.au>
-Cc: Julian Anastasov <ja@ssi.bg>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Florian Westphal <fw@strlen.de>,
-	Phil Sutter <phil@nwl.cc>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org,
-	linux-kernel@vger.kernel.org,
-	Zihan Xi <zihanx@nebusec.ai>
-Subject: [PATCH net v2 2/2] ipvs: reject FTP control ports as data ports
-Date: Thu, 17 Sep 2026 03:02:52 +0000
-Message-ID: <20260917030301.5502-2-zihanx@nebusec.ai>
-X-Mailer: git-send-email 2.47.3
-In-Reply-To: <cover.1789435989.git.zihanx@nebusec.ai>
-References: <cover.1789435989.git.zihanx@nebusec.ai>
+	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="EW81XCCg"
+X-Envelope-To: lvs-devel@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=X8Rwlaxr4CS6AlKne4l5YvG9acTFvMARS52buVLDJkc=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1789648925; v=1; x=1790253725;
+ b=EW81XCCgZztRTCOltDEWCw8Cc0KxcSLE4MyIP4IIP8iiv2Lym1NoEx5IRN+PfVEcfL9fgSka
+ KkFMY/QLtPFW0Gm89+CE0ugrKa09an79zPMdshPs6rYBNgnezo+xSaP6yi1wUG/3mY4RAAPPI1n
+ nPBDQYKaqy8+7CiTixihgH30=
+X-Envelope-To: lvs-devel@vger.kernel.org
+Received: by smtp.migadu.com with ESMTPS id 7678bcde10ec6b73;
+	Thu, 17 Sep 2026 12:42:05 +0000
+X-Mizu-Trace-ID: 7678bcde10ec6b73
+X-Migadu-Flow: FLOW_OUT
+Message-ID: <d8aab597-62b5-444a-a6cf-efd2642d9a81@linux.dev>
+Date: Thu, 17 Sep 2026 20:42:00 +0800
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH net 0/1] ipvs: bound twos scheduler destination walks
+To: Julian Anastasov <ja@ssi.bg>
+Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+ Simon Horman <horms@verge.net.au>, pablo@netfilter.org, fw@strlen.de,
+ phil@nwl.cc, darby.payne@gmail.com, vega@nebusec.ai, zzyy19904204639@163.com
+References: <cover.1789117690.git.zzyy19904204639@163.com>
+ <861399d8-c71f-6589-d4cd-3549d9c5bc00@ssi.bg>
+From: Jiayuan Chen <jiayuan.chen@linux.dev>
+In-Reply-To: <861399d8-c71f-6589-d4cd-3549d9c5bc00@ssi.bg>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
-ip_vs_ftp_out() creates a wildcard data connection from the
-server-advertised passive port. If that port is one of the configured FTP
-control ports, ip_vs_conn_new() binds the FTP helper to the new connection
-again. A subsequent wildcard lookup can then extend a controlled-connection
-chain.
 
-Reject zero and configured control ports before creating passive
-connections. For active mode, reject a zero client port and a data port
-derived from a configured control port.
+On 9/15/26 2:01 AM, Julian Anastasov wrote:
+> 	Hello,
+>
+> On Sun, 13 Sep 2026, Ren Wei wrote:
+>
+>> From: Darong Lu <zzyy19904204639@163.com>
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
-Reported-by: Vega <vega@nebusec.ai>
-Assisted-by: LLM
-Co-developed-by: Luxing Yin <root@tr0jan.top>
-Signed-off-by: Luxing Yin <root@tr0jan.top>
-Signed-off-by: Zihan Xi <zihanx@nebusec.ai>
+
+[...]
+
+>> The root cause is that both walks are unbounded. If the iterator follows a
+>> reused list entry, it can continue walking indefinitely and prevent the
+>> scheduler from returning. The fix reads the service destination count before
+>> each walk and stops after that many entries, while preserving the existing
+>> scheduler algorithm and RCU list traversal.
+> 	I'm trying to understand how the iterator can be
+> tricked to loop forever: to loop, it should never reach
+> &svc->destinations, so it must walk unlinked nodes which
+> create some loop between them. But READ_ONCE soon or later
+> will read actual ptr from memory, so it should reach to
+> &svc->destinations. We know that entries end up in reverse
+> order in the list after they are added but how looks the
+> list that causes the loop?
+>
+> 	OTOH, I don't understand why we need two full lookups to
+> trigger the problem, can it happen with one list_for? Other
+> schedulers also walk the list twice, for example, RR remembers
+> previous position.
+>
+> 	I assume the problem is caused by the dest_trash.
+> It seems, we need a general solution to this problem.
+> One option is to penalize with synchronize_rcu() if we detect
+> dest that is reused too soon. But even that looks complex to
+> implement.
+
+
+I think we can use pair(get_state_synchronize_rcu, cond_synchronize_rcu) 
+instead.
+For 'ipvsadm -C && ipvsadm -R', synchronize_rcu is only called once.
+
+
+ From ccbb304ab17e00849ea0bf31582d384e6b2768ba Mon Sep 10 00:00:00 2001
+From: Jiayuan Chen <jiayuan.chen@linux.dev>
+Date: Thu, 10 Sep 2026 19:36:57 +0800
+Subject: [PATCH] ipvs: wait for readers before reusing dest from trash
+
+__ip_vs_unlink_dest() and ip_vs_rs_unhash() remove the dest with
+list_del_rcu()/hlist_del_rcu(), so readers can still be on it. If
+ip_vs_add_dest() picks the same dest from trash right away,
+__ip_vs_update_dest() links it into another service and rs_table,
+and those readers follow the new next pointers into a different
+list.
+
+A synchronize_rcu() on the delete side costs one grace period per
+dest, which makes 'ipvsadm -C' with many real servers very slow.
+Doing it on the reuse side has the same problem with 'ipvsadm -R'.
+So record a grace period cookie when the dest goes to trash and use
+cond_synchronize_rcu() on reuse. The first wait covers every dest
+trashed before it, so a full restore waits at most once.
+
+Fixes: bcbde4c0a755 ("ipvs: make the service replacement more robust")
+Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
 ---
-changes in v2:
-  - Reject the data port derived from a configured control port in
-    ip_vs_ftp_in() to cover the active-mode bypass.
-  - v1 Link:
-    https://lore.kernel.org/all/cover.1789110326.git.zihanx@nebusec.ai/
+  include/net/ip_vs.h            | 1 +
+  net/netfilter/ipvs/ip_vs_ctl.c | 6 ++++++
+  2 files changed, 7 insertions(+)
 
- net/netfilter/ipvs/ip_vs_ftp.c | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 32fde731bceb..81b7600ac959 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1013,6 +1013,7 @@ struct ip_vs_dest {
 
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 9e3e005a82635..4822a1a75212d 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -62,6 +62,17 @@ static unsigned short ports[IP_VS_APP_MAX_PORTS] = {21, 0};
- module_param_array(ports, ushort, &ports_count, 0444);
- MODULE_PARM_DESC(ports, "Ports to monitor for FTP control commands");
- 
-+static bool is_control_port(u16 port)
-+{
-+	unsigned int i;
+      struct rcu_head        rcu_head;
+      struct list_head    t_list;        /* in dest_trash */
++    unsigned long        rcu_state;    /* GP cookie when trashed */
+      unsigned int        in_rs_table:1;    /* we are in rs_table */
+  };
+
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index 4c1c739446b7..99da7b74500f 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1159,6 +1159,7 @@ static void ip_vs_trash_put_dest(struct netns_ipvs 
+*ipvs,
+      /* dest lives in trash with reference */
+      list_add(&dest->t_list, &ipvs->dest_trash);
+      dest->idle_start = istart;
++    dest->rcu_state = get_state_synchronize_rcu();
+      spin_unlock_bh(&ipvs->dest_trash_lock);
+  }
+
+@@ -1566,6 +1567,11 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct 
+ip_vs_dest_user_kern *udest)
+                    IP_VS_DBG_ADDR(svc->af, &dest->vaddr),
+                    ntohs(dest->vport));
+
++        /* Readers may still follow n_list/d_list of the unlinked
++         * dest, wait before linking it again.
++         */
++        cond_synchronize_rcu(dest->rcu_state);
 +
-+	for (i = 0; i < ports_count; i++) {
-+		if (ports[i] == port)
-+			return true;
-+	}
-+	return false;
-+}
-+
- 
- static char *ip_vs_ftp_data_ptr(struct sk_buff *skb, struct ip_vs_iphdr *ipvsh)
- {
-@@ -319,6 +330,10 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 		return 1;
- 	}
- 
-+	/* Do not redirect data to control ports */
-+	if (!port || is_control_port(ntohs(port)))
-+		return 0;
-+
- 	/* Now update or create a connection entry for it */
- 	{
- 		struct ip_vs_conn_param p;
-@@ -529,6 +544,9 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
- 		return 1;
- 	}
- 
-+	if (!port || is_control_port(ntohs(cp->vport) - 1))
-+		return 0;
-+
- 	/* Passive mode off */
- 	cp->app_data = (void *) IP_VS_FTP_ACTIVE;
- 
--- 
+          ret = ip_vs_start_estimator(svc->ipvs, &dest->stats);
+          /* On error put back dest into the trash */
+          if (ret < 0)
+--
 2.43.0
 
