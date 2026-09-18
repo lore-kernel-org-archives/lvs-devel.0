@@ -1,49 +1,49 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA5FF519E0B;
-	Fri, 18 Sep 2026 16:50:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C4C84D598C;
+	Fri, 18 Sep 2026 16:54:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789750217; cv=none; b=NmwnvC0hsMM9bYCsHbC90NXarakAdRccjFdXOus3g+L64FCp0hq3ifETayuq95j09hVXizvGHa646YK+NTN7oLNfZLc7JHJKlZhmir+LRJHZkqt4mw3OKeawJ25Dg1Waah9c8IczYMzbdDwW8OYleKCRb0e5bJeNX0ZYZXEDHH0=
+	t=1789750456; cv=none; b=mWaC7ckcV7pBCMEb0esbGg3VzMftmgChDCLJoVzqKc/2yTEMzWLzX6SOOQBozJXEZd7GyZcJeKjCA+i7r+Pe4q9dL4ENL3etspEUJpGKry35yqQtK7sqoeEz+hfeJQY7BCAMTNPOYMe9VeH0LQBZgScU8ZSpMraSYlWNq3GB/xg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789750217; c=relaxed/simple;
-	bh=G3uymknwnCUX6QlaDxhK9oRLkJMvsnDoCJ+9BL3HgBc=;
+	s=arc-20240116; t=1789750456; c=relaxed/simple;
+	bh=KFeniIOEWYrwIFzZgCOKiyP8UjZKQsHWd1Hp+R6o8vE=;
 	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=Je91uI4jdQrfTm8aSxfDtbEvEy3DYDps59BVzHCbbWkL20yNU4vY0gfem9RxWBqFwCG8IumxaquJCWesCWX5cn23GEngzYVaSFH7GiKtEu2sqUuUTCIFURHuKrGo4RNLtTfgCnuESunUW1oq+PJwBlIYTp3NTnR9YhoULIY/iOk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=0kpGbTwT; arc=none smtp.client-ip=193.238.174.39
+	 MIME-Version:Content-Type; b=iw0SwNKMBj4tjZLnYXcSrjun/X+apz8odN3KacF7OjOR1N4xb8GMSq/m0beMLotFc9PktUa3L4lWly/LZ0aNE4cv+SiTMlF210lkmb5lXyuBhQY9IRoN7XPYhFKzMTzQeEHVQyexqBP8XMom0NjKQ4s1XxvnMhtvsIltbAI6x3Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=qqEL7LsY; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="0kpGbTwT"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="qqEL7LsY"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 9A979213A3;
-	Fri, 18 Sep 2026 19:50:02 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id 13ADF2139F;
+	Fri, 18 Sep 2026 19:54:08 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-type:content-type:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=XW/GAKietqt6MAAjngo9iNxQ26sGvvnaGq/MzOwjy64=; b=0kpGbTwTLzoF
-	G/VpevEwIZnN+W+s2AP1UGCDd+D9zAILtscAfwRr2W2/o/N3azcrPSJl/SOcZUz8
-	gug/RrPgmnAI69Ihq78wKFdjv9YVvA+K7YMrebNLik0XlEZ3mWg7CbNrP4/Qhxlk
-	p7Aq4wvjwavAG9Crafwve52HL32GPvWBGbVEjkIjdSrPgmYVaAfg100XFLnbgows
-	OLquGCdVuYcd7MfBokXw/OU1fPYQrCp9fJ928kFfnJ2YUjfwq8uhVUdOyPTciCqB
-	2pY4iFX0Zj+b+Mz02wkT69VrD2t1UCn+iCp6KByAWZOLpS4lZg5TVvn+rOuZi95Y
-	Bn/60W7zkGMOjtPym3f2taKZClh4m7MWpvRCB4t7SDUB/ipV5NDHDMN1M9FPd/KR
-	/+5484b2ujbAYtAhrpG9MyX3Hmi3UaINNlq2GMhDoIicKSA037dPQ2W852moyHeb
-	1/kBcV9UsZ4UlEUWiedii73Own+Pzlma/r0GUYM3U7Gsd76XdibbTRotHfKekmIR
-	fQSfeweVzmn6W76Wd6DJHi/mx3K6kkhGEY2bMrPKPp9fJwz/Hvc1AP4+dbyQJgqv
-	3GKZIUJ/0W5oXYFz6xIJElgtjZy8dRYfp6UyUCIN6tWOjEjUrugxPkumyfspD7I4
-	uzg7yMBafrJYJ9LtJy0bgZXAILejUtg=
+	 bh=HnjYyCBikyh86u64wiZU6c8DIC6GJG3n9bj7L2qNiPs=; b=qqEL7LsYqO2w
+	LdxpvLHnpyAKdJc/HxY9nmUCQne6PfVuPjFDKS124AO9elq8L+1uaU52F3kj9aRK
+	HW/LqhmIKeip7vbZYC4SBzmB5G4uvD7Q+OAlFCPJsMV+9gzGWZKBaeZnUxI9/R/m
+	xdnaCTy3ndj1rgpBGF4C8xT7aTU4snxyACmzZ7yTO9AfGNSWxcdAK73hbTBRC3Pv
+	S2jcmrk0WoakKrYPozVvqo5lNSdEyTGc5iFok1cbdxu03vwUsOrgg47Ms+TiP7ZQ
+	V1xte23QQozq9Qbiao/9OL77lbSSR7uFAvaJI1A/KUPOo2DwF3lVfRwdLssq/KoL
+	DUy1tYDh6QUch86mtSMhbSExLSTRBrZzyPC/N5zirXZo4YSBaL1D+ZRX1SV2F1AK
+	UPgrqIu+cXT89BDLAhTVbM0coNzbVSjHXp3sMmfSTs4pcVY9+ZbBTj/elVxt96vg
+	D+JVp4xJBLYH5QX6xiCng8oNYu/MtP3qCxi9sl8yaRWRBnqGfGoTBzvFjyxmmpUw
+	KKx6MmFFf39/J/ZK09djJl5mQ46bycV6GVSQvn4FoOkE4R+xW9jCUSGV4QOWc7rL
+	0MHtrPcV4hqR70eX7253Q1ngvrZ4jD9ncUlxucM025QjiKEo9SDMtj940Lfihn7Y
+	76OoWVatss7WX+GAbduTHj9jFaV/BJk=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Fri, 18 Sep 2026 19:50:02 +0300 (EEST)
+	Fri, 18 Sep 2026 19:54:07 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 98F5560B6D;
-	Fri, 18 Sep 2026 19:50:04 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id CE1D560B6D;
+	Fri, 18 Sep 2026 19:54:09 +0300 (EEST)
 Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68IGnvX8069646;
-	Fri, 18 Sep 2026 19:49:59 +0300
-Date: Fri, 18 Sep 2026 19:49:57 +0300 (EEST)
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68IGs749070156;
+	Fri, 18 Sep 2026 19:54:07 +0300
+Date: Fri, 18 Sep 2026 19:54:07 +0300 (EEST)
 From: Julian Anastasov <ja@ssi.bg>
 To: Zihan Xi <zihanx@nebusec.ai>
 cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
@@ -53,11 +53,11 @@ cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
         Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org,
         lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
         coreteam@netfilter.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH net v2 1/2] ipvs: avoid stack overflow from recursive
- connection expiration
-In-Reply-To: <20260917030301.5502-1-zihanx@nebusec.ai>
-Message-ID: <c104a8ee-eebc-1e80-c685-3e22f23ffbc8@ssi.bg>
-References: <cover.1789435989.git.zihanx@nebusec.ai> <20260917030301.5502-1-zihanx@nebusec.ai>
+Subject: Re: [PATCH net v2 2/2] ipvs: reject FTP control ports as data
+ ports
+In-Reply-To: <20260917030301.5502-2-zihanx@nebusec.ai>
+Message-ID: <7b561a02-461d-2320-75e4-241dd213d9f0@ssi.bg>
+References: <cover.1789435989.git.zihanx@nebusec.ai> <20260917030301.5502-2-zihanx@nebusec.ai>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -71,17 +71,17 @@ Content-Type: text/plain; charset=US-ASCII
 
 On Thu, 17 Sep 2026, Zihan Xi wrote:
 
-> When a controlled IPVS connection expires, its controller may be expired
-> synchronously if it has no remaining controlled connections. A chain of
-> controlled connections can then cause recursive calls to
-> ip_vs_conn_expire() and exhaust the kernel stack during namespace cleanup.
+> ip_vs_ftp_out() creates a wildcard data connection from the
+> server-advertised passive port. If that port is one of the configured FTP
+> control ports, ip_vs_conn_new() binds the FTP helper to the new connection
+> again. A subsequent wildcard lookup can then extend a controlled-connection
+> chain.
 > 
-> Make ip_vs_conn_del_put() report whether it deleted the controller timer.
-> When it succeeds, continue expiration with the controller instead of
-> calling ip_vs_conn_expire() recursively. This keeps chain cleanup
-> synchronous while using one stack frame for the whole chain.
+> Reject zero and configured control ports before creating passive
+> connections. For active mode, reject a zero client port and a data port
+> derived from a configured control port.
 > 
-> Fixes: f9200a52eedf ("ipvs: avoid expiring many connections from timer")
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 > Cc: stable@vger.kernel.org
 > Reported-by: Vega <vega@nebusec.ai>
 > Assisted-by: LLM
@@ -91,82 +91,60 @@ On Thu, 17 Sep 2026, Zihan Xi wrote:
 
 	Patch looks good to me for the nf tree, thanks!
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-	Next time use "nf"/"nf-next" tag for the IPVS patches.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 
 > ---
 > changes in v2:
->   - Use a repeat path for controller cleanup so expiration stays
->     synchronous without recursive calls or extra timer ticks.
+>   - Reject the data port derived from a configured control port in
+>     ip_vs_ftp_in() to cover the active-mode bypass.
 >   - v1 Link:
 >     https://lore.kernel.org/all/cover.1789110326.git.zihanx@nebusec.ai/
 > 
->  net/netfilter/ipvs/ip_vs_conn.c | 17 ++++++++++++-----
->  1 file changed, 12 insertions(+), 5 deletions(-)
+>  net/netfilter/ipvs/ip_vs_ftp.c | 18 ++++++++++++++++++
+>  1 file changed, 18 insertions(+)
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index 6fa3e1dc534c3..c7b88ce1765dc 100644
-> --- a/net/netfilter/ipvs/ip_vs_conn.c
-> +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -1331,17 +1331,18 @@ static void ip_vs_conn_del(struct ip_vs_conn *cp)
->  }
+> diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+> index 9e3e005a82635..4822a1a75212d 100644
+> --- a/net/netfilter/ipvs/ip_vs_ftp.c
+> +++ b/net/netfilter/ipvs/ip_vs_ftp.c
+> @@ -62,6 +62,17 @@ static unsigned short ports[IP_VS_APP_MAX_PORTS] = {21, 0};
+>  module_param_array(ports, ushort, &ports_count, 0444);
+>  MODULE_PARM_DESC(ports, "Ports to monitor for FTP control commands");
 >  
->  /* Try to delete connection while holding reference */
-> -static void ip_vs_conn_del_put(struct ip_vs_conn *cp)
-> +static bool ip_vs_conn_del_put(struct ip_vs_conn *cp)
->  {
->  	if (timer_delete(&cp->timer)) {
->  		/* Drop cp->control chain too */
->  		if (cp->control)
->  			cp->timeout = 0;
->  		__ip_vs_conn_put(cp);
-> -		ip_vs_conn_expire(&cp->timer);
-> -	} else {
-> -		__ip_vs_conn_put(cp);
-> +		return true;
->  	}
+> +static bool is_control_port(u16 port)
+> +{
+> +	unsigned int i;
 > +
-> +	__ip_vs_conn_put(cp);
+> +	for (i = 0; i < ports_count; i++) {
+> +		if (ports[i] == port)
+> +			return true;
+> +	}
 > +	return false;
->  }
+> +}
+> +
 >  
->  static void ip_vs_conn_expire(struct timer_list *t)
-> @@ -1349,6 +1350,7 @@ static void ip_vs_conn_expire(struct timer_list *t)
->  	struct ip_vs_conn *cp = timer_container_of(cp, t, timer);
->  	struct netns_ipvs *ipvs = cp->ipvs;
->  
-> +repeat:
->  	/*
->  	 *	do I control anybody?
->  	 */
-> @@ -1358,6 +1360,7 @@ static void ip_vs_conn_expire(struct timer_list *t)
->  	/* Unlink conn if not referenced anymore */
->  	if (likely(ip_vs_conn_unlink(cp))) {
->  		struct ip_vs_conn *ct = cp->control;
-> +		bool next = false;
->  
->  		/* delete the timer if it is activated by other users */
->  		timer_delete(&cp->timer);
-> @@ -1372,7 +1375,7 @@ static void ip_vs_conn_expire(struct timer_list *t)
->  			    (!(ct->flags & IP_VS_CONN_F_TEMPLATE) ||
->  			     !(ct->state & IP_VS_CTPL_S_ASSURED))) {
->  				IP_VS_DBG(4, "drop controlling connection\n");
-> -				ip_vs_conn_del_put(ct);
-> +				next = ip_vs_conn_del_put(ct);
->  			} else if (has_ref) {
->  				__ip_vs_conn_put(ct);
->  			}
-> @@ -1402,6 +1405,10 @@ static void ip_vs_conn_expire(struct timer_list *t)
->  		else
->  			call_rcu(&cp->rcu_head, ip_vs_conn_rcu_free);
->  		atomic_dec(&ipvs->conn_count);
-> +		if (next) {
-> +			cp = ct;
-> +			goto repeat;
-> +		}
->  		return;
+>  static char *ip_vs_ftp_data_ptr(struct sk_buff *skb, struct ip_vs_iphdr *ipvsh)
+>  {
+> @@ -319,6 +330,10 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+>  		return 1;
 >  	}
+>  
+> +	/* Do not redirect data to control ports */
+> +	if (!port || is_control_port(ntohs(port)))
+> +		return 0;
+> +
+>  	/* Now update or create a connection entry for it */
+>  	{
+>  		struct ip_vs_conn_param p;
+> @@ -529,6 +544,9 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
+>  		return 1;
+>  	}
+>  
+> +	if (!port || is_control_port(ntohs(cp->vport) - 1))
+> +		return 0;
+> +
+>  	/* Passive mode off */
+>  	cp->app_data = (void *) IP_VS_FTP_ACTIVE;
 >  
 > -- 
 > 2.43.0
