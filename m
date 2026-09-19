@@ -1,162 +1,96 @@
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B37FE4570FD;
-	Sat, 19 Sep 2026 10:08:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4694137F011;
+	Sat, 19 Sep 2026 18:07:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789812539; cv=none; b=o2jyWTd1rbVXf+uV6dBiJdJxnYx9IApbiP2YTcJm2yrhWLCUCQVKcW/3PIdIJ4BhQH39Pp1QkqfLxX/t82vZEjApFvOiV9QBP9B1ojNqNAhTIQimB3bfAOTIPjHUuICH2yYF2jHM0rx0YHvEVjGFWP3RD2yvGeZhY5m25bs8Mpk=
+	t=1789841276; cv=none; b=JGk5nvH1+WMwoS6f36AAOdVVUF00YLi7DDkDJPDendA66HwG9SGQNkBTen5ycZyM7IIso0AF9EOX5Kw58KFZJEywnQAR2lB345dnCvnH7EhQ9wpmzliPwFjjtYse34UBi7XhuP+P+H5L7ih96xswAHP8DcDtchDf7dX/DBJ7sIg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789812539; c=relaxed/simple;
-	bh=ZNGeOz9pirAsmGnWAM9RSJw/qC/AipJAd0mOKwCHW20=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=fjE3558n0bMqwOKSUo3H4FdDdLwQnFU5PZwr5gkkvzeCNijOk0lIaDVl8yfGi2e0YsdS67pER2gCiacGqMotS8jF2Ajsbzn4Ff9c6tx69sqx6hLRS1bbZ5WfE117kXuZc/N5Dgi7NsUssQcsvTYnu9hA9F02N+I5aVby+uR4VuA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=soqZO3df; arc=none smtp.client-ip=193.238.174.39
+	s=arc-20240116; t=1789841276; c=relaxed/simple;
+	bh=N8qRsZOlpYvHrtmpT3NWAA+zPDCTm/Ps91SHF+Z5rLY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=MNlyHEHGKVZtzKYLzG6LRixoFtvQH2NqFbtHuTS5vP9NUKB4Sg2N5DSsQDOxS+fbm292k4wmB0Qqiq9SciHdCUswMk1zejPHLL92TrM9ajVanhh9CaZ3StleM4XBz1i2Cpe9/tzlQOiNzspUN/VADezyob4rVdbm+0hkZ6rA37w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=KjgWdep5; arc=none smtp.client-ip=193.238.174.39
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="soqZO3df"
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="KjgWdep5"
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 04592213A5;
-	Sat, 19 Sep 2026 13:08:48 +0300 (EEST)
+	by mx.ssi.bg (Potsfix) with ESMTP id D75C0213A8;
+	Sat, 19 Sep 2026 21:07:44 +0300 (EEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=O2QTtBcrc3GL+6k/leZ9pC0nG6fhn7UZg6e0bwmdEUU=; b=soqZO3dfMYzA
-	sYWuQNkyosnZ4MCLi5oT3nDqxylHU2cRRO0Ti/SVTUuYuGTGWueocYYpcuFh/aB/
-	2dJu62xq/7ZExTJ0mOfmk/tox3lA+sYeExTJTXMmLKJIXJDIUz3rBKnrwquY3BgZ
-	AJQ68SUVPr/DO8mXbmwh5NUIpMlNhVpR9/ViUFEhv2ZHM8rKKxo0MdJZ3uWWlaoP
-	mWXoSzNsi1hU2EOlBPsn1rEC2uP3yPSXmtDhpAAW2LFIiz0ERgVt5olA91BEAZ5h
-	WXjj43e2jrg+cLb0ScjkNnTnrsu3/Pp5eMeZWwg8PKmQJ8Q6jdaHnGM8ZlvryQfU
-	RZ46+3dAMPkT1pR3YL6RMMjIueYpvktto1dWnEDQTSFgsfmy2M0p5IgzzYmzHtgd
-	nav/9iClNV0V+gFY5GaDXBCZ7pgCuHc6Hm94r8/L8//iRU3S4lDU9N5M5wTiBLTV
-	T5TU5pOMYWR7zGzDOTDEDxIs6LJcGkKe8VHCEdfqHvEHAWIqTFm4wcvtwz55TDys
-	loUSmInE6qjHP+tZTPNwy4IfsaO/3r4Ej15Wy27GvSlghz6TeaqlcVWYb+NYHD5O
-	z/qXMn7eFZhuPz5oa+dBRzxyRGz0gWa4U0YGJ0BdI4pxMyIYocKKIYaSB5IOrYgH
-	3K343kILpChrbzBvT46N+0GoIo61XGE=
+	:content-transfer-encoding:date:from:from:message-id
+	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=1uSrIgsZ
+	8uFBfVJCKS4FzoIIJdObcmLUeET5Hls6QiA=; b=KjgWdep58u7oyODtOreFM+6y
+	hSNLNyAxdsYaeEo9JpVkXvmHLWti0Ocwj5z5//dJWFrdU7Vm//R0Kts53MYMvTnB
+	avBfQB9oaXk8SnduHZJQyUz6a2U6/xK8zL+ouwTa2OAaGmlz+fI388hvwjZF1ayV
+	yY5NGp0GSnaqwpJM7hlUspujvGqKtNTm7XluHhj8ldGFKnQaQRL8glyQpaZrgym3
+	nSZVKIs1oeVRDeaOyuXO4bvjbZwKdj1B+CXQqA/+1Y/edawqBuNqJLL30F3qSPd2
+	PBuIyIVzU9YWqsMkqX7aAznO0wCHoAZB0AOBv3764iWlZSE1xI8TjFC0CpTPkmeU
+	aGbg9J0KE4j5WXUZ0dAoKqaGdVAA3OsXqQDaYPdptspE3HYUMrngVFWlVH4QwCa5
+	RQ2ltEsW3ZxPz4MucMiaqy1u8cQIjWiYA/dcWRP1Ef6uYmQ/VbqveZpPMHWGJFi5
+	JJJgSGSshi2l+Y3KnfWDnFFoUMHdYAX8ruoSF4VXF2Vsmuwv1VexbELo8VGjncGY
+	++ibJxpAFEaebNYmmfCz8zrAN8CLYLN90NW6G2GmaNhFFTsCv/cFbf1tkZO7/vlk
+	PtKC4Hl+QE9EmK1ljvt7b8HjEiK91SQuJjfJ9qoQrA+uw2kkcS0iAmElCcLM4Gry
+	YBKdLS1x4C7IM8oh4zI=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Sat, 19 Sep 2026 13:08:47 +0300 (EEST)
+	Sat, 19 Sep 2026 21:07:44 +0300 (EEST)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id B427F61E26;
-	Sat, 19 Sep 2026 13:08:49 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68JA8m5t021687;
-	Sat, 19 Sep 2026 13:08:48 +0300
-Date: Sat, 19 Sep 2026 13:08:48 +0300 (EEST)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 0E15C60627;
+	Sat, 19 Sep 2026 21:07:47 +0300 (EEST)
+Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68JI7kqX049516;
+	Sat, 19 Sep 2026 21:07:46 +0300
+Received: (from root@localhost)
+	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 68JI7gP7049515;
+	Sat, 19 Sep 2026 21:07:42 +0300
 From: Julian Anastasov <ja@ssi.bg>
-To: Zihan Xi <zihanx@nebusec.ai>
-cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
-        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH net v2 2/2] ipvs: reject FTP control ports as data
- ports
-In-Reply-To: <7b561a02-461d-2320-75e4-241dd213d9f0@ssi.bg>
-Message-ID: <a1ba4cd8-6e18-1ae9-fd96-8bb87f434f99@ssi.bg>
-References: <cover.1789435989.git.zihanx@nebusec.ai> <20260917030301.5502-2-zihanx@nebusec.ai> <7b561a02-461d-2320-75e4-241dd213d9f0@ssi.bg>
+To: Simon Horman <horms@verge.net.au>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Subject: [PATCH v2 nf 0/2] ipvs: filter some connection flags
+Date: Sat, 19 Sep 2026 21:07:31 +0300
+Message-ID: <20260919180733.49501-1-ja@ssi.bg>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
 
-	Hello,
+        Hello,
 
-On Fri, 18 Sep 2026, Julian Anastasov wrote:
+        The patchset contains two changes:
 
-> On Thu, 17 Sep 2026, Zihan Xi wrote:
-> 
-> > ip_vs_ftp_out() creates a wildcard data connection from the
-> > server-advertised passive port. If that port is one of the configured FTP
-> > control ports, ip_vs_conn_new() binds the FTP helper to the new connection
-> > again. A subsequent wildcard lookup can then extend a controlled-connection
-> > chain.
-> > 
-> > Reject zero and configured control ports before creating passive
-> > connections. For active mode, reject a zero client port and a data port
-> > derived from a configured control port.
-> > 
-> > Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> > Cc: stable@vger.kernel.org
-> > Reported-by: Vega <vega@nebusec.ai>
-> > Assisted-by: LLM
-> > Co-developed-by: Luxing Yin <root@tr0jan.top>
-> > Signed-off-by: Luxing Yin <root@tr0jan.top>
-> > Signed-off-by: Zihan Xi <zihanx@nebusec.ai>
-> 
-> 	Patch looks good to me for the nf tree, thanks!
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+1. Filter the ONE_PACKET flag for templates when inherited from
+dest->conn_flags to allow reusing the templates from many
+connections
 
-	Patch is ok but needs to be resent with
-the other patch:
+2. Filter some flags or their combinations in the backup server
+to avoid creating templates that are dropped immediately or
+to avoid unexpected template hits.
 
-pw-bot: changes-requested
+        Followup patches should add more protections.
 
-> > changes in v2:
-> >   - Reject the data port derived from a configured control port in
-> >     ip_vs_ftp_in() to cover the active-mode bypass.
-> >   - v1 Link:
-> >     https://lore.kernel.org/all/cover.1789110326.git.zihanx@nebusec.ai/
-> > 
-> >  net/netfilter/ipvs/ip_vs_ftp.c | 18 ++++++++++++++++++
-> >  1 file changed, 18 insertions(+)
-> > 
-> > diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-> > index 9e3e005a82635..4822a1a75212d 100644
-> > --- a/net/netfilter/ipvs/ip_vs_ftp.c
-> > +++ b/net/netfilter/ipvs/ip_vs_ftp.c
-> > @@ -62,6 +62,17 @@ static unsigned short ports[IP_VS_APP_MAX_PORTS] = {21, 0};
-> >  module_param_array(ports, ushort, &ports_count, 0444);
-> >  MODULE_PARM_DESC(ports, "Ports to monitor for FTP control commands");
-> >  
-> > +static bool is_control_port(u16 port)
-> > +{
-> > +	unsigned int i;
-> > +
-> > +	for (i = 0; i < ports_count; i++) {
-> > +		if (ports[i] == port)
-> > +			return true;
-> > +	}
-> > +	return false;
-> > +}
-> > +
-> >  
-> >  static char *ip_vs_ftp_data_ptr(struct sk_buff *skb, struct ip_vs_iphdr *ipvsh)
-> >  {
-> > @@ -319,6 +330,10 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
-> >  		return 1;
-> >  	}
-> >  
-> > +	/* Do not redirect data to control ports */
-> > +	if (!port || is_control_port(ntohs(port)))
-> > +		return 0;
-> > +
-> >  	/* Now update or create a connection entry for it */
-> >  	{
-> >  		struct ip_vs_conn_param p;
-> > @@ -529,6 +544,9 @@ static int ip_vs_ftp_in(struct ip_vs_app *app, struct ip_vs_conn *cp,
-> >  		return 1;
-> >  	}
-> >  
-> > +	if (!port || is_control_port(ntohs(cp->vport) - 1))
-> > +		return 0;
-> > +
-> >  	/* Passive mode off */
-> >  	cp->app_data = (void *) IP_VS_FTP_ACTIVE;
-> >  
-> > -- 
-> > 2.43.0
+Changes in v2:
+* add patch 1
+* patch 2: explain in commit message that NO_CPORT is not sent
+  because the master does not sync connections that are not
+  established
 
-Regards
+Julian Anastasov (2):
+  ipvs: do not create invisible templates
+  ipvs: filter some flags received in the backup server
 
---
-Julian Anastasov <ja@ssi.bg>
+ net/netfilter/ipvs/ip_vs_conn.c |  3 +++
+ net/netfilter/ipvs/ip_vs_sync.c | 33 ++++++++++++++++++++++++++++++---
+ 2 files changed, 33 insertions(+), 3 deletions(-)
+
+-- 
+2.55.0
+
 
