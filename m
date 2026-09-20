@@ -1,214 +1,98 @@
-Received: from mta1.migadu.com (out-1.mta1.migadu.com [95.215.58.1])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8DC562DF13B
-	for <lvs-devel@vger.kernel.org>; Sun, 20 Sep 2026 13:35:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 922B9445ADD;
+	Sun, 20 Sep 2026 14:10:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789911347; cv=none; b=RM1Zl7pW/9blcwOqV989/A2cNvA/n04B2qqtwTBFXejdrsS6FZ200WS4ZSFJqnSkNGA3f6QSApPJi843fUT5CnTR+bj0AFwYpDGRtLb/Y3h1dQoqNYLBYMbE3HZqDV54SOrTnZE0mbkELEEYsE7CyzfFJzW7ibSsbxYbAeP4yfo=
+	t=1789913409; cv=none; b=DtT8MENymkSBrwHOuc/fzsvDvT3KoQpeqlr6F9+H7Jf9gVk9/XKFA6rm94qcljn/89D1PejenazJCn9poHCE2u0V4rzG7nYB8gWTHnFDevTZ/cT5aKcnSGDL7kpDa5Gupx7bm0dIiGRLEsuG2R7VNcTtV8uN5QPzG4uu5pmebjo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789911347; c=relaxed/simple;
-	bh=g9e/2IEJIPYCeLdiO80dbyVvZLVMyX1DLQvRmaTotn0=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=hB7ak6nUFYxZL5dyf7W5JK6xv08MqTCXEl2YeIihgAwW2/7Iiz1eaim3NZkrgGiRsnwCo/KvXVwtCNACAq6KtQyyIlv3GFbN8uvdXQ9zaK2Aa4Zcg+SaM8MsKnBzYo6r0OHiwSZlDUe+wEPJz4lKp2RksXkcCTw8KVPggwboxYQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=tcdda1E5; arc=none smtp.client-ip=95.215.58.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	s=arc-20240116; t=1789913409; c=relaxed/simple;
+	bh=RAwpRinokFbmsWfbjOhUYu9E7xo792Rc6rShwectdbs=;
+	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
+	 MIME-Version:Content-Type; b=VFrQnwG7trG+f0se/expEL8Mp6jhlqGsRSz4e3hSCn9n4WWi7J4DF55FXqTOHfH+9J0XYGaT+D+f8W046uQMEhmCTAPl/20L5B4KsW/gKPW0NZRc8pPvwo943F+styB3YJbTp203qUBoJRB8Ix+K4iXGfhLtvtQPkPFoCTdkw0E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=oMxdndPX; arc=none smtp.client-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="tcdda1E5"
-X-Envelope-To: lvs-devel@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=g9e/2IEJIPYCeLdiO80dbyVvZLVMyX1DLQvRmaTotn0=;
- c=simple/simple; d=linux.dev;
- h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1789911340; v=1; x=1790516140;
- b=tcdda1E5uMkw70YLiiXXWV64xj9d2qaLpcVXGMQYRrBpMmMxX2pFfMaHtWR7ifqZlGvXw5/8
- Y9d+xWOEK8kXXIco7e+zlDU5RHrWY3Y8MICKmnCBCEsUdIyd7fSu2OEhSZYByqE6feMzRKwEbdh
- pJOHOJNyFhDpC57VreYh/ROg=
-X-Envelope-To: lvs-devel@vger.kernel.org
-Received: by smtp.migadu.com with ESMTPS id 9a763997ddf6773c;
-	Sun, 20 Sep 2026 13:35:40 +0000
-X-Mizu-Trace-ID: 9a763997ddf6773c
-X-Migadu-Flow: FLOW_OUT
-Message-ID: <b2a1cc29-74ef-48e4-bd41-283279f2f670@linux.dev>
-Date: Sun, 20 Sep 2026 21:35:30 +0800
+	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="oMxdndPX"
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 889CE213A9;
+	Sun, 20 Sep 2026 17:09:55 +0300 (EEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=0kSGxOsT2kMBxUhaJYvgYhP29t1aRmGrsHWWAOcTsMA=; b=oMxdndPXIWEj
+	uny011REFFTwbO4RKExNtkm9vFxiIz0DUBSN8ux54TR5CxlxP60qKfbv2yJWOOBa
+	dU1Co+kWLrIZZPbrG+pf5vny9AmlmXcZxHgv/EwpQllxCqpcFDFL+cYBcUcmqZlA
+	CTS3rMvBqTCq9fhzjYwsm4pyf2vyDkfFBJc7cnU6C+YUbE+SMyvA6hAllkOZHWNE
+	Bm7xqtiUPdim1pEHdKXmBFMl+uIV2iOoRo+0lhC2JlloZ2pRlklsk+BG+tJORr1u
+	YweoJXtCKsoA6bMdanX6HlvfLH8MjGrQyi11ZJhuXQZLLF2ekHHzikrKBqFW13Hd
+	0es8t9l10VVEgXe5NAaG/OGzopjsim3zh1EbDWmk7a1lslZOyEn5KHP9f7sIMqKC
+	xbXjbGW0zXw2mQplO3rIU7adDypmpt8T5ijl1RKuLOsDoO8Nxv/C9RJlOifTEfJg
+	dekKCPFZAy9A1mYsRIONHs19lhPZhlilwezNS3ZwhUXNLW/Gl2fOKeswinaULZqx
+	eYKLYiO5PTZ+TAdQ4wDtpZqM3n8BpX83wZSS1D+8sc+Jd6Tyx6IH8yWne1/vbjt4
+	XrSRMIdB4yUJAn4DVfVTcxwho299tKI1S+KOEMlNb3l0E7ZOoAToBvLBC2Svr0Kh
+	9JqY/WQJgiyCny/Q7DfF06Ib/o2d7LE=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Sun, 20 Sep 2026 17:09:55 +0300 (EEST)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 9B1C660851;
+	Sun, 20 Sep 2026 17:09:57 +0300 (EEST)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68KE9qxt037118;
+	Sun, 20 Sep 2026 17:09:54 +0300
+Date: Sun, 20 Sep 2026 17:09:52 +0300 (EEST)
+From: Julian Anastasov <ja@ssi.bg>
+To: Jiayuan Chen <jiayuan.chen@linux.dev>
+cc: Yuan Tan <yuant@nebusec.ai>, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, Simon Horman <horms@verge.net.au>,
+        pablo@netfilter.org, fw@strlen.de, phil@nwl.cc, darby.payne@gmail.com,
+        zzyy19904204639@163.com, Ren Wei <weir@nebusec.ai>
+Subject: Re: [PATCH net 0/1] ipvs: bound twos scheduler destination walks
+In-Reply-To: <b2a1cc29-74ef-48e4-bd41-283279f2f670@linux.dev>
+Message-ID: <7ab0cfc7-96c8-eaea-f560-fc18ddf1201a@ssi.bg>
+References: <cover.1789117690.git.zzyy19904204639@163.com> <861399d8-c71f-6589-d4cd-3549d9c5bc00@ssi.bg> <d8aab597-62b5-444a-a6cf-efd2642d9a81@linux.dev> <bfdbe9ba-f213-64e9-668d-e951aa0c2863@ssi.bg> <f04216a2-263a-4e2d-9641-5be0fe4c766f@nebusec.ai>
+ <d000dd3a-0e8e-5b04-4642-fc1be0ffedaf@ssi.bg> <b2a1cc29-74ef-48e4-bd41-283279f2f670@linux.dev>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH net 0/1] ipvs: bound twos scheduler destination walks
-To: Julian Anastasov <ja@ssi.bg>, Yuan Tan <yuant@nebusec.ai>
-Cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
- Simon Horman <horms@verge.net.au>, pablo@netfilter.org, fw@strlen.de,
- phil@nwl.cc, darby.payne@gmail.com, zzyy19904204639@163.com,
- Ren Wei <weir@nebusec.ai>
-References: <cover.1789117690.git.zzyy19904204639@163.com>
- <861399d8-c71f-6589-d4cd-3549d9c5bc00@ssi.bg>
- <d8aab597-62b5-444a-a6cf-efd2642d9a81@linux.dev>
- <bfdbe9ba-f213-64e9-668d-e951aa0c2863@ssi.bg>
- <f04216a2-263a-4e2d-9641-5be0fe4c766f@nebusec.ai>
- <d000dd3a-0e8e-5b04-4642-fc1be0ffedaf@ssi.bg>
-From: Jiayuan Chen <jiayuan.chen@linux.dev>
-In-Reply-To: <d000dd3a-0e8e-5b04-4642-fc1be0ffedaf@ssi.bg>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/mixed; boundary="-1463811672-792102681-1789913396=:34383"
+
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+---1463811672-792102681-1789913396=:34383
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
 
 
-On 9/20/26 9:19 PM, Julian Anastasov wrote:
-> 	Hello,
->
-> On Sat, 19 Sep 2026, Yuan Tan wrote:
->
->> On 9/17/26 13:06, Julian Anastasov wrote:
->>> On Thu, 17 Sep 2026, Jiayuan Chen wrote:
->>>
->>>> On 9/15/26 2:01 AM, Julian Anastasov wrote:
->>>>> 	I assume the problem is caused by the dest_trash.
->>>>> It seems, we need a general solution to this problem.
->>>>> One option is to penalize with synchronize_rcu() if we detect
->>>>> dest that is reused too soon. But even that looks complex to
->>>>> implement.
->>>> I think we can use pair(get_state_synchronize_rcu, cond_synchronize_rcu)
->>>> instead.
->>>> For 'ipvsadm -C && ipvsadm -R', synchronize_rcu is only called once.
->>>>
->>>>
->>>>  From ccbb304ab17e00849ea0bf31582d384e6b2768ba Mon Sep 10 00:00:00 2001
->>>> From: Jiayuan Chen <jiayuan.chen@linux.dev>
->>>> Date: Thu, 10 Sep 2026 19:36:57 +0800
->>>> Subject: [PATCH] ipvs: wait for readers before reusing dest from trash
->>>>
->>>> __ip_vs_unlink_dest() and ip_vs_rs_unhash() remove the dest with
->>>> list_del_rcu()/hlist_del_rcu(), so readers can still be on it. If
->>>> ip_vs_add_dest() picks the same dest from trash right away,
->>>> __ip_vs_update_dest() links it into another service and rs_table,
->>>> and those readers follow the new next pointers into a different
->>>> list.
->>>>
->>>> A synchronize_rcu() on the delete side costs one grace period per
->>>> dest, which makes 'ipvsadm -C' with many real servers very slow.
->>>> Doing it on the reuse side has the same problem with 'ipvsadm -R'.
->>>> So record a grace period cookie when the dest goes to trash and use
->>>> cond_synchronize_rcu() on reuse. The first wait covers every dest
->>>> trashed before it, so a full restore waits at most once.
->>>>
->>>> Fixes: bcbde4c0a755 ("ipvs: make the service replacement more robust")
->>>> Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
->>>> ---
->>>>   include/net/ip_vs.h            | 1 +
->>>>   net/netfilter/ipvs/ip_vs_ctl.c | 6 ++++++
->>>>   2 files changed, 7 insertions(+)
->>>>
->>>> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
->>>> index 32fde731bceb..81b7600ac959 100644
->>>> --- a/include/net/ip_vs.h
->>>> +++ b/include/net/ip_vs.h
->>>> @@ -1013,6 +1013,7 @@ struct ip_vs_dest {
->>>>
->>>>       struct rcu_head        rcu_head;
->>>>       struct list_head    t_list;        /* in dest_trash */
->>>> +    unsigned long        rcu_state;    /* GP cookie when trashed */
->>>>       unsigned int        in_rs_table:1;    /* we are in rs_table */
->>>>   };
->>>>
->>>> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
->>>> index 4c1c739446b7..99da7b74500f 100644
->>>> --- a/net/netfilter/ipvs/ip_vs_ctl.c
->>>> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
->>>> @@ -1159,6 +1159,7 @@ static void ip_vs_trash_put_dest(struct netns_ipvs
->>>> *ipvs,
->>>>       /* dest lives in trash with reference */
->>>>       list_add(&dest->t_list, &ipvs->dest_trash);
->>>>       dest->idle_start = istart;
->>>> +    dest->rcu_state = get_state_synchronize_rcu();
->>>>       spin_unlock_bh(&ipvs->dest_trash_lock);
->>>>   }
->>>>
->>>> @@ -1566,6 +1567,11 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct
->>>> ip_vs_dest_user_kern *udest)
->>>>                     IP_VS_DBG_ADDR(svc->af, &dest->vaddr),
->>>>                     ntohs(dest->vport));
->>>>
->>>> +        /* Readers may still follow n_list/d_list of the unlinked
->>>> +         * dest, wait before linking it again.
->>>> +         */
->>>> +        cond_synchronize_rcu(dest->rcu_state);
->>>> +
->>>>           ret = ip_vs_start_estimator(svc->ipvs, &dest->stats);
->>>>           /* On error put back dest into the trash */
->>>>           if (ret < 0)
->>>> --
->>>> 2.43.0
->>> 	Very good solution, indeed. But it needed some tuning
->>> and some other problems need to be solved:
->>>
->>> - if dest is edited and the dest tunnel parameters changed
->>> this leads to rehashing and a forced synchronize_rcu(). If
->>> many dests are changed in this way - we got a coffee time...
->>>
->>> - dest can be put back into dest_trash, so we do not need to
->>> update the rcu_state for this case
->>>
->>> - use single temp list dest_trash to speedup the deleting of
->>> service (with many dests) and the service flush (many services with
->>> many dests) by using single get_state_synchronize_rcu (which has
->>> full memory barrier) and by splicing the temp list with all
->>> deleted dests into the public dest_trash list by using single
->>> spin lock (ip_vs_trash_put_dests call).
->>>
->>> 	This is only compile-tested and I hope it can survive
->>> the flood tests that break the "two" scheduler lookups...
->>
->> Hi Julian and Jiayuan,
->>
->> Vega team here. I am wondering what would be the best way to move this
->> fix forward?
-> 	We have 2 options:
->
-> 1. Jiayuan to modify his patch at least to cover the problem
-> with returned dest back in trash:
->
-> - get_state_synchronize_rcu() can not be in ip_vs_trash_put_dest()
-> but only after the 2nd call
->
-> - cond_synchronize_rcu() should be moved before __ip_vs_update_dest()
-> as in my patch
->
-> - then my v2 patch will be on top of his patch
->
-> 	We should present them for AI reviews together,
-> in same patchset, I guess.
->
-> 2. I can post my change after adding a proper commit
-> message (Co-developed-by, etc), then it can be attached as
-> 1/1 to your modified 0/1 problem report
->
-> 	I'll wait Jiayuan's decision.
+	Hello,
 
+On Sun, 20 Sep 2026, Jiayuan Chen wrote:
 
-Feel free to take any further action  :)
+> On 9/20/26 9:19 PM, Julian Anastasov wrote:
+> > 
+> > 2. I can post my change after adding a proper commit
+> > message (Co-developed-by, etc), then it can be attached as
+> > 1/1 to your modified 0/1 problem report
+> >
+> >  I'll wait Jiayuan's decision.
+> 
+> 
+> Feel free to take any further action  :)
+> 
+> I just gave my idea and hope anyone can be inspired by this.
 
-I just gave my idea and hope anyone can be inspired by this.
+	Thanks! Then I'll post single patch soon...
 
+Regards
 
->> Would you prefer Darong to test Julian's version and send a v2,
-> 	Yes, I rely on your very good test tools :) You can test
-> the already posted version or the next one we are discussing to
-> submit.
->
->> crediting both of you with Suggested-by or Co-developed-by tags?
->>
->> Alternatively, if either of you would prefer to submit the patch, please
->> include:
->>
->> Reported-by: Vega vega@nebusec.ai <mailto:vega@nebusec.ai>
->> Reported-by: Darong Lu zzyy19904204639@163.com
->> <mailto:zzyy19904204639@163.com>
-> 	Sure
->
-> Regards
->
-> --
-> Julian Anastasov <ja@ssi.bg>
+--
+Julian Anastasov <ja@ssi.bg>
+---1463811672-792102681-1789913396=:34383--
+
