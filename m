@@ -1,79 +1,80 @@
-Received: from mail-vs2-f12.google.com (mail-vs2-f12.google.com [74.125.227.12])
+Received: from mail-wr2-f12.google.com (mail-wr2-f12.google.com [74.125.225.76])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E58FE4E2F25
-	for <lvs-devel@vger.kernel.org>; Mon, 21 Sep 2026 20:57:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.12
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E3963E49CC
+	for <lvs-devel@vger.kernel.org>; Mon, 21 Sep 2026 21:30:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.225.76
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790024246; cv=none; b=Pum0D00Iwv5xVGA/yASQzxKiGiBd4ATqLUvzv1/i1Elrn3O3NY3IZHlp9e4H0j4kRzZUuvq1dm/4S27WIXMb0+uR91pBJS50I4xtHBTnUSxrdL5tiPzwLLrhqpfd4/dIrIySGgpZk2jmqzKGM0Vl9B40fTDrM9yj8mjmikBlba0=
+	t=1790026257; cv=none; b=J5ar1TxjHyztac/7W77rQzk4C5bDWiIE9cbMkBajRMs3kvcdLFxhCxKvzjt9+UIIZ2D1e4r4jcvBZWjxdZnBcUBXOcj+/zU74RvtRU8bnnU7XdiJmFs8j2EqZHcgX07F+PkHvV5iTxdWMz/hU1Tcple9+ei4ghqvQEjFxpgNVlA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790024246; c=relaxed/simple;
-	bh=Ksghcm5X8LCN4vVxohqv4ljnWZLsedxMoepypuhBXFk=;
+	s=arc-20240116; t=1790026257; c=relaxed/simple;
+	bh=SDD5uJHfK6z8nRdxuK0ng0TRvAY5EGWTNJID3QGutxE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=uOouOyAf29/0htalumNfI7licXQ5mdduwkkHBIAyKVzEY3tGXWiJXn48HByQSVHsCLQBMSx7Q6Ttfc1ww9RSchakAGCYxzJDL/Ybgu/hFa8DL3tOSZpk30HuAfRkvf1p+6nTx6CHE2rVebqVjQUxnepyn+qu2LcIh/4qIfehE7U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=JJ5AlytG; arc=none smtp.client-ip=74.125.227.12
+	 MIME-Version; b=O1nSoMXIPIh5P3Gg9FV0s/M+CtTC5X8Dy2zUUKKFwjFwxKYsGEkZ/JgsGYpkK6EhDXIlSgm06SRA23fw72d2UEbHfjRT+9AHVnpEicOuP7mlaDePvefhk2lowOraWaj4l4SlEa3fVu/f8uH+YlbrwUuSbhGoftOEkyWFvQAs/SQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=NRroXxKS; arc=none smtp.client-ip=74.125.225.76
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JJ5AlytG"
-Received: by mail-vs2-f12.google.com with SMTP id 71dfb90a1353d-5c67e512ee9so1269853e0c.0
-        for <lvs-devel@vger.kernel.org>; Mon, 21 Sep 2026 13:57:22 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NRroXxKS"
+Received: by mail-wr2-f12.google.com with SMTP id ffacd0b85a97d-4843f22dcb8so2275039f8f.0
+        for <lvs-devel@vger.kernel.org>; Mon, 21 Sep 2026 14:30:54 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790024241; x=1790629041; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1790026253; x=1790631053; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=/HtUfIuegfaNudBUjGk4ZRNwRDJb7i8lilIXKpQlSYQ=;
-        b=JJ5AlytGIuZCo/bCsA8+q/1HvKtuc73E4FVRN9bTObE6DIAnvoN7YZSnYCWCzbTBnz
-         QgDU8LdYjMS9mB77hB2Sgw5xtwjlE2S1pxsYHQQE++lHXq4W3p5KpBsofWztq3RdbCs4
-         yb+dVan1Ir+bDosQIP/3eioLf5SSzWU7mBWU45oHj4P8fa/rQmcBHo3He2UNsR3r9sZD
-         ET8p7bbfN0W9BVMa6O/Y81uuQx4yyhfuuzPvy23iDJ9jbJbpAtIQrFy2NzWeq8u0tcki
-         YTHc9rQleN92R3IK3ZzsW2Fag4LLpkKG/xcqtKxEa9zA9M+2VVJgmy09cPnL9acPrmC+
-         8wwQ==
+        bh=SDD5uJHfK6z8nRdxuK0ng0TRvAY5EGWTNJID3QGutxE=;
+        b=NRroXxKSntq3xO4MSo3ErmviL4Xxw4fuz8NUWG+GV0sooY5EtQX558oSc0esSAbopE
+         XsyztbYzA2x7Dkqy2hio380jFCPzVTeSCYgqYM3aKDUa3kGTG7FfTX9ZfT6sJEONx/dr
+         knuUYZ9++zkefwgL9ghci1AJybaWRPftuwsqDAfe05Gey0dt4T+geSFR64uIvYscBtiY
+         5pGFDZy1wEAQFuTHX9McyL8Tlh+5YJqDs7rKaxCyk8e9nNGM5tzPwYIfB1bMXfgsOeZm
+         lS2lSCpIoUEd3Z73iI+sqnXuYqYL5GVZuh+a3MkXN4+2de/TEl9NXBOVDCJybNx3cf+R
+         nRVw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790024241; x=1790629041;
+        d=1e100.net; s=20260707; t=1790026253; x=1790631053;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=/HtUfIuegfaNudBUjGk4ZRNwRDJb7i8lilIXKpQlSYQ=;
-        b=tyh/G7ISfBvxydEuBzlHj4Yc+jt/TvGYr7B5k89WLFx3dXegX2I16kIoauKa8o1gCn
-         HgM8N/Q/zXA/wRZM+Z0Rr2dP7UQDKUg4j1dw+7OEf8cy7m+YShV+cTf2175+f06i/abP
-         fjPhbu/RfrN01vwSSmqsh7aC5PRgyY5C7qw+xymJ9+wmMJvouhv0JNfmu7xYy73or21n
-         4OfuEaYhPaWNoEfdivd24I3hcFdKdtXBS0nx6mklU9t0khgQI39fWYrfOTMlTkFEQksM
-         CNJxX6cad7KrsrsVz9aOGAgZ9w/5SVgfR1Lix53fR58oyyfD2Ov3VduY0fZPh3tie3Xy
-         tbRA==
-X-Forwarded-Encrypted: i=1; AKwUvBxaqvWfvqEQ6K6LEfcfFPo0eRSbh2hu/2Rm/TsM36UfqtXoejoz32yZczDHp9gXKHHt58XDwvg+ENM=@vger.kernel.org
-X-Gm-Message-State: AFuF++mKzEsXOMx8TDfpyGBLLZZWTqwsYXii+yb9YYfPd2x+cDmOtOao
-	N+A8MyjuipV28/0y1+f5nO3A0x0WHnMCJHAdDHiDdATP7z9cNBCS7C6w
-X-Gm-Gg: AYBFou2HgHAT+Q/N9oXrnIE8wbZcqose9OAOq91ayMAT6uEmHs3g8BB1ui5WFpzzr/+
-	0yFtWSvvth0CDxhswyo+cg1DZZqi5MkfXpY7qAyBxw7I7hSsJ/ZedTZjgKQiUq9BahGJPZsJU99
-	dUNPGDacCy28D7BOTAuhTzcXSCFHNzEJptiCJHKeyQ4WhdwJs/Rad8pSzBiYtzT7dgvoMHTlPh0
-	c+r01CkIb1lHQGxj6miwRUfr+7AslN+jdtCr87k0TsMh3b0xrdmFQF0DDC4a7Z+yuKlAcsGpA4A
-	FNzhphJ1o1LwoTkCHhcHh2nXc7bYYLvJwlmzDN4+s4ps+q0BsO6RI8dlC3bQUmvWlrtVp08oKcn
-	sUTT3c2rzvMum6BdxYJkadpxLx6dpGbIjlP1rGlK7lH7iFge/2cOWn6ZxpADdWfpMcbwj/SrfXn
-	ctjskde+oRhqJRK4cH/toOeL0N5yj3z8cGmeVOwb1ElZ5By2sCe3lJ437H8yxQwHvbgxolOiM9k
-	lA=
-X-Received: by 2002:a05:6122:4f99:b0:5c9:a60d:3277 with SMTP id 71dfb90a1353d-5c9b599e181mr7510938e0c.11.1790024240643;
-        Mon, 21 Sep 2026 13:57:20 -0700 (PDT)
-Received: from adriano ([190.215.95.120])
-        by smtp.gmail.com with ESMTPSA id 71dfb90a1353d-5c9e591d496sm286884e0c.2.2026.09.21.13.57.17
+        bh=SDD5uJHfK6z8nRdxuK0ng0TRvAY5EGWTNJID3QGutxE=;
+        b=j8i7jIWVc83NOqScYE1Inht59OK3vE2/+rqEATpFiu29T8btOOKJvPKH7GpwPe1jWG
+         WLHekSqTNhDumk/LyqCYrTqWPLVccaG4oGYp+rZtH//pnpHbCQ1Zzd80WS4qm9ggVrqW
+         BPQdztgMjd+k5RlBkyYimRMBYaWrClQSei5//toxaQjZRvV6eFo1oIbT3tkwCxhZtgfq
+         bOj8EelwKEsfXoVPJfd0D2+W0pifS0HzWe8wK+u3mMaWPwZ1dg7f3y9RryDyoMGqpy1l
+         tligjmrj7f1yBF7x8VOWFDRZP8AiLI6zzo3NQjT2MtaISWH6s01puKBCNwTEaC+zD8KR
+         af4w==
+X-Forwarded-Encrypted: i=1; AKwUvBzJqk1nXtkZ60FzorXoCC+LjovRH45IW03nS8+8CW+ls69IUjHe1uBDSBVq2dUwvryQAJIA6PLiYXM=@vger.kernel.org
+X-Gm-Message-State: AFuF++mt1JEjMIJYVjO5WQmJFygCBrRJHvIoHCfNXjsqv8bzPU287gQw
+	EhlGSmX9bFwf6Y1U2a4PptI3yyDaMxxFsfomWBzIcesXoTX8z2YnPVVX
+X-Gm-Gg: AYBFou3t2ip+W2R6GW5yYgpZu3gqMqa65vSHjzovSMaDqf5ynpUoYo5heC4F2DVN5rD
+	NQQbCESXxF8T3HpBRL5eA2H5JfqYCKpjCEfNOX/Gv1Zl8n8IjqSDxjUTDmA4aDWH7ZE21K41HEQ
+	nIXcxaubG7ah6Fh5WAIUH/20yCkpKGbGi3qFOUT7CPIMGS1Euf0Hu2mgprIZR6pqDkY+IAkXaa4
+	YvtrR27UrsT4HW9FcuS2Ky4x2CEsgJkiOEpM+5YaSHvV+IqaqBjXl4lpPFWk2Br5GJs352Vwusd
+	7qabUjLpScmYGfymAYkZDyCrc3Vuoeemlq5lIDedNdZ7G6d1UiSrgMxbgNGTPxyTIr+fhmF0sT7
+	Y0hfz1xvVnuuFZTNR/kUaWEr50m/vUQJaLvoBuWcCUkq2crf9Y9756vOMnISdIBT2OS5P4vtzgv
+	umYmT6wbbYu3No8UNoEfwqLS8Skf52hqn2ODmof+SUUyTnL+5xvJ3U/KSoD4ZOyHtmqtjecjHIT
+	nXS9NGfLU1Y8iPK2EP/yjdaDTCPrFhz7wjvZUw60U4ZZwkikg==
+X-Received: by 2002:a05:6000:2890:b0:486:fa7b:d3aa with SMTP id ffacd0b85a97d-4871e2273a5mr15062011f8f.23.1790026252444;
+        Mon, 21 Sep 2026 14:30:52 -0700 (PDT)
+Received: from linus-personal-clanker ([102.164.100.122])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48862287b6esm239042f8f.33.2026.09.21.14.30.49
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 21 Sep 2026 13:57:20 -0700 (PDT)
-From: Adriano Cordova <adrianox@gmail.com>
-To: Simon Horman <horms@verge.net.au>,
-	Julian Anastasov <ja@ssi.bg>,
-	Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Florian Westphal <fw@strlen.de>,
-	netfilter-devel@vger.kernel.org,
+        Mon, 21 Sep 2026 14:30:52 -0700 (PDT)
+From: "David .B. Dull" <monderasdor@gmail.com>
+To: adrianox@gmail.com
+Cc: fw@strlen.de,
+	horms@verge.net.au,
+	ja@ssi.bg,
+	linux-kernel@vger.kernel.org,
 	lvs-devel@vger.kernel.org,
 	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v5 nf-next 3/3] selftests: netfilter: ipvs: add per-service secure_tcp test
-Date: Mon, 21 Sep 2026 17:57:06 -0300
-Message-ID: <20260921205706.1055288-4-adrianox@gmail.com>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260921205706.1055288-1-adrianox@gmail.com>
-References: <20260921205706.1055288-1-adrianox@gmail.com>
+	netfilter-devel@vger.kernel.org,
+	pablo@netfilter.org
+Subject: Re: [PATCH v5 nf-next 3/3] selftests: netfilter: ipvs: add per-service secure_tcp test
+Date: Mon, 21 Sep 2026 23:30:31 +0200
+Message-ID: <20260921213031.6160-1-monderasdor@gmail.com>
+X-Mailer: git-send-email 2.55.0
+In-Reply-To: <20260921205706.1055288-4-adrianox@gmail.com>
+References: <20260921205706.1055288-4-adrianox@gmail.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -82,753 +83,22 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Two services share a VIP, one carrying IP_VS_SVC_F_SECURE_TCP.
-A bare SYN followed by a bare ACK suffices to test the state
-machine: the normal service reaches ESTABLISHED, but the secure
-one stays in SYN_RECV.
+From: David Dull
 
-Assisted-by: opencode:deepseek-flash
-Signed-off-by: Adriano Cordova <adrianox@gmail.com>
----
-Changes in v2:
-- send probes with TTL=1 instead of an nft drop, and fix
-  Sashiko comments.
+To: Adriano Cordova
 
-Changes in v4:
-- Check the return value of setsockopt(IP_HDRINCL), sendto() and
-  mnl_socket_bind(), and fail do_add() when IPVS does not reply.
-- Check inet_pton(), initialize fam and the parsed addresses, and verify
-  the flags attribute length before copying it (Sashiko).
+Cc: Simon Horman, Julian Anastasov, Pablo Neira Ayuso, Florian Westphal, netfilter-devel, lvs-devel, netdev, linux-kernel
 
-Changes in v5:
-- Reword the changelog: the probe sends a bare SYN followed by a bare
-  ACK, not a single SYN+ACK.
-- Skip the test when the ip_vs or ip_vs_rr module is unavailable.
-- Check the probe exit status so a probe that dies after the SYN cannot
-  leave the secure-side SYN_RECV assertion passing.
+This patch has already been reviewed by the netdev bot with Sashiko on 2026-09-21 for the v4 revision of this same selftest patch. That review found three possible issues. First the changelog wording claimed a bare SYN ACK suffices but the probe actually sends a bare SYN followed by a separate bare ACK. Second the script has no kernel side prerequisite check and no skip path for when ip_vs is unavailable. Third the secure side assertion cannot distinguish between the per service secure_tcp working correctly and the ACK probe never arriving at all.
 
- .../testing/selftests/net/netfilter/Makefile  |   6 +
- .../selftests/net/netfilter/gen_tcp_probe.c   | 158 ++++++++
- .../net/netfilter/ipvs_secure_tcp.sh          | 169 +++++++++
- .../net/netfilter/ipvs_secure_tcp_mln.c       | 337 ++++++++++++++++++
- 4 files changed, 670 insertions(+)
- create mode 100644 tools/testing/selftests/net/netfilter/gen_tcp_probe.c
- create mode 100755 tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh
- create mode 100644 tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c
+This v5 revision appears to address the first and second points by rewording the changelog to say a bare SYN followed by a bare ACK and by adding module availability checks for ip_vs and ip_vs_rr. The third concern about the assertion being ambiguous if the ACK probe fails is addressed by the addition of checking the probe exit status so a probe that dies after the SYN cannot leave the secure side SYN_RECV assertion passing incorrectly.
 
-diff --git a/tools/testing/selftests/net/netfilter/Makefile b/tools/testing/selftests/net/netfilter/Makefile
-index df3c20c90f5d..f88bf69cc874 100644
---- a/tools/testing/selftests/net/netfilter/Makefile
-+++ b/tools/testing/selftests/net/netfilter/Makefile
-@@ -22,6 +22,7 @@ TEST_PROGS := \
- 	conntrack_tcp_unreplied.sh \
- 	conntrack_vrf.sh \
- 	ipvs.sh \
-+	ipvs_secure_tcp.sh \
- 	nf_conntrack_packetdrill.sh \
- 	nf_nat_edemux.sh \
- 	nft_audit.sh \
-@@ -52,6 +53,8 @@ TEST_GEN_FILES = \
- 	connect_close \
- 	conntrack_dump_flush \
- 	conntrack_reverse_clash \
-+	gen_tcp_probe \
-+	ipvs_secure_tcp_mln \
- 	nf_queue \
- 	sctp_collision \
- 	udpclash \
-@@ -62,6 +65,9 @@ include ../../lib.mk
- $(OUTPUT)/nf_queue: CFLAGS += $(MNL_CFLAGS)
- $(OUTPUT)/nf_queue: LDLIBS += $(MNL_LDLIBS)
- 
-+$(OUTPUT)/ipvs_secure_tcp_mln: CFLAGS += $(MNL_CFLAGS)
-+$(OUTPUT)/ipvs_secure_tcp_mln: LDLIBS += $(MNL_LDLIBS)
-+
- $(OUTPUT)/conntrack_dump_flush: CFLAGS += $(MNL_CFLAGS)
- $(OUTPUT)/conntrack_dump_flush: LDLIBS += $(MNL_LDLIBS)
- $(OUTPUT)/udpclash: LDLIBS += -lpthread
-diff --git a/tools/testing/selftests/net/netfilter/gen_tcp_probe.c b/tools/testing/selftests/net/netfilter/gen_tcp_probe.c
-new file mode 100644
-index 000000000000..185c3b1146dc
---- /dev/null
-+++ b/tools/testing/selftests/net/netfilter/gen_tcp_probe.c
-@@ -0,0 +1,158 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Send a TCP SYN then a TCP ACK (no SYN-ACK, no data) to the VIP.
-+ * IPVS's TCP state machine only inspects SYN/FIN/ACK/RST bits, so this
-+ * exercises the INPUT-direction state transition:
-+ *
-+ *   SYN:  NONE -> SYN_RECV
-+ *   ACK:  SYN_RECV -> ESTABLISHED   (tcp_states, normal)
-+ *         SYN_RECV -> SYN_RECV      (tcp_states_dos, secure_tcp)
-+ *
-+ * A TTL of 1 keeps the packets from reaching the real server: IPVS updates
-+ * the connection state before forwarding, then the packet expires and an
-+ * ICMP time-exceeded is sent back to us.
-+ *
-+ * Requires CAP_NET_RAW.
-+ */
-+
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <unistd.h>
-+#include <stdint.h>
-+#include <arpa/inet.h>
-+#include <sys/socket.h>
-+#include <netinet/ip.h>
-+#include <netinet/tcp.h>
-+#include <linux/if_ether.h>
-+
-+static inline uint16_t csump(const void *data, size_t len)
-+{
-+	const uint8_t *p = data;
-+	uint32_t sum = 0;
-+
-+	while (len > 1) {
-+		uint16_t w;
-+
-+		memcpy(&w, p, sizeof(w));
-+		sum += w;
-+		p += 2;
-+		len -= 2;
-+	}
-+	if (len) {
-+		uint16_t w = 0;
-+
-+		memcpy(&w, p, 1);
-+		sum += w;
-+	}
-+	while (sum >> 16)
-+		sum = (sum & 0xffff) + (sum >> 16);
-+	return ~sum;
-+}
-+
-+static int send_seg(int fd, const struct in_addr *sip, uint16_t sport,
-+		    const struct in_addr *dip, uint16_t dport,
-+		    uint32_t seq, int syn, int ack)
-+{
-+	struct {
-+		struct iphdr ip;
-+		struct tcphdr tcp;
-+	} pkt = { };
-+	struct iphdr *ip = &pkt.ip;
-+	struct tcphdr *tcp = &pkt.tcp;
-+	struct sockaddr_in dst;
-+
-+	ip->version = 4;
-+	ip->ihl = 5;
-+	ip->tot_len = htons(sizeof(pkt));
-+	ip->id = htons((uint16_t)(seq & 0xffff));
-+	ip->ttl = 1;
-+	ip->protocol = IPPROTO_TCP;
-+	ip->saddr = sip->s_addr;
-+	ip->daddr = dip->s_addr;
-+
-+	tcp->source = sport;
-+	tcp->dest = dport;
-+	tcp->seq = htonl(seq);
-+	tcp->ack_seq = htonl(seq + 1);
-+	tcp->doff = 5;
-+	if (syn)
-+		tcp->syn = 1;
-+	if (ack)
-+		tcp->ack = 1;
-+	tcp->window = htons(1024);
-+
-+	ip->check = csump(ip, sizeof(struct iphdr));
-+	/* pseudo header for TCP checksum */
-+	{
-+		uint8_t ph[12];
-+		uint8_t tcpbuf[12 + sizeof(struct tcphdr)];
-+
-+		memcpy(ph, &ip->saddr, 4);
-+		memcpy(ph + 4, &ip->daddr, 4);
-+		ph[8] = 0;
-+		ph[9] = IPPROTO_TCP;
-+		ph[10] = (sizeof(struct tcphdr) >> 8) & 0xff;
-+		ph[11] = sizeof(struct tcphdr) & 0xff;
-+
-+		memcpy(tcpbuf, ph, 12);
-+		memcpy(tcpbuf + 12, tcp, sizeof(struct tcphdr));
-+		tcp->check = csump(tcpbuf, sizeof(tcpbuf));
-+	}
-+
-+	memset(&dst, 0, sizeof(dst));
-+	dst.sin_family = AF_INET;
-+	dst.sin_addr = *dip;
-+	dst.sin_port = dport;
-+	if (sendto(fd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&dst,
-+		   sizeof(dst)) < 0) {
-+		perror("sendto");
-+		return -1;
-+	}
-+	return 0;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	struct in_addr sip = { }, dip = { };
-+	uint16_t sport, dport;
-+	int fd, one = 1;
-+	uint32_t seq = 0x12345678;
-+
-+	if (argc != 5) {
-+		fprintf(stderr, "usage: %s <src_ip> <src_port> <dst_ip> <dst_port>\n",
-+			argv[0]);
-+		return 2;
-+	}
-+	if (inet_pton(AF_INET, argv[1], &sip) != 1 ||
-+	    inet_pton(AF_INET, argv[3], &dip) != 1) {
-+		fprintf(stderr, "bad address\n");
-+		return 2;
-+	}
-+	sport = htons((uint16_t)atoi(argv[2]));
-+	dport = htons((uint16_t)atoi(argv[4]));
-+
-+	fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-+	if (fd < 0) {
-+		perror("raw socket");
-+		return 1;
-+	}
-+	if (setsockopt(fd, IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)) < 0) {
-+		perror("setsockopt");
-+		close(fd);
-+		return 1;
-+	}
-+
-+	if (send_seg(fd, &sip, sport, &dip, dport, seq, 1, 0) < 0) {
-+		close(fd);
-+		return 1;
-+	}
-+	usleep(100000);
-+	if (send_seg(fd, &sip, sport, &dip, dport, seq + 1, 0, 1) < 0) {
-+		close(fd);
-+		return 1;
-+	}
-+
-+	close(fd);
-+	return 0;
-+}
-diff --git a/tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh b/tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh
-new file mode 100755
-index 000000000000..c1fda5a5a8a7
---- /dev/null
-+++ b/tools/testing/selftests/net/netfilter/ipvs_secure_tcp.sh
-@@ -0,0 +1,169 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+#
-+# Runtime test for per-service secure_tcp (IP_VS_SVC_F_SECURE_TCP).
-+#
-+# Sets up the same 3-namespace topology as ipvs.sh
-+# but checks the TCP state machine, not data forwarding.  Two
-+# identical TCP services are added on the same VIP on different ports,
-+# one is marked secure_tcp, the other is not. For each a bare SYN is
-+# followed by a bare ACK (no SYN-ACK / no data).  IPVS classifies the
-+# connection from the flag bits:
-+#   * normal service:  SYN -> SYN_RECV, ACK -> ESTABLISHED
-+#   * secure_tcp service:  SYN -> SYN_RECV, ACK -> SYN_RECV
-+# This test checks that this is the case via `ipvsadm -Lnc`.
-+#
-+# Requires root, netns, ipvsadm, and the built helpers
-+# ipvs_secure_tcp_mln and gen_tcp_probe.
-+
-+source lib.sh
-+
-+ret=0
-+readonly vip="207.175.44.110"
-+readonly gip="10.0.0.1"
-+readonly dip="172.16.0.1"
-+readonly rip="172.16.0.2"
-+readonly cip="10.0.0.2"
-+readonly sip="10.0.0.3"
-+readonly port_secure=8081
-+readonly port_plain=8080
-+
-+GREEN='\033[0;92m'
-+RED='\033[0;31m'
-+NC='\033[0m'
-+
-+checktool "ipvsadm -v" "run test without ipvsadm"
-+
-+if [ ! -d /proc/sys/net/ipv4/vs/ ]; then
-+	if ! modprobe -q ip_vs; then
-+		echo "skip: could not run test without ipvs module"
-+		exit $ksft_skip
-+	fi
-+fi
-+if ! modprobe -q ip_vs_rr; then
-+	echo "skip: could not run test without ip_vs_rr module"
-+	exit $ksft_skip
-+fi
-+
-+setup() {
-+	setup_ns ns0 ns1 ns2
-+
-+	ip link add veth01 netns "${ns0}" type veth peer name veth10 netns "${ns1}"
-+	ip link add veth02 netns "${ns0}" type veth peer name veth20 netns "${ns2}"
-+	ip link add veth12 netns "${ns1}" type veth peer name veth21 netns "${ns2}"
-+
-+	ip netns exec "${ns0}" ip link set veth01 up
-+	ip netns exec "${ns0}" ip link set veth02 up
-+	ip netns exec "${ns0}" ip link add br0 type bridge
-+	ip netns exec "${ns0}" ip link set veth01 master br0
-+	ip netns exec "${ns0}" ip link set veth02 master br0
-+	ip netns exec "${ns0}" ip link set br0 up
-+	ip netns exec "${ns0}" ip addr add "${cip}/24" dev br0
-+
-+	ip netns exec "${ns1}" ip link set veth10 up
-+	ip netns exec "${ns1}" ip addr add "${gip}/24" dev veth10
-+	ip netns exec "${ns1}" ip link set veth12 up
-+	ip netns exec "${ns1}" ip addr add "${dip}/24" dev veth12
-+	ip netns exec "${ns1}" ip link set lo up
-+	ip netns exec "${ns1}" ip addr add "${vip}/32" dev lo:1
-+	ip netns exec "${ns1}" sysctl -qw net.ipv4.ip_forward=1
-+
-+	ip netns exec "${ns2}" ip link set veth20 up
-+	ip netns exec "${ns2}" ip addr add "${sip}/24" dev veth20
-+	ip netns exec "${ns2}" ip link set veth21 up
-+	ip netns exec "${ns2}" ip addr add "${rip}/24" dev veth21
-+
-+	ip netns exec "${ns2}" ip addr add "${vip}/32" dev lo:1
-+
-+	ip netns exec "${ns0}" ip route add "${vip}/32" via "${gip}" dev br0
-+
-+	sleep 1
-+}
-+
-+cleanup() {
-+	cleanup_all_ns
-+}
-+
-+# State of the connection to the VIP:port, from `ipvsadm -Lnc`.
-+# Fields: pro  expire  state  source  virtual  destination
-+conn_state() {
-+	local vport=$1
-+	ip netns exec "${ns1}" ipvsadm -Lnc 2>/dev/null |
-+		awk -v vt="${vip}:${vport}" '$5==vt { print $3; exit }'
-+}
-+
-+assert_state() {
-+	local port=$1 want=$2
-+	local got
-+	got="$(conn_state "$port")"
-+	echo "  vip ${vip}:${port}: state=${got:-?}"
-+	if [ "${got:-}" != "$want" ]; then
-+		echo -e "${RED}FAIL${NC}: vip ${vip}:${port} expected state" \
-+			"${want}, got ${got:-none}"
-+		ret=1
-+	fi
-+}
-+
-+test_secure() {
-+	local bin probe
-+
-+	# Register the two services (secure_tcp on the secure port)
-+	bin="$(pwd)/ipvs_secure_tcp_mln"
-+	probe="$(pwd)/gen_tcp_probe"
-+	ip netns exec "${ns1}" "$bin" add "${vip}" "${port_secure}" secure
-+	ip netns exec "${ns1}" "$bin" add "${vip}" "${port_plain}" plain
-+
-+	# Add a real server to both services.  Use NAT (-m): in DR the conn gets
-+	# IP_VS_CONN_F_NOOUTPUT, which makes the client ACK an INPUT_ONLY event
-+	# and even tcp_states_dos promotes to ESTABLISHED, hiding the difference.
-+	ip netns exec "${ns1}" ipvsadm -a -m -t "${vip}:${port_secure}" -r "${rip}:${port_secure}"
-+	ip netns exec "${ns1}" ipvsadm -a -m -t "${vip}:${port_plain}" -r "${rip}:${port_plain}"
-+
-+	# verify the flag was actually set
-+	local got
-+	got="$(ip netns exec "${ns1}" "$bin" get "${vip}" "${port_secure}")"
-+	echo "  secured service reports: ${got}"
-+	echo "${got}" | grep -q "secure_tcp=1" ||
-+		{ echo -e "${RED}FAIL${NC}: flag not set"; ret=1; }
-+	got="$(ip netns exec "${ns1}" "$bin" get "${vip}" "${port_plain}")"
-+	echo "${got}" | grep -q "secure_tcp=0" ||
-+		{ echo -e "${RED}FAIL${NC}: flag unexpectedly set"; ret=1; }
-+
-+	# The probes carry TTL=1, so IPVS updates the connection state and
-+	# then the packet expires before reaching the real server (which
-+	# stays silent, no RST to interfere with the observation).
-+
-+	# Push SYN then ACK to each service from the client.  Both segments
-+	# must be sent: a bare SYN already leaves the connection in SYN_RECV,
-+	# so a probe that died after the SYN would not be caught otherwise.
-+	if ! ip netns exec "${ns0}" "$probe" "${cip}" 40000 \
-+			"${vip}" "${port_secure}"; then
-+		echo -e "${RED}FAIL${NC}: probe to ${vip}:${port_secure} failed"
-+		ret=1
-+	fi
-+	if ! ip netns exec "${ns0}" "$probe" "${cip}" 40001 \
-+			"${vip}" "${port_plain}"; then
-+		echo -e "${RED}FAIL${NC}: probe to ${vip}:${port_plain} failed"
-+		ret=1
-+	fi
-+	sleep 1
-+
-+	echo "Testing per-service secure_tcp..."
-+	echo "  --- connection table (ipvsadm -Lnc) ---"
-+	ip netns exec "${ns1}" ipvsadm -Lnc 2>/dev/null
-+	echo "  --- end connection table ---"
-+	assert_state "${port_plain}" ESTABLISHED
-+	assert_state "${port_secure}" SYN_RECV
-+}
-+
-+trap cleanup EXIT
-+
-+setup
-+test_secure
-+
-+if [ "$ret" -ne 0 ]; then
-+	echo -e "$(basename $0): ${RED}FAIL${NC}"
-+	exit 1
-+fi
-+echo -e "$(basename $0): ${GREEN}PASS${NC}"
-+exit 0
-diff --git a/tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c b/tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c
-new file mode 100644
-index 000000000000..54c6d860addf
---- /dev/null
-+++ b/tools/testing/selftests/net/netfilter/ipvs_secure_tcp_mln.c
-@@ -0,0 +1,337 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * libmnl helper to set/query the per-service secure_tcp flag
-+ * (IP_VS_SVC_F_SECURE_TCP), which ipvsadm does not expose.
-+ *
-+ * Usage:
-+ *   ipvs_secure_tcp_mln add <vip> <port> <secure|plain>
-+ *       Create a TCP virtual service (scheduler "rr") with the flag either
-+ *       set or not.  Add real servers afterwards with:
-+ *           ipvsadm -a -t <vip>:<port> -r <rs>:<port>
-+ *   ipvs_secure_tcp_mln get <vip> <port>
-+ *       Print "secure_tcp=<0|1>" for the service.
-+ */
-+
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <errno.h>
-+#include <arpa/inet.h>
-+
-+#include <linux/netlink.h>
-+#include <linux/genetlink.h>
-+#include <linux/ip_vs.h>
-+
-+#include <libmnl/libmnl.h>
-+
-+/* Fallback in case the kernel's installed uapi header is older */
-+#ifndef IP_VS_SVC_F_SECURE_TCP
-+#define IP_VS_SVC_F_SECURE_TCP	0x0100
-+#endif
-+
-+/* 16-byte address storage, matching union nf_inet_addr for AF_INET */
-+struct inet_addr16 {
-+	uint8_t all[16];
-+};
-+
-+/* ---------------- family resolver ---------------- */
-+static int ctrl_attr_cb(const struct nlattr *attr, void *data)
-+{
-+	const struct nlattr **tb = data;
-+	int type = mnl_attr_get_type(attr);
-+
-+	if (mnl_attr_type_valid(attr, CTRL_ATTR_MAX) < 0)
-+		return MNL_CB_ERROR;
-+	if (type == CTRL_ATTR_FAMILY_ID) {
-+		if (mnl_attr_validate(attr, MNL_TYPE_U16) < 0)
-+			return MNL_CB_ERROR;
-+		tb[CTRL_ATTR_FAMILY_ID] = attr;
-+	}
-+	return MNL_CB_OK;
-+}
-+
-+static int ctrl_data_cb(const struct nlmsghdr *nlh, void *data)
-+{
-+	const struct nlattr *tb[CTRL_ATTR_MAX + 1] = { 0 };
-+	uint16_t *fam = data;
-+
-+	if (nlh->nlmsg_type != GENL_ID_CTRL)
-+		return MNL_CB_OK;
-+	mnl_attr_parse(nlh, sizeof(struct genlmsghdr),
-+		       (mnl_attr_cb_t)ctrl_attr_cb, tb);
-+	if (tb[CTRL_ATTR_FAMILY_ID]) {
-+		*fam = mnl_attr_get_u16(tb[CTRL_ATTR_FAMILY_ID]);
-+		return MNL_CB_STOP;
-+	}
-+	return MNL_CB_OK;
-+}
-+
-+static int resolve_family(const char *name, uint16_t *fam)
-+{
-+	struct mnl_socket *nl;
-+	char buf[MNL_SOCKET_BUFFER_SIZE];
-+	struct nlmsghdr *nlh;
-+	struct genlmsghdr *genl;
-+	int ret;
-+
-+	*fam = 0;
-+	nl = mnl_socket_open(NETLINK_GENERIC);
-+	if (!nl)
-+		return -errno;
-+	if (mnl_socket_bind(nl, 0, 0) < 0) {
-+		mnl_socket_close(nl);
-+		return -errno;
-+	}
-+
-+	nlh = mnl_nlmsg_put_header(buf);
-+	genl = mnl_nlmsg_put_extra_header(nlh, sizeof(struct genlmsghdr));
-+	genl->cmd = CTRL_CMD_GETFAMILY;
-+	genl->version = 1;
-+	nlh->nlmsg_type = GENL_ID_CTRL;
-+	nlh->nlmsg_flags = NLM_F_REQUEST;
-+	mnl_attr_put_strz(nlh, CTRL_ATTR_FAMILY_NAME, name);
-+
-+	if (mnl_socket_sendto(nl, nlh, nlh->nlmsg_len) < 0) {
-+		mnl_socket_close(nl);
-+		return -errno;
-+	}
-+	do {
-+		ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-+		if (ret < 0) {
-+			if (errno == EAGAIN)
-+				continue;
-+			mnl_socket_close(nl);
-+			return -errno;
-+		}
-+		ret = mnl_cb_run(buf, ret, 0, mnl_socket_get_portid(nl),
-+				 (mnl_cb_t)ctrl_data_cb, fam);
-+	} while (ret > 0 && *fam == 0);
-+
-+	mnl_socket_close(nl);
-+	return *fam ? 0 : -ENOENT;
-+}
-+
-+/* ---------------- fill service identifying attrs ---------------- */
-+static int fill_service(struct nlmsghdr *nlh, const char *vip,
-+			uint16_t port, int full, int secure)
-+{
-+	struct inet_addr16 vaddr = { 0 };
-+	struct nlattr *nest;
-+	struct ip_vs_flags fl;
-+	int af = AF_INET;
-+
-+	if (inet_pton(af, vip, vaddr.all) != 1) {
-+		fprintf(stderr, "bad VIP %s\n", vip);
-+		return -EINVAL;
-+	}
-+
-+	nest = mnl_attr_nest_start(nlh, IPVS_CMD_ATTR_SERVICE);
-+	mnl_attr_put_u16(nlh, IPVS_SVC_ATTR_AF, af);
-+	mnl_attr_put_u16(nlh, IPVS_SVC_ATTR_PROTOCOL, IPPROTO_TCP);
-+	mnl_attr_put(nlh, IPVS_SVC_ATTR_ADDR, sizeof(vaddr), &vaddr);
-+	/* port/be16: port is passed in network order from main() */
-+	mnl_attr_put_u16(nlh, IPVS_SVC_ATTR_PORT, port);
-+
-+	if (full) {
-+		mnl_attr_put_strz(nlh, IPVS_SVC_ATTR_SCHED_NAME, "rr");
-+		memset(&fl, 0, sizeof(fl));
-+		fl.mask = IP_VS_SVC_F_SECURE_TCP;
-+		if (secure)
-+			fl.flags = IP_VS_SVC_F_SECURE_TCP;
-+		mnl_attr_put(nlh, IPVS_SVC_ATTR_FLAGS, sizeof(fl), &fl);
-+		mnl_attr_put_u32(nlh, IPVS_SVC_ATTR_TIMEOUT, 0);
-+		mnl_attr_put_u32(nlh, IPVS_SVC_ATTR_NETMASK, 0xffffffff);
-+	}
-+	mnl_attr_nest_end(nlh, nest);
-+	return 0;
-+}
-+
-+static int send_cmd(struct mnl_socket *nl, struct nlmsghdr *nlh)
-+{
-+	if (mnl_socket_sendto(nl, nlh, nlh->nlmsg_len) < 0) {
-+		perror("sendto");
-+		return -1;
-+	}
-+	return 0;
-+}
-+
-+/* ---------------- get secure flag ---------------- */
-+static int svc_attr_cb(const struct nlattr *attr, void *data)
-+{
-+	const struct nlattr **tb = data;
-+	int type = mnl_attr_get_type(attr);
-+
-+	if (mnl_attr_type_valid(attr, IPVS_SVC_ATTR_MAX) < 0)
-+		return MNL_CB_ERROR;
-+	tb[type] = attr;
-+	return MNL_CB_OK;
-+}
-+
-+static int get_cb(const struct nlmsghdr *nlh, void *data)
-+{
-+	const struct nlattr *tb[IPVS_SVC_ATTR_MAX + 1] = { 0 };
-+	struct ip_vs_flags fl;
-+	int *secure = data;
-+	struct nlattr *nest;
-+
-+	mnl_attr_for_each(nest, nlh, sizeof(struct genlmsghdr)) {
-+		if (mnl_attr_get_type(nest) == IPVS_CMD_ATTR_SERVICE)
-+			mnl_attr_parse_nested(nest, (mnl_attr_cb_t)svc_attr_cb, tb);
-+	}
-+	if (tb[IPVS_SVC_ATTR_FLAGS] &&
-+	    mnl_attr_get_payload_len(tb[IPVS_SVC_ATTR_FLAGS]) >= sizeof(fl)) {
-+		memcpy(&fl, mnl_attr_get_payload(tb[IPVS_SVC_ATTR_FLAGS]),
-+		       sizeof(fl));
-+		*secure = !!(fl.flags & IP_VS_SVC_F_SECURE_TCP);
-+	}
-+	return MNL_CB_STOP;
-+}
-+
-+static int do_get(uint16_t fam, const char *vip, uint16_t port)
-+{
-+	struct mnl_socket *nl;
-+	char buf[MNL_SOCKET_BUFFER_SIZE];
-+	struct nlmsghdr *nlh;
-+	struct genlmsghdr *genl;
-+	int ret, secure = -1;
-+
-+	nl = mnl_socket_open(NETLINK_GENERIC);
-+	if (!nl)
-+		return -errno;
-+	if (mnl_socket_bind(nl, 0, 0) < 0) {
-+		mnl_socket_close(nl);
-+		return -errno;
-+	}
-+	nlh = mnl_nlmsg_put_header(buf);
-+	genl = mnl_nlmsg_put_extra_header(nlh, sizeof(struct genlmsghdr));
-+	genl->cmd = IPVS_CMD_GET_SERVICE;
-+	genl->version = IPVS_GENL_VERSION;
-+	nlh->nlmsg_type = fam;
-+	nlh->nlmsg_flags = NLM_F_REQUEST;
-+	ret = fill_service(nlh, vip, port, 0, 0);
-+	if (ret < 0) {
-+		mnl_socket_close(nl);
-+		return ret;
-+	}
-+	if (send_cmd(nl, nlh) < 0) {
-+		mnl_socket_close(nl);
-+		return -1;
-+	}
-+
-+	ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-+	while (ret >= 0) {
-+		ret = mnl_cb_run(buf, ret, 0, mnl_socket_get_portid(nl),
-+				 (mnl_cb_t)get_cb, &secure);
-+		if (ret <= MNL_CB_STOP || secure >= 0)
-+			break;
-+		ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-+	}
-+	mnl_socket_close(nl);
-+	if (secure < 0)
-+		return -ENOENT;
-+	printf("secure_tcp=%d\n", secure);
-+	return 0;
-+}
-+
-+/* ---------------- add service with flag ---------------- */
-+static int do_add(uint16_t fam, const char *vip, uint16_t port, int secure)
-+{
-+	struct mnl_socket *nl;
-+	char buf[MNL_SOCKET_BUFFER_SIZE];
-+	struct nlmsghdr *nlh;
-+	struct genlmsghdr *genl;
-+	int ret;
-+
-+	/* NLM_F_EXCL: fail if the service already exists */
-+	nlh = mnl_nlmsg_put_header(buf);
-+	genl = mnl_nlmsg_put_extra_header(nlh, sizeof(struct genlmsghdr));
-+	genl->cmd = IPVS_CMD_NEW_SERVICE;
-+	genl->version = IPVS_GENL_VERSION;
-+	nlh->nlmsg_type = fam;
-+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_CREATE | NLM_F_EXCL;
-+	ret = fill_service(nlh, vip, port, 1, secure);
-+	if (ret < 0)
-+		return 1;
-+
-+	nl = mnl_socket_open(NETLINK_GENERIC);
-+	if (!nl)
-+		return 1;
-+	if (mnl_socket_bind(nl, 0, 0) < 0) {
-+		mnl_socket_close(nl);
-+		return 1;
-+	}
-+	if (send_cmd(nl, nlh) < 0) {
-+		mnl_socket_close(nl);
-+		return 1;
-+	}
-+
-+	/* Read the reply so we can report why a command may have failed */
-+	for (;;) {
-+		ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-+		if (ret <= 0) {
-+			fprintf(stderr, "no reply from IPVS\n");
-+			mnl_socket_close(nl);
-+			return 1;
-+		}
-+		ret = mnl_cb_run(buf, ret, 0, mnl_socket_get_portid(nl),
-+				 NULL, NULL);
-+		if (ret < 0) {
-+			int e = errno;
-+
-+			fprintf(stderr, "IPVS netlink error: ret=%d errno=%d (%s)\n",
-+				ret, e, strerror(e));
-+			mnl_socket_close(nl);
-+			return 1;
-+		}
-+		if (ret <= MNL_CB_STOP)
-+			break;
-+	}
-+	mnl_socket_close(nl);
-+	return 0;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	const char *cmd, *vip;
-+	uint16_t fam = 0;
-+	uint16_t port;
-+	int ret, secure = 0;
-+
-+	if (argc < 4) {
-+		fprintf(stderr,
-+			"usage: %s add <vip> <port> <secure|plain>\n"
-+			"       %s get <vip> <port>\n", argv[0], argv[0]);
-+		return 2;
-+	}
-+	cmd = argv[1];
-+	vip = argv[2];
-+	port = (uint16_t)atoi(argv[3]);
-+	port = htons(port);
-+
-+	ret = resolve_family(IPVS_GENL_NAME, &fam);
-+	if (ret) {
-+		fprintf(stderr, "cannot resolve IPVS genl family: %s\n",
-+			strerror(-ret));
-+		return 1;
-+	}
-+
-+	if (strcmp(cmd, "add") == 0) {
-+		if (argc < 5) {
-+			fprintf(stderr, "usage: %s add ... <secure|plain>\n",
-+				argv[0]);
-+			return 2;
-+		}
-+		if (strcmp(argv[4], "secure") == 0) {
-+			secure = 1;
-+		} else if (strcmp(argv[4], "plain") != 0) {
-+			fprintf(stderr, "unknown mode %s\n", argv[4]);
-+			return 2;
-+		}
-+		return do_add(fam, vip, port, secure);
-+	} else if (strcmp(cmd, "get") == 0) {
-+		return do_get(fam, vip, port);
-+	}
-+
-+	fprintf(stderr, "unknown command %s\n", cmd);
-+	return 2;
-+}
--- 
-2.51.0
+The code itself is well structured with proper error checking in the libmnl helper for setsockopt sendto and mnl_socket_bind return values. The fallback definition for IP_VS_SVC_F_SECURE_TCP in the helper is a reasonable approach for older userspace headers. The test topology and the approach of using TTL one probes to prevent the packets from reaching the real server is sound.
 
+However there is one remaining concern. The assertion that the plain service reaches ESTABLISHED state depends on the probe successfully sending both the SYN and the ACK. If the second sendto call fails in the probe the exit status will be non zero and the test will report failure. But if the ACK packet is sent successfully and simply does not reach IPVS for some reason the connection may still be in SYN_RECV when the assertion runs. The sleep between the probe and the assertion is only one second which may not be sufficient on a heavily loaded system. Consider increasing the sleep or adding a retry loop for the state check.
+
+Overall the patch is in good shape and addresses the prior review comments appropriately.
+
+Reviewed-by: David Dull
+
+Signed-off-by: David Dull
