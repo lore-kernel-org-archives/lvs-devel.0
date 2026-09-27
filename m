@@ -1,173 +1,302 @@
-Received: from mail-dy2-f42.google.com (mail-dy2-f42.google.com [74.125.229.42])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BB583559F8
-	for <lvs-devel@vger.kernel.org>; Sun, 27 Sep 2026 06:24:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.229.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83C3939BFFA;
+	Sun, 27 Sep 2026 10:21:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790490293; cv=none; b=CSYJV6moKtMV99AzDX6RrBylNnVhFaYSSOZ10f0F4glBY68JxE6RS8nBCJwiDhPKptdjXzLEYeSHN0aUWUKFUoI9OPjEvqZVOvR3hYP4ugon4zO9ig8F9ti4rdUGWqwQpyZ/xe8w1nztrJ16N9MRv8Yaj4x/MPxO/fnGwuRuzqo=
+	t=1790504518; cv=none; b=nqC7dFmwKrk3ndOwHoOgCzq1iuIclbe5VmWiq3Bfaa/JDkDkR2ypJp5U1CcTdzrFCQ3IaxdvPKy+C4ppqD1gk7PhmuVwzyCPEEuJwL5qzszJDePq9PffRgS8dWjv5wMGY0snp2TDIaDvpBH4NZbdlVA475N+/kQxM7IUUYCSmXI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790490293; c=relaxed/simple;
-	bh=eT/fj5vZ0Sj0xWvtck5u0p9IG2kOT0o4JMJn6zf0/qU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=m9hK88DVae2+sj0kye/LnAPC1PibT+GFnODdQ1OQwEati2KPMqTFmMCUm+9LYdJg2pxD3zMxIoMuruJDsS/opAU9a0s9WCBqofWZ0lV5g7qfD5m0BJb5eZ/yUAxvJzN9epOvrFVLPwERLSGrbX+rXFnNXg0BiRsuZKJSpOa21n8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=FBqWKevv; arc=none smtp.client-ip=74.125.229.42
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1790504518; c=relaxed/simple;
+	bh=ecJJrjF+eb/v318TWPHE0Fg3G8ajSdRhYmEMCS2RLEE=;
+	h=Subject:From:To:Cc:Date:Message-ID:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=H56nM95RSFotZe1k/m+kRvsp9pQo7bl6w3702bRDKAFh9OpWNQ9QAAY7A6sUmhsfgbW3Rpp6t+eAtkoK+dYqVzzT25vhVS0Yw93AqE6dXpd+FaEWR/wQiQrv0PMXND5MvCSyZV72WaCmm+XgRItWsP34C8B93HSA2uSRgmMm43U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HAkO6c28; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FBqWKevv"
-Received: by mail-dy2-f42.google.com with SMTP id 5a478bee46e88-343241d5d34so47256eec.1
-        for <lvs-devel@vger.kernel.org>; Sat, 26 Sep 2026 23:24:52 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790490291; x=1791095091; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=9lvIFmMP4hhC0qEm4iuvni2Axxi7Wmdx8mVA3p2P2mI=;
-        b=FBqWKevvtUd2QdrC97qdrqzsBIb61h0S1+7pNq9x7edXsNUKxvnvhoOusCjDhLUPmz
-         AAW8nV4hay+UuN/6Pcw0fABgsGacFzX44OoeXxvPHRnEbJRcVu8UyphbwqBjhhgJ9/R7
-         mqeQ2CfV4tB9DWQwuN1DSmwnNVx25CBDwhU39r4qUP4BzGC1jjT/bkfIK4qJ3pN0eCXL
-         CoLFnO2wxnuPtfiqPgEkcl0R4KFvEOKFcTxEnVUsHUwUdndlSVNTInYuWptdN+kwE/hN
-         ZjrAFr4vFrHywWVWVht1vs6M3Lj/xE9wZkVPq3g6xAIGMLZ9JM6m6FHpMn10X53Ba2SZ
-         C05Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790490291; x=1791095091;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=9lvIFmMP4hhC0qEm4iuvni2Axxi7Wmdx8mVA3p2P2mI=;
-        b=kOl4giILZkk5krV8To+P3xPlJ1syYXPsLucMEWHdnLHqw2E3uQcczCHqe7Zbzo/GGQ
-         HfOsSgKRrqQ2gttAUxTX8OrWWQLv7sBPlA5qCxwjmh9/oUsbpV+ITV8pPUChTF0MkBSn
-         4kVHgpJqtJYpkulCI9vFYAVAAxqpAGny7fz7gv1NOG++U68xp454nNAO1xpV2zG/Uveu
-         GNL4ie/y5vdA/tu3girxd+fv2FULhaPcMXD6zginmSHyAfo1GEecq28PSpFop4yjmaWd
-         i3LFx2DfdgUve8BQgZRvwv8mHc1HrgdstsF9soqyvkWQQQGtByS+65JkUwtRHxbrZV3x
-         fEQg==
-X-Forwarded-Encrypted: i=1; AKwUvByIotb8hpHNU9t0AC0g2XpxI1qLbAcawB2kStAT2eOuuoOHiSNPqSl8RekHp400RhBIklB02zuqcyw=@vger.kernel.org
-X-Gm-Message-State: AFq9FYKfkmsrs3dF7S48vsd28ReEtM1VE7mdOgYikfSDTwBaLIxfqm8d
-	KRpCQ+lt0w4+oYyWCorgJZE8MF2Z1NecW6ayahkTzOnO0+qAH8vy5liE0oOloEI9CdycEA==
-X-Gm-Gg: AYBFou2KxFW/JYROH1P7tYK5hoJXIheEshXKGgAU3zVzYI9CPSmAPUUYPoQCbr/ogKx
-	NXNtWwroscypgNrYtXYJGu39YH1oImNt1nDXx6tYKIo8CE61ws1oUIh66BfvrnDsYw7YYTQO53j
-	iQIF9jr4dtt+XA71mesBZc6eqgSufkKKpCT2fycP/tNh6ywkyMYms2Lhd6XSnQrhnIZmwPOmK3v
-	wTgnQX38lQdteUINxYX/Vo5tK/giqo33qQhOPy0A4zq8fSkkxjqzuuxFZOiruot7SYkNiT6ZUj8
-	toKs26uSO7KDjc1EOhnbYvBUUQeX/Ljg9qgCHikqCwDxpRf9zPE3beXkJecZSfMCB0PQRpPHp7y
-	6zAZFVI69pmcq0Vs0W1fdCGVDLypQdtSadUsh1mAJyQf12Hr6A5LJPm85MMSZLrj/ZvFA7Bfu/K
-	lJ3GW1jfJ54z5WmTkmsPH8LfYEGTb83D9uR8Iz9hu72Xz4uxlFrLYKq7J/5GErgUUxJYcvLltKL
-	YNaQcbeQ5+x6jcT+z618kB0ZzLDH/PFfzftpedCqFf2np0TQveAo9H4yDQiwi2+M1mgYnM2n6Xi
-	NUMk
-X-Received: by 2002:a05:7300:f64b:b0:33e:4e49:d08d with SMTP id 5a478bee46e88-34272b4bc81mr8484339eec.1.1790490291342;
-        Sat, 26 Sep 2026 23:24:51 -0700 (PDT)
-Received: from localhost.localdomain (95.169.12.199.16clouds.com. [95.169.12.199])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3413fc2413dsm19056291eec.0.2026.09.26.23.24.47
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 26 Sep 2026 23:24:50 -0700 (PDT)
-From: Chengfeng Ye <nicoyip.dev@gmail.com>
-To: Simon Horman <horms@verge.net.au>,
-	Julian Anastasov <ja@ssi.bg>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Florian Westphal <fw@strlen.de>,
-	Phil Sutter <phil@nwl.cc>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Hans Schillstrom <hans.schillstrom@ericsson.com>
-Cc: netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org,
-	linux-kernel@vger.kernel.org,
-	Chengfeng Ye <nicoyip.dev@gmail.com>,
-	stable@vger.kernel.org
-Subject: [PATCH net] ipvs: fix protocol data lifetime during namespace teardown
-Date: Sun, 27 Sep 2026 14:24:35 +0800
-Message-ID: <20260927062435.3690129-1-nicoyip.dev@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HAkO6c28"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0BEE01F000FF;
+	Sun, 27 Sep 2026 10:21:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790504517;
+	bh=UA6Y9oe/SxYAD3bxQq1WzruuX/Xvec+oInjKyiJwXHs=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=HAkO6c28YOsxWMSYGUKffsJMQswoxkdAkVWd8uKYXw25PgMgDVUm8rNk0zASU44cM
+	 rqqECyjD/nM7b1LEO4nGfdgqKsPyv9BZf2+aWd4xGEvvluH74rnriYfLTKu2zniVHf
+	 to+SXfIgNEJOlbTmhlLfFd3QP9nmRlXeBbOqup8e1+RC5xtUC9XU0bw/BokYp/YmDn
+	 AwVUIjKaB9+6j7VlHolBGkKoNyRJYD6eq1UxF1syZJxAI1JLjX6Q0hUaMcV9IfA3lc
+	 3CZBRxcoyDHe7edftheRRn7kQZG6e+LaXMujpK2vZ0EvnDkctUTAEJY8+aDx3XtGBl
+	 vMISvSNKwNecA==
+Subject:
+ Re: [PATCH nf v4 1/3] ipvs: wait the running timer cb on conn deletion
+From: netdev-bot+sashiko@kernel.org
+To: zihanx@nebusec.ai
+Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org,
+ lvs-devel@vger.kernel.org, coreteam@netfilter.org,
+ linux-kernel@vger.kernel.org, horms@verge.net.au, ja@ssi.bg,
+ pablo@netfilter.org, fw@strlen.de, phil@nwl.cc, davem@davemloft.net,
+ edumazet@google.com, kuba@kernel.org, pabeni@redhat.com,
+ stable@vger.kernel.org, vega@nebusec.ai, root@tr0jan.top
+Date: Sun, 27 Sep 2026 10:21:55 +0000
+Message-ID: <179050451553.2160803.14284987040537808908@kernel.org>
+In-Reply-To:
+ <dfc9f33299baa890537aacdc3082c85e1a6eccc9.1790146910.git.zihanx@nebusec.ai>
+References:
+ <dfc9f33299baa890537aacdc3082c85e1a6eccc9.1790146910.git.zihanx@nebusec.ai>
+X-sashiko-severity: High
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-IPVS frees its per-net protocol data before control cleanup cancels
-defense work and unregisters the sysctl table. A defense worker can load
-a protocol data pointer, then namespace cleanup can unlink and free that
-object before the worker dereferences pd->pp or pd->next. The worker's
-securetcp_lock does not serialize with protocol cleanup. A concurrent
-defense-mode sysctl write can reach the same timeout update path.
+Thank you for your contribution! Sashiko AI review found 5 potential
+issue(s) to consider.
 
-KASAN reported:
+Critical: 0 · High: 1 · Medium: 2 · Low: 2
 
-  BUG: KASAN: slab-use-after-free in ip_vs_protocol_timeout_change
-  Workqueue: events_long defense_work_handler
-  Call Trace:
-   ip_vs_protocol_timeout_change+0x1b4/0x1e0
-   update_defense_level+0x63e/0xd80
-   defense_work_handler+0x1e/0xc0
-  Allocated by task 125:
-   ip_vs_protocol_net_init+0xda/0x2f0
-   __ip_vs_init+0x16b/0x240
-   setup_net+0xfc/0x310
-  Freed by task 12:
-   ip_vs_protocol_net_cleanup+0x1d6/0x2e0
-   __ip_vs_cleanup_batch+0x7d/0x100
-   cleanup_net+0x38c/0x770
+If you believe none of the issues are legitimate, please reply to each
+issue of Medium severity or higher and explain why the AI is wrong.
+If any of them are legitimate and you plan to respin, please let patchwork
+know by including "pw-bot: cr" as a separate line at the end of your reply
+(one such reply per series is enough).
 
-Run control cleanup before protocol cleanup so that defense work and
-active sysctl handlers have finished before their protocol data is freed.
-Initialize protocols before exposing the control interface, and unwind
-in reverse order, to enforce the same lifetime on initialization failure.
-Protocol initialization and exit do not depend on control state.
+- [High] In ip_vs_conn_unlink() (net/netfilter/ipvs/ip_vs_conn.c), the
+  new abort path tries to put the refcount back to 1 with…
+- [Medium] In ip_vs_conn_unlink(), the new check of
+  atomic_read(&cp->n_control) after the decrement has no acquire…
+- [Medium] ip_vs_conn_unlink() now does refcount_dec_if_one() before its
+  revalidation, and on the restore path the connection stays alive.
+- [Low] Commit message accuracy.
+- [Low] The comment in ip_vs_conn_expire_now() still refers to "the final
+  timer_delete in ip_vs_conn_expire".
 
-Fixes: 9330419d9aa4 ("IPVS: netns, use ip_vs_proto_data as param.")
-Cc: stable@vger.kernel.org
-Signed-off-by: Chengfeng Ye <nicoyip.dev@gmail.com>
----
- net/netfilter/ipvs/ip_vs_core.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+--
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index fd503f0efb57..8a3c880fdb26 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2502,12 +2502,12 @@ static int __net_init __ip_vs_init(struct net *net)
- 	if (ip_vs_estimator_net_init(ipvs) < 0)
- 		goto estimator_fail;
- 
--	if (ip_vs_control_net_init(ipvs) < 0)
--		goto control_fail;
--
- 	if (ip_vs_protocol_net_init(ipvs) < 0)
- 		goto protocol_fail;
- 
-+	if (ip_vs_control_net_init(ipvs) < 0)
-+		goto control_fail;
-+
- 	if (ip_vs_app_net_init(ipvs) < 0)
- 		goto app_fail;
- 
-@@ -2527,10 +2527,10 @@ static int __net_init __ip_vs_init(struct net *net)
- conn_fail:
- 	ip_vs_app_net_cleanup(ipvs);
- app_fail:
--	ip_vs_protocol_net_cleanup(ipvs);
--protocol_fail:
- 	ip_vs_control_net_cleanup(ipvs);
- control_fail:
-+	ip_vs_protocol_net_cleanup(ipvs);
-+protocol_fail:
- 	ip_vs_estimator_net_cleanup(ipvs);
- estimator_fail:
- 	net->ipvs = NULL;
-@@ -2547,8 +2547,8 @@ static void __net_exit __ip_vs_cleanup_batch(struct list_head *net_list)
- 		ipvs = net_ipvs(net);
- 		ip_vs_conn_net_cleanup(ipvs);
- 		ip_vs_app_net_cleanup(ipvs);
--		ip_vs_protocol_net_cleanup(ipvs);
- 		ip_vs_control_net_cleanup(ipvs);
-+		ip_vs_protocol_net_cleanup(ipvs);
- 		ip_vs_estimator_net_cleanup(ipvs);
- 		IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
- 		net->ipvs = NULL;
+ipvs: wait the running timer cb on conn deletion
+
+This patch changes ip_vs_conn_unlink() to drop the refcount from 1 to 0
+first. It then rechecks n_control and timer_delete(), and if either check
+fails it restores the refcount and returns false. ip_vs_conn_del() now
+always calls ip_vs_conn_expire() with a tagged timer pointer to mark the
+deletion path, and ip_vs_conn_del_put() is replaced by RCU protection for
+the cp->control chain.
+
+Link: https://sashiko.dev/#/patchset/cover.1789435989.git.zihanx%40nebusec.ai
+
+> ipvs: wait the running timer cb on conn deletion
+
+[Severity: Low]
+
+This isn't a bug, but the subject says the deletion path waits for the
+running timer callback. ip_vs_conn_unlink() doesn't wait, since there is no
+timer_delete_sync(). It fails and leaves the work to a later timer run, as
+the body describes. Would a word like "defer" describe this better?
+
+> As ip_vs_conn_del*() run under RCU lock
+> there is no risk accessing a freed connection by
+> concurrent timer callback as Sashiko warns, may
+> be only if our timer expires and we try to delete
+> the cp->control chain.
+
+This seems to contradict the sentence before it, which says the callback
+risked accessing the deleted connection after it was freed. Could it be
+reworded?
+
+The body also doesn't say that ip_vs_conn_del() now calls
+ip_vs_conn_expire() without first needing timer_delete() to succeed. Could
+that be mentioned?
+
+> diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+> index 6fa3e1dc534c3..32cfc02aa2912 100644
+> --- a/net/netfilter/ipvs/ip_vs_conn.c
+> +++ b/net/netfilter/ipvs/ip_vs_conn.c
+> @@ -313,17 +313,34 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
+>  /* Try to unlink ip_vs_conn from conn_tab.
+>   * returns bool success.
+>   */
+> -static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
+> +static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp, bool my_cb)
+>  {
+
+[ ... ]
+
+> +	if (!refcount_dec_if_one(&cp->refcnt))
+> +		return false;
+> +
+
+[Severity: Medium]
+
+The decrement now happens before the revalidation. That means a conn that
+is still hashed, and may end up staying alive, briefly has refcnt == 0.
+Can lookups miss it during that window?
+
+__ip_vs_conn_in_get() and ip_vs_ct_in_get() skip entries where
+__ip_vs_conn_get() fails:
+
+	if (__ip_vs_conn_get(cp)) {
+		/* HIT */
+
+Take a template or FTP control conn whose timer fires while it is gaining
+a controlled conn. The n_control check below restores the refcount and the
+conn stays alive.
+
+A packet arriving in that window could miss the template and create a
+duplicate one, possibly for a different real server. A mid-stream packet
+could also miss its FTP control conn.
+
+Before this patch, a successful refcount_dec_if_one() always led straight
+to the unlink under the bucket lock. A failed lookup could only affect a
+conn that was really going away.
+
+>  	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
+> -		return refcount_dec_if_one(&cp->refcnt);
+> +		return true;
+> +
+> +	/* Revalidate after conn is excluded from traffic:
+> +	 * - not controlling other conns
+> +	 * - no pending/running timer callback
+> +	 *
+> +	 * And the winner is ...
+> +	 */
+> +	if (atomic_read(&cp->n_control) ||
+> +	    (!timer_delete(&cp->timer) && !my_cb)) {
+> +		/* Not me? Give the timer callback another chance, even
+> +		 * if one is concurrently running during the conn deletion.
+> +		 */
+> +		refcount_inc(&cp->refcnt);
+> +		return false;
+> +	}
+
+[Severity: High]
+
+Does this refcount_inc() actually bring refcnt back to 1?
+refcount_dec_if_one() has already moved it from 1 to 0, and refcount_t
+does not allow an increment from 0:
+
+include/linux/refcount.h:__refcount_add() {
+	int old = atomic_fetch_add_relaxed(i, &r->refs);
+	...
+	if (unlikely(!old))
+		refcount_warn_saturate(r, REFCOUNT_ADD_UAF);
+	...
+}
+
+This prints "refcount_t: addition on 0; use-after-free".
+refcount_warn_saturate() then sets refcnt to REFCOUNT_SATURATED, not 1.
+
+>From then on, refcount_dec_if_one() can never succeed for this conn, so
+neither the timer path nor ip_vs_conn_del() can free it.
+
+When the timer runs, the __ip_vs_conn_get() in expire_later succeeds on
+the saturated value, and __ip_vs_conn_put_timer() re-arms the timer for
+60*HZ. The conn never reaches call_rcu(), and ipvs->conn_count is never
+decremented. The dest, conntrack and app references are never dropped
+either.
+
+Wouldn't ip_vs_conn_flush() then loop forever at netns teardown?
+
+	if (atomic_read(&ipvs->conn_count) != 0) {
+		schedule();
+		goto flush_again;
+	}
+
+There seem to be two ways to get here. The first is the race this patch
+is meant to fix:
+
+CPU X                         CPU Y
+cp->timer fires               ip_vs_conn_del(cp)
+ip_vs_conn_expire(cp)           ip_vs_conn_expire()
+                                  ip_vs_conn_unlink(cp, false)
+                                    refcount_dec_if_one() 1 -> 0
+                                    timer_delete() returns 0
+                                    refcount_inc() on refcnt 0
+
+CPU Y can be in ip_vs_conn_flush(), ip_vs_random_dropentry() or the
+expire_nodest_conn flush.
+
+The second is a template or FTP control conn ct:
+
+- Its timer passes the early n_control == 0 check.
+- Meanwhile another CPU runs ip_vs_ct_in_get()->ip_vs_control_add() and
+  then ip_vs_conn_put(ct).
+- The timer's refcount_dec_if_one() then succeeds, but n_control is now
+  non-zero.
+- refcount_inc() then runs on 0 again.
+
+Both cases in the commit message ("One of two things can happen when we
+detect the running callback") assume refcnt goes back to 1.
+
+Was refcount_set(&cp->refcnt, 1) intended here? While refcnt is 0,
+refcount_inc_not_zero() and refcount_dec_if_one() fail in every other
+context.
+
+[Severity: Medium]
+
+Is the atomic_read(&cp->n_control) recheck ordered after
+refcount_dec_if_one()? That function is only a release cmpxchg:
+
+lib/refcount.c:refcount_dec_if_one() {
+	...
+	return atomic_try_cmpxchg_release(&r->refs, &val, 0);
+}
+
+A control dependency on its result orders later stores but not later
+loads. Unlike refcount_dec_and_test(), there is no
+smp_acquire__after_ctrl_dep() here.
+
+Consider a template ct with refcnt 2:
+
+CPU B                               CPU A (ct timer callback)
+                                    ip_vs_conn_expire(ct)
+                                      n_control == 0 check passes
+ip_vs_control_add(cp2, ct)
+  atomic_inc(&ct->n_control)
+ip_vs_conn_put(ct)
+  mod_timer()
+  refcnt 2 -> 1 (release)
+                                    ip_vs_conn_unlink(ct, true)
+                                      refcount_dec_if_one() 1 -> 0
+                                      atomic_read(&ct->n_control)
+                                        may still observe 0
+
+On arm64 or powerpc, can ct then be unlinked and passed to call_rcu()
+while cp2->control still points at it? When cp2 later expires,
+ip_vs_control_del(cp2) would read and decrement ct->n_control in freed
+memory.
+
+Is an smp_acquire__after_ctrl_dep() (or smp_rmb()) needed after a
+successful refcount_dec_if_one() and before reading n_control?
+
+[ ... ]
+
+> @@ -1356,26 +1364,21 @@ static void ip_vs_conn_expire(struct timer_list *t)
+>  		goto expire_later;
+>  
+>  	/* Unlink conn if not referenced anymore */
+> -	if (likely(ip_vs_conn_unlink(cp))) {
+> +	if (likely(ip_vs_conn_unlink(cp, my_cb))) {
+>  		struct ip_vs_conn *ct = cp->control;
+>  
+> -		/* delete the timer if it is activated by other users */
+> -		timer_delete(&cp->timer);
+> -
+
+[Severity: Low]
+
+This isn't a bug, but a comment in ip_vs_conn_expire_now() still refers to
+this call:
+
+	/* Using mod_timer_pending will ensure the timer is not
+	 * modified after the final timer_delete in ip_vs_conn_expire.
+	 */
+
+With this timer_delete() removed, the one that remains is the conditional
+call in ip_vs_conn_unlink(). Could the comment be updated to point there?
+
+[ ... ]
+
 -- 
-2.43.0
-
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/cover.1790146910.git.zihanx%40nebusec.ai
