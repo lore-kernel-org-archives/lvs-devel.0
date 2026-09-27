@@ -1,33 +1,33 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83C3939BFFA;
-	Sun, 27 Sep 2026 10:21:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A4833C73C1;
+	Sun, 27 Sep 2026 10:21:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790504518; cv=none; b=nqC7dFmwKrk3ndOwHoOgCzq1iuIclbe5VmWiq3Bfaa/JDkDkR2ypJp5U1CcTdzrFCQ3IaxdvPKy+C4ppqD1gk7PhmuVwzyCPEEuJwL5qzszJDePq9PffRgS8dWjv5wMGY0snp2TDIaDvpBH4NZbdlVA475N+/kQxM7IUUYCSmXI=
+	t=1790504520; cv=none; b=i6rith13S7+klb7SpqoUjTYP6X3bE+OFwHQv6SS4ToULi8At5jngBPFZPbJSNpgs799uPJrt6WsILm6JiutPTBwNSCGSpiW6nAAXzfy7wMLgVokvM4zBOXG/gDs1eqA9VY9MmD2ZFuDSPWcJ3fOaZqiu9BaJSxDJVqBVYSqww5A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790504518; c=relaxed/simple;
-	bh=ecJJrjF+eb/v318TWPHE0Fg3G8ajSdRhYmEMCS2RLEE=;
+	s=arc-20240116; t=1790504520; c=relaxed/simple;
+	bh=FolsTU4K1shPceXTbMhZf+9HxL8egYBbKLIpHzBq/6U=;
 	h=Subject:From:To:Cc:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=H56nM95RSFotZe1k/m+kRvsp9pQo7bl6w3702bRDKAFh9OpWNQ9QAAY7A6sUmhsfgbW3Rpp6t+eAtkoK+dYqVzzT25vhVS0Yw93AqE6dXpd+FaEWR/wQiQrv0PMXND5MvCSyZV72WaCmm+XgRItWsP34C8B93HSA2uSRgmMm43U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HAkO6c28; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=E6J7POCwFXP0Nutrj9bBJxd+RyDzNaXvtXpjrS6vWBZljb9tDu3EIz/sM37PDHi1zCd5k0PmKdFrNnkMu/e4TYWshmRR189c/knH2j3Al6Tud/+5+TEBcCEDjgJVQAOBsUr1XqREaGYuQ8SPGXlEAreXGV30dO6em/RKHBh5XqM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ljghVDwP; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HAkO6c28"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0BEE01F000FF;
-	Sun, 27 Sep 2026 10:21:55 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ljghVDwP"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9C3601F00893;
+	Sun, 27 Sep 2026 10:21:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790504517;
-	bh=UA6Y9oe/SxYAD3bxQq1WzruuX/Xvec+oInjKyiJwXHs=;
+	s=k20260515; t=1790504518;
+	bh=XY8LLjyGS0pdDl4IdfqGzsZnVhZtiTuJAnYUvTJFEXY=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=HAkO6c28YOsxWMSYGUKffsJMQswoxkdAkVWd8uKYXw25PgMgDVUm8rNk0zASU44cM
-	 rqqECyjD/nM7b1LEO4nGfdgqKsPyv9BZf2+aWd4xGEvvluH74rnriYfLTKu2zniVHf
-	 to+SXfIgNEJOlbTmhlLfFd3QP9nmRlXeBbOqup8e1+RC5xtUC9XU0bw/BokYp/YmDn
-	 AwVUIjKaB9+6j7VlHolBGkKoNyRJYD6eq1UxF1syZJxAI1JLjX6Q0hUaMcV9IfA3lc
-	 3CZBRxcoyDHe7edftheRRn7kQZG6e+LaXMujpK2vZ0EvnDkctUTAEJY8+aDx3XtGBl
-	 vMISvSNKwNecA==
-Subject:
- Re: [PATCH nf v4 1/3] ipvs: wait the running timer cb on conn deletion
+	b=ljghVDwPaNUJtOU2GGGLAmx+66c+iy9ZOr75OjykGKLasNmFtSMH9ZXgB7X6AHgHt
+	 yO6zlGAjgFGgx/lpVGCjZ3PxZ711kyokoMzJ5OrX+maT+fCt3/Xsmu2KvRO3IprwKY
+	 N+3eQq1rQ+YBlAY4G8s8lspT2LnRANbI66Cj+2+/VY7nna63iRDpO90c8SirKMae2I
+	 t00/LgduKAjzbc0rWvt1u9n7ojAPvO3qcI9GGnSYH8qKAMOMQhRS3IO1l8cGib2tVd
+	 7WHnQYqfwSajKa8C1H3gtfyjkKvwmge4AUouGkmA1XUGw0IwIv1fgcQ6l1objZVtIj
+	 AZxiXcpU+y9/Q==
+Subject: Re: [PATCH nf v4 2/3] ipvs: avoid stack overflow from recursive
+ connection expiration
 From: netdev-bot+sashiko@kernel.org
 To: zihanx@nebusec.ai
 Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org,
@@ -36,12 +36,12 @@ Cc: netfilter-devel@vger.kernel.org, netdev@vger.kernel.org,
  pablo@netfilter.org, fw@strlen.de, phil@nwl.cc, davem@davemloft.net,
  edumazet@google.com, kuba@kernel.org, pabeni@redhat.com,
  stable@vger.kernel.org, vega@nebusec.ai, root@tr0jan.top
-Date: Sun, 27 Sep 2026 10:21:55 +0000
-Message-ID: <179050451553.2160803.14284987040537808908@kernel.org>
+Date: Sun, 27 Sep 2026 10:21:57 +0000
+Message-ID: <179050451719.2160803.1412992654069939250@kernel.org>
 In-Reply-To:
- <dfc9f33299baa890537aacdc3082c85e1a6eccc9.1790146910.git.zihanx@nebusec.ai>
+ <8d33e2a83fa6f2fb6419b3f34cd3ff8677684a31.1790146910.git.zihanx@nebusec.ai>
 References:
- <dfc9f33299baa890537aacdc3082c85e1a6eccc9.1790146910.git.zihanx@nebusec.ai>
+ <8d33e2a83fa6f2fb6419b3f34cd3ff8677684a31.1790146910.git.zihanx@nebusec.ai>
 X-sashiko-severity: High
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -52,10 +52,10 @@ List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-Thank you for your contribution! Sashiko AI review found 5 potential
+Thank you for your contribution! Sashiko AI review found 3 potential
 issue(s) to consider.
 
-Critical: 0 · High: 1 · Medium: 2 · Low: 2
+Critical: 0 · High: 2 · Medium: 0 · Low: 1
 
 If you believe none of the issues are legitimate, please reply to each
 issue of Medium severity or higher and explain why the AI is wrong.
@@ -63,238 +63,213 @@ If any of them are legitimate and you plan to respin, please let patchwork
 know by including "pw-bot: cr" as a separate line at the end of your reply
 (one such reply per series is enough).
 
-- [High] In ip_vs_conn_unlink() (net/netfilter/ipvs/ip_vs_conn.c), the
-  new abort path tries to put the refcount back to 1 with…
-- [Medium] In ip_vs_conn_unlink(), the new check of
-  atomic_read(&cp->n_control) after the decrement has no acquire…
-- [Medium] ip_vs_conn_unlink() now does refcount_dec_if_one() before its
-  revalidation, and on the restore path the connection stays alive.
-- [Low] Commit message accuracy.
-- [Low] The comment in ip_vs_conn_expire_now() still refers to "the final
-  timer_delete in ip_vs_conn_expire".
+- [High] The failure path in ip_vs_conn_unlink() saturates the refcount
+  instead of restoring it.
+- [High] The controller walk in ip_vs_conn_expire() relies on RCU to keep
+  ct alive.
+- [Low] An undeclared stable dependency.
 
 --
 
-ipvs: wait the running timer cb on conn deletion
+ipvs: avoid stack overflow from recursive connection expiration
 
-This patch changes ip_vs_conn_unlink() to drop the refcount from 1 to 0
-first. It then rechecks n_control and timer_delete(), and if either check
-fails it restores the refcount and returns false. ip_vs_conn_del() now
-always calls ip_vs_conn_expire() with a tagged timer pointer to mark the
-deletion path, and ip_vs_conn_del_put() is replaced by RCU protection for
-the cp->control chain.
+This commit removes the recursive ip_vs_conn_del(ct) call in
+ip_vs_conn_expire(). Instead, once the current connection is cleaned up,
+the function carries on expiring its controller in a loop. The whole walk
+runs under one rcu_read_lock(), and every later iteration runs with my_cb
+set to false (deletion mode).
 
-Link: https://sashiko.dev/#/patchset/cover.1789435989.git.zihanx%40nebusec.ai
-
-> ipvs: wait the running timer cb on conn deletion
+> This keeps controlled-connection cleanup synchronous while using one stack
+> frame for the whole chain. The timer callback race during connection
+> deletion is handled by the preceding refcount fix.
+>
+> Fixes: f9200a52eedf ("ipvs: avoid expiring many connections from timer")
+> Cc: stable@vger.kernel.org
 
 [Severity: Low]
+This patch is tagged for stable, but it only works on top of the
+preceding patch, "ipvs: wait the running timer cb on conn deletion".
+That patch adds:
 
-This isn't a bug, but the subject says the deletion path waits for the
-running timer callback. ip_vs_conn_unlink() doesn't wait, since there is no
-timer_delete_sync(). It fails and leaves the work to a later timer run, as
-the body describes. Would a word like "defer" describe this better?
+  - ip_vs_conn_unlink(cp, my_cb)
+  - the tagged-pointer my_cb decoding in ip_vs_conn_expire()
+  - the new ip_vs_conn_del()
+  - the timer callback revalidation
 
-> As ip_vs_conn_del*() run under RCU lock
-> there is no risk accessing a freed connection by
-> concurrent timer callback as Sashiko warns, may
-> be only if our timer expires and we try to delete
-> the cp->control chain.
+The prerequisite has a Fixes: tag but no Cc: stable. This commit message
+only calls it "the preceding refcount fix".
 
-This seems to contradict the sentence before it, which says the callback
-risked accessing the deleted connection after it was freed. Could it be
-reworded?
+Could the prerequisite also be tagged for stable, and named here by title
+or as a stable dependency?
 
-The body also doesn't say that ip_vs_conn_del() now calls
-ip_vs_conn_expire() without first needing timer_delete() to succeed. Could
-that be mentioned?
+If this loop were backported alone, or adapted onto the old
+ip_vs_conn_del()/ip_vs_conn_del_put() layout, ct would be expired
+synchronously with my_cb set to false. Nothing would then guard against
+ct's own timer callback running at the same time.
 
 > diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-> index 6fa3e1dc534c3..32cfc02aa2912 100644
+> index 32cfc02aa2912..f85752e79ed92 100644
 > --- a/net/netfilter/ipvs/ip_vs_conn.c
 > +++ b/net/netfilter/ipvs/ip_vs_conn.c
-> @@ -313,17 +313,34 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
->  /* Try to unlink ip_vs_conn from conn_tab.
->   * returns bool success.
->   */
-> -static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
-> +static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp, bool my_cb)
->  {
-
-[ ... ]
-
-> +	if (!refcount_dec_if_one(&cp->refcnt))
-> +		return false;
+> @@ -1357,6 +1357,9 @@ static void ip_vs_conn_expire(struct timer_list *t)
+>  	struct ip_vs_conn *cp = timer_container_of(cp, t2, timer);
+>  	struct netns_ipvs *ipvs = cp->ipvs;
+>  
+> +	rcu_read_lock();
 > +
-
-[Severity: Medium]
-
-The decrement now happens before the revalidation. That means a conn that
-is still hashed, and may end up staying alive, briefly has refcnt == 0.
-Can lookups miss it during that window?
-
-__ip_vs_conn_in_get() and ip_vs_ct_in_get() skip entries where
-__ip_vs_conn_get() fails:
-
-	if (__ip_vs_conn_get(cp)) {
-		/* HIT */
-
-Take a template or FTP control conn whose timer fires while it is gaining
-a controlled conn. The n_control check below restores the refcount and the
-conn stays alive.
-
-A packet arriving in that window could miss the template and create a
-duplicate one, possibly for a different real server. A mid-stream packet
-could also miss its FTP control conn.
-
-Before this patch, a successful refcount_dec_if_one() always led straight
-to the unlink under the bucket lock. A failed lookup could only affect a
-conn that was really going away.
-
->  	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
-> -		return refcount_dec_if_one(&cp->refcnt);
-> +		return true;
-> +
-> +	/* Revalidate after conn is excluded from traffic:
-> +	 * - not controlling other conns
-> +	 * - no pending/running timer callback
-> +	 *
-> +	 * And the winner is ...
-> +	 */
-> +	if (atomic_read(&cp->n_control) ||
-> +	    (!timer_delete(&cp->timer) && !my_cb)) {
-> +		/* Not me? Give the timer callback another chance, even
-> +		 * if one is concurrently running during the conn deletion.
-> +		 */
-> +		refcount_inc(&cp->refcnt);
-> +		return false;
-> +	}
+> +repeat:
+>  	/*
+>  	 *	do I control anybody?
+>  	 */
+> @@ -1366,19 +1369,20 @@ static void ip_vs_conn_expire(struct timer_list *t)
+>  	/* Unlink conn if not referenced anymore */
+>  	if (likely(ip_vs_conn_unlink(cp, my_cb))) {
+>  		struct ip_vs_conn *ct = cp->control;
+> +		bool next = false;
+>  
+>  		/* does anybody control me? */
+>  		if (ct) {
+> -			rcu_read_lock();
+>  			ip_vs_control_del(cp);
+>  			/* Drop CTL or non-assured TPL if not used anymore */
+>  			if (!cp->timeout && !atomic_read(&ct->n_control) &&
+>  			    (!(ct->flags & IP_VS_CONN_F_TEMPLATE) ||
+>  			     !(ct->state & IP_VS_CTPL_S_ASSURED))) {
+>  				IP_VS_DBG(4, "drop controlling connection\n");
+> -				ip_vs_conn_del(ct);
+> +				if (ct->control)
+> +					ct->timeout = 0;
+> +				next = true;
 
 [Severity: High]
+Is RCU enough to keep ct alive here when the controller has
+IP_VS_CONN_F_ONE_PACKET set?
 
-Does this refcount_inc() actually bring refcnt back to 1?
-refcount_dec_if_one() has already moved it from 1 to 0, and refcount_t
-does not allow an increment from 0:
+After ip_vs_control_del() drops ct->n_control to zero, the walk keeps
+using ct without holding a reference. It touches n_control, flags, state
+and timeout, and later refcnt via ip_vs_conn_unlink(). A ONE_PACKET
+connection is freed right away, not after a grace period:
 
-include/linux/refcount.h:__refcount_add() {
-	int old = atomic_fetch_add_relaxed(i, &r->refs);
+	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
+		ip_vs_conn_rcu_free(&cp->rcu_head);
+	else
+		call_rcu(&cp->rcu_head, ip_vs_conn_rcu_free);
+
+Such a controller can be built. IP_VS_CONN_F_DEST_MASK includes
+IP_VS_CONN_F_ONE_PACKET, and the legacy sockopt path copies the flags
+unfiltered in ip_vs_copy_udest_compat():
+
+	udest->conn_flags	= udest_compat->conn_flags;
+
+ip_vs_bind_dest() then passes dest->conn_flags on to UDP persistence
+templates.
+
+Suppose a destination update clears the flag between the template's and
+the child's ip_vs_conn_new() calls in ip_vs_sched_persist(). An unhashed
+ONE_PACKET template then controls a hashed normal child. While n_control
+is above zero, the template's timer is re-armed every jiffy, because
+__ip_vs_conn_put_timer() uses a timeout of 0 for ONE_PACKET.
+
+Now suppose the child is deleted through ip_vs_conn_del() by flush,
+drop_entry or nodest. cp->timeout is 0, so next is set and the walk calls
+ip_vs_conn_unlink(ct, false). For ONE_PACKET, that function returns true
+right after refcount_dec_if_one() and never calls timer_delete():
+
+	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
+		return true;
+
+Would the walk then free ct at once, while ct->timer is still pending in
+the timer wheel?
+
+There is also the other order. If ct's own timer callback on another CPU
+frees it first, wouldn't the walk read and write ct->n_control, flags,
+state, timeout and refcnt on freed memory?
+
+Before the series, the code took a reference on ct (has_ref) and gated
+deletion on timer_delete() in ip_vs_conn_del_put(). The preceding patch,
+"ipvs: wait the running timer cb on conn deletion", replaced that with
+rcu_read_lock(). This patch keeps that approach and widens the window to
+cover the whole cp cleanup before goto repeat.
+
+>  			}
+> -			rcu_read_unlock();
+>  		}
+>  
+>  		if ((cp->flags & IP_VS_CONN_F_NFCT) &&
+> @@ -1405,7 +1409,12 @@ static void ip_vs_conn_expire(struct timer_list *t)
+>  		else
+>  			call_rcu(&cp->rcu_head, ip_vs_conn_rcu_free);
+>  		atomic_dec(&ipvs->conn_count);
+> -		return;
+> +		if (next) {
+> +			cp = ct;
+> +			my_cb = false;
+> +			goto repeat;
+> +		}
+
+[Severity: High]
+With my_cb now false, every controller in the chain goes through
+ip_vs_conn_unlink(ct, false). Can the failure path there leave ct with a
+saturated refcount?
+
+ip_vs_conn_unlink() drops the count to zero before it revalidates:
+
+net/netfilter/ipvs/ip_vs_conn.c:ip_vs_conn_unlink() {
+	if (!refcount_dec_if_one(&cp->refcnt))
+		return false;
 	...
-	if (unlikely(!old))
-		refcount_warn_saturate(r, REFCOUNT_ADD_UAF);
+	if (atomic_read(&cp->n_control) ||
+	    (!timer_delete(&cp->timer) && !my_cb)) {
+		...
+		refcount_inc(&cp->refcnt);
+		return false;
+	}
 	...
 }
 
-This prints "refcount_t: addition on 0; use-after-free".
-refcount_warn_saturate() then sets refcnt to REFCOUNT_SATURATED, not 1.
+Calling refcount_inc() on zero goes through __refcount_add(). That sees
+old == 0 and calls refcount_warn_saturate(r, REFCOUNT_ADD_UAF), which
+warns "addition on 0; use-after-free". The counter is left at
+REFCOUNT_SATURATED instead of going back to 1.
 
->From then on, refcount_dec_if_one() can never succeed for this conn, so
-neither the timer path nor ip_vs_conn_del() can free it.
+The new loop seems to reach this in two ways:
 
-When the timer runs, the __ip_vs_conn_get() in expire_later succeeds on
-the saturated value, and __ip_vs_conn_put_timer() re-arms the timer for
-60*HZ. The conn never reaches call_rcu(), and ipvs->conn_count is never
-decremented. The dest, conntrack and app references are never dropped
-either.
+  - ct's own timer callback is already running on another CPU, so
+    timer_delete() returns 0 while my_cb is false.
 
-Wouldn't ip_vs_conn_flush() then loop forever at netns teardown?
+  - A packet takes ct with __ip_vs_conn_get(), then calls
+    ip_vs_control_add() and ip_vs_conn_put(), between the n_control
+    check at repeat: and refcount_dec_if_one(). This can also happen on
+    the plain timer path of a persistence template while a new client
+    connection arrives.
 
+Once the counter is saturated, refcount_dec_if_one() can never succeed,
+but __ip_vs_conn_get() still does. The connection keeps going through
+expire_later and getting re-armed, and it is never freed.
+
+Wouldn't ip_vs_conn_flush() then loop forever during netns cleanup?
+
+net/netfilter/ipvs/ip_vs_conn.c:ip_vs_conn_flush() {
+	...
 	if (atomic_read(&ipvs->conn_count) != 0) {
 		schedule();
 		goto flush_again;
 	}
-
-There seem to be two ways to get here. The first is the race this patch
-is meant to fix:
-
-CPU X                         CPU Y
-cp->timer fires               ip_vs_conn_del(cp)
-ip_vs_conn_expire(cp)           ip_vs_conn_expire()
-                                  ip_vs_conn_unlink(cp, false)
-                                    refcount_dec_if_one() 1 -> 0
-                                    timer_delete() returns 0
-                                    refcount_inc() on refcnt 0
-
-CPU Y can be in ip_vs_conn_flush(), ip_vs_random_dropentry() or the
-expire_nodest_conn flush.
-
-The second is a template or FTP control conn ct:
-
-- Its timer passes the early n_control == 0 check.
-- Meanwhile another CPU runs ip_vs_ct_in_get()->ip_vs_control_add() and
-  then ip_vs_conn_put(ct).
-- The timer's refcount_dec_if_one() then succeeds, but n_control is now
-  non-zero.
-- refcount_inc() then runs on 0 again.
-
-Both cases in the commit message ("One of two things can happen when we
-detect the running callback") assume refcnt goes back to 1.
-
-Was refcount_set(&cp->refcnt, 1) intended here? While refcnt is 0,
-refcount_inc_not_zero() and refcount_dec_if_one() fail in every other
-context.
-
-[Severity: Medium]
-
-Is the atomic_read(&cp->n_control) recheck ordered after
-refcount_dec_if_one()? That function is only a release cmpxchg:
-
-lib/refcount.c:refcount_dec_if_one() {
 	...
-	return atomic_try_cmpxchg_release(&r->refs, &val, 0);
 }
 
-A control dependency on its result orders later stores but not later
-loads. Unlike refcount_dec_and_test(), there is no
-smp_acquire__after_ctrl_dep() here.
+This restore path came from the preceding patch in the series, "ipvs:
+wait the running timer cb on conn deletion", and this commit message
+relies on it. The later patch, "ipvs: reject FTP control ports as data
+ports", doesn't touch ip_vs_conn.c.
 
-Consider a template ct with refcnt 2:
+Every lookup uses refcount_inc_not_zero(). Would refcount_set(&cp->refcnt,
+1) be a safe way to restore the count here?
 
-CPU B                               CPU A (ct timer callback)
-                                    ip_vs_conn_expire(ct)
-                                      n_control == 0 check passes
-ip_vs_control_add(cp2, ct)
-  atomic_inc(&ct->n_control)
-ip_vs_conn_put(ct)
-  mod_timer()
-  refcnt 2 -> 1 (release)
-                                    ip_vs_conn_unlink(ct, true)
-                                      refcount_dec_if_one() 1 -> 0
-                                      atomic_read(&ct->n_control)
-                                        may still observe 0
-
-On arm64 or powerpc, can ct then be unlinked and passed to call_rcu()
-while cp2->control still points at it? When cp2 later expires,
-ip_vs_control_del(cp2) would read and decrement ct->n_control in freed
-memory.
-
-Is an smp_acquire__after_ctrl_dep() (or smp_rmb()) needed after a
-successful refcount_dec_if_one() and before reading n_control?
-
-[ ... ]
-
-> @@ -1356,26 +1364,21 @@ static void ip_vs_conn_expire(struct timer_list *t)
->  		goto expire_later;
+> +		goto out;
+>  	}
 >  
->  	/* Unlink conn if not referenced anymore */
-> -	if (likely(ip_vs_conn_unlink(cp))) {
-> +	if (likely(ip_vs_conn_unlink(cp, my_cb))) {
->  		struct ip_vs_conn *ct = cp->control;
->  
-> -		/* delete the timer if it is activated by other users */
-> -		timer_delete(&cp->timer);
-> -
-
-[Severity: Low]
-
-This isn't a bug, but a comment in ip_vs_conn_expire_now() still refers to
-this call:
-
-	/* Using mod_timer_pending will ensure the timer is not
-	 * modified after the final timer_delete in ip_vs_conn_expire.
-	 */
-
-With this timer_delete() removed, the one that remains is the conditional
-call in ip_vs_conn_unlink(). Could the comment be updated to point there?
+>    expire_later:
 
 [ ... ]
 
