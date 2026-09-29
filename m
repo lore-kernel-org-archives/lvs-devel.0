@@ -1,226 +1,216 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5551B5158A7;
-	Tue, 29 Sep 2026 11:37:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 071983D3008;
+	Tue, 29 Sep 2026 15:40:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790681864; cv=none; b=c/rQCeq4khCRH72g5d77XCJMiMwj/+iMQu0tdVLqFDNDFdfAcLuenM3jIu+D0L7mAfMhX1WJ8ct3W+UvUjgZIvchTtUAKTco+5Jzu7sk5jHIJJWf/bh4b9YIWB7P+CCgD0I+BFLMehyG9Z5oGco/3Wnm6ZZkbCBTqQjwBbWDJj8=
+	t=1790696442; cv=none; b=RtOq2s4JhTaqEmP+NvNPvVHgfn3JNy6PJ5KIMJkP5SNh72xLRMXsLTkWInVR9cSMR/jYxdJ/iGkUPP7lAh0J8x3njS44YNbJlSyZlR7AcpK62LkbmatoeJwAoCSroEwbNlhSi0+Euq+1y1tIskYamU7EEGYrFIsZaHO1E4/Nqbo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790681864; c=relaxed/simple;
-	bh=IAB5cfp0I2JSHgurbFPTEzXii9sHVNXb4BHRvUipkiM=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=dkJv441NKXO7+IKcnDAG62k6GdoQGmBFbNiAciY1Sj3JmaeSkbF1cYycUS+fnvku3uxk9mXjeONG9cuCcL61G3H23C0691ZZUxbY42eC+++5TQIfIzkfaNTyUmMqmSnfenV+yIWB1I94Knvjueau/TjvPTXeGvrL+BTga5vfjSo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=JqNevoXa; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1790696442; c=relaxed/simple;
+	bh=8oZvkVUf2V+gk2Uu/lUv/NwDSxjvHbsrGmM/+th4F/w=;
+	h=Subject:From:To:Cc:Date:Message-ID:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=feakBgyJK95IvaxNQhDXjVxQW9AIHkYMBmqlcfJJEpeHEHV+Gld3QTvLfvn2L44JYBPd2Hgfz0T8U4hM1yo5y92OfUaEdES1w5593rCUJnT6p+XvJIRRYPftUINrEZnAoq0YwL1cTXbIAFBItBS1ftWm506bFinF5ytM4XhRNtU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Jppbl6Qo; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="JqNevoXa"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 9E796213E5;
-	Tue, 29 Sep 2026 14:37:28 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-transfer-encoding:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=p2JJ0JPXuJv3LI7/fTOtgzYyJ76XLpFJkvFBlaQp5NA=; b=JqNevoXaOSMc
-	apwrLI2zRoxeGv4z8HDMc2PpiIdQHOEJA9GoK024LBcUI81n5l62fcRDnx7iNP0o
-	n5TGQX7KH56+W+HLYOscBZ8WYRaNOCAwTMcrStukNyuq2GMmzyH7Z/Gy5lgDQ0P0
-	JhQKS2VZ5GZ6F4s9P7SIrJVlZ6UlR3zJ9lWfg0K5bES+A41vrav10wetuV0Kjlce
-	J53oLI5zMx1mj+5g2YIQY8R1Vjf2+XPeuACxUGuFo3meVEbm5STdiTXZHBHqtdll
-	eN654WuUZsh7tOMLvmejk/hTUi7+ebuGK8Oh8YqQcQplfldG2oe9VB/9PJQijjOa
-	vPjWfeiYYcuBZAcU5a78hvZZJe0dMmcO68QSZeXvYDHa0iB/DnYLsbMVjrXLpSvS
-	ZYS3fRAugFH+sXM6eI6lGYqGyoq133LReALgHJ3WTkfDjJElzdm7P4E5h56ym1OT
-	+SLK+3DVf6E3C6GBQ4D/Z/10u/c1yPcq4K6hdwCblxPVByrvvlftImwgAxad9eQm
-	dkPUToslT9NY6wm8PLa80sV4HzkPzyMOyZ3h+f0CRJAcTfEgRQYw49hOB3gKRupR
-	ofcEv95YJSoYGrEB/G6SIAL822xXBqaYQUIa7al5eW92lUNtFwwYI428tmlm/UXU
-	GI8IW39g2OaHoBHGLYnidQGI22kgpzQ=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue, 29 Sep 2026 14:37:28 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id ED831620E7;
-	Tue, 29 Sep 2026 14:37:30 +0300 (EEST)
-Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68TBYt7K044335;
-	Tue, 29 Sep 2026 14:34:55 +0300
-Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 68TBYtR6044334;
-	Tue, 29 Sep 2026 14:34:55 +0300
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: [PATCH nf v2 2/2] ipvs: fix buffer overflow when sending sync messages
-Date: Tue, 29 Sep 2026 14:34:36 +0300
-Message-ID: <20260929113436.44306-3-ja@ssi.bg>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260929113436.44306-1-ja@ssi.bg>
-References: <20260929113436.44306-1-ja@ssi.bg>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Jppbl6Qo"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ECC9C1F000FF;
+	Tue, 29 Sep 2026 15:40:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1790696440;
+	bh=TI/xXToTOEBcYAWcn46fJFhNOb2NaUUrbJWEAnd5OGM=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=Jppbl6QoqsktVwqpBgVbumU0mwxDPjdX2+1/8E/f48rhbIz9ZgUI2pAc/+68lSrzm
+	 xp/naV5gZ6OUZ7tkq1e48NPB4bsibo5F56Ndtliik/jLh0AFrSVOxWDYUBlbi60Gij
+	 Xdc4dwKeAL6Bn99/WnEQ6iwCnlmIsuBruNBDiQjuVIbuo0oWCNPUtYJWoLO6y4oSes
+	 FGM24INBe4WF4TDr4kTtw7e+ya3fUxPux9FS0jpECvcURkgSzqloyaPYIdhG2UEwcg
+	 WrSP5KtjWRWgXGLP54opdEpwDGV3/n77+kT4ERipgJMSKbQrnEJivpHbyyvdBDFtkr
+	 kApwTaeo/36tw==
+Subject: Re: [PATCH nf 1/2] ipvs: validate cport in received sync records
+From: netdev-bot+sashiko@kernel.org
+To: axel.mierczuk@1password.com
+Cc: ja@ssi.bg, horms@verge.net.au, pablo@netfilter.org, fw@strlen.de,
+ phil@nwl.cc, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org,
+ coreteam@netfilter.org, netdev@vger.kernel.org, w@1wt.eu,
+ keith.hoodlet@1password.com, stable@vger.kernel.org, kuba@kernel.org
+Date: Tue, 29 Sep 2026 15:40:39 +0000
+Message-ID: <179069643951.434549.3382665015308925440@kernel.org>
+In-Reply-To: <20260925141115.16126-2-axel.mierczuk@1password.com>
+References: <20260925141115.16126-2-axel.mierczuk@1password.com>
+X-sashiko-severity: Medium
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-Sashiko reports for possible heap buffer overflow when
-generating sync message for the v0 and v1 message formats.
-We should read the cp->flags only once because another
-CPU can concurrently set the SEQ_MASK between the two
-reads. If the SEQ_MASK is set, re-read the flags and the
-seq mask under cp->lock atomically.
+Thank you for your contribution! Sashiko AI review found 2 potential
+issue(s) to consider.
 
-Note that IPVS does not set the SEQ_MASK anymore for the
-ip_vs_ftp.c helper starting from commit 7f1c40757951
-("IPVS: make FTP work with full NAT support") (2.6.36+)
-but we still accept it from received sync messages
-in the backup and the mask can be resent if the backup
-and master roles are active together.
+Critical: 0 · High: 0 · Medium: 1 · Low: 1
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Link: https://sashiko.dev/#/patchset/20260903004149.1037028-1-pablo%40netfilter.org
-Link: https://sashiko.dev/#/patchset/20260909111338.44357-1-ja%40ssi.bg
-Link: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260927220816.268206-1-pablo%40netfilter.org
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- net/netfilter/ipvs/ip_vs_sync.c | 46 ++++++++++++++++++++++++---------
- 1 file changed, 34 insertions(+), 12 deletions(-)
+If you believe none of the issues are legitimate, please reply to each
+issue of Medium severity or higher and explain why the AI is wrong.
+If any of them are legitimate and you plan to respin, please let patchwork
+know by including "pw-bot: cr" as a separate line at the end of your reply
+(one such reply per series is enough).
 
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index f1f89240b8c5..7a9ad6d0eb61 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -539,22 +539,33 @@ static int ip_vs_sync_conn_needed(struct netns_ipvs *ipvs,
- static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
- 			       int pkts)
- {
-+	struct ip_vs_sync_conn_options opts;
- 	struct ip_vs_sync_mesg_v0 *m;
- 	struct ip_vs_sync_conn_v0 *s;
- 	struct ip_vs_sync_buff *buff;
- 	struct ipvs_master_sync_state *ms;
--	int id;
-+	u32 flags, seq_mask;
- 	unsigned int len;
-+	int id;
- 
- 	if (unlikely(cp->af != AF_INET))
- 		return;
-+	flags = READ_ONCE(cp->flags);
- 	/* Do not sync ONE PACKET */
--	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
-+	if (flags & IP_VS_CONN_F_ONE_PACKET)
- 		return;
- 
- 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
- 		return;
- 
-+	if (flags & IP_VS_CONN_F_SEQ_MASK) {
-+		/* Take atomic snapshot of flags and seqs */
-+		spin_lock_bh(&cp->lock);
-+		flags = cp->flags;
-+		memcpy(&opts, &cp->sync_conn_opt, sizeof(opts));
-+		spin_unlock_bh(&cp->lock);
-+	}
-+
- 	spin_lock_bh(&ipvs->sync_buff_lock);
- 	if (!(ipvs->sync_state & IP_VS_STATE_MASTER)) {
- 		spin_unlock_bh(&ipvs->sync_buff_lock);
-@@ -564,8 +575,8 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
- 	id = select_master_thread_id(ipvs, cp);
- 	ms = &ipvs->ms[id];
- 	buff = ms->sync_buff;
--	len = (cp->flags & IP_VS_CONN_F_SEQ_MASK) ? FULL_CONN_SIZE :
--		SIMPLE_CONN_SIZE;
-+	seq_mask = flags & IP_VS_CONN_F_SEQ_MASK;
-+	len = seq_mask ? FULL_CONN_SIZE : SIMPLE_CONN_SIZE;
- 	if (buff) {
- 		m = (struct ip_vs_sync_mesg_v0 *) buff->mesg;
- 		/* Send buffer if it is for v1 */
-@@ -597,12 +608,12 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
- 	s->caddr = cp->caddr.ip;
- 	s->vaddr = cp->vaddr.ip;
- 	s->daddr = cp->daddr.ip;
--	s->flags = htons(cp->flags & ~IP_VS_CONN_F_HASHED);
-+	s->flags = htons(flags & ~IP_VS_CONN_F_HASHED);
- 	s->state = htons(cp->state);
--	if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
-+	if (seq_mask) {
- 		struct ip_vs_sync_conn_options *opt =
- 			(struct ip_vs_sync_conn_options *)&s[1];
--		memcpy(opt, &cp->sync_conn_opt, sizeof(*opt));
-+		memcpy(opt, &opts, sizeof(*opt));
- 	}
- 
- 	m->nr_conns++;
-@@ -628,6 +639,7 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
-  */
- void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- {
-+	struct ip_vs_sync_conn_options opts;
- 	struct ip_vs_sync_mesg *m;
- 	union ip_vs_sync_conn *s;
- 	struct ip_vs_sync_buff *buff;
-@@ -635,6 +647,7 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- 	int id;
- 	__u8 *p;
- 	unsigned int len, pe_name_len, pad;
-+	u32 flags, seq_mask;
- 
- 	/* Handle old version of the protocol */
- 	if (sysctl_sync_ver(ipvs) == 0) {
-@@ -647,6 +660,14 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- sloop:
- 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
- 		goto control;
-+	flags = READ_ONCE(cp->flags);
-+	if (flags & IP_VS_CONN_F_SEQ_MASK) {
-+		/* Take atomic snapshot of flags and seqs */
-+		spin_lock_bh(&cp->lock);
-+		flags = cp->flags;
-+		memcpy(&opts, &cp->sync_conn_opt, sizeof(opts));
-+		spin_unlock_bh(&cp->lock);
-+	}
- 
- 	/* Sanity checks */
- 	pe_name_len = 0;
-@@ -674,7 +695,8 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- #endif
- 		len = sizeof(struct ip_vs_sync_v4);
- 
--	if (cp->flags & IP_VS_CONN_F_SEQ_MASK)
-+	seq_mask = flags & IP_VS_CONN_F_SEQ_MASK;
-+	if (seq_mask)
- 		len += sizeof(struct ip_vs_sync_conn_options) + 2;
- 
- 	if (cp->pe_data_len)
-@@ -720,7 +742,7 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- 	/* Set message type  & copy members */
- 	s->v4.type = (cp->af == AF_INET6 ? STYPE_F_INET6 : 0);
- 	s->v4.ver_size = htons(len & SVER_MASK);	/* Version 0 */
--	s->v4.flags = htonl(cp->flags & ~IP_VS_CONN_F_HASHED);
-+	s->v4.flags = htonl(flags & ~IP_VS_CONN_F_HASHED);
- 	s->v4.state = htons(cp->state);
- 	s->v4.protocol = cp->protocol;
- 	s->v4.cport = cp->cport;
-@@ -744,12 +766,12 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- 		s->v4.vaddr = cp->vaddr.ip;
- 		s->v4.daddr = cp->daddr.ip;
- 	}
--	if (cp->flags & IP_VS_CONN_F_SEQ_MASK) {
-+	if (seq_mask) {
- 		*(p++) = IPVS_OPT_SEQ_DATA;
- 		*(p++) = sizeof(struct ip_vs_sync_conn_options);
--		hton_seq(&cp->in_seq, (struct ip_vs_seq *)p);
-+		hton_seq(&opts.in_seq, (struct ip_vs_seq *)p);
- 		p += sizeof(struct ip_vs_seq);
--		hton_seq(&cp->out_seq, (struct ip_vs_seq *)p);
-+		hton_seq(&opts.out_seq, (struct ip_vs_seq *)p);
- 		p += sizeof(struct ip_vs_seq);
- 	}
- 	/* Handle pe data */
+- [Medium] The new check in ip_vs_proc_conn()
+  (net/netfilter/ipvs/ip_vs_sync.c) is incomplete for templates.
+- [Low] The new comment and rejection in ip_vs_proc_conn() say ordinary
+  connections must have NO_CPORT exactly when cport is 0, and records…
+
+--
+
+ipvs: validate cport in received sync records
+
+This patch adds cport checks to ip_vs_proc_conn() for sync records
+received by the backup. Templates with a nonzero cport are dropped.
+Ordinary connections are dropped unless IP_VS_CONN_F_NO_CPORT is set
+exactly when cport is 0.
+
+> diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+> index 5383aeafb0aed..3998e9a0a391c 100644
+> --- a/net/netfilter/ipvs/ip_vs_sync.c
+> +++ b/net/netfilter/ipvs/ip_vs_sync.c
+> @@ -848,6 +848,25 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
+>  	struct ip_vs_dest *dest;
+>  	struct ip_vs_conn *cp;
+>  
+> +	/* Templates require cport 0. Ordinary connections require
+> +	 * NO_CPORT exactly when cport is 0.
+> +	 */
+> +	if (flags & IP_VS_CONN_F_TEMPLATE) {
+> +		if (param->cport) {
+> +			IP_VS_DBG(2, "BACKUP, template with cport dropped\n");
+> +			kfree(param->pe_data);
+> +			return;
+> +		}
+
+[Severity: Medium]
+Should the template branch also reject IP_VS_CONN_F_NO_CPORT?
+
+A template with cport 0 and IP_VS_CONN_F_NO_CPORT set passes this check.
+The commit message leaves that case to "ipvs: filter some flags received
+in the backup server". That patch is not in this tree, and this one is
+tagged for stable.
+
+In this tree, IP_VS_CONN_F_BACKUP_MASK still includes both NO_CPORT and
+TEMPLATE, so ip_vs_proc_sync_conn() lets the combination through. The v0
+parser applies no mask at all:
+
+net/netfilter/ipvs/ip_vs_sync.c:ip_vs_process_message_v0() {
+    ...
+		flags = ntohs(s->flags) | IP_VS_CONN_F_SYNC;
+		flags &= ~IP_VS_CONN_F_HASHED;
+    ...
+}
+
+A companion fix that only changes IP_VS_CONN_F_BACKUP_MASK would
+therefore not cover v0 records.
+
+If ip_vs_ct_in_get() misses, ip_vs_conn_new() hashes the template and
+turns on the cport-zero fallback:
+
+net/netfilter/ipvs/ip_vs_conn.c:ip_vs_conn_new() {
+    ...
+	if (unlikely(flags & IP_VS_CONN_F_NO_CPORT)) {
+		int af_id = ip_vs_af_index(cp->af);
+
+		atomic_inc(&ipvs->no_cport_conns[af_id]);
+	}
+    ...
+}
+
+A later packet from that client, from any source port, misses the first
+lookup. ip_vs_conn_in_get() then retries with cport 0. The match in
+__ip_vs_conn_in_get() has no IP_VS_CONN_F_TEMPLATE exclusion, so the
+retry returns the template:
+
+				    (!p->cport ^
+				     (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
+
+The datapath then treats the template as an ordinary connection:
+
+ip_vs_in_hook()
+  ip_vs_conn_in_get()        /* returns the template */
+  ip_vs_set_state()
+  cp->packet_xmit()
+    ip_vs_conn_fill_cport()  /* NAT: rewrites cport, clears NO_CPORT */
+
+After fill_cport rehashes the template, ip_vs_ct_in_get() no longer finds
+it, which breaks persistence for that client.
+
+set_tcp_state() also changes dest->activeconns for the template, based
+only on IP_VS_CONN_F_INACTIVE. For templates, ip_vs_bind_dest() and
+ip_vs_unbind_dest() only adjust persistconns, so activeconns on the real
+server can drift.
+
+Template state is validated now, so this does not seem to lead to
+out-of-bounds reads. Still, isn't this the same class of problem the
+commit message describes, a template reaching the protocol state machine
+through ip_vs_conn_in_get()?
+
+Would adding "|| (flags & IP_VS_CONN_F_NO_CPORT)" to the template check
+make this patch self-contained and cover the v0 path as well?
+
+> +	} else if (!param->cport && !(flags & IP_VS_CONN_F_NO_CPORT)) {
+> +		IP_VS_DBG(2, "BACKUP, conn without cport dropped\n");
+> +		kfree(param->pe_data);
+> +		return;
+> +	} else if (param->cport && (flags & IP_VS_CONN_F_NO_CPORT)) {
+> +		IP_VS_DBG(2, "BACKUP, conn with cport and NO_CPORT dropped\n");
+> +		kfree(param->pe_data);
+> +		return;
+> +	}
+
+[Severity: Low]
+Can the master itself briefly send a record with a nonzero cport and
+IP_VS_CONN_F_NO_CPORT still set?
+
+ip_vs_conn_fill_cport() can use hn1 (use2, e.g. NAT/FTP data
+connections). In that case the dir 1 pass sets cport while the flag stays
+set. cp->lock is then released, and only the dir 0 pass clears the flag:
+
+net/netfilter/ipvs/ip_vs_conn.c:ip_vs_conn_fill_cport() {
+    ...
+	if (cp->flags & IP_VS_CONN_F_NO_CPORT && (!cp->cport || by_me)) {
+		/* If we race with resizing make sure cport is set for dir 1 */
+		if (!cp->cport) {
+			cp->cport = cport;
+			by_me = true;
+		}
+		if (!dir) {
+			atomic_dec(&ipvs->no_cport_conns[af_id]);
+			cp->flags &= ~IP_VS_CONN_F_NO_CPORT;
+		}
+    ...
+}
+
+In that window, another CPU can handle a packet of the same connection
+and call ip_vs_sync_conn(). That function copies cp->flags and cp->cport
+without taking cp->lock:
+
+net/netfilter/ipvs/ip_vs_sync.c:ip_vs_sync_conn() {
+    ...
+	s->v4.flags = htonl(cp->flags & ~IP_VS_CONN_F_HASHED);
+	s->v4.state = htons(cp->state);
+	s->v4.protocol = cp->protocol;
+	s->v4.cport = cp->cport;
+    ...
+}
+
+Before this patch, the backup matched such a record to its existing
+cport 0 NO_CPORT connection through the cport-zero fallback. It then
+updated that connection's INACTIVE/SEQ flags and seq options. Now the
+record is dropped.
+
+The next sync record restores the state, so the effect looks small. Is
+the comment "NO_CPORT exactly when cport is 0" accurate, given what the
+master can send in this window?
+
 -- 
-2.55.0
-
-
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260925141115.16126-1-axel.mierczuk%401password.com
