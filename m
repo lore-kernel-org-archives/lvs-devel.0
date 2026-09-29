@@ -1,33 +1,33 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E2DC3FC5BD;
-	Tue, 29 Sep 2026 15:57:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24E103F4DE9;
+	Tue, 29 Sep 2026 15:57:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790697429; cv=none; b=i4JHAZHvvrIXQaj8tJE+bVHemPTi6m5XhaKJX2YH6A1r50R/bywMV3zsGrpLz2Pse0+BatEFRMc45OV400lFLlcjRbUgsCyAmBgsRzy0w7LYz+rESFzHaxvpNE7q5UptZNoNVa1sukYMuKj74VjzBSmh6wMXt7jXUEwYiS3A9XU=
+	t=1790697431; cv=none; b=WSK5L57GSkBWUmXRXRUFfgwyxa3tzqmqb7H2mUkPaoIO5RCY2UMTs7piUdbIhS1Vi05aRQE29UX164lOm3U+URLZZ1mwI4gtMxwVQWQzR5qT9utaEedNN7Q/TKtBQdbM6jWFm3ju4TwB+R/fAua/1dCMbAuP4IpDt6ECtmPv+Tc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790697429; c=relaxed/simple;
-	bh=7B+e+FnWsLazYxgye1h8ctzNv7cGHGkL1+hMlPHRpi0=;
+	s=arc-20240116; t=1790697431; c=relaxed/simple;
+	bh=wKSezAIzzdZTvHkKw/xVf/zlAkGtS6i2FdCXa6kjPCo=;
 	h=Subject:From:To:Cc:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=KgJkxOhCJ2RxsPf+mRCdnF76KUIn2OF6EOTFMZ3yzDi4yuXdq+Xr9gZgLk0iaspafkGjS/zzBMRN3JshNNkZ5Z6CPfkmpsGuERCJBZP8Gfq2LYf7iXGpGFO7t2S76cnyRjf1uXBCY+fxzQlGU+ixOgjRgkGpYmdLwj0xralUqx4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mj+aOLt1; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=jDl5u5I3Rp9w36ZJB7HpMKQL2JuP7ZZw/9UnAM0wV/5FwJFAtaosu6cVAR0hF8p0Sc6n5rjvJFmBOjS/70HOzKoOVSy1x6OeVROjkyQwXiSYB7dhi6mrhfZs8Izxx5J0Erw36MGRYp/fwnOMGmKHKr5oGfB4bSTLrKd4bbGj7VQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=A7hXz3Iw; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mj+aOLt1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 480C91F000FF;
-	Tue, 29 Sep 2026 15:57:07 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="A7hXz3Iw"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1EEB1F00893;
+	Tue, 29 Sep 2026 15:57:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790697428;
-	bh=XtllMK+kIdfSUvzILF4t2kInHLK8Sf/p2SukZ5kL3zc=;
+	s=k20260515; t=1790697429;
+	bh=fc8ig+KNLWkhooZSOGE/YBEt0jucYgHx7aDgKxTBVNo=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=mj+aOLt1/2XjGU4uwtkRq4sfu47NnpribrPB/4DxTpdmpotNZnvYumMjtmU+5LCXp
-	 3nigsOhHANW4HFZ8GKuLfMEo2JFh5QKiCNAW9x1xJwt49g6DD0It/L/F+oPCUNVTV7
-	 xlG9Q+8tao1VWv1hF76glK7kfSOb3bKzm+TTfYpyhqvrxrbLAK46oqWqhmgp9C54Kj
-	 5n5ffvzk90M8DWCCRJY70LiMkz/AA1BgKKpod+ZO8zq8p64YDxx1LVaOVKSSxjQqvk
-	 vbtaU3F3fFAp9kQAzWfj3gMMKh9dMIPGgNAcK+zgS6aZ/4aDsesVdhfJOLckQgcUu2
-	 OY6NACRjrOjtg==
-Subject:
- Re: [PATCH nf 1/2] ipvs: avoid out-of-bounds write in ip_vs_nat_icmp_v6
+	b=A7hXz3IwRHJwrfgG9UEg5V9OZE/6dcqT7k/aCgOdeha8XOCZnKhsXcdnhStIxgtxt
+	 3dtZsx8L0OvtYSSKvRTr6qQZ3k5EF9+RJZvX8bG+LBfIgPncZLobz0WqQJhfywOppp
+	 jUYjahMhoqAtsKAMrXPIScAyHi+ClFlJ6/Y3/AOxBjKaUsuZoIZXObV+pBOi5IRhxZ
+	 jnZVN1RQD4nSP2LpbZ1hP7Z0YBbUvEvrVTLYK5fOV10jWJtjBYgfLpqxKq5714oNdN
+	 vn8wdn+IOFT/2iEGVZl6CthgFjfPuLpxANiD4shQSsSdT8TOmvoRqtL55DR0dV/SKB
+	 ANQV4NI3WueJA==
+Subject: Re: [PATCH nf 2/2] ipv6: update *offset for non-first fragments in
+ ipv6_find_hdr()
 From: netdev-bot+sashiko@kernel.org
 To: axel.mierczuk@1password.com
 Cc: ja@ssi.bg, horms@verge.net.au, pablo@netfilter.org, fw@strlen.de,
@@ -35,11 +35,11 @@ Cc: ja@ssi.bg, horms@verge.net.au, pablo@netfilter.org, fw@strlen.de,
  netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org,
  coreteam@netfilter.org, netdev@vger.kernel.org, w@1wt.eu,
  keith.hoodlet@1password.com, kuba@kernel.org
-Date: Tue, 29 Sep 2026 15:57:06 +0000
-Message-ID: <179069742680.434549.10138453724847288168@kernel.org>
-In-Reply-To: <20260925141155.17603-2-axel.mierczuk@1password.com>
-References: <20260925141155.17603-2-axel.mierczuk@1password.com>
-X-sashiko-severity: Low
+Date: Tue, 29 Sep 2026 15:57:08 +0000
+Message-ID: <179069742830.434549.18028711366472001762@kernel.org>
+In-Reply-To: <20260925141155.17603-3-axel.mierczuk@1password.com>
+References: <20260925141155.17603-3-axel.mierczuk@1password.com>
+X-sashiko-severity: Critical
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -49,101 +49,206 @@ List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-Thank you for your contribution! Sashiko AI review found more severe
-issue(s) in other patches of this series. This mail is only an FYI, in case
-you want to address the nit picks below when you respin.
+Thank you for your contribution! Sashiko AI review found 4 potential
+issue(s) to consider.
 
-Low priority / nit picks for your consideration:
+Critical: 1 · High: 0 · Medium: 0 · Low: 3
 
-- [Low] Three problems with the comment and commit message; the code
-  change itself is correct.
+If you believe none of the issues are legitimate, please reply to each
+issue of Medium severity or higher and explain why the AI is wrong.
+If any of them are legitimate and you plan to respin, please let patchwork
+know by including "pw-bot: cr" as a separate line at the end of your reply
+(one such reply per series is enough).
+
+- [Critical] The new early-return assignment `*offset = start +
+  sizeof(struct frag_hdr)` in ipv6_find_hdr()…
+- [Low] This patch leaves dead code and stale comments in IPVS.
+- [Low] The commit message says "Other target < 0 callers check the
+  returned fragment offset or ignore *offset here." That is not accurate…
+- [Low] The commit message justifies the change only with "IPVS used the
+  initial offset as if it had been updated".
 
 --
 
-ipvs: avoid out-of-bounds write in ip_vs_nat_icmp_v6
+ipv6: update *offset for non-first fragments in ipv6_find_hdr()
 
-When ipv6_find_hdr() stops at a non-first fragment and leaves len equal
-to off, this patch adds sizeof(struct ipv6hdr) to ciph.len in both
-ip_vs_out_icmp_v6() and ip_vs_in_icmp_v6(). With that, the
-skb_ensure_writable() calls in the ICMPv6 NAT paths cover the embedded
-addresses that ip_vs_nat_icmp_v6() rewrites.
+This commit makes ipv6_find_hdr() set *offset to the byte after the
+Fragment header when it returns early for a non-first fragment with
+target < 0. The kernel-doc is updated to match. The motivation given is
+that IPVS used the initial offset as if it had been updated.
 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index fd503f0efb578..cfd193196a5bc 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -1206,6 +1206,13 @@ static int ip_vs_out_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
->  				     true, &ciph))
->  		return NF_ACCEPT; /* The packet looks wrong, ignore */
->  
-> +	/* ipv6_find_hdr() does not include the embedded header for
-> +	 * non-first fragments, add it so that ESP can pass and the
-> +	 * NAT writable checks cover the rewritten addresses
-> +	 */
+> The non-first fragment early return is the only successful exit of
+> ipv6_find_hdr() that leaves *offset untouched. IPVS used the initial
+> offset as if it had been updated.
 
 [Severity: Low]
-The code change looks correct. Is the "so that ESP can pass" part of
-this comment accurate, though?
+What user-visible problem does this fix? The message doesn't name one, and
+there is no Fixes: tag. So it is hard to tell whether this is meant for
+net/stable or is a semantics cleanup of an exported helper with many
+in-tree callers.
 
-I couldn't find anything that blocks an embedded IPv6 ESP fragment based
-on ciph.len:
+The IPVS ICMPv6 paths already work around the old behaviour (previous patch
+in the series). The offset still seems to matter elsewhere, though.
+ip_vs_fill_iph_skb_off() does:
 
-  - Neither ip_vs_out_icmp_v6() nor ip_vs_in_icmp_v6() compares ciph.len
-    with ciph.off.
-  - The only such check is the "ciph->len - ciph->off" ihl check, and it
-    exists only on the IPv4 path.
-  - The ESP lookup reads only the addresses:
+    iphdr->len       = offset;
 
-net/netfilter/ipvs/ip_vs_proto_ah_esp.c:ah_esp_conn_fill_param_proto() {
-	if (likely(!ip_vs_iph_inverse(iph)))
-		ip_vs_conn_fill_param(ipvs, af, IPPROTO_UDP,
-				      &iph->saddr, htons(PORT_ISAKMP),
-				      &iph->daddr, htons(PORT_ISAKMP), p);
-	...
-}
+Take an untracked non-first ESP fragment matched through
+ah_esp_conn_out_get(). Before this patch iph->len stayed at 0 for it, and
+handle_response() then does:
 
-So non-first ESP fragments already reached connection lookup and NAT
-before this patch. That is how the out-of-bounds write happened.
+    if (skb_ensure_writable(skb, iph->len))
+        goto drop;
+    ...
+    ipv6_hdr(skb)->saddr = cp->vaddr.in6;
 
-The new value seems to be used only as ctoff in handle_response_icmp()
-and as wlen in ip_vs_icmp_xmit_v6():
+This patch changes the writable length used there.
 
-net/netfilter/ipvs/ip_vs_xmit.c:ip_vs_icmp_xmit_v6() {
-	...
-	wlen = ciph->len;
-	...
-}
+If this is a fix, could the commit message describe this effect and add a
+Fixes: tag?
 
-Would the comment be clearer if it said that len must cover the embedded
-IPv6 header that ip_vs_nat_icmp_v6() rewrites? The same comment appears
-again in ip_vs_in_icmp_v6().
+> For non-first fragments with target < 0, set *offset immediately
+> after the Fragment header, at the start of the fragment payload.
+> Callers must still account for the nonzero fragment offset. A
+> NEXTHDR_FRAGMENT search continues to return the Fragment header's
+> offset. Other target < 0 callers check the returned fragment offset
+> or ignore *offset here.
 
-The commit message also says:
+[Severity: Low]
+Is the last sentence accurate for nf_tables? nft_set_pktinfo_ipv6(),
+__nft_set_pktinfo_ipv6_validate() and nft_set_pktinfo_ipv6_ingress() in
+include/net/netfilter/nf_tables_ipv6.h store thoff whatever frag_off is:
 
-    This fix does not depend on patch 2.
+    protohdr = ipv6_find_hdr(pkt->skb, &thoff, -1, &frag_off, &flags);
+    ...
+    pkt->thoff = thoff;
+    pkt->fragoff = frag_off;
 
-Once this is applied, "patch 2" has no meaning in the git history. Could
-the message name the companion commit instead: "ipv6: update *offset for
-non-first fragments in ipv6_find_hdr()"?
+nf_trace_fill_pkt_info() in net/netfilter/nf_tables_trace.c then splits
+the NFTA_TRACE_NETWORK_HEADER and NFTA_TRACE_TRANSPORT_HEADER dumps at
+nft_thoff(pkt). It never checks pkt->fragoff:
 
-That companion commit makes ipv6_find_hdr() set
-*offset = start + sizeof(struct frag_hdr) on the non-first-fragment
-early return. After it lands, can ciph.len == ciph.off still be true in
-either function?
+    nh_end = pkt->flags & NFT_PKTINFO_L4PROTO ? nft_thoff(pkt) : skb->len;
+    ...
+    len = min_t(unsigned int, skb->len - nft_thoff(pkt), NFT_TRACETYPE_TRANSPORT_HSIZE);
 
-If not, the new branch can never be reached in mainline. The comment's
-premise, "ipv6_find_hdr() does not include the embedded header for
-non-first fragments", would then be false. Should the comment say it
-applies only to kernels where ipv6_find_hdr() leaves *offset unchanged?
+Before this patch, a non-first fragment had thoff = 0. The network header
+dump was empty and the transport dump held the IPv6 header.
 
-> +	if (ciph.len == ciph.off)
-> +		ciph.len += sizeof(struct ipv6hdr);
-> +
->  	pp = ip_vs_proto_get(ciph.protocol);
->  	if (!pp)
->  		return NF_ACCEPT;
+After it, the network dump covers the IPv6, extension and Fragment
+headers, and the transport dump holds fragment payload. So nft monitor
+trace output changes for non-first IPv6 fragments.
+
+Could the commit message mention this change?
+
+The SYNPROXY callers also use this offset without checking the fragment
+offset. That case is covered in the comment on the code below.
+
+> diff --git a/net/ipv6/exthdrs_core.c b/net/ipv6/exthdrs_core.c
+> index 4a9748338cf40..e27f5b8cc1542 100644
+> --- a/net/ipv6/exthdrs_core.c
+> +++ b/net/ipv6/exthdrs_core.c
 
 [ ... ]
+
+> @@ -261,6 +264,7 @@ int ipv6_find_hdr(const struct sk_buff *skb, unsigned int *offset,
+>  				     hp->nexthdr == NEXTHDR_NONE)) {
+>  					if (fragoff)
+>  						*fragoff = _frag_off;
+> +					*offset = start + sizeof(struct frag_hdr);
+
+[Severity: Critical]
+Can this offset end up past skb->len? In the NEXTHDR_FRAGMENT branch,
+skb_header_pointer() has only read hp (2 bytes at start) and frag_off
+(2 bytes at start + 2). All that is known is skb->len >= start + 4.
+
+This early return also skips the check that guards every other successful
+exit:
+
+    if (!found) {
+        if (skb->len - start < hdrlen)
+            return -EBADMSG;
+
+Before this patch, every successful return left *offset <= skb->len. Now
+it can be as large as skb->len + 4.
+
+Here is an example. A 44-byte IPv6 packet has payload_len = 4 and
+nexthdr = 44. Its 4 bytes of Fragment header carry nexthdr = TCP and a
+nonzero fragment offset. ip6_rcv_core() trims the skb to 44 bytes, and
+ipv6_find_hdr() returns IPPROTO_TCP with *offset = 48.
+
+nft_set_pktinfo_ipv6() only checks thoff > U16_MAX, so pkt->thoff = 48.
+nft_synproxy_do_eval() checks pkt->tprot but not pkt->fragoff:
+
+    if (pkt->tprot != IPPROTO_TCP) {
+        ...
+    }
+
+    if (nf_checksum(skb, nft_hook(pkt), thoff, IPPROTO_TCP,
+                    nft_pf(pkt))) {
+
+That leads to:
+
+nft_synproxy_do_eval()
+  nf_checksum()
+    nf_ip6_checksum()
+      skb_checksum(skb, 0, dataoff, 0)
+        BUG_ON(len)
+
+nf_ip6_checksum() also computes skb->len - dataoff, which underflows.
+
+synproxy_tg6() in ip6t_SYNPROXY is exposed the same way. It passes
+par->thoff to nf_ip6_checksum() without checking par->fragoff, and
+ip6_packet_match() sets par->thoff from ipv6_find_hdr().
+
+nf_ct_frag6_gather() would drop such a packet. Untracked packets skip it,
+though, because ipv6_defrag() returns NF_ACCEPT for IP_CT_UNTRACKED.
+Examples are notrack in an nft chain with priority below -400, ip6table_raw
+with raw_before_defrag, and a "ct state untracked synproxy" rule. An
+unprivileged user can also set this up inside a user and network
+namespace.
+
+Other callers see an out-of-range offset too:
+
+  - In nf_trace_fill_pkt_info(), skb->len - nft_thoff(pkt) wraps and the
+    trace event is lost.
+  - In IPVS, a ciph.len beyond skb->len makes skb_ensure_writable() fail.
+    ICMPv6 errors that used to be NATed are then dropped.
+
+The updated kernel-doc says *offset points at the start of the fragment
+payload. That isn't guaranteed when the Fragment header is truncated.
+
+Should this return -EBADMSG when skb->len - start is less than
+sizeof(struct frag_hdr)? Another option is to read the full struct
+frag_hdr with skb_header_pointer() before setting the offset.
+
+[Severity: Low]
+Does this assignment make the workaround from the previous patch in the
+series ("ipvs: avoid out-of-bounds write in ip_vs_nat_icmp_v6") dead code?
+ip_vs_out_icmp_v6() and ip_vs_in_icmp_v6() in
+net/netfilter/ipvs/ip_vs_core.c both contain:
+
+    /* ipv6_find_hdr() does not include the embedded header for
+     * non-first fragments, add it so that ESP can pass and the
+     * NAT writable checks cover the rewritten addresses
+     */
+    if (ciph.len == ciph.off)
+        ciph.len += sizeof(struct ipv6hdr);
+
+Both call ip_vs_fill_iph_skb_icmp() with a nonzero offset. So
+ipv6_find_hdr() starts at *offset + sizeof(struct ipv6hdr).
+
+Every successful return now writes *offset, either start or
+start + sizeof(struct frag_hdr). So ciph.len can no longer equal
+ciph.off. The comment at both sites now also contradicts the helper's
+documented behaviour.
+
+The previous patch needs to stand alone for stable. Could this patch, or a
+follow-up, drop the check and update those comments?
+
+>  					return hp->nexthdr;
+>  				}
+>  				if (!found)
 
 -- 
 Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260925141155.17603-1-axel.mierczuk%401password.com
