@@ -1,106 +1,113 @@
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+Received: from mail.netfilter.org (mail.netfilter.org [217.70.190.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1AFAB51993C;
-	Tue, 29 Sep 2026 18:29:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.238.174.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECE123A3816;
+	Wed, 30 Sep 2026 07:44:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.190.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790706580; cv=none; b=JZ7oTdVxS1SXrdyPBsVB15kYhST1FJSxnrBjEizeqvlJOaKrlo1rfrBjTVuOTCnYlNg1bvvkAFYCIgb9G5FYS6pSugs0fdZxjgXaZyk/8hmBbOQgunbCk81G/fH2YK20GHYkMMI2W2Q0AQD/LZu8YKT7WeY2qWWKsgdFRcYW3e4=
+	t=1790754266; cv=none; b=o0mxStsfnLLF2JBagfiImgHlB5NC0tRgDrg9dkUSZ/hhhUSJHU8F73R53m327auIjaLj0zDrOvIo/9+sPwW3yN8GS4pNIPKjt+zfiH6uInlDfU83MlmLBvtEnFGitZUbVN0EtOJS2OgagtokRtkEjoF5JqYhJEhUpOI+N7eRB/M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790706580; c=relaxed/simple;
-	bh=MkjYg9lJjQHLexc4kE8JBS2fARX5648jN9MXBQEw8e8=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=NtGufULQ042K74l/NZTNlFy9+6OgeTdSRbKs2n0F3yz7TfTivhf2ajVYSFySC7pKUBUKHf+MFwmc14kV4NUxbEbpwXbrFqLSDOimReampPivQQFefx+rO6dZscOchQJ8itgurSgsZvK1VaHnYasqbPUgezy9fmF/qzBRIU2/B8M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg; spf=pass smtp.mailfrom=ssi.bg; dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b=DkXWT1qW; arc=none smtp.client-ip=193.238.174.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	s=arc-20240116; t=1790754266; c=relaxed/simple;
+	bh=/weW6rnVijy8vSTemtwP1eLFyLUfnmqKLwbzit3/6oA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=XN9rSGIkIGp3Y8lXIqIZXsda6bHTtp135dtyXIFVEd0GZz22XAlxng8zTtWpr+eR9GZ8kordjH59+ZgRiTti10XLQlP/2VVhKa4HwTbRYkZcHOvXkyKfHEjnu1DFiNfTPhO48xhtqZ/0S9y4Ms1E2U5ufVcnnnd2Cxin7AAMBMg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org; spf=pass smtp.mailfrom=netfilter.org; dkim=pass (2048-bit key) header.d=netfilter.org header.i=@netfilter.org header.b=YSnhgYPl; arc=none smtp.client-ip=217.70.190.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=netfilter.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.b="DkXWT1qW"
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 0A083213E8;
-	Tue, 29 Sep 2026 21:29:33 +0300 (EEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=EGPlfOni74HY9vCawk06lL/V5/Z16mKPBfpzZXIDPZU=; b=DkXWT1qWq+9V
-	D/CAhKwvOdz6qrqms/6cVCHVmhaQEAzqxzGKULTp8QoIrf7cRvkQzs/mGG92zGiu
-	+wRmrK43rtRdjN1S2+YbiSrjWCGpAY804jjgxLbiPMFUmcAenz5tCe5dsRPF5vgn
-	645lltg+cNH5KZ8XjLa+zLIAEXDYV06apvgrB9eAhaPHOJyCSXXvKxMhdhkTinhC
-	uRATUVfQuEqNrwJAAj6WHx41pNb2ga/HXanGLG4VwueaspLAY4ywNgN4xxWYoLNR
-	FkvSW2A//tmE1VlIoc/vDMyq1QoPJl7Do23YNKptrHX6tj0/18GlWUbYGDSCZHG1
-	dc+N8VJ5EKNbgaGE7FcpJsZyY9Bdc6STI5Qc+rYQtx28Wg3oB3F1B005xa1D6USi
-	Bei3YcPGjCA7WNqci+dqepyKrSu+0arduFQsD3xxdSofQ68NuLT156BUmrJA3WA6
-	Ex1dRdODtSYJRLGTSt81CQIZiQEeJbkreXdxG1XzmRG1ThHqCojfvu63TdBCbrYc
-	AKSz7l49i8YqCTvhU9Al/r3Z43RHEs09a4WpYsPOq+bqZNwVLHruE2ONzTITjRrZ
-	juwz2tTeAlSPgRKxj/SqltZCv08mUdagKFeE6EvN++0tz/RCzy0AdnftPTlr3+Md
-	LKW8YYrPYzImNWWoBAqNDJWMngvYouI=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Tue, 29 Sep 2026 21:29:32 +0300 (EEST)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 4858461DC8;
-	Tue, 29 Sep 2026 21:29:35 +0300 (EEST)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 68TITWpf080057;
-	Tue, 29 Sep 2026 21:29:33 +0300
-Date: Tue, 29 Sep 2026 21:29:32 +0300 (EEST)
-From: Julian Anastasov <ja@ssi.bg>
-To: Axel Mierczuk <axel.mierczuk@1password.com>
-cc: Simon Horman <horms@verge.net.au>, Pablo Neira Ayuso <pablo@netfilter.org>,
-        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-        netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org,
-        coreteam@netfilter.org, netdev@vger.kernel.org,
-        Willy Tarreau <w@1wt.eu>, Keith Hoodlet <keith.hoodlet@1password.com>
-Subject: Re: [PATCH nf 0/2] ipvs: keep templates and cport 0 conns away from
- packet lookups
-In-Reply-To: <20260925141115.16126-1-axel.mierczuk@1password.com>
-Message-ID: <002e2c69-ae17-4321-ba3d-74cca0e57123@ssi.bg>
-References: <20260925141115.16126-1-axel.mierczuk@1password.com>
+	dkim=pass (2048-bit key) header.d=netfilter.org header.i=@netfilter.org header.b="YSnhgYPl"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=netfilter.org;
+	s=2025; t=1790754261;
+	bh=Ge8bwGslcUKX3/2Xkn6n3BQLAuDJsMDCpJIOuOrcxt4=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=YSnhgYPlFgDzPEadIKqNJ1Fs0uET8Yr4uUIP/+YV5jQKX7T3tL8LEswYe+DyMzAnr
+	 ndFzhirkFtrOwh9dXSXMz6u4klK96e3wPVfNsbflHZo0GX1UklZol9m9nrjo6hiqD1
+	 vWVZfp/ZpfBX8BcWbmqd07OeJG9xDVfs0oi2j0SGLLVNLdpi5LXkqAXbpZfF0ZH/mJ
+	 bzUyWktZedoscAIZP/vVbc1zHiEPgnPEBzk2oMNCgGZWg/sWvqrOWIko0rVUQGjqXl
+	 0E7JHt8RNuflOLqgQU6FsmkJxQlVKPPcwMXYrUKI10gF+DCpdbFDX6KXlr3y3jwjhu
+	 PmpNi6VUGBZQA==
+Received: from netfilter.org (mail-agni [217.70.190.124])
+	by mail.netfilter.org (Postfix) with UTF8SMTPSA id 3E8B1608AC;
+	Wed, 30 Sep 2026 09:44:21 +0200 (CEST)
+Date: Wed, 30 Sep 2026 09:44:18 +0200
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+To: tjdqudcks0424@naver.com
+Cc: horms@verge.net.au, ja@ssi.bg, netdev@vger.kernel.org,
+	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+	stable@vger.kernel.org
+Subject: Re: [PATCH net] ipvs: prevent LBLCR destination leak after entry
+ expiry
+Message-ID: <ary90qdwBnCVwv0p@chamomile>
+References: <20260929170747.503223-1-tjdqudcks0424@naver.com>
 Precedence: bulk
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Subscribe: <mailto:lvs-devel+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20260929170747.503223-1-tjdqudcks0424@naver.com>
 
+Please, stop posting fixes for patches that already exist.
 
-	Hello,
+If you want to use a LLM to fix bugs that's great, but you have to
+track what is going on the mailing list already.
 
-On Fri, 25 Sep 2026, Axel Mierczuk wrote:
+Thank you.
 
-> A template received over the unauthenticated sync protocol with a
-> nonzero cport is matched by data packets in ip_vs_conn_in_get() and
-> the protocol state machine runs on it. Patch 1 rejects sync records
-> with inconsistent cport and IP_VS_CONN_F_NO_CPORT combinations on
-> the backup.
+On Wed, Sep 30, 2026 at 02:07:46AM +0900, tjdqudcks0424@naver.com wrote:
+> From: 성병찬 <tjdqudcks0424@naver.com>
 > 
-> Patch 2 requires a nonzero cp->cport in ip_vs_conn_out_get() so that
-> templates and connections still waiting for their cport cannot be
-> matched through the out hook.
+> ip_vs_lblcr_schedule() looks up a cache entry under RCU before taking
+> svc->sched_lock.  The expiry timer can remove that entry from the hash
+> table and erase its destination set before the scheduler takes the lock.
 > 
-> The companion patch "ipvs: filter some flags received in the backup
-> server" rejects template records carrying IP_VS_CONN_F_NO_CPORT.
+> RCU keeps the stale entry itself alive, so the scheduler can continue and
+> insert a new destination-set element into it.  Since the entry is already
+> unhashed and its set was already erased, no later path finds the new
+> element.  Both the element and its destination reference are leaked when
+> the parent entry is freed.
 > 
-> Axel Mierczuk (2):
->   ipvs: validate cport in received sync records
->   ipvs: skip cport 0 connections in ip_vs_conn_out_get()
+> Recheck the address mapping while holding svc->sched_lock and update the
+> set only when the hash table still maps the address to the entry obtained
+> by the scheduler.
 > 
->  net/netfilter/ipvs/ip_vs_conn.c |  3 ++-
->  net/netfilter/ipvs/ip_vs_sync.c | 19 +++++++++++++++++++
->  2 files changed, 21 insertions(+), 1 deletion(-)
-
-	Axel, this Sashiko review is shattering:
-
-https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260925141115.16126-1-axel.mierczuk%401password.com
-
-	I'll be back with analyze how should we fix the
-problems...
-
-pw-bot: changes-requested
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
-
+> This was found during an AI-assisted source audit.  Diagnostic-only timing
+> instrumentation forced expiry after lookup on a two-vCPU x86-64 QEMU
+> guest.  The unmodified code inserted into the stale entry and left one
+> element outstanding in each of three runs; kmemleak reported the related
+> allocation in one run.  With this change, the same stale-entry condition
+> was reached in three runs, but no stale insertion or outstanding element
+> remained.
+> 
+> An unforced 679-second run processed 65,536 marked packets without hitting
+> the race.  The result therefore confirms the lifetime leak and the effect
+> of the fix under forced timing, but does not establish practical remote
+> resource exhaustion.
+> 
+> Fixes: c5549571f975 ("ipvs: convert lblcr scheduler to rcu")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: 성병찬 <tjdqudcks0424@naver.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_lblcr.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_lblcr.c b/net/netfilter/ipvs/ip_vs_lblcr.c
+> index f53f05ceea36..ef18f3c9d5da 100644
+> --- a/net/netfilter/ipvs/ip_vs_lblcr.c
+> +++ b/net/netfilter/ipvs/ip_vs_lblcr.c
+> @@ -686,7 +686,8 @@ ip_vs_lblcr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
+>  
+>  		/* Update our cache entry */
+>  		spin_lock_bh(&svc->sched_lock);
+> -		if (!tbl->dead)
+> +		if (!tbl->dead &&
+> +		    ip_vs_lblcr_get(svc->af, tbl, &iph->daddr) == en)
+>  			ip_vs_dest_set_insert(&en->set, dest, true);
+>  		spin_unlock_bh(&svc->sched_lock);
+>  		goto out;
+> -- 
+> 2.43.0
+> 
