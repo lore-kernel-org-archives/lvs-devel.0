@@ -1,67 +1,78 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793513894;
-	b=pU1YkeFDwXL1WtsYReR8v+AUo9Cemi38grZo32hxQmJT2l2wl0UsTp82PIgZ9GpB05jB
-	 pvFlUrOh/FU19KtCMM2Jo5vGKa4leb9+XfTg03VAkblnTGSJ/O2jFw3ZQ1Ttd6swmNXxC
-	 CNeJsXcOERwDL3W7fj6ozInFmoZ1AhSRMeNYuwpt+wxTCLI8Tw6CpZj/+sPkyD+fN2ufv
-	 RbLSnbJY888Fwsav0zSzgMNn58T/+Qam5BLwxYQnCA1wbox0wKQKPgcJUAFBZTyAZx1M3
-	 c8XUdolDZRX6eZi6G/dFEvGa4hxRwyEqrjBzYxr5oGSzSY9O1F93l+4D7tDE7NAF/qA==
+	t=1793606886;
+	b=Q/LZ3xFLaOjaSoLa+R57ILYY7dmM8aGmh228YzOdCZ2uQcHImMZ4nLdOv6nJfEQKZcYX
+	 ozbvlIQW/3gaLNgsFAUAn6hWEmoHHpm2KFxDtOiU8uhjsCM+K6ZlSBZX/ssUe8ra14zgI
+	 lFDzjCKbxOCnP1bbBAfLzNVJKG22izDfOg8NiXxaFqzyTqp1KH+WEqqW/1tflhSBkGysu
+	 1Aq2OqIIO5OJzDVPAkZqjrx6S5m4vqxUq2Z+W8koIwaOuamdzgNfeVCI7vVe7764MFYCH
+	 7tSqgeHdilKswAxPA7/EMMPRnj5VF/j9Cu4wu9vW1QWOQRlDgEFNIXoa8Lq3CD/XjVA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793513894;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
-	 In-Reply-To:References:Auto-Submitted:Content-Type:
-	 Content-Transfer-Encoding:MIME-Version;
-	bh=PJRu7W6/Or1we5Gv3BgoLEtby0D0Y0UGgfjBHfRc5+k=;
-	b=H9wdTaT6odwKDgLv/O2G6N/JygTCF53rVcC81+pj987KJ5l5nfdqhqu579MxfuWhWFzd
-	 frsDmQGkiwYoiajz6l9tUnmHbPrmstUjmVpfsyz9DfnMvVXfUcMD6ElfYYXEMQrIz/pp+
-	 VhsaoIfZUB6H60dIiw9OToj0kZKE3/UdLReQtjh/fzA/A1uHaj0GPizUHEx02Nq2HvX+l
-	 WR+XzlCrYBeT/MwzHgr07kDgqAGZ9YEW5sSbvyjCynm0M4R5qhAhcYuRmNYVy4Xiv17cb
-	 XpZZhgZLnuBqNavrC9T69ZnrPLRXLHOkvgMMhNkDZvRYnRQzFWXHnT0AfSghgZgiSbw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793606886;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
+	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:
+	 References:MIME-Version:Content-Transfer-Encoding;
+	bh=UXpNPwwg/3VHXxujGKE9fvTZ6+Kbn3xYS2JPLzMac08=;
+	b=U6bkv0OaxsIwIDCRJGxg4PPAI2PJhUnMDAjPoePCnj/5GwbGjgij75qd2AKFQnxOPh97
+	 fTWp2cdT/S5C06q5P+roN5ecvkMaTFudn4o+x7lO392xa5Ayi1gFxoyXzOVDHrrIWJeXQ
+	 lRq+p1cHs5NIH6zOcDBX+heHYQmKZcacWhV488XLYBLYq56E1p3XBvKxa+AlNjOHLo4p+
+	 KOxc1f5sSYbEKBKpBJ50IfhYK5xe/+wZEeZzsyDA5ZoLjLVbDoARCgxGRPFPjVQMMtDwr
+	 xMgpkGvSmp68xzh06FYydb24hlfhBaP5iEnb1DTTakJceW9RlmygfInfjQlOAHwPYew==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="D2i/w82m";
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=ssi.bg;
+	spf=pass smtp.mailfrom=ssi.bg;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=J+qGcIWo;
+	arc=none smtp.remote-ip=193.238.174.39
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F174D606A324;
-	Sun,  1 Nov 2026 06:18:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D41B606A32E;
+	Mon,  2 Nov 2026 08:08:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5D41B606A32E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D2i/w82m
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C0B821F000C1;
-	Sun,  1 Nov 2026 06:18:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793513893;
-	bh=PJRu7W6/Or1we5Gv3BgoLEtby0D0Y0UGgfjBHfRc5+k=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=D2i/w82mCbN/c5tfy/EF16yRse2kNOGRNZW3jBbca0I+N17PzXQuxnQ28ngY801XM
-	 C5FcyEamu/QUe1Urhiwys4rAdmtxGydBL3v1bSG9hWNVCmaDpP9bbM4AIpylNJL9lE
-	 jBTP9w7T7gVgCYxu/47woGG/TXtBqC59PxOY7HWE9678ZTQqf1nJ39QV6pY6d9yrxb
-	 zf7LzbLtp3kYFoZCmQScrbJKVUyrD0bP32GpO+BgrgfOyJwADrrA8aVn7qOAHBm9W4
-	 hQ7fe1dHYQWgox6ValueUIBp3se4qYJpGf/xqXSpEspO4dw8rN3TY0cYucglljbGtj
-	 mS3kulsY//Yxg==
-From: netdev-bot+sinfo@kernel.org
-To: Yingjie Wang <x-professor@outlook.com>
-Cc: "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>,
- "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
- "horms@verge.net.au" <horms@verge.net.au>, "ja@ssi.bg" <ja@ssi.bg>,
- "pablo@netfilter.org" <pablo@netfilter.org>, "fw@strlen.de" <fw@strlen.de>,
- "phil@nwl.cc" <phil@nwl.cc>, "davem@davemloft.net" <davem@davemloft.net>,
- "edumazet@kernel.org" <edumazet@kernel.org>,
- "kuba@kernel.org" <kuba@kernel.org>, "pabeni@redhat.com" <pabeni@redhat.com>,
- "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>,
- "coreteam@netfilter.org" <coreteam@netfilter.org>,
- "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH nf v2] ipvs: avoid wrapping persistent service timeouts
-Date: Sun, 01 Nov 2026 06:18:12 +0000
-Message-ID: <179351389228.3286.8166624547411855559@kernel.org>
-In-Reply-To: =?utf-8?q?=3C969309eb180c2e577dd6bb54a7d28afcbb2efeb3=2E1793513?=
- =?utf-8?q?714=2Egit=2Ex-professor=40outlook=2Ecom=3E?=
-References: =?utf-8?q?=3C969309eb180c2e577dd6bb54a7d28afcbb2efeb3=2E17935137?=
- =?utf-8?q?14=2Egit=2Ex-professor=40outlook=2Ecom=3E?=
-Auto-Submitted: auto-generated
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=J+qGcIWo
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id D4AE821F8B;
+	Mon, 02 Nov 2026 10:07:56 +0200 (EET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-transfer-encoding:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=UXpNPwwg/3VHXxujGKE9fvTZ6+Kbn3xYS2JPLzMac08=; b=J+qGcIWoRMd/
+	VA5w5tyD3KOjmlQk7kmgaQkKGBtqn1IscVY3f1z+QuG74cXTKKQcrTMMsCa/att3
+	GDlpcAdkAyVnV2IZbHH+eeHEcKyR1yJ85AmOLVYoIkCrj9V85OobRZYfpQLQTBuy
+	Tu3/Xmxsj4s6UXioj7tIcE6qf/iUn+vnDzbwvkqMuFiCdYJlCYMJyYryhGHpXp71
+	Qp6+e/hGotZUP4UKfnfQscU40rAoWt5bF76qBtwgO+lOITM0InUiwNuSTAAjPXnH
+	aIJOBmOsnusDpSKYg05ER4X4yIj5/rA2u6Z97VqVfMFlvb8H14ybvKoPXnn5A/VR
+	C2qoQKwnv8txc8ki/MclFlM5ywG1T4K9+QjngiwtFusmMHjSGtOl10lX1K3khkRn
+	dOFlBw62YQTJxwnFxdtyXgZgF054Xg08cNdUlzkXDKW+p4yL1vr4sevO27r/BVsS
+	2YKMWQXJbAitX0rjM5/uAXL5bzq4BBDn0P2+Koif7MJxJW3ntrXJOYwOW5V7S0Kh
+	v9WlPWE5EfGlm1sDWyGfnzB39ZwQ16pz0W3hoZJLAo/iD7odCtD9VhWXfxFJs/a4
+	om+aUhGVZWw7soqa97ACPJHpinxP2Ocw66gr+g1ktSBwCXzJZzX5zdNMjnhi/+TK
+	JzHkgip3bpWDm5ZGYZ04WMLWzo58dag=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Mon, 02 Nov 2026 10:07:56 +0200 (EET)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 2D18560BAF;
+	Mon,  2 Nov 2026 10:07:56 +0200 (EET)
+Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6A287fc0022199;
+	Mon, 2 Nov 2026 10:07:41 +0200
+Received: (from root@localhost)
+	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 6A287faF022198;
+	Mon, 2 Nov 2026 10:07:41 +0200
+From: Julian Anastasov <ja@ssi.bg>
+To: Simon Horman <horms@verge.net.au>
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Subject: [PATCH nf v3 1/2] ipvs: update flags and seqs in backup server under lock
+Date: Mon,  2 Nov 2026 10:07:27 +0200
+Message-ID: <20261102080728.22178-2-ja@ssi.bg>
+X-Mailer: git-send-email 2.56.0
+In-Reply-To: <20261102080728.22178-1-ja@ssi.bg>
+References: <20261102080728.22178-1-ja@ssi.bg>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -71,21 +82,65 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Hi!
+Sashiko reports that we modify the conn flags and seq values in
+the backup server without holding cp->lock. The same is true for
+other fields such as state, old_state and timeout which are
+modified by protocols under lock.
 
-This is an automated message. This series looks like a fix, but its
-commit messages seem to be missing some information:
+Extend the locked region in ip_vs_proc_conn() to update the
+fields atomically.
 
- - How the issue was discovered, e.g. hit in production, hit during
-   development, syzbot report, manual code inspection, LLM or static
-   analysis tool scan.
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Link: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260927220816.268206-1-pablo%40netfilter.org
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ net/netfilter/ipvs/ip_vs_sync.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-Please do not repost the series just to address the above. Instead,
-reply to this email with the missing information, so that reviewers
-can take it into account. If the series needs another revision for
-other reasons, please include the information in the commit messages
-then.
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 157f5c8361ab..39b9bd83bc5c 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -850,6 +850,7 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
+ 			    unsigned long timeout, __u32 fwmark,
+ 			    struct ip_vs_sync_conn_options *opt)
+ {
++	struct ip_vs_conn *cp_new = NULL;
+ 	struct ip_vs_dest *dest;
+ 	struct ip_vs_conn *cp;
+ 
+@@ -891,9 +892,6 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
+ 		flags &= IP_VS_CONN_F_BACKUP_UPD_MASK;
+ 		flags |= cp->flags & ~IP_VS_CONN_F_BACKUP_UPD_MASK;
+ 		cp->flags = flags;
+-		spin_unlock_bh(&cp->lock);
+-		if (!dest)
+-			ip_vs_try_bind_dest(cp);
+ 	} else {
+ 		/*
+ 		 * Find the appropriate destination for the connection.
+@@ -920,6 +918,8 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
+ 		}
+ 		if (!(flags & IP_VS_CONN_F_TEMPLATE))
+ 			kfree(param->pe_data);
++		cp_new = cp;
++		spin_lock_bh(&cp->lock);
+ 	}
+ 
+ 	if (opt) {
+@@ -951,6 +951,9 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
+ 		else
+ 			cp->timeout = (3*60*HZ);
+ 	}
++	spin_unlock_bh(&cp->lock);
++	if (!dest && !cp_new)
++		ip_vs_try_bind_dest(cp);
+ 	ip_vs_conn_put(cp);
+ }
+ 
+-- 
+2.56.0
 
-The evaluation is done by an LLM so it may be wrong, if you think
-that is the case please reply and explain.
+
