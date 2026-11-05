@@ -1,74 +1,58 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=217.70.190.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793854777;
-	b=LBUcgj2X/kxzrHHg5q7FgYK8hnJuXX0PKZIi7PsWE1i+JjJ3cMYVdvMKo6cgQgoW8Do7
-	 kw9gGNVygRog+UzVvaPWgtYZq7aeTaJWuapaSsFLcAeSrm3J3bPDRV5qCqmlUa04y5ZiE
-	 nr0O1S7jIGHxOseDKZw6qgiV5OVeJJ9XWLyVo+CA/AWrCSQlLOr7/mHuHh9FFCiPSeyna
-	 TVRiOWkEmijw4hWRajUHxV/LNewdZj2NO6VMnVOf6fTEILj+EZA7RKyx0qVzTggEaIPNr
-	 PDlblq7ViGtPGyiCF3juP83uxeHL098X07bpXxs4bzyNppn17wDZcYpJxs2+RurGBhg==
+	t=1793883049;
+	b=xOW7QNfSXNDncZBRhkTCTjsriZxj5j/a/nzvgoUfoWyQnfGaesDByja8tb9hx1IB42Vo
+	 Ir9D4Efkkq4mH2ZyzTbnaRMz6bVTPh6oN+Fotjv619hddlHe0ogAFm9VTivQmSUzvHx6P
+	 SWu11jmD+KYNsqAZnO/yQDzxaKczJgbBEeM2VU6/qwDrNAqeJG9zwX/SbXWhjsn432c78
+	 4phmWGDDfOfhORGib8DUglJRvyV5jhqoJKweB3udyUTjne5/NahwYXTPy0fg+i8IzFvdu
+	 vUDqkRYTczwInKGMP3vVsZCbWFbiC00OGxsqRyInC2JPWd4b1lDCKR7Gkg6sDcsfnTA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793854777;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:Date:
-	 From:To:cc:Subject:In-Reply-To:Message-ID:References:MIME-Version:
-	 Content-Type;
-	bh=sRVhAEacJUXzOD7Z9t9X7l05UEG0bagzaqInGlzUg/E=;
-	b=PTvzfMZcTbuT+Pq7sn1n0xfvtK2uwq0/BNaw2JryZu9V16wE1wjJdFVQeEAWe1YOPb8Q
-	 BJeWKGQyMBkT5tHsmt4lKIU2SMYjq+YNX9mycqRU1rKIinbP4+KOPIGVPov6nKg08imxo
-	 l/VotrxtXxsq9vffZu6ymZzxmplW8cb8LOLMe0/ERyBAWfug3ff0+IwmPtdueBMO7EV1X
-	 E5oln6ZsxYXP/rzEKnmC2zPSKX7VVGyQ4q1ZCNSllvuRpaKxoK3ro3mgDvDptBup8EQsR
-	 VPRBsF/fiu7ziObJ8DGthqPDfRlO7/MPrsvm0GwfND8V0+iV1cRZTvqFsJ9jBmUPk2g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793883049;
+	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Spam-Status:X-Spam-Checker-Version;
+	bh=v0EKemWaVul/SJRIFOgKfeiqTYp2UXkQr3SJZOcMb7c=;
+	b=iXWU8KYVIvmZUoQmWJbTYXB+4s1HowsiB4ODX/6srW5LhYqLGzTe6RyZeS9mBMknB5l6
+	 BN9SvqscZfXCkOEsyNRWGWDvG2Md1JXJ54ixTKDId//LxZfAb83Ja8H0mtRr8bHvoeuCO
+	 Sx5XJv78GPXq8JbW2W2ijNVYo6LC12OXCyQGy5bXSPD+KtWsZH1eT2fAXJULUWUFoC6QL
+	 dniU6HGeC1R+MOM84xVrQB2ly1fpy5g90mU4f11Y/0OhEIbwPOUVuDDM0eiQK/7J2tBeN
+	 Wf7XqGkX0J4yimQO/J7Ayk4U1ztjsVVV8aUxSd1Zh1JfwGslUWup+wQjKvwficTtyXg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=ssi.bg;
-	spf=pass smtp.mailfrom=ssi.bg;
-	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=vT2TwnZX;
-	arc=none smtp.remote-ip=193.238.174.39
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	dmarc=none header.from=netfilter.org;
+	spf=pass smtp.mailfrom=netfilter.org;
+	dkim=pass header.d=netfilter.org header.i=@netfilter.org header.a=rsa-sha256 header.s=2025 header.b="g8/YAWDY";
+	arc=none smtp.remote-ip=217.70.190.124
+Received: from mail.netfilter.org (mail.netfilter.org [217.70.190.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 054B4606A31B;
-	Thu,  5 Nov 2026 04:59:34 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 054B4606A31B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 3A455606D818;
+	Thu,  5 Nov 2026 12:50:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3A455606D818
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=netfilter.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=vT2TwnZX
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id E877A21DB9;
-	Thu, 05 Nov 2026 06:59:31 +0200 (EET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=sRVhAEacJUXzOD7Z9t9X7l05UEG0bagzaqInGlzUg/E=; b=vT2TwnZXEndm
-	kcFdbC0mXc2Je/e1MuyrSbc06OLP//PwAeurZmlJ/UMvNlBjJAT9vcxW0QMo4ObV
-	dgeOmnFZBDWFYyPb8KC6VtxWA3I635JYwgJLssm2m+eIMCsD66BIrM2aEp8VbdG1
-	LD4yraIOWq8g32sB8f1DiNYpZDn0JaU2ROUZx9ikFQhXSTDidx3LJ5ffewvUT4Xh
-	YVONWAqNwIg2JVbexY8Wc7uKtN7GEDc+mULulHkGoXshmo8weyNhL2/EftTo/f/J
-	dOKoRVOt3tvoyalyta9BgLiEttZYPm+Zt1cyt3VEQ6QVRm+LlZo2gMg/vCVnH18J
-	zbgM3sndAHRLLdmYhIiaqEj3xw8LuoFcSWDKlCAwQCrqf+G98WgjyrHH0yYTzBKh
-	vxbiPvrh0WlWXiSDdkqZzgtixoWBjRIH1QdmaXpEH5Nb7zIdyilJBdSu7yHdiJTZ
-	TgrCI8ZnSmr+4kHItc0cvmVK+p9UPVHIzCOV1PLnxwq8cXJVkvqosPSTiPCNsw14
-	fD7dC4TLH+Qs7nAfvtljVgVKDjHfYsPGpXi2sHlTaqftP30WwiaMfHnoOYP1Hlmu
-	AHt2LRgs6RVfB14chyr8ORQdmZdYHJYjYfEF5PURLRq6Ptb92zmlUDM63LROAOG9
-	dM8rEmXyi+nSEcT0mjSQ7EGq1nuT0No=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Thu, 05 Nov 2026 06:59:31 +0200 (EET)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 7F36961C68;
-	Thu,  5 Nov 2026 06:59:31 +0200 (EET)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6A54xTS2007322;
-	Thu, 5 Nov 2026 06:59:29 +0200
-Date: Thu, 5 Nov 2026 06:59:29 +0200 (EET)
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: Re: [PATCH nf v2] ipvs: do not create conns from packets with port
- 0
-In-Reply-To: <20261104201530.147292-1-ja@ssi.bg>
-Message-ID: <5e3fc9f1-1786-bfb3-4da6-d313ba9f6125@ssi.bg>
+	dkim=pass (2048-bit key, unprotected) header.d=netfilter.org header.i=@netfilter.org header.a=rsa-sha256 header.s=2025 header.b=g8/YAWDY
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=netfilter.org;
+	s=2025; t=1793883046;
+	bh=v0EKemWaVul/SJRIFOgKfeiqTYp2UXkQr3SJZOcMb7c=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=g8/YAWDY+Mwci/BUsDnUqYvyk0NGOqTcA6I6DqHT0K2Z0Z/EgPx4YBjpWup0dhQCJ
+	 vQCG1LpKx7dwnxipjjZ39E3GDRigfK+gz32MR1jJzrAUTQqaXotCufEP+5eJo3obJt
+	 yD/MDjqgdYJg8uZbeSEbezWHu+FlK1UrQ/Kwx1Ta6oLfcOGZ7Qhu+de4esCXZw95lR
+	 s2yF99K0PCQ20J0S4olWRQF7HO6zgb0hMO0cqI6le6ptnl/KiXp9hfG1lDJNJN+wRu
+	 7NlJKcpdan4e1HVw0soNAxIUgPVwhCZv4KB2RTiOUorWlESqebzL9HkMVpxeXKn2Kg
+	 EsDXOS7SprsWg==
+Received: from netfilter.org (mail-agni [217.70.190.124])
+	by mail.netfilter.org (Postfix) with UTF8SMTPSA id BFBAD60457;
+	Thu,  5 Nov 2026 13:50:46 +0100 (CET)
+Date: Thu, 5 Nov 2026 13:50:44 +0100
+From: Pablo Neira Ayuso <pablo@netfilter.org>
+To: Julian Anastasov <ja@ssi.bg>
+Cc: Simon Horman <horms@verge.net.au>, Florian Westphal <fw@strlen.de>,
+	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Subject: Re: [PATCH nf v2] ipvs: do not create conns from packets with port 0
+Message-ID: <aux7pEgj-lz9eq4c@chamomile>
 References: <20261104201530.147292-1-ja@ssi.bg>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -79,20 +63,32 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20261104201530.147292-1-ja@ssi.bg>
 
-
-	Hello,
-
-On Wed, 4 Nov 2026, Julian Anastasov wrote:
-
+On Wed, Nov 04, 2026 at 10:15:30PM +0200, Julian Anastasov wrote:
 > We should disallow normal connections with cport 0 to be
 > created from packets by the scheduler (from clients) or
 > by ip_vs_new_conn_out (from real servers) because later
 > such traffic can not hit the connection due to the
 > NO_CPORT requirement. As result, it can lead to duplicate
 > connection for every packet. Do the same for vport 0.
-> 
+
+I think a follow up is a better option for patches that are not
+clearly wrong, because I prefer to drop patches that need more work,
+otherwise we risk entering a loop of N iterations in a PR.
+
+I think safest approach is to drop anything that is controversial.
+
+Just for the next time, if it helps, if patch is good but not perfect
+(as it seems to be to me in this case), a follow up is better IMO.
+
+So let's find a slot for this patch in the next PR chance, I think it
+is better to skip this new v2 at this stage.
+
+Apologies and thanks.
+
 > Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 > Link: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261103140308.591690-3-pablo%40netfilter.org
 > Link: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260925141115.16126-1-axel.mierczuk%401password.com
@@ -101,15 +97,7 @@ On Wed, 4 Nov 2026, Julian Anastasov wrote:
 >  Changes in v2:
 >  * Drop the packets with port 0 instead of passing them to the local
 >    server
-
-	It was ok to ignore packets before service lookup but
-if we are dropping them it should be only for IPVS traffic,
-i.e. after service lookup. Dropping this v2 and preparing v3.
-
-https://sashiko.dev/#/patchset/20261104201530.147292-1-ja%40ssi.bg
-
-pw-bot: changes-requested
-
+> 
 >  net/netfilter/ipvs/ip_vs_core.c       | 3 ++-
 >  net/netfilter/ipvs/ip_vs_proto_sctp.c | 4 +++-
 >  net/netfilter/ipvs/ip_vs_proto_tcp.c  | 4 +++-
@@ -197,9 +185,6 @@ pw-bot: changes-requested
 >  	}
 > -- 
 > 2.56.0
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
-
+> 
+> 
+> 
