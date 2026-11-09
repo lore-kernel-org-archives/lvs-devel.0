@@ -1,101 +1,78 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.167.52
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1794207198;
-	b=JR7dJYSBaXFIWsxqACHGpp83zxUfOCo0n1qWEgeLwKgh2UBZFHj5cfUaIGvm6wbNVuhv
-	 NrtgkQ7gRjFCz1qqtW5DLM22qC6qSSmmuc0Gk2zPsHreA55R2WW6flhlNPZBo41W0q/sJ
-	 xNqAdPVP4eXyFPncUmD5iOyzo9t5QyB+qSjqLd8zCLyGe4bOT/1ioCP/C8tgKyT/PUk3s
-	 wSoilkZpChwLQLTWkTko9QSLB08c5A6Ni04Lupbc1Z0iLc6P0BVXYs7yP/4Eb30hmFQyh
-	 xNG7eLPssfkfGGI19OEZ0/JPJBpWgkPmLuqyJpsqC4P+mtIDNoRyIcIWapAm5gmTAPQ==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794207198;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=kdfSMn5qmUAvXVccrNmls1DypVGRaJ++jbiwGI14+kg=;
-	b=xU2ccQOr43QgK2f0kQ4uzFLVTEayCDKlHBQ3H8xnYfjExDR2uXYxC/W7dkD8mP0R4gkR
-	 Cvl8/01qXB0sLGYoHxtJ5lqWQvPOQpga/qwDUOT0UR2oogjzQAkKQa+VBlAG128Z5e3Tu
-	 4DwydV/sCdqFr5hkjbciUiWm9gzRWbQzeLG0439gitOyWHIduUzkjr/f+lS4jB3f5Er0y
-	 NWrRidazyes4hudVYx8w1vzishIwm3aZmp4P8Vq2lp985RCyxEwGhj4Ys5xxGODbO2txI
-	 HJ65e8CzFBBIee4cD5MTT4amM9HmjauqzNcuR99TexT6Z2crGZmBFfAGVlZn8V6gpYA==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=sgWujCEB;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.167.52
-Received: from mail-lf1-f52.google.com (mail-lf1-f52.google.com [209.85.167.52])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1794213713;
+	b=CBzuw/uZEr2Ad4DU2sFkVd1hkzsUtmW3D7fhNlQAMU5/ryhhiWSdGLq1KfaK0uUo6B6c
+	 0D64PVAzj7WuniDCOpLHOfazlH77kw9yUlVAo/9X4YQW51Ot+d1kgd2R6Ka8kj+Evo2Xr
+	 nq1bJ7s0PegjnmeotngjBNrC5bb4/iuJwRSbxeItIcCaKYBrCPtxdzj7vjZfWkCpARzE2
+	 G/fBdMc0qpRKMu8mEeKjhZ3ibgTbMe4XosBxhJqITJxAUiUxebZs5LMMehfizigB2NsF8
+	 FgE55ARUTMb/QdxWEr868mQlN+DqtUFGHHx33I2XQoGxjtEnzduppFRDIwtky4VfhrA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794213713;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:Date:
+	 From:To:cc:Subject:In-Reply-To:Message-ID:References:MIME-Version:
+	 Content-Type;
+	bh=WfIUGSdQrkOhtGAPoQ8Fwz/jCJ2IqbNgbNP/a05qzVE=;
+	b=PpfskEorXpRQFFHtm8v4ytvVcvdcqKukCaMpRrxLPqNV3xBNzTWtVE+sRqsSW6Qn7LBT
+	 nm0jZZwZtI2XxntU0CPq/FUXD3PJvZMVCQ7NciLRJkPXET05ObYF3eXwOlGaUriIJAjAM
+	 AEhtgfdcRsDD+A4rNG3Dfeh7I1gzrrEd3V7uVZwyKoqjmTD8O0k6kZMCQmIf+TZ82o74D
+	 xZIZjrTwKploSTfaGoFY7e1tTzpVrnyPF5wXUO2RLfsOuMS5LQbRmG4VpRKTh09Qg/lUJ
+	 nIXOcrwj5wp9HQvskewUlohBc2pRkFEDNnMhLbHgzXzh13PPO2LmF+UZvYRR60uWdrA==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=ssi.bg;
+	spf=pass smtp.mailfrom=ssi.bg;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=ozdNauK6;
+	arc=none smtp.remote-ip=193.238.174.39
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53DDE606A322
-	for <lvs-devel@vger.kernel.org>; Mon,  9 Nov 2026 06:53:18 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 53DDE606A322
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 214F2606A31C;
+	Mon,  9 Nov 2026 08:41:50 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 214F2606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=sgWujCEB
-Received: by mail-lf1-f52.google.com with SMTP id 2adb3069b0e04-5c1465bbbdaso302612e87.3
-        for <lvs-devel@vger.kernel.org>; Sun, 08 Nov 2026 22:53:18 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1794207196; cv=none;
-        d=google.com; s=arc-20260327;
-        b=V/wW+4gPG3eUbApnNB47X/EgnvqkjZWJIeAqicKKUqX4RqGRoqLvB4B8eWLtVgnzXx
-         jS7oMwBO2QMmlnu78H/lh4Ga9oDM7EEGK3ZLO0cwggvw2ulo5CXY39uT4DbRKCZW8W90
-         sqL/PBGQon9wJCMbA0RiFcTo64zptHnqbPvjG0BnfF0WQaBLW+nal0ZLV0r6wnv15gPI
-         5HCGy56jvbsi8qEoR+blLl1RgHWRjlTdz7/wKYTDLy2zyJ5zOMjjWytMg/ZGb9kShQ7I
-         LS94wpmnP+/9pGI7j+jb4V1mSH9sTg2ZzYfKdmXa+mFitK5nXUthHX2UKuHCSvnyu9b4
-         vP6g==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=kdfSMn5qmUAvXVccrNmls1DypVGRaJ++jbiwGI14+kg=;
-        fh=WK/R2UH8q68NFEmP2VrUisdE1gUxnAovY8uBtKO91do=;
-        b=Ebo9HJBVSHzNeZPs3R93iKcijf976QDNrxXRslo+cFA+gbwil1EV2hCWByHipwdyYR
-         vShq7FlwOI2VxPkx4/qOqpncVOvRQPgvqClACfoVR5l81uo6zkoqnzoly64gzjwYsoot
-         ntoeMZuc8PBRV7EwYNG1NET5iwfHwI1roXKc0McjBiYYevpayoE3JOYSc4iBqKyDib47
-         olOP5True5G6jj0SU1xM7Omz/2a2uLf13LO/A3osLRtnrMGFuqy+bgmnBVje+UIs5oZo
-         3yTDHb8nOcIRoauaJ9GiyZJ/HQzc79ynzgwm+gJSN6Om8Kqw63tzQWfsXWE0/rCXxDLF
-         o3Rw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794207196; x=1794811996; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=kdfSMn5qmUAvXVccrNmls1DypVGRaJ++jbiwGI14+kg=;
-        b=sgWujCEBcLnI2rCZx2+HrV0hdHuKHGWZkbP/T95hfWdHOsdro1qJU1Fvk+8OO9MdfB
-         0BqsBZTh492PGUlz+uiD5cFVvZc+vlVmSZhYzi+w/tlD80Sl6tEzuWFCWZhv/N6pbH35
-         rLWt1UHkkGkHK24Z/h6vBhtLRJVzr1jbqDl3LlT+eJtmAmj2BiR6ABZnJcxKkIEwjeuj
-         rKb8qVeksOei/N1ZYTOxCXuIYcRzPS0XXno11fSFmwYvkRxmBZ3+yYmHEczZNKiPx5RZ
-         oHt9g8LUVuNFkbZtPXFWBtwsCaMo3xAJFO6XAxUED9WmEkoDJbCWdP6YC+ZT/ijPGBxT
-         E53A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794207196; x=1794811996;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=kdfSMn5qmUAvXVccrNmls1DypVGRaJ++jbiwGI14+kg=;
-        b=Ot/JwHVu6ET7bHKs6SsmLaBb5DdFVeywf7ym5T1bLquBCPR0UMGSf77tx7J9aIZY72
-         jmKY28KAHvNzCOc3mMX3mawKY9NJWqJbCmrTiuivBev3x1ehDdHMYK35hfQBJnSGimse
-         1rUsR+Y3MvjCi0ANgbfD9xJm2oXXoiRgMWxZZKz2BeGHmmWC6OH1aikDkc8ngW/Uik7Z
-         SyW01QDzoZ+dttJqxVrOu2aD022CbVKzCLfA4dXj3BKIDbL2zX7pkGvarduS77G5P077
-         kwSRtYU3kmvqR38ImRVqYV3fnIex/n2Z6hB4PM5Vgy+U8eIHHlY5zWgRTO1yL/Fxr3Oo
-         Sghw==
-X-Forwarded-Encrypted: i=1; AL+hErHYLK4TY7nnR6gjyTyGM/WScS9upoY7LZ6gzkox+I7URnNg/1Dqhq3ItyFlLjulyUIqWDphkfrUFkY=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/6D7YzggVrvmv+uOeGjIvzMIAMnvXX6lLoWupgYZWEqzJdE28N
-	BW4d2MV7vZtGVDLWHtgf/pMydb2npm8XmM+iuR54ZPMERu3Y78GSAfYOcUPl6M3MaJ/1gQrasx2
-	s26BjRTMLM004GLBE+CyjaxyjJ29F664=
-X-Gm-Gg: AYBFou2aoByNSmeIPywexI0v5O0hOkPJAWCqUYCs9LzolpN/WcDGPeyVMpNL2vEQclF
-	frd3zSB+B08rD0pnOos9TJBpLl10hSqXxpTZFONBPr7Mx6amZ/RoouDlFAkgi99BEPAOxzR3hTO
-	z4vtqDhQG8KX4+V7mXuvb96c+wD7OYoO82MqsxezYTeXG/fHtAaWvkkymXyCCUVoU1x1CJnk/+q
-	CveY8BAjTT8kwSqJBPUf7yNQmGj5I9yAVY8b5XQpjF1jAgBfObRMR1NPy9NcoMU1QoCK5JIroWB
-	hyM70AKiJv+iD9Asx/gJ5lggQeFB9ELg3M4lAOGyTyvyrFX/7V6sbc1dmrBneS+bntRMV2mKSq5
-	xQoXr4G8vwc2R6fSNgMWQbhzrHfTzeWl1dqeVdP7S/W8fw1YTAlGV/ZVvc/erDgqp+HMuR7qdMS
-	vOjoXnqIhHVrxDY1hFSBW4Uy7DySNDLt4YhPqLk5WT/Q3lWmlfSXU=
-X-Received: by 2002:a05:6512:3e1c:b0:5c1:4a48:c2db with SMTP id
- 2adb3069b0e04-5c14c01f805mr810751e87.43.1794207196170; Sun, 08 Nov 2026
- 22:53:16 -0800 (PST)
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=ozdNauK6
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 33A9A2100C;
+	Mon, 09 Nov 2026 10:41:42 +0200 (EET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=WfIUGSdQrkOhtGAPoQ8Fwz/jCJ2IqbNgbNP/a05qzVE=; b=ozdNauK6OmxD
+	5tnijwImvk5tityKTvwRJ+C6j2K/qYAY8jDi8A1Bv+f4NycktzPlsfEK20uADTCj
+	t0tsHPQkH+nQ5nLxKahx39EhxSmbqQRxLMrcKblfjfv1xTf4Yh6DOpOTGegn8dU0
+	YXuPrrFzCB10PAkmiNnTRC0q0Nme5i/DJMTMx1P94l2Tr+rzTxsDkrPFvtus2s2W
+	1hsWGNIJjYWN7YKaIBcGNscfIEgoQlW6ASCRK66NIZ2diP97EkG26hVVs0c9B/mz
+	9bxtmZTo4KXpWk7ocxqsBNNoYvPUsoFsvx7LzUJQl/kI65xBlNcG8QLCuhAlDwqk
+	GGFW5KkM/Q/Iim+7QMK/sn9P24cYaKFlI8BOuW0bXSSk6h5sJxyFrxjYAsP5wbTz
+	6FRxMh3lLlrVwezyCOiRoAnxlF3Ag2E3Fz/5Gb72AOLXEuo8q86hANIgH8HVigeC
+	OZ+79/uDpQ6NrBzMYaUJ8xvtWncmbBWdN2mzdJATmql1C51h3ihnaxwC5OsMZJjF
+	4CrgmGsV6gASynO8AAHeBFRvGf7b9d4x1Ktv8U+I3k0w5rwgrmpGDrBXxdxJO9pK
+	8XBfv4twTV6HIlHFe2TWYnoYKXv1DQHI3KRvfejfHxAUz5dX5WbbglXZbo15iuc0
+	8beLUP38je8gTWl9gOk0EZ7t0mI2gRM=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Mon, 09 Nov 2026 10:41:42 +0200 (EET)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id BCBF36066F;
+	Mon,  9 Nov 2026 10:41:41 +0200 (EET)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6A98fUjI025344;
+	Mon, 9 Nov 2026 10:41:31 +0200
+Date: Mon, 9 Nov 2026 10:41:30 +0200 (EET)
+From: Julian Anastasov <ja@ssi.bg>
+To: Ren Wei <weir@nebusec.ai>
+cc: lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+        horms@verge.net.au, dsahern@kernel.org, idosch@nvidia.com,
+        davem@davemloft.net, edumazet@kernel.org, kuba@kernel.org,
+        pabeni@redhat.com, pablo@netfilter.org, fw@strlen.de, phil@nwl.cc,
+        vega@nebusec.ai, zzyy19904204639@163.com, jiayuan.chen@linux.dev
+Subject: Re: [PATCH net v3 1/1] ipvs: wait grace period before reusing
+ destinations
+In-Reply-To: <f552f176c8387c819e748c93c0fb99de70e4406d.git.zzyy19904204639@163.com>
+Message-ID: <d8709a3b-5b59-08b9-53d8-84bb4151c24e@ssi.bg>
+References: <f552f176c8387c819e748c93c0fb99de70e4406d.git.zzyy19904204639@163.com>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -105,95 +82,346 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
- <CAL+tcoDvFNAZubOjw9+Z1eyaVeiBzt_Xg3KMNucY879bg-ZLow@mail.gmail.com> <dbdb9385-89cd-4e4f-bfb8-b72510e8801b@linux.dev>
-In-Reply-To: <dbdb9385-89cd-4e4f-bfb8-b72510e8801b@linux.dev>
-From: Jason Xing <kerneljasonxing@gmail.com>
-Date: Mon, 9 Nov 2026 14:52:37 +0800
-X-Gm-Features: AclHuK9hO_h4FFhel_M7AacjBweA615sygy6vgIfEMNG5ukVHhzyCYoysXzMOxw
-Message-ID: <CAL+tcoA6_gROiprd7YgxvwbaiuzEUPfuWTNMjKu6vDkbUJ5KPw@mail.gmail.com>
-Subject: Re: [PATCH net-next 00/14] net: annotate data-races around sysctl knobs
-To: Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, David Ahern <dsahern@kernel.org>, 
-	Ido Schimmel <idosch@nvidia.com>, "David S. Miller" <davem@davemloft.net>, 
-	Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Simon Horman <horms@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, 
-	Phil Sutter <phil@nwl.cc>, Nikolay Aleksandrov <razor@blackwall.org>, Paul Moore <paul@paul-moore.com>, 
-	Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
-	Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>, Allison Henderson <achender@kernel.org>, 
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Xin Long <lucien.xin@gmail.com>, 
-	"D. Wythe" <alibuda@linux.alibaba.com>, Dust Li <dust.li@linux.alibaba.com>, 
-	Sidraya Jayagond <sidraya@linux.ibm.com>, Mahanta Jambigi <mjambigi@linux.ibm.com>, 
-	Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
-	linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
-	coreteam@netfilter.org, bridge@lists.linux.dev, 
-	linux-security-module@vger.kernel.org, mptcp@lists.linux.dev, 
-	lvs-devel@vger.kernel.org, linux-rdma@vger.kernel.org, 
-	rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org, 
-	linux-s390@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=US-ASCII
 
-On Mon, Nov 9, 2026 at 11:33=E2=80=AFAM Jiayuan Chen <jiayuan.chen@linux.de=
-v> wrote:
->
->
-> On 11/9/26 11:11 AM, Jason Xing wrote:
-> > On Mon, Nov 9, 2026 at 10:55=E2=80=AFAM Jiayuan Chen <jiayuan.chen@linu=
-x.dev> wrote:
-> >> While testing the recent sysctl range fixes I noticed that a lot of ou=
-r
-> >> sysctl knobs are read with plain loads while the handlers update them
-> >> with WRITE_ONCE() and no lock, so KCSAN reports them as data races. I
-> >> then used an LLM to go through every ctl_table under net/ and list the
-> >> readers that were left behind. This series annotates them with
-> >> READ_ONCE(), and adds WRITE_ONCE() to a few custom handlers and netlin=
-k
-> >> paths that store to the same fields with plain writes. Most of it is a
-> >> plain READ_ONCE() at each read; where a function reads the same knob
-> >> twice to make one decision, it now reads it once into a local, so the
-> >> comparison and the value it acts on cannot come from two different
-> >> writes.
-> >>
-> >> There are no Fixes tags. Done one knob per patch this would be well ov=
-er
-> >> a hundred commits, so I grouped them by subsystem and feature instead =
-to
-> >> keep the review manageable. If maintainers prefer, I can split it up
-> >> further with a Fixes tag on each one, as several smaller series.
-> > Over the last year, I've been thinking about the annotation stuff
-> > especially around sysctls, which, I suppose, shouldn't actually affect
-> > the real workload but does affect the outcome of the syzbot.
-> >
-> > Out of sheer curiosity, my question would be what is the point of
-> > trying to change all of them? Or what kind of benefits can we get from
-> > the big series?
->
->
-> Three things:
->
-> 1. A plain load may be emitted twice by the compiler. ip_error() compares
-> peer->rate_tokens against ip_rt_error_cost and then subtracts it again;
-> if the sysctl changes in between, the u32 wraps. A few readers have that
-> shape and now read the knob once into a local.
->
-> 2. Tearing is not involved here, all the fields are at most word sized.
->
-> 3. The rest is the memory model: a lockless read of a field written with
-> WRITE_ONCE() is a data race unless it is marked
-> (tools/memory-model/Documentation/access-marking.txt). That is what KCSAN
-> reports, and why most of the series is plain READ_ONCE().
->
->
-> I think the benefit is doing it in one pass.
->
->
 
-I was curious about the REAL impact. If this thing really matters, we
-have a lot of work to do even not only in the networking subsystem.
-Sorry, I still think none of those points are convincing enough, but
-that doesn't mean I object to this series. Anyway, it's just my
-2-cents.
+	Hello,
 
-Thanks,
-Jason
+On Mon, 9 Nov 2026, Ren Wei wrote:
+
+> From: Darong Lu <zzyy19904204639@163.com>
+> 
+> An IPVS destination can be removed from a service and immediately reused
+> from dest_trash before an RCU grace period has elapsed. Reusing its n_list
+> or d_list can make existing readers follow links into another service or
+> real-server hash chain.
+> 
+> The grace-period cookie is also saved when a live destination is unhashed
+> for an edit and consumed when it is rehashed. Describe rcu_state as the
+> cookie for an unlink, covering both trash and rehash cases.
+> 
+> When a destination is retrieved from dest_trash, ip_vs_add_dest() currently
+> restarts its estimator before waiting for the grace period.
+> If the estimator was on a tick chain, ip_vs_stop_estimator() removed
+> est->list with hlist_del_rcu(), so an estimator kthread can still be
+> traversing that node.
+> ip_vs_start_estimator() rewrites the node on its temporary list on success,
+> or initializes it on failure, before the current wait. A reader can then
+> follow the changed link or stop traversing the chain early.
+> 
+> Wait immediately after retrieving the destination, before starting its
+> estimator. The conditional grace-period wait then covers the destination
+> list, real-server hash and estimator list on both estimator success and
+> failure paths.
+> 
+> Fixes: bcbde4c0a755 ("ipvs: make the service replacement more robust")
+> Cc: stable@vger.kernel.org
+> Reported-by: Vega <vega@nebusec.ai>
+> Reported-by: Darong Lu <zzyy19904204639@163.com>
+> Co-developed-by: Jiayuan Chen <jiayuan.chen@linux.dev>
+> Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+> Signed-off-by: Darong Lu <zzyy19904204639@163.com>
+> Signed-off-by: Ren Wei <weir@nebusec.ai>
+
+	The new patch version looks good to me for the nf tree, thanks!
+It already has my SOB line:
+
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+
+> ---
+> Changes since v2:
+> 
+>   - Wait immediately after retrieving a destination from trash, before
+>     starting its estimator. This protects the estimator list on both
+>     success and failure paths.
+>   - Clarify that rcu_state stores the cookie for trash and rehash unlinks.
+> 
+> v2 Link: https://lore.kernel.org/all/cover.1789473164.git.zzyy19904204639@163.com/
+> ---
+>  include/net/ip_vs.h            |   4 +-
+>  net/netfilter/ipvs/ip_vs_ctl.c | 110 ++++++++++++++++++++++++++-------
+>  2 files changed, 91 insertions(+), 23 deletions(-)
+> 
+> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+> index 32fde731bceb..fdffc8f927f3 100644
+> --- a/include/net/ip_vs.h
+> +++ b/include/net/ip_vs.h
+> @@ -1013,7 +1013,9 @@ struct ip_vs_dest {
+>  
+>  	struct rcu_head		rcu_head;
+>  	struct list_head	t_list;		/* in dest_trash */
+> -	unsigned int		in_rs_table:1;	/* we are in rs_table */
+> +	unsigned long		rcu_state;	/* GP cookie on unlink (trash or rehash) */
+> +	unsigned int		in_rs_table:1,	/* we are in rs_table */
+> +				need_gp:1;	/* Need GP on rehash */
+>  };
+>  
+>  /* The scheduler object */
+> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+> index 4c1c739446b7..ad59b97079ff 100644
+> --- a/net/netfilter/ipvs/ip_vs_ctl.c
+> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
+> @@ -64,7 +64,8 @@ int ip_vs_get_debug_level(void)
+>  
+>  
+>  /*  Protos */
+> -static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup);
+> +static void __ip_vs_del_service(struct ip_vs_service *svc,
+> +				struct list_head *dest_trash, bool cleanup);
+>  
+>  
+>  #ifdef CONFIG_IP_VS_IPV6
+> @@ -918,6 +919,11 @@ static void ip_vs_rs_hash(struct netns_ipvs *ipvs, struct ip_vs_dest *dest)
+>  	 */
+>  	hash = ip_vs_rs_hashkey(dest->af, &dest->addr, port);
+>  
+> +	/* Need RCU grace period when rehashing */
+> +	if (dest->need_gp) {
+> +		cond_synchronize_rcu(dest->rcu_state);
+> +		dest->need_gp = 0;
+> +	}
+>  	hlist_add_head_rcu(&dest->d_list, &ipvs->rs_table[hash]);
+>  	dest->in_rs_table = 1;
+>  }
+> @@ -1111,6 +1117,8 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, int dest_af,
+>  	struct ip_vs_dest *dest;
+>  	struct netns_ipvs *ipvs = svc->ipvs;
+>  
+> +	lockdep_assert_held(&ipvs->service_mutex);
+> +
+>  	/*
+>  	 * Find the destination in trash
+>  	 */
+> @@ -1144,24 +1152,57 @@ ip_vs_trash_get_dest(struct ip_vs_service *svc, int dest_af,
+>  	return dest;
+>  }
+>  
+> -/* Put destination in trash */
+> -static void ip_vs_trash_put_dest(struct netns_ipvs *ipvs,
+> +/* Add destination in temp list for trash */
+> +static void ip_vs_trash_add_dest(struct netns_ipvs *ipvs,
+>  				 struct ip_vs_dest *dest, unsigned long istart,
+> -				 bool cleanup)
+> +				 struct list_head *dest_trash)
+>  {
+> -	spin_lock_bh(&ipvs->dest_trash_lock);
+>  	IP_VS_DBG_BUF(3, "Moving dest %s:%u into trash, dest->refcnt=%d\n",
+>  		      IP_VS_DBG_ADDR(dest->af, &dest->addr), ntohs(dest->port),
+>  		      refcount_read(&dest->refcnt));
+> +	/* dest lives in trash with reference */
+> +	list_add(&dest->t_list, dest_trash);
+> +	dest->idle_start = istart;
+> +}
+> +
+> +/* Put destinations in trash */
+> +static void ip_vs_trash_put_dests(struct netns_ipvs *ipvs,
+> +				  struct list_head *dest_trash, bool cleanup)
+> +{
+> +	spin_lock_bh(&ipvs->dest_trash_lock);
+>  	if (list_empty(&ipvs->dest_trash) && !cleanup)
+>  		mod_timer(&ipvs->dest_trash_timer,
+>  			  jiffies + (IP_VS_DEST_TRASH_PERIOD >> 1));
+> -	/* dest lives in trash with reference */
+> -	list_add(&dest->t_list, &ipvs->dest_trash);
+> -	dest->idle_start = istart;
+> +	list_splice(dest_trash, &ipvs->dest_trash);
+>  	spin_unlock_bh(&ipvs->dest_trash_lock);
+>  }
+>  
+> +/* Put destination back in trash */
+> +static void ip_vs_trash_put_back(struct netns_ipvs *ipvs,
+> +				 struct ip_vs_dest *dest)
+> +{
+> +	LIST_HEAD(dest_trash);
+> +
+> +	ip_vs_trash_add_dest(ipvs, dest, dest->idle_start, &dest_trash);
+> +	ip_vs_trash_put_dests(ipvs, &dest_trash, false);
+> +}
+> +
+> +/* Put destinations in trash and save the RCU state */
+> +static void ip_vs_trash_save_dests(struct netns_ipvs *ipvs,
+> +				   struct list_head *dest_trash, bool cleanup)
+> +{
+> +	struct ip_vs_dest *dest;
+> +	unsigned long rcu_state;
+> +
+> +	if (!list_empty(dest_trash)) {
+> +		/* Remember when dests were removed and added to dest_trash */
+> +		rcu_state = get_state_synchronize_rcu();
+> +		list_for_each_entry(dest, dest_trash, t_list)
+> +			dest->rcu_state = rcu_state;
+> +		ip_vs_trash_put_dests(ipvs, dest_trash, cleanup);
+> +	}
+> +}
+> +
+>  static void ip_vs_dest_rcu_free(struct rcu_head *head)
+>  {
+>  	struct ip_vs_dest *dest;
+> @@ -1369,8 +1410,16 @@ __ip_vs_update_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest,
+>  	if ((udest->conn_flags & IP_VS_CONN_F_FWD_MASK) !=
+>  	    IP_VS_DFWD_METHOD(dest) ||
+>  	    udest->tun_type != dest->tun_type ||
+> -	    udest->tun_port != dest->tun_port)
+> +	    udest->tun_port != dest->tun_port) {
+> +		bool unlinked = dest->in_rs_table;
+> +
+>  		ip_vs_rs_unhash(dest);
+> +		if (unlinked) {
+> +			dest->rcu_state = get_state_synchronize_rcu();
+> +			/* Need grace period in this or next dest update */
+> +			dest->need_gp = 1;
+> +		}
+> +	}
+>  
+>  	/* set the tunnel info */
+>  	dest->tun_type = udest->tun_type;
+> @@ -1558,6 +1607,11 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+>  	dest = ip_vs_trash_get_dest(svc, udest->af, &daddr, dport);
+>  
+>  	if (dest != NULL) {
+> +		/* Readers may still follow the n_list, d_list or estimator list
+> +		 * links. Wait before reusing any of them.
+> +		 */
+> +		cond_synchronize_rcu(dest->rcu_state);
+> +
+>  		IP_VS_DBG_BUF(3, "Get destination %s:%u from trash, "
+>  			      "dest->refcnt=%d, service %u/%s:%u\n",
+>  			      IP_VS_DBG_ADDR(udest->af, &daddr), ntohs(dport),
+> @@ -1568,11 +1622,14 @@ ip_vs_add_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+>  
+>  		ret = ip_vs_start_estimator(svc->ipvs, &dest->stats);
+>  		/* On error put back dest into the trash */
+> -		if (ret < 0)
+> -			ip_vs_trash_put_dest(svc->ipvs, dest, dest->idle_start,
+> -					     false);
+> -		else
+> +		if (ret < 0) {
+> +			ip_vs_trash_put_back(svc->ipvs, dest);
+> +		} else {
+> +			/* need_gp matters only on dest edit, reinit it */
+> +			dest->need_gp = 0;
+> +
+>  			__ip_vs_update_dest(svc, dest, udest, 1);
+> +		}
+>  	} else {
+>  		/*
+>  		 * Allocate and initialize the dest structure
+> @@ -1636,7 +1693,7 @@ ip_vs_edit_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+>   *	Delete a destination (must be already unlinked from the service)
+>   */
+>  static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
+> -			     bool cleanup)
+> +			     struct list_head *dest_trash, bool cleanup)
+>  {
+>  	ip_vs_stop_estimator(ipvs, &dest->stats);
+>  
+> @@ -1645,7 +1702,7 @@ static void __ip_vs_del_dest(struct netns_ipvs *ipvs, struct ip_vs_dest *dest,
+>  	 */
+>  	ip_vs_rs_unhash(dest);
+>  
+> -	ip_vs_trash_put_dest(ipvs, dest, 0, cleanup);
+> +	ip_vs_trash_add_dest(ipvs, dest, 0, dest_trash);
+>  
+>  	/* Queue up delayed work to expire all no destination connections.
+>  	 * No-op when CONFIG_SYSCTL is disabled.
+> @@ -1695,6 +1752,7 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+>  {
+>  	struct ip_vs_dest *dest;
+>  	__be16 dport = udest->port;
+> +	LIST_HEAD(dest_trash);
+>  
+>  	/* We use function that requires RCU lock */
+>  	rcu_read_lock();
+> @@ -1714,7 +1772,9 @@ ip_vs_del_dest(struct ip_vs_service *svc, struct ip_vs_dest_user_kern *udest)
+>  	/*
+>  	 *	Delete the destination
+>  	 */
+> -	__ip_vs_del_dest(svc->ipvs, dest, false);
+> +	__ip_vs_del_dest(svc->ipvs, dest, &dest_trash, false);
+> +
+> +	ip_vs_trash_save_dests(svc->ipvs, &dest_trash, false);
+>  
+>  	return 0;
+>  }
+> @@ -2059,7 +2119,8 @@ ip_vs_edit_service(struct ip_vs_service *svc, struct ip_vs_service_user_kern *u)
+>   *	- The service must be unlinked, unlocked and not referenced!
+>   *	- We are called under _bh lock
+>   */
+> -static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
+> +static void __ip_vs_del_service(struct ip_vs_service *svc,
+> +				struct list_head *dest_trash, bool cleanup)
+>  {
+>  	struct ip_vs_dest *dest, *nxt;
+>  	struct ip_vs_scheduler *old_sched;
+> @@ -2093,7 +2154,7 @@ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
+>  	 */
+>  	list_for_each_entry_safe(dest, nxt, &svc->destinations, n_list) {
+>  		__ip_vs_unlink_dest(svc, dest, 0);
+> -		__ip_vs_del_dest(svc->ipvs, dest, cleanup);
+> +		__ip_vs_del_dest(svc->ipvs, dest, dest_trash, cleanup);
+>  	}
+>  
+>  	/*
+> @@ -2116,7 +2177,8 @@ static void __ip_vs_del_service(struct ip_vs_service *svc, bool cleanup)
+>  /*
+>   * Unlink a service from list and try to delete it if its refcnt reached 0
+>   */
+> -static void ip_vs_unlink_service(struct ip_vs_service *svc, bool cleanup)
+> +static void ip_vs_unlink_service(struct ip_vs_service *svc,
+> +				 struct list_head *dest_trash, bool cleanup)
+>  {
+>  	ip_vs_unregister_conntrack(svc);
+>  	/* Hold svc to avoid double release from dest_trash */
+> @@ -2126,7 +2188,7 @@ static void ip_vs_unlink_service(struct ip_vs_service *svc, bool cleanup)
+>  	 */
+>  	ip_vs_svc_unhash(svc);
+>  
+> -	__ip_vs_del_service(svc, cleanup);
+> +	__ip_vs_del_service(svc, dest_trash, cleanup);
+>  }
+>  
+>  /*
+> @@ -2136,12 +2198,14 @@ static int ip_vs_del_service(struct ip_vs_service *svc)
+>  {
+>  	struct netns_ipvs *ipvs;
+>  	struct ip_vs_rht *t, *p;
+> +	LIST_HEAD(dest_trash);
+>  	int ns;
+>  
+>  	if (svc == NULL)
+>  		return -EEXIST;
+>  	ipvs = svc->ipvs;
+> -	ip_vs_unlink_service(svc, false);
+> +	ip_vs_unlink_service(svc, &dest_trash, false);
+> +	ip_vs_trash_save_dests(ipvs, &dest_trash, false);
+>  
+>  	/* Drop the table if no more services */
+>  	ns = ip_vs_get_num_services(ipvs);
+> @@ -2192,6 +2256,7 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
+>  	struct hlist_bl_node *ne;
+>  	struct hlist_bl_node *e;
+>  	struct ip_vs_rht *t, *p;
+> +	LIST_HEAD(dest_trash);
+>  
+>  	/* Stop the resizer and drop the tables */
+>  	if (!test_and_set_bit(IP_VS_WORK_SVC_NORESIZE, &ipvs->work_flags))
+> @@ -2201,8 +2266,9 @@ static int ip_vs_flush(struct netns_ipvs *ipvs, bool cleanup)
+>  	if (ip_vs_get_num_services(ipvs)) {
+>  		ip_vs_rht_walk_buckets(ipvs->svc_table, head) {
+>  			hlist_bl_for_each_entry_safe(svc, e, ne, head, s_list)
+> -				ip_vs_unlink_service(svc, cleanup);
+> +				ip_vs_unlink_service(svc, &dest_trash, cleanup);
+>  		}
+> +		ip_vs_trash_save_dests(ipvs, &dest_trash, cleanup);
+>  	}
+>  
+>  	/* Unregister the hash table and release it after RCU grace period */
+> -- 
+> 2.53.0
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+
