@@ -1,51 +1,51 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.90
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=95.215.58.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794192998;
-	b=DTDptq4cwfN4WZ/ew8pV8nqIjTGYPq3ma7c9eolT7ATKgHf3zknMssSr+Kb2x2gZn/mx
-	 dqOBq5aWQGvMBT4bAOZRrixpK7hDM8D6nSDcOuiaArwI6haRmlkhSf+AkzlL6JYYsWJyz
-	 X9s+jamCy0jlT17sWVujoFuBLjtCAsQjacoYd9FY2tomnPj8sgEIgnIV0Gm1YG2+9jEvY
-	 1OW20U27spFNrBlc6LwqhAp4TNnM/MgNpWyUdKJ1b12u70DU8HiArXQFLZb1P4iNEaG3k
-	 Mmv615Kr3H/KDQ4jKHhyYlFBFmVHjl2kX70caN/AvcOaGCulPRw2DbbFMre8rxhdYIw==
+	t=1794193020;
+	b=3cWcC5MU2y9ob6y/BlQITUDo49FGz/sr39xVrcnhn6frUwEdIUO8B1aXJNnjD2vqh24l
+	 To26a2Ra4ncdx2mh6F3SuNf6iF9NHQhpeoJrW73q0Zg/f3whNKi2Cbnk6mNLeWLrschTo
+	 kwBpfLJ1jr9US6vdbW9S3fgbGMtDLlAuQL7S4ygKLo0z1OAoUF4QOCWDp2hzFLTS4cG9f
+	 dBc73N/QNbygeTc5eQ+vD1Zq8IaQM3kwdFu0AvPDUsansM6muFg7vAcJLMXVmR3CVhHe8
+	 Pa2vZJSJULRmDcRfjNKV4bGmoyjzle/1mNE9y93S32ZE3bD1LljqzTMxKlLY1Budbcw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794192998;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794193020;
 	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
 	 X-Mizu-Trace-ID:X-Migadu-Flow:From:To:Cc:Subject:Date:Message-ID:
 	 X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=x0JDGtGCXd7TffH/+d34YMn2ktB/SOhkBO9QkKhS8XA=;
-	b=Tc9rJBv8alNIldonZg6A3qByBQQQgAONALngEsJPvRYksKM49A/9BBNIK15zXY3zHWYY
-	 PDfZjhBNSwomgvvoLJt/HDNk3E9upcLYLCKHbiGFsS8fRdI9+PYRAsQeVOp9GEwEbtbRJ
-	 uJP3/nbF2OVyifvGUPxtaw1UjCk4kICpS5eZnIeYd3N+bxG47wnBlz0OEhQub8hvPQYxm
-	 a4E1UdBd1cYQCv7bLIP+8mj12LnOkR+ASDfiUUTP6gQZlAwmY4aKZ/KwPKJA9n3cU+5Jb
-	 c9YIkjMbRcAb/8PGmMVugzdex+NFXRKI12wW0JuTkfsAj9wQW9Y9PSKuCNauePXXUvg==
+	bh=amf3Y3vtqWCfA+hYsW3iaFHpj/KPEsqLUTq3odUhe94=;
+	b=5Hwy3pfkeTYOvoRq1mYtkdhkZH0L+VVh7d/wl8eIi0ocJXE6ZymiWwmYV+imA0p8B2bQ
+	 TCjlk5RFxF72SLEZiWK7z6BkcTHp8oToCRjbCJhLzlWzQivppDq54W0sf/IEJcoonFBt6
+	 bXVGS9v1+p1jPs5NK29msXMP/m/HsHCfAHheSfeRK3FTVgrJl7WWPa1RuxiOQ6eRVyKVv
+	 vgIDI6T4Dto8FOqaf3WX8VU62mf3Sa7G7YLdRlm1Rmsj8EAp4FAtD0/DGgBoEOEu+MRj4
+	 NG4KBlaMx9pFzbfbqemNrD69s8quZhYq7qtJPEsSDB8u7rA3L+NI9sqYQC2r2OkrpLg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=linux.dev;
 	spf=pass smtp.mailfrom=linux.dev;
-	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=g1lDsqiR;
-	arc=none smtp.remote-ip=91.218.175.90
-Received: from mta0.migadu.com (out-90.mta0.migadu.com [91.218.175.90])
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=n6+sH+Ns;
+	arc=none smtp.remote-ip=95.215.58.39
+Received: from mta1.migadu.com (out-39.mta1.migadu.com [95.215.58.39])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A0D8D606A333
-	for <lvs-devel@vger.kernel.org>; Mon,  9 Nov 2026 02:56:37 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A0D8D606A333
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4138B606A32A
+	for <lvs-devel@vger.kernel.org>; Mon,  9 Nov 2026 02:56:59 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4138B606A32A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=g1lDsqiR
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=n6+sH+Ns
 X-Envelope-To: lvs-devel@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=oYQ00QqKoEkMvDxebrBIGfEKZ3Gcw97sYPD1Al7A4CY=;
+DKIM-Signature: a=rsa-sha256; bh=gggsKdF+pSJpQv0nyo1SbJUQxyRR8b7X9hlpNF2qsEM=;
  c=simple/simple; d=linux.dev;
  h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1794192995; v=1; x=1794797795;
- b=g1lDsqiRSINm9ZEaABG2qZP+5s1BctYSAflnusynK6Z5qrpASmJlxemvHGJdiLbPOrJM/oqh
- 5SaPhl/akgvJyGDPWjhE2TSBoU16VCsh2818YLzaAa/6Qwy4bisPFL0ifMLGzfAk+HdqPuqX7xB
- nIPVjw5vYODGgnpVoPCItWVs=
+ t=1794193018; v=1; x=1794797818;
+ b=n6+sH+Ns42vQuuPh1M9IBHLusBfQG2hdiGYrRtTS2sxa+am2Yahzab+JT4kpQWsAwTQJBi/B
+ An+lIKaf4MsLr82tv0KvMad01v/w8AkaF9o146wk80sAz0SbphfN0I4pGCEprCcjN3XP8GPWOuK
+ xWcm3TgrFvX/XGbSmy0i2BcY=
 X-Envelope-To: lvs-devel@vger.kernel.org
-Received: by smtp.migadu.com with ESMTPS id bb9a3d38076780ee;
-	Mon, 09 Nov 2026 02:56:35 +0000
-X-Mizu-Trace-ID: bb9a3d38076780ee
+Received: by smtp.migadu.com with ESMTPS id 3ab2d1445e65b102;
+	Mon, 09 Nov 2026 02:56:58 +0000
+X-Mizu-Trace-ID: 3ab2d1445e65b102
 X-Migadu-Flow: FLOW_OUT
 From: Jiayuan Chen <jiayuan.chen@linux.dev>
 To: netdev@vger.kernel.org
@@ -86,9 +86,9 @@ Cc: Jiayuan Chen <jiayuan.chen@linux.dev>,
 	rds-devel@oss.oracle.com,
 	linux-sctp@vger.kernel.org,
 	linux-s390@vger.kernel.org
-Subject: [PATCH net-next 03/14] ipv6: annotate data-races around addrconf sysctls
-Date: Mon,  9 Nov 2026 10:52:02 +0800
-Message-ID: <20261109025425.328445-4-jiayuan.chen@linux.dev>
+Subject: [PATCH net-next 04/14] ipv6: annotate data-races around icmpv6 reply sysctls
+Date: Mon,  9 Nov 2026 10:52:03 +0800
+Message-ID: <20261109025425.328445-5-jiayuan.chen@linux.dev>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20261109025425.328445-1-jiayuan.chen@linux.dev>
 References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
@@ -103,190 +103,91 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The forwarding setting of conf/all, the per-device autoconf, accept_ra,
-accept_ra_min_lft, addr_gen_mode, ra_defrtr_metric, disable_ipv6 and mtu6
-settings, and the per-netns idgen_retries and idgen_delay, can be read
-concurrently with the sysctl handlers that update them with WRITE_ONCE().
-Add READ_ONCE() to the readers.
+icmpv6_echo_ignore_all, icmpv6_echo_ignore_multicast,
+icmpv6_echo_ignore_anycast, anycast_src_echo_reply and fwmark_reflect are
+read without any lock while their sysctl handlers update them with
+WRITE_ONCE(). Add READ_ONCE() to the readers.
 
-KCSAN reports it when net.ipv6.conf.<dev>.autoconf is changed while
-Router Advertisements are received on the device:
+KCSAN reports it when net.ipv6.icmp.echo_ignore_all is changed while
+ICMPv6 echo requests are received:
 
-  BUG: KCSAN: data-race in addrconf_prefix_rcv / do_proc_int_conv
+  BUG: KCSAN: data-race in icmpv6_rcv / proc_dou8vec_minmax
 
-  write (marked) to 0xffff8d7250116df4 of 4 bytes by task 767 on cpu 2:
-   do_proc_int_conv+0xa9/0xd0
-   proc_vec_conv+0x21/0x40
-   proc_vec+0x21e/0x6f0
-   proc_dointvec+0x16/0x30
+  write (marked) to 0xffffffff8ee2940d of 1 bytes by task 504 on cpu 0:
+   proc_dou8vec_minmax+0x1ab/0x1f0
    proc_sys_call_handler+0x282/0x3a0
    proc_sys_write+0x13/0x20
    ...
 
-  read to 0xffff8d7250116df4 of 4 bytes by interrupt on cpu 1:
-   addrconf_prefix_rcv+0x474/0xf00
-   ndisc_router_discovery+0xf4f/0x1f80
-   ndisc_rcv+0x2a2/0x3c0
-   icmpv6_rcv+0xb46/0xd40
+  read to 0xffffffff8ee2940d of 1 bytes by interrupt on cpu 3:
+   icmpv6_rcv+0x99d/0xd40
    ip6_protocol_deliver_rcu+0x787/0x9a0
    ip6_input_finish+0xb0/0x1b0
    ip6_input+0xa8/0x250
-   ip6_mc_input+0x249/0x780
-   ipv6_rcv+0x1b1/0x1c0
+   ipv6_rcv+0x14b/0x1c0
    __netif_receive_skb_one_core+0x8f/0xe0
    ...
 
-  value changed: 0x00000001 -> 0x00000000
+  value changed: 0x01 -> 0x00
 
 Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
 ---
- net/ipv6/addrconf.c | 22 ++++++++++++----------
- net/ipv6/ndisc.c    |  2 +-
- net/ipv6/route.c    |  8 ++++----
- 3 files changed, 17 insertions(+), 15 deletions(-)
+ include/net/ipv6.h |  2 +-
+ net/ipv6/icmp.c    | 10 +++++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
-index d9d13e78bf13b..40f94124641d4 100644
---- a/net/ipv6/addrconf.c
-+++ b/net/ipv6/addrconf.c
-@@ -1104,7 +1104,7 @@ ipv6_add_addr(struct inet6_dev *idev, struct ifa6_config *cfg,
- 		goto out;
- 	}
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index 579df1516d251..b77dc5c3ea268 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -199,7 +199,7 @@ struct sk_buff *ip6_frag_next(struct sk_buff *skb,
+ 			      struct ip6_frag_state *state);
  
--	if (idev->cnf.disable_ipv6) {
-+	if (READ_ONCE(idev->cnf.disable_ipv6)) {
- 		NL_SET_ERR_MSG_MOD(extack, "IPv6 is disabled on this device");
- 		err = -EACCES;
- 		goto out;
-@@ -2215,7 +2215,7 @@ void addrconf_dad_failure(struct sk_buff *skb, struct inet6_ifaddr *ifp)
- 			.scope = ifp->scope,
- 		};
+ #define IP6_REPLY_MARK(net, mark) \
+-	((net)->ipv6.sysctl.fwmark_reflect ? (mark) : 0)
++	(READ_ONCE((net)->ipv6.sysctl.fwmark_reflect) ? (mark) : 0)
  
--		if (retries > net->ipv6.sysctl.idgen_retries) {
-+		if (retries > READ_ONCE(net->ipv6.sysctl.idgen_retries)) {
- 			net_info_ratelimited("%s: privacy stable address generation failed because of DAD conflicts!\n",
- 					     ifp->idev->dev->name);
- 			goto errdad;
-@@ -2248,7 +2248,7 @@ void addrconf_dad_failure(struct sk_buff *skb, struct inet6_ifaddr *ifp)
- 		spin_unlock_bh(&ifp2->lock);
+ #include <net/sock.h>
  
- 		if (start_dad)
--			addrconf_mod_dad_work(ifp2, net->ipv6.sysctl.idgen_delay);
-+			addrconf_mod_dad_work(ifp2, READ_ONCE(net->ipv6.sysctl.idgen_delay));
- 		in6_ifa_put(ifp2);
- lock_errdad:
- 		spin_lock_bh(&ifp->lock);
-@@ -2706,8 +2706,10 @@ static void manage_tempaddrs(struct inet6_dev *idev,
+diff --git a/net/ipv6/icmp.c b/net/ipv6/icmp.c
+index a95b0351824f3..3e95b1191c4f2 100644
+--- a/net/ipv6/icmp.c
++++ b/net/ipv6/icmp.c
+@@ -938,17 +938,17 @@ static enum skb_drop_reason icmpv6_echo_reply(struct sk_buff *skb)
+ 	u8 type;
  
- static bool is_addr_mode_generate_stable(struct inet6_dev *idev)
- {
--	return idev->cnf.addr_gen_mode == IN6_ADDR_GEN_MODE_STABLE_PRIVACY ||
--	       idev->cnf.addr_gen_mode == IN6_ADDR_GEN_MODE_RANDOM;
-+	u32 mode = READ_ONCE(idev->cnf.addr_gen_mode);
-+
-+	return mode == IN6_ADDR_GEN_MODE_STABLE_PRIVACY ||
-+	       mode == IN6_ADDR_GEN_MODE_RANDOM;
- }
+ 	if (ipv6_addr_is_multicast(&ipv6_hdr(skb)->daddr) &&
+-	    net->ipv6.sysctl.icmpv6_echo_ignore_multicast)
++	    READ_ONCE(net->ipv6.sysctl.icmpv6_echo_ignore_multicast))
+ 		return reason;
  
- int addrconf_prefix_rcv_add_addr(struct net *net, struct net_device *dev,
-@@ -2735,7 +2737,7 @@ int addrconf_prefix_rcv_add_addr(struct net *net, struct net_device *dev,
- #ifdef CONFIG_IPV6_OPTIMISTIC_DAD
- 		if ((READ_ONCE(net->ipv6.devconf_all->optimistic_dad) ||
- 		     READ_ONCE(in6_dev->cnf.optimistic_dad)) &&
--		    !net->ipv6.devconf_all->forwarding && sllao)
-+		    !READ_ONCE(net->ipv6.devconf_all->forwarding) && sllao)
- 			cfg.ifa_flags |= IFA_F_OPTIMISTIC;
- #endif
+ 	saddr = &ipv6_hdr(skb)->daddr;
  
-@@ -2857,7 +2859,7 @@ void addrconf_prefix_rcv(struct net_device *dev, u8 *opt, int len, bool sllao)
- 		return;
- 	}
+ 	acast = ipv6_anycast_destination(skb_dst(skb), saddr);
+-	if (acast && net->ipv6.sysctl.icmpv6_echo_ignore_anycast)
++	if (acast && READ_ONCE(net->ipv6.sysctl.icmpv6_echo_ignore_anycast))
+ 		return reason;
  
--	if (valid_lft != 0 && valid_lft < in6_dev->cnf.accept_ra_min_lft)
-+	if (valid_lft != 0 && valid_lft < READ_ONCE(in6_dev->cnf.accept_ra_min_lft))
- 		goto put;
+ 	if (!ipv6_unicast_destination(skb) &&
+-	    !(net->ipv6.sysctl.anycast_src_echo_reply && acast))
++	    !(READ_ONCE(net->ipv6.sysctl.anycast_src_echo_reply) && acast))
+ 		saddr = NULL;
  
- 	/*
-@@ -2928,7 +2930,7 @@ void addrconf_prefix_rcv(struct net_device *dev, u8 *opt, int len, bool sllao)
- 	/* Try to figure out our local address for this prefix */
+ 	if (icmph->icmp6_type == ICMPV6_EXT_ECHO_REQUEST)
+@@ -1152,11 +1152,11 @@ static int icmpv6_rcv(struct sk_buff *skb)
  
- 	ignore_autoconf = READ_ONCE(in6_dev->cnf.ra_honor_pio_pflag) && pinfo->preferpd;
--	if (pinfo->autoconf && in6_dev->cnf.autoconf && !ignore_autoconf) {
-+	if (pinfo->autoconf && READ_ONCE(in6_dev->cnf.autoconf) && !ignore_autoconf) {
- 		struct in6_addr addr;
- 		bool tokenized = false, dev_addr_generated = false;
- 
-@@ -3434,7 +3436,7 @@ static int ipv6_generate_stable_address(struct in6_addr *address,
- 
- 	if (ipv6_reserved_interfaceid(temp)) {
- 		dad_count++;
--		if (dad_count > dev_net(idev->dev)->ipv6.sysctl.idgen_retries)
-+		if (dad_count > READ_ONCE(dev_net(idev->dev)->ipv6.sysctl.idgen_retries))
- 			return -1;
- 		goto retry;
- 	}
-@@ -3805,7 +3807,7 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
- 			 * when the interface up, the changed MTU must be
- 			 * reflected in the idev as well as routers.
- 			 */
--			if (idev->cnf.mtu6 != dev->mtu &&
-+			if (READ_ONCE(idev->cnf.mtu6) != dev->mtu &&
- 			    dev->mtu >= IPV6_MIN_MTU) {
- 				rt6_mtu_change(dev, dev->mtu);
- 				WRITE_ONCE(idev->cnf.mtu6, dev->mtu);
-diff --git a/net/ipv6/ndisc.c b/net/ipv6/ndisc.c
-index 0ed1a619372bf..b69e6d66e8b1a 100644
---- a/net/ipv6/ndisc.c
-+++ b/net/ipv6/ndisc.c
-@@ -1375,7 +1375,7 @@ static enum skb_drop_reason ndisc_router_discovery(struct sk_buff *skb)
- 		}
- 	}
- 	/* Set default route metric as specified by user */
--	defrtr_usr_metric = in6_dev->cnf.ra_defrtr_metric;
-+	defrtr_usr_metric = READ_ONCE(in6_dev->cnf.ra_defrtr_metric);
- 	/* delete the route if lifetime is 0 or if metric needs change */
- 	if (rt && (lifetime == 0 || rt->fib6_metric != defrtr_usr_metric)) {
- 		ip6_del_rt_reason(net, rt,
-diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index 04098cf32eabe..91a003417697c 100644
---- a/net/ipv6/route.c
-+++ b/net/ipv6/route.c
-@@ -2065,7 +2065,7 @@ static bool rt6_mtu_change_route_allowed(struct inet6_dev *idev,
- 	if (dmtu >= mtu)
- 		return true;
- 
--	if (dmtu == idev->cnf.mtu6)
-+	if (dmtu == READ_ONCE(idev->cnf.mtu6))
- 		return true;
- 
- 	return false;
-@@ -3666,7 +3666,7 @@ int fib6_nh_init(struct net *net, struct fib6_nh *fib6_nh,
- 	if (!dev)
- 		goto out;
- 
--	if (!idev || idev->cnf.disable_ipv6) {
-+	if (!idev || READ_ONCE(idev->cnf.disable_ipv6)) {
- 		NL_SET_ERR_MSG(extack, "IPv6 is disabled on nexthop device");
- 		err = -EACCES;
- 		goto out;
-@@ -4533,7 +4533,7 @@ static void __rt6_purge_dflt_routers(struct net *net,
- 		struct inet6_dev *idev = dev ? __in6_dev_get(dev) : NULL;
- 
- 		if (rt->fib6_flags & (RTF_DEFAULT | RTF_ADDRCONF) &&
--		    (!idev || idev->cnf.accept_ra != 2) &&
-+		    (!idev || READ_ONCE(idev->cnf.accept_ra) != 2) &&
- 		    fib6_info_hold_safe(rt)) {
- 			rcu_read_unlock();
- 			ip6_del_rt(net, rt, false);
-@@ -5075,7 +5075,7 @@ static int fib6_nh_mtu_change(struct fib6_nh *nh, void *_arg)
- 			return 0;
- 
- 		if (mtu >= arg->mtu ||
--		    (mtu < arg->mtu && mtu == idev->cnf.mtu6))
-+		    (mtu < arg->mtu && mtu == READ_ONCE(idev->cnf.mtu6)))
- 			fib6_metric_set(f6i, RTAX_MTU, arg->mtu);
- 
- 		spin_lock_bh(&rt6_exception_lock);
+ 	switch (type) {
+ 	case ICMPV6_ECHO_REQUEST:
+-		if (!net->ipv6.sysctl.icmpv6_echo_ignore_all)
++		if (!READ_ONCE(net->ipv6.sysctl.icmpv6_echo_ignore_all))
+ 			reason = icmpv6_echo_reply(skb);
+ 		break;
+ 	case ICMPV6_EXT_ECHO_REQUEST:
+-		if (!net->ipv6.sysctl.icmpv6_echo_ignore_all &&
++		if (!READ_ONCE(net->ipv6.sysctl.icmpv6_echo_ignore_all) &&
+ 		    READ_ONCE(net->ipv4.sysctl_icmp_echo_enable_probe))
+ 			reason = icmpv6_echo_reply(skb);
+ 		break;
 -- 
 2.43.0
 
