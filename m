@@ -1,51 +1,51 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=95.215.58.45
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.38
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794193255;
-	b=gQM8oWZynuwT3t0s2hSQBGMlKl4IKvcoiqWk4RET9xsCOGUdUiV3GUQ4PK2NyvGuULpg
-	 68uxhyPxcpurDLcv1+GA8hDBFro2TEVQZhRiLUXapdl1ZTli3b2exjfrlpYH/KIrSVsPC
-	 sPr/OBwPtkAV1aJDTuwh6wGptw4y9ud0LIwXnmnaY9hb6CqPYDtNbB6CG0Rf//DNQMe+A
-	 MKKbQn1QBbH2ttYwsgOchGDMA+ICGSoPfkTt+qmVNOEt74mMEOzuNV6l2CxPYpfiCMzRU
-	 DtIPquK+4hSLLruTv8kF5ti9DVgcKDwzm4w6HIQOn57veK8ewmgjXI/f1dlU52WJ/HQ==
+	t=1794193279;
+	b=pSJU6io2B56Pu/anJA2yp2mVe0iiN3vSDCL4jWgFlxc6Tkp/gXxe8c5VINUEk+ABLdk6
+	 5S6Fi64wSQMBAOXJYIDkJOJp+ufbjdIwlJWYKDuyRK4OFPo267S9RfzAuLQ56H9ryipQS
+	 BznuE1Jr/beouwhrimZx913Xri7xxl/j/ylxIC5sywBgiPvTUz2LVv1c85UBQZ1aQYsQC
+	 vTDelqbAqiJQ0DtiK5+35HSmkGAaR07Y4rCubbV5A7uGvwTHflSC3ZKpljpsSwg++BdmU
+	 /rXGKmgDcnVr087rfzNhbbD7W6ReH4ADDxsNci0niZa4VaBSttRLXD8Ze2kCV3T2Gtw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794193255;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794193279;
 	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
 	 X-Mizu-Trace-ID:X-Migadu-Flow:From:To:Cc:Subject:Date:Message-ID:
 	 X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=wYVZ0P5/eAsoYUi0aFWJ9LmLt55byvw4m/iS5WUHZOc=;
-	b=CjeyjyIFFBT/CZs/uZRopo2ibESw74IXwVsQXVfrAl0GuR0iTqP8s5VzCPEUtXjn4E7U
-	 T96E0EbIbGBB0UXSkcY5bITNYD/KCNJxXSUNM8m0dhYouLQFYSGagbg2nWHqGpPaImRLL
-	 peKAFViVzzlcLEXqxU94YPfVyiCe+XkpvjX4tc5ZfDmcPmc3cjKUbvMYCNbWpWjjjOdTn
-	 5HN5mExvzoPSGp0FZR5e7AtjUnITxFpiY1DPlIAtYdc3TksiioiIuTaPiMUAQqno6IFux
-	 Ytd0VnnagUI1LtCxPP/Ks/SxnTyMuWGvNOc0kwyZBNmlfK8FXmRM3IScQGSfAm+N/iA==
+	bh=ElpF8lyMTNM3CY/Q7H+PHvM2mganMySTQf0T9s8n4s8=;
+	b=3AFMURm9UULCU4xAvRSo0Z3ssSPL9yDqN1DNuFlnhbOSEVYKeOX7kVOA2GfOjVHQJMB+
+	 Y/qsExY73Mc5MrIWH35v6eJDBYcSPawKPmyeoXacsKCXFni2wrmI+DHrB1fKzJxHic3g8
+	 rIhyoHER5qGy2pzi92ZxP/oRFrbWeBcOmmwEhe0f5TxJ92l0SdWEZfHdPgErKvuL361ZJ
+	 xpu8CWmYyUl4Gmm/Xspo/gNgwmA/MF7TKRaRBPzA0L3kmDL26QTX4CevyGA+UzNoo3JCt
+	 Sw+eQH9Cdx8r9HelQQwlbwPJleB+dCVZHgBO7Xo2mlrxBmF9/mk/RDI1v328Ui/tzkw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=linux.dev;
 	spf=pass smtp.mailfrom=linux.dev;
-	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=Wbo6wBni;
-	arc=none smtp.remote-ip=95.215.58.45
-Received: from mta1.migadu.com (out-45.mta1.migadu.com [95.215.58.45])
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=GrEN9fRA;
+	arc=none smtp.remote-ip=91.218.175.38
+Received: from mta0.migadu.com (out-38.mta0.migadu.com [91.218.175.38])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A940E606A323
-	for <lvs-devel@vger.kernel.org>; Mon,  9 Nov 2026 03:00:54 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A940E606A323
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 227CE606A322
+	for <lvs-devel@vger.kernel.org>; Mon,  9 Nov 2026 03:01:17 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 227CE606A322
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=Wbo6wBni
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=GrEN9fRA
 X-Envelope-To: lvs-devel@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=k7dL8zfVh+rV28GwLPocCPAc9UOjmFfDkZielwri1g8=;
+DKIM-Signature: a=rsa-sha256; bh=Ih9CwEp2gbLM2jko2WNdjiHmZUiAMosQAIGReidnZCw=;
  c=simple/simple; d=linux.dev;
  h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1794193253; v=1; x=1794798053;
- b=Wbo6wBni0g4SPXV+Wq2l95nRdJ7C5I2DGYKrW9ZJ9+VpVOGDrcXugmljCv1P2EkBARxDBwre
- kqFZ4DqviKzlddwnaM9KT8NNc8HYGB1gxAU4quDvz8p7dXLOO4JxahDU6ZctAmZ+nOjXQRx0QTR
- IMdT/XdVaKonvMm/O1Dn6qXQ=
+ t=1794193276; v=1; x=1794798076;
+ b=GrEN9fRA1xbsRTlRLhGI+gs7+LrSm0/oTo7akPy2plqWUJAglSn+tryBRS0yZN4/g4GSh4DF
+ e73PdRhBWE05fz5VxKJKb0s2x1ucz8Ot02pyCjvWLZk4amvUZzwNCQ7m6iJObZEL9O6Dp5exw4C
+ w3ESKNokQD75M5T+rYmf4/Fc=
 X-Envelope-To: lvs-devel@vger.kernel.org
-Received: by smtp.migadu.com with ESMTPS id 70de1fc2d87f3c36;
-	Mon, 09 Nov 2026 03:00:49 +0000
-X-Mizu-Trace-ID: 70de1fc2d87f3c36
+Received: by smtp.migadu.com with ESMTPS id 9046617f223305a1;
+	Mon, 09 Nov 2026 03:01:15 +0000
+X-Mizu-Trace-ID: 9046617f223305a1
 X-Migadu-Flow: FLOW_OUT
 From: Jiayuan Chen <jiayuan.chen@linux.dev>
 To: netdev@vger.kernel.org
@@ -86,9 +86,9 @@ Cc: Jiayuan Chen <jiayuan.chen@linux.dev>,
 	rds-devel@oss.oracle.com,
 	linux-sctp@vger.kernel.org,
 	linux-s390@vger.kernel.org
-Subject: [PATCH net-next 13/14] netfilter: conntrack: annotate data-races around timeout and tcp sysctls
-Date: Mon,  9 Nov 2026 10:52:12 +0800
-Message-ID: <20261109025425.328445-14-jiayuan.chen@linux.dev>
+Subject: [PATCH net-next 14/14] netfilter: cttimeout: annotate data-races around the default timeouts
+Date: Mon,  9 Nov 2026 10:52:13 +0800
+Message-ID: <20261109025425.328445-15-jiayuan.chen@linux.dev>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20261109025425.328445-1-jiayuan.chen@linux.dev>
 References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
@@ -103,264 +103,388 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The nf_conntrack_*_timeout* knobs, nf_flowtable_tcp_timeout,
-nf_flowtable_udp_timeout and nf_conntrack_tcp_{loose,be_liberal,
-max_retrans,ignore_invalid_rst} are read in the packet path without any
-lock while their sysctl handlers update them with WRITE_ONCE(). Add
-READ_ONCE() to the readers.
+cttimeout_default_set() and cttimeout_default_get() hand the per-netns
+default timeout arrays to the l4proto nlattr_to_obj() and obj_to_nlattr()
+callbacks, which write and read them with plain accesses while the
+nf_conntrack_*_timeout* sysctl handlers update the same fields with
+WRITE_ONCE(). Use WRITE_ONCE() and READ_ONCE() in the callbacks.
 
-KCSAN reports it when nf_conntrack_udp_timeout is changed while UDP
-traffic goes through conntrack:
+KCSAN reports both sides when the UDP default timeouts are set over
+nfnetlink while UDP traffic goes through conntrack, or while the sysctl
+is written:
 
-  BUG: KCSAN: data-race in nf_conntrack_udp_packet / proc_int_u2k_conv_uop
+  BUG: KCSAN: data-race in nf_conntrack_udp_packet / udp_timeout_nlattr_to_obj
 
-  write (marked) to 0xffffffffb0829bc4 of 4 bytes by task 436 on cpu 0:
+  write to 0xffffffffb0829bc4 of 4 bytes by task 457 on cpu 1:
+   udp_timeout_nlattr_to_obj+0x3b/0xf0
+   ctnl_timeout_parse_policy+0xc0/0x100
+   cttimeout_default_set+0x8f/0xc0
+   nfnetlink_rcv_msg+0x64c/0xc90
+   netlink_rcv_skb+0x9c/0x1b0
+   nfnetlink_rcv+0x9b/0x1e0
+   netlink_unicast+0x418/0x5c0
+   netlink_sendmsg+0x3fc/0x750
+   ...
+
+  read to 0xffffffffb0829bc4 of 4 bytes by task 459 on cpu 0:
+   nf_conntrack_udp_packet+0x27b/0x550
+   nf_conntrack_in+0x767/0xb20
+   ipv4_conntrack_local+0xb0/0x120
+   nf_hook_slow+0x7e/0x180
+   ...
+
+  value changed: 0x00001e46 -> 0x00001d4c
+
+  BUG: KCSAN: data-race in proc_int_u2k_conv_uop / udp_timeout_nlattr_to_obj
+
+  write (marked) to 0xffffffffb0829bc4 of 4 bytes by task 475 on cpu 1:
    proc_int_u2k_conv_uop+0x92/0xa0
-   sysctl_u2k_int_conv_hz+0x21/0x30
-   proc_int_conv+0xdf/0x130
-   do_proc_int_conv_jiffies+0x1b/0x30
-   proc_vec_conv+0x21/0x40
-   proc_vec+0x21e/0x6f0
-   proc_dointvec_conv+0x21/0x40
+   ...
    proc_dointvec_jiffies+0x15/0x30
    proc_sys_call_handler+0x282/0x3a0
    proc_sys_write+0x13/0x20
    ...
 
-  read to 0xffffffffb0829bc4 of 4 bytes by task 439 on cpu 3:
-   nf_conntrack_udp_packet+0x27b/0x550
-   nf_conntrack_in+0x767/0xb20
-   ipv4_conntrack_local+0xb0/0x120
-   nf_hook_slow+0x7e/0x180
-   nf_hook+0x1fa/0x4e0
-   __ip_local_out+0x1ac/0x3f0
-   ip_send_skb+0x31/0x120
-   udp_send_skb+0x4bf/0x640
-   udp_sendmsg+0xdec/0x18a0
+  read to 0xffffffffb0829bc4 of 4 bytes by task 474 on cpu 0:
+   udp_timeout_nlattr_to_obj+0x2c/0xf0
+   ctnl_timeout_parse_policy+0xc0/0x100
+   cttimeout_default_set+0x8f/0xc0
+   nfnetlink_rcv_msg+0x64c/0xc90
    ...
 
   value changed: 0x00001d4c -> 0x00001e46
 
 Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
 ---
- net/netfilter/nf_conntrack_core.c         |  2 +-
- net/netfilter/nf_conntrack_proto_gre.c    |  4 +--
- net/netfilter/nf_conntrack_proto_icmp.c   |  2 +-
- net/netfilter/nf_conntrack_proto_icmpv6.c |  2 +-
- net/netfilter/nf_conntrack_proto_sctp.c   |  2 +-
- net/netfilter/nf_conntrack_proto_tcp.c    | 37 ++++++++++++-----------
- net/netfilter/nf_conntrack_proto_udp.c    |  6 ++--
- net/netfilter/nf_flow_table_core.c        |  4 +--
- 8 files changed, 31 insertions(+), 28 deletions(-)
+ net/netfilter/nf_conntrack_proto_generic.c |  8 +--
+ net/netfilter/nf_conntrack_proto_gre.c     | 16 ++---
+ net/netfilter/nf_conntrack_proto_icmp.c    |  8 +--
+ net/netfilter/nf_conntrack_proto_icmpv6.c  |  8 +--
+ net/netfilter/nf_conntrack_proto_sctp.c    |  9 +--
+ net/netfilter/nf_conntrack_proto_tcp.c     | 71 +++++++++++-----------
+ net/netfilter/nf_conntrack_proto_udp.c     | 16 ++---
+ 7 files changed, 69 insertions(+), 67 deletions(-)
 
-diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core.c
-index 5c7054753722e..8e332e407529e 100644
---- a/net/netfilter/nf_conntrack_core.c
-+++ b/net/netfilter/nf_conntrack_core.c
-@@ -1959,7 +1959,7 @@ static int generic_packet(struct nf_conn *ct, struct sk_buff *skb,
- 	if (!timeout)
- 		timeout = &nf_generic_pernet(nf_ct_net(ct))->timeout;
+diff --git a/net/netfilter/nf_conntrack_proto_generic.c b/net/netfilter/nf_conntrack_proto_generic.c
+index cb260eb3d012c..08b8d44c9f402 100644
+--- a/net/netfilter/nf_conntrack_proto_generic.c
++++ b/net/netfilter/nf_conntrack_proto_generic.c
+@@ -27,11 +27,11 @@ static int generic_timeout_nlattr_to_obj(struct nlattr *tb[],
+ 		timeout = &gn->timeout;
  
--	nf_ct_refresh_acct(ct, ctinfo, skb, *timeout);
-+	nf_ct_refresh_acct(ct, ctinfo, skb, READ_ONCE(*timeout));
- 	return NF_ACCEPT;
- }
+ 	if (tb[CTA_TIMEOUT_GENERIC_TIMEOUT])
+-		*timeout =
+-		    ntohl(nla_get_be32(tb[CTA_TIMEOUT_GENERIC_TIMEOUT])) * HZ;
++		WRITE_ONCE(*timeout,
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_GENERIC_TIMEOUT])) * HZ);
+ 	else {
+ 		/* Set default generic timeout. */
+-		*timeout = gn->timeout;
++		WRITE_ONCE(*timeout, READ_ONCE(gn->timeout));
+ 	}
  
+ 	return 0;
+@@ -42,7 +42,7 @@ generic_timeout_obj_to_nlattr(struct sk_buff *skb, const void *data)
+ {
+ 	const unsigned int *timeout = data;
+ 
+-	if (nla_put_be32(skb, CTA_TIMEOUT_GENERIC_TIMEOUT, htonl(*timeout / HZ)))
++	if (nla_put_be32(skb, CTA_TIMEOUT_GENERIC_TIMEOUT, htonl(READ_ONCE(*timeout) / HZ)))
+ 		goto nla_put_failure;
+ 
+ 	return 0;
 diff --git a/net/netfilter/nf_conntrack_proto_gre.c b/net/netfilter/nf_conntrack_proto_gre.c
-index 616ab1e2fc5ed..d8bca1e29797b 100644
+index d8bca1e29797b..e1b99c5a7c7a2 100644
 --- a/net/netfilter/nf_conntrack_proto_gre.c
 +++ b/net/netfilter/nf_conntrack_proto_gre.c
-@@ -279,8 +279,8 @@ int nf_conntrack_gre_packet(struct nf_conn *ct,
+@@ -318,16 +318,16 @@ static int gre_timeout_nlattr_to_obj(struct nlattr *tb[],
+ 	if (!timeouts)
+ 		timeouts = gre_get_timeouts(net);
+ 	/* set default timeouts for GRE. */
+-	timeouts[GRE_CT_UNREPLIED] = net_gre->timeouts[GRE_CT_UNREPLIED];
+-	timeouts[GRE_CT_REPLIED] = net_gre->timeouts[GRE_CT_REPLIED];
++	WRITE_ONCE(timeouts[GRE_CT_UNREPLIED], READ_ONCE(net_gre->timeouts[GRE_CT_UNREPLIED]));
++	WRITE_ONCE(timeouts[GRE_CT_REPLIED], READ_ONCE(net_gre->timeouts[GRE_CT_REPLIED]));
  
- 		/* initialize to sane value.  Ideally a conntrack helper
- 		 * (e.g. in case of pptp) is increasing them */
--		ct->proto.gre.stream_timeout = timeouts[GRE_CT_REPLIED];
--		ct->proto.gre.timeout = timeouts[GRE_CT_UNREPLIED];
-+		ct->proto.gre.stream_timeout = READ_ONCE(timeouts[GRE_CT_REPLIED]);
-+		ct->proto.gre.timeout = READ_ONCE(timeouts[GRE_CT_UNREPLIED]);
+ 	if (tb[CTA_TIMEOUT_GRE_UNREPLIED]) {
+-		timeouts[GRE_CT_UNREPLIED] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_GRE_UNREPLIED])) * HZ;
++		WRITE_ONCE(timeouts[GRE_CT_UNREPLIED],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_GRE_UNREPLIED])) * HZ);
  	}
+ 	if (tb[CTA_TIMEOUT_GRE_REPLIED]) {
+-		timeouts[GRE_CT_REPLIED] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_GRE_REPLIED])) * HZ;
++		WRITE_ONCE(timeouts[GRE_CT_REPLIED],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_GRE_REPLIED])) * HZ);
+ 	}
+ 	return 0;
+ }
+@@ -338,9 +338,9 @@ gre_timeout_obj_to_nlattr(struct sk_buff *skb, const void *data)
+ 	const unsigned int *timeouts = data;
  
- 	status = READ_ONCE(ct->status);
+ 	if (nla_put_be32(skb, CTA_TIMEOUT_GRE_UNREPLIED,
+-			 htonl(timeouts[GRE_CT_UNREPLIED] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[GRE_CT_UNREPLIED]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_GRE_REPLIED,
+-			 htonl(timeouts[GRE_CT_REPLIED] / HZ)))
++			 htonl(READ_ONCE(timeouts[GRE_CT_REPLIED]) / HZ)))
+ 		goto nla_put_failure;
+ 	return 0;
+ 
 diff --git a/net/netfilter/nf_conntrack_proto_icmp.c b/net/netfilter/nf_conntrack_proto_icmp.c
-index 330c6d83d670a..0f6ef0443c6fa 100644
+index 0f6ef0443c6fa..0d8499b54f878 100644
 --- a/net/netfilter/nf_conntrack_proto_icmp.c
 +++ b/net/netfilter/nf_conntrack_proto_icmp.c
-@@ -98,7 +98,7 @@ int nf_conntrack_icmp_packet(struct nf_conn *ct,
- 	if (!timeout)
- 		timeout = &nf_icmp_pernet(nf_ct_net(ct))->timeout;
- 
--	nf_ct_refresh_acct(ct, ctinfo, skb, *timeout);
-+	nf_ct_refresh_acct(ct, ctinfo, skb, READ_ONCE(*timeout));
- 	return NF_ACCEPT;
+@@ -327,11 +327,11 @@ static int icmp_timeout_nlattr_to_obj(struct nlattr *tb[],
+ 	if (tb[CTA_TIMEOUT_ICMP_TIMEOUT]) {
+ 		if (!timeout)
+ 			timeout = &in->timeout;
+-		*timeout =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_ICMP_TIMEOUT])) * HZ;
++		WRITE_ONCE(*timeout,
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_ICMP_TIMEOUT])) * HZ);
+ 	} else if (timeout) {
+ 		/* Set default ICMP timeout. */
+-		*timeout = in->timeout;
++		WRITE_ONCE(*timeout, READ_ONCE(in->timeout));
+ 	}
+ 	return 0;
  }
+@@ -341,7 +341,7 @@ icmp_timeout_obj_to_nlattr(struct sk_buff *skb, const void *data)
+ {
+ 	const unsigned int *timeout = data;
+ 
+-	if (nla_put_be32(skb, CTA_TIMEOUT_ICMP_TIMEOUT, htonl(*timeout / HZ)))
++	if (nla_put_be32(skb, CTA_TIMEOUT_ICMP_TIMEOUT, htonl(READ_ONCE(*timeout) / HZ)))
+ 		goto nla_put_failure;
+ 	return 0;
  
 diff --git a/net/netfilter/nf_conntrack_proto_icmpv6.c b/net/netfilter/nf_conntrack_proto_icmpv6.c
-index 803221781de39..e4eebf13950cb 100644
+index e4eebf13950cb..6ed0f7ba60c3d 100644
 --- a/net/netfilter/nf_conntrack_proto_icmpv6.c
 +++ b/net/netfilter/nf_conntrack_proto_icmpv6.c
-@@ -118,7 +118,7 @@ int nf_conntrack_icmpv6_packet(struct nf_conn *ct,
- 	/* Do not immediately delete the connection after the first
- 	   successful reply to avoid excessive conntrackd traffic
- 	   and also to handle correctly ICMP echo reply duplicates. */
--	nf_ct_refresh_acct(ct, ctinfo, skb, *timeout);
-+	nf_ct_refresh_acct(ct, ctinfo, skb, READ_ONCE(*timeout));
- 
- 	return NF_ACCEPT;
+@@ -305,11 +305,11 @@ static int icmpv6_timeout_nlattr_to_obj(struct nlattr *tb[],
+ 	if (!timeout)
+ 		timeout = icmpv6_get_timeouts(net);
+ 	if (tb[CTA_TIMEOUT_ICMPV6_TIMEOUT]) {
+-		*timeout =
+-		    ntohl(nla_get_be32(tb[CTA_TIMEOUT_ICMPV6_TIMEOUT])) * HZ;
++		WRITE_ONCE(*timeout,
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_ICMPV6_TIMEOUT])) * HZ);
+ 	} else {
+ 		/* Set default ICMPv6 timeout. */
+-		*timeout = in->timeout;
++		WRITE_ONCE(*timeout, READ_ONCE(in->timeout));
+ 	}
+ 	return 0;
  }
+@@ -319,7 +319,7 @@ icmpv6_timeout_obj_to_nlattr(struct sk_buff *skb, const void *data)
+ {
+ 	const unsigned int *timeout = data;
+ 
+-	if (nla_put_be32(skb, CTA_TIMEOUT_ICMPV6_TIMEOUT, htonl(*timeout / HZ)))
++	if (nla_put_be32(skb, CTA_TIMEOUT_ICMPV6_TIMEOUT, htonl(READ_ONCE(*timeout) / HZ)))
+ 		goto nla_put_failure;
+ 	return 0;
+ 
 diff --git a/net/netfilter/nf_conntrack_proto_sctp.c b/net/netfilter/nf_conntrack_proto_sctp.c
-index 49ec8478746ad..047bf69113bf9 100644
+index 047bf69113bf9..ea6dd1ef3df89 100644
 --- a/net/netfilter/nf_conntrack_proto_sctp.c
 +++ b/net/netfilter/nf_conntrack_proto_sctp.c
-@@ -523,7 +523,7 @@ int nf_conntrack_sctp_packet(struct nf_conn *ct,
- 	if (!timeouts)
- 		timeouts = nf_sctp_pernet(nf_ct_net(ct))->timeouts;
+@@ -650,16 +650,17 @@ static int sctp_timeout_nlattr_to_obj(struct nlattr *tb[],
  
--	nf_ct_refresh_acct(ct, ctinfo, skb, timeouts[new_state]);
-+	nf_ct_refresh_acct(ct, ctinfo, skb, READ_ONCE(timeouts[new_state]));
+ 	/* set default SCTP timeouts. */
+ 	for (i=0; i<SCTP_CONNTRACK_MAX; i++)
+-		timeouts[i] = sn->timeouts[i];
++		WRITE_ONCE(timeouts[i], READ_ONCE(sn->timeouts[i]));
  
- 	return NF_ACCEPT;
+ 	/* there's a 1:1 mapping between attributes and protocol states. */
+ 	for (i=CTA_TIMEOUT_SCTP_UNSPEC+1; i<CTA_TIMEOUT_SCTP_MAX+1; i++) {
+ 		if (tb[i]) {
+-			timeouts[i] = ntohl(nla_get_be32(tb[i])) * HZ;
++			WRITE_ONCE(timeouts[i], ntohl(nla_get_be32(tb[i])) * HZ);
+ 		}
+ 	}
  
+-	timeouts[CTA_TIMEOUT_SCTP_UNSPEC] = timeouts[CTA_TIMEOUT_SCTP_CLOSED];
++	WRITE_ONCE(timeouts[CTA_TIMEOUT_SCTP_UNSPEC],
++		   READ_ONCE(timeouts[CTA_TIMEOUT_SCTP_CLOSED]));
+ 	return 0;
+ }
+ 
+@@ -670,7 +671,7 @@ sctp_timeout_obj_to_nlattr(struct sk_buff *skb, const void *data)
+ 	int i;
+ 
+ 	for (i=CTA_TIMEOUT_SCTP_UNSPEC+1; i<CTA_TIMEOUT_SCTP_MAX+1; i++) {
+-	        if (nla_put_be32(skb, i, htonl(timeouts[i] / HZ)))
++		if (nla_put_be32(skb, i, htonl(READ_ONCE(timeouts[i]) / HZ)))
+ 			goto nla_put_failure;
+ 	}
+         return 0;
 diff --git a/net/netfilter/nf_conntrack_proto_tcp.c b/net/netfilter/nf_conntrack_proto_tcp.c
-index b859e409f0796..0c61a16fca400 100644
+index 0c61a16fca400..e1db372b9e530 100644
 --- a/net/netfilter/nf_conntrack_proto_tcp.c
 +++ b/net/netfilter/nf_conntrack_proto_tcp.c
-@@ -505,7 +505,7 @@ nf_tcp_store_invalid(const struct nf_conn *ct,
- 	const struct nf_tcp_net *tn = nf_tcp_pernet(nf_ct_net(ct));
- 	bool be_liberal;
- 
--	be_liberal = sender->flags & IP_CT_TCP_FLAG_BE_LIBERAL || tn->tcp_be_liberal;
-+	be_liberal = sender->flags & IP_CT_TCP_FLAG_BE_LIBERAL || READ_ONCE(tn->tcp_be_liberal);
- 	if (be_liberal)
- 		return NFCT_TCP_ACCEPT;
- 
-@@ -904,7 +904,7 @@ static noinline bool tcp_new(struct nf_conn *ct, const struct sk_buff *skb,
- 			ct->proto.tcp.seen[0].td_end;
- 
- 		tcp_options(skb, dataoff, th, &ct->proto.tcp.seen[0]);
--	} else if (tn->tcp_loose == 0) {
-+	} else if (READ_ONCE(tn->tcp_loose) == 0) {
- 		/* Don't try to pick up connections. */
- 		return false;
- 	} else {
-@@ -979,7 +979,7 @@ void nf_conntrack_tcp_set_closing(struct nf_conn *ct)
+@@ -1523,55 +1523,56 @@ static int tcp_timeout_nlattr_to_obj(struct nlattr *tb[],
  		timeouts = tn->timeouts;
+ 	/* set default TCP timeouts. */
+ 	for (i=0; i<TCP_CONNTRACK_TIMEOUT_MAX; i++)
+-		timeouts[i] = tn->timeouts[i];
++		WRITE_ONCE(timeouts[i], READ_ONCE(tn->timeouts[i]));
+ 
+ 	if (tb[CTA_TIMEOUT_TCP_SYN_SENT]) {
+-		timeouts[TCP_CONNTRACK_SYN_SENT] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_SYN_SENT]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_SYN_SENT],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_SYN_SENT])) * HZ);
  	}
  
--	timeout = timeouts[TCP_CONNTRACK_CLOSE];
-+	timeout = READ_ONCE(timeouts[TCP_CONNTRACK_CLOSE]);
- 	WRITE_ONCE(ct->timeout, timeout + nfct_time_stamp);
+ 	if (tb[CTA_TIMEOUT_TCP_SYN_RECV]) {
+-		timeouts[TCP_CONNTRACK_SYN_RECV] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_SYN_RECV]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_SYN_RECV],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_SYN_RECV])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_ESTABLISHED]) {
+-		timeouts[TCP_CONNTRACK_ESTABLISHED] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_ESTABLISHED]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_ESTABLISHED],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_ESTABLISHED])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_FIN_WAIT]) {
+-		timeouts[TCP_CONNTRACK_FIN_WAIT] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_FIN_WAIT]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_FIN_WAIT],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_FIN_WAIT])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_CLOSE_WAIT]) {
+-		timeouts[TCP_CONNTRACK_CLOSE_WAIT] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_CLOSE_WAIT]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_CLOSE_WAIT],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_CLOSE_WAIT])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_LAST_ACK]) {
+-		timeouts[TCP_CONNTRACK_LAST_ACK] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_LAST_ACK]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_LAST_ACK],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_LAST_ACK])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_TIME_WAIT]) {
+-		timeouts[TCP_CONNTRACK_TIME_WAIT] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_TIME_WAIT]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_TIME_WAIT],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_TIME_WAIT])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_CLOSE]) {
+-		timeouts[TCP_CONNTRACK_CLOSE] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_CLOSE]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_CLOSE],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_CLOSE])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_SYN_SENT2]) {
+-		timeouts[TCP_CONNTRACK_SYN_SENT2] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_SYN_SENT2]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_SYN_SENT2],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_SYN_SENT2])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_RETRANS]) {
+-		timeouts[TCP_CONNTRACK_RETRANS] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_RETRANS]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_RETRANS],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_RETRANS])) * HZ);
+ 	}
+ 	if (tb[CTA_TIMEOUT_TCP_UNACK]) {
+-		timeouts[TCP_CONNTRACK_UNACK] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_UNACK]))*HZ;
++		WRITE_ONCE(timeouts[TCP_CONNTRACK_UNACK],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_TCP_UNACK])) * HZ);
+ 	}
  
- 	spin_unlock_bh(&ct->lock);
-@@ -1010,6 +1010,7 @@ int nf_conntrack_tcp_packet(struct nf_conn *ct,
- 	struct nf_tcp_invalid_log log = {};
- 	unsigned int index, *timeouts;
- 	bool lowered_timeout = false;
-+	unsigned int retrans, unack;
- 	enum nf_ct_tcp_action res;
- 	enum ip_conntrack_dir dir;
- 	const struct tcphdr *th;
-@@ -1235,7 +1236,7 @@ int nf_conntrack_tcp_packet(struct nf_conn *ct,
- 				break;
+-	timeouts[CTA_TIMEOUT_TCP_UNSPEC] = timeouts[CTA_TIMEOUT_TCP_SYN_SENT];
++	WRITE_ONCE(timeouts[CTA_TIMEOUT_TCP_UNSPEC],
++		   READ_ONCE(timeouts[CTA_TIMEOUT_TCP_SYN_SENT]));
+ 	return 0;
+ }
  
- 			if (before(seq, ct->proto.tcp.seen[!dir].td_maxack) &&
--			    !tn->tcp_ignore_invalid_rst) {
-+			    !READ_ONCE(tn->tcp_ignore_invalid_rst)) {
- 				/* Invalid RST  */
- 				spin_unlock_bh(&ct->lock);
- 				nf_ct_l4proto_log_invalid(skb, ct, state, "invalid rst");
-@@ -1322,22 +1323,24 @@ int nf_conntrack_tcp_packet(struct nf_conn *ct,
- 	if (!timeouts)
- 		timeouts = tn->timeouts;
+@@ -1581,27 +1582,27 @@ tcp_timeout_obj_to_nlattr(struct sk_buff *skb, const void *data)
+ 	const unsigned int *timeouts = data;
  
--	if (ct->proto.tcp.retrans >= tn->tcp_max_retrans &&
--	    timeouts[new_state] > timeouts[TCP_CONNTRACK_RETRANS])
--		timeout = timeouts[TCP_CONNTRACK_RETRANS];
-+	timeout = READ_ONCE(timeouts[new_state]);
-+	retrans = READ_ONCE(timeouts[TCP_CONNTRACK_RETRANS]);
-+	unack = READ_ONCE(timeouts[TCP_CONNTRACK_UNACK]);
-+
-+	if (ct->proto.tcp.retrans >= READ_ONCE(tn->tcp_max_retrans) &&
-+	    timeout > retrans)
-+		timeout = retrans;
- 	else if (unlikely(index == TCP_RST_SET &&
- 			  new_state == TCP_CONNTRACK_ESTABLISHED) &&
--		 timeouts[new_state] > timeouts[TCP_CONNTRACK_UNACK])
--		timeout = timeouts[TCP_CONNTRACK_UNACK];
-+		 timeout > unack)
-+		timeout = unack;
- 	else if ((ct->proto.tcp.seen[0].flags | ct->proto.tcp.seen[1].flags) &
- 		 IP_CT_TCP_FLAG_DATA_UNACKNOWLEDGED &&
--		 timeouts[new_state] > timeouts[TCP_CONNTRACK_UNACK])
--		timeout = timeouts[TCP_CONNTRACK_UNACK];
-+		 timeout > unack)
-+		timeout = unack;
- 	else if (ct->proto.tcp.last_win == 0 &&
--		 timeouts[new_state] > timeouts[TCP_CONNTRACK_RETRANS])
--		timeout = timeouts[TCP_CONNTRACK_RETRANS];
--	else
--		timeout = timeouts[new_state];
-+		 timeout > retrans)
-+		timeout = retrans;
- 	spin_unlock_bh(&ct->lock);
+ 	if (nla_put_be32(skb, CTA_TIMEOUT_TCP_SYN_SENT,
+-			htonl(timeouts[TCP_CONNTRACK_SYN_SENT] / HZ)) ||
++			htonl(READ_ONCE(timeouts[TCP_CONNTRACK_SYN_SENT]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_SYN_RECV,
+-			 htonl(timeouts[TCP_CONNTRACK_SYN_RECV] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_SYN_RECV]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_ESTABLISHED,
+-			 htonl(timeouts[TCP_CONNTRACK_ESTABLISHED] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_ESTABLISHED]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_FIN_WAIT,
+-			 htonl(timeouts[TCP_CONNTRACK_FIN_WAIT] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_FIN_WAIT]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_CLOSE_WAIT,
+-			 htonl(timeouts[TCP_CONNTRACK_CLOSE_WAIT] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_CLOSE_WAIT]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_LAST_ACK,
+-			 htonl(timeouts[TCP_CONNTRACK_LAST_ACK] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_LAST_ACK]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_TIME_WAIT,
+-			 htonl(timeouts[TCP_CONNTRACK_TIME_WAIT] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_TIME_WAIT]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_CLOSE,
+-			 htonl(timeouts[TCP_CONNTRACK_CLOSE] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_CLOSE]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_SYN_SENT2,
+-			 htonl(timeouts[TCP_CONNTRACK_SYN_SENT2] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_SYN_SENT2]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_RETRANS,
+-			 htonl(timeouts[TCP_CONNTRACK_RETRANS] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_RETRANS]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_TCP_UNACK,
+-			 htonl(timeouts[TCP_CONNTRACK_UNACK] / HZ)))
++			 htonl(READ_ONCE(timeouts[TCP_CONNTRACK_UNACK]) / HZ)))
+ 		goto nla_put_failure;
+ 	return 0;
  
- 	if (new_state != old_state)
-@@ -1366,8 +1369,8 @@ int nf_conntrack_tcp_packet(struct nf_conn *ct,
- 		 * pickup with loose=1. Avoid large ESTABLISHED timeout.
- 		 */
- 		if (new_state == TCP_CONNTRACK_ESTABLISHED &&
--		    timeout > timeouts[TCP_CONNTRACK_UNACK])
--			timeout = timeouts[TCP_CONNTRACK_UNACK];
-+		    timeout > unack)
-+			timeout = unack;
- 	} else if (!test_bit(IPS_ASSURED_BIT, &ct->status)
- 		   && (old_state == TCP_CONNTRACK_SYN_RECV
- 		       || old_state == TCP_CONNTRACK_ESTABLISHED)
 diff --git a/net/netfilter/nf_conntrack_proto_udp.c b/net/netfilter/nf_conntrack_proto_udp.c
-index 9ea4062752238..99eedaa2b1183 100644
+index 99eedaa2b1183..777b21da3bcff 100644
 --- a/net/netfilter/nf_conntrack_proto_udp.c
 +++ b/net/netfilter/nf_conntrack_proto_udp.c
-@@ -116,12 +116,12 @@ int nf_conntrack_udp_packet(struct nf_conn *ct,
- 	 * stream. Set Assured.
- 	 */
- 	if (status & IPS_SEEN_REPLY) {
--		unsigned long extra = timeouts[UDP_CT_UNREPLIED];
-+		unsigned long extra = READ_ONCE(timeouts[UDP_CT_UNREPLIED]);
- 		bool stream = false;
+@@ -155,16 +155,16 @@ static int udp_timeout_nlattr_to_obj(struct nlattr *tb[],
+ 		timeouts = un->timeouts;
  
- 		/* Still active after two seconds? Extend timeout. */
- 		if (time_after(jiffies, ct->proto.udp.stream_ts)) {
--			extra = timeouts[UDP_CT_REPLIED];
-+			extra = READ_ONCE(timeouts[UDP_CT_REPLIED]);
- 			stream = (status & IPS_ASSURED) == 0;
- 		}
+ 	/* set default timeouts for UDP. */
+-	timeouts[UDP_CT_UNREPLIED] = un->timeouts[UDP_CT_UNREPLIED];
+-	timeouts[UDP_CT_REPLIED] = un->timeouts[UDP_CT_REPLIED];
++	WRITE_ONCE(timeouts[UDP_CT_UNREPLIED], READ_ONCE(un->timeouts[UDP_CT_UNREPLIED]));
++	WRITE_ONCE(timeouts[UDP_CT_REPLIED], READ_ONCE(un->timeouts[UDP_CT_REPLIED]));
  
-@@ -135,7 +135,7 @@ int nf_conntrack_udp_packet(struct nf_conn *ct,
- 		if (stream && !test_and_set_bit(IPS_ASSURED_BIT, &ct->status))
- 			nf_conntrack_event_cache(IPCT_ASSURED, ct);
- 	} else {
--		nf_ct_refresh_acct(ct, ctinfo, skb, timeouts[UDP_CT_UNREPLIED]);
-+		nf_ct_refresh_acct(ct, ctinfo, skb, READ_ONCE(timeouts[UDP_CT_UNREPLIED]));
+ 	if (tb[CTA_TIMEOUT_UDP_UNREPLIED]) {
+-		timeouts[UDP_CT_UNREPLIED] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_UDP_UNREPLIED])) * HZ;
++		WRITE_ONCE(timeouts[UDP_CT_UNREPLIED],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_UDP_UNREPLIED])) * HZ);
  	}
- 	return NF_ACCEPT;
+ 	if (tb[CTA_TIMEOUT_UDP_REPLIED]) {
+-		timeouts[UDP_CT_REPLIED] =
+-			ntohl(nla_get_be32(tb[CTA_TIMEOUT_UDP_REPLIED])) * HZ;
++		WRITE_ONCE(timeouts[UDP_CT_REPLIED],
++			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_UDP_REPLIED])) * HZ);
+ 	}
+ 	return 0;
  }
-diff --git a/net/netfilter/nf_flow_table_core.c b/net/netfilter/nf_flow_table_core.c
-index 0d72dc8ae47a1..fa25a641e9c38 100644
---- a/net/netfilter/nf_flow_table_core.c
-+++ b/net/netfilter/nf_flow_table_core.c
-@@ -322,11 +322,11 @@ unsigned long flow_offload_get_timeout(struct flow_offload *flow)
- 	if (l4num == IPPROTO_TCP) {
- 		struct nf_tcp_net *tn = nf_tcp_pernet(net);
+@@ -175,9 +175,9 @@ udp_timeout_obj_to_nlattr(struct sk_buff *skb, const void *data)
+ 	const unsigned int *timeouts = data;
  
--		timeout = tn->offload_timeout;
-+		timeout = READ_ONCE(tn->offload_timeout);
- 	} else if (l4num == IPPROTO_UDP) {
- 		struct nf_udp_net *tn = nf_udp_pernet(net);
+ 	if (nla_put_be32(skb, CTA_TIMEOUT_UDP_UNREPLIED,
+-			 htonl(timeouts[UDP_CT_UNREPLIED] / HZ)) ||
++			 htonl(READ_ONCE(timeouts[UDP_CT_UNREPLIED]) / HZ)) ||
+ 	    nla_put_be32(skb, CTA_TIMEOUT_UDP_REPLIED,
+-			 htonl(timeouts[UDP_CT_REPLIED] / HZ)))
++			 htonl(READ_ONCE(timeouts[UDP_CT_REPLIED]) / HZ)))
+ 		goto nla_put_failure;
+ 	return 0;
  
--		timeout = tn->offload_timeout;
-+		timeout = READ_ONCE(tn->offload_timeout);
- 	}
- 
- 	return timeout;
 -- 
 2.43.0
 
