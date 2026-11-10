@@ -1,47 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794290005;
-	b=qOr9y5Y6E9Yxgd01PkjJPz/2O0Rz2E3USy4PiCmW2S1QVKfUKtjWPft5o3CzJZO9ZnVA
-	 /JVwi4a/G8RLs0HwWfW/J0I09FZ0oK7dih224q/j4z2VTgfn3r5Z8L/7rsMN/2nvQUxel
-	 VDg5nU/MgJEIE6PK+7+VOIqTRirea6CvZb8/L9XK4D6t2VmQOdMbaz5O/JPJ6V7Nmj8KU
-	 TxYAxCJDSYv6by+Q8WQ3vibNPYDRyvTa9PDw0do+Xfo25NMNiEvC4pmp+Chik0p3NwnNa
-	 SyA9ubFoQOK9ceJjPJFwkml30l8juwO0Wt4PV7dZ2l/rAAlr4b+vWwUpAOEW0xmFBWA==
+	t=1794290010;
+	b=EqbPdJYpyADYVifRCwkK7IHjR31v20+UwsnP5sThUtx+/CK8ZLQF8WQ6lIU30o83KJoO
+	 b9guRVp+lGxc08wMGf//hqgb9zi+ph1MsQsjxI0GVeJykn673MOPKiBQ9tV215hWEfQuu
+	 QFNDt5Fcey6uWktTbjrB/C/pcqfZPYyp/id+1k9vv0XovUVhzGjYd2pAfQbts+IbpTkEy
+	 ssreaKri334ezK2AUOUeASWvEWMiXgGYknSSoY/V/v9A30SrLAbzNndrSWC683HEhluzZ
+	 aBGi5ZfYIVENgdSs2lzkx3Chi+Bx+/Vvu9DlQERuK6Ab2/uC5X4/rdRRbWMWaiyimMw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794290005;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794290010;
 	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
 	 In-Reply-To:References:X-sashiko-severity:Content-Type:
 	 Content-Transfer-Encoding:MIME-Version;
-	bh=IEvI2+HGRQSQwwXEoUXz61hyv+7ERi7ROzclaXDj8MY=;
-	b=kExT4zhN+mKwF25OXi8P9FKwNOeAfd6mkV++5AiIRlcZNtJo+sNJAPh+5zEP5v8TW7p6
-	 T2vS63TY5n8CF78HPHHsyj3FCCnmBw3gHKIXF9DpEYDRfbWQ3p2s1B88UWGaFfv7Tby8I
-	 QzZebI2HdagCiHDYlc8EyfVLPHBzThH1rcmaV2h2PKLvh2NZjGxkI1jp66l1UJlXMuAzk
-	 U0I802fwVLbS+N5w5YW4t8lGnGNLjZhIENo/FnRpkUeoErqdZ859RPDF5U8hV0OBvOdNw
-	 csWkFVfbNgQY+nujMYX3bBm1RHcsgEK2M5QrpVMU3E7GDdSGkvFvPNHfqSekCXVGi5Q==
+	bh=8V0k+iw19zvXaLESLiauhTFUIPKFwj+4KEkYMPQAdqc=;
+	b=nywPOrWVA5Fg55/BZkKygu412b+wxHIwCdRWH9GYGlu9819BqoHbJ1Yzvf63xUQRHqUU
+	 CTpexQEXBjvKis4mbAxadnrZqd6pgCVb9L5/zGQf/AGIDadTff7/xbcjqANJlz550lazJ
+	 s78koLcQqlyHoZiLXNpECOZ3jozAboQZ4DBE5U2VWIhKt6BWQWL2inZudO/Ofz8StxkWT
+	 uFNCccAgvd6gjxD3yn6+WGLDo9kUTSqVWe10kT/C9MJbOwzsFBNQOMzDA9Lp2iDOKJMSb
+	 nk9grGdB68ee5/C0r9mpS5IjJXfRG3IuuFXnipKHXd3UNy48Iki5s5xJUJ7UY45DDew==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CoUQzSEQ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CbDlQSck;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6681606A335;
-	Tue, 10 Nov 2026 05:53:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2BBB660A383F;
+	Tue, 10 Nov 2026 05:53:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CoUQzSEQ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 778821F008A7;
-	Tue, 10 Nov 2026 05:53:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CbDlQSck
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B6FCD1F008A5;
+	Tue, 10 Nov 2026 05:53:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794290004;
-	bh=IEvI2+HGRQSQwwXEoUXz61hyv+7ERi7ROzclaXDj8MY=;
+	s=k20260515; t=1794290009;
+	bh=8V0k+iw19zvXaLESLiauhTFUIPKFwj+4KEkYMPQAdqc=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=CoUQzSEQTFsiUFEBrAu/IGmQWrGWSXQdQx6L/DIXwh6UsasCpoFiwKCJ1CMZsCwPN
-	 iZV5M9wDhTuxQaWHfH9/RM3cElzIof2L5D7wNDrVeKmH4se53TNqXby7JG3WchTGuf
-	 p2R2u3kphTsDbhYbkr9uMI03M/qt5jUQP6WeRgYhS23RGWXexWptFzhwPT0VZlIpSi
-	 gMhcCjEL7UcgYtpYn9DIU2QRQLq2xHJht5PhVgUix2seAdqnRbzH03M9aVASDDr/BN
-	 zuq02UKTINXLwCMu/NIPbTFwFM+kCT4bACV/MmuLHzOolDFtpSHzGyrMfa+AjnnSUj
-	 BvsDVcv2VnzmQ==
-Subject:
- Re: [PATCH net-next 06/14] sctp: annotate data-races around sctp sysctls
+	b=CbDlQScksFDvh8HswxMT3tPBBs7R8XnTHT5ameNeUHFadHwC7aJYkIKS6hddhg7lS
+	 JJuEyxEq7mbF16KPolFw4Bby4uq1VZ8vkd9AxspBcb8oODjFIvva5EJVhwZH//yZId
+	 EiRA1cMNkue4zvVQCbC/jDlJxWU05Gkh9w2cJxOhodHgjmv8FcF3yZN/r2vVj+kUxQ
+	 PGzpTN8Q7wdD3av8OisjnFDpQ1Jwg1Cr2R31Ro+0i4Gv7n2Ar8QY7YQZq1nfcMpW2N
+	 hXctadhrHsLvI5rYQ7qekHpE4V/TrtCsEhPXJbEniLz+QvI+OYHssweWRJ6vnjkUa7
+	 euuR2CfgVCD4g==
+Subject: Re: [PATCH net-next 14/14] netfilter: cttimeout: annotate data-races
+ around the default timeouts
 From: netdev-bot+sashiko@kernel.org
 To: jiayuan.chen@linux.dev
 Cc: netdev@vger.kernel.org, dsahern@kernel.org, idosch@nvidia.com,
@@ -58,11 +58,11 @@ Cc: netdev@vger.kernel.org, dsahern@kernel.org, idosch@nvidia.com,
  lvs-devel@vger.kernel.org, linux-rdma@vger.kernel.org,
  rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
  linux-s390@vger.kernel.org
-Date: Tue, 10 Nov 2026 05:53:22 +0000
-Message-ID: <179429000207.994134.10637780638316929795@kernel.org>
-In-Reply-To: <20261109025425.328445-7-jiayuan.chen@linux.dev>
-References: <20261109025425.328445-7-jiayuan.chen@linux.dev>
-X-sashiko-severity: High
+Date: Tue, 10 Nov 2026 05:53:27 +0000
+Message-ID: <179429000729.994134.16108041301574145842@kernel.org>
+In-Reply-To: <20261109025425.328445-15-jiayuan.chen@linux.dev>
+References: <20261109025425.328445-15-jiayuan.chen@linux.dev>
+X-sashiko-severity: Medium
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailing-List: lvs-devel@vger.kernel.org
@@ -78,7 +78,7 @@ MIME-Version: 1.0
 Thank you for your contribution! Sashiko AI review found 1 potential
 issue(s) to consider.
 
-Critical: 0 · High: 1 · Medium: 0 · Low: 0
+Critical: 0 · High: 0 · Medium: 1 · Low: 0
 
 If you believe none of the issues are legitimate, please reply to each
 issue of Medium severity or higher and explain why the AI is wrong.
@@ -86,100 +86,97 @@ If any of them are legitimate and you plan to respin, please let patchwork
 know by including "pw-bot: cr" as a separate line at the end of your reply
 (one such reply per series is enough).
 
-- [High] The fix is incomplete inside the same sysctl handlers it
-  changes.
+- [Medium] A concurrent sysctl write to a default conntrack timeout can
+  still be silently undone.
 
 --
 
-sctp: annotate data-races around sctp sysctls
+netfilter: cttimeout: annotate data-races around the default timeouts
 
-This commit adds READ_ONCE() to readers of many per-netns sctp sysctl
-fields. It also converts the plain stores in the rto_min, rto_max,
-udp_port, probe_interval, auth_enable and cookie_hmac_alg handlers to
-WRITE_ONCE().
+This commit changes the l4proto nlattr_to_obj() and obj_to_nlattr()
+timeout callbacks to use WRITE_ONCE() and READ_ONCE() instead of plain
+accesses. It targets races between cttimeout_default_set() and
+cttimeout_default_get(), the conntrack packet path, and the
+nf_conntrack_*_timeout* sysctl handlers, which all touch the same
+per-netns default timeout arrays.
 
-> diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-> index 2b94c211427de..8a84ae3272d24 100644
-> --- a/net/sctp/sysctl.c
-> +++ b/net/sctp/sysctl.c
-> @@ -402,11 +402,11 @@ static int proc_sctp_do_hmac_alg(const struct ctl_table *ctl, int write,
->  		if (ret)
->  			return ret;
->  		if (!strcmp(tmp, "sha256")) {
-> -			net->sctp.cookie_auth_enable = 1;
-> +			WRITE_ONCE(net->sctp.cookie_auth_enable, 1);
->  			return 0;
->  		}
->  		if (!strcmp(tmp, "none")) {
-> -			net->sctp.cookie_auth_enable = 0;
-> +			WRITE_ONCE(net->sctp.cookie_auth_enable, 0);
->  			return 0;
->  		}
->  		return -EINVAL;
-> @@ -441,7 +441,7 @@ static int proc_sctp_do_rto_min(const struct ctl_table *ctl, int write,
->  		if (new_value > max || new_value < min)
->  			return -EINVAL;
+> diff --git a/net/netfilter/nf_conntrack_proto_udp.c b/net/netfilter/nf_conntrack_proto_udp.c
+> index 99eedaa2b1183..777b21da3bcff 100644
+> --- a/net/netfilter/nf_conntrack_proto_udp.c
+> +++ b/net/netfilter/nf_conntrack_proto_udp.c
+> @@ -155,16 +155,16 @@ static int udp_timeout_nlattr_to_obj(struct nlattr *tb[],
+>  		timeouts = un->timeouts;
 >  
-> -		net->sctp.rto_min = new_value;
-> +		WRITE_ONCE(net->sctp.rto_min, new_value);
->  	}
->  
->  	return ret;
-> @@ -469,7 +469,7 @@ static int proc_sctp_do_rto_max(const struct ctl_table *ctl, int write,
->  		if (new_value > max || new_value < min)
->  			return -EINVAL;
->  
-> -		net->sctp.rto_max = new_value;
-> +		WRITE_ONCE(net->sctp.rto_max, new_value);
->  	}
->  
->  	return ret;
+>  	/* set default timeouts for UDP. */
+> -	timeouts[UDP_CT_UNREPLIED] = un->timeouts[UDP_CT_UNREPLIED];
+> -	timeouts[UDP_CT_REPLIED] = un->timeouts[UDP_CT_REPLIED];
+> +	WRITE_ONCE(timeouts[UDP_CT_UNREPLIED], READ_ONCE(un->timeouts[UDP_CT_UNREPLIED]));
+> +	WRITE_ONCE(timeouts[UDP_CT_REPLIED], READ_ONCE(un->timeouts[UDP_CT_REPLIED]));
 
-[Severity: High]
-Do the handlers this patch edits still contain plain loads of these same
-fields?
+[Severity: Medium]
 
-proc_sctp_do_rto_min() reads rto_max through extra2 to bound the new
-value. proc_sctp_do_rto_max() reads rto_min through extra1 in the same
-way:
+Can a concurrent sysctl write still be lost here?
 
-net/sctp/sysctl.c:proc_sctp_do_rto_min() {
-	...
-	unsigned int min = *(unsigned int *) ctl->extra1;
-	unsigned int max = *(unsigned int *) ctl->extra2;
-	...
+cttimeout_default_set() passes a NULL destination:
+
+net/netfilter/nfnetlink_cttimeout.c:cttimeout_default_set() {
+    ...
+	ret = ctnl_timeout_parse_policy(NULL, l4proto, info->net,
+					cda[CTA_TIMEOUT_DATA]);
+    ...
 }
 
-sctp_sysctl_net_register() points these at the live per-netns fields. The
-static sctp_net_table does the same for init_net:
+So udp_timeout_nlattr_to_obj() sets timeouts to un->timeouts, and the
+default copy turns into a self-copy of the live per-netns array:
 
-	table[SCTP_RTO_MIN_IDX].extra2 = &net->sctp.rto_max;
-	table[SCTP_RTO_MAX_IDX].extra1 = &net->sctp.rto_min;
+	WRITE_ONCE(un->timeouts[UDP_CT_REPLIED],
+		   READ_ONCE(un->timeouts[UDP_CT_REPLIED]));
 
-So when writes to /proc/sys/net/sctp/rto_min and rto_max run at the same
-time, proc_sctp_do_rto_min() does a plain read of rto_max while
-proc_sctp_do_rto_max() does WRITE_ONCE(net->sctp.rto_max, ...). The same
-thing happens in the other direction for rto_min. Nothing serializes
-these two handlers against each other.
+That is still a separate load and store. The sysctl handler writes the
+same field through proc_dointvec_jiffies() and does not take the nfnl
+mutex. Take a request that carries only CTA_TIMEOUT_UDP_UNREPLIED, sent
+while nf_conntrack_udp_timeout_stream is being written:
 
-The read branch of proc_sctp_do_hmac_alg() also still loads
-cookie_auth_enable without READ_ONCE():
+CPU0 (IPCTNL_MSG_TIMEOUT_DEFAULT_SET)
+  old = READ_ONCE(un->timeouts[UDP_CT_REPLIED])
 
-	if (net->sctp.cookie_auth_enable)
-		tbl.data = (char *)"sha256";
-	else
-		tbl.data = (char *)"none";
+CPU1 (sysctl write)
+  WRITE_ONCE(un->timeouts[UDP_CT_REPLIED], new)
 
-This can race with the WRITE_ONCE() stores above when cookie_hmac_alg is
-read and written at the same time.
+CPU0
+  WRITE_ONCE(un->timeouts[UDP_CT_REPLIED], old)
 
-The commit message lists rto_min, rto_max and the cookie_hmac_alg handler
-among the races being closed. The readers of these fields in
-sctp_init_sock() now use READ_ONCE().
+The sysctl value gets reverted, even though the netlink request never
+named that attribute.
 
-Should these three loads in the handlers use READ_ONCE() too? Otherwise
-KCSAN can still report a marked write racing with a plain read on these
-fields.
+The second KCSAN splat in the commit message (proc_int_u2k_conv_uop vs
+udp_timeout_nlattr_to_obj) comes from this access pair. Once both sides
+are marked, KCSAN stops reporting it, but the update can still be lost.
+
+The same self-copy happens in these places:
+
+  tcp_timeout_nlattr_to_obj(), where timeouts = tn->timeouts and the
+  loop covers all TCP_CONNTRACK_TIMEOUT_MAX entries
+  sctp_timeout_nlattr_to_obj(), where timeouts = sn->timeouts
+  gre_timeout_nlattr_to_obj(), where timeouts = gre_get_timeouts(net)
+  the else branch of generic_timeout_nlattr_to_obj(), when timeout is
+  &gn->timeout
+  the else branch of icmpv6_timeout_nlattr_to_obj(), when timeout
+  falls back to icmpv6_get_timeouts(net)
+
+When the destination already points at the per-netns array, could the
+default copy be skipped, so that fields missing from the request are
+never stored?
+
+>  
+>  	if (tb[CTA_TIMEOUT_UDP_UNREPLIED]) {
+> -		timeouts[UDP_CT_UNREPLIED] =
+> -			ntohl(nla_get_be32(tb[CTA_TIMEOUT_UDP_UNREPLIED])) * HZ;
+> +		WRITE_ONCE(timeouts[UDP_CT_UNREPLIED],
+> +			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_UDP_UNREPLIED])) * HZ);
+>  	}
+
+[ ... ]
 
 -- 
 Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261109025425.328445-1-jiayuan.chen%40linux.dev
