@@ -1,47 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794290000;
-	b=KKxBg+BwNx0M0ohQrO6dQb8xcsiPEy+WnGx1P58xzWrbS9rTpCv0IpWMiI7Xb/qtBl/O
-	 aex8ySMgJBfoKRwzco4xgxNaCRhnfV7x2tVVNCOOLzpw9PPoyeI/mq5RUB4DkShpgTwqq
-	 2wXIQQdWybTHl5NJA/HKnJtzMeV3EELcZHGAMTjDDM0smdG4JPaqDkS0ak7NCSZjktqAK
-	 petx8+iwx5eSIyaHdvBwa3G4KUrddmtJFEXK1PR7W7JUQh6GN8Ya88XDIj87ezvpm3Fb+
-	 Oz5zaFoyJTfCud03FYLS+1es11nFONjW0w+Pc2HDiic1YEi4M7nqpOyyHAkH6xMB0yg==
+	t=1794290002;
+	b=ruFyiVAorYR8G3eUoKoV4RGY/9jnXZQzl0qopjQ/TXhvf43EKfa/PmCtdOIVWE9K2gPC
+	 NXo2NpP/Hx4hmn+6F5lcSxhfqUofzM5361EGCkG+0u60Bf7e3YwGPY5E7trJsUQNkhIOV
+	 B9qB8EMU2Vn3Wl+ZTXKKCiE74FOxR/u2pNEwz5woKGr/+xD0X6vyLd+yU88r+hrEcC0V4
+	 jy3Gdgi4sfcDPqJ6pBIiY2xNF+LI1gRA14vYmKi4i2ZuEitmMU6pT4ZnqIrb5ou4P9qzP
+	 szc1mMDi1NZEGjRrbplMZ4C+uqyNkMHpoZxMIucXu29fEyRm+b+AhzgjqE8CWRZBMKA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794290000;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794290002;
 	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
 	 In-Reply-To:References:X-sashiko-severity:Content-Type:
 	 Content-Transfer-Encoding:MIME-Version;
-	bh=Z89xSOnIYbQe/BnbwEDddihQE8DlZZ6KBDFpfIcDInE=;
-	b=E7UQK56IF1CRdYnM2A0egTNzONHiwrTEYb/J6XQh6yb2v1c21FpFqQOCJDCk2+8v3r+a
-	 FvKz52ZgaUti7bWWjlPDdPb+XgUGk4AK76Pb0HHzpWloyoy9O23yWSbA4IZ9FH3HoM/I9
-	 ozc+JlLeSySpIdK4OcjKMFzVrpM4CK19kR5OPA6rxvmFL+7hQiB0YQfi3Sc/6McOphzv9
-	 FEWjL6vDdjl66HfnMmkUE2oId1VlrDEtu7YNmgf7Gc6U2jSrUN/lWN8yr2JZk+tm5lYKB
-	 GSoRvT0VMQkdZp8rVJ9dewMn4elK2VtfmH05Qp9KyysnkbpKBv+RIadgnm53ZsMd57Q==
+	bh=DgnkblPUAdInAdDfF7a0qcWBWPo4AF1IpWWinoSNKRs=;
+	b=TIb55+KFeFLF/YWvuLUX8w0+DgvCR8HrCGoUQrRhPRNUsnJmJUmwxekC24EKKTJWZQPB
+	 rjeFtaikQaXwuue/s7IASpIkfgrh4Of5fZaX3jTIRFYaiJJZAB+peFLazw1OXI0MqKSSg
+	 ixgTVASba3GYp22CSqezqAI1oaairnZsMgWlRxgU1mvg7cT1LiTf750SvfDv3RWWwKvms
+	 3PaIJJ04nGeP/3RQU9wvgci+wUSejOPSHCQiNTZh72J+Qgb/+QysmcCvKCs4jeff1sY4l
+	 DCRa/bpjcJUZLj6yY1bGobBYAMINsccuSltPWN8XhapjdYuTz98PSCP9Jra5L1t6/Gw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lyQ9UJ+R;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=L+RlZw02;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C70C2606A33D;
-	Tue, 10 Nov 2026 05:53:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4ABC960A2625;
+	Tue, 10 Nov 2026 05:53:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lyQ9UJ+R
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 97FC11F008A1;
-	Tue, 10 Nov 2026 05:53:17 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=L+RlZw02
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0CCAE1F008AB;
+	Tue, 10 Nov 2026 05:53:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794289999;
-	bh=Z89xSOnIYbQe/BnbwEDddihQE8DlZZ6KBDFpfIcDInE=;
+	s=k20260515; t=1794290001;
+	bh=DgnkblPUAdInAdDfF7a0qcWBWPo4AF1IpWWinoSNKRs=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=lyQ9UJ+RnJfZYHoAs6Z6tYh7JPfwTK3ToP1JPzFXHVxRoGly7DdXrxmH8BkTgETl/
-	 Obeh0mUbgS/9wHFArLQHNJbDUBgCKXQSlvTaWY79Ji4XmGotyU05XuFkzwhC4WBCzj
-	 +9+UuLPufHMh9G0g5ohqhboSCWLSpUGD7a+jna9Fs/VkP+pzpv5mAlQUTLJJFd4I+q
-	 e8dDiUk75aoT2UJ9hFCSJWvRtlwGTmKa8naEaX8es02v59SLHeqnzJq9+z6rhjZ5wq
-	 k3Pv1LDYHv/WqQJZFk3Wj3opFF2+oCRjqFjIG4XzRUq5ucUrD7lUfqbJ+GtqEZNDS1
-	 wzIkaWWQN7pGw==
+	b=L+RlZw02s2tHFAgXUOo1ss6RtAiJpPDuX9q8gR5V998lg0k3k5SS5iGahU2lrFJE2
+	 O+cEseoTjA5Q9aWojMoej8Cg4AP9ifW5b0H6ydx/d8ePG4phkKbg7/4NPXaxM+nX6R
+	 lmp+Uhk3UUh40h2YtVzxwM6olY7kLKLOgL7auqscC3Uo//AGRJvqbmqFQHgJJzqwsy
+	 xHTjE1P6aqiaAzO2XFI1ER2j90PfLE/TrscxzpmtS+9VOfSR2snxctquRNg/hUhJmS
+	 OiYSkcQwtdydZ/PKfv88EfzkrQvwk2QmIujH2CqXk7jS6UGE4sD/9o0i7AegLRGmOq
+	 Bpr5kcQStMkJQ==
 Subject:
- Re: [PATCH net-next 01/14] ipv4: annotate data-races around ip_rt_* sysctls
+ Re: [PATCH net-next 05/14] calipso: annotate data-races around cache sysctls
 From: netdev-bot+sashiko@kernel.org
 To: jiayuan.chen@linux.dev
 Cc: netdev@vger.kernel.org, dsahern@kernel.org, idosch@nvidia.com,
@@ -58,11 +58,11 @@ Cc: netdev@vger.kernel.org, dsahern@kernel.org, idosch@nvidia.com,
  lvs-devel@vger.kernel.org, linux-rdma@vger.kernel.org,
  rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
  linux-s390@vger.kernel.org
-Date: Tue, 10 Nov 2026 05:53:17 +0000
-Message-ID: <179428999715.994134.14310277652030711794@kernel.org>
-In-Reply-To: <20261109025425.328445-2-jiayuan.chen@linux.dev>
-References: <20261109025425.328445-2-jiayuan.chen@linux.dev>
-X-sashiko-severity: Low
+Date: Tue, 10 Nov 2026 05:53:19 +0000
+Message-ID: <179428999963.994134.16904544500890053668@kernel.org>
+In-Reply-To: <20261109025425.328445-6-jiayuan.chen@linux.dev>
+References: <20261109025425.328445-6-jiayuan.chen@linux.dev>
+X-sashiko-severity: High
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailing-List: lvs-devel@vger.kernel.org
@@ -75,89 +75,113 @@ List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-Thank you for your contribution! Sashiko AI review found more severe
-issue(s) in other patches of this series. This mail is only an FYI, in case
-you want to address the nit picks below when you respin.
+Thank you for your contribution! Sashiko AI review found 1 potential
+issue(s) to consider.
 
-Low priority / nit picks for your consideration:
+Critical: 0 · High: 1 · Medium: 0 · Low: 0
 
-- [Low] In __ip_rt_update_pmtu() (net/ipv4/route.c), the patch adds two
-  separate READ_ONCE() loads of net->ipv4.ip_rt_min_pmtu.
+If you believe none of the issues are legitimate, please reply to each
+issue of Medium severity or higher and explain why the AI is wrong.
+If any of them are legitimate and you plan to respin, please let patchwork
+know by including "pw-bot: cr" as a separate line at the end of your reply
+(one such reply per series is enough).
+
+- [High] calipso_cache_add() in net/ipv6/calipso.c still reads
+  calipso_cache_bucketsize twice, and the two reads can disagree.
 
 --
 
-ipv4: annotate data-races around ip_rt_* sysctls
+calipso: annotate data-races around cache sysctls
 
-This adds READ_ONCE() to the lockless readers of several ip_rt_* route
-sysctls in net/ipv4/route.c. Their sysctl handlers write them with
-WRITE_ONCE(). The change was prompted by a KCSAN report on
-net.ipv4.route.min_adv_mss in ipv4_default_advmss().
+This commit adds READ_ONCE() to the lockless readers of
+calipso_cache_enabled and calipso_cache_bucketsize in net/ipv6/calipso.c.
+The sysctl handlers update these variables with WRITE_ONCE().
 
-> diff --git a/net/ipv4/route.c b/net/ipv4/route.c
-> index d0a5f6d77094c..83f49b2d4c36a 100644
-> --- a/net/ipv4/route.c
-> +++ b/net/ipv4/route.c
+> diff --git a/net/ipv6/calipso.c b/net/ipv6/calipso.c
+> index e399a42e30839..5e63212b60163 100644
+> --- a/net/ipv6/calipso.c
+> +++ b/net/ipv6/calipso.c
 
 [ ... ]
 
-> @@ -1063,14 +1066,14 @@ static void __ip_rt_update_pmtu(struct rtable *rt, struct flowi4 *fl4, u32 mtu)
+> @@ -269,7 +269,7 @@ static int calipso_cache_add(const unsigned char *calipso_ptr,
+>  	struct calipso_map_cache_entry *old_entry = NULL;
+>  	u32 calipso_ptr_len;
 >  
->  	rcu_read_lock();
->  	net = dst_dev_net_rcu(dst);
-> -	if (mtu < net->ipv4.ip_rt_min_pmtu) {
-> +	if (mtu < READ_ONCE(net->ipv4.ip_rt_min_pmtu)) {
->  		lock = true;
-> -		mtu = min(old_mtu, net->ipv4.ip_rt_min_pmtu);
-> +		mtu = min(old_mtu, READ_ONCE(net->ipv4.ip_rt_min_pmtu));
+> -	if (!calipso_cache_enabled || calipso_cache_bucketsize <= 0)
+> +	if (!READ_ONCE(calipso_cache_enabled) || READ_ONCE(calipso_cache_bucketsize) <= 0)
+>  		return 0;
+>  
+>  	calipso_ptr_len = calipso_ptr[1];
+> @@ -289,7 +289,7 @@ static int calipso_cache_add(const unsigned char *calipso_ptr,
+>  
+>  	bkt = entry->hash & (CALIPSO_CACHE_BUCKETS - 1);
+>  	spin_lock_bh(&calipso_cache[bkt].lock);
+> -	if (calipso_cache[bkt].size < calipso_cache_bucketsize) {
+> +	if (calipso_cache[bkt].size < READ_ONCE(calipso_cache_bucketsize)) {
+>  		list_add(&entry->list, &calipso_cache[bkt].list);
+>  		calipso_cache[bkt].size += 1;
+>  	} else {
 
-[Severity: Low]
-READ_ONCE() is volatile, so __ip_rt_update_pmtu() now always does two
-separate loads of ip_rt_min_pmtu. If net.ipv4.route.min_pmtu is written
-between them, can the check and the clamp see different values?
+[Severity: High]
+Can these two separate READ_ONCE() loads of calipso_cache_bucketsize in
+calipso_cache_add() return different values?
 
-For example, take old_mtu=1500 and an ICMP FRAG_NEEDED carrying mtu=300:
+The first load is unlocked and only guards the early return. The second
+load comes later, under the bucket spinlock, after the GFP_ATOMIC
+allocations, jhash() and refcount_inc().
 
-  first load sees min_pmtu=552   -> lock = true
-  sysctl write sets min_pmtu=68  (accepted, extra1 is ip_min_valid_pmtu)
-  second load sees 68            -> mtu = min(1500, 68) = 68
+The bucket lock does not cover the sysctl. Also, calipso_cache_bucket_size
+in net/ipv6/sysctl_net_ipv6.c uses plain proc_dointvec with no
+extra1/extra2 bounds, so 0 or a negative value can be written during that
+window.
 
-update_or_create_fnhe() would then store pmtu=68 with fnhe_mtu_locked set,
-and it stays that way for ip_rt_mtu_expires. The old setting would give
-552 locked, and the new setting would give 300 unlocked.
+Suppose three things happen together:
 
-Before this patch, the compiler could merge the two plain loads into one.
-Only a privileged writer can trigger this, because min_pmtu is not exported
-to netns owned by non-init user namespaces. Later patches in the series
-don't seem to change this.
+  - the first load sees a positive value
+  - a concurrent write of 0 lands before the second load
+  - the hashed bucket is empty (size == 0)
 
-Could the value be read once into a local? This patch already does that
-in ip_error() with burst and cost.
+Then the size check is false, and the eviction branch runs on an empty
+list:
 
-A smaller case of the same pattern affects ip_rt_mtu_expires in the same
-function. It is re-read for the freshness check:
+    old_entry = list_entry(calipso_cache[bkt].list.prev,
+                           struct calipso_map_cache_entry, list);
+    list_del(&old_entry->list);
+    list_add(&entry->list, &calipso_cache[bkt].list);
+    calipso_cache_entry_free(old_entry);
 
-	    time_before(jiffies, READ_ONCE(dst->expires) -
-				 READ_ONCE(net->ipv4.ip_rt_mtu_expires) / 2))
+Here old_entry is container_of() applied to the bucket's own list head.
+list_del() poisons the head, and list_add() then dereferences
+LIST_POISON1.
 
-It is read again for each nexthop in the multipath loop, and once more for
-the single-path update_or_create_fnhe() call. Could nexthops updated in
-one call get different expiries?
+Wouldn't that oops in softirq context with the bucket lock held?
 
-ip_rt_redirect_number is also read twice in ip_rt_send_redirect():
+If execution got past that point, calipso_cache_entry_free() would free
+whatever sits at the key and lsm_data offsets of the fake entry. Those
+offsets overlap neighbouring buckets. It would then kfree() a pointer into
+the middle of the calipso_cache array.
 
-	if (peer->n_redirects >= READ_ONCE(ip_rt_redirect_number)) {
+Separately, if only the second load sees a negative value, it is
+converted to a huge u32 limit and the bucket size cap is skipped.
+
+This window existed before this patch, since spin_lock_bh() already forced
+a reload. However, this commit is meant to fix the racy reads of this
+exact variable. Could it take a single snapshot instead? That is what
+cipso_v4_cache_add() has done since commit dd44f04b9214ad ("cipso: Fix
+data-races around sysctl."):
+
+net/ipv4/cipso_ipv4.c:cipso_v4_cache_add() {
+	int bkt_size = READ_ONCE(cipso_v4_cache_bucketsize);
 	...
-		    peer->n_redirects == READ_ONCE(ip_rt_redirect_number))
+	if (!READ_ONCE(cipso_v4_cache_enabled) || bkt_size <= 0)
+		return 0;
+	...
+	if (cipso_v4_cache[bkt].size < bkt_size) {
+	...
+}
 
-The second read only gates the "ignores redirects" warning, so there the
-only effect is on logging. Should these be loaded into locals once as
-well?
-
->  	}
->  
->  	if (rt->rt_pmtu == mtu && !lock &&
-
-[ ... ]
+No later patch in the series changes net/ipv6/calipso.c.
 
 -- 
 Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261109025425.328445-1-jiayuan.chen%40linux.dev
