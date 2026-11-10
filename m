@@ -1,47 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794290010;
-	b=EqbPdJYpyADYVifRCwkK7IHjR31v20+UwsnP5sThUtx+/CK8ZLQF8WQ6lIU30o83KJoO
-	 b9guRVp+lGxc08wMGf//hqgb9zi+ph1MsQsjxI0GVeJykn673MOPKiBQ9tV215hWEfQuu
-	 QFNDt5Fcey6uWktTbjrB/C/pcqfZPYyp/id+1k9vv0XovUVhzGjYd2pAfQbts+IbpTkEy
-	 ssreaKri334ezK2AUOUeASWvEWMiXgGYknSSoY/V/v9A30SrLAbzNndrSWC683HEhluzZ
-	 aBGi5ZfYIVENgdSs2lzkx3Chi+Bx+/Vvu9DlQERuK6Ab2/uC5X4/rdRRbWMWaiyimMw==
+	t=1794290008;
+	b=V/ywvs0bnnB49hKlvYTIHXkgboXviHdXCoN8bPqwboZGuwdKqTxWQm7J+FDkWbtPc8K7
+	 o42xENOChONHyDMncHrIbjYUyAINLU1EIsj1PyRnqwGT0+Qtorys/Ezwh8vr28floUss6
+	 XkuzZ9VA3OR3r8srVmrboPebsNT2nUmwFprsDf84Te65E3/SwGSz7LUpRqp1xBaqHPXye
+	 p9xBMSe/oBgtYFmefhQPqdeD2E1sclbjKSuaZJu8R20Ki+34mEru4W2tobcV+YxM8gztf
+	 rRxIV1F9/4iCu5WAUMahrXS6mtzvYGjGOn0t9kJVL7ZNazzLFiOOrJrGIYYXlsBEbxQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794290010;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794290008;
 	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
 	 In-Reply-To:References:X-sashiko-severity:Content-Type:
 	 Content-Transfer-Encoding:MIME-Version;
-	bh=8V0k+iw19zvXaLESLiauhTFUIPKFwj+4KEkYMPQAdqc=;
-	b=nywPOrWVA5Fg55/BZkKygu412b+wxHIwCdRWH9GYGlu9819BqoHbJ1Yzvf63xUQRHqUU
-	 CTpexQEXBjvKis4mbAxadnrZqd6pgCVb9L5/zGQf/AGIDadTff7/xbcjqANJlz550lazJ
-	 s78koLcQqlyHoZiLXNpECOZ3jozAboQZ4DBE5U2VWIhKt6BWQWL2inZudO/Ofz8StxkWT
-	 uFNCccAgvd6gjxD3yn6+WGLDo9kUTSqVWe10kT/C9MJbOwzsFBNQOMzDA9Lp2iDOKJMSb
-	 nk9grGdB68ee5/C0r9mpS5IjJXfRG3IuuFXnipKHXd3UNy48Iki5s5xJUJ7UY45DDew==
+	bh=GHNBMVG3Wf/WNwxgQrYTHsnSyslBuFe0XVBpTIsm01s=;
+	b=qp9LuGEPXGvsW7zMDldOGxe62ulViijhs6i4MViMoZAy1JA4+SkMfVL3nPOS2a4O+CRo
+	 OQAZFEVBN5CfG9hB+emSQnrj/zBe0CeB6o03MXUmudfrgquX5O0m1If04fI9UUN1Diij3
+	 Hb3wywQFJGneAUkT52vA4KGrOl7wRxEIMhx7yjg84F/ccfTWWHph9xjennc5ctChj4Awe
+	 LYY2rHMi1DhG9rHiGsNRa5rpNPEVjJEKTMnKR786t4Bjq9nrtNx7gyXb0VO2fk/NYgUf3
+	 yOqCQYFlW79GNG8502id2ApTajn0tnhYfKZyETL18MEAoKcIeP+ZkuTKIq21br+p5tA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CbDlQSck;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h8Mg+NTa;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2BBB660A383F;
-	Tue, 10 Nov 2026 05:53:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CbDlQSck
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B6FCD1F008A5;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2A1A606A31C;
 	Tue, 10 Nov 2026 05:53:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h8Mg+NTa
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EDE721F0089F;
+	Tue, 10 Nov 2026 05:53:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794290009;
-	bh=8V0k+iw19zvXaLESLiauhTFUIPKFwj+4KEkYMPQAdqc=;
+	s=k20260515; t=1794290007;
+	bh=GHNBMVG3Wf/WNwxgQrYTHsnSyslBuFe0XVBpTIsm01s=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=CbDlQScksFDvh8HswxMT3tPBBs7R8XnTHT5ameNeUHFadHwC7aJYkIKS6hddhg7lS
-	 JJuEyxEq7mbF16KPolFw4Bby4uq1VZ8vkd9AxspBcb8oODjFIvva5EJVhwZH//yZId
-	 EiRA1cMNkue4zvVQCbC/jDlJxWU05Gkh9w2cJxOhodHgjmv8FcF3yZN/r2vVj+kUxQ
-	 PGzpTN8Q7wdD3av8OisjnFDpQ1Jwg1Cr2R31Ro+0i4Gv7n2Ar8QY7YQZq1nfcMpW2N
-	 hXctadhrHsLvI5rYQ7qekHpE4V/TrtCsEhPXJbEniLz+QvI+OYHssweWRJ6vnjkUa7
-	 euuR2CfgVCD4g==
-Subject: Re: [PATCH net-next 14/14] netfilter: cttimeout: annotate data-races
- around the default timeouts
+	b=h8Mg+NTa37D5sdsh5liH4Yogs8ckRV+RW7upQt2VHZvCYyYv+9qAJcvXBkoY9miQk
+	 4VRpacdVnuWymYG5w3HQR3fLyZWS1L1UqOGnAmvmP7DHKMkNG3goXHVJ97V3r5qNxJ
+	 jrHqgSvgTmBsBJvZFFQnjyupEH4XClD6UcVhLNkb9ss0OY49eFgLMotJdQqXknluT9
+	 eFrOF94okwOvhE6RCDe38HY3fSpsdUqwRdKEMOtQfl0tQJCx1cH7hFC/Rj0UnFmIHE
+	 6UQSX4Qxv4zoEVIzWMhMqaj7+wk5IEzRFnNdWAKpvHCpURB2k2iPCkFttVabkBwxIN
+	 706BHK23tOwsw==
+Subject: Re: [PATCH net-next 10/14] netfilter: bridge: annotate data-races
+ around br_netfilter and nf_log sysctls
 From: netdev-bot+sashiko@kernel.org
 To: jiayuan.chen@linux.dev
 Cc: netdev@vger.kernel.org, dsahern@kernel.org, idosch@nvidia.com,
@@ -58,11 +58,11 @@ Cc: netdev@vger.kernel.org, dsahern@kernel.org, idosch@nvidia.com,
  lvs-devel@vger.kernel.org, linux-rdma@vger.kernel.org,
  rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
  linux-s390@vger.kernel.org
-Date: Tue, 10 Nov 2026 05:53:27 +0000
-Message-ID: <179429000729.994134.16108041301574145842@kernel.org>
-In-Reply-To: <20261109025425.328445-15-jiayuan.chen@linux.dev>
-References: <20261109025425.328445-15-jiayuan.chen@linux.dev>
-X-sashiko-severity: Medium
+Date: Tue, 10 Nov 2026 05:53:24 +0000
+Message-ID: <179429000449.994134.17609039165328178770@kernel.org>
+In-Reply-To: <20261109025425.328445-11-jiayuan.chen@linux.dev>
+References: <20261109025425.328445-11-jiayuan.chen@linux.dev>
+X-sashiko-severity: Low
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailing-List: lvs-devel@vger.kernel.org
@@ -75,108 +75,66 @@ List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue(s) to consider.
+Thank you for your contribution! Sashiko AI review found more severe
+issue(s) in other patches of this series. This mail is only an FYI, in case
+you want to address the nit picks below when you respin.
 
-Critical: 0 · High: 0 · Medium: 1 · Low: 0
+Low priority / nit picks for your consideration:
 
-If you believe none of the issues are legitimate, please reply to each
-issue of Medium severity or higher and explain why the AI is wrong.
-If any of them are legitimate and you plan to respin, please let patchwork
-know by including "pw-bot: cr" as a separate line at the end of your reply
-(one such reply per series is enough).
-
-- [Medium] A concurrent sysctl write to a default conntrack timeout can
-  still be silently undone.
+- [Low] brnf_sysctl_call_tables() in net/bridge/br_netfilter_hooks.c is
+  only half annotated.
 
 --
 
-netfilter: cttimeout: annotate data-races around the default timeouts
+netfilter: bridge: annotate data-races around br_netfilter and nf_log sysctls
 
-This commit changes the l4proto nlattr_to_obj() and obj_to_nlattr()
-timeout callbacks to use WRITE_ONCE() and READ_ONCE() instead of plain
-accesses. It targets races between cttimeout_default_set() and
-cttimeout_default_get(), the conntrack packet path, and the
-nf_conntrack_*_timeout* sysctl handlers, which all touch the same
-per-netns default timeout arrays.
+This patch adds READ_ONCE() annotations in the packet path for the
+bridge-nf-* sysctls and for sysctl_nf_log_all_netns. It also adds a
+WRITE_ONCE() to the normalization store in brnf_sysctl_call_tables().
+The goal is to silence KCSAN data-race reports that show up when these
+sysctls change while packets are being bridged.
 
-> diff --git a/net/netfilter/nf_conntrack_proto_udp.c b/net/netfilter/nf_conntrack_proto_udp.c
-> index 99eedaa2b1183..777b21da3bcff 100644
-> --- a/net/netfilter/nf_conntrack_proto_udp.c
-> +++ b/net/netfilter/nf_conntrack_proto_udp.c
-> @@ -155,16 +155,16 @@ static int udp_timeout_nlattr_to_obj(struct nlattr *tb[],
->  		timeouts = un->timeouts;
->  
->  	/* set default timeouts for UDP. */
-> -	timeouts[UDP_CT_UNREPLIED] = un->timeouts[UDP_CT_UNREPLIED];
-> -	timeouts[UDP_CT_REPLIED] = un->timeouts[UDP_CT_REPLIED];
-> +	WRITE_ONCE(timeouts[UDP_CT_UNREPLIED], READ_ONCE(un->timeouts[UDP_CT_UNREPLIED]));
-> +	WRITE_ONCE(timeouts[UDP_CT_REPLIED], READ_ONCE(un->timeouts[UDP_CT_REPLIED]));
-
-[Severity: Medium]
-
-Can a concurrent sysctl write still be lost here?
-
-cttimeout_default_set() passes a NULL destination:
-
-net/netfilter/nfnetlink_cttimeout.c:cttimeout_default_set() {
-    ...
-	ret = ctnl_timeout_parse_policy(NULL, l4proto, info->net,
-					cda[CTA_TIMEOUT_DATA]);
-    ...
-}
-
-So udp_timeout_nlattr_to_obj() sets timeouts to un->timeouts, and the
-default copy turns into a self-copy of the live per-netns array:
-
-	WRITE_ONCE(un->timeouts[UDP_CT_REPLIED],
-		   READ_ONCE(un->timeouts[UDP_CT_REPLIED]));
-
-That is still a separate load and store. The sysctl handler writes the
-same field through proc_dointvec_jiffies() and does not take the nfnl
-mutex. Take a request that carries only CTA_TIMEOUT_UDP_UNREPLIED, sent
-while nf_conntrack_udp_timeout_stream is being written:
-
-CPU0 (IPCTNL_MSG_TIMEOUT_DEFAULT_SET)
-  old = READ_ONCE(un->timeouts[UDP_CT_REPLIED])
-
-CPU1 (sysctl write)
-  WRITE_ONCE(un->timeouts[UDP_CT_REPLIED], new)
-
-CPU0
-  WRITE_ONCE(un->timeouts[UDP_CT_REPLIED], old)
-
-The sysctl value gets reverted, even though the netlink request never
-named that attribute.
-
-The second KCSAN splat in the commit message (proc_int_u2k_conv_uop vs
-udp_timeout_nlattr_to_obj) comes from this access pair. Once both sides
-are marked, KCSAN stops reporting it, but the update can still be lost.
-
-The same self-copy happens in these places:
-
-  tcp_timeout_nlattr_to_obj(), where timeouts = tn->timeouts and the
-  loop covers all TCP_CONNTRACK_TIMEOUT_MAX entries
-  sctp_timeout_nlattr_to_obj(), where timeouts = sn->timeouts
-  gre_timeout_nlattr_to_obj(), where timeouts = gre_get_timeouts(net)
-  the else branch of generic_timeout_nlattr_to_obj(), when timeout is
-  &gn->timeout
-  the else branch of icmpv6_timeout_nlattr_to_obj(), when timeout
-  falls back to icmpv6_get_timeouts(net)
-
-When the destination already points at the per-netns array, could the
-default copy be skipped, so that fields missing from the request are
-never stored?
-
->  
->  	if (tb[CTA_TIMEOUT_UDP_UNREPLIED]) {
-> -		timeouts[UDP_CT_UNREPLIED] =
-> -			ntohl(nla_get_be32(tb[CTA_TIMEOUT_UDP_UNREPLIED])) * HZ;
-> +		WRITE_ONCE(timeouts[UDP_CT_UNREPLIED],
-> +			   ntohl(nla_get_be32(tb[CTA_TIMEOUT_UDP_UNREPLIED])) * HZ);
->  	}
+> diff --git a/net/bridge/br_netfilter_hooks.c b/net/bridge/br_netfilter_hooks.c
+> index e15355ff215a7..8a47fe4e8eb61 100644
+> --- a/net/bridge/br_netfilter_hooks.c
+> +++ b/net/bridge/br_netfilter_hooks.c
 
 [ ... ]
+
+> @@ -1178,7 +1178,7 @@ int brnf_sysctl_call_tables(const struct ctl_table *ctl, int write,
+>  	ret = proc_dointvec(ctl, write, buffer, lenp, ppos);
+>  
+>  	if (write && *(int *)(ctl->data))
+                     ^^^^^^^^^^^^^^^^^^^
+> -		*(int *)(ctl->data) = 1;
+> +		WRITE_ONCE(*(int *)(ctl->data), 1);
+
+[Severity: Low]
+This isn't a bug, but should the load in the condition also be annotated?
+
+The store is now WRITE_ONCE(), but the check just before it is still a
+plain read of *(int *)(ctl->data).
+
+proc_sys_call_handler() in fs/proc/proc_sysctl.c calls
+table->proc_handler() without taking any lock. Two concurrent writes to
+the same knob (bridge-nf-call-iptables, for example) can therefore run
+brnf_sysctl_call_tables() in parallel. In that case one handler's plain
+read can race with the other writer's marked store in do_proc_int_conv(),
+or with its WRITE_ONCE(..., 1).
+
+That is the same plain-read-vs-marked-write pattern as the splat in the
+commit message, so KCSAN would report it as a race between
+brnf_sysctl_call_tables and do_proc_int_conv.
+
+There is no functional effect here. The final value is always 0 or 1,
+and any non-zero value is treated as true. This only affects how
+complete the annotation is.
+
+Would it make sense to use READ_ONCE() for the check? Another option is
+to parse into a local value and publish it with a single WRITE_ONCE().
+
+>  	return ret;
+>  }
 
 -- 
 Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261109025425.328445-1-jiayuan.chen%40linux.dev
