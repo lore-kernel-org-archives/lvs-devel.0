@@ -1,81 +1,75 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.100
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794459290;
-	b=4iNhu42vX0R+msbksGQWM0qmDU1gaA/8tO46AICAc4mqlXKwYRm12SBBCFdW3Ydrtl28
-	 JEUlRqcB/GkJ3BN74utxjOqZTxb9+aj9JIpHHrHWpwsAOJnndkkwWTCXFGyvJFffIeehI
-	 gekOauXfJ7zV3Z7VRRzhwwXrmwGa+1mwHo8AQdBd7sZVZSyCHUMNB1AdNFxs484YlqpAH
-	 qSDMMCD8A9dEY++iZkHqEnlTQi8MEDTaGrkp5EBCBhG3+q7K/hFgiOUd66lTHaUV7MAVH
-	 6PAR1ZMA3+5sqO6cFOH+y5v0sLpZvZ0JUnE0G0yMOWQquCF+/8QXHU2pFu6w0slo6rQ==
+	t=1794464990;
+	b=VfaTbeUKkolhDG8rKIoZ9WTXADNVYzELVnPXUoz3ZA209cAlmYHGwEzdjB8v9WHuhX62
+	 YDo3ERE3j7jGmq8e2xsHv89iqGE7oorDoN3RzG7nCNJBDTIJrbFt00A4h8OP1BQfRWPMU
+	 uxrry0kpWTDxRSoNfCc7QmuzPtTeH9eUCHSKt7xwdZ+C4Q80nGsRTrJOHg3A9uunix1Bs
+	 6Jfab4UvwZxB/JiUOZwgUuzHO1xDLkNJEUbPAp+Blxl9aIrSwRXfEM4ILDKk9uSPgZOY+
+	 nRgv8GJ5xtRqnjqS04Q7srOO6zsiPB9o2IqCN3ThGjWVvU21PTlD4UJBY6+q3GXHjZA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794459290;
-	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Date:From:To:
-	 Cc:Subject:Message-ID:Reply-To:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=/V28rCHXi3T9oO9LFCn5sfVOcz0zmvubCJbcVebXDxQ=;
-	b=xEHiGJOb9wMcknM/xQqVA+uG6A8Dw1YzVX26qlYAbMjn4oioog3Mr3AAKT08BzbQoPlm
-	 e4OxRa1wKaPDLNWamivJj3958wPNvpfHxAP5PxeVSkECNXrHj2oaV/4/lAcCdMRexkeTL
-	 X0FThaqeWpQgmrzDoL3pFzhKNHmoVMUP5vmAd9pZxc8sa/B+aEOPL4ZrFGXYGhwHmntJs
-	 X5hn1wYLE0pkULJeQ3gbW4FqosCURDlMCm0jKcWUUhUDbJTt+ULk7cXmLAc7lHINhDuGf
-	 f8vZSxmm4Eiwpdkimfi00q9bVb/kT200z+62eU59VqS4jJXdgCjPqorqoo3DXRn/iZw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794464990;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:Date:
+	 From:To:cc:Subject:In-Reply-To:Message-ID:References:MIME-Version:
+	 Content-Type;
+	bh=8qZZQEkUIFj2Xhzq+RsWdX9rHuudFHEuh0AfEJPY9HA=;
+	b=ppfNPok1LnYd1bYc/VR+K7oJ2MAQqfJBLQDENb5PljfET2fXHlED0ClS43GRQ6JoZliu
+	 D8A1pdY8Qy+2SG1Nef6vrvym3LuhgfHs54pkDSmY5tnoGPlJ5RhSb0Sn9IRw0itoUoE50
+	 0x5YpvmX8abKT5demmVo99KOjSYBh2kKqkEbWf/d9qWHDcE4OXbjQ7+qOEA67tYMNsSKP
+	 fb7yYlL4Jn6FTFXjZAePdM8Fos5fs6kS9QwwMcbOekrhtnO5NZXuMzR9Q7OCXQRGl9m1f
+	 Ud93oGo4GndAwyi6idyiKwW6jEWxgcSk0O6aKtwCQMhWWCBUyTTQfZwRQPUWMROQcsg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.alibaba.com;
-	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=MXltY6b0;
-	arc=none smtp.remote-ip=115.124.30.100
-Received: from out30-100.freemail.mail.aliyun.com (out30-100.freemail.mail.aliyun.com [115.124.30.100])
+	dmarc=pass header.from=ssi.bg;
+	spf=pass smtp.mailfrom=ssi.bg;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=wlIdZP6z;
+	arc=none smtp.remote-ip=193.238.174.39
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FBCB606A32A;
-	Thu, 12 Nov 2026 04:54:46 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9FBCB606A32A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D7E7606A31C;
+	Thu, 12 Nov 2026 06:29:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1D7E7606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=MXltY6b0
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1794459284; h=Date:From:To:Subject:Message-ID:MIME-Version:Content-Type;
-	bh=/V28rCHXi3T9oO9LFCn5sfVOcz0zmvubCJbcVebXDxQ=;
-	b=MXltY6b02zxJBPSSJCcrFOFIVlsBPwa+MF+BOn7nVcYMoHG/lR/idyOofAtP+7o28bmnleqYQobOuF1X03XhPFzpBC/hqZgH8dTQlrXbc1lMAFQJxWEzyBHEg4X9w+v0wAMn3OjhU+vlgQS7hHIJLJYkmTvC3eWmg5pBomYYpaY=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R151e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=dust.li@linux.alibaba.com;NM=1;PH=DS;RN=37;SR=0;TI=SMTPD_---0XEaoXEq_1794459281;
-Received: from localhost(mailfrom:dust.li@linux.alibaba.com fp:SMTPD_---0XEaoXEq_1794459281 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Thu, 12 Nov 2026 12:54:41 +0800
-Date: Thu, 12 Nov 2026 12:54:41 +0800
-From: Dust Li <dust.li@linux.alibaba.com>
-To: Jiayuan Chen <jiayuan.chen@linux.dev>, netdev@vger.kernel.org
-Cc: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-	Nikolay Aleksandrov <razor@blackwall.org>,
-	Paul Moore <paul@paul-moore.com>,
-	Matthieu Baerts <matttbe@kernel.org>,
-	Mat Martineau <martineau@kernel.org>,
-	Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
-	Allison Henderson <achender@kernel.org>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>,
-	"D. Wythe" <alibuda@linux.alibaba.com>,
-	Sidraya Jayagond <sidraya@linux.ibm.com>,
-	Mahanta Jambigi <mjambigi@linux.ibm.com>,
-	Tony Lu <tonylu@linux.alibaba.com>,
-	Wen Gu <guwen@linux.alibaba.com>, linux-kernel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-	bridge@lists.linux.dev, linux-security-module@vger.kernel.org,
-	mptcp@lists.linux.dev, lvs-devel@vger.kernel.org,
-	linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com,
-	linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: Re: [PATCH net-next 12/14] net/smc: annotate data-races around smc
- sysctls
-Message-ID: <avVGkcI_j0hDPjQB@linux.alibaba.com>
-Reply-To: dust.li@linux.alibaba.com
-References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
- <20261109025425.328445-13-jiayuan.chen@linux.dev>
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=wlIdZP6z
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 0DC5822390;
+	Thu, 12 Nov 2026 08:29:46 +0200 (EET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=8qZZQEkUIFj2Xhzq+RsWdX9rHuudFHEuh0AfEJPY9HA=; b=wlIdZP6zXUVc
+	k5TeJ60Rup7ks8qeWnxWDXMwBC/nCxhy/Gjv9AGvYkDc9kRopHDJrGiLNrpehDM6
+	fcxuLx9pXy7VwB+VWYXRbkauvRN0kGcuseMiw34rXAjg+38jAWrWFpK3HVDuf1nd
+	wP1YHCFZ4ML+S1JleW5PY5QD+MPfYWNxvVFHB1t5KR6bhcUDtKxM/1AQLO3Gwc22
+	r6Hcm8rmtORZAvzUUwX5a0WKd7GbVca4433qwMxz3aO9cDKjUBRmkSLQIS9c3lKD
+	pljpRSfJPrv8M+9cdvu+jQGYqpDhF75vIJBXcTAhtTj39eVlkpIpm1iFJwXYTYeC
+	L4K+xgtj0Fd4DC1RWlr3TkAAayRWKrNvY0WNmR5WHj55YWbdWODscL0s2M0hl0Uj
+	f1ewQryZ5typmhaW6Ao4XYgN3VILYKbktpGqmnZVc89yKw+UhL0/tdfzbu8Ofbg8
+	a92Mwx1PNgPRhUmgPe0ycA9NWoZIHZcgHbdJNQaG57ewwcFlKx6Sp2SS3zI0oarp
+	tfTKV2oYMYB7jOOTZsw62GbWO0oARkve0a+6AlDOE/i2aY7X8iIdjTKf8uInKWXT
+	kfPvcROx2QcclrzvsBzIIwWBgHRgqXQ+vG+IDivOiGKr6ytHYKD3q5S6RGuJfPsS
+	e9kxwfJHdISi61AnpkgyVrQ9U5lT8Fc=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Thu, 12 Nov 2026 08:29:45 +0200 (EET)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 9819060B9F;
+	Thu, 12 Nov 2026 08:29:45 +0200 (EET)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AC6TgmZ015260;
+	Thu, 12 Nov 2026 08:29:44 +0200
+Date: Thu, 12 Nov 2026 08:29:42 +0200 (EET)
+From: Julian Anastasov <ja@ssi.bg>
+To: Simon Horman <horms@verge.net.au>
+cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Subject: Re: [PATCH nf v3] ipvs: do not create conns from packets with port
+ 0
+In-Reply-To: <20261105231534.5542-1-ja@ssi.bg>
+Message-ID: <3fd9a77f-9b9c-0b1f-86ea-de50a91c18ce@ssi.bg>
+References: <20261105231534.5542-1-ja@ssi.bg>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -85,123 +79,138 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261109025425.328445-13-jiayuan.chen@linux.dev>
+Content-Type: text/plain; charset=US-ASCII
 
-On 2026-11-09 10:52:11, Jiayuan Chen wrote:
->autocorking_size, smcr_buf_type, smcr_max_links_per_lgr,
->smcr_max_conns_per_lgr and limit_smc_hs are read without any lock while
->their sysctl handlers update them with WRITE_ONCE(), and the SMC netlink
->handlers toggle limit_smc_hs with plain writes. Add READ_ONCE() to the
->readers and WRITE_ONCE() to those handlers.
->
->Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
-Acked-by: Dust Li <dust.li@linux.alibaba.com>
 
-Best regards,
-Dust
+	Hello,
 
->---
-> net/smc/af_smc.c   | 8 ++++----
-> net/smc/smc_clc.c  | 8 ++++----
-> net/smc/smc_core.c | 2 +-
-> net/smc/smc_tx.c   | 2 +-
-> 4 files changed, 10 insertions(+), 10 deletions(-)
->
->diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
->index d10244af5bd29..9a657172be8f9 100644
->--- a/net/smc/af_smc.c
->+++ b/net/smc/af_smc.c
->@@ -88,7 +88,7 @@ int smc_nl_dump_hs_limitation(struct sk_buff *skb, struct netlink_callback *cb)
-> 		return -ENOMEM;
+On Fri, 6 Nov 2026, Julian Anastasov wrote:
+
+> We should disallow normal connections with cport 0 to be
+> created from packets by the scheduler (from clients) or
+> by ip_vs_new_conn_out (from real servers) because later
+> such traffic can not hit the connection due to the
+> NO_CPORT requirement. As result, it can lead to duplicate
+> connection for every packet. Do the same for vport 0.
 > 
-> 	if (nla_put_u8(skb, SMC_NLA_HS_LIMITATION_ENABLED,
->-		       sock_net(skb->sk)->smc.limit_smc_hs))
->+		       READ_ONCE(sock_net(skb->sk)->smc.limit_smc_hs)))
-> 		goto err;
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Link: https://sashiko.dev/#/patchset/20261104201530.147292-1-ja%40ssi.bg
+> Link: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261103140308.591690-3-pablo%40netfilter.org
+> Link: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260925141115.16126-1-axel.mierczuk%401password.com
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+
+	As v1 is already applied I will send a followup patch,
+so this v3 should be dropped.
+
+pw-bot: changes-requested
+
+> ---
+>  Changes in v3:
+>  * Check the ports and drop port 0 only for traffic handled by IPVS
 > 
-> 	genlmsg_end(skb, hdr);
->@@ -102,13 +102,13 @@ int smc_nl_dump_hs_limitation(struct sk_buff *skb, struct netlink_callback *cb)
+>  Changes in v2:
+>  * Drop the packets with port 0 instead of passing them to the local
+>    server
 > 
-> int smc_nl_enable_hs_limitation(struct sk_buff *skb, struct genl_info *info)
-> {
->-	sock_net(skb->sk)->smc.limit_smc_hs = true;
->+	WRITE_ONCE(sock_net(skb->sk)->smc.limit_smc_hs, true);
-> 	return 0;
-> }
+>  net/netfilter/ipvs/ip_vs_core.c       | 3 ++-
+>  net/netfilter/ipvs/ip_vs_proto_sctp.c | 7 +++++++
+>  net/netfilter/ipvs/ip_vs_proto_tcp.c  | 7 +++++++
+>  net/netfilter/ipvs/ip_vs_proto_udp.c  | 6 ++++++
+>  4 files changed, 22 insertions(+), 1 deletion(-)
 > 
-> int smc_nl_disable_hs_limitation(struct sk_buff *skb, struct genl_info *info)
-> {
->-	sock_net(skb->sk)->smc.limit_smc_hs = false;
->+	WRITE_ONCE(sock_net(skb->sk)->smc.limit_smc_hs, false);
-> 	return 0;
-> }
-> 
->@@ -411,7 +411,7 @@ void smc_sk_init(struct net *net, struct sock *sk, int protocol)
-> 	spin_lock_init(&smc->conn.send_lock);
-> 	mutex_init(&smc->clcsock_release_lock);
-> 	smc_init_saved_callbacks(smc);
->-	smc->limit_smc_hs = net->smc.limit_smc_hs;
->+	smc->limit_smc_hs = READ_ONCE(net->smc.limit_smc_hs);
-> 	smc->use_fallback = false; /* assume rdma capability first */
-> 	smc->fallback_rsn = 0;
-> 	smc_close_init(smc);
->diff --git a/net/smc/smc_clc.c b/net/smc/smc_clc.c
->index 014d527d5462d..df0afeef67cbd 100644
->--- a/net/smc/smc_clc.c
->+++ b/net/smc/smc_clc.c
->@@ -990,8 +990,8 @@ int smc_clc_send_proposal(struct smc_sock *smc, struct smc_init_info *ini)
-> 	}
-> 	if (smcr_indicated(ini->smc_type_v2)) {
-> 		memcpy(v2_ext->roce, ini->smcrv2.ib_gid_v2, SMC_GID_SIZE);
->-		v2_ext->max_conns = net->smc.sysctl_max_conns_per_lgr;
->-		v2_ext->max_links = net->smc.sysctl_max_links_per_lgr;
->+		v2_ext->max_conns = READ_ONCE(net->smc.sysctl_max_conns_per_lgr);
->+		v2_ext->max_links = READ_ONCE(net->smc.sysctl_max_links_per_lgr);
-> 	}
-> 
-> 	pclc_base->hdr.length = htons(plen);
->@@ -1272,12 +1272,12 @@ int smc_clc_srv_v2x_features_validate(struct smc_sock *smc,
-> 
-> 	if (ini->smcr_version & SMC_V2) {
-> 		ini->max_conns = min_t(u8, pclc_v2_ext->max_conns,
->-				       net->smc.sysctl_max_conns_per_lgr);
->+				       READ_ONCE(net->smc.sysctl_max_conns_per_lgr));
-> 		if (ini->max_conns < SMC_CONN_PER_LGR_MIN)
-> 			return SMC_CLC_DECL_MAXCONNERR;
-> 
-> 		ini->max_links = min_t(u8, pclc_v2_ext->max_links,
->-				       net->smc.sysctl_max_links_per_lgr);
->+				       READ_ONCE(net->smc.sysctl_max_links_per_lgr));
-> 		if (ini->max_links < SMC_LINKS_ADD_LNK_MIN)
-> 			return SMC_CLC_DECL_MAXLINKERR;
-> 	}
->diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
->index 6021322253e93..3d338019a1b8b 100644
->--- a/net/smc/smc_core.c
->+++ b/net/smc/smc_core.c
->@@ -990,7 +990,7 @@ static int smc_lgr_create(struct smc_sock *smc, struct smc_init_info *ini)
-> 		lgr->net = smc_ib_net(lnk->smcibdev);
-> 		lgr_list = &smc_lgr_list.list;
-> 		lgr_lock = &smc_lgr_list.lock;
->-		lgr->buf_type = lgr->net->smc.sysctl_smcr_buf_type;
->+		lgr->buf_type = READ_ONCE(lgr->net->smc.sysctl_smcr_buf_type);
-> 		atomic_inc(&lgr_cnt);
-> 	}
-> 	smc->conn.lgr = lgr;
->diff --git a/net/smc/smc_tx.c b/net/smc/smc_tx.c
->index 0f0c6df3bf2ce..30bffe79d06a3 100644
->--- a/net/smc/smc_tx.c
->+++ b/net/smc/smc_tx.c
->@@ -148,7 +148,7 @@ static bool smc_should_autocork(struct smc_sock *smc)
-> 	int corking_size;
-> 
-> 	corking_size = min_t(unsigned int, conn->sndbuf_desc->len >> 1,
->-			     sock_net(&smc->sk)->smc.sysctl_autocorking_size);
->+			     READ_ONCE(sock_net(&smc->sk)->smc.sysctl_autocorking_size));
-> 
-> 	if (atomic_read(&conn->cdc_pend_tx_wr) == 0 ||
-> 	    smc_tx_prepared_sends(conn) > corking_size)
->-- 
->2.43.0
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index fd503f0efb57..0ed5f6c95ad8 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -1305,6 +1305,7 @@ static inline bool is_new_conn_expected(const struct ip_vs_conn *cp,
+>   *    In fwmark-VS actual vaddr and vport are unknown to IPVS
+>   * 2) Real Server and Virtual Service were NOT configured without port:
+>   *    This is to allow match of different VS to the same RS ip-addr
+> + * 3) Client port is not 0
+>   */
+>  struct ip_vs_conn *ip_vs_new_conn_out(struct ip_vs_service *svc,
+>  				      struct ip_vs_dest *dest,
+> @@ -1328,7 +1329,7 @@ struct ip_vs_conn *ip_vs_new_conn_out(struct ip_vs_service *svc,
+>  	/* check pre-requisites are satisfied */
+>  	if (svc->fwmark)
+>  		return NULL;
+> -	if (!vport || !dport)
+> +	if (!vport || !dport || !cport)
+>  		return NULL;
+>  
+>  	/* for persistent service first create connection template */
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> index fb8af6b15a39..cb34bcceb4f6 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+> @@ -30,6 +30,7 @@ sctp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+>  			sch = skb_header_pointer(skb, iph->len + sizeof(_sctph),
+>  						 sizeof(_schunkh), &_schunkh);
+>  			if (sch) {
+> +				/* Accept packet without scheduling? */
+>  				if (sch->type == SCTP_CID_ABORT ||
+>  				    !(sysctl_sloppy_sctp(ipvs) ||
+>  				      sch->type == SCTP_CID_INIT))
+> @@ -56,6 +57,12 @@ sctp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+>  	if (svc) {
+>  		int ignored;
+>  
+> +		/* Do not create connection for port 0 */
+> +		if (!ports[0] || !ports[1]) {
+> +			*verdict = NF_DROP;
+> +			return 0;
+> +		}
+> +
+>  		if (ip_vs_todrop(ipvs)) {
+>  			/*
+>  			 * It seems that we are very loaded.
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_tcp.c b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> index fec0e8b47b71..25d4576d0e12 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_tcp.c
+> @@ -48,6 +48,7 @@ tcp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+>  	if (likely(!ip_vs_iph_icmp(iph))) {
+>  		th = skb_header_pointer(skb, iph->len, sizeof(_tcph), &_tcph);
+>  		if (th) {
+> +			/* Accept packet without scheduling? */
+>  			if (th->rst || !(sysctl_sloppy_tcp(ipvs) || th->syn))
+>  				return 1;
+>  			ports = &th->source;
+> @@ -74,6 +75,12 @@ tcp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+>  	if (svc) {
+>  		int ignored;
+>  
+> +		/* Do not create connection for port 0 */
+> +		if (!ports[0] || !ports[1]) {
+> +			*verdict = NF_DROP;
+> +			return 0;
+> +		}
+> +
+>  		if (ip_vs_todrop(ipvs)) {
+>  			/*
+>  			 * It seems that we are very loaded.
+> diff --git a/net/netfilter/ipvs/ip_vs_proto_udp.c b/net/netfilter/ipvs/ip_vs_proto_udp.c
+> index f32785682402..ab3ab9524168 100644
+> --- a/net/netfilter/ipvs/ip_vs_proto_udp.c
+> +++ b/net/netfilter/ipvs/ip_vs_proto_udp.c
+> @@ -62,6 +62,12 @@ udp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
+>  	if (svc) {
+>  		int ignored;
+>  
+> +		/* Do not create connection for port 0 */
+> +		if (!ports[0] || !ports[1]) {
+> +			*verdict = NF_DROP;
+> +			return 0;
+> +		}
+> +
+>  		if (ip_vs_todrop(ipvs)) {
+>  			/*
+>  			 * It seems that we are very loaded.
+> -- 
+> 2.56.0
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+
