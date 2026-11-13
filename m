@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794589858;
-	b=Ekg2tL9kmdIR9HtFB52f4wXqJYR3vBvBCDna+9Cpcf+AOCwUH1R60zCmWCvOnJsNZ0Az
-	 IrOBqG9KBXgdxvJVzG0TzrEir7M6O7qnF+y4SIwDiTE+bCFQZY296oSzrUjypzohE+f9Y
-	 JvT2PgfQlHDxsBME+JLSR+WIUchzW3w/gIp+pvrI2Pe2kjZnUfgizbkONmD3AJNHLbSiZ
-	 tn5309PQ5Yipg78RjfEt44xPY1lBfWcwDW3y3gIp6FOYnF1J5GzVw/kMtWT7u7R6YC00O
-	 8o73e8P76UivonkYc4po/FXNapbXGIVI5D0aNQRmBA8QjklAMPDS4M4iyPl/p1vaw/w==
+	t=1794590000;
+	b=aTJ6cra9TAeSbA5CqzlA2d9D0w/2Ki6I7hNLlPY1qKH2pjR2U1V9SaNu8wJqZav2KKgg
+	 BIG6VzqtOMEZ8y7O6CvGecY47JF26BrIR2I5kbolSOuD0d0rR6WiHfPZxwmCUMM0zaK53
+	 8hkMcBQ/sqQOVKhZuVK8AHOcsB32w5YftvqjOfbU7F7B3EzXiCgZgbzHAgT7in1s3Ht3x
+	 jY6KZGOHSNlwJ7BMQLag8ilx7pkrNbyO0jSrbUlnzZnibxkAmTCOl36xj0lx4yl8OqUnJ
+	 AD3e0/j2tHQhnIos4J3IlaGWyNlbNMkkYLA1e05PBtU3SmhJnrYlAwVbgsXVaO2XjPA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794589858;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794590000;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=maofO7OzpRbXrucFNRCXLNY3Wo8C40MOHwmWctw+fM8=;
-	b=mYC9XZ6hLdDHdteeYZvwv0RVEHdQKi9jf1tKqD0q3OmLBfSGcoykwZj3/kP8IzaMi0bk
-	 2F6ABLyS8gjCofJwUxcGLTKSH9ymqX50SvGnSuSstLJDR+arr/Fo2TvewcrcicqMdpKfT
-	 ftrLeL2Rh/qh4pxsybQQGELfPYF0dhXdUCOlJFM+YEyXkkzxAsjl62Zq5Pa+jIxazfLC0
-	 2X5csoO0sKADUBLqm4Opgnfs8INcg9i9wTTX1vKH3bUGSCu9naB1Cb0W3E0oGR0neYFbp
-	 erMT3cpMXzJ/YTgHzMMXEAEAeEQ9KlSEX5MetEZQO9bhJN+q2sh/Xb6rQHv0iPLWS3A==
+	bh=M9q+LvDPMwzTlHJ1z6qjfvGqi9L+uQK9zgjc9+yYEsc=;
+	b=jraTOL2e+mqSjurztlxQl6tBA+djJqagQGyXXcpsDFDIwUPSR/C8r4JwKaMaWovYKBay
+	 q0wsLeVPFh+deAB0XXuLkxivG9G0PQ1dH22xaymFM74e1ml5mSw1p9dyrIZvn7ZoVhVaI
+	 UE252Qf8BZbmFFEpwWcE1y/WLNbFRX1kp6lwwYK7F/bI0uziWu+w7e6nnzZ6IHmacS+x9
+	 GNtEhJNt/3qD0hS5DtBTjiimB79NH3rTmywVk7BVo09pdy8fzx1WRQrNiB2wKghsWDpa3
+	 TvuqT3ccF76Z32fQmFjfGNspd5n1r+vIL4RsKZ935JU2csPPo3KBjudbvUF5g6QYgGg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BpWp6k1S;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bu3IowAC;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 815BE606A88E;
-	Fri, 13 Nov 2026 17:10:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0403606A331;
+	Fri, 13 Nov 2026 17:13:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BpWp6k1S
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6FD401F000C7;
-	Fri, 13 Nov 2026 17:10:52 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bu3IowAC
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BEFAF1F000C4;
+	Fri, 13 Nov 2026 17:13:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794589858;
-	bh=maofO7OzpRbXrucFNRCXLNY3Wo8C40MOHwmWctw+fM8=;
+	s=k20260515; t=1794589999;
+	bh=M9q+LvDPMwzTlHJ1z6qjfvGqi9L+uQK9zgjc9+yYEsc=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=BpWp6k1SdAfBuXCQXVprjvqV5tKMSYJz/sh75MYEal9fLvubId0RI2k0pXbaXPcqP
-	 XW7W8QTY8Yp80bHb3bHbhJ2pmExjzJKvRTkysa/kB7Uk5kSQk48Ky/V6jYgRS2Ag/z
-	 b0gc71kH7THrDydxHbgpA1u2Z+aPcUEz4iVI/oIZ8uDXPH+fZw+EOrLG8smPRlR81n
-	 hUqtJAsa4dogw4cFSolmDv3RS80cZ9AdHNVyrReK6dyCERc/Tkn+CUP8WdJ70s/Tyd
-	 WsDSoElNiJ/7Mr3PPR2dotagWAQqYJsoCXp8vaEKs5odiInmbGy+gNs4DhVXqgNBFb
-	 z/PlpRnhV0X9Q==
-Date: Fri, 13 Nov 2026 17:10:50 +0000
+	b=Bu3IowACeJIvWD+7wKM49oLy/7ngGoJ0pvvcEmtsW1b5K5SHVaEFfRBtO3oeq4vVP
+	 /Qfj48crlKQv3np+MV9wj+dsD+qjItFr8H0pN4jLtQ2BSZqDdp+H0+/54GOISSD1u1
+	 69j3ACS785MHsbwzqL/Zs3st0py1xcRt+0zvLBrgcpob+IlM3117ew7DlNn0bicex9
+	 shmUa9N+/CQIVQm54ZguYpH+IvGpqBQtjZWwSIfxeu0c6UkKgXO6cJS33/KhAljHIa
+	 c20h87uVXaDLEAuvEXMKvPaUWbschD1L3vckBWt2z0o87/DvJOXS9p7XV+z4Kzs+xn
+	 4tdrjz3nzRtpw==
+Date: Fri, 13 Nov 2026 17:13:11 +0000
 From: Simon Horman <horms@kernel.org>
 To: Jiayuan Chen <jiayuan.chen@linux.dev>
 Cc: netdev@vger.kernel.org, David Ahern <dsahern@kernel.org>,
@@ -68,11 +68,11 @@ Cc: netdev@vger.kernel.org, David Ahern <dsahern@kernel.org>,
 	mptcp@lists.linux.dev, lvs-devel@vger.kernel.org,
 	linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com,
 	linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: Re: [PATCH net-next 02/14] inet: frags: annotate data-races around
- fqdir->timeout and fqdir->max_dist
-Message-ID: <20261113171050.GM18859@horms.kernel.org>
+Subject: Re: [PATCH net-next 03/14] ipv6: annotate data-races around addrconf
+ sysctls
+Message-ID: <20261113171311.GN18859@horms.kernel.org>
 References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
- <20261109025425.328445-3-jiayuan.chen@linux.dev>
+ <20261109025425.328445-4-jiayuan.chen@linux.dev>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -84,13 +84,69 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261109025425.328445-3-jiayuan.chen@linux.dev>
+In-Reply-To: <20261109025425.328445-4-jiayuan.chen@linux.dev>
 
-On Mon, Nov 09, 2026 at 10:52:01AM +0800, Jiayuan Chen wrote:
-> fqdir->timeout and fqdir->max_dist are read without any lock while their
-> sysctl handlers update them with WRITE_ONCE(). Add READ_ONCE() to the
-> readers.
-> 
-> Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
+On Mon, Nov 09, 2026 at 10:52:02AM +0800, Jiayuan Chen wrote:
 
-Reviewed-by: Simon Horman <horms@kernel.org>
+...
+
+> diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+
+...
+
+> @@ -2857,7 +2859,7 @@ void addrconf_prefix_rcv(struct net_device *dev, u8 *opt, int len, bool sllao)
+>  		return;
+>  	}
+>  
+> -	if (valid_lft != 0 && valid_lft < in6_dev->cnf.accept_ra_min_lft)
+> +	if (valid_lft != 0 && valid_lft < READ_ONCE(in6_dev->cnf.accept_ra_min_lft))
+
+Hi Jiayuan,
+
+This patch introduces several lines that are longer than 80 columns,
+while Networking code still prefers lines 80 columns wide or less.
+I'd appreciated it if this could be addressed.
+
+In this case, I think that could look like this (completely untested):
+
+	if (valid_lft != 0 && 
+	    alid_lft < READ_ONCE(in6_dev->cnf.accept_ra_min_lft))
+
+>  		goto put;
+>  
+>  	/*
+> @@ -2928,7 +2930,7 @@ void addrconf_prefix_rcv(struct net_device *dev, u8 *opt, int len, bool sllao)
+>  	/* Try to figure out our local address for this prefix */
+>  
+>  	ignore_autoconf = READ_ONCE(in6_dev->cnf.ra_honor_pio_pflag) && pinfo->preferpd;
+> -	if (pinfo->autoconf && in6_dev->cnf.autoconf && !ignore_autoconf) {
+> +	if (pinfo->autoconf && READ_ONCE(in6_dev->cnf.autoconf) && !ignore_autoconf) {
+>  		struct in6_addr addr;
+>  		bool tokenized = false, dev_addr_generated = false;
+>  
+
+Similarly here.
+
+> @@ -3434,7 +3436,7 @@ static int ipv6_generate_stable_address(struct in6_addr *address,
+>  
+>  	if (ipv6_reserved_interfaceid(temp)) {
+>  		dad_count++;
+> -		if (dad_count > dev_net(idev->dev)->ipv6.sysctl.idgen_retries)
+> +		if (dad_count > READ_ONCE(dev_net(idev->dev)->ipv6.sysctl.idgen_retries))
+>  			return -1;
+>  		goto retry;
+>  	}
+
+And I wonder if in this case we could do something like (completely untested):
+
+	if (ipv6_reserved_interfaceid(temp)) {
+		const struct *net net = dev_net(idev->dev)
+
+		dad_count++;
+		if (dad_count > READ_ONCE(net->ipv6.sysctl.idgen_retries))
+			return -1;
+		goto retry;
+	}
+
+...
+
