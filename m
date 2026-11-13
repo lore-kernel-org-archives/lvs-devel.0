@@ -1,78 +1,67 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794590171;
-	b=q2leGlBpeY/gnRAQqhU70txR6byFWMMDVClmst07pVDAHfH1sT3WZbSNKUBhRtj+NJxF
-	 jUv921k6Eb+10mqTir4qhMBeMewDkP2ncgE4VGLCKKJvHsj0QSNr/JNd612WxEjwa4hab
-	 xG+YJKX2Ko71NKkFofAWGl1V0TaBcVOUflNUMXNo7x5a1deUwXpa2fmLXlX9JXPLiqBZP
-	 ww/5LV7myg1zfWdsA+q7qE/FRxx6FBe+86igDi3tFXwxgx+Mon5SmkdVqEk0uZ3mvgxHw
-	 7SdlqAvUhpJ8VCJgrPjJVXcbbR75N2MNpErNtWWPoPvi/EtY5bWjaQqQNAi6KNgh99w==
+	t=1794590219;
+	b=B7x6Xk4YV4Wimy/WY5AhTZoPg2eu5drYZnyrGtkBAr4nS05pyudV2JFRkAur3LAHB9/w
+	 rVkaUpRpJB/qtSdzgy+nERpK2eL2gTCsRt+w+7ZMqctSKhjEqGVVb+BAifXGhbp143l9E
+	 1sy1DZpT6pdhY5QaNhZnZN353AqqiEC4tw28TpTz2pElumX2B/x1MtpApYA1W9zie04uT
+	 x1ZY5Z5EKCh7ONe7EkGx1ckNgPUOUw0S69/11G1JlYMb3zRlcHqRByhNpfLB/GDnHCauy
+	 NotNcWUoqxOQ0lrecHpH6Sb91SQkDdL3MzgvowZkiJsmzOK1IZrNQvpFYGySa6tR2JQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794590171;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794590219;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=jJlSj4ByLlh4nc3J/r005UKpkIbKb0lLpM2tMKOuUHE=;
-	b=Q0Pwhbv1Zrl1JY/7q7LbDg8RJBxnfOD9S3DnK5paFbX3EocZy+QxYm7GRwDLLG0rLq6V
-	 tLMZNlpqLxVsvg3n9VEQlCzwUa420HRjE+tPx0DsHE07BDidQJtwTjjKWqcAeN2rmFRNb
-	 qJME57vxMM/QsvPhTtDbv2r3CG3HtL3qeLKzRIdwyFMsLXYVaaK/ZSX25IamgoMWz8+Ss
-	 0Gx8PDN6kWIPFGSHxSgV+6Vx2tQkJRz+UumA2wnhb0G650wCivGPbRpUU4I3CjGTMpzMu
-	 s6JTv2gGvtXMt5HvN7oClkTxFceNpbiKj0fAM+WMnEmzVaMMAXgRAVeuIj2e9Y8GBNg==
+	bh=uh2pTSLECQz4oYCHxJGXmr/VWfmQ+mjF1tzIfd9bMkQ=;
+	b=nHJVROBcgX/+KBPs1zfO8koGH9fujqkSSuXJDgU5GnVrDigJ3V58FLLBZrwJhzuO9eql
+	 KcFzVMBKyNPfwX+HRjTc9Q1jcyuX0OiR4j99eoSO++5ACnEjmbLYc32vzoUeyw3lykZ5B
+	 R1PA+rhhFNX2/yFg0wN4cdoAeyQ6IBgZ24Iwz2Y11nsRKRfKjzGLQlmoNCD71KAwGSy5y
+	 P/mz/dez4RHWq3OkdJyvtp7WIgbrgKm1B0zUQ/NsCHGUES1XE6wOWF/AMfeoUOxkHFZXG
+	 Klgm0aGABYkz0LPIqLsTSpEGprusE3EbItdDAMJsqYF6vPHijR3D88YdlstJ1yl3KTg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="WlIaPU/n";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R7qT+Vwy;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D068606E657;
-	Fri, 13 Nov 2026 17:16:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 063A5606BD29;
+	Fri, 13 Nov 2026 17:16:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WlIaPU/n
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51BF51F000C6;
-	Fri, 13 Nov 2026 17:16:05 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R7qT+Vwy
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 94EE61F000C6;
+	Fri, 13 Nov 2026 17:16:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794590171;
-	bh=jJlSj4ByLlh4nc3J/r005UKpkIbKb0lLpM2tMKOuUHE=;
+	s=k20260515; t=1794590218;
+	bh=uh2pTSLECQz4oYCHxJGXmr/VWfmQ+mjF1tzIfd9bMkQ=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=WlIaPU/n4qfg0E5msNHiYPLwCppsHz7ULNqKiGhsdyQMwiWXK/+Anu0FDPYYlDUtP
-	 kMxWx46JEa0jQTVfzenY9pZdHS/nyi0B5UVmUjrKtTYkmh4O4OLLQVLiDdQAg2TjbW
-	 Wo4CxE5WbCcJNDMsVx1tITDuLzhLrPqi4cjDFVa3aqsi5PxrKDJajN/pZyzNCa9PLa
-	 2IOf3uePihX9+YbGXCl5kjzPel5oksZyNSRttGHtqjI4Ew5RaN4w8W1EjdDuyYArrW
-	 1WPz+2hpTlM9RnJ8tHMeoINU0a3B3EPoa2SQzBS9MRCJNBUAbyPJb3um+HLvQvRlIW
-	 Y5TbanvDRWPiw==
-Date: Fri, 13 Nov 2026 17:16:03 +0000
+	b=R7qT+VwyjC4rTsYzxSkOqSSyySehtXjxvTzit4084gMI+yIpm+s1wVBFZ1WW21TG6
+	 0DvqLo7M9dN4MzAwCW2vMzkVx+o0nJhr9vSTlu7OQio4sPlCNXQRPS/ipFa1FCquZG
+	 8s3vqs7IZ/xDPgpdcvacI+hLaJr3CbPq6V18kO9EMnW5z7tp821F0HnM/91rMuFO0f
+	 y8R5A/e77pE1/+seGC1hji+PPvsfVYwmF8ZLGf8tYllUqwonmh2Ojs2v5LJT2qyaIO
+	 +kWEwVlhGUc3KHQ7MDKzw/j5GcymwU7v1sa9PzfLkFY0lAuHy5JvGzkLKIpmMltL/S
+	 YQIojLL/PsqlA==
+Date: Fri, 13 Nov 2026 17:16:50 +0000
 From: Simon Horman <horms@kernel.org>
-To: Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, David Ahern <dsahern@kernel.org>,
-	Ido Schimmel <idosch@nvidia.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-	Nikolay Aleksandrov <razor@blackwall.org>,
-	Paul Moore <paul@paul-moore.com>,
-	Matthieu Baerts <matttbe@kernel.org>,
-	Mat Martineau <martineau@kernel.org>,
-	Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
-	Allison Henderson <achender@kernel.org>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>,
-	"D. Wythe" <alibuda@linux.alibaba.com>,
-	Dust Li <dust.li@linux.alibaba.com>,
-	Sidraya Jayagond <sidraya@linux.ibm.com>,
-	Mahanta Jambigi <mjambigi@linux.ibm.com>,
-	Tony Lu <tonylu@linux.alibaba.com>,
-	Wen Gu <guwen@linux.alibaba.com>, linux-kernel@vger.kernel.org,
+To: netdev-bot+sashiko@kernel.org
+Cc: jiayuan.chen@linux.dev, netdev@vger.kernel.org, dsahern@kernel.org,
+	idosch@nvidia.com, davem@davemloft.net, edumazet@kernel.org,
+	kuba@kernel.org, pabeni@redhat.com, pablo@netfilter.org,
+	fw@strlen.de, phil@nwl.cc, razor@blackwall.org, paul@paul-moore.com,
+	matttbe@kernel.org, martineau@kernel.org, geliang@kernel.org,
+	ja@ssi.bg, achender@kernel.org, marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com, alibuda@linux.alibaba.com,
+	dust.li@linux.alibaba.com, sidraya@linux.ibm.com,
+	mjambigi@linux.ibm.com, tonylu@linux.alibaba.com,
+	guwen@linux.alibaba.com, linux-kernel@vger.kernel.org,
 	netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
 	bridge@lists.linux.dev, linux-security-module@vger.kernel.org,
 	mptcp@lists.linux.dev, lvs-devel@vger.kernel.org,
 	linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com,
 	linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: Re: [PATCH net-next 09/14] netfilter: conntrack: annotate data-races
- around conntrack sysctls
-Message-ID: <20261113171603.GS18859@horms.kernel.org>
-References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
- <20261109025425.328445-10-jiayuan.chen@linux.dev>
+Subject: Re: [PATCH net-next 10/14] netfilter: bridge: annotate data-races
+ around br_netfilter and nf_log sysctls
+Message-ID: <20261113171650.GT18859@horms.kernel.org>
+References: <20261109025425.328445-11-jiayuan.chen@linux.dev>
+ <179429000449.994134.17609039165328178770@kernel.org>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -84,50 +73,65 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261109025425.328445-10-jiayuan.chen@linux.dev>
+In-Reply-To: <179429000449.994134.17609039165328178770@kernel.org>
 
-On Mon, Nov 09, 2026 at 10:52:08AM +0800, Jiayuan Chen wrote:
-> nf_conntrack_acct, nf_conntrack_events, nf_conntrack_timestamp,
-> nf_conntrack_checksum, nf_conntrack_log_invalid, nf_conntrack_max and
-> nf_conntrack_expect_max are read without any lock while their sysctl
-> handlers update them with WRITE_ONCE(), and nf_ct_set_acct() stores
-> sysctl_acct with a plain write. Add READ_ONCE() to the readers and
-> WRITE_ONCE() to nf_ct_set_acct().
+On Tue, Nov 10, 2026 at 05:53:24AM +0000, netdev-bot+sashiko@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found more severe
+> issue(s) in other patches of this series. This mail is only an FYI, in case
+> you want to address the nit picks below when you respin.
 > 
-> KCSAN reports it when nf_conntrack_checksum is changed while packets go
-> through conntrack:
+> Low priority / nit picks for your consideration:
 > 
->   BUG: KCSAN: data-race in nf_conntrack_icmpv4_error / proc_dou8vec_minmax
+> - [Low] brnf_sysctl_call_tables() in net/bridge/br_netfilter_hooks.c is
+>   only half annotated.
 > 
->   write (marked) to 0xffffffff8ee29b6d of 1 bytes by task 568 on cpu 0:
->    proc_dou8vec_minmax+0x1ab/0x1f0
->    proc_sys_call_handler+0x282/0x3a0
->    proc_sys_write+0x13/0x20
->    ...
+> --
 > 
->   read to 0xffffffff8ee29b6d of 1 bytes by interrupt on cpu 2:
->    nf_conntrack_icmpv4_error+0xb3/0x240
->    nf_conntrack_in+0xa85/0xb20
->    ipv4_conntrack_local+0xb0/0x120
->    nf_hook_slow+0x7e/0x180
->    nf_hook+0x1fa/0x4e0
->    __ip_local_out+0x1ac/0x3f0
->    ip_push_pending_frames+0x65/0x160
->    icmp_push_reply+0x17a/0x200
->    __icmp_send+0xb7d/0x1a10
->    udp_rcv+0x95c/0x14e0
->    ...
+> netfilter: bridge: annotate data-races around br_netfilter and nf_log sysctls
 > 
->   value changed: 0x00 -> 0x01
+> This patch adds READ_ONCE() annotations in the packet path for the
+> bridge-nf-* sysctls and for sysctl_nf_log_all_netns. It also adds a
+> WRITE_ONCE() to the normalization store in brnf_sysctl_call_tables().
+> The goal is to silence KCSAN data-race reports that show up when these
+> sysctls change while packets are being bridged.
 > 
-> Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
+> > diff --git a/net/bridge/br_netfilter_hooks.c b/net/bridge/br_netfilter_hooks.c
+> > index e15355ff215a7..8a47fe4e8eb61 100644
+> > --- a/net/bridge/br_netfilter_hooks.c
+> > +++ b/net/bridge/br_netfilter_hooks.c
+> 
+> [ ... ]
+> 
+> > @@ -1178,7 +1178,7 @@ int brnf_sysctl_call_tables(const struct ctl_table *ctl, int write,
+> >  	ret = proc_dointvec(ctl, write, buffer, lenp, ppos);
+> >  
+> >  	if (write && *(int *)(ctl->data))
+>                      ^^^^^^^^^^^^^^^^^^^
+> > -		*(int *)(ctl->data) = 1;
+> > +		WRITE_ONCE(*(int *)(ctl->data), 1);
+> 
+> [Severity: Low]
+> This isn't a bug, but should the load in the condition also be annotated?
+> 
+> The store is now WRITE_ONCE(), but the check just before it is still a
+> plain read of *(int *)(ctl->data).
+> 
+> proc_sys_call_handler() in fs/proc/proc_sysctl.c calls
+> table->proc_handler() without taking any lock. Two concurrent writes to
+> the same knob (bridge-nf-call-iptables, for example) can therefore run
+> brnf_sysctl_call_tables() in parallel. In that case one handler's plain
+> read can race with the other writer's marked store in do_proc_int_conv(),
+> or with its WRITE_ONCE(..., 1).
+> 
+> That is the same plain-read-vs-marked-write pattern as the splat in the
+> commit message, so KCSAN would report it as a race between
+> brnf_sysctl_call_tables and do_proc_int_conv.
+> 
+> There is no functional effect here. The final value is always 0 or 1,
+> and any non-zero value is treated as true. This only affects how
+> complete the annotation is.
+> 
+> Would it make sense to use READ_ONCE() for the check? Another option is
+> to parse into a local value and publish it with a single WRITE_ONCE().
 
-It might be worth splitting off this and other netfilter (and IPVS) patches
-into a separate patch-set for nf-next rather than net-next. As that is the
-usual path for such patches.
-
-But at any rate these change look good to me.
-
-Reviewed-by: Simon Horman <horms@kernel.org>
-
-...
+This one looks like it ought to be addressed for completeness.
