@@ -1,46 +1,46 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794590056;
-	b=Cv4TA9CRo4b4ciW6maPsblm/Z1CqA8LStOYWvVTyF4yKOPxzJOxAyxLdsw/XDhP9XYEh
-	 CjcxLlVYMIw+wRM04w3ACxf1AOO3dM5lnHsiqsw+okbKBAwqHtxJZbk2h1QX0h1YUwCe5
-	 rlBFeyP3rBNsCeGuqYdB1OiFWP5cmQI1udKMt4G3xo10JsX2OZUBBeL8H5XCDhHEspiae
-	 xMpkDfVdSQKTmwxVPkOwK93bQMlDjZ93mlxbdLnXqxu1yOr9F3d4RJLPoIxaxkzCrSYAk
-	 LG2FLo0j1Mboo5PDRF5QY6mxA1qFQpGK1VgxjJT+d4A8yfiZoiKX556UKAo5AEhIiCQ==
+	t=1794590101;
+	b=y4mNCcG1Fode0OyxTpRpKIU6HT3qaOiHTsmEJ3WOWoZqfxS28M71o5+C4WrPiecBUJ8w
+	 9CvwkdK2BJHEAgfG9zoE4DQ2W3CIFb2VWpIaVnJQ06dRJLp2724zxmpWcFjxr5F+V7b7v
+	 rwBIceyVD5xmi6HbymsdnbPFEXsl79SA+mfg5Kp1REVWlsKmNcb5KB+BmcIt0J8VnAS7r
+	 Uwsst5gy0IpXaa6709GzGg4gU4+lAEZuEgyjXQvEgHk+DMrprQJ6XUWzXmiS6cYqqq2Ap
+	 qu96SZo849dCuDhSvBcHJ7fjmLeUQkvvf+vG7RmWy3svO+CSnpBPY0BWNn6ZUThJIFw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794590056;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794590101;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:
 	 Content-Transfer-Encoding:In-Reply-To;
-	bh=8zEUtU3NrH0Vnr3AaC6OVuCQcGRPjf9GkR7fU3Z6j3U=;
-	b=oGYtv2cDfLOjIvJrBSWOTF3/WzWGwWcjLU3gm78VuJmPmqtgXebWyvgswfRrwGqQWh2T
-	 yfirwiRyg2f2iUMsgcBTsK4QIuc+pC7hNzBuonXGSfzOqm2dfVs+D8oQa8sglDqH7D5jQ
-	 kiqUS1E/scfyId0Drk0KHx/sQy7hP3ytTkDIknaQD0lTDR944KREesEiCuwUf0tP6Nfdq
-	 U5lbSpYui9S+VdvuTQxfNfd8sNEPCcOEqUGbkGKkR+bwVNotAc0bllUywLr5/uAWJQ4dY
-	 yExUZFhXTYMiR0AeS8jWtnkXbMblrQ9fstRQqtHQiF6G+JKOnUGEhHWNa/fMz/iQPhQ==
+	bh=ucmNkO3Zr7utezXqbUCs39iAC3mVF4QkvwQZf15/8+s=;
+	b=OuppHcN3ceFfllpDEbpOzTz+V/atI6/6nv/ijxftwisqw6w7itHqt5iaFMp7rlacNxts
+	 qR098WMkb5bye1f2M9Vp+sGIGMaTA/07zsX1mahr5//6Xwxk5LtAWkdedRhq2pFgZlfNK
+	 PQbyYVTbZSAGwS7QXNC8KCA6qKcKrei6MLh20cWzAPVbV3axQxBlDftkajhZt53WYaSPM
+	 bX576rAh4gFP9DYqPwNxVh+AanEBcrTgWxSdF4IGKu/DpZ0E4HxillBPlzaNKhte2DRL0
+	 eefH55ooKU05PoIlCRSey2ezwSwOEgRIAwNrsxv0wUr32vfWXLSj9ccLVYOggS+95Bw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eep61KBl;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DNCjJlgK;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1B75606A8AA;
-	Fri, 13 Nov 2026 17:14:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1838D606C0B9;
+	Fri, 13 Nov 2026 17:15:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eep61KBl
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B6F2C1F000CB;
-	Fri, 13 Nov 2026 17:14:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DNCjJlgK
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 956A21F000C6;
+	Fri, 13 Nov 2026 17:14:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794590055;
-	bh=8zEUtU3NrH0Vnr3AaC6OVuCQcGRPjf9GkR7fU3Z6j3U=;
+	s=k20260515; t=1794590100;
+	bh=ucmNkO3Zr7utezXqbUCs39iAC3mVF4QkvwQZf15/8+s=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=eep61KBlNlzGeP7TAbKMPEuELQlAOysuYgrRzX86Qe+/Y19mr8r5tPwAWLse6HbHm
-	 xJ8JTv/bhiumuex+hbpaD9n2mcoMZwq+nRF2tDycVp5H+fjYfU3NXkuQtl2UsawvgM
-	 Lse1leWTEHrBXWcGGSd+RuFPfrBvCsvm/CxnBa0jEZ6v/FwrD3cOUv1w7AtYefJYlE
-	 Kx43vbwulzFuq9bkPxHhBrgwuk5WCPFjr2mMtKQ9G1sCjJsnuh3zAKU4FPqTe3t7HA
-	 aWB30rpvhu7Vm9QOo1DCVs/ZvW3FwAosjq8eEfg44qICk0P8wk5psns5mH6AQLBbot
-	 mh2iwq1NwfZ5A==
-Date: Fri, 13 Nov 2026 17:14:07 +0000
+	b=DNCjJlgKNh9c0r1PaRCLnwwE5n+C3S60bfvZJaf+nJ7KWcDiKLGcXX6FNu0XJfyD/
+	 3bdoAG8tAkG68vEzKjQrrrI6ug0vHNAS4EQnciubWoQZopxMl1p87qVdVEKod+gpcE
+	 Pvu/lZkOOMowPYg6epJuxo6POYBDZFCQxK3yaRXNIGwVmonlohl4naWlGk1awOAh1c
+	 DW2t9XPiE2rc5KayQxzdVOlL/hb/7rd0j7g2bP27Iux4g7YZcChNqLiPK4pQfYUFke
+	 VJvH0sWOL7F4hCT6XaVTVzVaCcr5fh5Sh91Kvz8uv24HKHW7vVhvyLvHirPIJzdRKr
+	 RVwMU/4vX3u5Q==
+Date: Fri, 13 Nov 2026 17:14:52 +0000
 From: Simon Horman <horms@kernel.org>
 To: netdev-bot+sashiko@kernel.org
 Cc: jiayuan.chen@linux.dev, netdev@vger.kernel.org, dsahern@kernel.org,
@@ -58,11 +58,11 @@ Cc: jiayuan.chen@linux.dev, netdev@vger.kernel.org, dsahern@kernel.org,
 	mptcp@lists.linux.dev, lvs-devel@vger.kernel.org,
 	linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com,
 	linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: Re: [PATCH net-next 05/14] calipso: annotate data-races around cache
+Subject: Re: [PATCH net-next 06/14] sctp: annotate data-races around sctp
  sysctls
-Message-ID: <20261113171407.GP18859@horms.kernel.org>
-References: <20261109025425.328445-6-jiayuan.chen@linux.dev>
- <179428999963.994134.16904544500890053668@kernel.org>
+Message-ID: <20261113171452.GQ18859@horms.kernel.org>
+References: <20261109025425.328445-7-jiayuan.chen@linux.dev>
+ <179429000207.994134.10637780638316929795@kernel.org>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -75,9 +75,9 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <179428999963.994134.16904544500890053668@kernel.org>
+In-Reply-To: <179429000207.994134.10637780638316929795@kernel.org>
 
-On Tue, Nov 10, 2026 at 05:53:19AM +0000, netdev-bot+sashiko@kernel.org wrote:
+On Tue, Nov 10, 2026 at 05:53:22AM +0000, netdev-bot+sashiko@kernel.org wrote:
 > Thank you for your contribution! Sashiko AI review found 1 potential
 > issue(s) to consider.
 > 
@@ -89,104 +89,102 @@ On Tue, Nov 10, 2026 at 05:53:19AM +0000, netdev-bot+sashiko@kernel.org wrote:
 > know by including "pw-bot: cr" as a separate line at the end of your reply
 > (one such reply per series is enough).
 > 
-> - [High] calipso_cache_add() in net/ipv6/calipso.c still reads
->   calipso_cache_bucketsize twice, and the two reads can disagree.
+> - [High] The fix is incomplete inside the same sysctl handlers it
+>   changes.
 > 
 > --
 > 
-> calipso: annotate data-races around cache sysctls
+> sctp: annotate data-races around sctp sysctls
 > 
-> This commit adds READ_ONCE() to the lockless readers of
-> calipso_cache_enabled and calipso_cache_bucketsize in net/ipv6/calipso.c.
-> The sysctl handlers update these variables with WRITE_ONCE().
+> This commit adds READ_ONCE() to readers of many per-netns sctp sysctl
+> fields. It also converts the plain stores in the rto_min, rto_max,
+> udp_port, probe_interval, auth_enable and cookie_hmac_alg handlers to
+> WRITE_ONCE().
 > 
-> > diff --git a/net/ipv6/calipso.c b/net/ipv6/calipso.c
-> > index e399a42e30839..5e63212b60163 100644
-> > --- a/net/ipv6/calipso.c
-> > +++ b/net/ipv6/calipso.c
-> 
-> [ ... ]
-> 
-> > @@ -269,7 +269,7 @@ static int calipso_cache_add(const unsigned char *calipso_ptr,
-> >  	struct calipso_map_cache_entry *old_entry = NULL;
-> >  	u32 calipso_ptr_len;
+> > diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+> > index 2b94c211427de..8a84ae3272d24 100644
+> > --- a/net/sctp/sysctl.c
+> > +++ b/net/sctp/sysctl.c
+> > @@ -402,11 +402,11 @@ static int proc_sctp_do_hmac_alg(const struct ctl_table *ctl, int write,
+> >  		if (ret)
+> >  			return ret;
+> >  		if (!strcmp(tmp, "sha256")) {
+> > -			net->sctp.cookie_auth_enable = 1;
+> > +			WRITE_ONCE(net->sctp.cookie_auth_enable, 1);
+> >  			return 0;
+> >  		}
+> >  		if (!strcmp(tmp, "none")) {
+> > -			net->sctp.cookie_auth_enable = 0;
+> > +			WRITE_ONCE(net->sctp.cookie_auth_enable, 0);
+> >  			return 0;
+> >  		}
+> >  		return -EINVAL;
+> > @@ -441,7 +441,7 @@ static int proc_sctp_do_rto_min(const struct ctl_table *ctl, int write,
+> >  		if (new_value > max || new_value < min)
+> >  			return -EINVAL;
 > >  
-> > -	if (!calipso_cache_enabled || calipso_cache_bucketsize <= 0)
-> > +	if (!READ_ONCE(calipso_cache_enabled) || READ_ONCE(calipso_cache_bucketsize) <= 0)
-> >  		return 0;
+> > -		net->sctp.rto_min = new_value;
+> > +		WRITE_ONCE(net->sctp.rto_min, new_value);
+> >  	}
 > >  
-> >  	calipso_ptr_len = calipso_ptr[1];
-> > @@ -289,7 +289,7 @@ static int calipso_cache_add(const unsigned char *calipso_ptr,
+> >  	return ret;
+> > @@ -469,7 +469,7 @@ static int proc_sctp_do_rto_max(const struct ctl_table *ctl, int write,
+> >  		if (new_value > max || new_value < min)
+> >  			return -EINVAL;
 > >  
-> >  	bkt = entry->hash & (CALIPSO_CACHE_BUCKETS - 1);
-> >  	spin_lock_bh(&calipso_cache[bkt].lock);
-> > -	if (calipso_cache[bkt].size < calipso_cache_bucketsize) {
-> > +	if (calipso_cache[bkt].size < READ_ONCE(calipso_cache_bucketsize)) {
-> >  		list_add(&entry->list, &calipso_cache[bkt].list);
-> >  		calipso_cache[bkt].size += 1;
-> >  	} else {
+> > -		net->sctp.rto_max = new_value;
+> > +		WRITE_ONCE(net->sctp.rto_max, new_value);
+> >  	}
+> >  
+> >  	return ret;
 > 
 > [Severity: High]
-> Can these two separate READ_ONCE() loads of calipso_cache_bucketsize in
-> calipso_cache_add() return different values?
+> Do the handlers this patch edits still contain plain loads of these same
+> fields?
 > 
-> The first load is unlocked and only guards the early return. The second
-> load comes later, under the bucket spinlock, after the GFP_ATOMIC
-> allocations, jhash() and refcount_inc().
+> proc_sctp_do_rto_min() reads rto_max through extra2 to bound the new
+> value. proc_sctp_do_rto_max() reads rto_min through extra1 in the same
+> way:
 > 
-> The bucket lock does not cover the sysctl. Also, calipso_cache_bucket_size
-> in net/ipv6/sysctl_net_ipv6.c uses plain proc_dointvec with no
-> extra1/extra2 bounds, so 0 or a negative value can be written during that
-> window.
-> 
-> Suppose three things happen together:
-> 
->   - the first load sees a positive value
->   - a concurrent write of 0 lands before the second load
->   - the hashed bucket is empty (size == 0)
-> 
-> Then the size check is false, and the eviction branch runs on an empty
-> list:
-> 
->     old_entry = list_entry(calipso_cache[bkt].list.prev,
->                            struct calipso_map_cache_entry, list);
->     list_del(&old_entry->list);
->     list_add(&entry->list, &calipso_cache[bkt].list);
->     calipso_cache_entry_free(old_entry);
-> 
-> Here old_entry is container_of() applied to the bucket's own list head.
-> list_del() poisons the head, and list_add() then dereferences
-> LIST_POISON1.
-> 
-> Wouldn't that oops in softirq context with the bucket lock held?
-> 
-> If execution got past that point, calipso_cache_entry_free() would free
-> whatever sits at the key and lsm_data offsets of the fake entry. Those
-> offsets overlap neighbouring buckets. It would then kfree() a pointer into
-> the middle of the calipso_cache array.
-> 
-> Separately, if only the second load sees a negative value, it is
-> converted to a huge u32 limit and the bucket size cap is skipped.
-> 
-> This window existed before this patch, since spin_lock_bh() already forced
-> a reload. However, this commit is meant to fix the racy reads of this
-> exact variable. Could it take a single snapshot instead? That is what
-> cipso_v4_cache_add() has done since commit dd44f04b9214ad ("cipso: Fix
-> data-races around sysctl."):
-> 
-> net/ipv4/cipso_ipv4.c:cipso_v4_cache_add() {
-> 	int bkt_size = READ_ONCE(cipso_v4_cache_bucketsize);
+> net/sctp/sysctl.c:proc_sctp_do_rto_min() {
 > 	...
-> 	if (!READ_ONCE(cipso_v4_cache_enabled) || bkt_size <= 0)
-> 		return 0;
-> 	...
-> 	if (cipso_v4_cache[bkt].size < bkt_size) {
+> 	unsigned int min = *(unsigned int *) ctl->extra1;
+> 	unsigned int max = *(unsigned int *) ctl->extra2;
 > 	...
 > }
 > 
-> No later patch in the series changes net/ipv6/calipso.c.
+> sctp_sysctl_net_register() points these at the live per-netns fields. The
+> static sctp_net_table does the same for init_net:
+> 
+> 	table[SCTP_RTO_MIN_IDX].extra2 = &net->sctp.rto_max;
+> 	table[SCTP_RTO_MAX_IDX].extra1 = &net->sctp.rto_min;
+> 
+> So when writes to /proc/sys/net/sctp/rto_min and rto_max run at the same
+> time, proc_sctp_do_rto_min() does a plain read of rto_max while
+> proc_sctp_do_rto_max() does WRITE_ONCE(net->sctp.rto_max, ...). The same
+> thing happens in the other direction for rto_min. Nothing serializes
+> these two handlers against each other.
+> 
+> The read branch of proc_sctp_do_hmac_alg() also still loads
+> cookie_auth_enable without READ_ONCE():
+> 
+> 	if (net->sctp.cookie_auth_enable)
+> 		tbl.data = (char *)"sha256";
+> 	else
+> 		tbl.data = (char *)"none";
+> 
+> This can race with the WRITE_ONCE() stores above when cookie_hmac_alg is
+> read and written at the same time.
+> 
+> The commit message lists rto_min, rto_max and the cookie_hmac_alg handler
+> among the races being closed. The readers of these fields in
+> sctp_init_sock() now use READ_ONCE().
+> 
+> Should these three loads in the handlers use READ_ONCE() too? Otherwise
+> KCSAN can still report a marked write racing with a plain read on these
+> fields.
 
-This problem looks legit to me.
+This one also looks like it should be addressed.
 
 -- 
 pw-bot: changes-requested
