@@ -1,68 +1,78 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794590101;
-	b=y4mNCcG1Fode0OyxTpRpKIU6HT3qaOiHTsmEJ3WOWoZqfxS28M71o5+C4WrPiecBUJ8w
-	 9CvwkdK2BJHEAgfG9zoE4DQ2W3CIFb2VWpIaVnJQ06dRJLp2724zxmpWcFjxr5F+V7b7v
-	 rwBIceyVD5xmi6HbymsdnbPFEXsl79SA+mfg5Kp1REVWlsKmNcb5KB+BmcIt0J8VnAS7r
-	 Uwsst5gy0IpXaa6709GzGg4gU4+lAEZuEgyjXQvEgHk+DMrprQJ6XUWzXmiS6cYqqq2Ap
-	 qu96SZo849dCuDhSvBcHJ7fjmLeUQkvvf+vG7RmWy3svO+CSnpBPY0BWNn6ZUThJIFw==
+	t=1794590140;
+	b=izZbuT9zYqPezTOJm4flINwAHqiY3r2tHAFMVoGf6sqfgTCgVfmoqKVP4reQDYiVI4HH
+	 cowFlobwBYdGg/orHa1+d564Ntddriw7yNJr3PjvipGM+UuktO1YrLW39Y9DjaeEEH1g1
+	 Hqw5Bb/315okVEJB4romuOYAgkWnVt4aHWBGBJs5gzDDm4mn0M7VXH3vc0WcZ4E1WwDkC
+	 M0sLDiqh5d3otYfJWmE1jbLVNFgsx58ygCmf+iCgyDJKvq96UJdq7Wi7pzlYwIYymDyte
+	 G3ZAw2oAOu1zbuUiBsrizUIUmMa9FqpyXf07hxvLN0tlg5cEujUuWkNGPkCQvU3wNzQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794590101;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794590140;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding:In-Reply-To;
-	bh=ucmNkO3Zr7utezXqbUCs39iAC3mVF4QkvwQZf15/8+s=;
-	b=OuppHcN3ceFfllpDEbpOzTz+V/atI6/6nv/ijxftwisqw6w7itHqt5iaFMp7rlacNxts
-	 qR098WMkb5bye1f2M9Vp+sGIGMaTA/07zsX1mahr5//6Xwxk5LtAWkdedRhq2pFgZlfNK
-	 PQbyYVTbZSAGwS7QXNC8KCA6qKcKrei6MLh20cWzAPVbV3axQxBlDftkajhZt53WYaSPM
-	 bX576rAh4gFP9DYqPwNxVh+AanEBcrTgWxSdF4IGKu/DpZ0E4HxillBPlzaNKhte2DRL0
-	 eefH55ooKU05PoIlCRSey2ezwSwOEgRIAwNrsxv0wUr32vfWXLSj9ccLVYOggS+95Bw==
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=1vMesprYhFeENWisDIzJhcy04vIcu8PwjlxWvClS8Hs=;
+	b=Vk6X/9KiWoJ0ZUfA2TBPjZWXhq985VnfNsuSPvzWuXllhubmv8daOmW4uS5HcZy17/g0
+	 i1la+ohJZRrvYhxyH44ft8M8SvSv97tg9hM1OKn1uVhWUZpWpj+89uZKYSICjkkd7GTC0
+	 MwT/FiUkoOBuvMHWx+VxntJ5B8+Os7ppZhZs+yXrqPQdyQH1WvWnR6msCF+55sF7bB6sg
+	 eSLozKoQJJz05WkrA9UYizJ3KQtyLk2kyDnRL8CwDl76a5S5Lqb0ATtP5H0cRJihI6ZQY
+	 yiOu95ldI4OATU9hB5k0keGmZhs3U19n8ZARu+eQ6DVRjHthV+FUDJKeLDwIYMgun9g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DNCjJlgK;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="EyVRa/9f";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1838D606C0B9;
-	Fri, 13 Nov 2026 17:15:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED688606E20D;
+	Fri, 13 Nov 2026 17:15:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DNCjJlgK
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 956A21F000C6;
-	Fri, 13 Nov 2026 17:14:54 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EyVRa/9f
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BEB021F000C4;
+	Fri, 13 Nov 2026 17:15:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794590100;
-	bh=ucmNkO3Zr7utezXqbUCs39iAC3mVF4QkvwQZf15/8+s=;
+	s=k20260515; t=1794590139;
+	bh=1vMesprYhFeENWisDIzJhcy04vIcu8PwjlxWvClS8Hs=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=DNCjJlgKNh9c0r1PaRCLnwwE5n+C3S60bfvZJaf+nJ7KWcDiKLGcXX6FNu0XJfyD/
-	 3bdoAG8tAkG68vEzKjQrrrI6ug0vHNAS4EQnciubWoQZopxMl1p87qVdVEKod+gpcE
-	 Pvu/lZkOOMowPYg6epJuxo6POYBDZFCQxK3yaRXNIGwVmonlohl4naWlGk1awOAh1c
-	 DW2t9XPiE2rc5KayQxzdVOlL/hb/7rd0j7g2bP27Iux4g7YZcChNqLiPK4pQfYUFke
-	 VJvH0sWOL7F4hCT6XaVTVzVaCcr5fh5Sh91Kvz8uv24HKHW7vVhvyLvHirPIJzdRKr
-	 RVwMU/4vX3u5Q==
-Date: Fri, 13 Nov 2026 17:14:52 +0000
+	b=EyVRa/9fVvx9+Qbm0nTockS2FVMvizEhoCsvvuFlwnODla6jIfcftkyAaI4hWexcL
+	 pUSC3y3CyEo3ZLC4Njyo7cK13k1/EWsLdIFajb3d+ckXZG5Vu+0JFU09dKEenWwrvD
+	 ogQeZhOCJCpIw8TLahIIifIrGlbU5C9wR5wM3kjyZIhPlMBc4Zyz+9khmFDS/6Dw4B
+	 0WMkPMTrRxZhEMnLsL1DVMXbrsAfV1h6Ow81B9z8COrDULGtlrD6hMy9kT/iuqWRNe
+	 uUZ1zefj5znLTMOE/lpnyaGwMN4kxrLFr3QihAO3Lpvc6z9jzl1W7Ck74qEAI7MvJb
+	 lFvhNdGfk4Mgg==
+Date: Fri, 13 Nov 2026 17:15:31 +0000
 From: Simon Horman <horms@kernel.org>
-To: netdev-bot+sashiko@kernel.org
-Cc: jiayuan.chen@linux.dev, netdev@vger.kernel.org, dsahern@kernel.org,
-	idosch@nvidia.com, davem@davemloft.net, edumazet@kernel.org,
-	kuba@kernel.org, pabeni@redhat.com, pablo@netfilter.org,
-	fw@strlen.de, phil@nwl.cc, razor@blackwall.org, paul@paul-moore.com,
-	matttbe@kernel.org, martineau@kernel.org, geliang@kernel.org,
-	ja@ssi.bg, achender@kernel.org, marcelo.leitner@gmail.com,
-	lucien.xin@gmail.com, alibuda@linux.alibaba.com,
-	dust.li@linux.alibaba.com, sidraya@linux.ibm.com,
-	mjambigi@linux.ibm.com, tonylu@linux.alibaba.com,
-	guwen@linux.alibaba.com, linux-kernel@vger.kernel.org,
+To: Jiayuan Chen <jiayuan.chen@linux.dev>
+Cc: netdev@vger.kernel.org, David Ahern <dsahern@kernel.org>,
+	Ido Schimmel <idosch@nvidia.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Pablo Neira Ayuso <pablo@netfilter.org>,
+	Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
+	Nikolay Aleksandrov <razor@blackwall.org>,
+	Paul Moore <paul@paul-moore.com>,
+	Matthieu Baerts <matttbe@kernel.org>,
+	Mat Martineau <martineau@kernel.org>,
+	Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
+	Allison Henderson <achender@kernel.org>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>,
+	"D. Wythe" <alibuda@linux.alibaba.com>,
+	Dust Li <dust.li@linux.alibaba.com>,
+	Sidraya Jayagond <sidraya@linux.ibm.com>,
+	Mahanta Jambigi <mjambigi@linux.ibm.com>,
+	Tony Lu <tonylu@linux.alibaba.com>,
+	Wen Gu <guwen@linux.alibaba.com>, linux-kernel@vger.kernel.org,
 	netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
 	bridge@lists.linux.dev, linux-security-module@vger.kernel.org,
 	mptcp@lists.linux.dev, lvs-devel@vger.kernel.org,
 	linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com,
 	linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: Re: [PATCH net-next 06/14] sctp: annotate data-races around sctp
+Subject: Re: [PATCH net-next 08/14] rds: annotate data-races around core rds
  sysctls
-Message-ID: <20261113171452.GQ18859@horms.kernel.org>
-References: <20261109025425.328445-7-jiayuan.chen@linux.dev>
- <179429000207.994134.10637780638316929795@kernel.org>
+Message-ID: <20261113171531.GR18859@horms.kernel.org>
+References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
+ <20261109025425.328445-9-jiayuan.chen@linux.dev>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -72,119 +82,24 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <179429000207.994134.10637780638316929795@kernel.org>
+In-Reply-To: <20261109025425.328445-9-jiayuan.chen@linux.dev>
 
-On Tue, Nov 10, 2026 at 05:53:22AM +0000, netdev-bot+sashiko@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 1 potential
-> issue(s) to consider.
+On Mon, Nov 09, 2026 at 10:52:07AM +0800, Jiayuan Chen wrote:
+> reconnect_min_delay_ms, reconnect_max_delay_ms, max_unacked_packets,
+> max_unacked_bytes and ping_enable are read without any lock while their
+> sysctl handlers update them with WRITE_ONCE(). Add READ_ONCE() to the
+> readers.
 > 
-> Critical: 0 · High: 1 · Medium: 0 · Low: 0
-> 
-> If you believe none of the issues are legitimate, please reply to each
-> issue of Medium severity or higher and explain why the AI is wrong.
-> If any of them are legitimate and you plan to respin, please let patchwork
-> know by including "pw-bot: cr" as a separate line at the end of your reply
-> (one such reply per series is enough).
-> 
-> - [High] The fix is incomplete inside the same sysctl handlers it
->   changes.
-> 
-> --
-> 
-> sctp: annotate data-races around sctp sysctls
-> 
-> This commit adds READ_ONCE() to readers of many per-netns sctp sysctl
-> fields. It also converts the plain stores in the rto_min, rto_max,
-> udp_port, probe_interval, auth_enable and cookie_hmac_alg handlers to
-> WRITE_ONCE().
-> 
-> > diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-> > index 2b94c211427de..8a84ae3272d24 100644
-> > --- a/net/sctp/sysctl.c
-> > +++ b/net/sctp/sysctl.c
-> > @@ -402,11 +402,11 @@ static int proc_sctp_do_hmac_alg(const struct ctl_table *ctl, int write,
-> >  		if (ret)
-> >  			return ret;
-> >  		if (!strcmp(tmp, "sha256")) {
-> > -			net->sctp.cookie_auth_enable = 1;
-> > +			WRITE_ONCE(net->sctp.cookie_auth_enable, 1);
-> >  			return 0;
-> >  		}
-> >  		if (!strcmp(tmp, "none")) {
-> > -			net->sctp.cookie_auth_enable = 0;
-> > +			WRITE_ONCE(net->sctp.cookie_auth_enable, 0);
-> >  			return 0;
-> >  		}
-> >  		return -EINVAL;
-> > @@ -441,7 +441,7 @@ static int proc_sctp_do_rto_min(const struct ctl_table *ctl, int write,
-> >  		if (new_value > max || new_value < min)
-> >  			return -EINVAL;
-> >  
-> > -		net->sctp.rto_min = new_value;
-> > +		WRITE_ONCE(net->sctp.rto_min, new_value);
-> >  	}
-> >  
-> >  	return ret;
-> > @@ -469,7 +469,7 @@ static int proc_sctp_do_rto_max(const struct ctl_table *ctl, int write,
-> >  		if (new_value > max || new_value < min)
-> >  			return -EINVAL;
-> >  
-> > -		net->sctp.rto_max = new_value;
-> > +		WRITE_ONCE(net->sctp.rto_max, new_value);
-> >  	}
-> >  
-> >  	return ret;
-> 
-> [Severity: High]
-> Do the handlers this patch edits still contain plain loads of these same
-> fields?
-> 
-> proc_sctp_do_rto_min() reads rto_max through extra2 to bound the new
-> value. proc_sctp_do_rto_max() reads rto_min through extra1 in the same
-> way:
-> 
-> net/sctp/sysctl.c:proc_sctp_do_rto_min() {
-> 	...
-> 	unsigned int min = *(unsigned int *) ctl->extra1;
-> 	unsigned int max = *(unsigned int *) ctl->extra2;
-> 	...
-> }
-> 
-> sctp_sysctl_net_register() points these at the live per-netns fields. The
-> static sctp_net_table does the same for init_net:
-> 
-> 	table[SCTP_RTO_MIN_IDX].extra2 = &net->sctp.rto_max;
-> 	table[SCTP_RTO_MAX_IDX].extra1 = &net->sctp.rto_min;
-> 
-> So when writes to /proc/sys/net/sctp/rto_min and rto_max run at the same
-> time, proc_sctp_do_rto_min() does a plain read of rto_max while
-> proc_sctp_do_rto_max() does WRITE_ONCE(net->sctp.rto_max, ...). The same
-> thing happens in the other direction for rto_min. Nothing serializes
-> these two handlers against each other.
-> 
-> The read branch of proc_sctp_do_hmac_alg() also still loads
-> cookie_auth_enable without READ_ONCE():
-> 
-> 	if (net->sctp.cookie_auth_enable)
-> 		tbl.data = (char *)"sha256";
-> 	else
-> 		tbl.data = (char *)"none";
-> 
-> This can race with the WRITE_ONCE() stores above when cookie_hmac_alg is
-> read and written at the same time.
-> 
-> The commit message lists rto_min, rto_max and the cookie_hmac_alg handler
-> among the races being closed. The readers of these fields in
-> sctp_init_sock() now use READ_ONCE().
-> 
-> Should these three loads in the handlers use READ_ONCE() too? Otherwise
-> KCSAN can still report a marked write racing with a plain read on these
-> fields.
+> Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
 
-This one also looks like it should be addressed.
+As per my remarks on another patch. Networking does prefer lines
+80 columns wide or less. But I am inclined to turn a blind eye
+to the in the case of longer lines introduced by this patch because
+they are not that much longer and addressing them seems rather tedious.
+That said, I would not object to them being fixed.
 
--- 
-pw-bot: changes-requested
+Reviewed-by: Simon Horman <horms@kernel.org>
+
+...
