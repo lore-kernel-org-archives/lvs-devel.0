@@ -1,81 +1,75 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794759010;
-	b=B6yLWqyGNAvkmzZ+KVdlmXpSm6DDyM1W7bJN3jzOBTYTKVT/O2mdOcQ+g/bmft3nhCRd
-	 00jDbnDp1kBy9lJ7LknaI3n+Hp/ifFvb5Sv8X/VgOQ/3KHQBMKuFhkxw7AXnYCI/yh/Vs
-	 iMAygBmTKP1xOnP0NGcIEtg9GGPltb7a9f7Vb3lq4mOobI8a5HY+bfitzhA1dI9COa2JE
-	 hUoRE72IoLG3xJ20DBvHAKHs/d1xVOSh0UtTFADMg5LjbhrLV0VMhQjoFUqLemDNonI7B
-	 sRLFAa+KRgTWK1qMRCZAH3F5TDrW3V6uiKFn27DH8dIjSFQrT5X8vThX8faSIIk284g==
+	t=1794764165;
+	b=RuhJACAOi/5qb17zPD8ZkhumFy24ZtE2EcSXtQJVxGMUrvJf/sAMgi7fO48RDS0Ui0gH
+	 rI1m2PCYKoI3jtY/lnIwME8Weau6SGxLJK7U1MlVXCANgE5FaYnAwHKG6nRtDgx/B8Zh3
+	 vxRLuiiuZzeQhvFyvFvv5+W2TDxdCa1SRMztdNIbnRPaJC+7BoE/+N4A41IIC4xeXv+J1
+	 rRUV5KdXooA+F3QJwEeV/X8fCCpap/J2NRX412SY2wLg+TQg7NU7U3m1bLw/NXPPVMmA7
+	 4rRQ94WBZez0TzQSfruBZBHiYmREiUz8UgXpjoNp3gU+dCy3vBurvAENNE8dTCaYzHA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794759010;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794764165;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:Date:
 	 From:To:cc:Subject:In-Reply-To:Message-ID:References:MIME-Version:
 	 Content-Type;
-	bh=w38rqGNrGDLCqa74mPssK7iYVtNKY8BC2nJHasK7eRI=;
-	b=nI8xU3sb6NEfIPqixLR3XAGCDd1/r9cP+VbvncOeQXz82Gh+l86sUbM+SLNov48mLSHx
-	 ehbumSPVkC5W7XX0S01rmXDZnBM7VM0U1809lpKEIomjGvTHNmnrxpn7rs5L8x8BduMfK
-	 UWf29HbYXJtshVgolsXHXMORAtoFiCW+mP+kyF9Jv6RLhtn6T98XtWcwYtEiiHmdW3ohv
-	 xjDuvcQ6rq/gTnzesvVh7MWcdZN5Rg3u70w7BTLC9pMl9uMgN88MimX48xAKeBo2WfaaT
-	 otzf9O0Z7Uz2V3f4XcetoPj19tZuDqo88zj0+ZndOBxElJDiZKOodiJIF/O583zndrA==
+	bh=T6qOwflWea7KdLAIgTT9JTg1M9zGsAYbHIASp0wel+k=;
+	b=4tIc90K4VpolnY/Myuxf97lEh2a80Z7+YeV+0z1g5PYSCR+peq5PQG2xLug3Z6IMkXu5
+	 Xa8L35h1PVSD6b6sCqmOmfIU71f6vpvP1P+3J1PWzj6m2+KWelKPG65nXatNnid0y2Lvw
+	 wKKe7MwqiIPofXnUATIszKxIvONm4TbOeE8mnb8o2tqu1B31Xhfr9HWv8PmApNg+sALS4
+	 6jt9BmtxRrqGhoio3pHDJy+KUzkjLmbEivdFcXs3dyZ0xThSpbibuZ60mbEXoZEEnsFjO
+	 cBGIlDuV43nq5X0JQaNg9kKwPtjbxr6uxrC3dKInwnd90VXbFGuGaXJyvL9WGco+D2w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=ssi.bg;
 	spf=pass smtp.mailfrom=ssi.bg;
-	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=VLfjhweh;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=b7FNXJH9;
 	arc=none smtp.remote-ip=193.238.174.39
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4EDC0606A31E;
-	Sun, 15 Nov 2026 16:10:08 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4EDC0606A31E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 34620606A323;
+	Sun, 15 Nov 2026 17:36:03 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 34620606A323
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=VLfjhweh
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=b7FNXJH9
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 03348213FD;
-	Sun, 15 Nov 2026 18:10:05 +0200 (EET)
+	by mx.ssi.bg (Potsfix) with ESMTP id D9AE321B52;
+	Sun, 15 Nov 2026 19:36:00 +0200 (EET)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-type:content-type:date:from:from:in-reply-to:message-id
 	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=w38rqGNrGDLCqa74mPssK7iYVtNKY8BC2nJHasK7eRI=; b=VLfjhwehPmzT
-	waBTOCTGdOoc65YijRE9PDgaJm2duQHE3fmvO0Q48dy64sHwUp9l/KIZaQBVJVLD
-	ogbTgQYIgaDZ/yhYnM8TOPuo9OJFB+oeLry0g3+xp60o80mN6UAALb5s1ednSQrZ
-	oswcMUUbMQSH+WMVAr5xNM1RywFXFJw+NDl9npRj9uCkcEPBH/AJlF7TBK/dD8lL
-	eR+ZITyXnu+t7WeOw02qWqojZ1sVleJ+UG6NM7Eotavid8A51oSdKMnKNKOTsR44
-	Urc8xOOCDP36TZiqYh22uJOPg5LojfNqKJiWyhGglCgFRECn+tH6ZKyTB/QEREdi
-	ybnfZp1L9D2Eqw0upOxxvG1Cd3XSPlc3vqljXbHilKmKCRZjUfWQ1W97d3RX2BCP
-	JxIEV3zAODejaqplIs3gDmzTEWb6wufy4KzvyDB38pCTKotfM/k7L7sPF+hgU8Yd
-	Ncfd15W2uRIkt9RNs11bkkAvMWVrWkdFDFUi6ZSr3JmOJ4k6P3wL5dBLlex1Gwu4
-	NXgB5EdyGv+4TA4tw0vJXzSzxIUZpyeyA6fXfVC3QDA0h7+0RpbInHfPd1MMAM+f
-	wOObpGtv2uf+KCK/V+nzR53tc902weizEXvEWEGPuDvFKrpnZ4A/ejttVfeAUMiK
-	uyCjweLi4HygwvKpcyEZH/Hlge/O/QA=
+	 bh=T6qOwflWea7KdLAIgTT9JTg1M9zGsAYbHIASp0wel+k=; b=b7FNXJH9HoIT
+	HTYvpgsgGyRXUn7zlNiDAI1YJ4WvslUZfU+jOlyVxlG2DyPynm6LTLtROWimtGc0
+	HM48icwKxTj7CCIK8MYiMH85RxnDKEvN8/4cnqhZkCIaFAdNpJIitO0rWOGBXNoO
+	pMnePOyh2QtXbomEz/DjeYkcjkIoyi6kSDxItDSnGO1AyMdZXqCiwDaQD4gTJyG1
+	cvsLhubdqADDbmAjf26UXKNtumdSlKwA1viqddhXsi7u1kVHuA186DT99wyjvyN0
+	k+81q5sZ2suIoMVUht8ZuiFkSwAiY5v4r3DOXbsxuKzna+BqbaQoK6udnM62l6FK
+	Hb7vxKt+SMjYZHAdIBg7IsFappb44CpoGJ39YmMr5JqoxNvHLj+vfFwnjdLUduyq
+	9PVfsDrRtTz7LVSFr+ob7T0Zqj8GU9t3nPYDbtD6HrnrQW9gZZ8AwcrRvVBfMOKG
+	zy6g1+cJiGbHWCTlPGfM6HPewe+Z34Hxq+vuQtS5OHosK2YGqsX/dW3QIVedz2Ix
+	MAchd098m8rUHqMniTuJVFMrECIURDXp5cnqYUxz65FIvwr3jMyNmcNaMlw7D9VR
+	PSQTQAc+666dQz9BIOvVYIZ8IrgBcLD2jT3Es1tZXiuFWj235Kr0jdkoxVwWHNtJ
+	m4oNMmgGUU+oFUscN6NEKZ4+2VpiHQ8=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Sun, 15 Nov 2026 18:10:04 +0200 (EET)
+	Sun, 15 Nov 2026 19:36:00 +0200 (EET)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 416C160121;
-	Sun, 15 Nov 2026 18:10:04 +0200 (EET)
+	by box.ssi.bg (Potsfix) with ESMTPSA id 54EAE60FC3;
+	Sun, 15 Nov 2026 19:36:00 +0200 (EET)
 Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AFG9uRb118090;
-	Sun, 15 Nov 2026 18:09:57 +0200
-Date: Sun, 15 Nov 2026 18:09:56 +0200 (EET)
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AFHZwWV127726;
+	Sun, 15 Nov 2026 19:35:58 +0200
+Date: Sun, 15 Nov 2026 19:35:58 +0200 (EET)
 From: Julian Anastasov <ja@ssi.bg>
-To: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
-cc: Simon Horman <horms@verge.net.au>, pablo@netfilter.org, fw@strlen.de,
-        phil@nwl.cc, "David S. Miller" <davem@davemloft.net>,
-        edumazet@kernel.org, kuba@kernel.org, pabeni@redhat.com,
-        netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        linux-kernel <linux-kernel@vger.kernel.org>, skhan@linuxfoundation.org,
-        syzbot+84e27adb95fd2a1fe9bb@syzkaller.appspotmail.com,
-        stable@vger.kernel.org, Wei Wang <weiwan@google.com>
-Subject: Re: [PATCH net] ipvs: wait for RCU callbacks before dst_ops
- teardown
-In-Reply-To: <20261114195410.96503-1-pavankumaryalagada@gmail.com>
-Message-ID: <8473d38d-2d50-ad77-18c1-29bbdda56616@ssi.bg>
-References: <20261114195410.96503-1-pavankumaryalagada@gmail.com>
+To: Simon Horman <horms@verge.net.au>
+cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
+Subject: Re: [PATCH nf v4] ipvs: pass correct sk to update_pmtu and on
+ tunneling
+In-Reply-To: <20261113121303.42549-1-ja@ssi.bg>
+Message-ID: <bb1aa08c-bc9e-9952-4e8e-82ef04fc196c@ssi.bg>
+References: <20261113121303.42549-1-ja@ssi.bg>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -90,77 +84,86 @@ Content-Type: text/plain; charset=US-ASCII
 
 	Hello,
 
-	Adding Wei Wang to the CC list...
+On Fri, 13 Nov 2026, Julian Anastasov wrote:
 
-On Sun, 15 Nov 2026, pavankumaryalagada@gmail.com wrote:
-
-> From: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
+> This commit fixes two cases of providing sk on tunneling,
+> one to the update_pmtu handler and the second case is to
+> the ip_local_out() call.
 > 
-> During network namespace cleanup, IPVS releases cached destinations
-> using RCU callbacks. However, ip6_route_net_exit() destroys the
-> per-CPU destination counters before these callbacks complete.
-> The RCU callbacks call dst_release(), which updates the destroyed
-> counters and causes a NULL pointer dereference in
-> percpu_counter_add_batch().
+> For local clients, we can see at LOCAL_OUT a netfilter hook's
+> state->sk that is different from the protocol's skb->sk. This
+> can be the case for UDP_TUNNEL where different sk is provided to
+> ip_local_out. If such packet is then forwarded via IPVS tunnel
+> we may need to provide state->sk to the update_pmtu handler,
+> not skb->sk.
 > 
-> Call rcu_barrier() at the end of __ip_vs_cleanup_batch() to make
-> sure all pending IPVS RCU callbacks finish before the destination
-> counters are destroyed.
-
-	What you see is a result of more fundamental problem.
-IPVS is supposed to catch all NETDEV_DOWN events coming from the
-pernet device phase which come before the pernet subsys phase.
-So, on cleanup_net IPVS is supposed to run its subsys cleanup
-with no traffic, no devs, no cached dsts, no netfilter hooks, etc.
-
-	But in my tests free_fib_info_rcu -> fib_nh_release ->
-fib_nh_common_release -> rt_fibinfo_free_cpus calls
-dst_dev_put() where the dst device that IPVS listens for is replaced
-with a blackhole_netdev. This happens before the NETDEV_DOWN
-event and as result IPVS misses the event because dst->dev is
-already replaced and does not match. When such dst_cache
-remains for the pernet subsys cleanup you see these crashes
-because IPVS has another problem that it does not call
-dst_release immediately but from RCU callback.
-
-	I now created a change to call dst_release immediately
-but the problem with the blackholing before NETDEV_DOWN remains.
-It can hurt other event listeners.
-
-	My tests were with tools/testing/selftests/net/netfilter/ipvs.sh
-where I modify it to run only the NAT test. What I see is veth12
-to be blackholed before its NETDEV_DOWN event and ip_vs_forget_dev()
-missed it. Trying to find more information...
-
+> Fix that by passing the netfilter's hook state via the
+> packet_xmit and conn_schedule handlers to call the update_pmtu
+> handler with state->sk.
 > 
-> Reported-by: syzbot+84e27adb95fd2a1fe9bb@syzkaller.appspotmail.com
-> Link: https://lore.kernel.org/all/6af795e2.98e60839.1e023a.00d4.GAE@google.com/T/
-> Closes: https://syzkaller.appspot.com/bug?extid=84e27adb95fd2a1fe9bb
-> Fixes: 026ace060dfe ("ipvs: optimize dst usage for real server")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
+> While here, change maybe_update_pmtu() to be family independent
+> by using dst and do not request neigh confirm via the last
+> update_pmtu arg because we do not generate the event based on
+> remote signal.
+> 
+> Sashiko has some warnings for the update_pmtu handlers because
+> we provide only sk, not skb:
+> 
+> - we do not provide skb because the handlers assume they are
+> called from tunnel transmitters where skb->dev is present
+> but for IPVS skb->dev is not set yet
+> 
+> - without skb, the zero destination address for unconnected
+> sockets can be blindly used for FIB nexthop or route exceptions.
+> So, we now restrict the sk to be for TCP_ESTABLISHED state
+> where the sk is connected to destination address.
+> 
+> - as we provide the original sk (from state->sk) for the original
+> IP header, make sure we do not provide sk from one family to
+> the update_pmtu handler for different family.
+> 
+> The second problem is that on tunnel forwarding we call
+> ip_local_out() with skb->sk. As we push our own outer IP header
+> in ip_vs_tunnel_xmit*(), the right thing is to provide NULL
+> instead.
+> 
+> For consistency, even if we do not walk the netfilter hooks and
+> just pass the packet with NF_ACCEPT, provide ip_vs_null_xmit_v6
+> handler to properly indicate that we are sending IPv6 packet.
+> Before now we used ip_vs_null_xmit for both families.
+> 
+> Link: https://sashiko.dev/#/patchset/20261103152550.60449-1-ja%40ssi.bg
+> Fixes: 79b16aadea32 ("udp_tunnel: Pass UDP socket down through udp_tunnel{, 6}_xmit_skb().")
+> Fixes: 7026b1ddb6b8 ("netfilter: Pass socket pointer down through okfn().")
+> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+
+	We can improve the restrictions for calling update_pmtu based on:
+
+https://sashiko.dev/#/patchset/20261113121303.42549-1-ja%40ssi.bg
+
+	Will prepare v5 in the following days...
+
+pw-bot: changes-requested
+
 > ---
->  net/netfilter/ipvs/ip_vs_core.c | 5 +++++
->  1 file changed, 5 insertions(+)
+>  Changes in v4
+>  * reorder the code in ip_vs_bind_xmit and ip_vs_bind_xmit_v6 to
+>    properly apply the change in ip_vs_bind_xmit_v6 as reported by
+>    the kernel test robot:
+>    https://lore.kernel.org/oe-kbuild-all/202611131204.pFzcf1WG-lkp@intel.com/
 > 
-> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-> index 8a3c880fdb26..9c456efe13c7 100644
-> --- a/net/netfilter/ipvs/ip_vs_core.c
-> +++ b/net/netfilter/ipvs/ip_vs_core.c
-> @@ -2553,6 +2553,11 @@ static void __net_exit __ip_vs_cleanup_batch(struct list_head *net_list)
->  		IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
->  		net->ipvs = NULL;
->  	}
-> +
-> +	/*
-> +	 * Wait for ip_vs_dest_dst_rcu_free() callbacks before dst_ops teardown
-> +	 */
-> +	rcu_barrier();
->  }
->  
->  static void __net_exit __ip_vs_dev_cleanup_batch(struct list_head *net_list)
-> -- 
-> 2.43.0
+>  Link to v3:
+>  https://lore.kernel.org/all/20261111200942.83226-1-ja@ssi.bg/
+> 
+>  include/net/ip_vs.h                     |  45 +++++++---
+>  net/netfilter/ipvs/ip_vs_conn.c         |  16 ++--
+>  net/netfilter/ipvs/ip_vs_core.c         |  41 +++++----
+>  net/netfilter/ipvs/ip_vs_proto_ah_esp.c |   2 +-
+>  net/netfilter/ipvs/ip_vs_proto_sctp.c   |   5 +-
+>  net/netfilter/ipvs/ip_vs_proto_tcp.c    |   5 +-
+>  net/netfilter/ipvs/ip_vs_proto_udp.c    |   5 +-
+>  net/netfilter/ipvs/ip_vs_xmit.c         | 114 ++++++++++++++++--------
+>  8 files changed, 148 insertions(+), 85 deletions(-)
 
 Regards
 
