@@ -1,105 +1,81 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.179
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794686064;
-	b=uyfeGI3Qkh3G1Ek8kH76cyIQZuz34+2C6UkzKzFTJCr7N6npyWVtShBkdDuu8DYTsY6B
-	 IoeY26E9JZNZ+AQDCkqekYCsITHBuIo3+NruO3qkdWypCR0SIIfl0O/HoJ7Y0aSPF/udL
-	 5Pw0GhIR7GEA3rXOLVk0RUqfy0PL52L+SzPsdG4oyAd1nCqsdrZpzSjzFj/yNObE2U4AC
-	 zCY66A+SVS3rWe435RR1gPd3x8jFPNwJiSgUTwT7wEnjTYva7YRmlL8718jbxfr4pxRW3
-	 5s7T/8aW//48MW6Rxyhz9+Up4i6DxPQJyjC7yUmPWsOkMmISaDVokz2aJUFs/Oks6EA==
+	t=1794759010;
+	b=B6yLWqyGNAvkmzZ+KVdlmXpSm6DDyM1W7bJN3jzOBTYTKVT/O2mdOcQ+g/bmft3nhCRd
+	 00jDbnDp1kBy9lJ7LknaI3n+Hp/ifFvb5Sv8X/VgOQ/3KHQBMKuFhkxw7AXnYCI/yh/Vs
+	 iMAygBmTKP1xOnP0NGcIEtg9GGPltb7a9f7Vb3lq4mOobI8a5HY+bfitzhA1dI9COa2JE
+	 hUoRE72IoLG3xJ20DBvHAKHs/d1xVOSh0UtTFADMg5LjbhrLV0VMhQjoFUqLemDNonI7B
+	 sRLFAa+KRgTWK1qMRCZAH3F5TDrW3V6uiKFn27DH8dIjSFQrT5X8vThX8faSIIk284g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794686064;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=3qJyGE4a5UB8YhjOY/fzHOLCz805/i0NwCGq/ktQh8s=;
-	b=nHNMmZyRwQGox4uQPpZ06uwoEPR83HeYfmli1NAIiQAfLtRxv72Nn+a9/b4TF0E0QzxM
-	 +dpxqVR2yfZR4uTNbesMTVq+S8+neob8bjWRevkmPUofBb7J8uwHKAaEiO1Widbx2YTlV
-	 y2BmNIPbzOoNGAjsidyukaJzei97itt/wnRjrOCWPBIWYo8zKJdEh36NnDaqHLNJsAg+B
-	 UmTOATYZVzy91eL9KiaHzKjl67sdZYGHh+bpfmCKSzkKu/xSI5aMRtQME5YjAS3GU0+2b
-	 Yh29RfzB1/jQ4OvVKGKPw4c8ldogtAoF7gmkKJs0iUHx09XP6Fc5o5cRY1PWYVTN/1A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794759010;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:Date:
+	 From:To:cc:Subject:In-Reply-To:Message-ID:References:MIME-Version:
+	 Content-Type;
+	bh=w38rqGNrGDLCqa74mPssK7iYVtNKY8BC2nJHasK7eRI=;
+	b=nI8xU3sb6NEfIPqixLR3XAGCDd1/r9cP+VbvncOeQXz82Gh+l86sUbM+SLNov48mLSHx
+	 ehbumSPVkC5W7XX0S01rmXDZnBM7VM0U1809lpKEIomjGvTHNmnrxpn7rs5L8x8BduMfK
+	 UWf29HbYXJtshVgolsXHXMORAtoFiCW+mP+kyF9Jv6RLhtn6T98XtWcwYtEiiHmdW3ohv
+	 xjDuvcQ6rq/gTnzesvVh7MWcdZN5Rg3u70w7BTLC9pMl9uMgN88MimX48xAKeBo2WfaaT
+	 otzf9O0Z7Uz2V3f4XcetoPj19tZuDqo88zj0+ZndOBxElJDiZKOodiJIF/O583zndrA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=wIUueDOB;
-	arc=none smtp.remote-ip=74.125.82.179
-Received: from mail-dy1-f179.google.com (mail-dy1-f179.google.com [74.125.82.179])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=ssi.bg;
+	spf=pass smtp.mailfrom=ssi.bg;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=VLfjhweh;
+	arc=none smtp.remote-ip=193.238.174.39
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35E68606A327
-	for <lvs-devel@vger.kernel.org>; Sat, 14 Nov 2026 19:54:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 35E68606A327
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4EDC0606A31E;
+	Sun, 15 Nov 2026 16:10:08 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4EDC0606A31E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=wIUueDOB
-Received: by mail-dy1-f179.google.com with SMTP id 5a478bee46e88-37628596783so3712187eec.1
-        for <lvs-devel@vger.kernel.org>; Sat, 14 Nov 2026 11:54:24 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794686063; x=1795290863; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=3qJyGE4a5UB8YhjOY/fzHOLCz805/i0NwCGq/ktQh8s=;
-        b=wIUueDOBpnVCEvuV8Dp2/5jiAS+lYJl4cP2IVvXaTwL/NtbOF8E8OqpR1ki0rwgV4d
-         Qec5TkPv0LlEh2Y8V/u9Q43jXt1yQmzhpMWLB2CUDZgGmaA3QxIAqDH0yKtxJgtwhT2O
-         5bgWymkei0ImgUBzoSsanK+1ZWFBMKcSp9Xnmjz+usNmf59VffX6IvJ+uAMZ6x4MIva6
-         Y56K6nOVKvFIOxhdmCokMLbIt0LEN0RrmXyhCSk9sOIgG4HLbEWsInMOfIhU95K1ikJ5
-         o6jpnA3CHQTHjXPVjkosZKfqXN/2gs6gqXC1Ymz5ux3Fy07zhmVMY2BhXS4dnBIGDWLi
-         xL1Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794686063; x=1795290863;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=3qJyGE4a5UB8YhjOY/fzHOLCz805/i0NwCGq/ktQh8s=;
-        b=SkS3BFrRwNav2twDZHxQmX0pk2flgThwEkGYLy7izPwDZHPV8yk7tlhJwTdcTPN9Jn
-         Wab8KL8dzCnTrRlo29sEyLqkffSM78ZMMwd2lxw3xcnfAMeR2bpzHUI+sO6JLQ1vCp6P
-         pbWOX3poWUXapuZk3L+0t3r/zd40x9rgsH5rlbkVGVHfov5nS4salUtxCCLaLuvh6JIF
-         Mi1oom2OzdhUb3GdubkbLIPLTdNtB+JOmfemK6+QOSw/wF8QQcGnZB/eZsrswK4A1mQf
-         +EYcStlDFFHMR4IRxnqYx+zDFDvWXP6WOATp7hYcGAaLjYLCG/m0RFlDh5d8fJAukUuD
-         dG1w==
-X-Forwarded-Encrypted: i=1; AL+hErGovEp0p2aooWHc2rMJm+OwHFSmSJMBgg2lJ0istr9/iAgt/DYUiDjFxLb7BWHKcwYMMuAYKcSsZGw=@vger.kernel.org
-X-Gm-Message-State: APuU4Z++glA26uIfAE++fB+sU1z4VJ4EQYjuKO3x11hCG5AKkD3ErtUw
-	edFur6AtcxhOPzFU9MIYRtrSlu9TrhDSqR8ZZ4SlaqVeSq28Gbwahm03
-X-Gm-Gg: AYBFou2U9rRgMpYKRnd8Q3K15rF0UkAWWtkMSHKT7O8YJmt9KITTQGLelSDuVrjCMe1
-	197kzakjtnAN7omARV6p9njn0QMEteGeXU4tF13KIErZWRc6XW9rv582rPLWJdK4nt8e02x2fzN
-	Ew0RMwgJWX0etopn1cWU7h5yoMVxggeo76h0evZ88WOLnousLnm1FAvKzjLEgldtqwWsdUCkVWn
-	zYz2zp2Jl6c0PVy6dQ9Pi/2TI3z1k6GV8Ch1pvYpVbXxlpWPCn8rU7qtO+9eBCV3WNyudBMr+eb
-	5V1auwv2vjN4sstAxqngBGFW77P9UTmZsSqrOKInWJyw+Z3UsfMDbxotd3Fa6985oNm1+IkHEwA
-	ASO/JO2AdigSbTXlOCXz9jWwe3XlHHG3SnQVU1QY3AvNJU2QyzYHbGn2YMr/WCttg203SyVUSDt
-	Kis2uFdJxh5b1QWRm8PzQdHX2FZGc1tBTjvvvOnPf5hnE5mspWqxdfW3rCdv097Q0zc+7UNHHR6
-	xEioW6mBunHyZqRXLJfBGbjdFm8mmQhZMHSmBkHWyPS/d1mGC3US7Qi62cf8chAfMNXLN8ILy0N
-	J3tE6bVK/W1ODHs6FvldV6ILIOYeB5U6V8re
-X-Received: by 2002:a05:7301:fc09:b0:36e:b3e6:ebe7 with SMTP id 5a478bee46e88-37966a58499mr5631650eec.26.1794686063266;
-        Sat, 14 Nov 2026 11:54:23 -0800 (PST)
-Received: from user.. ([2405:201:c052:b00b:f7bc:3425:951e:ab09])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-37956bad134sm23226931eec.27.2026.11.14.11.54.15
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 14 Nov 2026 11:54:22 -0800 (PST)
-From: pavankumaryalagada@gmail.com
-To: horms@verge.net.au,
-	ja@ssi.bg
-Cc: pablo@netfilter.org,
-	fw@strlen.de,
-	phil@nwl.cc,
-	davem@davemloft.net,
-	edumazet@kernel.org,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	netdev@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	coreteam@netfilter.org,
-	linux-kernel@vger.kernel.org,
-	skhan@linuxfoundation.org,
-	Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>,
-	syzbot+84e27adb95fd2a1fe9bb@syzkaller.appspotmail.com,
-	stable@vger.kernel.org
-Subject: [PATCH net] ipvs: wait for RCU callbacks before dst_ops teardown
-Date: Sun, 15 Nov 2026 01:24:09 +0530
-Message-ID: <20261114195410.96503-1-pavankumaryalagada@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=VLfjhweh
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 03348213FD;
+	Sun, 15 Nov 2026 18:10:05 +0200 (EET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=w38rqGNrGDLCqa74mPssK7iYVtNKY8BC2nJHasK7eRI=; b=VLfjhwehPmzT
+	waBTOCTGdOoc65YijRE9PDgaJm2duQHE3fmvO0Q48dy64sHwUp9l/KIZaQBVJVLD
+	ogbTgQYIgaDZ/yhYnM8TOPuo9OJFB+oeLry0g3+xp60o80mN6UAALb5s1ednSQrZ
+	oswcMUUbMQSH+WMVAr5xNM1RywFXFJw+NDl9npRj9uCkcEPBH/AJlF7TBK/dD8lL
+	eR+ZITyXnu+t7WeOw02qWqojZ1sVleJ+UG6NM7Eotavid8A51oSdKMnKNKOTsR44
+	Urc8xOOCDP36TZiqYh22uJOPg5LojfNqKJiWyhGglCgFRECn+tH6ZKyTB/QEREdi
+	ybnfZp1L9D2Eqw0upOxxvG1Cd3XSPlc3vqljXbHilKmKCRZjUfWQ1W97d3RX2BCP
+	JxIEV3zAODejaqplIs3gDmzTEWb6wufy4KzvyDB38pCTKotfM/k7L7sPF+hgU8Yd
+	Ncfd15W2uRIkt9RNs11bkkAvMWVrWkdFDFUi6ZSr3JmOJ4k6P3wL5dBLlex1Gwu4
+	NXgB5EdyGv+4TA4tw0vJXzSzxIUZpyeyA6fXfVC3QDA0h7+0RpbInHfPd1MMAM+f
+	wOObpGtv2uf+KCK/V+nzR53tc902weizEXvEWEGPuDvFKrpnZ4A/ejttVfeAUMiK
+	uyCjweLi4HygwvKpcyEZH/Hlge/O/QA=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Sun, 15 Nov 2026 18:10:04 +0200 (EET)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 416C160121;
+	Sun, 15 Nov 2026 18:10:04 +0200 (EET)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AFG9uRb118090;
+	Sun, 15 Nov 2026 18:09:57 +0200
+Date: Sun, 15 Nov 2026 18:09:56 +0200 (EET)
+From: Julian Anastasov <ja@ssi.bg>
+To: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
+cc: Simon Horman <horms@verge.net.au>, pablo@netfilter.org, fw@strlen.de,
+        phil@nwl.cc, "David S. Miller" <davem@davemloft.net>,
+        edumazet@kernel.org, kuba@kernel.org, pabeni@redhat.com,
+        netdev@vger.kernel.org, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+        linux-kernel <linux-kernel@vger.kernel.org>, skhan@linuxfoundation.org,
+        syzbot+84e27adb95fd2a1fe9bb@syzkaller.appspotmail.com,
+        stable@vger.kernel.org, Wei Wang <weiwan@google.com>
+Subject: Re: [PATCH net] ipvs: wait for RCU callbacks before dst_ops
+ teardown
+In-Reply-To: <20261114195410.96503-1-pavankumaryalagada@gmail.com>
+Message-ID: <8473d38d-2d50-ad77-18c1-29bbdda56616@ssi.bg>
+References: <20261114195410.96503-1-pavankumaryalagada@gmail.com>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -109,47 +85,85 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
 
-From: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
 
-During network namespace cleanup, IPVS releases cached destinations
-using RCU callbacks. However, ip6_route_net_exit() destroys the
-per-CPU destination counters before these callbacks complete.
-The RCU callbacks call dst_release(), which updates the destroyed
-counters and causes a NULL pointer dereference in
-percpu_counter_add_batch().
+	Hello,
 
-Call rcu_barrier() at the end of __ip_vs_cleanup_batch() to make
-sure all pending IPVS RCU callbacks finish before the destination
-counters are destroyed.
+	Adding Wei Wang to the CC list...
 
-Reported-by: syzbot+84e27adb95fd2a1fe9bb@syzkaller.appspotmail.com
-Link: https://lore.kernel.org/all/6af795e2.98e60839.1e023a.00d4.GAE@google.com/T/
-Closes: https://syzkaller.appspot.com/bug?extid=84e27adb95fd2a1fe9bb
-Fixes: 026ace060dfe ("ipvs: optimize dst usage for real server")
-Cc: stable@vger.kernel.org
-Signed-off-by: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
----
- net/netfilter/ipvs/ip_vs_core.c | 5 +++++
- 1 file changed, 5 insertions(+)
+On Sun, 15 Nov 2026, pavankumaryalagada@gmail.com wrote:
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index 8a3c880fdb26..9c456efe13c7 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2553,6 +2553,11 @@ static void __net_exit __ip_vs_cleanup_batch(struct list_head *net_list)
- 		IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
- 		net->ipvs = NULL;
- 	}
-+
-+	/*
-+	 * Wait for ip_vs_dest_dst_rcu_free() callbacks before dst_ops teardown
-+	 */
-+	rcu_barrier();
- }
- 
- static void __net_exit __ip_vs_dev_cleanup_batch(struct list_head *net_list)
--- 
-2.43.0
+> From: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
+> 
+> During network namespace cleanup, IPVS releases cached destinations
+> using RCU callbacks. However, ip6_route_net_exit() destroys the
+> per-CPU destination counters before these callbacks complete.
+> The RCU callbacks call dst_release(), which updates the destroyed
+> counters and causes a NULL pointer dereference in
+> percpu_counter_add_batch().
+> 
+> Call rcu_barrier() at the end of __ip_vs_cleanup_batch() to make
+> sure all pending IPVS RCU callbacks finish before the destination
+> counters are destroyed.
+
+	What you see is a result of more fundamental problem.
+IPVS is supposed to catch all NETDEV_DOWN events coming from the
+pernet device phase which come before the pernet subsys phase.
+So, on cleanup_net IPVS is supposed to run its subsys cleanup
+with no traffic, no devs, no cached dsts, no netfilter hooks, etc.
+
+	But in my tests free_fib_info_rcu -> fib_nh_release ->
+fib_nh_common_release -> rt_fibinfo_free_cpus calls
+dst_dev_put() where the dst device that IPVS listens for is replaced
+with a blackhole_netdev. This happens before the NETDEV_DOWN
+event and as result IPVS misses the event because dst->dev is
+already replaced and does not match. When such dst_cache
+remains for the pernet subsys cleanup you see these crashes
+because IPVS has another problem that it does not call
+dst_release immediately but from RCU callback.
+
+	I now created a change to call dst_release immediately
+but the problem with the blackholing before NETDEV_DOWN remains.
+It can hurt other event listeners.
+
+	My tests were with tools/testing/selftests/net/netfilter/ipvs.sh
+where I modify it to run only the NAT test. What I see is veth12
+to be blackholed before its NETDEV_DOWN event and ip_vs_forget_dev()
+missed it. Trying to find more information...
+
+> 
+> Reported-by: syzbot+84e27adb95fd2a1fe9bb@syzkaller.appspotmail.com
+> Link: https://lore.kernel.org/all/6af795e2.98e60839.1e023a.00d4.GAE@google.com/T/
+> Closes: https://syzkaller.appspot.com/bug?extid=84e27adb95fd2a1fe9bb
+> Fixes: 026ace060dfe ("ipvs: optimize dst usage for real server")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
+> ---
+>  net/netfilter/ipvs/ip_vs_core.c | 5 +++++
+>  1 file changed, 5 insertions(+)
+> 
+> diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+> index 8a3c880fdb26..9c456efe13c7 100644
+> --- a/net/netfilter/ipvs/ip_vs_core.c
+> +++ b/net/netfilter/ipvs/ip_vs_core.c
+> @@ -2553,6 +2553,11 @@ static void __net_exit __ip_vs_cleanup_batch(struct list_head *net_list)
+>  		IP_VS_DBG(2, "ipvs netns %d released\n", ipvs->gen);
+>  		net->ipvs = NULL;
+>  	}
+> +
+> +	/*
+> +	 * Wait for ip_vs_dest_dst_rcu_free() callbacks before dst_ops teardown
+> +	 */
+> +	rcu_barrier();
+>  }
+>  
+>  static void __net_exit __ip_vs_dev_cleanup_batch(struct list_head *net_list)
+> -- 
+> 2.43.0
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
 
