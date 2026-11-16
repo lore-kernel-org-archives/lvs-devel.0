@@ -1,75 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.44
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794764165;
-	b=RuhJACAOi/5qb17zPD8ZkhumFy24ZtE2EcSXtQJVxGMUrvJf/sAMgi7fO48RDS0Ui0gH
-	 rI1m2PCYKoI3jtY/lnIwME8Weau6SGxLJK7U1MlVXCANgE5FaYnAwHKG6nRtDgx/B8Zh3
-	 vxRLuiiuZzeQhvFyvFvv5+W2TDxdCa1SRMztdNIbnRPaJC+7BoE/+N4A41IIC4xeXv+J1
-	 rRUV5KdXooA+F3QJwEeV/X8fCCpap/J2NRX412SY2wLg+TQg7NU7U3m1bLw/NXPPVMmA7
-	 4rRQ94WBZez0TzQSfruBZBHiYmREiUz8UgXpjoNp3gU+dCy3vBurvAENNE8dTCaYzHA==
+	t=1794824133;
+	b=Ze5QyXgZGons/IdKcbAC1xYFqMY2o2LaPoGI3J01TMB4A8gtktvdPOjRhz8+ZVEoKOq9
+	 QaAZQgMu9Eechbo9pa3hjs+MSzXZyqD6M1K6PcdH9BIGY/Lp67uOacd2sdqC2dSq7r7Gx
+	 NH68+Y5OLB82f1iZEZkqc4tBI5YrKk2JU1Hlw2VlPk4tLBRU0A4BUCoJ/3Wmlv/vkyCfx
+	 CxbENk5TK0sf+OsEUEAgtskOZl7BXc8qwlJO316+QPbtVLePLqBUv6rJE1GzfBzN80qkf
+	 iXvQjoChAq4lS/m9iHrJNom3N/hcuWPw1zMmc7H9wmY0v1K8Ct1E+raeUsPsMlrAu6Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794764165;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:Date:
-	 From:To:cc:Subject:In-Reply-To:Message-ID:References:MIME-Version:
-	 Content-Type;
-	bh=T6qOwflWea7KdLAIgTT9JTg1M9zGsAYbHIASp0wel+k=;
-	b=4tIc90K4VpolnY/Myuxf97lEh2a80Z7+YeV+0z1g5PYSCR+peq5PQG2xLug3Z6IMkXu5
-	 Xa8L35h1PVSD6b6sCqmOmfIU71f6vpvP1P+3J1PWzj6m2+KWelKPG65nXatNnid0y2Lvw
-	 wKKe7MwqiIPofXnUATIszKxIvONm4TbOeE8mnb8o2tqu1B31Xhfr9HWv8PmApNg+sALS4
-	 6jt9BmtxRrqGhoio3pHDJy+KUzkjLmbEivdFcXs3dyZ0xThSpbibuZ60mbEXoZEEnsFjO
-	 cBGIlDuV43nq5X0JQaNg9kKwPtjbxr6uxrC3dKInwnd90VXbFGuGaXJyvL9WGco+D2w==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794824133;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-Id:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=MmFHwFEuMpLfLRAKJJjBjIdikYWgskAg6Z40N1h66qk=;
+	b=s5OQa+NJAgH7K7/kZ55t+LCOp6cWxI3RV3Qf1lY1WmBULqRTtmiIs08XcP5bgm7MAtYa
+	 HRWxTrn1drU1TY5+WB4ECNX/1DOIsBhAoqU88tQm8ad2DERfUkq7rdN9qdp0kYpIyyxXe
+	 E8ENmFml1nCkTeSTBKGBmvoSZ2usYR8wyMTP4qDYz2I8HMQGquK4RYWIiXE1KOUuiUZzU
+	 RII22/aZxw5d+MnptxbBG8UrgleC7gH+qFjV51ePET9OqApqtM2h3OQrcwQ13hVJGLHYs
+	 JK8E8a/mu29A7jLrAEtsncS1wuXDxbfd9Y1VkiPp82T1wleyRfK4dg0Eiq2aW75XurA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=ssi.bg;
-	spf=pass smtp.mailfrom=ssi.bg;
-	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=b7FNXJH9;
-	arc=none smtp.remote-ip=193.238.174.39
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=HgAYqc9G;
+	arc=none smtp.remote-ip=209.85.208.44
+Received: from mail-ed1-f44.google.com (mail-ed1-f44.google.com [209.85.208.44])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 34620606A323;
-	Sun, 15 Nov 2026 17:36:03 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 34620606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83FA5606A335
+	for <lvs-devel@vger.kernel.org>; Mon, 16 Nov 2026 10:15:33 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 83FA5606A335
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=b7FNXJH9
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id D9AE321B52;
-	Sun, 15 Nov 2026 19:36:00 +0200 (EET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=T6qOwflWea7KdLAIgTT9JTg1M9zGsAYbHIASp0wel+k=; b=b7FNXJH9HoIT
-	HTYvpgsgGyRXUn7zlNiDAI1YJ4WvslUZfU+jOlyVxlG2DyPynm6LTLtROWimtGc0
-	HM48icwKxTj7CCIK8MYiMH85RxnDKEvN8/4cnqhZkCIaFAdNpJIitO0rWOGBXNoO
-	pMnePOyh2QtXbomEz/DjeYkcjkIoyi6kSDxItDSnGO1AyMdZXqCiwDaQD4gTJyG1
-	cvsLhubdqADDbmAjf26UXKNtumdSlKwA1viqddhXsi7u1kVHuA186DT99wyjvyN0
-	k+81q5sZ2suIoMVUht8ZuiFkSwAiY5v4r3DOXbsxuKzna+BqbaQoK6udnM62l6FK
-	Hb7vxKt+SMjYZHAdIBg7IsFappb44CpoGJ39YmMr5JqoxNvHLj+vfFwnjdLUduyq
-	9PVfsDrRtTz7LVSFr+ob7T0Zqj8GU9t3nPYDbtD6HrnrQW9gZZ8AwcrRvVBfMOKG
-	zy6g1+cJiGbHWCTlPGfM6HPewe+Z34Hxq+vuQtS5OHosK2YGqsX/dW3QIVedz2Ix
-	MAchd098m8rUHqMniTuJVFMrECIURDXp5cnqYUxz65FIvwr3jMyNmcNaMlw7D9VR
-	PSQTQAc+666dQz9BIOvVYIZ8IrgBcLD2jT3Es1tZXiuFWj235Kr0jdkoxVwWHNtJ
-	m4oNMmgGUU+oFUscN6NEKZ4+2VpiHQ8=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Sun, 15 Nov 2026 19:36:00 +0200 (EET)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 54EAE60FC3;
-	Sun, 15 Nov 2026 19:36:00 +0200 (EET)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AFHZwWV127726;
-	Sun, 15 Nov 2026 19:35:58 +0200
-Date: Sun, 15 Nov 2026 19:35:58 +0200 (EET)
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org
-Subject: Re: [PATCH nf v4] ipvs: pass correct sk to update_pmtu and on
- tunneling
-In-Reply-To: <20261113121303.42549-1-ja@ssi.bg>
-Message-ID: <bb1aa08c-bc9e-9952-4e8e-82ef04fc196c@ssi.bg>
-References: <20261113121303.42549-1-ja@ssi.bg>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=HgAYqc9G
+Received: by mail-ed1-f44.google.com with SMTP id 4fb4d7f45d1cf-6b7efd3bc26so1628641a12.1
+        for <lvs-devel@vger.kernel.org>; Mon, 16 Nov 2026 02:15:33 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794824132; x=1795428932; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=MmFHwFEuMpLfLRAKJJjBjIdikYWgskAg6Z40N1h66qk=;
+        b=HgAYqc9G+r96o0aqLB0eD65XAGTpvqpGGt1tW8Ub7O/zlwjAXz1TJx3hFYyjVwyZ09
+         ECxETVeCo06ckRHSN36lx41RzEpKa2tvpIimz2927tVhlZPmryHZF2EL7RoebI89/kfv
+         fY4XMfG987AjFYznToDjdOG6cRZtFHqytosoCqFNm7pkBmCTuUTMhzaCvCKvZhw8BgSW
+         nb2VijaUGgqbOlOrDlLogUZwZVHbdXT/2BY7o76L+vWqspXux2lQVg0LxzJbjnvzXpeQ
+         b6+N6W7V2SaeT/vujdVrAi0PrvF14wgBNST8KCkL2miE0tnLXS+SXFukDhhwmIqG8Ry7
+         0bqw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794824132; x=1795428932;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=MmFHwFEuMpLfLRAKJJjBjIdikYWgskAg6Z40N1h66qk=;
+        b=utx51HmzAPqSMBg6QwmQVK1CL3LfdxI4i/Cv2sZm4/ttIoMXsK1Y83jd7BQDh+TSGC
+         Gij5e4Rs5Vlqmj/z8MiURmAA1bEdnqn0w5hw4zNuR6KqoSyd7C2U8iUThaH2wDxc70og
+         o87C5zIjK7u1J/Pf34hHr2F0nVDVBjRTvKTaUnpdPTGk/CCGC+qucv/ba2Hva8DAA/hC
+         pn0o1ys7+DK4SGAgxJKi8Df1te7CawK1GsmkOlgFZ4bqjuYQcVaDhSlj5IkCsKpPcxcB
+         mCovs57mu30eMdc79axxG4PgjDG/BhDwk2RbKE2XDcMr3KybrbI3pnh2nlwGUHW9M+sJ
+         AAnA==
+X-Forwarded-Encrypted: i=1; AL+hErFkfsB3qcfDqxS9dXRp0HLwkW3dvnE/KTTkKRvq/Q0Ac6lnsh7L6OOoiAFASQqIm2I7jdTFvtB+ugs=@vger.kernel.org
+X-Gm-Message-State: APuU4Z9jAR1kwln9yMObRLO++vU3CejhLiOzmaVR1jqAPPqy61vHVJn2
+	mLpV5ZIN2BcVsWSxt6O7EpLpiU9cS5Vj5aMHUwi4vw09N37T5KSZY/Ui
+X-Gm-Gg: AYBFou0VZ3HjwY1X9HyPVTscu/HaVbyTOyoIAdMg/IUzNk/lWXowDmWnxAPVLvbWpW+
+	d8Ls4LA71P6mYUv57LKbpyFUejUde9IsFOpfGm76Ji9y3H9CRYKNDlQEqrIMwfNCSYnb3mwjoAT
+	WiavL2UDdDBImdzjQ/QBbu2smufa1H53gUyxE2uZm7Jjc/M1nuQmdzW3vVHdwYyktVHk1ceOn/B
+	wNnexgzCIr69rVny3RBgaklqw4NlWhLWagtcZYKyKb+g/ZAZnFpJN6z+lnHwFPOS4yKv7p+J99B
+	xKzDoOrO/IHQz+U3cUMQJ6CiAWzLpCAp5ZCmpukWSqwiafqDfo++CFsEHgi5ZNE2dfX1v0hWF4C
+	eBCra5Ly/oX/8xH0yaljQCvCRn0TMTqW7a4qbhcnDM4k4N1s2hiTrQDZepY8g73T8nlEJ7wd8NI
+	Wa+X7Wnfryt2Ex3LHmb4dvzEU0aKXfCeGU8dy8WtQJEQ3Wv29o4i1QC7OLHPd2v9CXr2GKunYkC
+	pUgHxlg1o1JndoEAW0RjCjndHVIEpG4dGZzVAxnc7RWPCfNP7sMhApKHYhIirs9dowmBUwYjPCA
+	QRTkJm5OMKHUAp18KkkfSNP0YV0kRp4boO5UMuTyG386dyrh45ogXxCi6rcu
+X-Received: by 2002:a05:6402:210e:b0:6b6:8ed8:765a with SMTP id 4fb4d7f45d1cf-6b7c0d06184mr7571102a12.38.1794824131325;
+        Mon, 16 Nov 2026 02:15:31 -0800 (PST)
+Received: from theodors-laptop.. ([5.255.118.7])
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b7c24e7714sm4235699a12.28.2026.11.16.02.15.29
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 16 Nov 2026 02:15:30 -0800 (PST)
+From: Theodor Arsenij Larionov Trichkine <theodorlarionov@gmail.com>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Julian Anastasov <ja@ssi.bg>,
+	Simon Horman <horms@verge.net.au>,
+	Florian Westphal <fw@strlen.de>,
+	Phil Sutter <phil@nwl.cc>,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	netdev@vger.kernel.org,
+	coreteam@netfilter.org,
+	Theodor Arsenij Larionov Trichkine <theodorlarionov@gmail.com>
+Subject: [PATCH nf v3] ipvs: ftp: do not link expectations to unconfirmed conntracks
+Date: Mon, 16 Nov 2026 13:15:06 +0300
+Message-Id: <20261116101506.98853-1-theodorlarionov@gmail.com>
+X-Mailer: git-send-email 2.34.1
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -79,94 +101,47 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
+ip_vs_ftp_out() can link an expectation to an unconfirmed conntrack. A
+later extension add on the same packet, such as seqadj in
+ip_vs_update_conntrack() or NAT, then reallocates ct->ext and leaves the
+expectation pointing into the freed area:
 
-	Hello,
+  BUG: KASAN: slab-use-after-free in nf_ct_unlink_expect_report+0x490/0x4c0
+  Write of size 8 at addr ffff888004dd4e48 by task syz.2.17/649
 
-On Fri, 13 Nov 2026, Julian Anastasov wrote:
+Link the expectation only to a confirmed conntrack.
 
-> This commit fixes two cases of providing sk on tunneling,
-> one to the update_pmtu handler and the second case is to
-> the ip_local_out() call.
-> 
-> For local clients, we can see at LOCAL_OUT a netfilter hook's
-> state->sk that is different from the protocol's skb->sk. This
-> can be the case for UDP_TUNNEL where different sk is provided to
-> ip_local_out. If such packet is then forwarded via IPVS tunnel
-> we may need to provide state->sk to the update_pmtu handler,
-> not skb->sk.
-> 
-> Fix that by passing the netfilter's hook state via the
-> packet_xmit and conn_schedule handlers to call the update_pmtu
-> handler with state->sk.
-> 
-> While here, change maybe_update_pmtu() to be family independent
-> by using dst and do not request neigh confirm via the last
-> update_pmtu arg because we do not generate the event based on
-> remote signal.
-> 
-> Sashiko has some warnings for the update_pmtu handlers because
-> we provide only sk, not skb:
-> 
-> - we do not provide skb because the handlers assume they are
-> called from tunnel transmitters where skb->dev is present
-> but for IPVS skb->dev is not set yet
-> 
-> - without skb, the zero destination address for unconnected
-> sockets can be blindly used for FIB nexthop or route exceptions.
-> So, we now restrict the sk to be for TCP_ESTABLISHED state
-> where the sk is connected to destination address.
-> 
-> - as we provide the original sk (from state->sk) for the original
-> IP header, make sure we do not provide sk from one family to
-> the update_pmtu handler for different family.
-> 
-> The second problem is that on tunnel forwarding we call
-> ip_local_out() with skb->sk. As we push our own outer IP header
-> in ip_vs_tunnel_xmit*(), the right thing is to provide NULL
-> instead.
-> 
-> For consistency, even if we do not walk the netfilter hooks and
-> just pass the packet with NF_ACCEPT, provide ip_vs_null_xmit_v6
-> handler to properly indicate that we are sending IPv6 packet.
-> Before now we used ip_vs_null_xmit for both families.
-> 
-> Link: https://sashiko.dev/#/patchset/20261103152550.60449-1-ja%40ssi.bg
-> Fixes: 79b16aadea32 ("udp_tunnel: Pass UDP socket down through udp_tunnel{, 6}_xmit_skb().")
-> Fixes: 7026b1ddb6b8 ("netfilter: Pass socket pointer down through okfn().")
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Fixes: b25adce16064 ("ipvs: correct usage/allocation of seqadj ext in ipvs")
+Suggested-by: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: stable@vger.kernel.org
+Signed-off-by: Theodor Arsenij Larionov Trichkine <theodorlarionov@gmail.com>
+---
+v3: skip unconfirmed conntracks, as suggested by Pablo; v2 did not
+cover NAT.
+v2: https://lore.kernel.org/netdev/20261113011447.2357709-8-pablo@netfilter.org/
 
-	We can improve the restrictions for calling update_pmtu based on:
+ net/netfilter/ipvs/ip_vs_ftp.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-https://sashiko.dev/#/patchset/20261113121303.42549-1-ja%40ssi.bg
-
-	Will prepare v5 in the following days...
-
-pw-bot: changes-requested
-
-> ---
->  Changes in v4
->  * reorder the code in ip_vs_bind_xmit and ip_vs_bind_xmit_v6 to
->    properly apply the change in ip_vs_bind_xmit_v6 as reported by
->    the kernel test robot:
->    https://lore.kernel.org/oe-kbuild-all/202611131204.pFzcf1WG-lkp@intel.com/
-> 
->  Link to v3:
->  https://lore.kernel.org/all/20261111200942.83226-1-ja@ssi.bg/
-> 
->  include/net/ip_vs.h                     |  45 +++++++---
->  net/netfilter/ipvs/ip_vs_conn.c         |  16 ++--
->  net/netfilter/ipvs/ip_vs_core.c         |  41 +++++----
->  net/netfilter/ipvs/ip_vs_proto_ah_esp.c |   2 +-
->  net/netfilter/ipvs/ip_vs_proto_sctp.c   |   5 +-
->  net/netfilter/ipvs/ip_vs_proto_tcp.c    |   5 +-
->  net/netfilter/ipvs/ip_vs_proto_udp.c    |   5 +-
->  net/netfilter/ipvs/ip_vs_xmit.c         | 114 ++++++++++++++++--------
->  8 files changed, 148 insertions(+), 85 deletions(-)
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 44de99f4d187..cb0cdc35a7c1 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -398,8 +398,10 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 						   end - start,
+ 						   buf, buf_len);
+ 		if (mangled) {
+-			ip_vs_nfct_expect_related(skb, ct, n_cp,
+-						  ipvsh->protocol, 0, 0);
++			if (nf_ct_is_confirmed(ct))
++				ip_vs_nfct_expect_related(skb, ct, n_cp,
++							  ipvsh->protocol,
++							  0, 0);
+ 			if (skb->ip_summed == CHECKSUM_COMPLETE)
+ 				skb->ip_summed = CHECKSUM_UNNECESSARY;
+ 			/* csum is updated */
+-- 
+2.34.1
 
