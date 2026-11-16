@@ -1,65 +1,77 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=217.70.190.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794827866;
-	b=aph5rXPoYw4TEUA7xqlgzsrHE2wawQXz6khcd7eSspm2JfWvfFYRIoWu2z0KOIhDCeVG
-	 369xYGGBQD1+xP16WmDzjAHW98OQaA/IMl0CFmiPUNdmUtqVKWMElEcbbY1ggMGYC/osF
-	 WUZuPG7YoWGaVKheOh6dDqwOBjNhOJ5Z2ZkddCAd371mY3UNs+ChkjD0uFJ4gaLjCkutt
-	 ITKJLn+5PZaAAMbfRI9Q9PoOxPAVQSIKs7rc/m4uTrTNjk6or1ftHqppOzvjZICst7O/z
-	 xTGtffOP5ebRf+kX7ZZSybOhEnpKIVgobw0HvlBRwfJVcCxi1oJ1WLySXfrCM1EKYEg==
+	t=1794843687;
+	b=OS6RhQm4RGQp43V58sZhel3Uib4jGbTu9NdWruBHn0lHQCvep7zM5rms2THzD/0ycyz8
+	 Xdkxz4hnHl8iN0tBdHQbLPzJAvH/oY/FpcZ70LJhCD+gBGgRIISgciJWxTvSlZF4PpQDB
+	 em2+me89DH3yIIM5NG118QLnzok9iGmbP5DG+pzG40jc9qPgKIiVPwOQD4E/XYLWXEy93
+	 C+MfGmAuqBLutP3ioHe5RQ46tS1thpnxYSDhjzPUcpcIX6J0nef/NjuJs5AXwXB5GBLzN
+	 mUICMDZzMujBBntTQ0WKE7QU/F35CNKyQqmcQ2ruHJNsdoLDAlsrWUxb7S2WmSnQCpw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794827866;
-	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding:In-Reply-To:X-Spam-Status:
-	 X-Spam-Checker-Version;
-	bh=1X+DI2EYVTamjMZdv5D2oa41wuSOtsC9pXWb3oBSzOU=;
-	b=L+JM3UGyYnXqULAtmu5K1yAtbUXxeCEF1t/1rCFSwoRLk1up5FJnJ6Bnkd3kAFPwCbak
-	 yr59V7gJvTA2WOzVh6dAJLbDXKhtNcEtKIIoVej5BVIxu5GRkPx+AQvUFu/f/JxeWnw4C
-	 8bjrZNxZRP6ZGAKFzDt7+PsjMuOCO7cCX/uDdDuYjY3cK+mIYQkKe4Lgt3pZucIi1wonE
-	 8h8VaIO7RK9gPQGWBJt2a96rpZxRw1zjXig9YxvG043f3vcwsEg1sR33LMnQaDvTB+LOz
-	 8vqq2tpnHvwf1OCjQrUX9mnJbtp7gUBpF7m7w9ZvzWVYcOm4ymQ55RaWA48Xo28WTlA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794843687;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:Date:
+	 From:To:cc:Subject:In-Reply-To:Message-ID:References:MIME-Version:
+	 Content-Type;
+	bh=W/Ym3u4usM4ArSt2EhaBMBkXZ0AvTiTm9s1YVFwTSto=;
+	b=HZV50LSDSLAJC5hXZHws+xjUSCTsGlazDzOQky7dMsAorROCBy8bb+8UHMT2kMIVNGeO
+	 Ein6vurYnkHDRw5YTwwd6FmrTBoZ//qgx0Nxn1vDWlMoRIRV7jpnNzoHMgiAdywoNMrSU
+	 /mLDV36UKCaP/SwGxJLVORb3ZDJbaCO/52DIOxjAEvIige2fbiS69N014R9vbYA5r3y8k
+	 KdrtrobsM1Mc47rXnShmIA4GBRy/+0SZ3F3liBlHPsDg3A5pzZX3GfJRmMerYmQAuER+D
+	 n/HRK/pLoo5JLqGZcQFt57TVimJ2p/1IxDYZ1JoX0nLl15Hk0SQZbmB+Yu7e5x0YXhA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=netfilter.org;
-	spf=pass smtp.mailfrom=netfilter.org;
-	dkim=pass header.d=netfilter.org header.i=@netfilter.org header.a=rsa-sha256 header.s=2025 header.b=NkTkPDOG;
-	arc=none smtp.remote-ip=217.70.190.124
-Received: from mail.netfilter.org (mail.netfilter.org [217.70.190.124])
+	dmarc=pass header.from=ssi.bg;
+	spf=pass smtp.mailfrom=ssi.bg;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=YYrhCjGJ;
+	arc=none smtp.remote-ip=193.238.174.39
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id 211C3606F355;
-	Mon, 16 Nov 2026 11:17:45 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 211C3606F355
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=netfilter.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 26EEE606A31C;
+	Mon, 16 Nov 2026 15:41:25 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 26EEE606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=netfilter.org header.i=@netfilter.org header.a=rsa-sha256 header.s=2025 header.b=NkTkPDOG
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=netfilter.org;
-	s=2025; t=1794827863;
-	bh=1X+DI2EYVTamjMZdv5D2oa41wuSOtsC9pXWb3oBSzOU=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=NkTkPDOGqxXpa+EH9pZvGIv3d61Wd6nr/8W5+6uEIJ+pdn1LRULuSsv8tpxb+2962
-	 HH0gN9wOSt7JrhWxJjvLQzu+0ceVz0uezpwpUv8HT7cnULwNpiuxnMgJ8s7D9auucr
-	 8T0nay59r7bVFnc5deKt0dvjeATq4r9PY9+ssJ8Smw00ABDnp1PG2eXPzR+0OBcIgB
-	 dYV4J8Qv8aWdZdQbD9N5Y78SPlDbojz88CIp8BMdU4jETUrMpCVviYwm8lQGTdexuh
-	 GrJROKVCtDxahS7kBTzB0X5Sntfj0S87UZTmdx0eRz2LPnGBgiM0d7kIY7I+7e5oUk
-	 VwD8Bp0IAdpsg==
-Received: from netfilter.org (mail-agni [217.70.190.124])
-	by mail.netfilter.org (Postfix) with UTF8SMTPSA id 88A126005B;
-	Mon, 16 Nov 2026 12:17:43 +0100 (CET)
-Date: Mon, 16 Nov 2026 12:17:40 +0100
-From: Pablo Neira Ayuso <pablo@netfilter.org>
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=YYrhCjGJ
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id C3DAB21B52;
+	Mon, 16 Nov 2026 17:41:17 +0200 (EET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-type:content-type:date:from:from:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
+	 bh=W/Ym3u4usM4ArSt2EhaBMBkXZ0AvTiTm9s1YVFwTSto=; b=YYrhCjGJ1ikC
+	4u5g9qFaxvjjIgwvHb2kLdkFC4YIJJtt+K09RY9FM/9eW2qpRDguxL79bc99DhmA
+	/gCMhIvoRVD1Sh8fEDFsFRBNqQaDdBRbXC1OxGVOR4NQYSnzhsvpshz9d/ARpcOD
+	8s+LXScD9eUcDgvY7fbdQensJjCdpcHTUc9lQjilVqT98EafBi6oEUOUVkaVqQhd
+	XKkKKCQzSvZ91OqdC/Pafx1cy4Gg23MGFbJIGcsSBtDSHvoVuYgE1Wbm5DKPPees
+	RIzLEwiHQRdvmheqBZB8wqGyZGOmTKnVI4ywy0gooyDJv+zpM/ahamAMZYkyG6e+
+	MFCjh2CJL+FFpwZO3y0qJVSjdIIIOuqDWM59Rs2fEuzUpP9490iKb89MOVD3kQlD
+	V/GKs5uQ+5qk8aJNSKiLiKqzgSW8Zd0tdYlQ3MG4vmLOGYySLIIFcUyMUCcjGPXi
+	p9dYgVgkjPx7f+eoTP3lVcyd1hIbQlWyy9dhHiAsCahuDEcPVy1XJW5NB6+702+3
+	bkYfDlWMIzgZl4JhP/hO1O0TBJt+JpDaZebtiNDHezfUW1eE827uj9QxWUoNOCNT
+	zHppA0ycefDfoREwgOA2pwQ+6oIscrlGc4PZi5c9TSW8br8O84EILVqM8Eh6yHNs
+	2116gZmx75r7ZYYeHizAq8DQLNyw1pM=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Mon, 16 Nov 2026 17:41:17 +0200 (EET)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 5F05B60B48;
+	Mon, 16 Nov 2026 17:41:17 +0200 (EET)
+Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AGFf59c081465;
+	Mon, 16 Nov 2026 17:41:06 +0200
+Date: Mon, 16 Nov 2026 17:41:05 +0200 (EET)
+From: Julian Anastasov <ja@ssi.bg>
 To: Theodor Arsenij Larionov-Trichkine <theodorlarionov@gmail.com>
-Cc: Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>,
-	Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	netdev@vger.kernel.org, coreteam@netfilter.org
+cc: Pablo Neira Ayuso <pablo@netfilter.org>, Simon Horman <horms@verge.net.au>,
+        Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
+        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+        netdev@vger.kernel.org, coreteam@netfilter.org
 Subject: Re: [PATCH nf v3] ipvs: ftp: do not link expectations to unconfirmed
  conntracks
-Message-ID: <avrmVAE_onAH-_VK@chamomile>
-References: <20261116101506.98853-1-theodorlarionov@gmail.com>
- <avrgKSO8nfTnv4iL@chamomile>
- <CAEZyMPB+oNBrnxV09Ji-Ao7Bcs93Qg=qx0B_b=3ULFx3nEFo+Q@mail.gmail.com>
+In-Reply-To: <CAEZyMPB+oNBrnxV09Ji-Ao7Bcs93Qg=qx0B_b=3ULFx3nEFo+Q@mail.gmail.com>
+Message-ID: <2bd179df-abde-19d7-0bd4-996b7adcc5d7@ssi.bg>
+References: <20261116101506.98853-1-theodorlarionov@gmail.com> <avrgKSO8nfTnv4iL@chamomile> <CAEZyMPB+oNBrnxV09Ji-Ao7Bcs93Qg=qx0B_b=3ULFx3nEFo+Q@mail.gmail.com>
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -69,12 +81,20 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAEZyMPB+oNBrnxV09Ji-Ao7Bcs93Qg=qx0B_b=3ULFx3nEFo+Q@mail.gmail.com>
+Content-Type: multipart/mixed; boundary="-1463811672-845209124-1794843669=:8917"
 
-On Mon, Nov 16, 2026 at 02:05:52PM +0300, Theodor Arsenij Larionov-Trichkine wrote:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+---1463811672-845209124-1794843669=:8917
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
+
+
+	Hi Theodor,
+
+On Mon, 16 Nov 2026, Theodor Arsenij Larionov-Trichkine wrote:
+
 > On Mon, Nov 16, 2026 at 1:51 PM Pablo Neira Ayuso <pablo@netfilter.org> wrote:
 > > I think this is coming a bit late?
 > >
@@ -84,23 +104,43 @@ On Mon, Nov 16, 2026 at 02:05:52PM +0300, Theodor Arsenij Larionov-Trichkine wro
 > confirmed, and letting the packet through untouched? Or even before
 > ip_vs_ftp_out() gets called?
 
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 9e3e005a8263..5d7b572961f9 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -368,7 +368,7 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
-        buf_len = strlen(buf);
- 
-        ct = nf_ct_get(skb, &ctinfo);
--       if (ct) {
-+       if (ct && !nf_ct_unconfirmed(ct)) {
-                bool mangled;
- 
-                /* If mangling fails this function will return 0
+	Early in ip_vs_ftp_out but you have to base this patch on
+top of the template fix:
 
-IIRC, there is a recent fix here to ignore template conntracks too
-here.
+ipvs: ftp: skip conntrack templates in ip_vs_ftp_out
 
-@Julian, is it worth all the pattern matching before getting here
-worth if the ct is unconfirmed? Otherwise, this can be short-circuit
-earlier.
+	Or to wait it to be included in the nf tree.
+
+	Then after the:
+
+	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
+		return 1;
+
++	ct = nf_ct_get(skb, &ctinfo);
++	if (!ct || !nf_ct_is_confirmed(ct) || nf_ct_is_template(ct))
++		return 0;
++	/* seqadj extension not created by original packet? We usually
++	 * add the extension for the first packet in ip_vs_update_conntrack().
++	 */
++	if (!nfct_seqadj(ct))
++		return 0;
+
+	I.e. we want:
+
+- ct to be present
+- this should not be the first packet (nf_ct_is_confirmed)
+- should not be template
+- the first packet should create seqadj ext before confirmation,
+in ip_vs_update_conntrack()
+
+	By moving it early we drop the PASV response without
+creating IPVS expectation (NO_CPORT connection).
+
+	I hope the above is correct :)
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
+---1463811672-845209124-1794843669=:8917--
+
