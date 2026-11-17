@@ -1,62 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=217.70.190.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.219.53
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794920047;
-	b=1I2Y/29f7Iw2PvNiyTUFW0zxqhliW15YCNgbSadqkEIwIqeMWxl11F+6k+d7NNh6SWaS
-	 xbtncoPbiSLr4YPA1WNLhi3nHUUopUhLEy/4KvN5m5xLcg9wBCYhPoCiT0IvDDSB+z+Ms
-	 uAsf2soix4IvrlROxOaOt1QhCdqIwA/qoxR422qyMfWl56hhSnBHERt9bqczoFNzOc5uJ
-	 sW924YH/BtQeHDXNfLKDeFHKULj0ahw8Lo9bV0Kqn7V2zrLhKpXACclccvAkOiLfJwWcU
-	 474wiygVpgfoaPspdiA4aB+FFc3/0m2KPy1HT3JwhVt4jdX7U3WxN+A4rwUCzJjUP9Q==
+	t=1794922859;
+	b=QXZpm6mjYfdHhVZQ0+B697+lK6UBYVJgbW7AC/dGRc8LqwTL+n84gW7humhPc5vtfGAd
+	 xh+lvS2r1juoUcwi45+dWa618WX7I+YdDMfPcXydCO4mp+5NJWjkIlcdUGO+YluqttGrk
+	 oa2IFb6HX5pihvIsaFFGfuD3Zx8Uh6dqhCtRm1gxYlEOYtoi69Dy3vfMrUDG9AUhgFY16
+	 YVALOQMnGJCH8c7SXs25Dl0G6plqp7lLfo4n/1Y2vwIRO8eAvCkFYA6p+6ZvlUuVrNKXu
+	 URTd9Y0GKkHQfYV/DcfnW55hhp3x0zbW+TvCgo2qWqU3dYShaSRjklYxfWnubMLzFSQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794920047;
-	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spam-Status:X-Spam-Checker-Version;
-	bh=eI4v4Pwt8zW5jhRZ+0jVRE7KfXbV0/cmik9BOGR0Yqo=;
-	b=FUAwAgaqyNDEx/ipuYxRG5uSpeTJ0eQ8AqOQDLJajZPkRpT7yKkDZoymEexOz/oSJGLm
-	 lcU6arKNWTszRXrXOY5pBIA4jtRU1lAqob5M/QeB8wPXlZHowA9Mgm77Kr8YAtm1hdeGT
-	 0memGOaREoWn7deBrSoU2ztjOseWLhHFH2zxKcDukH1MFJv+FDq015t3gCduECWuyNNMV
-	 UaY4egi8NY2jubBQoy3HyycHrEM8Uun/zFRHcB4LTXNEeDzI14Md4QDV0Zo5NQFpDt2Tg
-	 DHRleYxRX8t7j36jO4OdCZYMu5OfQen8jdGG9SxQuB9NYhw0N12ClFJTrQ3/ymZDlVw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794922859;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=TwB4RSE1ahOv1eWO7HrIP9Xo526ulRCGPxUhrPC4tB0=;
+	b=oKeo6RZJwA3O2IYXwEQHKkB+cMvOkDUvxXgwXhKApY1OoaY/n4F58jZVsXiN58futI0w
+	 gWttI/pQnS8RCYcrV86lIGtTE6yOZdhlIX1OHR5msxI4NDxldIstAIWQnxwrI8U7KX7N4
+	 PvOM7owAt6p2PocEUwDs/NhYfuNpF9zZXTBRbViLArUrQzfs1P2zluz3O17ssyTqQnuyQ
+	 IE1MNy0kx/w5Rcs1m9Xzaway2XicngH+obWo/rnl9kpNT8Cw5MnubAGTK6vVlW803bCW4
+	 YXC5b/YTQ/5qAFSYYYfEtOm6QMRGDr7W1rS175k0mUXcKW7rL494CW7+Xk8KpnYleJQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=netfilter.org;
-	spf=pass smtp.mailfrom=netfilter.org;
-	dkim=pass header.d=netfilter.org header.i=@netfilter.org header.a=rsa-sha256 header.s=2025 header.b=oaFrGsXW;
-	arc=none smtp.remote-ip=217.70.190.124
-Received: from mail.netfilter.org (mail.netfilter.org [217.70.190.124])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=1password.com;
+	spf=pass smtp.mailfrom=agilebits.com;
+	dkim=pass header.d=1password.com header.i=@1password.com header.a=rsa-sha256 header.s=google header.b=mbrGrYZU;
+	arc=none smtp.remote-ip=209.85.219.53
+Received: from mail-qv1-f53.google.com (mail-qv1-f53.google.com [209.85.219.53])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with UTF8SMTPS id C0E2A606A323;
-	Tue, 17 Nov 2026 12:54:06 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C0E2A606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=netfilter.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=netfilter.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 700A2606A329
+	for <lvs-devel@vger.kernel.org>; Tue, 17 Nov 2026 13:40:59 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 700A2606A329
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=1password.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=agilebits.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=netfilter.org header.i=@netfilter.org header.a=rsa-sha256 header.s=2025 header.b=oaFrGsXW
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=netfilter.org;
-	s=2025; t=1794920044;
-	bh=eI4v4Pwt8zW5jhRZ+0jVRE7KfXbV0/cmik9BOGR0Yqo=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=oaFrGsXWIgeyLnLgGbpYxFgKVK83DmGH2NwRb5GwxYqApi830U96EufCWr9FkWpSg
-	 rNI6UGzp7Mgf2RbyuyV7FobYqKwOQ0pwCOJog2yh3G8gIXzme7EXkoZ4oDOFv2vJwd
-	 52/PuPWt683AThlJe4JKrfBDmDAuQye+zJoKTriUQ0XNtsglURWNteRJXgI4mjCHIG
-	 wX0xt3GKDksoBHJQH5vF+TnaZXlCpcf0rvxDhZNiUOAs/G8fWneBwLy0Av50p+jaA6
-	 s8tVKAaMx0vHUCmhG6OKT4ZO0Mk/jD8tQTZ/FUT2N4CGVXOQIvUFqXFiNkK6VYXGxY
-	 PtnIU5D72rPbA==
-Received: from netfilter.org (mail-agni [217.70.190.124])
-	by mail.netfilter.org (Postfix) with UTF8SMTPSA id 23FD260060;
-	Tue, 17 Nov 2026 13:54:04 +0100 (CET)
-Date: Tue, 17 Nov 2026 13:54:01 +0100
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-To: Theodor Arsenij Larionov Trichkine <theodorlarionov@gmail.com>
-Cc: Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>,
-	Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	netdev@vger.kernel.org, coreteam@netfilter.org
-Subject: Re: [PATCH nf v4] ipvs: ftp: do not link expectations to unconfirmed
- conntracks
-Message-ID: <avxOaXd5lY8TxRBn@chamomile>
-References: <20261117123944.270667-1-theodorlarionov@gmail.com>
+	dkim=pass (1024-bit key) header.d=1password.com header.i=@1password.com header.a=rsa-sha256 header.s=google header.b=mbrGrYZU
+Received: by mail-qv1-f53.google.com with SMTP id 6a1803df08f44-91f0274f88cso74467776d6.0
+        for <lvs-devel@vger.kernel.org>; Tue, 17 Nov 2026 05:40:59 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1password.com; s=google; t=1794922858; x=1795527658; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=TwB4RSE1ahOv1eWO7HrIP9Xo526ulRCGPxUhrPC4tB0=;
+        b=mbrGrYZU/2TOeFzN23IFhtlXtGQ53gHxnOmST27w/O81rXdXcuR1XDou6E1j48MhA6
+         wwq4r2OalvYh9HWBrwgCxsJq6diJWHagel8aNFSlqQNTCIJbHhie31WwSYbXJgaS49Fh
+         FCqoYH74WEGJ3ZcXJ1zVY7dOj6La1jKN4T+Go=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794922858; x=1795527658;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=TwB4RSE1ahOv1eWO7HrIP9Xo526ulRCGPxUhrPC4tB0=;
+        b=wZtRU1Hw8uu9agZYWPhHLMhOjD1ERmCzGgTJ2qCQr6uyHutpu7oo+X3RRrGEJFaUD9
+         lh2YfgXYKZWmc+SqAlsqfdmA0gWZW8u1qzJF7ui1qi9b7EDVGkREbpgniORP+yujayti
+         TOp3j+9V9bfmU9CV5EeTPVxMW4WXpxludGNPmakGJOR3gfq6q+Fopbbvn8dMGg92gngS
+         AeR3dHprnCCpfRRslCRT8gr0s1PXfSjpAN8/yMsqNvaRlL4T8T+BRPpSCDYec3nKbIJM
+         yd9KVfdjtD2v8p083TOT+Y4f7GusqboaSLMoYjZbsOrf8AoGEfWgq+Mv2TEAcL+jV/0s
+         EYjg==
+X-Forwarded-Encrypted: i=1; AL+hErGDicfPjAT2i7ASkkFt+7LeqgIh0e0QVxHoF9xOte7S2dW8ayEumIpwb9ZnZEamV6QFj9og0x4BleA=@vger.kernel.org
+X-Gm-Message-State: APuU4Z+KjraBgou2mGQP8uzNLZnorokDKD2hApnv04GzCqbtGI5FhIoV
+	qnkoBho8lPwq1FeNrZqGuuypTbTqQ+9Wq8C80b/emotETq6PcT+XSU8a8jQJbK5bKIo=
+X-Gm-Gg: AYBFou3Y8tJmbFbobukpdYOHAUattgOt2EgDiAKf0Avxynzfu7aK2ZWyJH0d8YAJbSg
+	aAxwH3jXJnnTHANDDOkPptUgRPNPyII79HOouuezgzfgTcwlyUBEJWh1Ar3TGab5wXephKzGXSU
+	j3AmgLdI0bExRTtEreC/aPNK2BWg27ooqiyHBq7tgzjhWrY6cEepckvm9sTSd7GKUVcOjP6bZht
+	9MY/GOBKQ0bG01z/4UE8HzqO60z3kWfWofjQbsXp27DoqRMMlzzstcZw9u+sy/VotTHgC1DxCQQ
+	SBaRTFwtWo0WtxCKTYSjcoGYBOXSDAUuvCQTI7YjzmTaQAGChZWzopQCr3ozWQ7e12fly4dTwmt
+	WySbVl8gU6Euvn3EsBodIMTAVuGGwmVXssNLQLwYO6xa4KyafpcnwS1Qa2bRQjiVGJri6bBzHIs
+	yR+2lFiISZWrVgxW/KqY6txUQdPyAtAFIAXwP8RKQjPLHnUA5cLRV1kkL0SDj6v/+a9PGo8aRj9
+	5SPxi/rPbmrJWsn4/b1VBH45Em1qHyyHNxZshQvGPflwvjBxsEM1qZJdr5m5ASYYNB9XQf99DJM
+	ZGsocZCSyYl8esLUSlxYyDgPTk8CezV8cNuW6/0gLhdaTRoIovSiP2y5hcNa
+X-Received: by 2002:a05:6214:62d4:10b0:91e:850b:770b with SMTP id 6a1803df08f44-91f24151026mr170565066d6.17.1794922858319;
+        Tue, 17 Nov 2026 05:40:58 -0800 (PST)
+Received: from localhost ([2600:4041:59c3:300:b8f8:e592:18c8:ba23])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-91f23db3a81sm110979646d6.42.2026.11.17.05.40.57
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 17 Nov 2026 05:40:57 -0800 (PST)
+From: Axel Mierczuk <axel.mierczuk@1password.com>
+To: ja@ssi.bg,
+	horms@verge.net.au,
+	pablo@netfilter.org
+Cc: fw@strlen.de,
+	phil@nwl.cc,
+	dsahern@kernel.org,
+	kuba@kernel.org,
+	edumazet@kernel.org,
+	pabeni@redhat.com,
+	davem@davemloft.net,
+	netfilter-devel@vger.kernel.org,
+	lvs-devel@vger.kernel.org,
+	coreteam@netfilter.org,
+	netdev@vger.kernel.org,
+	w@1wt.eu,
+	Axel Mierczuk <axel.mierczuk@1password.com>
+Subject: [PATCH nf v2 0/2] ipvs: fix OOB write when NATing ICMPv6 errors quoting non-first fragments
+Date: Tue, 17 Nov 2026 08:40:47 -0500
+Message-ID: <20261117134049.52386-1-axel.mierczuk@1password.com>
+X-Mailer: git-send-email 2.50.1
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -66,78 +104,46 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <20261117123944.270667-1-theodorlarionov@gmail.com>
+Content-Transfer-Encoding: 8bit
 
-On Tue, Nov 17, 2026 at 03:39:44PM +0300, Theodor Arsenij Larionov Trichkine wrote:
-> ip_vs_ftp_out() can link an expectation to an unconfirmed conntrack. A
-> later extension add on the same packet, such as seqadj in
-> ip_vs_update_conntrack() or NAT, then reallocates ct->ext and leaves the
-> expectation pointing into the freed area:
-> 
->   BUG: KASAN: slab-use-after-free in nf_ct_unlink_expect_report+0x490/0x4c0
->   Write of size 8 at addr ffff888004dd4e48 by task syz.2.17/649
-> 
-> Check the conntrack at the start of ip_vs_ftp_out() and drop the packet
-> unless the conntrack is confirmed, is not a template and has the seqadj
-> extension that ip_vs_update_conntrack() adds on the first packet.
-> 
-> Fixes: b25adce16064 ("ipvs: correct usage/allocation of seqadj ext in ipvs")
-> Suggested-by: Julian Anastasov <ja@ssi.bg>
-> Suggested-by: Pablo Neira Ayuso <pablo@netfilter.org>
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Theodor Arsenij Larionov Trichkine <theodorlarionov@gmail.com>
-> ---
-> v4: check the conntrack at the start of ip_vs_ftp_out(), as suggested
-> by Julian. A server reply that fails the check is now dropped even when
-> it is not a PASV/EPSV response. Without a conntrack, e.g. with a notrack
-> rule, only PASV/EPSV replies were dropped before.
-> v3: https://lore.kernel.org/netfilter-devel/20261116101506.98853-1-theodorlarionov@gmail.com/
-> 
->  net/netfilter/ipvs/ip_vs_ftp.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-> index 44de99f4d187..216be082162f 100644
-> --- a/net/netfilter/ipvs/ip_vs_ftp.c
-> +++ b/net/netfilter/ipvs/ip_vs_ftp.c
-> @@ -29,6 +29,7 @@
->  #include <linux/netfilter.h>
->  #include <net/netfilter/nf_conntrack.h>
->  #include <net/netfilter/nf_conntrack_expect.h>
-> +#include <net/netfilter/nf_conntrack_seqadj.h>
->  #include <net/netfilter/nf_nat.h>
->  #include <net/netfilter/nf_nat_helper.h>
->  #include <linux/gfp.h>
-> @@ -283,6 +284,12 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
->  	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
->  		return 1;
->  
-> +	ct = nf_ct_get(skb, &ctinfo);
-> +	if (!ct || !nf_ct_is_confirmed(ct) || nf_ct_is_template(ct))
-> +		return 0;
-> +	if (!nfct_seqadj(ct))
-> +		return 0;
+This series fixes a 16-byte OOB write past the verified skb area,
+reachable through ICMPv6 errors that quote non-first fragments.
+Following Julian's suggestion, it preserves ESP ICMPv6 handling.
 
-Given you are fetching the ct earlier, this later re-fetch can go
-away?
+Patch 1 includes the embedded IP header in ciph.len at both ICMPv6
+call sites when parsing stops at a non-first fragment. It stands on
+its own for stable.
 
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 9e3e005a8263..31c1e4b21b51 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -367,7 +367,6 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
-        }
-        buf_len = strlen(buf);
- 
--       ct = nf_ct_get(skb, &ctinfo);
-        if (ct) {
-                bool mangled;
- 
-> +
->  	/* Linear packets are much easier to deal with. */
->  	if (skb_ensure_writable(skb, skb->len))
->  		return 0;
-> -- 
-> 2.34.1 
+Patch 2 makes ipv6_find_hdr() set *offset to the fragment payload
+for non-first fragments when target < 0, rejecting a truncated
+Fragment header, so every successful return updates *offset. It
+drops the workaround from patch 1, which becomes dead code.
+
+Changes since v1:
+- Patch 1: rewrote the comment and commit message. Nothing blocks an
+  embedded ESP fragment on ciph.len; it continues because of
+  pp->dont_defrag and its lookup reads only the addresses. Name the
+  skb_ensure_writable() callers, handle_response_icmp() and
+  ip_vs_icmp_xmit_v6(), that size the writable area from ciph.len.
+  Code unchanged.
+- Patch 2: return -EBADMSG when the Fragment header is truncated, so
+  *offset never exceeds skb->len (Sashiko, Julian). Add Fixes tag
+  (Julian). Drop the ciph.len workaround from patch 1 now that every
+  successful return writes *offset (Sashiko). Describe the
+  handle_response() effect, the nf_tables trace output change and the
+  SYNPROXY callers in the commit message.
+
+v1: https://lore.kernel.org/netfilter-devel/20260925141155.17603-1-axel.mierczuk@1password.com/
+
+Axel Mierczuk (2):
+  ipvs: avoid out-of-bounds write in ip_vs_nat_icmp_v6
+  ipv6: update *offset for non-first fragments in ipv6_find_hdr()
+
+ net/ipv6/exthdrs_core.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+
+base-commit: 734bef548a96e8774d6eef5dfa2026c6edc4e80b
+-- 
+2.50.1 (Apple Git-155)
+
