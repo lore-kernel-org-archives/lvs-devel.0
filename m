@@ -1,76 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.42
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794856020;
-	b=Fpq7+whnifhAOBxp+Twocig3bYe07IduG9+f/xsJjne6e5JxHujBT4RUoY0Ft0BcNJj1
-	 b53+0t6dRuLWhgWj/6ZN67pb4NEmlGJFhTlL3XeGMmPpitkG/uLbs4tiXfsAqVJhBHqZs
-	 mpK39V1QlJc86NJjvqgPW6IlpaOety+m98xD4KR/kU+RvWWm3zQGdiQqxrVUABXEiiDWa
-	 LgFd0+Rq8sCPgpablkxy5RrWz+41DoVzd2T2rB3gtTd6WF8wTEO7fnlCzyvm4HsCu0JT3
-	 KhYC+gZgr6AONXv+Ah9445tYLZC9z5TkCQTSDKi7awlxXlndE62hZvVmLLlvyUSfz5A==
+	t=1794919198;
+	b=oIXN5vVQbpIftHzrZiqDCorHzscGC9VYr1PO6vcwez63rZl1zMKhfZ4Kq25HL61kBGTt
+	 AkmU4YVP6ecYeq3vRlFgD875qeCKUunEPv5T7NVhnb+O9+nzGf2zYsckv3sKfcqRGmrjw
+	 F1xUlPhMRcIGSm8bc73fSbLYkbLQfYPfuXw3hqV/3o+Ce2zxUiK9If0D4ekrju/8tcfBZ
+	 oeEdnQVYzzi2wuYADEGS7MpGVHPENQlqPojovheYKpQD+McNih3Y4GH5aL8IRWuTiYb7w
+	 Tf5j1rzfUb9taTlBZ92/oUI7ORA+GJJgML0kcgELH1QVqZtwDLO+PGp1WcrAULPa4AA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794856020;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:Date:
-	 From:To:cc:Subject:In-Reply-To:Message-ID:References:MIME-Version:
-	 Content-Type;
-	bh=v6LVm14hFfOQJ36yCQOam/wvWn5aZyeAKBSi6Yey3i0=;
-	b=ogF6vnqgoUyGeCZOxo2VUQZURLwe60O8RoFPaWbheoC+S36NqrJyde+t98tIEDDTOZTw
-	 nQFypYMsSBOdMJv6HV7DHRilMhb/Q01pmT8E7zfq2W3mZLoY6K6WjoqbHbye/fGAEIjbt
-	 RuWD961fIDvtg6qvjJtB3HQEuILU3eSZUYepQp5q6fVFhPWzoeDbRb6ku/xreHZ88GemV
-	 uELyvt+VKTFZqfFRncwkPLmOxUywch0FH6N6FFfvInS/9hwL12Or9KfT3RiHS+XUmTz/T
-	 4t+GmOdkkMjeJZkoUIXqmRo/UiRfHQzfeEoyu4LgvabVxurczGzEldseorIk5eFcHbg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794919198;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-Id:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=KhOt0cRnKYV36pufkweOfchwWzEZ+liNrgU+2GDZ2tM=;
+	b=EQBaiJRjr4qONNnE8hzmTA8V4c9obBM6mD0SMBQcYXr9chkgogBmrBphBDQ6YvVuzNOS
+	 lrfrefjHwhL7VSRQGzlMsxgR3Kc3Z+ymRRqDSM4F6jcf54D5ODmcH5BEdH1aF4sZkQeby
+	 B90U27t3F3DJqzCj8siMiB3Z/+mK3tMUEMq43/ZjkOI+iUajtKN0AY3gmGdRzP1yCOnGX
+	 vGyKCKfx9/87MSfdRQeCibnCJYEl8f8kyIcbgxshkPKcybT3J5vrgQF8i8R8Jl3IY2WxB
+	 Bg3IYS7JT7sCzzG9+q4cKihWgp17AxGpnKpHAyC2KJRLVD7Zv3B3hLM+gtwRLSZ9jSw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=ssi.bg;
-	spf=pass smtp.mailfrom=ssi.bg;
-	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=OSXhkJpU;
-	arc=none smtp.remote-ip=193.238.174.39
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="Z+o3y/xe";
+	arc=none smtp.remote-ip=209.85.218.42
+Received: from mail-ej1-f42.google.com (mail-ej1-f42.google.com [209.85.218.42])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F803606C54F;
-	Mon, 16 Nov 2026 19:06:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3F803606C54F
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E41B160A382D
+	for <lvs-devel@vger.kernel.org>; Tue, 17 Nov 2026 12:39:57 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E41B160A382D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=OSXhkJpU
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id BB703213F9;
-	Mon, 16 Nov 2026 21:06:53 +0200 (EET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-type:content-type:date:from:from:in-reply-to:message-id
-	:mime-version:references:reply-to:subject:subject:to:to; s=ssi;
-	 bh=v6LVm14hFfOQJ36yCQOam/wvWn5aZyeAKBSi6Yey3i0=; b=OSXhkJpUwp8V
-	eLT/bok/TynqgiRFr6fhrOjW2imlT4AqzNK9g/6JFLwZm5RkgCHOuonoo5ux+CKH
-	G/XA3nRqG3NsvhWfIiO2K2XbDwZNvdVteZTXC3TjniU5DRLF4W1MlmDXxSa3fHJY
-	1foropsic9/UN9ylssvhp0fsoQytAXIf0m5XDZ5uBQmk6Jlg7PRV4/bXdaFBrJHd
-	tZ6WyTAgHwQGYmwTEtXsuYU6J5ckiFf/hCG+rYmmecL1crI2KWxvsFS702ybyXcd
-	gPWv1XmS4LXUw5x7YrS621nkvSI7jGBA/jRMkLjDe9bxKZQ46zdE67EJ/oKmlkZB
-	mwGeH26JItBxdy4idhyl22JNpl7R1Cw7TXL8UEcXwMuJQEOslehfS5imBjb7936c
-	4W2bL4fuQr4kGflOsHFOc+oofP9yfE47O5dlIYYiAndlS23LV1oJ+yirLJNl05wV
-	4jE25T3RJRKlM+Ok+DzymR5OLGOyYg404pVjRhj6aw2k7cf1FIzEgAbjpnOUoRi8
-	UGk7Cbp0vKbheFR9WoLS+FPieHfNQJzUIibwv1+E7iSgEZuBQtA8diGG2n9X3yEn
-	JFarHMOwjz+tBzEsm3Qq1ALMtk8sQB99djpzDGHiZDJuz0l3CEZiWzgtYrmTC5Tu
-	FQrHfRgPZbJmLul66fs6GG7u1+t0Qz0=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Mon, 16 Nov 2026 21:06:53 +0200 (EET)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 2C759600FB;
-	Mon, 16 Nov 2026 21:06:53 +0200 (EET)
-Received: from localhost.localdomain (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AGJ6phV113506;
-	Mon, 16 Nov 2026 21:06:51 +0200
-Date: Mon, 16 Nov 2026 21:06:51 +0200 (EET)
-From: Julian Anastasov <ja@ssi.bg>
-To: Simon Horman <horms@verge.net.au>
-cc: Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
-        lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>,
-        Wei Wang <weiwan@google.com>
-Subject: Re: [PATCH nf] ipvs: do not delay the dst_release calls
-In-Reply-To: <20261116184758.110151-1-ja@ssi.bg>
-Message-ID: <777d313a-dc89-ea68-fad7-394ecf97b263@ssi.bg>
-References: <20261116184758.110151-1-ja@ssi.bg>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Z+o3y/xe
+Received: by mail-ej1-f42.google.com with SMTP id a640c23a62f3a-c45551fa84eso857073466b.3
+        for <lvs-devel@vger.kernel.org>; Tue, 17 Nov 2026 04:39:57 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794919196; x=1795523996; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=KhOt0cRnKYV36pufkweOfchwWzEZ+liNrgU+2GDZ2tM=;
+        b=Z+o3y/xeqrCWgUnciSXgqXTvKZXDUNgxhFOeohIWAz2lHSZDsIpFgtW92+/ECzkP4/
+         tdGYlRJR8Bep+VubJLpJvM8Rrpm/tfnKbg/1PotIYPmy1H3kHUiAGeFaC9AKeZhzIbLA
+         0OS04vBCxQnKt1BDrIxiMLppZIGYI9wfB0xtmH1K/7JFDLo0LIEx0k2/Hn1O6AXl8VsA
+         aUR1ZhsuZzNLCcLOAL/zuqqCE2lrLISii7Usv9C0gOOedV5nm8LyBooafuWNGMl0V8Ss
+         0foEh2ocfyd3GV3dDQm9jw9t/Jv9vFD3+SjlX3GIdKcamGZqG9kfozc20DII3fvaXGPW
+         rmtg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794919196; x=1795523996;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=KhOt0cRnKYV36pufkweOfchwWzEZ+liNrgU+2GDZ2tM=;
+        b=FJAS4YRwRN8PNKMxhLhrX+UxnBUfSoHN9tZUPVoQ2dHjXz/O/BQZIfaJp25QpSQvQs
+         akBAwTpcvawUgvH7IEzRu2RrnaNJkMFGhn03yCi6V9J3iOzbuURnkFP9BU3Diunn2as+
+         rEGHXw0btzjduMBeQAejSjaDt97b1M+73uwV/9c4CYcrRJIpMHrQLhvL7/klwmTKqSsT
+         UR/oXzAi7ljUOi1+MxBhFQY/JoDN0iNQPQDV5VRnxZmy93YOlOb9wmG+9+5nmU8DSfNd
+         QaW0P+F8enL9MWSsvUoPFNslQJZXcLOlH+EMmrylmldP3XU47G+fz1B3fmAAhDFEf9bl
+         WajQ==
+X-Forwarded-Encrypted: i=1; AL+hErEQ3IVfUWzqEHnIiLvZlcEZbCEjYIy/RMIEUEwmHswCbx9YHYFTG+VPAHres7dI05drP2JwEEQAp40=@vger.kernel.org
+X-Gm-Message-State: APuU4Z8KU6RyI9xKb8SeC3Ehw6l6SWPHRvXn1woKaEWQaDihUBkoGnvL
+	STAf9oqr8KHXQz3pfeedKJDrSyHxGdJGnD/zxx70RPeyMhxALsuoByUI
+X-Gm-Gg: AYBFou3DgcGa/mu9WYW2kmb4CLKwsqt7qChovR95Mn24SeuOQUfJQTQNogNS/X/2aU1
+	PP+pGw2cRDgd9cUzXa1yAfTS4VFGFkrefoBFx5xelopOeNe6i6fQfx+wrynF7ReL3qzjIHp3Rzi
+	GiQiH4OSqCpwciy+57cW/2oOQbvFzUFdkMMd5hBZ/HGoJW1EZA4rwzOKjL8GIeR9UlE3xmFXjEB
+	IlAVnXQeTagLSFD7mmQ5D/D73os6+es6UFfyjshVw4AN2GIcSWYnhYcgJWvF6EoZQo0vHSysQnv
+	3YEBApStfVh0WYIA+EAm9LcLvTXCIoUXCgr5oIPWfDTzTPJG+tGDHBnBx7dooBw9oCm5YUu6M1+
+	ztVS+FTAEJRbPFgLoSSBt4VbT3KO1hC2WBmlRnQexJxKAl78ydbUQkvdZ1RO4/FE33LPp4vRamI
+	VOTo2AL/rhFwg0d1rCqNxHE3Rj/AyHCSj93XnpZJtzC0f9L+pxYfeg3wtyeuL2d/w5yENsoTxe3
+	PL+mG9BWy66uuOwV8Ih65vRgIEbIzBSY64UIuC3H3v34KFRxmFr32R+Zt22U8Ioa36HiBr6l/FN
+	zkc3g6t7nuJnb13hG+40iDZ7qTVT/QvHz7dnD1AgrUJTD/hlTRLsAjyUJqYp
+X-Received: by 2002:a17:907:8e08:b0:c31:c767:ae0b with SMTP id a640c23a62f3a-c5095db2440mr1272747066b.0.1794919196151;
+        Tue, 17 Nov 2026 04:39:56 -0800 (PST)
+Received: from theodors-laptop.. ([5.255.118.7])
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c5095a5c520sm532332666b.9.2026.11.17.04.39.54
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 17 Nov 2026 04:39:55 -0800 (PST)
+From: Theodor Arsenij Larionov Trichkine <theodorlarionov@gmail.com>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Julian Anastasov <ja@ssi.bg>,
+	Simon Horman <horms@verge.net.au>,
+	Florian Westphal <fw@strlen.de>,
+	Phil Sutter <phil@nwl.cc>,
+	lvs-devel@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	netdev@vger.kernel.org,
+	coreteam@netfilter.org,
+	Theodor Arsenij Larionov Trichkine <theodorlarionov@gmail.com>
+Subject: [PATCH nf v4] ipvs: ftp: do not link expectations to unconfirmed conntracks
+Date: Tue, 17 Nov 2026 15:39:44 +0300
+Message-Id: <20261117123944.270667-1-theodorlarionov@gmail.com>
+X-Mailer: git-send-email 2.34.1
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -80,308 +101,60 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
+ip_vs_ftp_out() can link an expectation to an unconfirmed conntrack. A
+later extension add on the same packet, such as seqadj in
+ip_vs_update_conntrack() or NAT, then reallocates ct->ext and leaves the
+expectation pointing into the freed area:
 
-	Hello,
+  BUG: KASAN: slab-use-after-free in nf_ct_unlink_expect_report+0x490/0x4c0
+  Write of size 8 at addr ffff888004dd4e48 by task syz.2.17/649
 
-On Mon, 16 Nov 2026, Julian Anastasov wrote:
+Check the conntrack at the start of ip_vs_ftp_out() and drop the packet
+unless the conntrack is confirmed, is not a template and has the seqadj
+extension that ip_vs_update_conntrack() adds on the first packet.
 
-> syzbot is reporting [1] for a crash when IPVS initiates delayed
-> dst_release calls from its pernet subsys cleanup handler.
-> 
-> Yalagada Pavan Kumar proposed a new rcu_barrier() to be added
-> but the problem is different: the FIB layer started to replace
-> the dst->dev with a blackhole_netdev before the NETDEV_DOWN
-> event is delivered to the ip_vs_dst_event() handler. As
-> ip_vs_forget_dev() matches the dst->dev and not the ifindex,
-> IPVS can miss the event and to defer the dst_release() call
-> from the pernet device phase to the pernet subsys phase
-> where ip6_route_net_exit() already destroyed the per-CPU
-> destination counters.
-> 
-> Fix the dst_release delays in two ways:
-> 
-> 1. Cache the ifindex together with the dst and match it on
-> NETDEV_DOWN event to protect against dst->dev being replaced
-> with blackhole_netdev. As result, dst_release will not be
-> left for the dest server removal. This problem can delay the
-> dst_release for long time if the used device was marked down
-> independently and not used actively in IPVS before the dest
-> server is removed.
-> 
-> 2. Do not call dst_release from our own RCU callback, dst_release
-> uses its own RCU callback to destroy the dst, so we can call it
-> immediately. This allows rcu_barrier to destroy the dst during
-> the pernet device cleanup.
-> 
-> [1]
-> BUG: unable to handle page fault for address: ffff8880d456e000
-> PGD 1d131067 P4D 1d131067 PUD 0
-> Oops: Oops: 0000 [#1] SMP KASAN NOPTI
-> CPU: 1 UID: 0 PID: 0 Comm: swapper/1 Tainted: G             L      syzkaller #0 PREEMPT(full)
-> Tainted: [L]=SOFTLOCKUP
-> Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.3-debian-1.16.3-2 04/01/2014
-> RIP: 0010:percpu_counter_add_batch+0x4b/0x230 lib/percpu_counter.c:98
-> Code: 8d 45 58 48 89 c2 48 89 44 24 08 48 b8 00 00 00 00 00 fc ff df 48 c1 ea 03 80 3c 02 00 0f 85 9f 01 00 00 4d 8b 65 58 4c 89 ff <65> 49 63 2c 24 4a 8d 54 35 00 48 89 6c 24 10 48 89 eb 48 89 d0 48
-> RSP: 0018:ffffc900006b0d68 EFLAGS: 00010246
-> RAX: dffffc0000000000 RBX: ffff88803e0cf400 RCX: 0000000000000101
-> RDX: 1ffff11007045bab RSI: ffffffff85702e00 RDI: 0000000000000020
-> RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000000
-> R10: 0000000000000003 R11: 0000000000000001 R12: 0000000000000000
-> R13: ffff88803822dd00 R14: ffffffffffffffff R15: 0000000000000020
-> FS:  0000000000000000(0000) GS:ffff8880d456e000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: ffff8880d456e000 CR3: 0000000025b53000 CR4: 0000000000352ef0
-> DR0: 0000000000000010 DR1: 00000000fffffffd DR2: 400000000001001d
-> DR3: fffffffffffffff6 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Call Trace:
->  <IRQ>
->  dst_entries_add include/net/dst_ops.h:59 [inline]
->  dst_count_dec net/core/dst.c:163 [inline]
->  dst_count_dec net/core/dst.c:160 [inline]
->  dst_release net/core/dst.c:177 [inline]
->  dst_release+0x2aa/0x330 net/core/dst.c:166
->  ip_vs_dest_dst_rcu_free+0x32/0x50 net/netfilter/ipvs/ip_vs_ctl.c:1081
->  rcu_do_batch kernel/rcu/tree.c:2650 [inline]
->  rcu_core+0x5f0/0x1220 kernel/rcu/tree.c:2919
->  handle_softirqs+0x216/0xa20 kernel/softirq.c:669
->  __do_softirq kernel/softirq.c:703 [inline]
->  invoke_softirq kernel/softirq.c:542 [inline]
->  __irq_exit_rcu+0x178/0x220 kernel/softirq.c:786
->  irq_exit_rcu+0x9/0x30 kernel/softirq.c:809
->  instr_sysvec_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1062 [inline]
->  sysvec_apic_timer_interrupt+0xa3/0xc0 arch/x86/kernel/apic/apic.c:1062
->  </IRQ>
->  <TASK>
-> 
-> Reported-by: syzbot+84e27adb95fd2a1fe9bb@syzkaller.appspotmail.com
-> Fixes: 95c47f9cf5e0 ("ipv4: call dst_dev_put() properly")
-> Cc: Wei Wang <weiwan@google.com>
-> Cc: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
->  include/net/ip_vs.h             |  3 ++-
->  net/netfilter/ipvs/ip_vs_ctl.c  | 14 ++++------
->  net/netfilter/ipvs/ip_vs_xmit.c | 45 +++++++++++++++++++++++++--------
->  3 files changed, 42 insertions(+), 20 deletions(-)
-> 
-> diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-> index 398d748f01ec..289e4c7ae5ee 100644
-> --- a/include/net/ip_vs.h
-> +++ b/include/net/ip_vs.h
-> @@ -964,6 +964,7 @@ struct ip_vs_service {
->  struct ip_vs_dest_dst {
->  	struct dst_entry	*dst_cache;	/* destination cache entry */
->  	u32			dst_cookie;
-> +	int			dst_ifindex;	/* dev ifindex or 0 */
->  	union nf_inet_addr	dst_saddr;
->  	struct rcu_head		rcu_head;
->  };
-> @@ -2007,7 +2008,7 @@ int ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
->  		    struct ip_vs_protocol *pp, unsigned int toff,
->  		    const struct nf_hook_state *state,
->  		    struct ip_vs_iphdr *ciph);
-> -void ip_vs_dest_dst_rcu_free(struct rcu_head *head);
-> +void ip_vs_dest_dst_rcu_free(struct ip_vs_dest_dst *dest_dst);
+Fixes: b25adce16064 ("ipvs: correct usage/allocation of seqadj ext in ipvs")
+Suggested-by: Julian Anastasov <ja@ssi.bg>
+Suggested-by: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: stable@vger.kernel.org
+Signed-off-by: Theodor Arsenij Larionov Trichkine <theodorlarionov@gmail.com>
+---
+v4: check the conntrack at the start of ip_vs_ftp_out(), as suggested
+by Julian. A server reply that fails the check is now dropped even when
+it is not a PASV/EPSV response. Without a conntrack, e.g. with a notrack
+rule, only PASV/EPSV replies were dropped before.
+v3: https://lore.kernel.org/netfilter-devel/20261116101506.98853-1-theodorlarionov@gmail.com/
 
-	There is small collision here with new changes, so
-v2 should wait. But this version is useful for testing if
-the collision is resolved by hand.
+ net/netfilter/ipvs/ip_vs_ftp.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-pw-bot: changes-requested
-
->  
->  #ifdef CONFIG_IP_VS_IPV6
->  int ip_vs_null_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
-> diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-> index ce9fe20d6106..b0b8b4f770f8 100644
-> --- a/net/netfilter/ipvs/ip_vs_ctl.c
-> +++ b/net/netfilter/ipvs/ip_vs_ctl.c
-> @@ -1072,14 +1072,10 @@ struct ip_vs_dest *ip_vs_find_dest(struct netns_ipvs *ipvs, int svc_af, int dest
->  	return dest;
->  }
->  
-> -void ip_vs_dest_dst_rcu_free(struct rcu_head *head)
-> +void ip_vs_dest_dst_rcu_free(struct ip_vs_dest_dst *dest_dst)
->  {
-> -	struct ip_vs_dest_dst *dest_dst = container_of(head,
-> -						       struct ip_vs_dest_dst,
-> -						       rcu_head);
-> -
->  	dst_release(dest_dst->dst_cache);
-> -	kfree(dest_dst);
-> +	kfree_rcu(dest_dst, rcu_head);
->  }
->  
->  /* Release dest_dst and dst_cache for dest in user context */
-> @@ -1090,7 +1086,7 @@ static void __ip_vs_dst_cache_reset(struct ip_vs_dest *dest)
->  	old = rcu_dereference_protected(dest->dest_dst, 1);
->  	if (old) {
->  		RCU_INIT_POINTER(dest->dest_dst, NULL);
-> -		call_rcu(&old->rcu_head, ip_vs_dest_dst_rcu_free);
-> +		ip_vs_dest_dst_rcu_free(old);
->  	}
->  }
->  
-> @@ -2246,13 +2242,13 @@ void ip_vs_service_nets_cleanup(struct list_head *net_list)
->  
->  /* Put all references for device (dst_cache) */
->  static inline void
-> -ip_vs_forget_dev(struct ip_vs_dest *dest, struct net_device *dev)
-> +ip_vs_forget_dev(struct ip_vs_dest *dest, const struct net_device *dev)
->  {
->  	struct ip_vs_dest_dst *dest_dst;
->  
->  	spin_lock_bh(&dest->dst_lock);
->  	dest_dst = rcu_dereference_protected(dest->dest_dst, 1);
-> -	if (dest_dst && dest_dst->dst_cache->dev == dev) {
-> +	if (dest_dst && dest_dst->dst_ifindex == dev->ifindex) {
->  		IP_VS_DBG_BUF(3, "Reset dev:%s dest %s:%u ,dest->refcnt=%d\n",
->  			      dev->name,
->  			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
-> diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
-> index c777493eee74..cdbab1e81635 100644
-> --- a/net/netfilter/ipvs/ip_vs_xmit.c
-> +++ b/net/netfilter/ipvs/ip_vs_xmit.c
-> @@ -70,7 +70,7 @@ static inline void ip_vs_dest_dst_free(struct ip_vs_dest_dst *dest_dst)
->   */
->  static inline void
->  __ip_vs_dst_set(struct ip_vs_dest *dest, struct ip_vs_dest_dst *dest_dst,
-> -		struct dst_entry *dst, u32 dst_cookie)
-> +		struct dst_entry *dst, int oif, u32 dst_cookie)
->  {
->  	struct ip_vs_dest_dst *old;
->  
-> @@ -79,12 +79,13 @@ __ip_vs_dst_set(struct ip_vs_dest *dest, struct ip_vs_dest_dst *dest_dst,
->  
->  	if (dest_dst) {
->  		dest_dst->dst_cache = dst;
-> +		dest_dst->dst_ifindex = oif;
->  		dest_dst->dst_cookie = dst_cookie;
->  	}
->  	rcu_assign_pointer(dest->dest_dst, dest_dst);
->  
->  	if (old)
-> -		call_rcu(&old->rcu_head, ip_vs_dest_dst_rcu_free);
-> +		ip_vs_dest_dst_rcu_free(old);
->  }
->  
->  static inline struct ip_vs_dest_dst *
-> @@ -331,9 +332,11 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  {
->  	struct net *net = ipvs->net;
->  	struct ip_vs_dest_dst *dest_dst;
-> +	struct net_device *rt_dev;
->  	struct rtable *rt;			/* Route to the other host */
->  	int mtu;
->  	int local, noref = 1;
-> +	int oif;
->  
->  	if (dest) {
->  		dest_dst = __ip_vs_dst_check(dest);
-> @@ -345,25 +348,35 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  			dest_dst = ip_vs_dest_dst_alloc();
->  			spin_lock_bh(&dest->dst_lock);
->  			if (!dest_dst) {
-> -				__ip_vs_dst_set(dest, NULL, NULL, 0);
-> +				__ip_vs_dst_set(dest, NULL, NULL, 0, 0);
->  				spin_unlock_bh(&dest->dst_lock);
->  				goto err_unreach;
->  			}
->  			rt = do_output_route4(net, dest->addr.ip, rt_mode,
->  					      &dest_dst->dst_saddr.ip);
->  			if (!rt) {
-> -				__ip_vs_dst_set(dest, NULL, NULL, 0);
-> +				__ip_vs_dst_set(dest, NULL, NULL, 0, 0);
->  				spin_unlock_bh(&dest->dst_lock);
->  				ip_vs_dest_dst_free(dest_dst);
->  				goto err_unreach;
->  			}
-> +			rt_dev = dst_dev_rcu(&rt->dst);
-> +			if (rt_dev) {
-> +				if (rt_dev != blackhole_netdev)
-> +					oif = rt_dev->ifindex;
-> +				else
-> +					oif = 0;
-> +			} else {
-> +				oif = -1;
-> +			}
->  			/* It is forbidden to attach dest->dest_dst if
->  			 * device is going down or if server is removed and
->  			 * stored in dest_trash.
->  			 */
-> -			if (!rt_dev_is_down(dst_dev_rcu(&rt->dst)) &&
-> +			if (!rt_dev_is_down(dst_dev_rcu(&rt->dst)) && oif &&
->  			    dest->cflags & IP_VS_DEST_CF_AVAILABLE)
-> -				__ip_vs_dst_set(dest, dest_dst, &rt->dst, 0);
-> +				__ip_vs_dst_set(dest, dest_dst, &rt->dst, oif,
-> +						0);
->  			else
->  				noref = 0;
->  			spin_unlock_bh(&dest->dst_lock);
-> @@ -505,10 +518,12 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  {
->  	struct net *net = ipvs->net;
->  	struct ip_vs_dest_dst *dest_dst;
-> +	struct net_device *rt_dev;
->  	struct rt6_info *rt;			/* Route to the other host */
->  	struct dst_entry *dst;
->  	int mtu;
->  	int local, noref = 1;
-> +	int oif;
->  
->  	if (dest) {
->  		dest_dst = __ip_vs_dst_check(dest);
-> @@ -522,7 +537,7 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  			dest_dst = ip_vs_dest_dst_alloc();
->  			spin_lock_bh(&dest->dst_lock);
->  			if (!dest_dst) {
-> -				__ip_vs_dst_set(dest, NULL, NULL, 0);
-> +				__ip_vs_dst_set(dest, NULL, NULL, 0, 0);
->  				spin_unlock_bh(&dest->dst_lock);
->  				goto err_unreach;
->  			}
-> @@ -530,20 +545,30 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
->  						      &dest_dst->dst_saddr.in6,
->  						      do_xfrm, rt_mode);
->  			if (!dst) {
-> -				__ip_vs_dst_set(dest, NULL, NULL, 0);
-> +				__ip_vs_dst_set(dest, NULL, NULL, 0, 0);
->  				spin_unlock_bh(&dest->dst_lock);
->  				ip_vs_dest_dst_free(dest_dst);
->  				goto err_unreach;
->  			}
->  			rt = dst_rt6_info(dst);
->  			cookie = rt6_get_cookie(rt);
-> +			rt_dev = dst_dev_rcu(dst);
-> +			if (rt_dev) {
-> +				if (rt_dev != blackhole_netdev)
-> +					oif = rt_dev->ifindex;
-> +				else
-> +					oif = 0;
-> +			} else {
-> +				oif = -1;
-> +			}
->  			/* It is forbidden to attach dest->dest_dst if
->  			 * device is going down or if server is removed and
->  			 * stored in dest_trash.
->  			 */
-> -			if (!rt_dev_is_down(dst_dev_rcu(&rt->dst)) &&
-> +			if (!rt_dev_is_down(dst_dev_rcu(&rt->dst)) && oif &&
->  			    dest->cflags & IP_VS_DEST_CF_AVAILABLE)
-> -				__ip_vs_dst_set(dest, dest_dst, &rt->dst, cookie);
-> +				__ip_vs_dst_set(dest, dest_dst, &rt->dst, oif,
-> +						cookie);
->  			else
->  				noref = 0;
->  			spin_unlock_bh(&dest->dst_lock);
-> -- 
-> 2.56.1
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 44de99f4d187..216be082162f 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -29,6 +29,7 @@
+ #include <linux/netfilter.h>
+ #include <net/netfilter/nf_conntrack.h>
+ #include <net/netfilter/nf_conntrack_expect.h>
++#include <net/netfilter/nf_conntrack_seqadj.h>
+ #include <net/netfilter/nf_nat.h>
+ #include <net/netfilter/nf_nat_helper.h>
+ #include <linux/gfp.h>
+@@ -283,6 +284,12 @@ static int ip_vs_ftp_out(struct ip_vs_app *app, struct ip_vs_conn *cp,
+ 	if (cp->state != IP_VS_TCP_S_ESTABLISHED)
+ 		return 1;
+ 
++	ct = nf_ct_get(skb, &ctinfo);
++	if (!ct || !nf_ct_is_confirmed(ct) || nf_ct_is_template(ct))
++		return 0;
++	if (!nfct_seqadj(ct))
++		return 0;
++
+ 	/* Linear packets are much easier to deal with. */
+ 	if (skb_ensure_writable(skb, skb->len))
+ 		return 0;
+-- 
+2.34.1
 
