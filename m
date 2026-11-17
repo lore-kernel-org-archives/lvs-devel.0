@@ -1,104 +1,61 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.160.178
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794922862;
-	b=gyupNaC0kW8NKTBcQU6CqCV9wotMEEeAkZmEESFuDNWFheOL0sYA/Yl3ZCZ2eAIpg4Ye
-	 tuVee52KOXWD1inlypRDZAaPq2g5r6s0QVDRA01KQKwZA4uCXCwZcdekqyFntOCakPMKU
-	 oa68uSUUmtiRfFMD7IrOSHU2HlnSokTxriUUbkO8jvhqZwNM1YmfU3hyEez9BaRHK2jw+
-	 dRpTOv/lG7hAt50IQKMY6e74LWQL8JjBttEiEQmBlO6taQmU+JXSmVeIzTn2xZXQuYWOr
-	 K1RomrvlFa0nFPALbR1lguQ73g0IFxFTXjSz3UK/MYhiNdnDiEUgttJNRJ263X4GZ2A==
+	t=1794923011;
+	b=RjUAH2SvhnRIVjOpjVANssnRaBJtk2u2QGmp6rGzTzipD3ZbQo7bAuZWBT1/YHcMcW+Q
+	 dWelu+rz85U6aD/gFGZqQKRHYv4DlhHIiCa8Pea5L6zxiwUeyk1CBP1WuwtYE5qbT1fDN
+	 8dbIZRrM/XxxsVhDUML640lSznC5vAJkawSWWf+d2eBdTGdLxvGWH1iNJvmF4z9LHehCK
+	 mlCq48gYlsAzlUPXsaVdbn4VMPXGnCCE3tCItwTNz0Od829GjloheLMItBYI81xEA5NkV
+	 lvwgKqRyNfnU1nYI/fUOg6VIPYPwMF80WkfMhbRcGlBDM0sPBXoHupLeENwppKWzdYw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794922862;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=xbM/8NkFsyBNUIt/zB1tHx2aYKgPjS1RSmbEYKw0CLs=;
-	b=LfAEF/bF6YkCOESBFmtGvdmlqAQCuz8uBchoPWBn1lJxJllNXme0UmcqPaXNnUQztqhf
-	 SOkrAq4peIh8e7hYtKvmFVMNVwKUQlY9mTmb/84liI2XtCKZQVHCZB9WrgF27L4dvi08e
-	 aUdUl2OhdRer+msxaQdN+qweyMa9vsmCGAxemtg7Y3MHClyxZo25z+jYWj2kHpOP5EJwt
-	 v6rhKSXn1K8JvNJikRqEQ7QcjdwGoF8hj2DVzAnguN6TjCkKqNQUaXFxuH8toMTJQgzpO
-	 f9CrkXCUClQRvXPCAHJMI7FgYriFY3gpOV92iVpPQrVvIEhziGZRtioTzGDpwszfyfg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794923011;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
+	 In-Reply-To:References:Auto-Submitted:Content-Type:
+	 Content-Transfer-Encoding:MIME-Version;
+	bh=oj2zs7YpNjut+Fle9NDI2/nVbuq1xcuWOh/20pAlrQ0=;
+	b=L+KkmlYIq99tcYHpuJ87QNCemkgaRJl007swRNaSIfx5gxL46BgO3MrumaimpkEP5ffy
+	 Fpd7ElDX5xPkfe5Nm4TONEqZ546MlVLQereLjYD4JLfJ0fXvAVkLJnz+8zrl6smAVyoLp
+	 s5S0x9EtaDB5t3HcS9f1vXXt9xRGGhN/iVdK2X3F6/C3kkDxeM+U/ox1dApoE4+YWgy4n
+	 fQx4UdFNJfhnKp/NXoMtZ41ANA02u10RukPSjDYsJhnXzw1Wq5rgheGDLGgmobYJdVNoZ
+	 YXsK4+p7HaBHPVDrt6V4o/8puHYetyPjn4Ia/ZswPR3qHbJjqdDbjkFaV6FsQAWGA5g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=1password.com;
-	spf=pass smtp.mailfrom=agilebits.com;
-	dkim=pass header.d=1password.com header.i=@1password.com header.a=rsa-sha256 header.s=google header.b=foXaldXx;
-	arc=none smtp.remote-ip=209.85.160.178
-Received: from mail-qt1-f178.google.com (mail-qt1-f178.google.com [209.85.160.178])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SsjGLb8s;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F3FD606A33B
-	for <lvs-devel@vger.kernel.org>; Tue, 17 Nov 2026 13:41:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4F3FD606A33B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=1password.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=agilebits.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91E23606A331;
+	Tue, 17 Nov 2026 13:43:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=1password.com header.i=@1password.com header.a=rsa-sha256 header.s=google header.b=foXaldXx
-Received: by mail-qt1-f178.google.com with SMTP id d75a77b69052e-5365d26ccbdso33433491cf.0
-        for <lvs-devel@vger.kernel.org>; Tue, 17 Nov 2026 05:41:01 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1password.com; s=google; t=1794922860; x=1795527660; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=xbM/8NkFsyBNUIt/zB1tHx2aYKgPjS1RSmbEYKw0CLs=;
-        b=foXaldXxEEH54V2YER/HHxt3jQlsWT7az36Ckd/VVrISFU+poHoFoVbuu7oDwkMqzU
-         qb2Irozt25K9uH+74SzjT1PdSdXH54erl8ewjyR8naD8oGSgnVqYFLAsTrAhqK+ZjDqk
-         stYd45245HPCPLkxFvpF7zkqwuKxfJCeAjwcM=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794922860; x=1795527660;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=xbM/8NkFsyBNUIt/zB1tHx2aYKgPjS1RSmbEYKw0CLs=;
-        b=nc2FyXT2NiSm60Fxv1ovpAeFdIwSwQN260HGaIWzPMKtuD1f3Y4488CGqTBx7CaIGf
-         1lfLKyp2jTivj1YPqVX/cRHe4NJh40QcT7x/zvOR05Uog2VUb+HSeaNynmXR96e9hlg7
-         0kPa0gL3nc2sjXABkQmm3cv8rdZTOBK6hXfDNnN0VF70KqlXUSIc4qeg7aHlDXU84gSs
-         8PUUI7LnWQsvxD0S/x7vcneK9jwfQ09MTv8H+lIwZs11p5WjY1U1/lcT9BUHtxLh/yFt
-         a3KVA2/23+zKPfRqSzMbROp4HBH0u3aRn3/7ECUNSLPtWi91bB8DqHSg1YGnaFHupFl9
-         SIoQ==
-X-Forwarded-Encrypted: i=1; AL+hErGCtkLdIxvQ8z3zESI2Y42XuG84xdtyVH6RzafN8ozISLcNM063NRuR4LKgdM7Xs0l6jAEeP550WCw=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8ZjhrieDIy5HpTAN7jngX+WWpROcdnvzioKqEEdJiavM5vwlip
-	3X6gnBxxh9e4S/T6eT4IwSqSuVokU57FRUKHAvzjXRautmOY9g7uUgMEpM4GRNJS4nw=
-X-Gm-Gg: AYBFou0oQzPkgKQTzIRf37fIN1/CaE2G3FKDCYCX3CNPRTUcO9+qdghOsqjMNMGDE+q
-	T2GYZtdrEaFTXR0lo9liZ/3t5aq+dj6x7a+1T00Me/Rzy+8gUHsmNIfr+jXQv/N1F3z+elChFjJ
-	/pmxfE1RpsNvDQzebY6IkI22GKGbchrO5LcTqTKkz1yUeeb+IOaW3l/c8VgHL9YZzUgOMxly1FL
-	m2fGyKczL3EZWkEjhpKV5kBJnDlK9dv7t8qVFo+RHMNsVXC9LAYmLA4u7Iy5W+p0yY9OEAO4z6f
-	DJmes/dm6e57iWWfUUdx4I9Fs1Av+NpIzI2vtbNc8Dc4/q2gIE+54sISJiB2LaazNjTo5ItdHq9
-	PpPZZiv6ozCnrFi9sQq3vNuVfP4N6vr049GxgiXDrwGgri+zrq99elKXO1j8plIdDnsCfYAO5Qf
-	n7PXUKrqur5reri1Z8dB+Bqyk97PvXMzdF35vZN69L4VKDhCq0ZCWc+1B6v7O4wvH73MvnyG7Lv
-	DKEby+fY+s+b0qXyVaAFi2Ugij7+/k9/7Pj5TTh/GuyrbNs0iuIx5v76gxi79vTdWYhTzmQGexm
-	OraEBHbdY2NhWwEmC9uT66tlgfiak1HG4CvIW7XUPwJcrpc=
-X-Received: by 2002:ac8:5d04:0:b0:55c:8b2d:bb41 with SMTP id d75a77b69052e-55d4a6ce73amr38497231cf.57.1794922860216;
-        Tue, 17 Nov 2026 05:41:00 -0800 (PST)
-Received: from localhost ([96.239.0.47])
-        by smtp.gmail.com with ESMTPSA id d75a77b69052e-55ad0534196sm104516571cf.9.2026.11.17.05.40.59
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 17 Nov 2026 05:40:59 -0800 (PST)
-From: Axel Mierczuk <axel.mierczuk@1password.com>
-To: ja@ssi.bg,
-	horms@verge.net.au,
-	pablo@netfilter.org
-Cc: fw@strlen.de,
-	phil@nwl.cc,
-	dsahern@kernel.org,
-	kuba@kernel.org,
-	edumazet@kernel.org,
-	pabeni@redhat.com,
-	davem@davemloft.net,
-	netfilter-devel@vger.kernel.org,
-	lvs-devel@vger.kernel.org,
-	coreteam@netfilter.org,
-	netdev@vger.kernel.org,
-	w@1wt.eu,
-	Axel Mierczuk <axel.mierczuk@1password.com>,
-	stable@vger.kernel.org
-Subject: [PATCH nf v2 1/2] ipvs: avoid out-of-bounds write in ip_vs_nat_icmp_v6
-Date: Tue, 17 Nov 2026 08:40:48 -0500
-Message-ID: <20261117134049.52386-2-axel.mierczuk@1password.com>
-X-Mailer: git-send-email 2.50.1
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SsjGLb8s
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A13AF1F000C5;
+	Tue, 17 Nov 2026 13:43:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794923011;
+	bh=oj2zs7YpNjut+Fle9NDI2/nVbuq1xcuWOh/20pAlrQ0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=SsjGLb8sBV+Zz0wAypiaaSJjxHRsplBFwiy0qxghlK2bF3EDuXEPUvLft5akaKxSB
+	 IYq1ZGV8gAR8uGzDgQNnpvErz0jR6LNG2RigFVFA4sJHTGC5N+I6g11W/m4xonnmlu
+	 JOt8KY0Zskkh7DnnhjoyBSGoyYokCT+WYdxH8gr1yzUffUc4IJ12n8q3mVwe1knuYh
+	 FoJ2LK5sx9jSyutoMTEpiT3HO1xGoRTExjyRlmiiYNWSiI4d6LDtQKCEixrX2iuT2c
+	 RKu+U2t2XLlM0IpX4b3AbmLNt78kb/2shSyPG1zHvR+PcdA5JM3KmR23rvdz6A3agd
+	 UOK4OOhohdLZw==
+From: netdev-bot+sinfo@kernel.org
+To: Axel Mierczuk <axel.mierczuk@1password.com>
+Cc: ja@ssi.bg, horms@verge.net.au, pablo@netfilter.org, fw@strlen.de,
+ phil@nwl.cc, dsahern@kernel.org, kuba@kernel.org, edumazet@kernel.org,
+ pabeni@redhat.com, davem@davemloft.net, netfilter-devel@vger.kernel.org,
+ lvs-devel@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org,
+ w@1wt.eu
+Subject: Re: [PATCH nf v2 0/2] ipvs: fix OOB write when NATing ICMPv6 errors
+ quoting non-first fragments
+Date: Tue, 17 Nov 2026 13:43:30 +0000
+Message-ID: <179492301022.3291.11880484738373509395@kernel.org>
 In-Reply-To: <20261117134049.52386-1-axel.mierczuk@1password.com>
 References: <20261117134049.52386-1-axel.mierczuk@1password.com>
+Auto-Submitted: auto-generated
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -108,77 +65,26 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-When an ICMPv6 error embeds a non-first fragment, ipv6_find_hdr()
-returns at the Fragment header without updating *offset, so
-ip_vs_fill_iph_skb_icmp() leaves ciph.len equal to ciph.off, the
-start of the embedded IPv6 header.
+Hi!
 
-ip_vs_out_icmp_v6() and ip_vs_in_icmp_v6() pass embedded non-first
-TCP, UDP and SCTP fragments through before any lookup. AH and ESP set
-pp->dont_defrag, so their fragments continue. Their lookups read only
-the addresses and never use ciph.len, but handle_response_icmp() and
-ip_vs_icmp_xmit_v6() size skb_ensure_writable() from ciph.len, which
-then covers nothing of the embedded header. ip_vs_nat_icmp_v6()
-rewrites the embedded destination or source address, 16 bytes
-located 8 or 24 bytes past the end of the validated area.
+This is an automated message. This series looks like a fix, but its
+commit messages seem to be missing some information:
 
-Include the embedded IPv6 header in ciph.len at both call sites when
-ipv6_find_hdr() stopped at a non-first fragment. Only the size of the
-writable check changes; the AH and ESP lookups do not use ciph.len.
+ - How the issue was discovered, e.g. hit in production, hit during
+   development, syzbot report, manual code inspection, LLM or static
+   analysis tool scan.
 
-This fix does not depend on patch 2. Stable kernels without commit
-342e24a339b9 ("ipvs: do not mangle ICMP replies for non-first fragments")
-also need that commit to handle incoming ICMPv6 errors quoting
-non-first ESP fragments.
+ - Whether the issue was actually triggered, or is only theoretical
+   (e.g. found by LLM and not proven at runtime). If it was triggered
+   please include the symptoms, like the stack trace or kernel messages.
 
-Fixes: 63dca2c0b0e7 ("ipvs: Fix faulty IPv6 extension header handling in IPVS")
-Cc: stable@vger.kernel.org
-Suggested-by: Julian Anastasov <ja@ssi.bg>
-Signed-off-by: Axel Mierczuk <axel.mierczuk@1password.com>
----
- net/netfilter/ipvs/ip_vs_core.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+Please do not repost the series just to address the above. Instead,
+reply to this email with the missing information, so that reviewers
+can take it into account.
 
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index fd503f0efb57..d5da16ff9673 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -1206,6 +1206,16 @@ static int ip_vs_out_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 				     true, &ciph))
- 		return NF_ACCEPT; /* The packet looks wrong, ignore */
- 
-+	/* ipv6_find_hdr() stops at the Fragment header of a non-first
-+	 * fragment and leaves ciph.len == ciph.off. Only AH and ESP
-+	 * (pp->dont_defrag) pass the fragoffs check below and their
-+	 * lookup reads only the addresses, but handle_response_icmp()
-+	 * sizes skb_ensure_writable() from ciph.len before
-+	 * ip_vs_nat_icmp_v6() rewrites the embedded header. Include it.
-+	 */
-+	if (ciph.len == ciph.off)
-+		ciph.len += sizeof(struct ipv6hdr);
-+
- 	pp = ip_vs_proto_get(ciph.protocol);
- 	if (!pp)
- 		return NF_ACCEPT;
-@@ -2036,6 +2046,16 @@ static int ip_vs_in_icmp_v6(struct netns_ipvs *ipvs, struct sk_buff *skb,
- 	if (!ip_vs_fill_iph_skb_icmp(AF_INET6, skb, offset, true, &ciph))
- 		return NF_ACCEPT;
- 
-+	/* ipv6_find_hdr() stops at the Fragment header of a non-first
-+	 * fragment and leaves ciph.len == ciph.off. Only AH and ESP
-+	 * (pp->dont_defrag) pass the fragoffs check below and their
-+	 * lookup reads only the addresses, but ip_vs_icmp_xmit_v6()
-+	 * sizes skb_ensure_writable() from ciph.len before
-+	 * ip_vs_nat_icmp_v6() rewrites the embedded header. Include it.
-+	 */
-+	if (ciph.len == ciph.off)
-+		ciph.len += sizeof(struct ipv6hdr);
-+
- 	pd = ip_vs_proto_data_get(ipvs, ciph.protocol);
- 	if (!pd)
- 		return NF_ACCEPT;
+*IMPORTANT*: If you do repost (for other reasons) - please include
+the relevant info in the cover letter or commit messages.
 -- 
-2.50.1 (Apple Git-155)
-
+The evaluation is done by an LLM so it may be wrong, if you think
+that is the case please reply and explain.
