@@ -1,75 +1,76 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795409959;
-	b=HZm3GhemcBMaBE7DQo3woUVBo5zFq3QF24m7NcyN6p+3IiHXgX8mr9NLZf2HP+aDguN2
-	 0rop4oGzLsLjzYgvpdrIenhxzMcjlcoNfdCNmfzIjkz7FUYQAnRvOI3hWn3dh8uSX12P8
-	 HH44xWkJnl1z9YpbeeUh78rBaLxSDVVE2dCIcZ/u85z72CTWsnIlFCBbclVN260LhhJZz
-	 sJ11uVML5dupNqv9xI3Da58ARbNrBHwiZy4nJHGIlfDcdh0YpIHF4vumdg3DQy0p101k7
-	 QBggwcMjfjY8dGGoH2UZl+no+1HYlAJr6BJusvN5t1E7ls8in4uqrPL3qUrWTKLs5sA==
+	t=1795419325;
+	b=uS9YsEA7hm68YmixPDvYIBzXHDr/YgK1/OsLaxXq5CI+ovjkhMVlXRGlnGnvE+BCiQ3c
+	 wf5VRHAThvjlWU3p4VMnZQACUe/22tBAysGbG61WESQaTcf6hY0rl9XOWJtmOCUFWuLgy
+	 wzJWULF+biZgYTPMg6pGT6w0B73gQVLudskHoPCLJJufggaVDcQCpYRMFfgf0xFaT1kH+
+	 2aNTPFpiMPtLwozQlQFzHnXGWylblhatE5Rodd/7SrKEAVPpYS1P9GNDFRLO1npl+NYZi
+	 LIu5ZPeDhh/B17/igvCAlJghfoRyclbEdozmsc+54JVX//IsCyvzZuC0ErEKR1Ay9xw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795409959;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795419325;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
 	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=zZPMnOoD3D5OwWOxaet/uf4K5uCHN0KkpJ2jHZ+77oE=;
-	b=SwNfqW64kJIASZrZQx6xA8IcxEKe2o1m33aolj4rpaYY3uLbu0XLCvq16keWduw6yffa
-	 +PGpMfsKinUbYftouungiPUUeyLmkQEOWZGEcozn9gAKwuwpjglfT5LONZSmHXgXEOv5V
-	 qjpmcwKBB99lOlQn7Qw1JkQZGD+kgknza4iFEwLtmovR2jRvCR5Gju8YsegEJ3R9pGIqe
-	 fIxovP1VL/Cd/cy6aWqNwRjshrYapOVjpnL/MpA/LnaW4ld5BWoqmL6HtlXQ3KUyii0Qa
-	 arlVdNrJf/5EuVdk6d3QJ+ZnpMuK35SvUBIg/1EchEjDnKNzfGURXWPbVtJqH5/9RLA==
+	bh=MIwZ4RPOA13lXtMa5ohMz5Eni2JRZRWh2iKSexubNDg=;
+	b=qIXtiZFenJxaUJXIw7z+zCcWoTfs5Wjk1p+A7OKnRzxSLJ0uox8lSvcmP9tY61gaXlFp
+	 f9P0t+URX2RpQ4gZnKfhfdw4L91rlQzdrehUYf0L6ZLjy8B+Ff0liU8134cnNoJ33fhgW
+	 7Ara+x9INZUSba376FUkxn5KWR2GaSQK8WSo69xq1wS+HQw1efrbuSKcQUW71azAzWFuQ
+	 zBFEqkFDjjjU8qT/9CM1IlEu1oP75pu5VcQeatT4qHIZbY/HBPmimLXzcUoerzXQ2s2j+
+	 9KRHdiN64x2TymlvQbWINFynEtDpqA4K6vUrjacFoUp+NObdq8muoAz+HcX2pL3INkw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=ssi.bg;
 	spf=pass smtp.mailfrom=ssi.bg;
-	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=U+cLN2Fy;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=5p68MA3T;
 	arc=none smtp.remote-ip=193.238.174.39
 Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5CE0606A31A;
-	Mon, 23 Nov 2026 04:59:17 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B5CE0606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 70DA6606A334;
+	Mon, 23 Nov 2026 07:35:22 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 70DA6606A334
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=U+cLN2Fy
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=5p68MA3T
 Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 67A7321B1A;
-	Mon, 23 Nov 2026 06:59:08 +0200 (EET)
+	by mx.ssi.bg (Potsfix) with ESMTP id 5954E217CF;
+	Mon, 23 Nov 2026 09:35:20 +0200 (EET)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
 	:content-transfer-encoding:date:from:from:message-id
-	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=zZPMnOoD
-	3D5OwWOxaet/uf4K5uCHN0KkpJ2jHZ+77oE=; b=U+cLN2FyLLLgKmNNeiHI88aF
-	Me+Rh9pwMbi8IZtadKcVYO0Nbr5bWheydeu7iJwNF8dR8TxKGvIGHJ2VlYmNyeY4
-	XqxXjgTWjYQ9ClcbDQ62EzU2VkFsjFkMEvWEKZlAG1c8rGgdTmffclWCNf2TA80X
-	K7ABwrl9j2JjdMMKjUnGaTjDRWgSmzCVFJ/+xfDcp1o7VewcKn3rAgQm7WB8TQ9n
-	PFreStrrh9F7KIywOJ7a5THWVpEqG87irxrxws6ZEtFhP0YUmW80ba0Fj0ISi64S
-	S/W9SF2FcY3nCkHA0eA/TdAWG5VAu6iBoRIeibm9eUNrpozPr8WhsxgJGB6iWhOl
-	gSU59uj7RyhBlCUgYK5L0HOuSMBp+XSH5QLIGXboOn2W568LyUT0ALi32DA9lkOJ
-	vqswSo0eL0lwQTIr+ni5BjbRxgJfGd7oqRodU9bSc8BYMPeIZLdbob64Jqm2Rybu
-	/K2CArpU3gCjN/lsyDQ4uC2a/njSWj/UBplxgqYxbW8ZDqD9+N8hca9q+JePFkqo
-	U3GG0Xt8w9N7Xotc1att5RU2K/WupBDpkHvUvAMfzPs6LLPIu9StZ/g8iCj16U8i
-	Ozp0S/UyvObYT7WHlK4UyGXbM1yRff3JSCLWCAX+xvHl2Q2MDQR9RIejS4exWL8O
-	nN86/OUPz2v5rqfQWkI=
+	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=MIwZ4RPO
+	A13lXtMa5ohMz5Eni2JRZRWh2iKSexubNDg=; b=5p68MA3TYm0s7KKjaokkpIWR
+	OWTRG0x2cJGsl2xsr5CsSkx9HWdG4egKMrcfwjWBBkojjaQH7uNlpLoJ2PwMaeoK
+	2+L4E/wNPL7VaW04+wMGrEvv5sfZcEQWQrCb8fN1blqcgxWMnd2bYTfxbhFr3B1R
+	+5Z/YpyRXCVNEuzKLnzKeqfYcmEOL66pORU6rzqxV+/Nw5h/8XCho7HnfhN9eMs3
+	tIXH6vEq+XKYXb2J5r2w2992KzecEHYQaIgsAHKltrtiIdifGZIVbbARtxlzXVzz
+	5QxF2/r855XyHfO/zJa03VWABNe80L+ZgzDvFFZTDcj3NL7T9GfFj4FvVmIM1AQc
+	wLGF/R7c5wrRkDUtEnDWvaw3dWsGDhhotxKNQIXyPMVG045rzhvw2LXJCCAmmpr3
+	53sn4uyl/AGf2QrJfuPcM9mQEotxVdl5v7X0EpzSTeNtYvbYW1+Vpes24kB9PMD2
+	JntI3AlAIByBYT0tvP10474nljsgAWInDl5V2ilgDBiOMXS3eRws3sUFI6ZoT5TO
+	cedyHgo4k1mOmImpZYE/vG8dyMz1n5KBzE/TDboujIC7AvffnVoxH+I6ubU4t0yv
+	TKpIQtk0WbtBti8hvfIikpzyE0/MRIn6bnu5G9ARnwWBM30CZCU7mMD3wmqG7JL7
+	eqfEG/0cW4G7RgWQYls=
 Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
 	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Mon, 23 Nov 2026 06:59:08 +0200 (EET)
+	Mon, 23 Nov 2026 09:35:20 +0200 (EET)
 Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id 88DF960707;
-	Mon, 23 Nov 2026 06:59:07 +0200 (EET)
+	by box.ssi.bg (Potsfix) with ESMTPSA id E7B2F60AD5;
+	Mon, 23 Nov 2026 09:35:19 +0200 (EET)
 Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AN4x05h005462;
-	Mon, 23 Nov 2026 06:59:00 +0200
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AN7ZIPO023698;
+	Mon, 23 Nov 2026 09:35:18 +0200
 Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 6AN4x0cI005461;
-	Mon, 23 Nov 2026 06:59:00 +0200
+	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 6AN7ZHdZ023696;
+	Mon, 23 Nov 2026 09:35:17 +0200
 From: Julian Anastasov <ja@ssi.bg>
 To: Pablo Neira Ayuso <pablo@netfilter.org>
 Cc: Florian Westphal <fw@strlen.de>, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org
-Subject: [PATCH nf] ipvs: fix use-after-free after failed app module init
-Date: Mon, 23 Nov 2026 06:58:44 +0200
-Message-ID: <20261123045844.5444-1-ja@ssi.bg>
+        netfilter-devel@vger.kernel.org, Wei Wang <weiwan@google.com>,
+        Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
+Subject: [PATCH nf v2] ipvs: do not delay the dst_release calls
+Date: Mon, 23 Nov 2026 09:35:08 +0200
+Message-ID: <20261123073508.23680-1-ja@ssi.bg>
 X-Mailer: git-send-email 2.56.1
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
@@ -82,114 +83,297 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Sashiko warns that we have two problems during app module init
-which can lead to possible use-after-free.
+syzbot is reporting [1] for a crash when IPVS initiates delayed
+dst_release calls from its pernet subsys cleanup handler.
 
-1. We may successfully register app for particular port and netns
-allowing the connections to take module reference but later
-if init fails we still hold these references after the init phase,
-long after the module is freed.
+Yalagada Pavan Kumar proposed a new rcu_barrier() to be added
+but the problem is different: the FIB layer started to replace
+the dst->dev with a blackhole_netdev before the NETDEV_DOWN
+event is delivered to the ip_vs_dst_event() handler. As
+ip_vs_forget_dev() matches the dst->dev and not the ifindex,
+IPVS can miss the event and to defer the dst_release() call
+from the pernet device phase to the pernet subsys phase
+where ip6_route_net_exit() already destroyed the per-CPU
+destination counters.
 
-2. We may successfully register the ftp app for some netns but later
-if init fails we still leak the registered apps and incarnations
-after the init phase, long after the module is freed.
+Fix the dst_release delays in two ways:
 
-To fix the first problem we will disallow try_module_get() to be
-called in MODULE_STATE_COMING state, i.e. while module init is
-still running.
+1. Cache the ifindex together with the dst and match it on
+NETDEV_DOWN event to protect against dst->dev being replaced
+with blackhole_netdev. As result, dst_release will not be
+left for the dest server removal. This problem can delay the
+dst_release for long time if the used device was marked down
+independently and not used actively in IPVS before the dest
+server is removed.
 
-For the second problem, we recently added exiting_module variable to
-catch the case when the ftp module was exiting but this does not
-cover the init phase. Fix it by using defer_unreg variable which is
-set while not in module init/exit phase to defer the app pernet
-unregistration during cleanup_net to ip_vs_app_net_cleanup() after
-all module references are dropped.
+2. Do not call dst_release from our own RCU callback, dst_release
+uses its own RCU callback to destroy the dst, so we can call it
+immediately. This allows rcu_barrier to destroy the dst during
+the pernet device cleanup.
 
-Link: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261103140308.591690-3-pablo%40netfilter.org
-Fixes: 134121bfd99a ("ipvs: Defer ip_vs_ftp unregister during netns cleanup")
-Fixes: be97fdb5fbcc ("ipvs: generalize app registration in netns")
+[1]
+BUG: unable to handle page fault for address: ffff8880d456e000
+PGD 1d131067 P4D 1d131067 PUD 0
+Oops: Oops: 0000 [#1] SMP KASAN NOPTI
+CPU: 1 UID: 0 PID: 0 Comm: swapper/1 Tainted: G             L      syzkaller #0 PREEMPT(full)
+Tainted: [L]=SOFTLOCKUP
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.3-debian-1.16.3-2 04/01/2014
+RIP: 0010:percpu_counter_add_batch+0x4b/0x230 lib/percpu_counter.c:98
+Code: 8d 45 58 48 89 c2 48 89 44 24 08 48 b8 00 00 00 00 00 fc ff df 48 c1 ea 03 80 3c 02 00 0f 85 9f 01 00 00 4d 8b 65 58 4c 89 ff <65> 49 63 2c 24 4a 8d 54 35 00 48 89 6c 24 10 48 89 eb 48 89 d0 48
+RSP: 0018:ffffc900006b0d68 EFLAGS: 00010246
+RAX: dffffc0000000000 RBX: ffff88803e0cf400 RCX: 0000000000000101
+RDX: 1ffff11007045bab RSI: ffffffff85702e00 RDI: 0000000000000020
+RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000003 R11: 0000000000000001 R12: 0000000000000000
+R13: ffff88803822dd00 R14: ffffffffffffffff R15: 0000000000000020
+FS:  0000000000000000(0000) GS:ffff8880d456e000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: ffff8880d456e000 CR3: 0000000025b53000 CR4: 0000000000352ef0
+DR0: 0000000000000010 DR1: 00000000fffffffd DR2: 400000000001001d
+DR3: fffffffffffffff6 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Call Trace:
+ <IRQ>
+ dst_entries_add include/net/dst_ops.h:59 [inline]
+ dst_count_dec net/core/dst.c:163 [inline]
+ dst_count_dec net/core/dst.c:160 [inline]
+ dst_release net/core/dst.c:177 [inline]
+ dst_release+0x2aa/0x330 net/core/dst.c:166
+ ip_vs_dest_dst_rcu_free+0x32/0x50 net/netfilter/ipvs/ip_vs_ctl.c:1081
+ rcu_do_batch kernel/rcu/tree.c:2650 [inline]
+ rcu_core+0x5f0/0x1220 kernel/rcu/tree.c:2919
+ handle_softirqs+0x216/0xa20 kernel/softirq.c:669
+ __do_softirq kernel/softirq.c:703 [inline]
+ invoke_softirq kernel/softirq.c:542 [inline]
+ __irq_exit_rcu+0x178/0x220 kernel/softirq.c:786
+ irq_exit_rcu+0x9/0x30 kernel/softirq.c:809
+ instr_sysvec_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1062 [inline]
+ sysvec_apic_timer_interrupt+0xa3/0xc0 arch/x86/kernel/apic/apic.c:1062
+ </IRQ>
+ <TASK>
+
+Reported-by: syzbot+84e27adb95fd2a1fe9bb@syzkaller.appspotmail.com
+Fixes: 95c47f9cf5e0 ("ipv4: call dst_dev_put() properly")
+Cc: Wei Wang <weiwan@google.com>
+Cc: Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>
+Cc: stable@vger.kernel.org
 Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- net/netfilter/ipvs/ip_vs_app.c |  9 ++++++++-
- net/netfilter/ipvs/ip_vs_ftp.c | 24 +++++++++++++++++-------
- 2 files changed, 25 insertions(+), 8 deletions(-)
+ Changes in v2:
+ * no changes, just mention the prerequisite
 
-diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
-index 2c1b47702da2..fdec626124be 100644
---- a/net/netfilter/ipvs/ip_vs_app.c
-+++ b/net/netfilter/ipvs/ip_vs_app.c
-@@ -43,7 +43,14 @@ static DEFINE_MUTEX(__ip_vs_app_mutex);
-  */
- static inline int ip_vs_app_get(struct ip_vs_app *app)
- {
--	return try_module_get(app->module);
-+	struct module *mod = app->module;
-+
-+	/* Failed module init should return without any module references,
-+	 * so allow access to the module only after the init phase.
-+	 */
-+	if (mod && module_is_coming(mod))
-+		return false;
-+	return try_module_get(mod);
- }
- 
- 
-diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
-index 44de99f4d187..0a6440c2132c 100644
---- a/net/netfilter/ipvs/ip_vs_ftp.c
-+++ b/net/netfilter/ipvs/ip_vs_ftp.c
-@@ -52,7 +52,8 @@ enum {
- 	IP_VS_FTP_EPSV,
+ Due to small collision in include/net/ip_vs.h this patch needs to be
+ applied after "ipvs: pass correct sk to update_pmtu and on tunneling"
+
+ include/net/ip_vs.h             |  3 ++-
+ net/netfilter/ipvs/ip_vs_ctl.c  | 14 ++++------
+ net/netfilter/ipvs/ip_vs_xmit.c | 45 +++++++++++++++++++++++++--------
+ 3 files changed, 42 insertions(+), 20 deletions(-)
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 398d748f01ec..289e4c7ae5ee 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -964,6 +964,7 @@ struct ip_vs_service {
+ struct ip_vs_dest_dst {
+ 	struct dst_entry	*dst_cache;	/* destination cache entry */
+ 	u32			dst_cookie;
++	int			dst_ifindex;	/* dev ifindex or 0 */
+ 	union nf_inet_addr	dst_saddr;
+ 	struct rcu_head		rcu_head;
  };
+@@ -2007,7 +2008,7 @@ int ip_vs_icmp_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
+ 		    struct ip_vs_protocol *pp, unsigned int toff,
+ 		    const struct nf_hook_state *state,
+ 		    struct ip_vs_iphdr *ciph);
+-void ip_vs_dest_dst_rcu_free(struct rcu_head *head);
++void ip_vs_dest_dst_rcu_free(struct ip_vs_dest_dst *dest_dst);
  
--static bool exiting_module;
-+static bool defer_unreg; /* Defer unreg on cleanup_net */
-+
- /*
-  * List of ports (up to IP_VS_APP_MAX_PORTS) to be handled by helper
-  * First port is set to the default port.
-@@ -629,10 +630,12 @@ static void __ip_vs_ftp_exit(struct net *net)
+ #ifdef CONFIG_IP_VS_IPV6
+ int ip_vs_null_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
+diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
+index ce9fe20d6106..b0b8b4f770f8 100644
+--- a/net/netfilter/ipvs/ip_vs_ctl.c
++++ b/net/netfilter/ipvs/ip_vs_ctl.c
+@@ -1072,14 +1072,10 @@ struct ip_vs_dest *ip_vs_find_dest(struct netns_ipvs *ipvs, int svc_af, int dest
+ 	return dest;
+ }
+ 
+-void ip_vs_dest_dst_rcu_free(struct rcu_head *head)
++void ip_vs_dest_dst_rcu_free(struct ip_vs_dest_dst *dest_dst)
  {
- 	struct netns_ipvs *ipvs = net_ipvs(net);
- 
--	if (!ipvs || !exiting_module)
--		return;
+-	struct ip_vs_dest_dst *dest_dst = container_of(head,
+-						       struct ip_vs_dest_dst,
+-						       rcu_head);
 -
--	unregister_ip_vs_app(ipvs, &ip_vs_ftp);
-+	/* Unregister app only on module init/exit, on netns cleanup
-+	 * it is done later in ip_vs_app_net_cleanup().
-+	 * It is equally correct to check for !net->is_dying.
-+	 */
-+	if (ipvs && !defer_unreg)
-+		unregister_ip_vs_app(ipvs, &ip_vs_ftp);
+ 	dst_release(dest_dst->dst_cache);
+-	kfree(dest_dst);
++	kfree_rcu(dest_dst, rcu_head);
  }
  
- static struct pernet_operations ip_vs_ftp_ops = {
-@@ -643,7 +646,14 @@ static struct pernet_operations ip_vs_ftp_ops = {
- static int __init ip_vs_ftp_init(void)
+ /* Release dest_dst and dst_cache for dest in user context */
+@@ -1090,7 +1086,7 @@ static void __ip_vs_dst_cache_reset(struct ip_vs_dest *dest)
+ 	old = rcu_dereference_protected(dest->dest_dst, 1);
+ 	if (old) {
+ 		RCU_INIT_POINTER(dest->dest_dst, NULL);
+-		call_rcu(&old->rcu_head, ip_vs_dest_dst_rcu_free);
++		ip_vs_dest_dst_rcu_free(old);
+ 	}
+ }
+ 
+@@ -2246,13 +2242,13 @@ void ip_vs_service_nets_cleanup(struct list_head *net_list)
+ 
+ /* Put all references for device (dst_cache) */
+ static inline void
+-ip_vs_forget_dev(struct ip_vs_dest *dest, struct net_device *dev)
++ip_vs_forget_dev(struct ip_vs_dest *dest, const struct net_device *dev)
  {
- 	/* rcu_barrier() is called by netns on error */
--	return register_pernet_subsys(&ip_vs_ftp_ops);
-+	int ret = register_pernet_subsys(&ip_vs_ftp_ops);
-+
-+	if (ret >= 0) {
-+		defer_unreg = true;
-+		/* commit before switching to MODULE_STATE_LIVE */
-+		smp_wmb();
-+	}
-+	return ret;
- }
+ 	struct ip_vs_dest_dst *dest_dst;
  
- /*
-@@ -651,7 +661,7 @@ static int __init ip_vs_ftp_init(void)
+ 	spin_lock_bh(&dest->dst_lock);
+ 	dest_dst = rcu_dereference_protected(dest->dest_dst, 1);
+-	if (dest_dst && dest_dst->dst_cache->dev == dev) {
++	if (dest_dst && dest_dst->dst_ifindex == dev->ifindex) {
+ 		IP_VS_DBG_BUF(3, "Reset dev:%s dest %s:%u ,dest->refcnt=%d\n",
+ 			      dev->name,
+ 			      IP_VS_DBG_ADDR(dest->af, &dest->addr),
+diff --git a/net/netfilter/ipvs/ip_vs_xmit.c b/net/netfilter/ipvs/ip_vs_xmit.c
+index c777493eee74..cdbab1e81635 100644
+--- a/net/netfilter/ipvs/ip_vs_xmit.c
++++ b/net/netfilter/ipvs/ip_vs_xmit.c
+@@ -70,7 +70,7 @@ static inline void ip_vs_dest_dst_free(struct ip_vs_dest_dst *dest_dst)
   */
- static void __exit ip_vs_ftp_exit(void)
+ static inline void
+ __ip_vs_dst_set(struct ip_vs_dest *dest, struct ip_vs_dest_dst *dest_dst,
+-		struct dst_entry *dst, u32 dst_cookie)
++		struct dst_entry *dst, int oif, u32 dst_cookie)
  {
--	exiting_module = true;
-+	defer_unreg = false;
- 	unregister_pernet_subsys(&ip_vs_ftp_ops);
- 	/* rcu_barrier() is called by netns */
+ 	struct ip_vs_dest_dst *old;
+ 
+@@ -79,12 +79,13 @@ __ip_vs_dst_set(struct ip_vs_dest *dest, struct ip_vs_dest_dst *dest_dst,
+ 
+ 	if (dest_dst) {
+ 		dest_dst->dst_cache = dst;
++		dest_dst->dst_ifindex = oif;
+ 		dest_dst->dst_cookie = dst_cookie;
+ 	}
+ 	rcu_assign_pointer(dest->dest_dst, dest_dst);
+ 
+ 	if (old)
+-		call_rcu(&old->rcu_head, ip_vs_dest_dst_rcu_free);
++		ip_vs_dest_dst_rcu_free(old);
  }
+ 
+ static inline struct ip_vs_dest_dst *
+@@ -331,9 +332,11 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ {
+ 	struct net *net = ipvs->net;
+ 	struct ip_vs_dest_dst *dest_dst;
++	struct net_device *rt_dev;
+ 	struct rtable *rt;			/* Route to the other host */
+ 	int mtu;
+ 	int local, noref = 1;
++	int oif;
+ 
+ 	if (dest) {
+ 		dest_dst = __ip_vs_dst_check(dest);
+@@ -345,25 +348,35 @@ __ip_vs_get_out_rt(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 			dest_dst = ip_vs_dest_dst_alloc();
+ 			spin_lock_bh(&dest->dst_lock);
+ 			if (!dest_dst) {
+-				__ip_vs_dst_set(dest, NULL, NULL, 0);
++				__ip_vs_dst_set(dest, NULL, NULL, 0, 0);
+ 				spin_unlock_bh(&dest->dst_lock);
+ 				goto err_unreach;
+ 			}
+ 			rt = do_output_route4(net, dest->addr.ip, rt_mode,
+ 					      &dest_dst->dst_saddr.ip);
+ 			if (!rt) {
+-				__ip_vs_dst_set(dest, NULL, NULL, 0);
++				__ip_vs_dst_set(dest, NULL, NULL, 0, 0);
+ 				spin_unlock_bh(&dest->dst_lock);
+ 				ip_vs_dest_dst_free(dest_dst);
+ 				goto err_unreach;
+ 			}
++			rt_dev = dst_dev_rcu(&rt->dst);
++			if (rt_dev) {
++				if (rt_dev != blackhole_netdev)
++					oif = rt_dev->ifindex;
++				else
++					oif = 0;
++			} else {
++				oif = -1;
++			}
+ 			/* It is forbidden to attach dest->dest_dst if
+ 			 * device is going down or if server is removed and
+ 			 * stored in dest_trash.
+ 			 */
+-			if (!rt_dev_is_down(dst_dev_rcu(&rt->dst)) &&
++			if (!rt_dev_is_down(dst_dev_rcu(&rt->dst)) && oif &&
+ 			    dest->cflags & IP_VS_DEST_CF_AVAILABLE)
+-				__ip_vs_dst_set(dest, dest_dst, &rt->dst, 0);
++				__ip_vs_dst_set(dest, dest_dst, &rt->dst, oif,
++						0);
+ 			else
+ 				noref = 0;
+ 			spin_unlock_bh(&dest->dst_lock);
+@@ -505,10 +518,12 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ {
+ 	struct net *net = ipvs->net;
+ 	struct ip_vs_dest_dst *dest_dst;
++	struct net_device *rt_dev;
+ 	struct rt6_info *rt;			/* Route to the other host */
+ 	struct dst_entry *dst;
+ 	int mtu;
+ 	int local, noref = 1;
++	int oif;
+ 
+ 	if (dest) {
+ 		dest_dst = __ip_vs_dst_check(dest);
+@@ -522,7 +537,7 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 			dest_dst = ip_vs_dest_dst_alloc();
+ 			spin_lock_bh(&dest->dst_lock);
+ 			if (!dest_dst) {
+-				__ip_vs_dst_set(dest, NULL, NULL, 0);
++				__ip_vs_dst_set(dest, NULL, NULL, 0, 0);
+ 				spin_unlock_bh(&dest->dst_lock);
+ 				goto err_unreach;
+ 			}
+@@ -530,20 +545,30 @@ __ip_vs_get_out_rt_v6(struct netns_ipvs *ipvs, int skb_af, struct sk_buff *skb,
+ 						      &dest_dst->dst_saddr.in6,
+ 						      do_xfrm, rt_mode);
+ 			if (!dst) {
+-				__ip_vs_dst_set(dest, NULL, NULL, 0);
++				__ip_vs_dst_set(dest, NULL, NULL, 0, 0);
+ 				spin_unlock_bh(&dest->dst_lock);
+ 				ip_vs_dest_dst_free(dest_dst);
+ 				goto err_unreach;
+ 			}
+ 			rt = dst_rt6_info(dst);
+ 			cookie = rt6_get_cookie(rt);
++			rt_dev = dst_dev_rcu(dst);
++			if (rt_dev) {
++				if (rt_dev != blackhole_netdev)
++					oif = rt_dev->ifindex;
++				else
++					oif = 0;
++			} else {
++				oif = -1;
++			}
+ 			/* It is forbidden to attach dest->dest_dst if
+ 			 * device is going down or if server is removed and
+ 			 * stored in dest_trash.
+ 			 */
+-			if (!rt_dev_is_down(dst_dev_rcu(&rt->dst)) &&
++			if (!rt_dev_is_down(dst_dev_rcu(&rt->dst)) && oif &&
+ 			    dest->cflags & IP_VS_DEST_CF_AVAILABLE)
+-				__ip_vs_dst_set(dest, dest_dst, &rt->dst, cookie);
++				__ip_vs_dst_set(dest, dest_dst, &rt->dst, oif,
++						cookie);
+ 			else
+ 				noref = 0;
+ 			spin_unlock_bh(&dest->dst_lock);
+
+Prerequisite-Message-Id: <20261120174405.93587-1-ja@ssi.bg>
 -- 
 2.56.1
 
