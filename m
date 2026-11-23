@@ -1,48 +1,76 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795356172;
-	b=3A67U3qf9W/nq5JwTEHpDieCoNI3rZvLepfQ8iAfCDyQIlcar15FsNrR5ykGOBxa8Sia
-	 47X56ojeH+vUY+qQ2VP+CPV9PqHIhLjTO3YRp4EMCS6BU8RGeNxyxqRWVaOavRgf1rCwg
-	 hFGFzd7GEuM2WR2bt4Rz2t15dctPRrse+3oA2dz+c8VtRQlASCHxQzl7ocmg/v+mq4528
-	 ljBY/tzG+iMA5v/wutf/c1Q0XTVAs+WrZ9sGrAPah5ov1+TduJXUOzgrnx9x9dz4RfLbe
-	 W/Hr+o2fLrN3gQbkYKmgDQmh+LZChptahksZ9TcO+l4OG9w45kyY3uRj/0j+nNPGPLg==
+	t=1795409959;
+	b=HZm3GhemcBMaBE7DQo3woUVBo5zFq3QF24m7NcyN6p+3IiHXgX8mr9NLZf2HP+aDguN2
+	 0rop4oGzLsLjzYgvpdrIenhxzMcjlcoNfdCNmfzIjkz7FUYQAnRvOI3hWn3dh8uSX12P8
+	 HH44xWkJnl1z9YpbeeUh78rBaLxSDVVE2dCIcZ/u85z72CTWsnIlFCBbclVN260LhhJZz
+	 sJ11uVML5dupNqv9xI3Da58ARbNrBHwiZy4nJHGIlfDcdh0YpIHF4vumdg3DQy0p101k7
+	 QBggwcMjfjY8dGGoH2UZl+no+1HYlAJr6BJusvN5t1E7ls8in4uqrPL3qUrWTKLs5sA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795356172;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:
-	 X-Mailer;
-	bh=onl/poboZkNxS7sIah0bvOjq6ruOD15HwZb7C8yumw8=;
-	b=M1ZpgG2AX3t4/dlvuQKU90qnNTeWbplo0419IXDKgdjBhHnsH0Lf+PGGOwreOtvx+zlL
-	 qwAOkthWXDpY01gBKUVNQH+Htie5mzLpJpfgVnJcAx7Z/CqYqxHarnnle/xlGvjJLzEWn
-	 80YFqTMgVUrWH4+9loX5Qpmm+zZb86RHgUfqgjwP8Rq5h6hw+d9byo49OUTEWfB43O7MV
-	 XzMIMVUdsflDBVB3xOnH6XYmm3sf5ysWnMab0I3U7X5P28mbPNb+t/HTOD1QouRgFMN2q
-	 CfW46ok1I1EE3boMb0Ugr6b3ZsSUT1/O77POyNjjoeIjpvl+u9YkCXJxubhNgVQVljA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795409959;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
+	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=zZPMnOoD3D5OwWOxaet/uf4K5uCHN0KkpJ2jHZ+77oE=;
+	b=SwNfqW64kJIASZrZQx6xA8IcxEKe2o1m33aolj4rpaYY3uLbu0XLCvq16keWduw6yffa
+	 +PGpMfsKinUbYftouungiPUUeyLmkQEOWZGEcozn9gAKwuwpjglfT5LONZSmHXgXEOv5V
+	 qjpmcwKBB99lOlQn7Qw1JkQZGD+kgknza4iFEwLtmovR2jRvCR5Gju8YsegEJ3R9pGIqe
+	 fIxovP1VL/Cd/cy6aWqNwRjshrYapOVjpnL/MpA/LnaW4ld5BWoqmL6HtlXQ3KUyii0Qa
+	 arlVdNrJf/5EuVdk6d3QJ+ZnpMuK35SvUBIg/1EchEjDnKNzfGURXWPbVtJqH5/9RLA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="lI/5Yk22";
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=ssi.bg;
+	spf=pass smtp.mailfrom=ssi.bg;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=U+cLN2Fy;
+	arc=none smtp.remote-ip=193.238.174.39
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80FB4606A320;
-	Sun, 22 Nov 2026 14:02:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5CE0606A31A;
+	Mon, 23 Nov 2026 04:59:17 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B5CE0606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lI/5Yk22
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6A68D1F000C0;
-	Sun, 22 Nov 2026 14:02:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795356171;
-	bh=onl/poboZkNxS7sIah0bvOjq6ruOD15HwZb7C8yumw8=;
-	h=From:Date:Subject:To:Cc;
-	b=lI/5Yk22pphQIKmQiI0IUKh7l61RDgEj69WTtHSsTMVkiSuFPtRkCZZ+wqQ4mTCW4
-	 z45o5DnnsXZRrsvhNQzbycAWd9fdHLngn4bJWWsoWz4itEP7lrLvr+HSO1WxFKKoDG
-	 xgldgOIpNynD25pAEpoUGJaAdOjhZ7PdVaRxWfGl2fwQ6NlU4ECZjr2nQPdATMubsR
-	 sVeV1/XShUCWpZniy8NTXPGaL5P9MTfyvAKBDqtLB/w0jUQDO9scXWeNu8MtEqA8V/
-	 dnqFK4eOJ3VgqQSz23GjuKalFYOVBlCGqYCMNMosrULsQBTE/MK0G2ZaZ09zBxh375
-	 ACsX2NiCG5ruA==
-From: Simon Horman <horms@kernel.org>
-Date: Sun, 22 Nov 2026 14:02:42 +0000
-Subject: [PATCH nf] MAINTAINERS: Retire as IPVS maintainer
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=U+cLN2Fy
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 67A7321B1A;
+	Mon, 23 Nov 2026 06:59:08 +0200 (EET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-transfer-encoding:date:from:from:message-id
+	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=zZPMnOoD
+	3D5OwWOxaet/uf4K5uCHN0KkpJ2jHZ+77oE=; b=U+cLN2FyLLLgKmNNeiHI88aF
+	Me+Rh9pwMbi8IZtadKcVYO0Nbr5bWheydeu7iJwNF8dR8TxKGvIGHJ2VlYmNyeY4
+	XqxXjgTWjYQ9ClcbDQ62EzU2VkFsjFkMEvWEKZlAG1c8rGgdTmffclWCNf2TA80X
+	K7ABwrl9j2JjdMMKjUnGaTjDRWgSmzCVFJ/+xfDcp1o7VewcKn3rAgQm7WB8TQ9n
+	PFreStrrh9F7KIywOJ7a5THWVpEqG87irxrxws6ZEtFhP0YUmW80ba0Fj0ISi64S
+	S/W9SF2FcY3nCkHA0eA/TdAWG5VAu6iBoRIeibm9eUNrpozPr8WhsxgJGB6iWhOl
+	gSU59uj7RyhBlCUgYK5L0HOuSMBp+XSH5QLIGXboOn2W568LyUT0ALi32DA9lkOJ
+	vqswSo0eL0lwQTIr+ni5BjbRxgJfGd7oqRodU9bSc8BYMPeIZLdbob64Jqm2Rybu
+	/K2CArpU3gCjN/lsyDQ4uC2a/njSWj/UBplxgqYxbW8ZDqD9+N8hca9q+JePFkqo
+	U3GG0Xt8w9N7Xotc1att5RU2K/WupBDpkHvUvAMfzPs6LLPIu9StZ/g8iCj16U8i
+	Ozp0S/UyvObYT7WHlK4UyGXbM1yRff3JSCLWCAX+xvHl2Q2MDQR9RIejS4exWL8O
+	nN86/OUPz2v5rqfQWkI=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Mon, 23 Nov 2026 06:59:08 +0200 (EET)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id 88DF960707;
+	Mon, 23 Nov 2026 06:59:07 +0200 (EET)
+Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6AN4x05h005462;
+	Mon, 23 Nov 2026 06:59:00 +0200
+Received: (from root@localhost)
+	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 6AN4x0cI005461;
+	Mon, 23 Nov 2026 06:59:00 +0200
+From: Julian Anastasov <ja@ssi.bg>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Florian Westphal <fw@strlen.de>, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org
+Subject: [PATCH nf] ipvs: fix use-after-free after failed app module init
+Date: Mon, 23 Nov 2026 06:58:44 +0200
+Message-ID: <20261123045844.5444-1-ja@ssi.bg>
+X-Mailer: git-send-email 2.56.1
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -52,71 +80,117 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-ipvs-retire-v1-1-af35c7a4e2b8@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAL2AmsC/x3MTQqAIBBA4avErBNS+rGuEi1Mx5qNyRgSSHdPW
- n6L9wokZMIES1OAMVOiK1TItgF7mnCgIFcNqlOjlEoJijkJxpsYhTRe73aatesHqEVk9PT8txW
- Ch+19P32LOU9hAAAA
-X-Change-ID: 20261122-ipvs-retire-1af8bc798d45
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, 
- Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, netdev@vger.kernel.org, 
- lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
- coreteam@netfilter.org
-X-Mailer: b4 0.14.2
+Content-Transfer-Encoding: 8bit
 
-In practice it has been some time since I've been actively working on IPVS.
-And likewise, IPVS is maintained in nf/nf-next rather than ipvs/ipvs-next
-for some time now. So this is somewhat overdue.
+Sashiko warns that we have two problems during app module init
+which can lead to possible use-after-free.
 
-- Remove myself as IPVS maintainer
-- Romeve ipvs and ipvs-net tree
+1. We may successfully register app for particular port and netns
+allowing the connections to take module reference but later
+if init fails we still hold these references after the init phase,
+long after the module is freed.
 
-As verge.net.au has, unfortunately, expired with little prospect of
-recovery, also:
+2. We may successfully register the ftp app for some netns but later
+if init fails we still leak the registered apps and incarnations
+after the init phase, long after the module is freed.
 
-- Add mailmap entry for horms@verge.net.au
+To fix the first problem we will disallow try_module_get() to be
+called in MODULE_STATE_COMING state, i.e. while module init is
+still running.
 
-Signed-off-by: Simon Horman <horms@kernel.org>
+For the second problem, we recently added exiting_module variable to
+catch the case when the ftp module was exiting but this does not
+cover the init phase. Fix it by using defer_unreg variable which is
+set while not in module init/exit phase to defer the app pernet
+unregistration during cleanup_net to ip_vs_app_net_cleanup() after
+all module references are dropped.
+
+Link: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261103140308.591690-3-pablo%40netfilter.org
+Fixes: 134121bfd99a ("ipvs: Defer ip_vs_ftp unregister during netns cleanup")
+Fixes: be97fdb5fbcc ("ipvs: generalize app registration in netns")
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- .mailmap    | 1 +
- MAINTAINERS | 3 ---
- 2 files changed, 1 insertion(+), 3 deletions(-)
+ net/netfilter/ipvs/ip_vs_app.c |  9 ++++++++-
+ net/netfilter/ipvs/ip_vs_ftp.c | 24 +++++++++++++++++-------
+ 2 files changed, 25 insertions(+), 8 deletions(-)
 
-diff --git a/.mailmap b/.mailmap
-index d73ec73e5ba9dd4ca678493346e250c016a036c8..56485c0b6779ef550c286de808995438856abb09 100644
---- a/.mailmap
-+++ b/.mailmap
-@@ -863,6 +863,7 @@ Simona Vetter <simona.vetter@ffwll.ch> <daniel.vetter@ffwll.ch>
- Simona Vetter <simona.vetter@ffwll.ch> <daniel.vetter@intel.com>
- Simona Vetter <simona.vetter@ffwll.ch> <daniel@ffwll.ch>
- Simona Vetter <simona.vetter@ffwll.ch> <daniel@biene.ffwll.ch>
-+Simon Horman <horms@kernel.org> <horms@verge.net.au>
- Simon Horman <horms@kernel.org> <simon.horman@corigine.com>
- Simon Horman <horms@kernel.org> <simon.horman@netronome.com>
- Simon Kelley <simon@thekelleys.org.uk>
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 7336600952c8e48dd24f7a61fd45a202268d947c..e1cdfcfeb30235b0686a7c3c0c54dd5e43d48daa 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -13852,13 +13852,10 @@ W:	http://www.adaptec.com/
- F:	drivers/scsi/ips*
+diff --git a/net/netfilter/ipvs/ip_vs_app.c b/net/netfilter/ipvs/ip_vs_app.c
+index 2c1b47702da2..fdec626124be 100644
+--- a/net/netfilter/ipvs/ip_vs_app.c
++++ b/net/netfilter/ipvs/ip_vs_app.c
+@@ -43,7 +43,14 @@ static DEFINE_MUTEX(__ip_vs_app_mutex);
+  */
+ static inline int ip_vs_app_get(struct ip_vs_app *app)
+ {
+-	return try_module_get(app->module);
++	struct module *mod = app->module;
++
++	/* Failed module init should return without any module references,
++	 * so allow access to the module only after the init phase.
++	 */
++	if (mod && module_is_coming(mod))
++		return false;
++	return try_module_get(mod);
+ }
  
- IPVS
--M:	Simon Horman <horms@verge.net.au>
- M:	Julian Anastasov <ja@ssi.bg>
- L:	netdev@vger.kernel.org
- L:	lvs-devel@vger.kernel.org
- S:	Maintained
--T:	git git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs-next.git
--T:	git git://git.kernel.org/pub/scm/linux/kernel/git/horms/ipvs.git
- F:	Documentation/networking/ipvs-sysctl.rst
- F:	include/net/ip_vs.h
- F:	include/uapi/linux/ip_vs.h
-
+ 
+diff --git a/net/netfilter/ipvs/ip_vs_ftp.c b/net/netfilter/ipvs/ip_vs_ftp.c
+index 44de99f4d187..0a6440c2132c 100644
+--- a/net/netfilter/ipvs/ip_vs_ftp.c
++++ b/net/netfilter/ipvs/ip_vs_ftp.c
+@@ -52,7 +52,8 @@ enum {
+ 	IP_VS_FTP_EPSV,
+ };
+ 
+-static bool exiting_module;
++static bool defer_unreg; /* Defer unreg on cleanup_net */
++
+ /*
+  * List of ports (up to IP_VS_APP_MAX_PORTS) to be handled by helper
+  * First port is set to the default port.
+@@ -629,10 +630,12 @@ static void __ip_vs_ftp_exit(struct net *net)
+ {
+ 	struct netns_ipvs *ipvs = net_ipvs(net);
+ 
+-	if (!ipvs || !exiting_module)
+-		return;
+-
+-	unregister_ip_vs_app(ipvs, &ip_vs_ftp);
++	/* Unregister app only on module init/exit, on netns cleanup
++	 * it is done later in ip_vs_app_net_cleanup().
++	 * It is equally correct to check for !net->is_dying.
++	 */
++	if (ipvs && !defer_unreg)
++		unregister_ip_vs_app(ipvs, &ip_vs_ftp);
+ }
+ 
+ static struct pernet_operations ip_vs_ftp_ops = {
+@@ -643,7 +646,14 @@ static struct pernet_operations ip_vs_ftp_ops = {
+ static int __init ip_vs_ftp_init(void)
+ {
+ 	/* rcu_barrier() is called by netns on error */
+-	return register_pernet_subsys(&ip_vs_ftp_ops);
++	int ret = register_pernet_subsys(&ip_vs_ftp_ops);
++
++	if (ret >= 0) {
++		defer_unreg = true;
++		/* commit before switching to MODULE_STATE_LIVE */
++		smp_wmb();
++	}
++	return ret;
+ }
+ 
+ /*
+@@ -651,7 +661,7 @@ static int __init ip_vs_ftp_init(void)
+  */
+ static void __exit ip_vs_ftp_exit(void)
+ {
+-	exiting_module = true;
++	defer_unreg = false;
+ 	unregister_pernet_subsys(&ip_vs_ftp_ops);
+ 	/* rcu_barrier() is called by netns */
+ }
+-- 
+2.56.1
 
 
