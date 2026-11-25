@@ -1,50 +1,78 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=13.75.44.102
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795587762;
-	b=UhMlkl6lp5DxG2xY0JuXkcg4Q5XiXHyvVMiQ9HcpXxx4RkM7szRUNrNYYCva8wbjXaDl
-	 3MrCXXwTYP/VSwVNzvs7peg94gBJmOoh90bp7NfkwzNDe2bzM9BJfjPlDpMtxcUi6gZPD
-	 Mak3vJpjynADS9QS1YKTdEtFnvL7yAWHvV1IjDhP+jrnSfvS9bASszg/pKJmaw9dBSOvy
-	 8O2Ipp5wfv4oTQ9SkebHpeFJlOorgH3yAjNdx6XBMK2vrC/f9w8Z7G0agCaQwFDEmOyS/
-	 CtpFSRlvF+pWH1U2ipvROjtODvRI/3NXmnxmNZVgWgpuIVQraqSqQVQBtP9OTohwEgw==
+	t=1795633828;
+	b=KovugPYLAwGeRJNEF3gNVA1I8NLhFxYFCsT3uW2uMIdcTFpkhRh/DvrgpyOm8M2ARaor
+	 oi1hY+Wx4jb1i1lHRZ3w2daQlsu72Dm3ZECBQXDvZvpIpoA7YfCaZ/Qm3Z0zkncsXHGL6
+	 teSlAqlHUvhbzyucsDKDd3qvzUmhBdVhnufqpdsRR2cTauEOCPL/IH+/O9U73e9a/teIv
+	 egKuwbkMXcKQTwKNCaYeHPT9VzwlvWnlcKVDNr9X4KPKsJ0JwjMx29G41uNJweUtXGnFS
+	 abK9Ruecdpj7uIYW6tP2Aye2AIkEE2D6rSW5sFznKKhnp173/uPTknYnaBV7/0fNa/g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795587762;
-	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
-	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:
-	 X-CM-TRANSID:X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=ukAnIx9CIIZ9kjRSJQFLi2KYR1rvbJhbQwVVFeyyRFQ=;
-	b=4YbhKejN782lphbMwDO6d/v2ELM6Kx4uSjtD/J+mQAEJd7ei0Ntq+QuTyBNXQPiJeBHo
-	 8gJ1KazgMVdv3NpE3UyhvOK/1flkR/c2YAFo5XWW+GtysRKCRxKQZflzUFizAIahU3Mwp
-	 YG6NRHqp9nbhI+rTVSFc8y1wL4FrdbudWEMuYblHByVrn75vZTjTxxHhd/Z3eu4Xd11pU
-	 Do2XG0QlMfcfwY91iFulqRXBEPy6DWpf/fGGATe0NC26umeDRzN0vc0ABuDLLWpSFAeTl
-	 SI/udM9R3Ij/I9k0cYGUDaNN+BTbfSgnQOucO4Ur94fi/OOkRTysdWWIRPJN4fYAKsg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795633828;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
+	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=jpKhVyqnxgdAt4gtB0kYhyxBPlB89OJQQHRpoISVsmQ=;
+	b=Rt6ic23Xg8JMHCoAJvfww4o0OMe9MV0bCLL0t9Ly46sf4s0/piGbbWY+diTirEj5g+RN
+	 8G+eXGMLFGTFKSYZ90i6C05YawdoMglrtaC0ECDgU6vKF35vhq9f1uW7hMv/I1gZ++G8j
+	 EOK1awILYbDTS1T80yRYQxsXQHQ2w6VC0zxx8/HzWMY5ZOgB0+gkcsI5OUJSOwoEO7gDx
+	 Bvq4j+nPDrQ+VzZE+nToQN1ITVBmr6yeCU8XvRUI8BQzzirzr1FgmN8Tid2uFx5g0bZoI
+	 8Qp2ivGdmgE6B5YciwpMTg8p07aB3Kh6TutfMqs0qGqcQHXtKgdIF9SYYG1++eNMfUw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=stu.xjtu.edu.cn;
-	spf=pass smtp.mailfrom=stu.xjtu.edu.cn;
-	arc=none smtp.remote-ip=13.75.44.102
-Received: from azure-sdnproxy.icoremail.net (azure-sdnproxy.icoremail.net [13.75.44.102])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 81790606A32C;
-	Wed, 25 Nov 2026 06:22:38 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 81790606A32C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=stu.xjtu.edu.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=stu.xjtu.edu.cn
-Received: from fxxowodeMacBook-Pro.local (unknown [10.181.177.214])
-	by app2 (Coremail) with SMTP id NAGowAB3KZasfgZrTAqDAA--.38917S2;
-	Wed, 25 Nov 2026 14:22:37 +0800 (CST)
-Date: Wed, 25 Nov 2026 01:22:31 -0500
-From: "Zhenrong (Daniel) Gu" <zrgu@stu.xjtu.edu.cn>
-To: Julian Anastasov <ja@ssi.bg>
-Cc: lvs-devel@vger.kernel.org, netdev@vger.kernel.org,
-	Xing Feng <xingfeng@stu.xjtu.edu.cn>,
-	Peng Zhang <p-zhang@xjtu.edu.cn>
-Subject: Re: [BUG] ipvs: new connection on a reused port goes to the previous
- real server during conn_tab resize
-Message-ID: <awZ-p0v7Cr2hBfon@fxxowodeMacBook-Pro.local>
-References: <avx0_13w3xGNdZP8@fxxowodeMacBook-Pro.local>
- <d876f5ef-982a-0ddb-5e75-3434453c2ccf@ssi.bg>
- <av7f6F123V2WDd_u@fxxowodeMacBook-Pro.local>
- <a5aa2a54-d8ea-bbe1-3a72-d672d6fd92c4@ssi.bg>
- <awWHfO0EgdLoOxLi@fxxowodeMacBook-Pro.local>
- <4da25158-cbab-1186-b948-e17b13262bc3@ssi.bg>
+	dmarc=pass header.from=ssi.bg;
+	spf=pass smtp.mailfrom=ssi.bg;
+	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=124mKR+t;
+	arc=none smtp.remote-ip=193.238.174.39
+Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FB7F606A321;
+	Wed, 25 Nov 2026 19:10:26 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9FB7F606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=124mKR+t
+Received: from mx.ssi.bg (localhost [127.0.0.1])
+	by mx.ssi.bg (Potsfix) with ESMTP id 5D76D21FD0;
+	Wed, 25 Nov 2026 21:10:17 +0200 (EET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
+	:content-transfer-encoding:date:from:from:message-id
+	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=jpKhVyqn
+	xgdAt4gtB0kYhyxBPlB89OJQQHRpoISVsmQ=; b=124mKR+tqmh6kCqk6IWxNnd9
+	9tna0oFFiKA2SdgbGXsPvHEL0cneYiXAcU4q9xh8sLZH67TFigZyt8IaGTq0IZ8+
+	u+C3hW1YyPoVUr1Fyx1aq9k7eE8ThZjSBwHWEALv6fVZmuqxHelTIS1X28vajWnz
+	FFfAI9metLZ/aHnWo7fGmhlV6cjnEEwxRXU4sZRVYUzPmzO8/Qc/4lL/TqdfYHzX
+	9CUe4cTWPfcb44CAZe5IhI/6dHLKVfFOBgnfpZSiIgsVPR0PmylRHUa8nEGGHdvp
+	+oi7Liq3fpW4rq1hiIqttu0lxuoaRujsG7sYpqvqYzk7mIhtY2YKBobfCaW9c6sU
+	sQvNl69AOotgd6RTfiYfKJW3QcUCvEJnU2I/dfVCuUPChEDfDNmUXmJO5IfbsYth
+	pZLPRiKP3GcCo06gfounYPh0/FdgyOAM5qEaX3yoRRz8fwddYdmenQf0IJc0P7NW
+	sS75XZoBRbezDS6KceGjk9jaVRdkYSgbmFNyTUAiCaiwNxFAhrvo1WBk+ceKBSjy
+	ZOYRBHPodGNdo/OBZdiBjhUoEAz8BHZWsktgNZQm7zKlMTONfP0oGriBqPapZsQI
+	0aIfrRz7BnepGXhixcW2MuxEfl3Usmtq0F3UNvFf/KDFYVYxUxz/GTVmjud97SMT
+	fsKB9bwNMoc7eW4YRkA=
+Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
+	by mx.ssi.bg (Potsfix) with ESMTPS;
+	Wed, 25 Nov 2026 21:10:17 +0200 (EET)
+Received: from ja.ssi.bg (unknown [213.16.62.126])
+	by box.ssi.bg (Potsfix) with ESMTPSA id A25A160EB9;
+	Wed, 25 Nov 2026 21:10:16 +0200 (EET)
+Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
+	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6APJA8NV118146;
+	Wed, 25 Nov 2026 21:10:08 +0200
+Received: (from root@localhost)
+	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 6APJA5JD118142;
+	Wed, 25 Nov 2026 21:10:05 +0200
+From: Julian Anastasov <ja@ssi.bg>
+To: Pablo Neira Ayuso <pablo@netfilter.org>
+Cc: Florian Westphal <fw@strlen.de>, lvs-devel@vger.kernel.org,
+        netfilter-devel@vger.kernel.org,
+        "Zhenrong (Daniel) Gu" <zrgu@stu.xjtu.edu.cn>,
+        Xing Feng <xingfeng@stu.xjtu.edu.cn>, Peng Zhang <p-zhang@xjtu.edu.cn>
+Subject: [PATCH nf v2] ipvs: fix connection reuse with the resizable hash tables
+Date: Wed, 25 Nov 2026 21:09:40 +0200
+Message-ID: <20261125190940.118112-1-ja@ssi.bg>
+X-Mailer: git-send-email 2.56.1
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -54,55 +82,207 @@ List-Unsubscribe: <mailto:lvs-devel+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <4da25158-cbab-1186-b948-e17b13262bc3@ssi.bg>
-X-CM-TRANSID:NAGowAB3KZasfgZrTAqDAA--.38917S2
-X-Coremail-Antispam: 1UD129KBjvdXoWruw1kKrWDKw13CFyfZF17GFg_yoWDtFc_ur
-	WfWF97Ca1qyay8Ca18AF1rArn3Ga4UWrZrZFn0yrWftFyDGayDCF4kWFWS9wn3X34fJF1a
-	yrs0ga4akry29jkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbVxFc2x0x2IEx4CE42xK8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AK
-	wVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20x
-	vE14v26r4j6ryUM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4j6F4UM28EF7xvwVC2z280
-	aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x0267AKxVWxJr0_GcWle2I262IYc4CY6c
-	8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_JF0_
-	Jw1lYx0Ex4A2jsIE14v26r4j6F4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrw
-	ACjI8F5VA0II8E6IAqYI8I648v4I1lc7CjxVAaw2AFwI0_JF0_Jw1lc2xSY4AK6svPMxAI
-	w28IcxkI7VAKI48JMxAIw28IcVCjz48v1sIEY20_GF4UJr1UMxC20s026xCaFVCjc4AY6r
-	1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CE
-	b7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0x
-	vE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAI
-	cVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIevJa
-	73UjIFyTuYvjfUeTmhDUUUU
-X-CM-SenderInfo: 5hqgt5hwuh2iqrsqq2dwxo5ylwxovvfxof0/
+Content-Transfer-Encoding: 8bit
 
-Hello Julian,
+Zhenrong (Daniel) Gu, Xing Feng and Peng Zhang report for
+a problem with the reused connections while testing a passive
+runtime checker for L4 load balancers.
 
-On Wed, Nov 25, 2026 at 07:04:57AM +0200, Julian Anastasov wrote:
-> 	Thank you for the testing! Due to the Sashiko concerns [1]
-> I'll post new version later today:
-> 
-> [1]
-> https://sashiko.dev/#/patchset/20261124160226.103532-1-ja%40ssi.bg
-> 
-> 	Here is the v2 that I'll post, in case you want to do
-> the main test again. The difference is that we do not mark
-> the connection as reused early because a retransmitted SYN
-> should hit the old connection while it is using confirmed
-> conntrack and is not expired yet (2nd SYN comes before the
-> expiration):
-> 
-> [PATCH RFC nf v2] ipvs: fix connection reuse with the resizable hash tables
+When connection is reused, we create new connection and put it
+first in the list. By this way all packets hit the new connection
+leaving the reused one to expire. This order worked before the
+the introduction of resizable connection hash table which
+started to reverse the order of connections each time the
+table is resized. If the table is resized while the reused
+connection is still present, the next packets will not hit the
+new connection.
 
-Thanks for the update. We reran the tests on v2 (same net tree
-af6737b90, 7.4.0-rc3+ in the 8-vCPU KVM guest). All previous
-tests continue to pass, and in addition, we ran a 30s force
-mode test with net.ipv4.vs.conntrack=1 and active nf_conntrack
-(7438 reused-port connections): 0 misrouted, delayed, or
-failed connections.
+To fix that we prefer not to rely on the order of connections,
+now we will just mark the reused connection with a new flag
+IP_VS_CONN_F_REUSED, so that it can be skipped when the list
+is traversed on received packet. As the reused connection is
+still hashed while waiting its timer to expire, it is visible
+to the procedures that delete connections on memory pressure
+or netns cleanup. Also, when the reused connections are now
+marked, we can exclude them from the synchronization process.
+Do this by checking for IP_VS_CONN_F_MASTER_NOSYNC for data
+and controlling connections.
 
-Tested-by: Zhenrong (Daniel) Gu <zrgu@stu.xjtu.edu.cn>
+Reported-by: "Zhenrong (Daniel) Gu" <zrgu@stu.xjtu.edu.cn>
+Closes: https://lore.kernel.org/all/avx0_13w3xGNdZP8@fxxowodeMacBook-Pro.local/
+Reported-by: Xing Feng <xingfeng@stu.xjtu.edu.cn>
+Reported-by: Peng Zhang <p-zhang@xjtu.edu.cn>
+Link: https://sashiko.dev/#/patchset/20261124160226.103532-1-ja%40ssi.bg
+Fixes: 2fa7cc9c7025 ("ipvs: switch to per-net connection table")
+Tested-by: "Zhenrong (Daniel) Gu" <zrgu@stu.xjtu.edu.cn>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ Changes in v2:
+ * Mark the connection as reused only when we create a replacement
+   connection, not while dropping packets when old_ct is present
+ * Check for IP_VS_CONN_F_MASTER_NOSYNC for the controlling connections
 
-Thanks,
-Zhenrong (Daniel) Gu
+ Link to v1:
+ https://lore.kernel.org/all/20261124160226.103532-1-ja@ssi.bg/
+
+ include/net/ip_vs.h             |  1 +
+ include/uapi/linux/ip_vs.h      |  7 +++++++
+ net/netfilter/ipvs/ip_vs_conn.c | 15 +++++++++++++++
+ net/netfilter/ipvs/ip_vs_core.c | 15 ++++-----------
+ net/netfilter/ipvs/ip_vs_sync.c | 12 ++++++------
+ 5 files changed, 33 insertions(+), 17 deletions(-)
+
+diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
+index 6ee782f2362c..100638ee3780 100644
+--- a/include/net/ip_vs.h
++++ b/include/net/ip_vs.h
+@@ -1717,6 +1717,7 @@ struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
+ 				  __be16 dport, unsigned int flags,
+ 				  struct ip_vs_dest *dest, __u32 fwmark);
+ void ip_vs_conn_expire_now(struct ip_vs_conn *cp);
++void ip_vs_conn_mark_reused(struct ip_vs_conn *cp);
+ 
+ const char *ip_vs_state_name(const struct ip_vs_conn *cp);
+ 
+diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
+index 2c37c6ac7525..b327e07e2c3f 100644
+--- a/include/uapi/linux/ip_vs.h
++++ b/include/uapi/linux/ip_vs.h
+@@ -112,6 +112,13 @@
+ 				IP_VS_CONN_F_NFCT | \
+ 				0)
+ 
++#define IP_VS_CONN_F_REUSED	(1 << 30)	/* replaced from new one */
++
++/* Connections with any of these flags are not synced */
++#define IP_VS_CONN_F_MASTER_NOSYNC	(IP_VS_CONN_F_ONE_PACKET | \
++					 IP_VS_CONN_F_REUSED | \
++					 0)
++
+ #define IP_VS_SCHEDNAME_MAXLEN	16
+ #define IP_VS_PENAME_MAXLEN	16
+ #define IP_VS_IFNAME_MAXLEN	16
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 98a3c9ec123f..f9f1665daa1f 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -405,6 +405,7 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
+ 						     &cp->vaddr) &&
+ 				    (!p->cport ^
+ 				     (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
++				    !(cp->flags & IP_VS_CONN_F_REUSED) &&
+ 				    p->protocol == cp->protocol) {
+ 					if (__ip_vs_conn_get(cp)) {
+ 						/* HIT */
+@@ -592,6 +593,7 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
+ 				    ip_vs_addr_equal(p->af, p->caddr, saddr) &&
+ 				    (!p->vport ^
+ 				     (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
++				    !(cp->flags & IP_VS_CONN_F_REUSED) &&
+ 				    p->protocol == cp->protocol) {
+ 					if (__ip_vs_conn_get(cp))
+ 						goto out;
+@@ -1468,6 +1470,19 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp)
+ 		mod_timer_pending(&cp->timer, jiffies);
+ }
+ 
++/* Mark connection as reused:
++ * - it is still hashed
++ * - but it is not hit by packets
++ * - it is replaced by new connection with same addresses and ports
++ * - it is not synced anymore
++ */
++void ip_vs_conn_mark_reused(struct ip_vs_conn *cp)
++{
++	spin_lock_bh(&cp->lock);
++	cp->flags &= ~IP_VS_CONN_F_NFCT;
++	cp->flags |= IP_VS_CONN_F_REUSED;
++	spin_unlock_bh(&cp->lock);
++}
+ 
+ /*
+  *	Create a new connection entry and hash it into the conn_tab
+diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
+index fe3ff0a10ddf..5354ecfe2607 100644
+--- a/net/netfilter/ipvs/ip_vs_core.c
++++ b/net/netfilter/ipvs/ip_vs_core.c
+@@ -2215,11 +2215,8 @@ ip_vs_in_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state
+ 		}
+ 
+ 		if (resched) {
+-			if (!old_ct) {
+-				spin_lock_bh(&cp->lock);
+-				cp->flags &= ~IP_VS_CONN_F_NFCT;
+-				spin_unlock_bh(&cp->lock);
+-			}
++			if (!old_ct)
++				ip_vs_conn_mark_reused(cp);
+ 			if (!atomic_read(&cp->n_control))
+ 				ip_vs_conn_expire_now(cp);
+ 			__ip_vs_conn_put(cp);
+@@ -2235,12 +2232,8 @@ ip_vs_in_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state
+ 		if (sysctl_expire_nodest_conn(ipvs)) {
+ 			bool old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
+ 
+-			if (!old_ct) {
+-				spin_lock_bh(&cp->lock);
+-				cp->flags &= ~IP_VS_CONN_F_NFCT;
+-				spin_unlock_bh(&cp->lock);
+-			}
+-
++			if (!old_ct)
++				ip_vs_conn_mark_reused(cp);
+ 			ip_vs_conn_expire_now(cp);
+ 			__ip_vs_conn_put(cp);
+ 			if (old_ct)
+diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
+index 7e562e745ab5..08ac716aad29 100644
+--- a/net/netfilter/ipvs/ip_vs_sync.c
++++ b/net/netfilter/ipvs/ip_vs_sync.c
+@@ -551,8 +551,7 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
+ 	if (unlikely(cp->af != AF_INET))
+ 		return;
+ 	flags = READ_ONCE(cp->flags);
+-	/* Do not sync ONE PACKET */
+-	if (flags & IP_VS_CONN_F_ONE_PACKET)
++	if (flags & IP_VS_CONN_F_MASTER_NOSYNC)
+ 		return;
+ 
+ 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
+@@ -654,10 +653,10 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
+ 		ip_vs_sync_conn_v0(ipvs, cp, pkts);
+ 		return;
+ 	}
+-	/* Do not sync ONE PACKET */
+-	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
+-		goto control;
++
+ sloop:
++	if (cp->flags & IP_VS_CONN_F_MASTER_NOSYNC)
++		goto control;
+ 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
+ 		goto control;
+ 	flags = READ_ONCE(cp->flags);
+@@ -895,6 +894,7 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
+ 		if (cp && ((cp->dport != dport) ||
+ 			   !ip_vs_addr_equal(cp->daf, &cp->daddr, daddr))) {
+ 			if (!(flags & IP_VS_CONN_F_INACTIVE)) {
++				ip_vs_conn_mark_reused(cp);
+ 				ip_vs_conn_expire_now(cp);
+ 				__ip_vs_conn_put(cp);
+ 				cp = NULL;
+@@ -1003,7 +1003,7 @@ static bool ip_vs_sync_validate_flags(u32 flags)
+ 		if (flags & IP_VS_CONN_F_TEMPLATE)
+ 			return false;
+ 	}
+-	if (flags & IP_VS_CONN_F_ONE_PACKET)
++	if (flags & IP_VS_CONN_F_MASTER_NOSYNC)
+ 		return false;
+ 	return true;
+ }
+
+Prerequisite-Message-Id: <20261103165746.39516-1-axel.mierczuk@1password.com>
+-- 
+2.56.1
+
 
