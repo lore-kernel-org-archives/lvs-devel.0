@@ -1,78 +1,80 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.238.174.39
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=52.35.192.45
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795633828;
-	b=KovugPYLAwGeRJNEF3gNVA1I8NLhFxYFCsT3uW2uMIdcTFpkhRh/DvrgpyOm8M2ARaor
-	 oi1hY+Wx4jb1i1lHRZ3w2daQlsu72Dm3ZECBQXDvZvpIpoA7YfCaZ/Qm3Z0zkncsXHGL6
-	 teSlAqlHUvhbzyucsDKDd3qvzUmhBdVhnufqpdsRR2cTauEOCPL/IH+/O9U73e9a/teIv
-	 egKuwbkMXcKQTwKNCaYeHPT9VzwlvWnlcKVDNr9X4KPKsJ0JwjMx29G41uNJweUtXGnFS
-	 abK9Ruecdpj7uIYW6tP2Aye2AIkEE2D6rSW5sFznKKhnp173/uPTknYnaBV7/0fNa/g==
+	t=1795789494;
+	b=WJaFoTrMRYHdfV96rJMXyW1sgQJ6AO/V3iElyEadzUEKLwjdwojIdP5kyCIUCqskH2hg
+	 Ad6KuoVCgwlr0zLncyV9JxfJ1MCxlhvfmhyjfEU960c7gul1R4+JE1JvVi1IA3T5fmyBa
+	 gz2xNmDp2prRxKLkqyHwNLlqCLpzdk6IylW1gZlfpAjE+EEfdaTVVsV/OKn27oomyHDvj
+	 pYa0VWqLRsaJ02p/UTSYAHyCRvASSwvMazxLsUoLvCpjrWXQSEHZtYkCjRRHv3cybOsae
+	 pvDum0eLLv6D6WfUbGKWxjBc8/uap36m5ZGl9unHDlRe0ZCGvj0/vMX+fCYhm/KktnQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795633828;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
-	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=jpKhVyqnxgdAt4gtB0kYhyxBPlB89OJQQHRpoISVsmQ=;
-	b=Rt6ic23Xg8JMHCoAJvfww4o0OMe9MV0bCLL0t9Ly46sf4s0/piGbbWY+diTirEj5g+RN
-	 8G+eXGMLFGTFKSYZ90i6C05YawdoMglrtaC0ECDgU6vKF35vhq9f1uW7hMv/I1gZ++G8j
-	 EOK1awILYbDTS1T80yRYQxsXQHQ2w6VC0zxx8/HzWMY5ZOgB0+gkcsI5OUJSOwoEO7gDx
-	 Bvq4j+nPDrQ+VzZE+nToQN1ITVBmr6yeCU8XvRUI8BQzzirzr1FgmN8Tid2uFx5g0bZoI
-	 8Qp2ivGdmgE6B5YciwpMTg8p07aB3Kh6TutfMqs0qGqcQHXtKgdIF9SYYG1++eNMfUw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795789494;
+	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
+	 X-IronPort-AV:Received:Received:X-Farcaster-Flow-ID:Received:Received:
+	 From:To:CC:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding:Content-Type:X-Originating-IP:
+	 X-ClientProxiedBy;
+	bh=0Hc5k4DsAxxmLwGYC+V1QGrOpstcjMHKcFIfgfKPwsU=;
+	b=vK2WnXHHJF6AsnIGJkw5hnSadDbg5jqXGNJAdQ8cFn1H6wjYswIZpJK8SNgkrDGgs9Ej
+	 6yQev9rXk7o2EcapY8hUkVsW+RAUkXhr6KDWnso24/35cvGttKASaNVHg839kbgk7BQYM
+	 P8fpAALSMhgZs16K9PuKt1KbvjF6J/eAeZafm0/VV2LI5Cl0fXaRtR+75Rfj1h9WMzY92
+	 jPPUybI3sX/eQlmS29IOKiND1FamA/a13WqIt++CJBxtc754lLVpUVQOssI4Y3rnivKPR
+	 /Ny7i9wJXZFp58PUz11HFQdNzo2GXtVqcAbCVh0vBaDHAYkLnA452XY8DZ7ucQCn1VA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=ssi.bg;
-	spf=pass smtp.mailfrom=ssi.bg;
-	dkim=pass header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=124mKR+t;
-	arc=none smtp.remote-ip=193.238.174.39
-Received: from mx.ssi.bg (mx.ssi.bg [193.238.174.39])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=amazon.de;
+	spf=pass smtp.mailfrom=amazon.de;
+	dkim=pass header.d=amazon.de header.i=@amazon.de header.a=rsa-sha256 header.s=amazoncorp2 header.b=oQ8fmAta;
+	arc=none smtp.remote-ip=52.35.192.45
+Received: from pdx-out-011.esa.us-west-2.outbound.mail-perimeter.amazon.com (pdx-out-011.esa.us-west-2.outbound.mail-perimeter.amazon.com [52.35.192.45])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FB7F606A321;
-	Wed, 25 Nov 2026 19:10:26 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9FB7F606A321
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ssi.bg
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.bg
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C70260A3834;
+	Fri, 27 Nov 2026 14:24:54 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2C70260A3834
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=amazon.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key, unprotected) header.d=ssi.bg header.i=@ssi.bg header.a=rsa-sha256 header.s=ssi header.b=124mKR+t
-Received: from mx.ssi.bg (localhost [127.0.0.1])
-	by mx.ssi.bg (Potsfix) with ESMTP id 5D76D21FD0;
-	Wed, 25 Nov 2026 21:10:17 +0200 (EET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ssi.bg; h=cc:cc
-	:content-transfer-encoding:date:from:from:message-id
-	:mime-version:reply-to:subject:subject:to:to; s=ssi; bh=jpKhVyqn
-	xgdAt4gtB0kYhyxBPlB89OJQQHRpoISVsmQ=; b=124mKR+tqmh6kCqk6IWxNnd9
-	9tna0oFFiKA2SdgbGXsPvHEL0cneYiXAcU4q9xh8sLZH67TFigZyt8IaGTq0IZ8+
-	u+C3hW1YyPoVUr1Fyx1aq9k7eE8ThZjSBwHWEALv6fVZmuqxHelTIS1X28vajWnz
-	FFfAI9metLZ/aHnWo7fGmhlV6cjnEEwxRXU4sZRVYUzPmzO8/Qc/4lL/TqdfYHzX
-	9CUe4cTWPfcb44CAZe5IhI/6dHLKVfFOBgnfpZSiIgsVPR0PmylRHUa8nEGGHdvp
-	+oi7Liq3fpW4rq1hiIqttu0lxuoaRujsG7sYpqvqYzk7mIhtY2YKBobfCaW9c6sU
-	sQvNl69AOotgd6RTfiYfKJW3QcUCvEJnU2I/dfVCuUPChEDfDNmUXmJO5IfbsYth
-	pZLPRiKP3GcCo06gfounYPh0/FdgyOAM5qEaX3yoRRz8fwddYdmenQf0IJc0P7NW
-	sS75XZoBRbezDS6KceGjk9jaVRdkYSgbmFNyTUAiCaiwNxFAhrvo1WBk+ceKBSjy
-	ZOYRBHPodGNdo/OBZdiBjhUoEAz8BHZWsktgNZQm7zKlMTONfP0oGriBqPapZsQI
-	0aIfrRz7BnepGXhixcW2MuxEfl3Usmtq0F3UNvFf/KDFYVYxUxz/GTVmjud97SMT
-	fsKB9bwNMoc7eW4YRkA=
-Received: from box.ssi.bg (box.ssi.bg [193.238.174.46])
-	by mx.ssi.bg (Potsfix) with ESMTPS;
-	Wed, 25 Nov 2026 21:10:17 +0200 (EET)
-Received: from ja.ssi.bg (unknown [213.16.62.126])
-	by box.ssi.bg (Potsfix) with ESMTPSA id A25A160EB9;
-	Wed, 25 Nov 2026 21:10:16 +0200 (EET)
-Received: from ja.home.ssi.bg (localhost.localdomain [127.0.0.1])
-	by ja.ssi.bg (8.18.2/8.18.2) with ESMTP id 6APJA8NV118146;
-	Wed, 25 Nov 2026 21:10:08 +0200
-Received: (from root@localhost)
-	by ja.home.ssi.bg (8.18.2/8.18.2/Submit) id 6APJA5JD118142;
-	Wed, 25 Nov 2026 21:10:05 +0200
-From: Julian Anastasov <ja@ssi.bg>
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Florian Westphal <fw@strlen.de>, lvs-devel@vger.kernel.org,
-        netfilter-devel@vger.kernel.org,
-        "Zhenrong (Daniel) Gu" <zrgu@stu.xjtu.edu.cn>,
-        Xing Feng <xingfeng@stu.xjtu.edu.cn>, Peng Zhang <p-zhang@xjtu.edu.cn>
-Subject: [PATCH nf v2] ipvs: fix connection reuse with the resizable hash tables
-Date: Wed, 25 Nov 2026 21:09:40 +0200
-Message-ID: <20261125190940.118112-1-ja@ssi.bg>
-X-Mailer: git-send-email 2.56.1
+	dkim=pass (2048-bit key, unprotected) header.d=amazon.de header.i=@amazon.de header.a=rsa-sha256 header.s=amazoncorp2 header.b=oQ8fmAta
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.de; i=@amazon.de; q=dns/txt; s=amazoncorp2;
+  t=1795789494; x=1827325494;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=0Hc5k4DsAxxmLwGYC+V1QGrOpstcjMHKcFIfgfKPwsU=;
+  b=oQ8fmAtaEqvteD1Zm/VatlyCeb6C9MRfIURHkdL1zRsaFkCbd118vOPh
+   gkhu1kaZMwK9SxHlKjiUsNgvp9+Bjm+PFNskc2DzXe58Nhrvj/PmEABDI
+   4P0g9fVYgdjReSDt7nuGZd6CGvl6UmjJzNcJ7ckIoEsC7kfEULSugSMkO
+   ltkfpb+cN42mqttFTqIQE+QKzkZ+ON9R2laxD/ZHLj1iBaxTq2gzsYCcD
+   mnfZX8KYVwibsUlsJwJ/xKzeUJ9EEWvwLNKUzbJA1INIV5g1LCnW2wzXe
+   SxZb+bg/0gmtMqwi4bQiMkoSvET0p0NbpZb1/BUseDWx/LxBrYaosTsGk
+   g==;
+X-CSE-ConnectionGUID: +zfGw4f4Q6+6mKoSfTwc/g==
+X-CSE-MsgGUID: V3bAQRhVRNe4bFTNWGJrHg==
+X-IronPort-AV: E=Sophos;i="6.27,237,1787011200"; 
+   d="scan'208";a="35012482"
+Received: from ip-10-5-9-48.us-west-2.compute.internal (HELO smtpout.naws.us-west-2.prod.farcaster.email.amazon.dev) ([10.5.9.48])
+  by internal-pdx-out-011.esa.us-west-2.outbound.mail-perimeter.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 27 Nov 2026 14:24:45 +0000
+Received: from EX19MTAUWB001.ant.amazon.com [205.251.233.104:13917]
+ by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.27.12:2525] with esmtp (Farcaster)
+ id 90356893-35b3-49c1-8940-66362bbb7f72; Fri, 27 Nov 2026 14:24:45 +0000 (UTC)
+X-Farcaster-Flow-ID: 90356893-35b3-49c1-8940-66362bbb7f72
+Received: from EX19D001UWA001.ant.amazon.com (10.13.138.214) by
+ EX19MTAUWB001.ant.amazon.com (10.250.64.248) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.57;
+ Fri, 27 Nov 2026 14:24:44 +0000
+Received: from dev-dsk-gyokhan-1a-87ab81cc.eu-west-1.amazon.com
+ (10.253.85.128) by EX19D001UWA001.ant.amazon.com (10.13.138.214) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.57; Fri, 27 Nov 2026
+ 14:24:43 +0000
+From: Gyokhan Kochmarla <gyokhan@amazon.de>
+To: <stable@vger.kernel.org>
+CC: Julian Anastasov <ja@ssi.bg>, Pablo Neira Ayuso <pablo@netfilter.org>,
+	Simon Horman <horms@verge.net.au>, Florian Westphal <fw@strlen.de>,
+	<lvs-devel@vger.kernel.org>, <netfilter-devel@vger.kernel.org>
+Subject: [STABLE REQUEST] ipvs: two follow-up race fixes for 7.3.y and older
+Date: Fri, 27 Nov 2026 14:24:32 +0000
+Message-ID: <20261127142432.1266575-1-gyokhan@amazon.de>
+X-Mailer: git-send-email 2.50.1
 X-Mailing-List: lvs-devel@vger.kernel.org
 List-Id: <lvs-devel.vger.kernel.org>
 List-Post: <mailto:lvs-devel@vger.kernel.org>
@@ -83,206 +85,35 @@ List-Owner: <mailto:lvs-devel+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: EX19D031UWC003.ant.amazon.com (10.13.139.252) To
+ EX19D001UWA001.ant.amazon.com (10.13.138.214)
 
-Zhenrong (Daniel) Gu, Xing Feng and Peng Zhang report for
-a problem with the reused connections while testing a passive
-runtime checker for L4 load balancers.
+Hi,
 
-When connection is reused, we create new connection and put it
-first in the list. By this way all packets hit the new connection
-leaving the reused one to expire. This order worked before the
-the introduction of resizable connection hash table which
-started to reverse the order of connections each time the
-table is resized. If the table is resized while the reused
-connection is still present, the next packets will not hit the
-new connection.
+Please consider these two mainline ipvs commits (v7.4-rc4) for the
+stable trees. They fix regressions in commits that stable already
+carries. Neither commit has Cc: stable, so they have not been picked
+up yet:
 
-To fix that we prefer not to rely on the order of connections,
-now we will just mark the reused connection with a new flag
-IP_VS_CONN_F_REUSED, so that it can be skipped when the list
-is traversed on received packet. As the reused connection is
-still hashed while waiting its timer to expire, it is visible
-to the procedures that delete connections on memory pressure
-or netns cleanup. Also, when the reused connections are now
-marked, we can exclude them from the synchronization process.
-Do this by checking for IP_VS_CONN_F_MASTER_NOSYNC for data
-and controlling connections.
+  aa9afc79f57b ("ipvs: read flags and seqs in master atomically")
+    Fixes: 3e3fe49e8678 ("ipvs: fix buffer overflow when sending sync messages")
+    stable trees with 3e3fe49e8678: 7.3.y 6.18.y 6.12.y 6.6.y 6.1.y 5.15.y 5.10.y
 
-Reported-by: "Zhenrong (Daniel) Gu" <zrgu@stu.xjtu.edu.cn>
-Closes: https://lore.kernel.org/all/avx0_13w3xGNdZP8@fxxowodeMacBook-Pro.local/
-Reported-by: Xing Feng <xingfeng@stu.xjtu.edu.cn>
-Reported-by: Peng Zhang <p-zhang@xjtu.edu.cn>
-Link: https://sashiko.dev/#/patchset/20261124160226.103532-1-ja%40ssi.bg
-Fixes: 2fa7cc9c7025 ("ipvs: switch to per-net connection table")
-Tested-by: "Zhenrong (Daniel) Gu" <zrgu@stu.xjtu.edu.cn>
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
----
- Changes in v2:
- * Mark the connection as reused only when we create a replacement
-   connection, not while dropping packets when old_ct is present
- * Check for IP_VS_CONN_F_MASTER_NOSYNC for the controlling connections
+  567ca80d77ba ("ipvs: honor the overload state and do not enter it forever")
+    Fixes: 3ba20137287f ("ipvs: fix more races around the overload flag")
+    stable trees with 3ba20137287f: 7.3.y 6.18.y 6.12.y 6.6.y 6.1.y 5.15.y
+    (5.10.y does not have 3ba20137287f, so it is not needed there)
 
- Link to v1:
- https://lore.kernel.org/all/20261124160226.103532-1-ja@ssi.bg/
+None of these trees has either fix yet. Both commits cherry-pick
+cleanly, in the order above, onto the current tips: v7.3.6, v6.18.65,
+v6.12.119, v6.6.163, v6.1.193, v5.15.226 and v5.10.275 (aa9afc79f57b
+only for v5.10.275).
 
- include/net/ip_vs.h             |  1 +
- include/uapi/linux/ip_vs.h      |  7 +++++++
- net/netfilter/ipvs/ip_vs_conn.c | 15 +++++++++++++++
- net/netfilter/ipvs/ip_vs_core.c | 15 ++++-----------
- net/netfilter/ipvs/ip_vs_sync.c | 12 ++++++------
- 5 files changed, 33 insertions(+), 17 deletions(-)
+We carry both commits on 6.18.65 in the Amazon Linux kernel, and
+net/netfilter/ipvs/ builds cleanly there.
+The other trees are only checked for a clean cherry-pick, not
+build-tested.
 
-diff --git a/include/net/ip_vs.h b/include/net/ip_vs.h
-index 6ee782f2362c..100638ee3780 100644
---- a/include/net/ip_vs.h
-+++ b/include/net/ip_vs.h
-@@ -1717,6 +1717,7 @@ struct ip_vs_conn *ip_vs_conn_new(const struct ip_vs_conn_param *p, int dest_af,
- 				  __be16 dport, unsigned int flags,
- 				  struct ip_vs_dest *dest, __u32 fwmark);
- void ip_vs_conn_expire_now(struct ip_vs_conn *cp);
-+void ip_vs_conn_mark_reused(struct ip_vs_conn *cp);
- 
- const char *ip_vs_state_name(const struct ip_vs_conn *cp);
- 
-diff --git a/include/uapi/linux/ip_vs.h b/include/uapi/linux/ip_vs.h
-index 2c37c6ac7525..b327e07e2c3f 100644
---- a/include/uapi/linux/ip_vs.h
-+++ b/include/uapi/linux/ip_vs.h
-@@ -112,6 +112,13 @@
- 				IP_VS_CONN_F_NFCT | \
- 				0)
- 
-+#define IP_VS_CONN_F_REUSED	(1 << 30)	/* replaced from new one */
-+
-+/* Connections with any of these flags are not synced */
-+#define IP_VS_CONN_F_MASTER_NOSYNC	(IP_VS_CONN_F_ONE_PACKET | \
-+					 IP_VS_CONN_F_REUSED | \
-+					 0)
-+
- #define IP_VS_SCHEDNAME_MAXLEN	16
- #define IP_VS_PENAME_MAXLEN	16
- #define IP_VS_IFNAME_MAXLEN	16
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 98a3c9ec123f..f9f1665daa1f 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -405,6 +405,7 @@ __ip_vs_conn_in_get(const struct ip_vs_conn_param *p)
- 						     &cp->vaddr) &&
- 				    (!p->cport ^
- 				     (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
-+				    !(cp->flags & IP_VS_CONN_F_REUSED) &&
- 				    p->protocol == cp->protocol) {
- 					if (__ip_vs_conn_get(cp)) {
- 						/* HIT */
-@@ -592,6 +593,7 @@ struct ip_vs_conn *ip_vs_conn_out_get(const struct ip_vs_conn_param *p)
- 				    ip_vs_addr_equal(p->af, p->caddr, saddr) &&
- 				    (!p->vport ^
- 				     (!(cp->flags & IP_VS_CONN_F_NO_CPORT))) &&
-+				    !(cp->flags & IP_VS_CONN_F_REUSED) &&
- 				    p->protocol == cp->protocol) {
- 					if (__ip_vs_conn_get(cp))
- 						goto out;
-@@ -1468,6 +1470,19 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp)
- 		mod_timer_pending(&cp->timer, jiffies);
- }
- 
-+/* Mark connection as reused:
-+ * - it is still hashed
-+ * - but it is not hit by packets
-+ * - it is replaced by new connection with same addresses and ports
-+ * - it is not synced anymore
-+ */
-+void ip_vs_conn_mark_reused(struct ip_vs_conn *cp)
-+{
-+	spin_lock_bh(&cp->lock);
-+	cp->flags &= ~IP_VS_CONN_F_NFCT;
-+	cp->flags |= IP_VS_CONN_F_REUSED;
-+	spin_unlock_bh(&cp->lock);
-+}
- 
- /*
-  *	Create a new connection entry and hash it into the conn_tab
-diff --git a/net/netfilter/ipvs/ip_vs_core.c b/net/netfilter/ipvs/ip_vs_core.c
-index fe3ff0a10ddf..5354ecfe2607 100644
---- a/net/netfilter/ipvs/ip_vs_core.c
-+++ b/net/netfilter/ipvs/ip_vs_core.c
-@@ -2215,11 +2215,8 @@ ip_vs_in_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state
- 		}
- 
- 		if (resched) {
--			if (!old_ct) {
--				spin_lock_bh(&cp->lock);
--				cp->flags &= ~IP_VS_CONN_F_NFCT;
--				spin_unlock_bh(&cp->lock);
--			}
-+			if (!old_ct)
-+				ip_vs_conn_mark_reused(cp);
- 			if (!atomic_read(&cp->n_control))
- 				ip_vs_conn_expire_now(cp);
- 			__ip_vs_conn_put(cp);
-@@ -2235,12 +2232,8 @@ ip_vs_in_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state
- 		if (sysctl_expire_nodest_conn(ipvs)) {
- 			bool old_ct = ip_vs_conn_uses_old_conntrack(cp, skb);
- 
--			if (!old_ct) {
--				spin_lock_bh(&cp->lock);
--				cp->flags &= ~IP_VS_CONN_F_NFCT;
--				spin_unlock_bh(&cp->lock);
--			}
--
-+			if (!old_ct)
-+				ip_vs_conn_mark_reused(cp);
- 			ip_vs_conn_expire_now(cp);
- 			__ip_vs_conn_put(cp);
- 			if (old_ct)
-diff --git a/net/netfilter/ipvs/ip_vs_sync.c b/net/netfilter/ipvs/ip_vs_sync.c
-index 7e562e745ab5..08ac716aad29 100644
---- a/net/netfilter/ipvs/ip_vs_sync.c
-+++ b/net/netfilter/ipvs/ip_vs_sync.c
-@@ -551,8 +551,7 @@ static void ip_vs_sync_conn_v0(struct netns_ipvs *ipvs, struct ip_vs_conn *cp,
- 	if (unlikely(cp->af != AF_INET))
- 		return;
- 	flags = READ_ONCE(cp->flags);
--	/* Do not sync ONE PACKET */
--	if (flags & IP_VS_CONN_F_ONE_PACKET)
-+	if (flags & IP_VS_CONN_F_MASTER_NOSYNC)
- 		return;
- 
- 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
-@@ -654,10 +653,10 @@ void ip_vs_sync_conn(struct netns_ipvs *ipvs, struct ip_vs_conn *cp, int pkts)
- 		ip_vs_sync_conn_v0(ipvs, cp, pkts);
- 		return;
- 	}
--	/* Do not sync ONE PACKET */
--	if (cp->flags & IP_VS_CONN_F_ONE_PACKET)
--		goto control;
-+
- sloop:
-+	if (cp->flags & IP_VS_CONN_F_MASTER_NOSYNC)
-+		goto control;
- 	if (!ip_vs_sync_conn_needed(ipvs, cp, pkts))
- 		goto control;
- 	flags = READ_ONCE(cp->flags);
-@@ -895,6 +894,7 @@ static void ip_vs_proc_conn(struct netns_ipvs *ipvs, struct ip_vs_conn_param *pa
- 		if (cp && ((cp->dport != dport) ||
- 			   !ip_vs_addr_equal(cp->daf, &cp->daddr, daddr))) {
- 			if (!(flags & IP_VS_CONN_F_INACTIVE)) {
-+				ip_vs_conn_mark_reused(cp);
- 				ip_vs_conn_expire_now(cp);
- 				__ip_vs_conn_put(cp);
- 				cp = NULL;
-@@ -1003,7 +1003,7 @@ static bool ip_vs_sync_validate_flags(u32 flags)
- 		if (flags & IP_VS_CONN_F_TEMPLATE)
- 			return false;
- 	}
--	if (flags & IP_VS_CONN_F_ONE_PACKET)
-+	if (flags & IP_VS_CONN_F_MASTER_NOSYNC)
- 		return false;
- 	return true;
- }
-
-Prerequisite-Message-Id: <20261103165746.39516-1-axel.mierczuk@1password.com>
--- 
-2.56.1
-
-
+Thanks,
+Gyokhan
